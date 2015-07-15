@@ -1,6 +1,11 @@
 import argparse
 import subprocess
 import os
+import time
+
+
+supportedFormats = [ "tif", "cbf", "hdf5"]
+watchFolder = "/space/projects/Live_Viewer/source/"
 
 
 parser = argparse.ArgumentParser()
@@ -9,29 +14,51 @@ parser.add_argument("--mv_target", help = "Move target")
 
 arguments = parser.parse_args()
 
-source = arguments.mv_source
-target = arguments.mv_target
+source = os.path.normpath ( arguments.mv_source )
+target = os.path.normpath ( arguments.mv_target )
 
-watchFolder = "/space/projects/Live_Viewer/source/"
+( parentDir, filename )  = os.path.split ( source )
+commonPrefix             = os.path.commonprefix ( [ watchFolder, source ] )
+relativebasepath         = os.path.relpath ( source, commonPrefix )
+( relativeParent, blub ) = os.path.split ( relativebasepath )
 
-filepathNormalised   = os.path.normpath ( source )
-( parentDir, filename ) = os.path.split ( filepathNormalised )
-commonPrefix         = os.path.commonprefix ( [ watchFolder, filepathNormalised ] )
-#print "commonPrefix", commonPrefix
-relativeBasepath     = os.path.relpath ( filepathNormalised, commonPrefix )
-#print "relativeBasepath", relativeBasepath
-( relativeParent, blub ) = os.path.split ( relativeBasepath )
+( name, postfix ) = filename.split( "." )
+supported_file = postfix in supportedFormats
 
-print "filename ", filename
-print "parentDir ", parentDir
-print "relativeParent", relativeParent
+if supported_File:
+    my_cmd = 'echo "' +  source + '"  > /tmp/zeromqllpipe'
+    p = subprocess.Popen ( my_cmd, shell=True )
+    p.communicate()
 
-my_cmd = 'echo "' +  arguments.mv_source + '"  > /tmp/zeromqllpipe'
-print my_cmd
-p = subprocess.Popen ( my_cmd, shell=True )
-p.communicate()
+    # wait to ZeroMQ to finish
+    time.sleep(5)
 
-p = subprocess.Popen ( [ 'mv', arguments.mv_source, arguments.mv_target ],
+# get responce from zeromq
+#pipe_path = "/tmp/zeromqllpipe_resp"
+
+# Open the fifo. We need to open in non-blocking mode or it will stalls until
+# someone opens it for writting
+#pipe_fd = os.open(pipe_path, os.O_RDONLY | os.O_NONBLOCK)
+
+#waitForAnswer = True
+
+#wait for new files
+#with os.fdopen(pipe_fd) as pipe:
+#    while waitForAnswer:
+#        message = pipe.read()
+#        if message:
+#            pathnames = message.splitlines()
+#            for filepath in pathnames:
+#                if filepath == source:
+#                    waitForAnswer = False
+#                    break
+#        print "sleep"
+#        time.sleep(0.1)
+
+
+
+
+p = subprocess.Popen ( [ 'mv', source, target ],
                 stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE,
                 universal_newlines = False )
 out, err = p.communicate()
