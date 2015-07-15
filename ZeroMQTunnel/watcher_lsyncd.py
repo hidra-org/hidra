@@ -364,7 +364,7 @@ if __name__ == '__main__':
                 pathnames = message.splitlines()
                 for filepath in pathnames:
                     directoryWatcher.passFileToZeromq(filepath)
-            time.sleep(5)
+            time.sleep(0.1)
 
 
     zmqContext.destroy()
