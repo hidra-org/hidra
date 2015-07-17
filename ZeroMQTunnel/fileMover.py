@@ -158,9 +158,11 @@ class WorkerProcess():
         waitTime = 2000.0
         return waitTime
 
+
     def getFileMaxWaitTimeInMs(self):
         maxWaitTime = 10000.0
         return maxWaitTime
+
 
     def passFileToDataStream(self, zmqDataStreamSocket, filename, sourcePath, relativeParent):
         """filesizeRequested == filesize submitted by file-event. In theory it can differ to real file size"""
@@ -202,9 +204,11 @@ class WorkerProcess():
 
             #for quick testing set filesize of file as chunksize
             logging.debug("get filesize for '" + str(sourceFilePathFull) + "'...")
-            filesize = os.path.getsize(sourceFilePathFull)
-            chunksize = filesize    #can be used later on to split multipart message
+            filesize             = os.path.getsize(sourceFilePathFull)
+            fileModificationTime = os.stat(sourceFilePathFull)
+            chunksize            = filesize    #can be used later on to split multipart message
             logging.debug("filesize(%s) = %s" % (sourceFilePathFull, str(filesize)))
+            logging.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
 
         except Exception, e:
             errorMessage = "Unable to get file metadata for '" + str(sourceFilePathFull) + "'."
@@ -225,7 +229,7 @@ class WorkerProcess():
 
         #build payload for message-pipe by putting source-file into a message
         try:
-            payloadMetadata = self.buildPayloadMetadata(filename, filesize, sourcePath, relativeParent)
+            payloadMetadata = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativeParent)
         except Exception, e:
             errorMessage = "Unable to assemble multi-part message."
             logging.error(errorMessage)
@@ -291,11 +295,12 @@ class WorkerProcess():
 
 
 
-    def buildPayloadMetadata(self, filename, filesize, sourcePath, relativeParent):
+    def buildPayloadMetadata(self, filename, filesize, fileModificationTime, sourcePath, relativeParent):
         """
         builds metadata for zmq-multipart-message. should be used as first element for payload.
         :param filename:
         :param filesize:
+        :param fileModificationTime:
         :param sourcePath:
         :param relativeParent:
         :return:
@@ -304,11 +309,12 @@ class WorkerProcess():
         #add metadata to multipart
         logging.debug("create metadata for source file...")
         metadataDict = {
-                         "filename"       : filename,
-                         "filesize"       : filesize,
-                         "sourcePath"     : sourcePath,
-                         "relativeParent" : relativeParent,
-                         "chunkSize"      : self.getChunkSize()}
+                         "filename"             : filename,
+                         "filesize"             : filesize,
+                         "fileModificationTime" : fileModificationTime,
+                         "sourcePath"           : sourcePath,
+                         "relativeParent"       : relativeParent,
+                         "chunkSize"            : self.getChunkSize()}
 
         logging.debug("metadataDict = " + str(metadataDict))
 
@@ -423,8 +429,10 @@ class FileMover():
     def getFileWaitTimeInMs(self):
         return self.fileWaitTimeInMs
 
+
     def getFileMaxWaitTimeInMs(self):
         return self.fileMaxWaitTimeInMs
+
 
     def startReceiving(self):
         #create socket
@@ -531,6 +539,7 @@ class FileMover():
 
     def processFileEvent(self, fileEventMessage, routerSocket):
         self.routeFileEventToWorkerThread(fileEventMessage, routerSocket)
+
 
     def stopReceiving(self, zmqSocket, msgContext):
         try:
