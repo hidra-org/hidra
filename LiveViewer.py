@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
 import time
-from dectris import albula
+#from dectris import albula
 from PyQt4 import QtCore
 from PyQt4.QtCore import SIGNAL, QThread, QMutex
+import zmq
 
 class LiveView(QThread):
     FILETYPE_CBF = 0
@@ -20,6 +21,11 @@ class LiveView(QThread):
     subframe = None
     mutex = None
 
+    zmqIp = "127.0.0.1"
+    zmqPort = "6071"
+    zmqContext = None
+    zmqSocket = None
+
     def __init__(self, path=None, filetype=None, interval=None, parent=None):
         QThread.__init__(self, parent)
         if path is not None:
@@ -28,6 +34,7 @@ class LiveView(QThread):
             self.filetype = filetype
         if interval is not None:
             self.interval = interval
+        self.zmqContext, self.zmqSocket = createZmqSocket(self.zmqIp, self.zmqPort)
         self.mutex = QMutex()
 
 
@@ -47,6 +54,10 @@ class LiveView(QThread):
             return
         print "Live view thread: Stopping thread"
         self.alive = False
+
+        # close ZeroMQ socket and destroy ZeroMQ context
+        stopZmq(self.zmqSocket, self.zmqContext)
+
         self.wait() # waits until run stops on his own
 
     def run(self):
@@ -57,28 +68,30 @@ class LiveView(QThread):
         if self.filetype in [LiveView.FILETYPE_CBF, LiveView.FILETYPE_TIF]:
             # open viewer
             while self.alive:
+                print "self.alive", self.alive
                 # find latest image
                 self.mutex.lock()
-                files = [(os.path.getmtime(self.path + "/" + fn), fn)
-                    for fn in os.listdir(self.path) if fn.lower().endswith(suffix[self.filetype])]
-                files.sort()
-                files.reverse()
-                if len(files) > 0:
-                    # display image
-                    # wait to make sure the image is copied completely before displaying it
-                    time.sleep(0.1)
-                    try:
-                        self.subframe.loadFile(self.path + "/" + files[0][1])
-                    # viewer or subframe has been closed by the user
-                    except:
-                        self.mutex.unlock()
-                        time.sleep(0.1)
-                        try:
-                            self.subframe =  self.viewer.openSubFrame()
-                        except:
-                            self.viewer = albula.openMainFrame()
-                            self.subframe = self.viewer.openSubFrame()
-                        continue
+
+                # get latest file from reveiver
+                try:
+                    received_file = communicateWithReceiver(self.zmqSocket)
+                except zmq.error.ZMQError:
+                    print "ZMQError"
+                    break
+
+                # display image
+#                try:
+#                    self.subframe.loadFile(receiived_file)
+                # viewer or subframe has been closed by the user
+#                except:
+#                    self.mutex.unlock()
+#                    time.sleep(0.1)
+#                    try:
+#                        self.subframe = self.viewer.openSubFrame()
+#                    except:
+#                        self.viewer = albula.openMainFrame()
+#                        self.subframe = self.viewer.openSubFrame()
+#                    continue
                 self.mutex.unlock()
                 # wait interval
                 interval = 0.0
@@ -115,4 +128,39 @@ class LiveView(QThread):
     def setInterval(self, interval=None):
         if interval is not None:
             self.interval = interval
+
+
+def createZmqSocket(zmqIp, zmqPort):
+    context = zmq.Context()
+    assert isinstance(context, zmq.sugar.context.Context)
+
+    socket = context.socket(zmq.REQ)
+    connectionStrSocket = "tcp://{ip}:{port}".format(ip=zmqIp, port=zmqPort)
+    socket.connect(connectionStrSocket)
+
+    return context, socket
+
+def communicateWithReceiver(socket):
+    print "Asking for next file"
+    socket.send ("NextFile")
+    #  Get the reply.
+    message = socket.recv()
+    print "Next file: ", message
+
+def stopZmq(zmqSocket, zmqContext):
+    try:
+        print "closing zmqSocket..."
+        zmqSocket.close(linger=0)
+        print "closing zmqSocket...done."
+    except Exception as e:
+        print "closing zmqSocket...failed."
+        print e
+
+    try:
+        print"closing zmqContext..."
+        zmqContext.destroy()
+        "closing zmqContext...done."
+    except Exception as e:
+        print "closing zmqContext...failed."
+        print e
 
