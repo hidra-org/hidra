@@ -649,7 +649,7 @@ def initLogging(filenameFullPath, verbose):
 
     #log everything to file
     logging.basicConfig(level=loggingLevel,
-                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s] [%(name)s] [%(levelname)s] %(message)s',
+                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
                         datefmt='%Y-%m-%d_%H:%M:%S',
                         filename=filenameFullPath,
                         filemode="a")
