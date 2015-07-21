@@ -205,7 +205,7 @@ class WorkerProcess():
             #for quick testing set filesize of file as chunksize
             logging.debug("get filesize for '" + str(sourceFilePathFull) + "'...")
             filesize             = os.path.getsize(sourceFilePathFull)
-            fileModificationTime = os.stat(sourceFilePathFull)
+            fileModificationTime = os.stat(sourceFilePathFull).st_mtime
             chunksize            = filesize    #can be used later on to split multipart message
             logging.debug("filesize(%s) = %s" % (sourceFilePathFull, str(filesize)))
             logging.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
