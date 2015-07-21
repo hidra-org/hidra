@@ -25,7 +25,7 @@ relativebasepath         = os.path.relpath ( source, commonPrefix )
 ( name, postfix ) = filename.split( "." )
 supported_file = postfix in supportedFormats
 
-if supported_File:
+if supported_file:
     my_cmd = 'echo "' +  source + '"  > /tmp/zeromqllpipe'
     p = subprocess.Popen ( my_cmd, shell=True )
     p.communicate()
