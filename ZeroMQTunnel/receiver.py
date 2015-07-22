@@ -19,21 +19,19 @@ import threading
 class FileReceiver:
     globalZmqContext         = None
     outputDir                = None
-    bindingPortForDataStream = None
+    zmqDataStreamPort        = None
     zqmDataStreamIp          = None
-    bindingIpForDataStream   = None
-    zmqFileserverIp          = None
     maxRingBufferSize        = 100
     timeToWaitForRingBuffer  = 2
     ringBuffer               = []
     liveViewerZmqContext     = None
 
-    def __init__(self, outputDir, bindingPortForDataStream, zmqFileserverIp, bindingPortForLiveViewer, zmqLiveViewerIp):
-        self.outputDir                 = outputDir
-        self.bindingPortForDataStream  = bindingPortForDataStream
-        self.zmqFileserverIp           = zmqFileserverIp
-        self.zmqLiveViewerIp           = zmqLiveViewerIp
-        self.bindingPortForLiveViewer  = bindingPortForLiveViewer
+    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp):
+        self.outputDir          = outputDir
+        self.zmqDataStreamIp    = zmqDataStreamIp
+        self.zmqDataStreamPort  = zmqDataStreamPort
+        self.zmqLiveViewerIp    = zmqLiveViewerIp
+        self.zmqLiveViewerPort  = zmqLiveViewerPort
 
         # initialize ring buffer
         # get all entries in the directory
@@ -126,8 +124,8 @@ class FileReceiver:
         assert isinstance(context, zmq.sugar.context.Context)
         socket = self.getZmqSocket_Pull(context)
 
-        logging.info("binding to data socket: tcp://" +  self.zmqFileserverIp + ":%s" % self.bindingPortForDataStream)
-        socket.bind('tcp://' + self.zmqFileserverIp + ':%s' % self.bindingPortForDataStream)
+        logging.info("binding to data socket: tcp://" +  self.zmqDataStreamIp + ":%s" % self.zmqDataStreamPort)
+        socket.bind('tcp://' + self.zmqDataStreamIp + ':%s' % self.zmqDataStreamPort)
 
         return socket
 
@@ -136,8 +134,8 @@ class FileReceiver:
         assert isinstance(context, zmq.sugar.context.Context)
         socket = self.getZmqSocket_Rep(context)
 
-        logging.info("binding to data socket: tcp://" +  self.zmqLiveViewerIp + ":%s" % self.bindingPortForLiveViewer)
-        socket.bind('tcp://' + self.zmqLiveViewerIp + ':%s' % self.bindingPortForLiveViewer)
+        logging.info("binding to data socket: tcp://" +  self.zmqLiveViewerIp + ":%s" % self.zmqLiveViewerPort)
+        socket.bind('tcp://' + self.zmqLiveViewerIp + ':%s' % self.zmqLiveViewerPort)
 
         return socket
 
@@ -157,8 +155,15 @@ class FileReceiver:
 
     # Albula is the live viewer used at the beamlines
     def sendFileToLiveViewer(self, zmqLiveViewerSocket):
-        #send first element in ring buffer to albula
+        # if there is a request of the live viewer:
+        # send first element in ring buffer to live viewer
         pass
+#        while True:
+#            #  Wait for next request from client
+#            message = zmqLiveViewerSocket.recv()
+#            print "Received request: ", message
+#            time.sleep (1)
+#            socket.send("World from %s" % port)
 
 
     def combineMessage(self, zmqSocket):
@@ -421,10 +426,10 @@ if __name__ == "__main__":
     arguments         = argumentParsing()
     outputDir         = arguments.outputDir
     verbose           = arguments.verbose
-    zqmDataStreamPort = str(arguments.tcpPortDataStream)
-    zmqLiveViewerPort = str(arguments.tcpPortLiveViewer)
-    zqmDataStreamIp   = str(arguments.bindingIpForDataStream)
+    zmqDataStreamIp   = str(arguments.bindingIpForDataStream)
+    zmqDataStreamPort = str(arguments.tcpPortDataStream)
     zmqLiveViewerIp   = str(arguments.bindingIpForLiveViewer)
+    zmqLiveViewerPort = str(arguments.tcpPortLiveViewer)
     logFile           = arguments.logfile
     logfileFilePath   = arguments.logfile
 
@@ -434,4 +439,4 @@ if __name__ == "__main__":
 
 
     #start file receiver
-    myWorker = FileReceiver(outputDir, zqmDataStreamPort, zqmDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp)
+    myWorker = FileReceiver(outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp)
