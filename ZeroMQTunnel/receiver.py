@@ -169,11 +169,17 @@ class FileReceiver:
             time.sleep (1)
             # send first element in ring buffer to live viewer (the path of this file is the second entry)
             if self.ringBuffer:
-                zmqLiveViewerSocket.send(self.ringBuffer[0][1])
-                print self.ringBuffer[0][1]
+                try:
+                    zmqLiveViewerSocket.send(self.ringBuffer[0][1])
+                    print self.ringBuffer[0][1]
+                except zmq.error.ContextTerminated:
+                    break
             else:
-                zmqLiveViewerSocket.send("None")
-                print self.ringBuffer
+                try:
+                    zmqLiveViewerSocket.send("None")
+                    print self.ringBuffer
+                except zmq.error.ContextTerminated:
+                    break
 
 
     def combineMessage(self, zmqSocket):

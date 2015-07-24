@@ -14,20 +14,23 @@ import traceback
 from multiprocessing import Process, freeze_support
 import subprocess
 import json
+import shutil
 
 DEFAULT_CHUNK_SIZE = 1048576
 #
 #  --------------------------  class: WorkerProcess  --------------------------------------
 #
 class WorkerProcess():
-    id                  = None
-    dataStreamIp        = None
-    dataStreamPort      = None
-    logfileFullPath     = None
-    zmqContextForWorker = None
-    zmqMessageChunkSize = None
-    fileWaitTime_inMs   = None
-    fileMaxWaitTime_InMs= None
+    id                   = None
+    dataStreamIp         = None
+    dataStreamPort       = None
+    logfileFullPath      = None
+    zmqContextForWorker  = None
+    zmqMessageChunkSize  = None
+    fileWaitTime_inMs    = None
+    fileMaxWaitTime_InMs = None
+    cleaner_url          = "inproc://workers"
+    zmqDataStreamSocket  = None
 
     def __init__(self, id, dataStreamIp, dataStreamPort, logfileFullPath, chunkSize,
                  fileWaitTimeInMs=2000.0, fileMaxWaitTimeInMs=10000.0):
@@ -46,6 +49,7 @@ class WorkerProcess():
         except KeyboardInterrupt:
             # trace = traceback.format_exc()
             logging.debug("KeyboardInterrupt detected. Shutting down workerProcess.")
+            self.zmqDataStreamSocket.close()
             self.zmqContextForWorker.destroy()
         else:
             trace = traceback.format_exc()
@@ -84,9 +88,9 @@ class WorkerProcess():
         zmqContextForWorker = zmq.Context()
         self.zmqContextForWorker = zmqContextForWorker
 
-        zmqDataStreamSocket = zmqContextForWorker.socket(zmq.PUSH)
+        self.zmqDataStreamSocket = zmqContextForWorker.socket(zmq.PUSH)
         connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=dataStreamIp, port=dataStreamPort)
-        zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
+        self.zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
 
         routerSocket = zmqContextForWorker.socket(zmq.REQ)
         routerSocket.identity = u"worker-{ID}".format(ID=id).encode("ascii")
@@ -94,6 +98,11 @@ class WorkerProcess():
         routerSocket.connect(connectionStrRouterSocket)
         processingJobs = True
         jobCount = 0
+
+        #init Cleaner message-pipe
+        cleanerSocket = zmqContextForWorker.socket(zmq.PUSH)
+        connectionStringCleanerSocket = self.cleaner_url
+        cleanerSocket.connect(connectionStringCleanerSocket)
 
 
         while processingJobs:
@@ -142,7 +151,7 @@ class WorkerProcess():
             #passing file to data-messagPipe
             try:
                 logging.debug("worker-" + str(id) + ": passing new file to data-messagePipe...")
-                self.passFileToDataStream(zmqDataStreamSocket, filename, sourcePath, relativeParent)
+                self.passFileToDataStream(filename, sourcePath, relativeParent)
                 logging.debug("worker-" + str(id) + ": passing new file to data-messagePipe...success.")
             except Exception, e:
                 errorMessage = "Unable to pass new file to data-messagePipe."
@@ -151,6 +160,22 @@ class WorkerProcess():
                 logging.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
                 #skip all further instructions and continue with next iteration
                 continue
+
+
+            #send remove-request to message pipe
+            try:
+                #sending to pipe
+                logging.debug("send file-event to cleaner-pipe...")
+                cleanerSocket.send(workload)
+                logging.debug("send file-event to cleaner-pipe...success.")
+
+                #TODO: remember workload. append to list?
+                # can be used to verify files which have been processed twice or more
+            except Exception, e:
+                errorMessage = "Unable to notify Cleaner-pipe to delete file: " + str(filename)
+                logging.error(errorMessage)
+                logging.debug("fileEventMessageDict=" + str(fileEventMessageDict))
+
 
 
 
@@ -164,7 +189,7 @@ class WorkerProcess():
         return maxWaitTime
 
 
-    def passFileToDataStream(self, zmqDataStreamSocket, filename, sourcePath, relativeParent):
+    def passFileToDataStream(self, filename, sourcePath, relativeParent):
         """filesizeRequested == filesize submitted by file-event. In theory it can differ to real file size"""
 
         # filename = "img.tiff"
@@ -264,12 +289,12 @@ class WorkerProcess():
                 chunkPayload.append(fileContentAsByteObject)
 
                 #send to zmq pipe
-                zmqDataStreamSocket.send_multipart(chunkPayload)
+                self.zmqDataStreamSocket.send_multipart(chunkPayload)
 
             #close file
             fileDescriptor.close()
 
-            # zmqDataStreamSocket.send_multipart(multipartMessage)
+            # self.zmqDataStreamSocket.send_multipart(multipartMessage)
             logging.debug("Passing multipart-message...done.")
         except Exception, e:
             logging.error("Unable to send multipart-message")
@@ -391,13 +416,16 @@ class FileMover():
     def process(self):
         try:
             self.startReceiving()
+        except zmq.error.ZMQError as e:
+            logging.error("ZMQError: "+ str(e))
         except KeyboardInterrupt:
             logging.debug("KeyboardInterrupt detected. Shutting down fileMover.")
             logging.info("Shutting down fileMover as KeyboardInterrupt was detected.")
             self.zmqContext.destroy()
-        else:
-            logging.error("Unknown Error. Quitting.")
+        except:
+            trace = traceback.format_exc()
             logging.info("Stopping fileMover due to unknown error condition.")
+            logging.debug("Error was: " + str(trace))
 
 
 
@@ -585,6 +613,211 @@ class FileMover():
         return socket
 
 
+
+class Cleaner():
+    """
+    * received cleaning jobs via zeromq,
+      such as removing a file
+    * Does regular checks on the watched directory,
+    such as
+      - deleting files which have been successfully send
+        to target but still remain in the watched directory
+      - poll the watched directory and reissue new files
+        to fileMover which have not been detected yet
+    """
+    logfileFullPath      = None
+    bindingPortForSocket = None
+    bindingIpForSocket   = None
+    zmqContextForCleaner = None
+
+    def __init__(self, logfilePath, context, bindingIp="127.0.0.1", bindingPort="6062", verbose=False):
+        self.bindingPortForSocket = bindingPort
+        self.bindingIpForSocket   = bindingIp
+        self.initLogging(logfilePath, verbose)
+        log = self.getLogger()
+        try:
+            self.process()
+        except zmq.error.ZMQError:
+            log.debug("KeyboardInterrupt detected. Shutting down workerProcess.")
+            self.zmqContextForCleaner.destroy()
+        except KeyboardInterrupt:
+            log.debug("KeyboardInterrupt detected. Shutting down workerProcess.")
+            self.zmqContextForCleaner.destroy()
+        except:
+            trace = traceback.format_exc()
+            log.error("Stopping cleanerProcess due to unknown error condition.")
+            log.debug("Error was: " + str(trace))
+
+
+    def getLogger(self):
+        logger = logging.getLogger("cleaner")
+        return logger
+
+    def initLogging(self, logfilePath, verbose):
+        #@see https://docs.python.org/2/howto/logging-cookbook.html
+
+        logfilePathFull = os.path.join(logfilePath, "cleaner.log")
+        logger = logging.getLogger("cleaner")
+
+        #more detailed logging if verbose-option has been set
+        loggingLevel = logging.INFO
+        if verbose:
+            loggingLevel = logging.DEBUG
+
+
+        #log everything to file
+        fileHandler = logging.FileHandler(filename=logfilePathFull,
+                                          mode="a")
+        fileHandlerFormat = logging.Formatter(datefmt='%Y-%m-%d_%H:%M:%S',
+                                              fmt='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s] [%(name)s] [%(levelname)s] %(message)s')
+        fileHandler.setFormatter(fileHandlerFormat)
+        fileHandler.setLevel(loggingLevel)
+        logger.addHandler(fileHandler)
+
+
+
+    def process(self):
+        processingJobs = True
+        log = self.getLogger()
+
+        #create zmq context
+        zmqContextForCleaner = zmq.Context()
+        self.zmqContextForCleaner = zmqContextForCleaner
+
+        #bind to local port
+        zmqJobSocket = zmqContextForCleaner.socket(zmq.PULL)
+        zmqJobSocket.bind('tcp://' + self.bindingIpForSocket + ':%s' % self.bindingPortForSocket)
+
+        #processing messaging
+        while processingJobs:
+            #waiting for new jobs
+            try:
+                workload = zmqJobSocket.recv()
+            except Exception as e:
+                logging.error("Error in receiving job: " + str(e))
+
+
+            #transform to dictionary
+            try:
+                workloadDict = json.loads(str(workload))
+            except:
+                errorMessage = "invalid job received. skipping job"
+                log.error(errorMessage)
+                log.debug("workload=" + str(workload))
+                continue
+
+            #extract fileEvent metadata
+            try:
+                #TODO validate fileEventMessageDict dict
+                filename       = workloadDict["filename"]
+                sourcePath     = workloadDict["sourcePath"]
+                relativeParent = workloadDict["relativeParent"]
+                targetPath     = workloadDict["targetPath"]
+                # filesize       = workloadDict["filesize"]
+            except Exception, e:
+                errorMessage   = "Invalid fileEvent message received."
+                log.error(errorMessage)
+                log.debug("Error was: " + str(e))
+                log.debug("workloadDict=" + str(workloadDict))
+                #skip all further instructions and continue with next iteration
+                continue
+
+            #moving source file
+            sourceFilepath = None
+            try:
+                logging.debug("removing source file...")
+                #generate target filepath
+#                sourceFilepath = os.path.join(sourcePath,filename)
+                self.moveFile(sourceFilepath)
+                self.moveFile(sourcePath, filename, target)
+
+                # #show filesystem statistics
+                # try:
+                #     self.showFilesystemStatistics(sourcePath)
+                # except Exception, f:
+                #     logging.warning("Unable to get filesystem statistics")
+                #     logging.debug("Error was: " + str(f))
+                log.debug("file removed: " + str(sourceFilepath))
+                log.debug("removing source file...success.")
+
+            except Exception, e:
+                errorMessage = "Unable to remove source file."
+                log.error(errorMessage)
+                trace = traceback.format_exc()
+                log.error("Error was: " + str(trace))
+                log.debug("sourceFilepath="+str(sourceFilepath))
+                log.debug("removing source file...failed.")
+                #skip all further instructions and continue with next iteration
+                continue
+
+
+
+    def moveFile(self, source, filename, target):
+        log = self.getLogger()
+        maxAttemptsToRemoveFile     = 2
+        waitTimeBetweenAttemptsInMs = 500
+
+
+        iterationCount = 0
+        log.info("Moving file '" + str(filename) + "' from '" +  str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+        fileWasMoved = False
+
+        while iterationCount <= maxAttemptsToRemoveFile and not fileWasMoved:
+            iterationCount+=1
+            try:
+                # check if the directory exists before moving the file
+                if not os.path.exists(target):
+                    try:
+                        os.makedirs(target)
+                    except OSError:
+                        pass
+                # moving the file
+                os.remove(filepath)
+                shutil.move(source + os.sep + filename, target + os.sep + filename)
+                fileWasMoved = True
+                log.debug("Moving file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+            except Exception, e:
+                trace = traceback.format_exc()
+                warningMessage = "Unable to move file {FILE}.".format(FILE=str(source) + str(filename))
+                log.warning(warningMessage)
+                log.debug("trace=" + str(trace))
+                log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
+
+
+        if not fileWasMoved:
+            log.error("Moving file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            raise Exception("maxAttemptsToMoveFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount),
+                                                                                                                            FILE=filepath))
+
+
+    def removeFile(self, filepath):
+        log = self.getLogger()
+        maxAttemptsToRemoveFile     = 2
+        waitTimeBetweenAttemptsInMs = 500
+
+
+        iterationCount = 0
+        log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...")
+        fileWasRemoved = False
+
+        while iterationCount <= maxAttemptsToRemoveFile and not fileWasRemoved:
+            iterationCount+=1
+            try:
+                os.remove(filepath)
+                fileWasRemoved = True
+                log.debug("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...success.")
+            except Exception, e:
+                trace = traceback.format_exc()
+                warningMessage = "Unable to remove file {FILE}.".format(FILE=str(filepath))
+                log.warning(warningMessage)
+                log.debug("trace=" + str(trace))
+                log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
+
+
+        if not fileWasRemoved:
+            log.error("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            raise Exception("maxAttemptsToRemoveFile reached (value={ATTEMPT}). Unable to remove file '{FILE}'.".format(ATTEMPT=str(iterationCount),
+                                                                                                                            FILE=filepath))
 
 
 def argumentParsing():

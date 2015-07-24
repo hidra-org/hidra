@@ -56,20 +56,20 @@ class DirectoryWatcherHandler():
         return socket
 
 
-    def passFileToZeromq(self, filepath):
+    def passFileToZeromq(self, filepath, targetPath):
         """
         :param rootDirectorty: where to start traversing. including subdirs.
         :return:
         """
 
         try:
-            self.sendFilesystemEventToMessagePipe(filepath, self.messageSocket)
+            self.sendFilesystemEventToMessagePipe(filepath, self.messageSocket, targetPath)
         except Exception, e:
             logging.error("Unable to process file '" + str(filepath) + "'")
             logging.warning("Skip file '" + str(filepath) + "'. Reason was: " + str(e))
 
 
-    def sendFilesystemEventToMessagePipe(self, filepath, targetSocket):
+    def sendFilesystemEventToMessagePipe(self, filepath, targetSocket, targetPath):
         '''
         Taking the filename, creating a buffer and then
         sending the data as multipart message to the targetSocket.
@@ -118,7 +118,8 @@ class DirectoryWatcherHandler():
             logging.debug("Building message dict...")
             messageDict = { "filename"      : filename,
                             "sourcePath"    : parentDir,
-                            "relativeParent": relativeParent}
+                            "relativeParent": relativeParent,
+                            "targetPath"    : targetPath}
 
             messageDictJson = json.dumps(messageDict)  #sets correct escape characters
             logging.debug("Building message dict...done.")
@@ -328,6 +329,8 @@ if __name__ == '__main__':
 
     fileEventServerIp   = str(arguments.pushServerIp)
     fileEventServerPort = str(arguments.pushServerPort)
+    communicationWithLcyncdIp   = "127.0.0.1"
+    communicationWithLcyncdPort = "6080"
 
     #abort if watch-folder does not exist
     checkWatchFolder(watchFolder)
@@ -346,26 +349,70 @@ if __name__ == '__main__':
     #just get a list of all files in watchDir and pass to zeromq
     directoryWatcher = DirectoryWatcherHandler(zmqContext, fileEventServerIp, watchFolder, fileEventServerPort)
 
-    pipe_path = "/tmp/zeromqllpipe"
-    if not os.path.exists(pipe_path):
-        os.mkfifo(pipe_path)
 
-    # Open the fifo. We need to open in non-blocking mode or it will stalls until
-    # someone opens it for writting
-    pipe_fd = os.open(pipe_path, os.O_RDONLY | os.O_NONBLOCK)
+#    pipe_path = "/tmp/zeromqllpipe"
+#    if not os.path.exists(pipe_path):
+#        os.mkfifo(pipe_path)
+#
+#    # Open the fifo. We need to open in non-blocking mode or it will stalls until
+#    # someone opens it for writting
+#    pipe_fd = os.open(pipe_path, os.O_RDONLY | os.O_NONBLOCK)
+#
+#
+#    #wait for new files
+#    with os.fdopen(pipe_fd) as pipe:
+#        while True:
+#            message = pipe.read()
+#            if message:
+##                print("Received: '%s'" % message)
+#                pathnames = message.splitlines()
+#                for filepath in pathnames:
+#                    directoryWatcher.passFileToZeromq(filepath)
+#            time.sleep(0.1)
 
 
-    #wait for new files
-    with os.fdopen(pipe_fd) as pipe:
-        while True:
-            message = pipe.read()
-            if message:
-#                print("Received: '%s'" % message)
-                pathnames = message.splitlines()
-                for filepath in pathnames:
-                    directoryWatcher.passFileToZeromq(filepath)
-            time.sleep(0.1)
+    workers = zmqContext.socket(zmq.PULL)
+    zmqSocketStr = 'tcp://' + communicationWithLcyncdIp + ':' + communicationWithLcyncdPort
+    logging.debug("Connecting to ZMQ socket: " + str(zmqSocketStr))
+    workers.bind(zmqSocketStr)
 
+    while True:
+        #waiting for new jobs
+        try:
+            workload = workers.recv()
+        except KeyboardInterrupt:
+            break
+
+
+        #transform to dictionary
+        try:
+            workloadDict = json.loads(str(workload))
+        except:
+            errorMessage = "invalid job received. skipping job"
+            logging.error(errorMessage)
+            logging.debug("workload=" + str(workload))
+            continue
+
+        #extract fileEvent metadata
+        try:
+            #TODO validate fileEventMessageDict dict
+            filepath   = workloadDict["filepath"]
+            targetPath = workloadDict["targetPath"]
+            logging.info("Received message: filepath: " + str(filepath) + ", targetPath: " + str(targetPath))
+        except Exception, e:
+            errorMessage   = "Invalid fileEvent message received."
+            logging.error(errorMessage)
+            logging.debug("Error was: " + str(e))
+            logging.debug("workloadDict=" + str(workloadDict))
+            #skip all further instructions and continue with next iteration
+            continue
+
+        # send the file to the fileMover
+        directoryWatcher.passFileToZeromq(filepath, targetPath)
+
+
+    # We never get here but clean up anyhow
+    workers.close()
 
     zmqContext.destroy()
 
