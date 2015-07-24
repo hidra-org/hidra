@@ -18,13 +18,16 @@ import threading
 
 class FileReceiver:
     globalZmqContext         = None
-    outputDir                = None
-    zmqDataStreamPort        = None
-    zqmDataStreamIp          = None
-    maxRingBufferSize        = 100
-    timeToWaitForRingBuffer  = 2
-    ringBuffer               = []
     liveViewerZmqContext     = None
+    outputDir                = None
+    zqmDataStreamIp          = None
+    zmqDataStreamPort        = None
+    zmqLiveViewerIp          = None
+    zmqLiveViewerPort        = None
+    ringBuffer               = []
+    maxRingBufferSize        = 200
+    timeToWaitForRingBuffer  = 2
+    runThread                = True
 
     def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp):
         self.outputDir          = outputDir
@@ -53,27 +56,13 @@ class FileReceiver:
         self.globalZmqContext = zmq.Context()
 
         # thread to communicate with live viewer
-
-        #create socket for live viewer
-        try:
-            logging.info("creating socket for communication with live viewer...")
-            zmqContext = self.getZmqContext()
-            zmqLiveViewerSocket  = self.createSocketForLiveViewer(zmqContext)
-            logging.info("creating socket for communication with live viewer...done.")
-        except Exception, e:
-            errorMessage = "Unable to create zeromq context."
-            logging.error(errorMessage)
-            logging.debug("Error was: " + str(e))
-            logging.info("creating socket for communication with live viewer...failed.")
-            raise Exception(e)
-
-        t1 = threading.Thread(target=self.sendFileToLiveViewer, args=(zmqLiveViewerSocket,))
-        t1.start()
+        self.liveViewerThread = threading.Thread(target=self.sendFileToLiveViewer)
+        self.liveViewerThread.start()
 
 
         try:
             logging.info("Start receiving new files")
-            self.startReceiving(zmqLiveViewerSocket)
+            self.startReceiving()
             logging.info("Stopped receiving.")
         except Exception, e:
             logging.error("Unknown error while receiving files. Need to abort.")
@@ -154,16 +143,37 @@ class FileReceiver:
 
 
     # Albula is the live viewer used at the beamlines
-    def sendFileToLiveViewer(self, zmqLiveViewerSocket):
+    def sendFileToLiveViewer(self):
+
+        #create socket for live viewer
+        try:
+            logging.info("creating socket for communication with live viewer...")
+            zmqContext = self.getZmqContext()
+            zmqLiveViewerSocket  = self.createSocketForLiveViewer(zmqContext)
+            logging.info("creating socket for communication with live viewer...done.")
+        except Exception, e:
+            errorMessage = "Unable to create zeromq context."
+            logging.error(errorMessage)
+            logging.debug("Error was: " + str(e))
+            logging.info("creating socket for communication with live viewer...failed.")
+            raise Exception(e)
+
         # if there is a request of the live viewer:
-        # send first element in ring buffer to live viewer
-        pass
-#        while True:
-#            #  Wait for next request from client
-#            message = zmqLiveViewerSocket.recv()
-#            print "Received request: ", message
-#            time.sleep (1)
-#            socket.send("World from %s" % port)
+        while True:
+            #  Wait for next request from client
+            try:
+                message = zmqLiveViewerSocket.recv()
+            except zmq.error.ContextTerminated:
+                break
+            print "Received request: ", message
+            time.sleep (1)
+            # send first element in ring buffer to live viewer (the path of this file is the second entry)
+            if self.ringBuffer:
+                zmqLiveViewerSocket.send(self.ringBuffer[0][1])
+                print self.ringBuffer[0][1]
+            else:
+                zmqLiveViewerSocket.send("None")
+                print self.ringBuffer
 
 
     def combineMessage(self, zmqSocket):
@@ -209,7 +219,7 @@ class FileReceiver:
 
 
 
-    def startReceiving(self, zmqLiveViewerSocket):
+    def startReceiving(self):
         #create pull socket
         try:
             logging.info("creating local pullSocket for incoming files...")
@@ -243,7 +253,7 @@ class FileReceiver:
         logging.info("shutting down receiver...")
         try:
             logging.debug("shutting down zeromq...")
-            self.stopReceiving(zmqSocket, zmqLiveViewerSocket, zmqContext)
+            self.stopReceiving(zmqSocket, zmqContext)
             logging.debug("shutting down zeromq...done.")
         except:
             logging.error(sys.exc_info())
@@ -348,7 +358,10 @@ class FileReceiver:
 
 
 
-    def stopReceiving(self, zmqSocket, zmqLiveViewerSocket, msgContext):
+    def stopReceiving(self, zmqSocket, msgContext):
+
+        self.runThread=False
+
         try:
             logging.debug("closing zmqSocket...")
             zmqSocket.close()
@@ -357,17 +370,18 @@ class FileReceiver:
             logging.error("closing zmqSocket...failed.")
             logging.error(sys.exc_info())
 
-        try:
-            logging.debug("closing zmqLiveViwerSocket...")
-            zmqLiveViewerSocket.close()
-            logging.debug("closing zmqLiveViwerSocket...done.")
-        except:
-            logging.error("closing zmqLiveViewerSocket...failed.")
-            logging.error(sys.exc_info())
+#        try:
+#            logging.debug("closing zmqLiveViwerSocket...")
+#            zmqLiveViewerSocket.close()
+#            logging.debug("closing zmqLiveViwerSocket...done.")
+#        except:
+#            logging.error("closing zmqLiveViewerSocket...failed.")
+#            logging.error(sys.exc_info())
 
         try:
             logging.debug("closing zmqContext...")
-            msgContext.destroy()
+#            msgContext.destroy()
+            msgContext.term()
             logging.debug("closing zmqContext...done.")
         except:
             logging.error("closing zmqContext...failed.")

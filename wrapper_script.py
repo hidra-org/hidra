@@ -31,7 +31,7 @@ if supported_file:
     p.communicate()
 
     # wait to ZeroMQ to finish
-    time.sleep(5)
+    time.sleep(10)
 
 # get responce from zeromq
 #pipe_path = "/tmp/zeromqllpipe_resp"

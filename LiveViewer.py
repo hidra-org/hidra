@@ -5,6 +5,7 @@ import time
 from PyQt4 import QtCore
 from PyQt4.QtCore import SIGNAL, QThread, QMutex
 import zmq
+import cv2
 
 class LiveView(QThread):
     FILETYPE_CBF = 0
@@ -55,10 +56,11 @@ class LiveView(QThread):
         print "Live view thread: Stopping thread"
         self.alive = False
 
+        self.wait() # waits until run stops on his own
+
         # close ZeroMQ socket and destroy ZeroMQ context
         stopZmq(self.zmqSocket, self.zmqContext)
 
-        self.wait() # waits until run stops on his own
 
     def run(self):
         self.alive = True
@@ -68,14 +70,15 @@ class LiveView(QThread):
         if self.filetype in [LiveView.FILETYPE_CBF, LiveView.FILETYPE_TIF]:
             # open viewer
             while self.alive:
-                print "self.alive", self.alive
                 # find latest image
                 self.mutex.lock()
 
                 # get latest file from reveiver
                 try:
                     received_file = communicateWithReceiver(self.zmqSocket)
+                    print "===received_file", received_file
                 except zmq.error.ZMQError:
+                    received_file = None
                     print "ZMQError"
                     break
 
@@ -146,6 +149,7 @@ def communicateWithReceiver(socket):
     #  Get the reply.
     message = socket.recv()
     print "Next file: ", message
+    return message
 
 def stopZmq(zmqSocket, zmqContext):
     try:

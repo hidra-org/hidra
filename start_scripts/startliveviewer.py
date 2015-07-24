@@ -14,6 +14,6 @@ lv = LiveView()
 
 lv.start()
 
-time.sleep(5)
+time.sleep(100)
 lv.stop()
 
