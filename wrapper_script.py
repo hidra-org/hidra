@@ -75,7 +75,11 @@ if supported_file:
     #send reply back to server
     workload = { "filepath": source, "targetPath": target }
     workload_json = json.dumps(workload)
-    socket.send(workload_json)
+    try:
+        socket.send(workload_json)
+    except:
+        logging.debug( "Could not send message to ZMQ: " + str(workload))
+
     logging.debug( "Send message to ZMQ: " + str(workload))
 
 #    my_cmd = 'echo "' +  source + '"  > /tmp/zeromqllpipe'
@@ -89,8 +93,7 @@ if supported_file:
 #                stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE,
 #                universal_newlines = False )
 #out, err = p.communicate()
-    # We never get here but clean up anyhow
 
+    # We never get here but clean up anyhow
     socket.close()
     zmqContext.destroy()
-
