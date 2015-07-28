@@ -582,8 +582,10 @@ class Cleaner():
         self.log.debug("Init")
 
         #bind to local port
-        self.zmqCleanerSocket = self.zmqContextForCleaner.socket(zmq.PULL)
-        self.zmqCleanerSocket.bind('tcp://' + self.bindingIpForSocket + ':%s' % self.bindingPortForSocket)
+        self.zmqCleanerSocket      = self.zmqContextForCleaner.socket(zmq.PULL)
+        connectionStrCleanerSocket = "tcp://" + self.bindingIpForSocket + ":%s" % self.bindingPortForSocket
+        self.zmqCleanerSocket.bind(connectionStrCleanerSocket)
+        self.log.debug("zmqCleanerSocket started for '" + connectionStrCleanerSocket + "'")
 
         try:
             self.process()
@@ -607,10 +609,8 @@ class Cleaner():
 
 
     def process(self):
-        processingJobs = True
-
         #processing messaging
-        while processingJobs:
+        while True:
             #waiting for new jobs
             self.log.debug("Waiting for new jobs")
             try:
