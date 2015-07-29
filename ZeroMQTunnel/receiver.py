@@ -56,11 +56,11 @@ class FileReceiver:
         self.exchangeSocket = self.zmqContext.socket(zmq.PAIR)
         connectionStrExchangeSocket = "tcp://" + self.zmqLiveViewerExchangeIp + ":%s" % self.zmqLiveViewerExchangePort
         self.exchangeSocket.bind(connectionStrExchangeSocket)
-        logging.debug("exchangeSocket started (bind)for '" + connectionStrExchangeSocket + "'")
+        logging.debug("exchangeSocket started (bind) for '" + connectionStrExchangeSocket + "'")
 
 
         # thread to communicate with live viewer
-        self.liveViewerThread = threading.Thread(target=self.sendFileToLiveViewer)
+        self.liveViewerThread = threading.Thread(target=liveViewer)
         self.liveViewerThread.start()
 
         # initialize ring buffer
@@ -104,54 +104,6 @@ class FileReceiver:
                 if float(time.time()) - mod_time > self.timeToWaitForRingBuffer:
                     os.remove(path)
                     self.ringBuffer.remove([mod_time, path])
-
-
-    def sendFileToLiveViewer(self):
-
-        # create socket for live viewer
-        zmqLiveViewerSocket              = self.zmqContext.socket(zmq.REP)
-        connectionStrZmqLiveViewerSocket = "tcp://" + self.zmqLiveViewerIp + ":%s" % self.zmqLiveViewerPort
-        zmqLiveViewerSocket.bind(connectionStrZmqLiveViewerSocket)
-        logging.debug("zmqLiveViewerSocket started for '" + connectionStrZmqLiveViewerSocket + "'")
-
-        exchangeSocket              = self.zmqContext.socket(zmq.PAIR)
-        connectionStrExchangeSocket = "tcp://" + self.zmqLiveViewerExchangeIp + ":%s" % self.zmqLiveViewerExchangePort
-        exchangeSocket.connect(connectionStrExchangeSocket)
-        logging.debug("exchangeSocket started (connect) for '" + connectionStrExchangeSocket + "'")
-
-        poller = zmq.Poller()
-        poller.register(zmqLiveViewerSocket, zmq.POLLIN)
-        poller.register(exchangeSocket, zmq.POLLIN)
-
-        should_continue = True
-        while should_continue:
-            socks = dict(poller.poll())
-            if exchangeSocket in socks and socks[exchangeSocket] == zmq.POLLIN:
-                message = exchangeSocket.recv()
-                logging.debug("Recieved control command: %s" % message )
-                if message == "Exit":
-                    logging.debug("Recieved exit command, liveViewer thread will stop recieving messages")
-                    should_continue = False
-                    break
-
-            if zmqLiveViewerSocket in socks and socks[zmqLiveViewerSocket] == zmq.POLLIN:
-                message = zmqLiveViewerSocket.recv()
-                logging.debug("Call for next file... ")
-                # send first element in ring buffer to live viewer (the path of this file is the second entry)
-                if self.ringBuffer:
-                    answer = self.ringBuffer[0][1]
-                else:
-                    answer = "None"
-
-                print answer
-                try:
-                    zmqLiveViewerSocket.send(answer)
-                except zmq.error.ContextTerminated:
-                    break
-
-        logging.debug("LiveViewerThread: closing socket")
-        zmqLiveViewerSocket.close()
-        exchangeSocket.close()
 
 
     def combineMessage(self, zmqSocket):
@@ -331,7 +283,7 @@ class FileReceiver:
 
         logging.debug("sending exit signal to thread...")
         self.exchangeSocket.send("Exit")
-        time.sleep(0.01)
+        time.sleep(0.1)
         self.exchangeSocket.close()
         logging.debug("sending exit signal to thread...done")
 
@@ -341,6 +293,84 @@ class FileReceiver:
         except:
             logging.error("closing zmqContext...failed.")
             logging.error(sys.exc_info())
+
+
+class liveViewer():
+    zmqContext     = None
+    liveViewerIp   = None
+    liveViewerPort = None
+    exchangeIp     = "127.0.0.1"
+    exchangePort   = "6072"
+
+    # sockets
+    liveViewerSocket          = None
+    exchangeSocket            = None
+
+    poller                    = None
+
+
+    def __init__(self, liveViewerIp = "127.0.0.1", liveViewerPort = "6071", context = None):
+        self.liveViewerIp    = liveViewerIp
+        self.liveViewerPort  = liveViewerPort
+
+        if context:
+            assert isinstance(context, zmq.sugar.context.Context)
+
+        self.zmqContext = context or zmq.Context()
+
+        # create socket for live viewer
+        self.liveViewerSocket         = self.zmqContext.socket(zmq.REP)
+        connectionStrLiveViewerSocket = "tcp://" + self.liveViewerIp + ":%s" % self.liveViewerPort
+        self.liveViewerSocket.bind(connectionStrLiveViewerSocket)
+        logging.debug("zmqLiveViewerSocket started for '" + connectionStrLiveViewerSocket + "'")
+
+        # create socket for message exchange
+        self.exchangeSocket         = self.zmqContext.socket(zmq.PAIR)
+        connectionStrExchangeSocket = "tcp://" + self.exchangeIp + ":%s" % self.exchangePort
+        self.exchangeSocket.connect(connectionStrExchangeSocket)
+        logging.debug("exchangeSocket started (connect) for '" + connectionStrExchangeSocket + "'")
+
+        self.poller = zmq.Poller()
+        self.poller.register(self.liveViewerSocket, zmq.POLLIN)
+        self.poller.register(self.exchangeSocket, zmq.POLLIN)
+
+        self.sendFileToLiveViewer()
+
+
+    def sendFileToLiveViewer(self):
+        should_continue = True
+
+        while should_continue:
+            socks = dict(self.poller.poll())
+            if self.exchangeSocket in socks and socks[self.exchangeSocket] == zmq.POLLIN:
+                message = self.exchangeSocket.recv()
+                logging.debug("Recieved control command: %s" % message )
+                if message == "Exit":
+                    logging.debug("Recieved exit command, liveViewer thread will stop recieving messages")
+                    should_continue = False
+                    break
+
+            if self.liveViewerSocket in socks and socks[self.liveViewerSocket] == zmq.POLLIN:
+                message = self.liveViewerSocket.recv()
+                logging.debug("Call for next file... ")
+                # send first element in ring buffer to live viewer (the path of this file is the second entry)
+                if self.ringBuffer:
+                    answer = self.ringBuffer[0][1]
+                else:
+                    answer = "None"
+
+                print answer
+                try:
+                    self.liveViewerSocket.send(answer)
+                except zmq.error.ContextTerminated:
+                    break
+
+        logging.debug("LiveViewerThread: closing socket")
+        self.liveViewerSocket.close()
+        self.exchangeSocket.close()
+
+
+
 
 
 def argumentParsing():

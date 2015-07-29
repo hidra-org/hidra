@@ -880,8 +880,8 @@ if __name__ == '__main__':
 
 
     cleanerThread = Process(target=Cleaner, args=(zmqCleanerIp, zmqCleanerPort, zmqContext))
-    logging.debug("cleaner thread started")
     cleanerThread.start()
+    logging.debug("cleaner thread started")
 
     #start new fileMover
     # try:
