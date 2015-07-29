@@ -12,7 +12,6 @@ import helperScript
 
 
 
-# class MyHandler(PatternMatchingEventHandler):
 class DirectoryWatcherHandler():
     patterns            = ["*"]
     zmqContext          = None
@@ -25,27 +24,19 @@ class DirectoryWatcherHandler():
     def __init__(self, zmqContext, fileEventServerIp, watchFolder, fileEventServerPort):
         logging.debug("DirectoryWatcherHandler: __init__()")
         # logging.debug("DirectoryWatcherHandler(): type(zmqContext) = " + str(type(zmqContext)))
-        logging.info("registering zmq global context")
-        self.globalZmqContext    = zmqContext
+        logging.info("registering zmq context")
+        self.zmqContext          = zmqContext
         self.watchFolder         = os.path.normpath(watchFolder)
         self.fileEventServerIp   = fileEventServerIp
         self.fileEventServerPort = fileEventServerPort
 
+        assert isinstance(self.zmqContext, zmq.sugar.context.Context)
+
         #create zmq sockets
-        self.messageSocket = self.createPushSocket(self.globalZmqContext, fileEventServerPort)
-
-
-    def createPushSocket(self, context, fileEventServerPort):
-
-        assert isinstance(context, zmq.sugar.context.Context)
-
-        socket = context.socket(zmq.PUSH)
-
-        zmqSocketStr = 'tcp://' + self.fileEventServerIp + ':' + str(fileEventServerPort)
+        self.messageSocket = zmqContext.socket(zmq.PUSH)
+        zmqSocketStr = "tcp://" + self.fileEventServerIp + ":" + str(self.fileEventServerPort)
+        self.messageSocket.connect(zmqSocketStr)
         logging.debug("Connecting to ZMQ socket: " + str(zmqSocketStr))
-        socket.connect(zmqSocketStr)
-
-        return socket
 
 
     def passFileToZeromq(self, filepath, targetPath):
@@ -370,8 +361,8 @@ if __name__ == '__main__':
 
     workers = zmqContext.socket(zmq.PULL)
     zmqSocketStr = 'tcp://' + communicationWithLcyncdIp + ':' + communicationWithLcyncdPort
-    logging.debug("Connecting to ZMQ socket: " + str(zmqSocketStr))
     workers.bind(zmqSocketStr)
+    logging.debug("Bind to lcyncd ZMQ socket: " + str(zmqSocketStr))
 
     try:
         while True:

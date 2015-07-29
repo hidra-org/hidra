@@ -64,13 +64,13 @@ zmqPort = "6080"
 
 if supported_file:
 
-       # set up ZeroMQ
+    # set up ZeroMQ
     zmqContext = zmq.Context()
 
     socket = zmqContext.socket(zmq.PUSH)
     zmqSocketStr = 'tcp://' + zmqIp + ':' + zmqPort
-    logging.debug( "Connecting to ZMQ socket: " + str(zmqSocketStr))
     socket.connect(zmqSocketStr)
+    logging.debug( "Connecting to ZMQ socket: " + str(zmqSocketStr))
 
     #send reply back to server
     workload = { "filepath": source, "targetPath": target }

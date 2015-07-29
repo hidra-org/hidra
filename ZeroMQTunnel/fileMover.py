@@ -494,8 +494,8 @@ class FileMover():
                                                                   self.dataStreamIp,
                                                                   self.dataStreamPort,
                                                                   self.chunkSize,
-                                                                  zmqCleanerIp,
-                                                                  zmqCleanerPort,
+                                                                  self.zmqCleanerIp,
+                                                                  self.zmqCleanerPort,
                                                                   fileWaitTimeInMs,
                                                                   fileMaxWaitTimeInMs))
             workerThreadList.append(newWorkerThread)
