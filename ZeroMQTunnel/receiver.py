@@ -255,7 +255,7 @@ class FileReceiver:
 
         self.log.debug("stopReceiving...")
         try:
-            zmqSocket.close()
+            zmqSocket.close(0)
             self.log.debug("closing zmqSocket...done.")
         except:
             self.log.error("closing zmqSocket...failed.")
@@ -265,7 +265,7 @@ class FileReceiver:
         self.exchangeSocket.send("Exit")
         # give the signal time to arrive
         time.sleep(0.1)
-        self.exchangeSocket.close()
+        self.exchangeSocket.close(0)
         self.log.debug("sending exit signal to thread...done")
 
         try:
@@ -406,14 +406,9 @@ class Coordinator:
                 except zmq.error.ContextTerminated:
                     break
 
-        self.log.debug("sending exit signal to thread...")
-        self.zmqliveViewerSocket.send("Exit")
-        # give the signal time to arrive
-        time.sleep(0.1)
-
         self.log.debug("Closing socket")
-        self.receiverExchangeSocket.close()
-        self.zmqliveViewerSocket.close()
+        self.receiverExchangeSocket.close(0)
+        self.zmqliveViewerSocket.close(0)
 
 
     def addFileToRingBuffer(self, filename, fileModTime):

@@ -92,9 +92,9 @@ class WorkerProcess():
             self.log.debug("Error was: " + str(trace))
 
         self.log.info("Closing sockets")
-        self.zmqDataStreamSocket.close()
-        self.routerSocket.close()
-        self.cleanerSocket.close()
+        self.zmqDataStreamSocket.close(0)
+        self.routerSocket.close(0)
+        self.cleanerSocket.close(0)
         self.zmqContextForWorker.destroy()
 
 
@@ -553,8 +553,8 @@ class FileMover():
 
 
     def stop(self):
-        self.messageSocket.close()
-        self.routerSocket.close()
+        self.messageSocket.close(0)
+        self.routerSocket.close(0)
 
 
 
@@ -606,7 +606,7 @@ class Cleaner():
             self.log.error("Stopping cleanerProcess due to unknown error condition.")
             self.log.debug("Error was: " + str(trace))
 
-        self.zmqCleanerSocket.close()
+        self.zmqCleanerSocket.close(0)
         self.zmqContextForCleaner.destroy()
 
 

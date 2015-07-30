@@ -129,7 +129,7 @@ class DirectoryWatcherHandler():
             raise Exception(e)
 
     def shuttingDown(self):
-        self.messageSocket.close()
+        self.messageSocket.close(0)
 
 
 def getDefaultConfig_logfilePath():
@@ -323,7 +323,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         logging.info("Keyboard interruption detected. Shuting down")
 
-    workers.close()
+    workers.close(0)
     directoryWatcher.shuttingDown()
     zmqContext.destroy()
 
