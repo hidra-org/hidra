@@ -13,257 +13,156 @@ import os
 import traceback
 from stat import S_ISREG, ST_MTIME, ST_MODE
 import threading
+import helperScript
 
 
-
+#
+#  --------------------------  class: FileReceiver  --------------------------------------
+#
 class FileReceiver:
-    globalZmqContext         = None
-    liveViewerZmqContext     = None
+    zmqContext               = None
     outputDir                = None
     zqmDataStreamIp          = None
     zmqDataStreamPort        = None
     zmqLiveViewerIp          = None
     zmqLiveViewerPort        = None
-    ringBuffer               = []
-    maxRingBufferSize        = 200
-    timeToWaitForRingBuffer  = 2
-    runThread                = True
+    exchangeIp               = "127.0.0.1"
+    exchangePort             = "6072"
 
-    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp):
+    log                      = None
+
+    # sockets
+    zmqSocket                = None
+    exchangeSocket           = None
+
+
+    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, context = None):
         self.outputDir          = outputDir
         self.zmqDataStreamIp    = zmqDataStreamIp
         self.zmqDataStreamPort  = zmqDataStreamPort
         self.zmqLiveViewerIp    = zmqLiveViewerIp
         self.zmqLiveViewerPort  = zmqLiveViewerPort
 
-        # initialize ring buffer
-        # get all entries in the directory
-        # TODO empty target dir -> ringBuffer = []
-        ringBuffer = (os.path.join(self.outputDir, fn) for fn in os.listdir(self.outputDir))
-        # get the corresponding stats
-        ringBuffer = ((os.stat(path), path) for path in ringBuffer)
+        if context:
+            assert isinstance(context, zmq.sugar.context.Context)
 
-        # leave only regular files, insert modification date
-        ringBuffer = [[stat[ST_MTIME], path]
-                  for stat, path in ringBuffer if S_ISREG(stat[ST_MODE])]
+        self.zmqContext = context or zmq.Context()
 
-        # sort the ring buffer in descending order (new to old files)
-        ringBuffer = sorted(ringBuffer, reverse=True)
+        self.log = self.getLogger()
+        self.log.debug("Init")
 
+        # start file receiver
+        self.receiverThread = threading.Thread(target=Coordinator, args=(self.outputDir, self.zmqDataStreamPort, self.zmqDataStreamIp, self.zmqLiveViewerPort, self.zmqLiveViewerIp))
+        self.receiverThread.start()
 
-        # "global" in Python is per-module !
-        global globalZmqContext
-        self.globalZmqContext = zmq.Context()
+        # create pull socket
+        self.zmqSocket         = self.zmqContext.socket(zmq.PULL)
+        connectionStrZmqSocket = "tcp://" + self.zmqDataStreamIp + ":%s" % self.zmqDataStreamPort
+        self.zmqSocket.bind(connectionStrZmqSocket)
+        self.log.debug("zmqSocket started (bind) for '" + connectionStrZmqSocket + "'")
 
-        # thread to communicate with live viewer
-        self.liveViewerThread = threading.Thread(target=self.sendFileToLiveViewer)
-        self.liveViewerThread.start()
-
+        self.exchangeSocket = self.zmqContext.socket(zmq.PAIR)
+        connectionStrExchangeSocket = "tcp://" + self.exchangeIp + ":%s" % self.exchangePort
+        self.exchangeSocket.connect(connectionStrExchangeSocket)
+        self.log.debug("exchangeSocket started (connect) for '" + connectionStrExchangeSocket + "'")
 
         try:
-            logging.info("Start receiving new files")
+            self.log.info("Start receiving new files")
             self.startReceiving()
-            logging.info("Stopped receiving.")
+            self.log.info("Stopped receiving.")
         except Exception, e:
-            logging.error("Unknown error while receiving files. Need to abort.")
-            logging.debug("Error was: " + str(e))
+            self.log.error("Unknown error while receiving files. Need to abort.")
+            self.log.debug("Error was: " + str(e))
         except:
             trace = traceback.format_exc()
-            logging.info("Unkown error state. Shutting down...")
-            logging.debug("Error was: " + str(trace))
-            self.globalZmqContext.destroy()
+            self.log.info("Unkown error state. Shutting down...")
+            self.log.debug("Error was: " + str(trace))
+            self.zmqContext.destroy()
 
-        logging.info("Quitting.")
-
-
-    def receiveMessage(self, socket):
-        assert isinstance(socket, zmq.sugar.socket.Socket)
-        logging.debug("receiving messages...")
-        # message = socket.recv()
-        # while True:
-        message = socket.recv_multipart()
-
-        return message
+        self.log.info("Quitting.")
 
 
-    def getZmqContext(self):
-        #get reference for global context-var
-        globalZmqContext = self.globalZmqContext
-
-        return globalZmqContext
-
-
-    def getZmqSocket_Pull(self, context):
-        pattern_pull = zmq.PULL
-        assert isinstance(context, zmq.sugar.context.Context)
-        socket = context.socket(pattern_pull)
-
-        return socket
-
-
-    def getZmqSocket_Rep(self, context):
-        pattern_pull = zmq.REP
-        assert isinstance(context, zmq.sugar.context.Context)
-        socket = context.socket(pattern_pull)
-
-        return socket
-
-
-    def createPullSocket(self, context):
-        assert isinstance(context, zmq.sugar.context.Context)
-        socket = self.getZmqSocket_Pull(context)
-
-        logging.info("binding to data socket: tcp://" +  self.zmqDataStreamIp + ":%s" % self.zmqDataStreamPort)
-        socket.bind('tcp://' + self.zmqDataStreamIp + ':%s' % self.zmqDataStreamPort)
-
-        return socket
-
-
-    def createSocketForLiveViewer(self, context):
-        assert isinstance(context, zmq.sugar.context.Context)
-        socket = self.getZmqSocket_Rep(context)
-
-        logging.info("binding to data socket: tcp://" +  self.zmqLiveViewerIp + ":%s" % self.zmqLiveViewerPort)
-        socket.bind('tcp://' + self.zmqLiveViewerIp + ':%s' % self.zmqLiveViewerPort)
-
-        return socket
-
-
-    def addFileToRingBuffer(self, filename, fileModTime):
-        # prepend file to ring buffer and restore order
-        self.ringBuffer[:0] = [[fileModTime, filename]]
-        self.ringBuffer = sorted(self.ringBuffer, reverse=True)
-
-        # if the maximal size is exceeded: remove the oldest files
-        if len(self.ringBuffer) > self.maxRingBufferSize:
-            for mod_time, path in self.ringBuffer[self.maxRingBufferSize:]:
-                if float(time.time()) - mod_time > self.timeToWaitForRingBuffer:
-                    os.remove(path)
-                    self.ringBuffer.remove([mod_time, path])
-
-
-    # Albula is the live viewer used at the beamlines
-    def sendFileToLiveViewer(self):
-
-        #create socket for live viewer
-        try:
-            logging.info("creating socket for communication with live viewer...")
-            zmqContext = self.getZmqContext()
-            zmqLiveViewerSocket  = self.createSocketForLiveViewer(zmqContext)
-            logging.info("creating socket for communication with live viewer...done.")
-        except Exception, e:
-            errorMessage = "Unable to create zeromq context."
-            logging.error(errorMessage)
-            logging.debug("Error was: " + str(e))
-            logging.info("creating socket for communication with live viewer...failed.")
-            raise Exception(e)
-
-        # if there is a request of the live viewer:
-        while True:
-            #  Wait for next request from client
-            try:
-                message = zmqLiveViewerSocket.recv()
-            except zmq.error.ContextTerminated:
-                break
-            print "Received request: ", message
-            time.sleep (1)
-            # send first element in ring buffer to live viewer (the path of this file is the second entry)
-            if self.ringBuffer:
-                try:
-                    zmqLiveViewerSocket.send(self.ringBuffer[0][1])
-                    print self.ringBuffer[0][1]
-                except zmq.error.ContextTerminated:
-                    break
-            else:
-                try:
-                    zmqLiveViewerSocket.send("None")
-                    print self.ringBuffer
-                except zmq.error.ContextTerminated:
-                    break
+    def getLogger(self):
+        logger = logging.getLogger("fileReceiver")
+        return logger
 
 
     def combineMessage(self, zmqSocket):
-        # multipartMessage = zmqSocket.recv_multipart()
-        # logging.info("New message received.")
-        # logging.debug("message-type  : " + str(type(multipartMessage)))
-        # logging.debug("message-length: " + str(len(multipartMessage)))
-        # loopCounter+=1
+        receivingMessages = True
         #save all chunks to file
-        while True:
+        while receivingMessages:
             multipartMessage = zmqSocket.recv_multipart()
+
+            #extract multipart message
+            try:
+                #TODO is string conversion needed here?
+                payloadMetadata = str(multipartMessage[0])
+            except:
+                self.log.error("an empty config was transferred for multipartMessage")
+
+            #TODO validate multipartMessage (like correct dict-values for metadata)
+            self.log.debug("multipartMessage.metadata = " + str(payloadMetadata))
+
+            #extraction metadata from multipart-message
+            payloadMetadataDict = json.loads(payloadMetadata)
+
             #append to file
             try:
-                logging.debug("append to file based on multipart-message...")
+                self.log.debug("append to file based on multipart-message...")
                 #TODO: save message to file using a thread (avoids blocking)
                 #TODO: instead of open/close file for each chunk recyle the file-descriptor for all chunks opened
-                self.appendChunksToFileFromMultipartMessage(multipartMessage)
-                logging.debug("append to file based on multipart-message...success.")
+                self.appendChunksToFileFromMultipartMessage(payloadMetadataDict, multipartMessage)
+                self.log.debug("append to file based on multipart-message...success.")
             except Exception, e:
                 errorMessage = "Unable to append multipart-content to file."
-                logging.error(errorMessage)
-                logging.debug("Error was: " + str(e))
-                logging.debug("append to file based on multipart-message...failed.")
+                self.log.error(errorMessage)
+                self.log.debug("Error was: " + str(e))
+                self.log.debug("append to file based on multipart-message...failed.")
             except:
                 errorMessage = "Unable to append multipart-content to file. Unknown Error."
-                logging.error(errorMessage)
-                logging.debug("append to file based on multipart-message...failed.")
-            if len(multipartMessage[1]) == 0:
+                self.log.error(errorMessage)
+                self.log.debug("append to file based on multipart-message...failed.")
+            if len(multipartMessage[1]) < payloadMetadataDict["chunkSize"] :
                 #indicated end of file. closing file and leave loop
-                logging.debug("last file-chunk received. stop appending.")
+                self.log.debug("last file-chunk received. stop appending.")
                 break
-        payloadMetadata     = str(multipartMessage[0])
-        payloadMetadataDict = json.loads(payloadMetadata)
         filename            = self.generateTargetFilepath(payloadMetadataDict)
         fileModTime         = payloadMetadataDict["fileModificationTime"]
-        logging.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
+        self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
 
-        # logging.debug("message-type  : " + str(type(multipartMessage)))
-        # logging.debug("message-length: " + str(len(multipartMessage)))
-
-        # add to ring buffer
-        self.addFileToRingBuffer(str(filename), fileModTime)
+        # send the file to the coordinator to add it to the ring buffer
+        message = "AddFile" + str(filename) + ", " + str(fileModTime)
+        self.log.debug("Send file to coordinator: " + message )
+        self.exchangeSocket.send(message)
 
 
 
     def startReceiving(self):
-        #create pull socket
-        try:
-            logging.info("creating local pullSocket for incoming files...")
-            zmqContext = self.getZmqContext()
-            zmqSocket  = self.createPullSocket(zmqContext)
-            logging.info("creating local pullSocket for incoming files...done.")
-        except Exception, e:
-            errorMessage = "Unable to create zeromq context."
-            logging.error(errorMessage)
-            logging.debug("Error was: " + str(e))
-            logging.info("creating local pullSocket for incoming files...failed.")
-            raise Exception(e)
-
         #run loop, and wait for incoming messages
         continueStreaming = True
         loopCounter       = 0    #counter of total received messages
         continueReceiving = True #receiving will stop if value gets False
-        logging.debug("Waiting for new messages...")
+        self.log.debug("Waiting for new messages...")
         while continueReceiving:
             try:
-                self.combineMessage(zmqSocket)
+                self.combineMessage(self.zmqSocket)
                 loopCounter+=1
             except KeyboardInterrupt:
-                logging.debug("Keyboard interrupt detected. Stop receiving.")
+                self.log.debug("Keyboard interrupt detected. Stop receiving.")
+                continueReceiving = False
                 break
             except:
-                logging.error("receive message...failed.")
-                logging.error(sys.exc_info())
+                self.log.error("receive message...failed.")
+                self.log.error(sys.exc_info())
                 continueReceiving = False
 
-        logging.info("shutting down receiver...")
+        self.log.info("shutting down receiver...")
         try:
-            logging.debug("shutting down zeromq...")
-            self.stopReceiving(zmqSocket, zmqContext)
-            logging.debug("shutting down zeromq...done.")
+            self.stopReceiving(self.zmqSocket, self.zmqContext)
+            self.log.debug("shutting down receiver...done.")
         except:
-            logging.error(sys.exc_info())
-            logging.error("shutting down zeromq...failed.")
+            self.log.error(sys.exc_info())
+            self.log.error("shutting down receiver...failed.")
 
 
     def generateTargetFilepath(self,configDict):
@@ -301,30 +200,19 @@ class FileReceiver:
         return targetPath
 
 
-    def appendChunksToFileFromMultipartMessage(self, multipartMessage):
+    def appendChunksToFileFromMultipartMessage(self, configDict, multipartMessage):
 
-        #extract multipart message
-        try:
-            configDictJson = multipartMessage[0]
-        except:
-            logging.error("an empty config was transferred for multipartMessage")
         try:
             chunkCount = len(multipartMessage) - 1 #-1 as the first element keeps the dictionary/metadata
             payload = multipartMessage[1:]
         except:
-            logging.warning("an empty file was received within the multipart-message")
+            self.log.warning("an empty file was received within the multipart-message")
             payload = None
-
-        #TODO validate multipartMessage (like correct dict-values for metadata)
-        logging.debug("multipartMessage.metadata = " + str(configDictJson))
-
-        #extraction metadata from multipart-message
-        configDict         = json.loads(configDictJson)
 
 
         #generate target filepath
         targetFilepath = self.generateTargetFilepath(configDict)
-        logging.debug("new file is going to be created at: " + targetFilepath)
+        self.log.debug("new file is going to be created at: " + targetFilepath)
 
 
         #append payload to file
@@ -338,18 +226,18 @@ class FileReceiver:
                     targetPath = self.generateTargetPath(configDict)
                     os.makedirs(targetPath)
                     newFile = open(targetFilepath, "w")
-                    logging.info("New target directory created: " + str(targetPath))
+                    self.log.info("New target directory created: " + str(targetPath))
                 except Exception, f:
                     errorMessage = "unable to save payload to file: '" + targetFilepath + "'"
-                    logging.error(errorMessage)
-                    logging.debug("Error was: " + str(f))
-                    logging.debug("targetPath="+str(targetPath))
+                    self.log.error(errorMessage)
+                    self.log.debug("Error was: " + str(f))
+                    self.log.debug("targetPath="+str(targetPath))
                     raise Exception(errorMessage)
         except Exception, e:
-            logging.error("failed to append payload to file: '" + targetFilepath + "'")
-            logging.debug("Error was: " + str(e))
-            logging.debug("ErrorTyp: " + str(type(e)))
-            logging.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
+            self.log.error("failed to append payload to file: '" + targetFilepath + "'")
+            self.log.debug("Error was: " + str(e))
+            self.log.debug("ErrorTyp: " + str(type(e)))
+            self.log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
         #only write data if a payload exist
         try:
             if payload != None:
@@ -358,42 +246,182 @@ class FileReceiver:
             newFile.close()
         except Exception, e:
             errorMessage = "unable to append data to file."
-            logging.error(errorMessage)
-            logging.debug("Error was: " + str(e))
+            self.log.error(errorMessage)
+            self.log.debug("Error was: " + str(e))
             raise Exception(errorMessage)
 
 
+    def stopReceiving(self, zmqSocket, zmqContext):
 
-    def stopReceiving(self, zmqSocket, msgContext):
+        self.log.debug("stopReceiving...")
+        try:
+            zmqSocket.close(0)
+            self.log.debug("closing zmqSocket...done.")
+        except:
+            self.log.error("closing zmqSocket...failed.")
+            self.log.error(sys.exc_info())
 
-        self.runThread=False
+        self.log.debug("sending exit signal to thread...")
+        self.exchangeSocket.send("Exit")
+        # give the signal time to arrive
+        time.sleep(0.1)
+        self.exchangeSocket.close(0)
+        self.log.debug("sending exit signal to thread...done")
 
         try:
-            logging.debug("closing zmqSocket...")
-            zmqSocket.close()
-            logging.debug("closing zmqSocket...done.")
+            zmqContext.destroy()
+            self.log.debug("closing zmqContext...done.")
         except:
-            logging.error("closing zmqSocket...failed.")
-            logging.error(sys.exc_info())
+            self.log.error("closing zmqContext...failed.")
+            self.log.error(sys.exc_info())
 
-#        try:
-#            logging.debug("closing zmqLiveViwerSocket...")
-#            zmqLiveViewerSocket.close()
-#            logging.debug("closing zmqLiveViwerSocket...done.")
-#        except:
-#            logging.error("closing zmqLiveViewerSocket...failed.")
-#            logging.error(sys.exc_info())
+
+#
+#  --------------------------  class: Coordinator  --------------------------------------
+#
+class Coordinator:
+    zmqContext               = None
+    liveViewerZmqContext     = None
+    outputDir                = None
+    zqmDataStreamIp          = None
+    zmqDataStreamPort        = None
+    zmqLiveViewerIp          = None
+    zmqLiveViewerPort        = None
+    receiverExchangeIp       = "127.0.0.1"
+    receiverExchangePort     = "6072"
+    ringBuffer               = []
+    maxRingBufferSize        = 200
+    timeToWaitForRingBuffer  = 2
+
+    log                      = None
+
+    receiverThread           = None
+    liveViewerThread         = None
+
+    # sockets
+    receiverExchangeSocket   = None
+    zmqliveViewerSocket      = None
+
+
+    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, context = None):
+        self.outputDir          = outputDir
+        self.zmqDataStreamIp    = zmqDataStreamIp
+        self.zmqDataStreamPort  = zmqDataStreamPort
+        self.zmqLiveViewerIp    = zmqLiveViewerIp
+        self.zmqLiveViewerPort  = zmqLiveViewerPort
+
+        self.log = self.getLogger()
+        self.log.debug("Init")
+
+        if context:
+            assert isinstance(context, zmq.sugar.context.Context)
+
+        self.zmqContext = context or zmq.Context()
+
+        # create sockets
+        self.receiverExchangeSocket         = self.zmqContext.socket(zmq.PAIR)
+        connectionStrReceiverExchangeSocket = "tcp://" + self.receiverExchangeIp + ":%s" % self.receiverExchangePort
+        self.receiverExchangeSocket.bind(connectionStrReceiverExchangeSocket)
+        self.log.debug("receiverExchangeSocket started (bind) for '" + connectionStrReceiverExchangeSocket + "'")
+
+        # create socket for live viewer
+        self.zmqliveViewerSocket         = self.zmqContext.socket(zmq.REP)
+        connectionStrLiveViewerSocket    = "tcp://" + self.zmqLiveViewerIp + ":%s" % self.zmqLiveViewerPort
+        self.zmqliveViewerSocket.bind(connectionStrLiveViewerSocket)
+        self.log.debug("zmqLiveViewerSocket started (bind) for '" + connectionStrLiveViewerSocket + "'")
+
+        self.poller = zmq.Poller()
+        self.poller.register(self.receiverExchangeSocket, zmq.POLLIN)
+        self.poller.register(self.zmqliveViewerSocket, zmq.POLLIN)
+
+
+        # initialize ring buffer
+        # get all entries in the directory
+        # TODO empty target dir -> ringBuffer = []
+        self.ringBuffer = (os.path.join(self.outputDir, fn) for fn in os.listdir(self.outputDir))
+        # get the corresponding stats
+        self.ringBuffer = ((os.stat(path), path) for path in self.ringBuffer)
+        # leave only regular files, insert modification date
+        self.ringBuffer = [[stat[ST_MTIME], path]
+                for stat, path in self.ringBuffer if S_ISREG(stat[ST_MODE])]
+
+        # sort the ring buffer in descending order (new to old files)
+        self.ringBuffer = sorted(self.ringBuffer, reverse=True)
+        self.log.debug("Init ring buffer")
+
 
         try:
-            logging.debug("closing zmqContext...")
-#            msgContext.destroy()
-            msgContext.term()
-            logging.debug("closing zmqContext...done.")
-        except:
-            logging.error("closing zmqContext...failed.")
-            logging.error(sys.exc_info())
+            self.log.info("Start communication")
+            self.communicate()
+            self.log.info("Stopped communication.")
+        except Exception, e:
+            trace = traceback.format_exc()
+            self.log.info("Unkown error state. Shutting down...")
+            self.log.debug("Error was: " + str(e))
 
 
+        self.log.info("Quitting.")
+
+
+    def getLogger(self):
+        logger = logging.getLogger("coordinator")
+        return logger
+
+
+    def communicate(self):
+        should_continue = True
+
+        while should_continue:
+            socks = dict(self.poller.poll())
+
+            if self.receiverExchangeSocket in socks and socks[self.receiverExchangeSocket] == zmq.POLLIN:
+                message = self.receiverExchangeSocket.recv()
+                self.log.debug("Recieved control command: %s" % message )
+                if message == "Exit":
+                    self.log.debug("Recieved exit command, coordinator thread will stop recieving messages")
+                    should_continue = False
+                    self.liveViewerSocket.send("Exit")
+                    break
+                elif message.startswith("AddFile"):
+                    self.log.debug("Received AddFile command")
+                    # add file to ring buffer
+                    splittedMessage = message[7:].split(", ")
+                    filename        = splittedMessage[0]
+                    fileModTime     = splittedMessage[1]
+                    self.log.debug("Send new file to ring buffer: " + str(filename) + ", " + str(fileModTime))
+                    self.addFileToRingBuffer(filename, fileModTime)
+
+            if self.zmqliveViewerSocket in socks and socks[self.zmqliveViewerSocket] == zmq.POLLIN:
+                message = self.zmqliveViewerSocket.recv()
+                self.log.debug("Call for next file... " + message)
+                # send first element in ring buffer to live viewer (the path of this file is the second entry)
+                if self.ringBuffer:
+                    answer = self.ringBuffer[0][1]
+                else:
+                    answer = "None"
+
+                print answer
+                try:
+                    self.zmqliveViewerSocket.send(answer)
+                except zmq.error.ContextTerminated:
+                    break
+
+        self.log.debug("Closing socket")
+        self.receiverExchangeSocket.close(0)
+        self.zmqliveViewerSocket.close(0)
+
+
+    def addFileToRingBuffer(self, filename, fileModTime):
+        # prepend file to ring buffer and restore order
+        self.ringBuffer[:0] = [[fileModTime, filename]]
+        self.ringBuffer = sorted(self.ringBuffer, reverse=True)
+
+        # if the maximal size is exceeded: remove the oldest files
+        if len(self.ringBuffer) > self.maxRingBufferSize:
+            for mod_time, path in self.ringBuffer[self.maxRingBufferSize:]:
+                if float(time.time()) - mod_time > self.timeToWaitForRingBuffer:
+                    os.remove(path)
+                    self.ringBuffer.remove([mod_time, path])
 
 
 
@@ -415,30 +443,6 @@ def argumentParsing():
     return arguments
 
 
-def initLogging(filenameFullPath, verbose):
-    #@see https://docs.python.org/2/howto/logging-cookbook.html
-
-
-    #more detailed logging if verbose-option has been set
-    loggingLevel = logging.INFO
-    if verbose:
-        loggingLevel = logging.DEBUG
-
-    #log everything to file
-    logging.basicConfig(level=loggingLevel,
-                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
-                        datefmt='%Y-%m-%d_%H:%M:%S',
-                        filename=filenameFullPath,
-                        filemode="a")
-
-    #log info to stdout, display messages with different format than the file output
-    console = logging.StreamHandler()
-    console.setLevel(logging.WARNING)
-    formatter = logging.Formatter("%(asctime)s >  %(message)s")
-    console.setFormatter(formatter)
-    logging.getLogger("").addHandler(console)
-
-
 if __name__ == "__main__":
 
 
@@ -455,7 +459,7 @@ if __name__ == "__main__":
 
 
     #enable logging
-    initLogging(logfileFilePath, verbose)
+    helperScript.initLogging(logfileFilePath, verbose)
 
 
     #start file receiver

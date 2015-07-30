@@ -15,8 +15,12 @@ from multiprocessing import Process, freeze_support
 import subprocess
 import json
 import shutil
+import helperScript
+
 
 DEFAULT_CHUNK_SIZE = 1048576
+
+
 #
 #  --------------------------  class: WorkerProcess  --------------------------------------
 #
@@ -24,37 +28,74 @@ class WorkerProcess():
     id                   = None
     dataStreamIp         = None
     dataStreamPort       = None
-    logfileFullPath      = None
     zmqContextForWorker  = None
     zmqMessageChunkSize  = None
     fileWaitTime_inMs    = None
     fileMaxWaitTime_InMs = None
-    cleaner_url          = "inproc://workers"
+    zmqCleanerIp         = None              # responsable to delete files
+    zmqCleanerPort       = None              # responsable to delete files
     zmqDataStreamSocket  = None
+    routerSocket         = None
+    cleanerSocket        = None
 
-    def __init__(self, id, dataStreamIp, dataStreamPort, logfileFullPath, chunkSize,
-                 fileWaitTimeInMs=2000.0, fileMaxWaitTimeInMs=10000.0):
+    # to get the logging only handling this class
+    log                   = None
+
+    def __init__(self, id, dataStreamIp, dataStreamPort, chunkSize, zmqCleanerIp, zmqCleanerPort,
+                 fileWaitTimeInMs=2000.0, fileMaxWaitTimeInMs=10000.0,
+                 context = None):
         self.id                   = id
         self.dataStreamIp         = dataStreamIp
         self.dataStreamPort       = dataStreamPort
-        self.logfileFullPath      = logfileFullPath
         self.zmqMessageChunkSize  = chunkSize
+        self.zmqCleanerIp         = zmqCleanerIp
+        self.zmqCleanerPort       = zmqCleanerPort
         self.fileWaitTime_inMs    = fileWaitTimeInMs
         self.fileMaxWaitTime_InMs = fileMaxWaitTimeInMs
 
-        self.initLogging(logfileFullPath)
+        #initialize router
+        self.zmqContextForWorker = context or zmq.Context()
+
+        self.log = self.getLogger()
+
+
+        dataStreamIp   = self.dataStreamIp
+        dataStreamPort = self.dataStreamPort
+
+        self.log.debug("new workerThread started. id=" + str(self.id))
+
+        # initialize sockets
+        self.zmqDataStreamSocket      = self.zmqContextForWorker.socket(zmq.PUSH)
+        connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=dataStreamIp, port=self.dataStreamPort)
+        self.zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
+        self.log.debug("zmqDataStreamSocket started for '" + connectionStrDataStreamSocket + "'")
+
+        self.routerSocket             = self.zmqContextForWorker.socket(zmq.REQ)
+        self.routerSocket.identity    = u"worker-{ID}".format(ID=self.id).encode("ascii")
+        connectionStrRouterSocket     = "tcp://{ip}:{port}".format(ip="127.0.0.1", port="50000")
+        self.routerSocket.connect(connectionStrRouterSocket)
+        self.log.debug("routerSocket started for '" + connectionStrRouterSocket + "'")
+
+        #init Cleaner message-pipe
+        self.cleanerSocket            = self.zmqContextForWorker.socket(zmq.PUSH)
+        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.zmqCleanerIp, port=self.zmqCleanerPort)
+        self.cleanerSocket.connect(connectionStrCleanerSocket)
 
         try:
             self.process()
         except KeyboardInterrupt:
             # trace = traceback.format_exc()
-            logging.debug("KeyboardInterrupt detected. Shutting down workerProcess.")
-            self.zmqDataStreamSocket.close()
-            self.zmqContextForWorker.destroy()
+            self.log.debug("KeyboardInterrupt detected. Shutting down workerProcess.")
         else:
             trace = traceback.format_exc()
-            logging.error("Stopping workerProcess due to unknown error condition.")
-            logging.debug("Error was: " + str(trace))
+            self.log.error("Stopping workerProcess due to unknown error condition.")
+            self.log.debug("Error was: " + str(trace))
+
+        self.log.info("Closing sockets")
+        self.zmqDataStreamSocket.close(0)
+        self.routerSocket.close(0)
+        self.cleanerSocket.close(0)
+        self.zmqContextForWorker.destroy()
 
 
     def process(self):
@@ -78,48 +119,25 @@ class WorkerProcess():
           a separate data-messagePipe. Afterwards the original file
           will be removed.
         """
-        id             = self.id
-        dataStreamIp   = self.dataStreamIp
-        dataStreamPort = self.dataStreamPort
 
-        logging.debug("new workerThread started. id=" + str(id))
-
-        #initialize router
-        zmqContextForWorker = zmq.Context()
-        self.zmqContextForWorker = zmqContextForWorker
-
-        self.zmqDataStreamSocket = zmqContextForWorker.socket(zmq.PUSH)
-        connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=dataStreamIp, port=dataStreamPort)
-        self.zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
-
-        routerSocket = zmqContextForWorker.socket(zmq.REQ)
-        routerSocket.identity = u"worker-{ID}".format(ID=id).encode("ascii")
-        connectionStrRouterSocket = "tcp://{ip}:{port}".format(ip="127.0.0.1", port="50000")
-        routerSocket.connect(connectionStrRouterSocket)
         processingJobs = True
         jobCount = 0
-
-        #init Cleaner message-pipe
-        cleanerSocket = zmqContextForWorker.socket(zmq.PUSH)
-        connectionStringCleanerSocket = self.cleaner_url
-        cleanerSocket.connect(connectionStringCleanerSocket)
-
 
         while processingJobs:
             #sending a "ready"-signal to the router.
             #the reply will contain the actual job/task.
-            logging.debug("worker-"+str(id)+": sending ready signal")
+            self.log.debug("worker-"+str(self.id)+": sending ready signal")
 
-            routerSocket.send(b"READY")
+            self.routerSocket.send(b"READY")
 
             # Get workload from router, until finished
-            logging.debug("worker-"+str(id)+": waiting for new job")
-            workload = routerSocket.recv()
-            logging.debug("worker-"+str(id)+": new job received")
+            self.log.debug("worker-"+str(self.id)+": waiting for new job")
+            workload = self.routerSocket.recv()
+            self.log.debug("worker-"+str(self.id)+": new job received")
             finished = workload == b"END"
             if finished:
                 processingJobs = False
-                logging.debug("router requested to shutdown worker-thread. Worker processed: %d files" % jobCount)
+                self.log.debug("router requested to shutdown worker-thread. Worker processed: %d files" % jobCount)
                 break
             jobCount += 1
 
@@ -127,11 +145,11 @@ class WorkerProcess():
             fileEventMessageDict = None
             try:
                 fileEventMessageDict = json.loads(str(workload))
-                logging.debug("str(messageDict) = " + str(fileEventMessageDict) + "  type(messageDict) = " + str(type(fileEventMessageDict)))
+                self.log.debug("str(messageDict) = " + str(fileEventMessageDict) + "  type(messageDict) = " + str(type(fileEventMessageDict)))
             except Exception, e:
                 errorMessage = "Unable to convert message into a dictionary."
-                logging.error(errorMessage)
-                logging.debug("Error was: " + str(e))
+                self.log.error(errorMessage)
+                self.log.debug("Error was: " + str(e))
 
 
             #extract fileEvent metadata
@@ -142,22 +160,22 @@ class WorkerProcess():
                 relativeParent = fileEventMessageDict["relativeParent"]
             except Exception, e:
                 errorMessage   = "Invalid fileEvent message received."
-                logging.error(errorMessage)
-                logging.debug("Error was: " + str(e))
-                logging.debug("fileEventMessageDict=" + str(fileEventMessageDict))
+                self.log.error(errorMessage)
+                self.log.debug("Error was: " + str(e))
+                self.log.debug("fileEventMessageDict=" + str(fileEventMessageDict))
                 #skip all further instructions and continue with next iteration
                 continue
 
             #passing file to data-messagPipe
             try:
-                logging.debug("worker-" + str(id) + ": passing new file to data-messagePipe...")
+                self.log.debug("worker-" + str(id) + ": passing new file to data-messagePipe...")
                 self.passFileToDataStream(filename, sourcePath, relativeParent)
-                logging.debug("worker-" + str(id) + ": passing new file to data-messagePipe...success.")
+                self.log.debug("worker-" + str(id) + ": passing new file to data-messagePipe...success.")
             except Exception, e:
                 errorMessage = "Unable to pass new file to data-messagePipe."
-                logging.error(errorMessage)
-                logging.error("Error was: " + str(e))
-                logging.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
+                self.log.error(errorMessage)
+                self.log.error("Error was: " + str(e))
+                self.log.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
                 #skip all further instructions and continue with next iteration
                 continue
 
@@ -165,18 +183,21 @@ class WorkerProcess():
             #send remove-request to message pipe
             try:
                 #sending to pipe
-                logging.debug("send file-event to cleaner-pipe...")
-                cleanerSocket.send(workload)
-                logging.debug("send file-event to cleaner-pipe...success.")
+                self.log.debug("send file-event to cleaner-pipe...")
+                self.cleanerSocket.send(workload)
+                self.log.debug("send file-event to cleaner-pipe...success.")
 
                 #TODO: remember workload. append to list?
                 # can be used to verify files which have been processed twice or more
             except Exception, e:
                 errorMessage = "Unable to notify Cleaner-pipe to delete file: " + str(filename)
-                logging.error(errorMessage)
-                logging.debug("fileEventMessageDict=" + str(fileEventMessageDict))
+                self.log.error(errorMessage)
+                self.log.debug("fileEventMessageDict=" + str(fileEventMessageDict))
 
 
+    def getLogger(self):
+        logger = logging.getLogger("workerProcess")
+        return logger
 
 
     def getFileWaitTimeInMs(self):
@@ -208,47 +229,47 @@ class WorkerProcess():
             while fileIsStillInUse:
                 #skip waiting periode if waiting to long for file to get closed
                 if time.time() - timeStartWaiting >= (fileMaxWaitTimeInMs / 1000):
-                    logging.debug("waited to long for file getting closed. aborting")
+                    self.log.debug("waited to long for file getting closed. aborting")
                     break
 
                 #wait for other process to finish file access
                 #grabs time when file was modified last
                 statInfo = os.stat(sourceFilePathFull)
                 fileLastModified = statInfo.st_mtime
-                logging.debug("'" + str(sourceFilePathFull) + "' modified last: " + str(fileLastModified))
+                self.log.debug("'" + str(sourceFilePathFull) + "' modified last: " + str(fileLastModified))
                 timeNow = time.time()
                 timeDiff = timeNow - fileLastModified
-                logging.debug("timeNow=" + str(timeNow) + "  timeDiff=" + str(timeDiff))
+                self.log.debug("timeNow=" + str(timeNow) + "  timeDiff=" + str(timeDiff))
                 waitTimeInSeconds = fileWaitTimeInMs/1000
                 if timeDiff >= waitTimeInSeconds:
                     fileIsStillInUse = False
-                    logging.debug("File was not modified within past " + str(fileWaitTimeInMs) + "ms.")
+                    self.log.debug("File was not modified within past " + str(fileWaitTimeInMs) + "ms.")
                 else:
-                    logging.debug("still waiting for file to get closed...")
+                    self.log.debug("still waiting for file to get closed...")
                     time.sleep(fileWaitTimeInMs / 1000 )
 
             #for quick testing set filesize of file as chunksize
-            logging.debug("get filesize for '" + str(sourceFilePathFull) + "'...")
+            self.log.debug("get filesize for '" + str(sourceFilePathFull) + "'...")
             filesize             = os.path.getsize(sourceFilePathFull)
             fileModificationTime = os.stat(sourceFilePathFull).st_mtime
             chunksize            = filesize    #can be used later on to split multipart message
-            logging.debug("filesize(%s) = %s" % (sourceFilePathFull, str(filesize)))
-            logging.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
+            self.log.debug("filesize(%s) = %s" % (sourceFilePathFull, str(filesize)))
+            self.log.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
 
         except Exception, e:
             errorMessage = "Unable to get file metadata for '" + str(sourceFilePathFull) + "'."
-            logging.error(errorMessage)
-            logging.debug("Error was: " + str(e))
+            self.log.error(errorMessage)
+            self.log.debug("Error was: " + str(e))
             raise Exception(e)
 
         try:
-            logging.debug("opening '" + str(sourceFilePathFull) + "'...")
+            self.log.debug("opening '" + str(sourceFilePathFull) + "'...")
             fileDescriptor = open(str(sourceFilePathFull), "rb")
 
         except Exception, e:
             errorMessage = "Unable to read source file '" + str(sourceFilePathFull) + "'."
-            logging.error(errorMessage)
-            logging.debug("Error was: " + str(e))
+            self.log.error(errorMessage)
+            self.log.debug("Error was: " + str(e))
             raise Exception(e)
 
 
@@ -257,14 +278,14 @@ class WorkerProcess():
             payloadMetadata = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativeParent)
         except Exception, e:
             errorMessage = "Unable to assemble multi-part message."
-            logging.error(errorMessage)
-            logging.debug("Error was: " + str(e))
+            self.log.error(errorMessage)
+            self.log.debug("Error was: " + str(e))
             raise Exception(e)
 
 
         #send message
         try:
-            logging.debug("Passing multipart-message...")
+            self.log.debug("Passing multipart-message...")
             chunkNumber = 0
             stillChunksToRead = True
             while stillChunksToRead:
@@ -279,6 +300,7 @@ class WorkerProcess():
 
                     #as chunk is empty decrease chunck-counter
                     chunkNumber -= 1
+                    break
 
                 #assemble metadata for zmq-message
                 chunkPayloadMetadata = payloadMetadata.copy()
@@ -295,19 +317,18 @@ class WorkerProcess():
             fileDescriptor.close()
 
             # self.zmqDataStreamSocket.send_multipart(multipartMessage)
-            logging.debug("Passing multipart-message...done.")
+            self.log.debug("Passing multipart-message...done.")
         except Exception, e:
-            logging.error("Unable to send multipart-message")
-            logging.debug("Error was: " + str(e))
-            logging.info("Passing multipart-message...failed.")
+            self.log.error("Unable to send multipart-message")
+            self.log.debug("Error was: " + str(e))
+            self.log.info("Passing multipart-message...failed.")
             raise Exception(e)
-
 
 
     def appendFileChunksToPayload(self, payload, sourceFilePathFull, fileDescriptor, chunkSize):
         try:
             # chunksize = 16777216 #16MB
-            logging.debug("reading file '" + str(sourceFilePathFull)+ "' to memory")
+            self.log.debug("reading file '" + str(sourceFilePathFull)+ "' to memory")
 
             # FIXME: chunk is read-out as str. why not as bin? will probably add to much overhead to zmq-message
             fileContentAsByteObject = fileDescriptor.read(chunkSize)
@@ -332,7 +353,7 @@ class WorkerProcess():
         """
 
         #add metadata to multipart
-        logging.debug("create metadata for source file...")
+        self.log.debug("create metadata for source file...")
         metadataDict = {
                          "filename"             : filename,
                          "filesize"             : filesize,
@@ -341,8 +362,7 @@ class WorkerProcess():
                          "relativeParent"       : relativeParent,
                          "chunkSize"            : self.getChunkSize()}
 
-        logging.debug("metadataDict = " + str(metadataDict))
-
+        self.log.debug("metadataDict = " + str(metadataDict))
 
         return metadataDict
 
@@ -361,31 +381,13 @@ class WorkerProcess():
         # print "{number:.{digits}f}".format(number=freeUserSpaceLeft_percent, digits=0)
         # print int(freeUserSpaceLeft_percent)
 
-        logging.debug("vfsstat: freeSpaceAvailableForUser=" + str(freeSpaceAvailableForUser_gigabytes)+ " Gigabytes "
+        self.log.debug("vfsstat: freeSpaceAvailableForUser=" + str(freeSpaceAvailableForUser_gigabytes)+ " Gigabytes "
                        + " (" + str(int(freeUserSpaceLeft_percent)) + "% free disk space left)")
 
         #warn if disk space is running low
         highWaterMark = 85
         if int(freeUserSpaceLeft_percent) >= int(highWaterMark):
-            logging.warning("Running low in disk space! " + str(int(freeUserSpaceLeft_percent)) + "% free disk space left.")
-
-
-    def initLogging(self, filenameFullPath):
-        #@see https://docs.python.org/2/howto/logging-cookbook.html
-
-        #log everything to file
-        logging.basicConfig(level=logging.DEBUG,
-                            format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s] [%(name)s] [%(levelname)s] %(message)s',
-                            datefmt='%Y-%m-%d_%H:%M',
-                            filename=filenameFullPath,
-                            filemode="a")
-
-        #log info to stdout, display messages with different format than the file output
-        console = logging.StreamHandler()
-        console.setLevel(logging.INFO)
-        formatter = logging.Formatter("%(asctime)s >  %(message)s")
-        console.setFormatter(formatter)
-        logging.getLogger("").addHandler(console)
+            self.log.warning("Running low in disk space! " + str(int(freeUserSpaceLeft_percent)) + "% free disk space left.")
 
 
 
@@ -393,65 +395,80 @@ class WorkerProcess():
 #  --------------------------  class: FileMover  --------------------------------------
 #
 class FileMover():
-    patterns              = ["*"]
-    fileList_newFiles     = list()
-    fileCount_newFiles    = 0
     zmqContext            = None
-    messageSocket         = None         # to receiver fileMove-jobs as json-encoded dictionary
-    dataSocket            = None         # to send fileObject as multipart message
     bindingIpForSocket    = None
     zqmFileEventServerIp  = "127.0.0.1"  # serverIp for incoming messages
     tcpPort_messageStream = "6060"
     dataStreamIp          = "127.0.0.1"  # ip of dataStream-socket to push new files to
     dataStreamPort        = "6061"       # port number of dataStream-socket to push new files to
+    zmqCleanerIp          = "127.0.0.1"  # zmq pull endpoint, responsable to delete files
+    zmqCleanerPort        = "6062"       # zmq pull endpoint, responsable to delete files
     fileWaitTimeInMs      = None
     fileMaxWaitTimeInMs   = None
-    pipe_name             = "/tmp/zeromqllpipe_resp"
+    parallelDataStreams   = None
+    chunkSize             = None
 
-    currentZmqDataStreamSocketListIndex = None # Index-Number of a socket used to send datafiles to
-    logfileFullPath = None
-    chunkSize = None
+    # sockets
+    messageSocket         = None         # to receiver fileMove-jobs as json-encoded dictionary
+    routerSocket          = None
+
+    # to get the logging only handling this class
+    log                   = None
+
+
+    def __init__(self, bindingIpForSocket, bindingPortForSocket, dataStreamIp, dataStreamPort, parallelDataStreams,
+                 chunkSize, zmqCleanerIp, zmqCleanerPort,
+                 fileWaitTimeInMs, fileMaxWaitTimeInMs,
+                 context = None):
+
+        assert isinstance(context, zmq.sugar.context.Context)
+
+        self.zmqContext            = context or zmq.Context()
+        self.bindingIpForSocket    = bindingIpForSocket
+        self.tcpPort_messageStream = bindingPortForSocket
+        self.dataStreamIp          = dataStreamIp
+        self.dataStreamPort        = dataStreamPort
+        self.parallelDataStreams   = parallelDataStreams
+        self.chunkSize             = chunkSize
+        self.zmqCleanerIp          = zmqCleanerIp
+        self.zmqCleanerPort        = zmqCleanerPort
+        self.fileWaitTimeInMs      = fileWaitTimeInMs
+        self.fileMaxWaitTimeInMs   = fileMaxWaitTimeInMs
+
+
+        self.log = self.getLogger()
+        self.log.debug("Init")
+
+        #create zmq sockets. one for incoming file events, one for passing fileObjects to
+        self.messageSocket         = self.zmqContext.socket(zmq.PULL)
+        connectionStrMessageSocket = "tcp://" + self.bindingIpForSocket + ":%s" % self.tcpPort_messageStream
+        self.messageSocket.bind(connectionStrMessageSocket)
+        self.log.debug("messageSocket started for '" + connectionStrMessageSocket + "'")
+
+        #setting up router for load-balancing worker-threads.
+        #each worker-thread will handle a file event
+        self.routerSocket         = self.zmqContext.socket(zmq.ROUTER)
+        connectionStrRouterSocket = "tcp://127.0.0.1:50000"
+        self.routerSocket.bind(connectionStrRouterSocket)
+        self.log.debug("routerSocket started for '" + connectionStrRouterSocket + "'")
 
 
     def process(self):
         try:
             self.startReceiving()
         except zmq.error.ZMQError as e:
-            logging.error("ZMQError: "+ str(e))
-        except KeyboardInterrupt:
-            logging.debug("KeyboardInterrupt detected. Shutting down fileMover.")
-            logging.info("Shutting down fileMover as KeyboardInterrupt was detected.")
-            self.zmqContext.destroy()
+            self.log.error("ZMQError: "+ str(e))
+            self.log.debug("Shutting down workerProcess.")
         except:
             trace = traceback.format_exc()
-            logging.info("Stopping fileMover due to unknown error condition.")
-            logging.debug("Error was: " + str(trace))
+            self.log.info("Stopping fileMover due to unknown error condition.")
+            self.log.debug("Error was: " + str(trace))
 
 
 
-    def __init__(self, bindingIpForSocket, bindingPortForSocket, dataStreamIp, dataStreamPort, parallelDataStreams,
-                 logfileFullPath, chunkSize,
-                 fileWaitTimeInMs, fileMaxWaitTimeInMs):
-        logging.info("registering zmq global context")
-
-        #create zmq context
-        zmqContext = zmq.Context()
-
-        self.zmqContext            = zmqContext
-        self.bindingIpForSocket    = bindingIpForSocket
-        self.tcpPort_messageStream = bindingPortForSocket
-        self.dataStreamIp          = dataStreamIp
-        self.dataStreamPort        = dataStreamPort
-        self.parallelDataStreams   = parallelDataStreams
-        self.logfileFullPath       = logfileFullPath
-        self.chunkSize             = chunkSize
-        self.fileWaitTimeInMs      = fileWaitTimeInMs
-        self.fileMaxWaitTimeInMs   = fileMaxWaitTimeInMs
-
-
-        #create zmq sockets. one for incoming file events, one for passing fileObjects to
-        self.messageSocket = self.getZmqSocket_Pull(self.zmqContext)
-        self.dataSocket    = self.getZmqSocket_Push(self.zmqContext)
+    def getLogger(self):
+        logger = logging.getLogger("fileMover")
+        return logger
 
 
     def getFileWaitTimeInMs(self):
@@ -463,23 +480,12 @@ class FileMover():
 
 
     def startReceiving(self):
-        #create socket
-        zmqContext = self.zmqContext
-        zmqSocketForNewFileEvents  = self.createPullSocket()
-        logging.debug("new message-socket crated for: new file events.")
+        self.log.debug("new message-socket crated for: new file events.")
         parallelDataStreams = int(self.parallelDataStreams)
 
-        logging.debug("new message-socket crated for: passing file objects.")
+        self.log.debug("new message-socket crated for: passing file objects.")
 
         incomingMessageCounter = 0
-
-
-        #setting up router for load-balancing worker-threads.
-        #each worker-thread will handle a file event
-        routerSocket = self.zmqContext.socket(zmq.ROUTER)
-        routerSocket.bind("tcp://127.0.0.1:50000")
-        logging.debug("routerSocket started for 'tcp://127.0.0.1:50000'")
-
 
         #start worker-threads. each will have its own PushSocket.
         workerThreadList      = list()
@@ -487,133 +493,74 @@ class FileMover():
         fileWaitTimeInMs      = self.getFileWaitTimeInMs()
         fileMaxWaitTimeInMs   = self.getFileMaxWaitTimeInMs()
         for threadNumber in range(numberOfWorkerThreads):
-            logging.debug("instantiate new workerProcess (nr " + str(threadNumber))
+            self.log.debug("instantiate new workerProcess (nr " + str(threadNumber) + " )")
             newWorkerThread = Process(target=WorkerProcess, args=(threadNumber,
                                                                   self.dataStreamIp,
                                                                   self.dataStreamPort,
-                                                                  logfileFullPath,
                                                                   self.chunkSize,
+                                                                  self.zmqCleanerIp,
+                                                                  self.zmqCleanerPort,
                                                                   fileWaitTimeInMs,
                                                                   fileMaxWaitTimeInMs))
             workerThreadList.append(newWorkerThread)
 
-            logging.debug("start worker process nr " + str(threadNumber))
+            self.log.debug("start worker process nr " + str(threadNumber))
             newWorkerThread.start()
 
         #run loop, and wait for incoming messages
         continueReceiving = True
-        logging.debug("waiting for new fileEvent-messages")
-        while continueReceiving:
-            try:
-                incomingMessage = zmqSocketForNewFileEvents.recv()
-                logging.debug("new fileEvent-message received.")
-                logging.debug("message content: " + str(incomingMessage))
-                incomingMessageCounter += 1
-
-                logging.debug("processFileEvent...")
-                self.processFileEvent(incomingMessage, routerSocket)  #TODO refactor as separate process to emphasize unblocking
-                logging.debug("processFileEvent...done")
-            except Exception, e:
-                print "exception"
-                logging.error("Failed to receive new fileEvent-message.")
-                logging.error(sys.exc_info())
-
-                #TODO might using a error-count and threshold when to stop receiving, e.g. after 100 misses?
-                # continueReceiving = False
-
-
-        print "shutting down fileEvent-receiver..."
+        self.log.debug("waiting for new fileEvent-messages")
         try:
-            logging.debug("shutting down zeromq...")
-            self.stopReceiving(zmqSocketForNewFileEvents, zmqContext)
-            logging.debug("shutting down zeromq...done.")
-        except:
-            logging.error(sys.exc_info())
-            logging.error("shutting down zeromq...failed.")
+            while continueReceiving:
+                try:
+                    incomingMessage = self.messageSocket.recv()
+                    self.log.debug("new fileEvent-message received.")
+                    self.log.debug("message content: " + str(incomingMessage))
+                    incomingMessageCounter += 1
+
+                    self.log.debug("processFileEvent..." + str(incomingMessageCounter))
+                    self.processFileEvent(incomingMessage)  #TODO refactor as separate process to emphasize unblocking
+                    self.log.debug("processFileEvent...done")
+                except Exception, e:
+                    self.log.error("Failed to receive new fileEvent-message.")
+                    self.log.error(sys.exc_info())
+
+                    #TODO might using a error-count and threshold when to stop receiving, e.g. after 100 misses?
+                    # continueReceiving = False
+        except KeyboardInterrupt:
+            self.log.info("Keyboard interuption detected. Stop receiving")
 
 
 
-    def routeFileEventToWorkerThread(self, fileEventMessage, routerSocket):
+    def processFileEvent(self, fileEventMessage):
         # LRU worker is next waiting in the queue
-        logging.debug("waiting for available workerThread.")
+        self.log.debug("waiting for available workerThread.")
 
         # address == "worker-0"
         # empty   == ""
         # ready   == "READY"
-        address, empty, ready = routerSocket.recv_multipart()
-        logging.debug("available workerThread detected.")
+        address, empty, ready = self.routerSocket.recv_multipart()
+        self.log.debug("available workerThread detected.")
 
-        logging.debug("passing job to workerThread...")
-        routerSocket.send_multipart([
+        self.log.debug("passing job to workerThread...")
+        self.routerSocket.send_multipart([
                                      address,
                                      b'',
                                      fileEventMessage,
                                     ])
 
-        # inform lsyncd wrapper that the file can be moved
-
-#        if not os.path.exists(self.pipe_name):
-#                os.mkfifo(self.pipe_name)
+        self.log.debug("passing job to workerThread...done.")
 
 
-#        messageToPipe = json.loads ( fileEventMessage )
-#        messageToPipe = messageToPipe["sourcePath"] + os.sep + messageToPipe["filename"]
-#        my_cmd = 'echo "' + messageToPipe + '"  > ' + self.pipe_name
-#        p = subprocess.Popen ( my_cmd, shell=True )
-#        p.communicate()
-
-        logging.debug("passing job to workerThread...done.")
-
-
-    def processFileEvent(self, fileEventMessage, routerSocket):
-        self.routeFileEventToWorkerThread(fileEventMessage, routerSocket)
-
-
-    def stopReceiving(self, zmqSocket, msgContext):
-        try:
-            logging.debug("closing zmqSocket...")
-            zmqSocket.close()
-            logging.debug("closing zmqSocket...done.")
-        except:
-            logging.debug("closing zmqSocket...failed.")
-            logging.error(sys.exc_info())
-
-        try:
-            logging.debug("closing zmqContext...")
-            msgContext.destroy()
-            logging.debug("closing zmqContext...done.")
-        except:
-            logging.debug("closing zmqContext...failed.")
-            logging.error(sys.exc_info())
-
-
-    def getZmqSocket_Pull(self, context):
-        pattern_pull = zmq.PULL
-        assert isinstance(context, zmq.sugar.context.Context)
-        socket = context.socket(pattern_pull)
-
-        return socket
-
-
-    def getZmqSocket_Push(self, context):
-        pattern = zmq.PUSH
-        assert isinstance(context, zmq.sugar.context.Context)
-        socket = context.socket(pattern)
-
-        return socket
+    def stop(self):
+        self.messageSocket.close(0)
+        self.routerSocket.close(0)
 
 
 
-    def createPullSocket(self):
-        #get default message-socket
-        socket = self.messageSocket
-
-        logging.info("binding to message socket: tcp://" + self.bindingIpForSocket + ":%s" % self.tcpPort_messageStream)
-        socket.bind('tcp://' + self.bindingIpForSocket + ':%s' % self.tcpPort_messageStream)
-        return socket
-
-
-
+#
+#  --------------------------  class: Cleaner  --------------------------------------
+#
 class Cleaner():
     """
     * received cleaning jobs via zeromq,
@@ -625,76 +572,58 @@ class Cleaner():
       - poll the watched directory and reissue new files
         to fileMover which have not been detected yet
     """
-    logfileFullPath      = None
     bindingPortForSocket = None
     bindingIpForSocket   = None
     zmqContextForCleaner = None
+    zmqCleanerSocket     = None
 
-    def __init__(self, logfilePath, context, bindingIp="127.0.0.1", bindingPort="6062", verbose=False):
+    # to get the logging only handling this class
+    log                  = None
+
+    def __init__(self, bindingIp="127.0.0.1", bindingPort="6062", context = None, verbose=False):
         self.bindingPortForSocket = bindingPort
         self.bindingIpForSocket   = bindingIp
-        self.initLogging(logfilePath, verbose)
-        log = self.getLogger()
+        self.zmqContextForCleaner = context or zmq.Context()
+
+        self.log = self.getLogger()
+        self.log.debug("Init")
+
+        #bind to local port
+        self.zmqCleanerSocket      = self.zmqContextForCleaner.socket(zmq.PULL)
+        connectionStrCleanerSocket = "tcp://" + self.bindingIpForSocket + ":%s" % self.bindingPortForSocket
+        self.zmqCleanerSocket.bind(connectionStrCleanerSocket)
+        self.log.debug("zmqCleanerSocket started for '" + connectionStrCleanerSocket + "'")
+
         try:
             self.process()
         except zmq.error.ZMQError:
-            log.debug("KeyboardInterrupt detected. Shutting down workerProcess.")
-            self.zmqContextForCleaner.destroy()
+            self.log.error("ZMQError: "+ str(e))
+            self.log.debug("Shutting down cleaner.")
         except KeyboardInterrupt:
-            log.debug("KeyboardInterrupt detected. Shutting down workerProcess.")
-            self.zmqContextForCleaner.destroy()
+            self.log.info("KeyboardInterrupt detected. Shutting down cleaner.")
         except:
             trace = traceback.format_exc()
-            log.error("Stopping cleanerProcess due to unknown error condition.")
-            log.debug("Error was: " + str(trace))
+            self.log.error("Stopping cleanerProcess due to unknown error condition.")
+            self.log.debug("Error was: " + str(trace))
+
+        self.zmqCleanerSocket.close(0)
+        self.zmqContextForCleaner.destroy()
 
 
     def getLogger(self):
         logger = logging.getLogger("cleaner")
         return logger
 
-    def initLogging(self, logfilePath, verbose):
-        #@see https://docs.python.org/2/howto/logging-cookbook.html
-
-        logfilePathFull = os.path.join(logfilePath, "cleaner.log")
-        logger = logging.getLogger("cleaner")
-
-        #more detailed logging if verbose-option has been set
-        loggingLevel = logging.INFO
-        if verbose:
-            loggingLevel = logging.DEBUG
-
-
-        #log everything to file
-        fileHandler = logging.FileHandler(filename=logfilePathFull,
-                                          mode="a")
-        fileHandlerFormat = logging.Formatter(datefmt='%Y-%m-%d_%H:%M:%S',
-                                              fmt='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s] [%(name)s] [%(levelname)s] %(message)s')
-        fileHandler.setFormatter(fileHandlerFormat)
-        fileHandler.setLevel(loggingLevel)
-        logger.addHandler(fileHandler)
-
-
 
     def process(self):
-        processingJobs = True
-        log = self.getLogger()
-
-        #create zmq context
-        zmqContextForCleaner = zmq.Context()
-        self.zmqContextForCleaner = zmqContextForCleaner
-
-        #bind to local port
-        zmqJobSocket = zmqContextForCleaner.socket(zmq.PULL)
-        zmqJobSocket.bind('tcp://' + self.bindingIpForSocket + ':%s' % self.bindingPortForSocket)
-
         #processing messaging
-        while processingJobs:
+        while True:
             #waiting for new jobs
+            self.log.debug("Waiting for new jobs")
             try:
-                workload = zmqJobSocket.recv()
+                workload = self.zmqCleanerSocket.recv()
             except Exception as e:
-                logging.error("Error in receiving job: " + str(e))
+                self.log.error("Error in receiving job: " + str(e))
 
 
             #transform to dictionary
@@ -702,8 +631,8 @@ class Cleaner():
                 workloadDict = json.loads(str(workload))
             except:
                 errorMessage = "invalid job received. skipping job"
-                log.error(errorMessage)
-                log.debug("workload=" + str(workload))
+                self.log.error(errorMessage)
+                self.log.debug("workload=" + str(workload))
                 continue
 
             #extract fileEvent metadata
@@ -716,20 +645,23 @@ class Cleaner():
                 # filesize       = workloadDict["filesize"]
             except Exception, e:
                 errorMessage   = "Invalid fileEvent message received."
-                log.error(errorMessage)
-                log.debug("Error was: " + str(e))
-                log.debug("workloadDict=" + str(workloadDict))
+                self.log.error(errorMessage)
+                self.log.debug("Error was: " + str(e))
+                self.log.debug("workloadDict=" + str(workloadDict))
                 #skip all further instructions and continue with next iteration
                 continue
 
             #moving source file
             sourceFilepath = None
             try:
-                logging.debug("removing source file...")
+                self.log.debug("removing source file...")
                 #generate target filepath
-#                sourceFilepath = os.path.join(sourcePath,filename)
-                self.moveFile(sourceFilepath)
-                self.moveFile(sourcePath, filename, target)
+                sourceFilepath = os.path.join(sourcePath,filename)
+#                self.removeFile(sourceFilepath)
+                self.log.debug ("sourcePath: " + str (sourcePath))
+                self.log.debug ("filename: " + str (filename))
+                self.log.debug ("targetPath: " + str (targetPath))
+                self.moveFile(sourcePath, filename, targetPath)
 
                 # #show filesystem statistics
                 # try:
@@ -737,29 +669,28 @@ class Cleaner():
                 # except Exception, f:
                 #     logging.warning("Unable to get filesystem statistics")
                 #     logging.debug("Error was: " + str(f))
-                log.debug("file removed: " + str(sourceFilepath))
-                log.debug("removing source file...success.")
+                self.log.debug("file removed: " + str(sourcePath))
+                self.log.debug("removing source file...success.")
 
             except Exception, e:
-                errorMessage = "Unable to remove source file."
-                log.error(errorMessage)
+                errorMessage = "Unable to remove source file: " + str (sourcePath)
+                self.log.error(errorMessage)
                 trace = traceback.format_exc()
-                log.error("Error was: " + str(trace))
-                log.debug("sourceFilepath="+str(sourceFilepath))
-                log.debug("removing source file...failed.")
+                self.log.error("Error was: " + str(trace))
+                self.log.debug("sourceFilepath="+str(sourceFilepath))
+                self.log.debug("removing source file...failed.")
                 #skip all further instructions and continue with next iteration
                 continue
 
 
 
     def moveFile(self, source, filename, target):
-        log = self.getLogger()
         maxAttemptsToRemoveFile     = 2
         waitTimeBetweenAttemptsInMs = 500
 
 
         iterationCount = 0
-        log.info("Moving file '" + str(filename) + "' from '" +  str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+        self.log.info("Moving file '" + str(filename) + "' from '" +  str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
         fileWasMoved = False
 
         while iterationCount <= maxAttemptsToRemoveFile and not fileWasMoved:
@@ -772,32 +703,36 @@ class Cleaner():
                     except OSError:
                         pass
                 # moving the file
-                os.remove(filepath)
-                shutil.move(source + os.sep + filename, target + os.sep + filename)
+                sourceFile = source + os.sep + filename
+                targetFile = target + os.sep + filename
+                self.log.debug("sourceFile: " + str(sourceFile))
+                self.log.debug("targetFile: " + str(targetFile))
+                shutil.move(sourceFile, targetFile)
                 fileWasMoved = True
-                log.debug("Moving file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+                self.log.debug("Moving file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+            except IOError:
+                self.log.debug ("IOError: " + str(filename))
             except Exception, e:
                 trace = traceback.format_exc()
                 warningMessage = "Unable to move file {FILE}.".format(FILE=str(source) + str(filename))
-                log.warning(warningMessage)
-                log.debug("trace=" + str(trace))
-                log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
+                self.log.warning(warningMessage)
+                self.log.debug("trace=" + str(trace))
+                self.log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
 
         if not fileWasMoved:
-            log.error("Moving file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            self.log.error("Moving file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
             raise Exception("maxAttemptsToMoveFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount),
-                                                                                                                            FILE=filepath))
+                                                                                                                            FILE=filename))
 
 
     def removeFile(self, filepath):
-        log = self.getLogger()
         maxAttemptsToRemoveFile     = 2
         waitTimeBetweenAttemptsInMs = 500
 
 
         iterationCount = 0
-        log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...")
+        self.log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...")
         fileWasRemoved = False
 
         while iterationCount <= maxAttemptsToRemoveFile and not fileWasRemoved:
@@ -805,17 +740,17 @@ class Cleaner():
             try:
                 os.remove(filepath)
                 fileWasRemoved = True
-                log.debug("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...success.")
+                self.log.debug("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...success.")
             except Exception, e:
                 trace = traceback.format_exc()
                 warningMessage = "Unable to remove file {FILE}.".format(FILE=str(filepath))
-                log.warning(warningMessage)
-                log.debug("trace=" + str(trace))
-                log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
+                self.log.warning(warningMessage)
+                self.log.debug("trace=" + str(trace))
+                self.log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
 
         if not fileWasRemoved:
-            log.error("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            self.log.error("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
             raise Exception("maxAttemptsToRemoveFile reached (value={ATTEMPT}). Unable to remove file '{FILE}'.".format(ATTEMPT=str(iterationCount),
                                                                                                                             FILE=filepath))
 
@@ -828,6 +763,8 @@ def argumentParsing():
     parser.add_argument("--bindingPortForSocket", type=str, help="local port to bind to", default="6060")
     parser.add_argument("--dataStreamIp"  , type=str, help="ip of dataStream-socket to push new files to", default="127.0.0.1")
     parser.add_argument("--dataStreamPort", type=str, help="port number of dataStream-socket to push new files to", default="6061")
+    parser.add_argument("--zmqCleanerIp"  , type=str, help="zmq-pull-socket which deletes given files", default="127.0.0.1")
+    parser.add_argument("--zmqCleanerPort", type=str, help="zmq-pull-socket which deletes given files", default="6063")
     parser.add_argument("--parallelDataStreams", type=int, help="number of parallel data streams. default is 1", default="1")
     parser.add_argument("--chunkSize",      type=int, help="chunk size of file-parts getting send via zmq", default=DEFAULT_CHUNK_SIZE)
     parser.add_argument("--verbose"       ,           help="more verbose output", action="store_true")
@@ -842,61 +779,6 @@ def argumentParsing():
 
 
 
-
-def checkFolderForExistance(watchFolderPath):
-    """
-    abort if watch-folder does not exist
-
-    :return:
-    """
-
-    #check folder path for existance. exits if it does not exist
-    if not os.path.exists(watchFolderPath):
-        logging.error("WatchFolder '%s' does not exist. Abort." % str(watchFolderPath))
-        sys.exit(1)
-
-
-
-def checkLogfileFolder(logfilePath):
-    """
-    abort if watch-folder does not exist
-
-    :return:
-    """
-
-    #check folder path for existance. exits if it does not exist
-    if not os.path.exists(logfilePath):
-        logging.error("LogfileFilder '%s' does not exist. Abort." % str(logfilePath))
-        sys.exit(1)
-
-
-def initLogging(filenameFullPath, verbose):
-    #@see https://docs.python.org/2/howto/logging-cookbook.html
-
-
-
-    #more detailed logging if verbose-option has been set
-    loggingLevel = logging.INFO
-    if verbose:
-        loggingLevel = logging.DEBUG
-
-    #log everything to file
-    logging.basicConfig(level=loggingLevel,
-                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
-                        datefmt='%Y-%m-%d_%H:%M:%S',
-                        filename=filenameFullPath,
-                        filemode="a")
-
-    #log info to stdout, display messages with different format than the file output
-    console = logging.StreamHandler()
-
-
-    console.setLevel(logging.WARNING)
-    formatter = logging.Formatter("%(asctime)s >  %(message)s")
-    console.setFormatter(formatter)
-    logging.getLogger("").addHandler(console)
-
-
 if __name__ == '__main__':
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
     arguments = argumentParsing()
@@ -909,6 +791,8 @@ if __name__ == '__main__':
     logfilePath          = str(arguments.logfilePath)
     logfileName          = str(arguments.logfileName)
     parallelDataStreams  = str(arguments.parallelDataStreams)
+    zmqCleanerIp         = str(arguments.zmqCleanerIp)
+    zmqCleanerPort       = str(arguments.zmqCleanerPort)
     chunkSize            = arguments.chunkSize
     verbose              = arguments.verbose
     logfileFullPath      = os.path.join(logfilePath, logfileName)
@@ -917,19 +801,46 @@ if __name__ == '__main__':
 
 
     #enable logging
-    initLogging(logfileFullPath, verbose)
+    helperScript.initLogging(logfileFullPath, verbose)
 
+
+    #create zmq context
+    # there should be only one context in one process
+    zmqContext = zmq.Context.instance()
+    logging.info("registering zmq global context")
+
+
+    cleanerThread = Process(target=Cleaner, args=(zmqCleanerIp, zmqCleanerPort, zmqContext))
+    cleanerThread.start()
+    logging.debug("cleaner thread started")
 
     #start new fileMover
-    # try:
     fileMover = FileMover(bindingIpForSocket, bindingPortForSocket, dataStreamIp, dataStreamPort,
-                          parallelDataStreams, logfileFullPath, chunkSize,
-                          fileWaitTimeInMs, fileMaxWaitTimeInMs)
-    fileMover.process()
-    # except KeyboardInterrupt, ke:
-    #     print "keyboardInterrupt detected."
+                          parallelDataStreams, chunkSize,
+                          zmqCleanerIp, zmqCleanerPort,
+                          fileWaitTimeInMs, fileMaxWaitTimeInMs,
+                          zmqContext)
+    try:
+        fileMover.process()
+    except KeyboardInterrupt:
+        logging.info("Keyboard interruption detected. Shutting down")
     # except Exception, e:
     #     print "unknown exception detected."
 
 
+    logging.debug("shutting down zeromq...")
+    try:
+        fileMover.stop()
+        logging.debug("shutting down zeromq...done.")
+    except:
+        logging.error(sys.exc_info())
+        logging.error("shutting down zeromq...failed.")
+
+    try:
+        logging.debug("closing zmqContext...")
+        zmqContext.destroy()
+        logging.debug("closing zmqContext...done.")
+    except:
+        logging.debug("closing zmqContext...failed.")
+        logging.error(sys.exc_info())
 
