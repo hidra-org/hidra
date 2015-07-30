@@ -23,7 +23,6 @@ class DirectoryWatcherHandler():
 
     def __init__(self, zmqContext, fileEventServerIp, watchFolder, fileEventServerPort):
         logging.debug("DirectoryWatcherHandler: __init__()")
-        # logging.debug("DirectoryWatcherHandler(): type(zmqContext) = " + str(type(zmqContext)))
         logging.info("registering zmq context")
         self.zmqContext          = zmqContext
         self.watchFolder         = os.path.normpath(watchFolder)
@@ -250,63 +249,11 @@ def argumentParsing():
         sys.exit(1)
 
     #check logfile-path for existance
-    checkLogfileFolder(arguments.logfilePath)
+    helperScript.checkFolderExistance(arguments.logfilePath)
 
 
     return arguments
 
-
-
-
-def checkWatchFolder(watchFolderPath):
-    """
-    abort if watch-folder does not exist
-
-    :return:
-    """
-
-    #check folder path for existance. exits if it does not exist
-    if not os.path.exists(watchFolderPath):
-        logging.error("WatchFolder '%s' does not exist. Abort." % str(watchFolderPath))
-        sys.exit(1)
-
-
-
-def checkLogfileFolder(logfilePath):
-    """
-    abort if watch-folder does not exist
-
-    :return:
-    """
-
-    #check folder path for existance. exits if it does not exist
-    if not os.path.exists(logfilePath):
-        logging.error("LogfileFilder '%s' does not exist. Abort." % str(logfilePath))
-        sys.exit(1)
-
-
-
-def initLogging(filenameFullPath, verbose):
-    #@see https://docs.python.org/2/howto/logging-cookbook.html
-
-    #more detailed logging if verbose-option has been set
-    loggingLevel = logging.INFO
-    if verbose:
-        loggingLevel = logging.DEBUG
-
-    #log everything to file
-    logging.basicConfig(level=loggingLevel,
-                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
-                        datefmt='%Y-%m-%d_%H:%M:%S',
-                        filename=filenameFullPath,
-                        filemode="a")
-
-    #log info to stdout, display messages with different format than the file output
-    console = logging.StreamHandler()
-    console.setLevel(logging.WARNING)
-    formatter = logging.Formatter("%(asctime)s >  %(message)s")
-    console.setFormatter(formatter)
-    logging.getLogger("").addHandler(console)
 
 
 
@@ -322,11 +269,11 @@ if __name__ == '__main__':
     communicationWithLcyncdPort = "6080"
 
     #abort if watch-folder does not exist
-    checkWatchFolder(watchFolder)
+    helperScript.checkFolderExistance(watchFolder)
 
 
     #enable logging
-    initLogging(logfileFilePath, verbose)
+    helperScript.initLogging(logfileFilePath, verbose)
 
 
     #create zmq context
@@ -336,27 +283,6 @@ if __name__ == '__main__':
     #run only once, skipping file events
     #just get a list of all files in watchDir and pass to zeromq
     directoryWatcher = DirectoryWatcherHandler(zmqContext, fileEventServerIp, watchFolder, fileEventServerPort)
-
-
-#    pipe_path = "/tmp/zeromqllpipe"
-#    if not os.path.exists(pipe_path):
-#        os.mkfifo(pipe_path)
-#
-#    # Open the fifo. We need to open in non-blocking mode or it will stalls until
-#    # someone opens it for writting
-#    pipe_fd = os.open(pipe_path, os.O_RDONLY | os.O_NONBLOCK)
-#
-#
-#    #wait for new files
-#    with os.fdopen(pipe_fd) as pipe:
-#        while True:
-#            message = pipe.read()
-#            if message:
-##                print("Received: '%s'" % message)
-#                pathnames = message.splitlines()
-#                for filepath in pathnames:
-#                    directoryWatcher.passFileToZeromq(filepath)
-#            time.sleep(0.1)
 
 
     workers = zmqContext.socket(zmq.PULL)

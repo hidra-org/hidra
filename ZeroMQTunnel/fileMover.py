@@ -15,8 +15,12 @@ from multiprocessing import Process, freeze_support
 import subprocess
 import json
 import shutil
+import helperScript
+
 
 DEFAULT_CHUNK_SIZE = 1048576
+
+
 #
 #  --------------------------  class: WorkerProcess  --------------------------------------
 #
@@ -554,6 +558,9 @@ class FileMover():
 
 
 
+#
+#  --------------------------  class: Cleaner  --------------------------------------
+#
 class Cleaner():
     """
     * received cleaning jobs via zeromq,
@@ -772,82 +779,6 @@ def argumentParsing():
 
 
 
-
-def checkFolderForExistance(watchFolderPath):
-    """
-    abort if watch-folder does not exist
-
-    :return:
-    """
-
-    #check folder path for existance. exits if it does not exist
-    if not os.path.exists(watchFolderPath):
-        logging.error("WatchFolder '%s' does not exist. Abort." % str(watchFolderPath))
-        sys.exit(1)
-
-
-
-def checkLogfileFolder(logfilePath):
-    """
-    abort if watch-folder does not exist
-
-    :return:
-    """
-
-    #check folder path for existance. exits if it does not exist
-    if not os.path.exists(logfilePath):
-        logging.error("LogfileFilder '%s' does not exist. Abort." % str(logfilePath))
-        sys.exit(1)
-
-
-def initLogging(filenameFullPath, verbose):
-    #@see https://docs.python.org/2/howto/logging-cookbook.html
-
-
-
-    #more detailed logging if verbose-option has been set
-    loggingLevel = logging.INFO
-    if verbose:
-        loggingLevel = logging.DEBUG
-
-    #log everything to file
-    logging.basicConfig(level=loggingLevel,
-                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
-                        datefmt='%Y-%m-%d_%H:%M:%S',
-                        filename=filenameFullPath,
-                        filemode="a")
-
-    #log info to stdout, display messages with different format than the file output
-    console = logging.StreamHandler()
-    console.setLevel(logging.WARNING)
-    formatter = logging.Formatter("%(asctime)s >  %(message)s")
-    console.setFormatter(formatter)
-
-    logging.getLogger("").addHandler(console)
-
-
-#    def initLogging(self, logfilePath, verbose):
-#        #@see https://docs.python.org/2/howto/logging-cookbook.html
-#
-#        logfilePathFull = os.path.join(logfilePath, "cleaner.log")
-#        logger = logging.getLogger("cleaner")
-#
-#        #more detailed logging if verbose-option has been set
-#        loggingLevel = logging.INFO
-#        if verbose:
-#            loggingLevel = logging.DEBUG
-#
-#
-#        #log everything to file
-#        fileHandler = logging.FileHandler(filename=logfilePathFull,
-#                                          mode="a")
-#        fileHandlerFormat = logging.Formatter(datefmt='%Y-%m-%d_%H:%M:%S',
-#                                              fmt='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s] [%(name)s] [%(levelname)s] %(message)s')
-#        fileHandler.setFormatter(fileHandlerFormat)
-#        fileHandler.setLevel(loggingLevel)
-#        logger.addHandler(fileHandler)
-
-
 if __name__ == '__main__':
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
     arguments = argumentParsing()
@@ -870,7 +801,7 @@ if __name__ == '__main__':
 
 
     #enable logging
-    initLogging(logfileFullPath, verbose)
+    helperScript.initLogging(logfileFullPath, verbose)
 
 
     #create zmq context
@@ -884,7 +815,6 @@ if __name__ == '__main__':
     logging.debug("cleaner thread started")
 
     #start new fileMover
-    # try:
     fileMover = FileMover(bindingIpForSocket, bindingPortForSocket, dataStreamIp, dataStreamPort,
                           parallelDataStreams, chunkSize,
                           zmqCleanerIp, zmqCleanerPort,
