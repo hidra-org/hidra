@@ -1,7 +1,7 @@
 #/bin/sh
 
 FILES=/space/test_data/flat/*
-TARGET=/space/projects/Live_Viewer/source/local
+TARGET=/space/projects/live-viewer/source/local
 for f in $FILES
 do
     echo $f

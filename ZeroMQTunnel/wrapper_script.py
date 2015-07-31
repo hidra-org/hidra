@@ -11,8 +11,8 @@ import helperScript
 
 
 supportedFormats = [ "tif", "cbf", "hdf5"]
-watchFolder = "/space/projects/Live_Viewer/source/"
-logfile = "/space/projects/Live_Viewer/logs/wrapper_script.log"
+watchFolder = "/space/projects/live-viewer/source/"
+logfile = "/space/projects/live-viewer/logs/wrapper_script.log"
 verbose = True
 
 #enable logging

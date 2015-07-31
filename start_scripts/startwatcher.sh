@@ -1,3 +1,3 @@
 #/bin/sh
 
-python ../ZeroMQTunnel/watcher_lsyncd.py --watchFolder /space/projects/Live_Viewer/source/ --logfilePath /space/projects/Live_Viewer/logs
+python ../ZeroMQTunnel/watcher_lsyncd.py --watchFolder /space/projects/live-viewer/source/ --logfilePath /space/projects/live-viewer/logs
