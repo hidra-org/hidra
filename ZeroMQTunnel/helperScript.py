@@ -71,7 +71,7 @@ def checkFolderExistance(folderPath):
 
     #check folder path for existance. exits if it does not exist
     if not os.path.exists(folderPath):
-        logging.error("Folder '%s' does not exist. Abort." % str(watchFolderPath))
+        logging.error("Folder '%s' does not exist. Abort." % str(folderPath))
         sys.exit(1)
 
 
