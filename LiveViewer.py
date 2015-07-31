@@ -5,7 +5,6 @@ import time
 from PyQt4 import QtCore
 from PyQt4.QtCore import SIGNAL, QThread, QMutex
 import zmq
-import cv2
 
 class LiveView(QThread):
     FILETYPE_CBF = 0
