@@ -5,7 +5,7 @@ import time
 from threading import Thread
 
 ### Get configured paths and files
-LIVEVIEWER_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
+LIVEVIEWER_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) ) + os.sep + "src"
 sys.path.append ( LIVEVIEWER_PATH )
 
 from LiveViewer import LiveView
