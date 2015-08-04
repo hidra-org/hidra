@@ -3,7 +3,16 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import os
 import logging
+from inotifyx import binding
+from inotifyx.distinfo import version as __version__
+
 import helperScript
+
+constants = {}
+
+for name in dir(binding):
+    if name.startswith('IN_'):
+        globals()[name] = constants[name] = getattr(binding, name)
 
 
 # Source: inotifyx library code example
@@ -64,7 +73,6 @@ class InotifyEvent(object):
 # Copyright (c) 2005 Manuel Amador
 # Copyright (c) 2009-2011 Forest Bond
 class InotifyDetector():
-    constants  = {}
     paths      = []
     wd_to_path = {}
     fd         = None
@@ -73,13 +81,11 @@ class InotifyDetector():
 
     def __init__(self, paths):
 
-        for name in dir(binding):
-            if name.startswith('IN_'):
-                self.constants[name] = self.getattr(binding, name)
-
         self.paths = paths
         self.log  = self.getLogger()
         self.fd  = binding.init()
+
+        self.add_watch()
 
 
     def get_events(self, fd, *args):
@@ -108,17 +114,20 @@ class InotifyDetector():
         try:
             for path in self.paths:
                 wd = binding.add_watch(self.fd, path)
-                wd_to_path[wd] = path
-        finally:
-            inotifyDetectorStop()
+                self.wd_to_path[wd] = path
+                self.log.debug("Register watch for path:" + str(path) )
+        except Exception as e:
+            self.log.error("Could not register watch for path: " + str(path) )
+            self.log.debug("Error was " + str(e))
+            self.stop()
 
 
     def getNewEvent(self):
 
-
         eventMessageList = []
+        eventMessage = {}
 
-        events = get_events(self.fd)
+        events = self.get_events(self.fd)
         for event in events:
             path = self.wd_to_path[event.wd]
             parts = [event.get_mask_description()]
@@ -128,7 +137,6 @@ class InotifyDetector():
             if not event.name:
                 return []
 
-#            print '%s: %s' % (path, ' '.join(parts))
             is_dir     = ("IN_ISDIR" in parts_array)
             is_closed  = ("IN_CLOSE" in parts_array or "IN_CLOSE_WRITE" in parts_array)
             is_created = ("IN_CREATE" in parts_array)
@@ -137,36 +145,35 @@ class InotifyDetector():
             # this one has to be monitored as well
             if is_created and is_dir and event.name:
                 dirname =  path + os.sep + event.name
-                if dirname in paths:
+                if dirname in self.paths:
                     self.log.debug("Directory already contained in path list: " + str(dirname))
                 else:
-                    wd = binding.add_watch(fd, dirname)
-                    wd_to_path[wd] = dirname
+                    wd = binding.add_watch(self.fd, dirname)
+                    self.wd_to_path[wd] = dirname
                     self.log.info("Added new directory to watch:" + str(dirname))
 
             # only closed files are send
             if is_closed and not is_dir:
                 parentDir    = path
                 relativePath = ""
-                while True:
-                    if parentDir not in paths:
-                        (parentDir,relDir) = os.path.split(parentDir)
-                        relativePath += os.sep + relDir
-                    else:
-                        # the event for a file /tmp/test/source/local/file1.tif is of the form:
-                        # {
-                        #   "sourcePath" : "/tmp/test/source/"
-                        #   "relFilepath": "local"
-                        #   "filename"   : "file1.tif"
-                        # }
-                        eventMessage = {
-                                "sourcePath"  : parentDir,
-                                "relativePath": relativePath,
-                                "filename"    : event.name
-                                }
-                        break
+                eventMessage = {}
 
-                eventMessageList.append[eventMessage]
+                if parentDir not in self.paths:
+                    (parentDir,relDir) = os.path.split(parentDir)
+                    relativePath += os.sep + relDir
+                else:
+                    # the event for a file /tmp/test/source/local/file1.tif is of the form:
+                    # {
+                    #   "sourcePath" : "/tmp/test/source/"
+                    #   "relativePath": "local"
+                    #   "filename"   : "file1.tif"
+                    # }
+                    eventMessage = {
+                            "sourcePath"  : parentDir,
+                            "relativePath": relativePath,
+                            "filename"    : event.name
+                            }
+                    eventMessageList.append(eventMessage)
 
         return eventMessageList
 
@@ -180,19 +187,21 @@ class InotifyDetector():
             except KeyboardInterrupt:
                 pass
         finally:
-            inotifyDetectorStop()
+            self.stop()
 
 
     def stop(self):
+
         try:
             try:
-                for path in self.paths:
-                    binding.rm_watch(self.fd, path)
+                for wd in self.wd_to_path:
+                    binding.rm_watch(self.fd, wd)
             except Exception as e:
                     self.log.error("Unable to remove watch.")
                     self.log.debug("Error was: " + str(e))
         finally:
             os.close(self.fd)
+
 
 
 

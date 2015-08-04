@@ -16,36 +16,40 @@ from InotifyDetector import InotifyDetector as EventDetector
 #
 
 class DirectoryWatcherHandler():
-    patterns            = ["*"]
-    zmqContext          = None
-    externalContext     = None    # if the context was created outside this class or not
-    messageSocket       = None    # strings only, control plane
-    fileEventServerIp   = None
-    fileEventServerPort = None
-    watchFolder         = None
-    eventDetector       = None
+    patterns                   = ["*"]
+    zmqContext                 = None
+    externalContext            = None    # if the context was created outside this class or not
+    messageSocket              = None    # strings only, control plane
+    fileEventServerIp          = None
+    fileEventServerPort        = None
+    watchFolder                = None
+    eventDetector              = None
+    monitoredDefaultSubfolders = ["commissioning", "current", "local"]
 
 
     def __init__(self, fileEventServerIp, watchFolder, fileEventServerPort, zmqContext = None):
         logging.debug("DirectoryWatcherHandler: __init__()")
         logging.info("registering zmq context")
-        if zmContext:
+        if zmqContext:
             self.zmqContext      = zmqContext
             self.externalContext = True
         else:
-            self.zmqContext       = zmq.Context()
+            self.zmqContext      = zmq.Context()
             self.externalContext = False
 
         self.watchFolder         = os.path.normpath(watchFolder)
         self.fileEventServerIp   = fileEventServerIp
         self.fileEventServerPort = fileEventServerPort
-        self.eventDetector       = EventDetector(watchFolder)
+
+
+        monitoredFolders        = [self.watchFolder + os.sep + folder for folder in self.monitoredDefaultSubfolders]
+        self.eventDetector       = EventDetector(monitoredFolders)
 
 
         assert isinstance(self.zmqContext, zmq.sugar.context.Context)
 
         #create zmq sockets
-        self.messageSocket = zmqContext.socket(zmq.PUSH)
+        self.messageSocket = self.zmqContext.socket(zmq.PUSH)
         zmqSocketStr = "tcp://" + self.fileEventServerIp + ":" + str(self.fileEventServerPort)
         self.messageSocket.connect(zmqSocketStr)
         logging.debug("Connecting to ZMQ socket: " + str(zmqSocketStr))
@@ -53,15 +57,20 @@ class DirectoryWatcherHandler():
         self.process()
 
 
-    def passFileToZeromq(self, filepath, relativePath, filename):
+    def getLogger(self):
+        logger = logging.getLogger("DirectoryWatchHandler")
+        return logger
+
+
+    def passFileToZeromq(self, sourcePath, relativePath, filename):
         '''
         Taking the filename, creating a buffer and then
         sending the data as multipart message to the socket.
 
         For testing currently the multipart message consists of only one message.
 
-        :param filepath:     Pointing to the data which is going to be send
-        :param relativepath: Relative path leading from the origin source path (not the filepath) to the file
+        :param sourcePath:     Pointing to the data which is going to be send
+        :param relativePath: Relative path leading from the origin source path (not the filepath) to the file
         :param filename:     The name of the file to be send
         :return:
         '''
@@ -69,9 +78,9 @@ class DirectoryWatcherHandler():
         #build message dict
         try:
             logging.debug("Building message dict...")
-            messageDict = { "filename"      : filename,
-                            "sourcePath"    : filepath,
-                            "relativeParent": relativePath
+            messageDict = { "filename"     : filename,
+                            "sourcePath"   : sourcePath,
+                            "relativePath" : relativePath
                             }
 
             messageDictJson = json.dumps(messageDict)  #sets correct escape characters
@@ -105,29 +114,29 @@ class DirectoryWatcherHandler():
                     try:
                         # the event for a file /tmp/test/source/local/file1.tif is of the form:
                         # {
-                        #   "filepath"   : "/tmp/test/source/"
-                        #   "relFilepath": "local"
+                        #   "sourcePath" : "/tmp/test/source/"
+                        #   "relativePath": "local"
                         #   "filename"   : "file1.tif"
                         # }
-                        workload = eventDetector.getNewEvent()
+                        workloadList = self.eventDetector.getNewEvent()
                     except Exception, e:
                         logging.error("Invalid fileEvent message received.")
                         logging.debug("Error was: " + str(e))
-                        logging.debug("workload=" + str(workload))
                         #skip all further instructions and continue with next iteration
                         continue
 
-                    #TODO validate fileEventMessageDict dict
-                    filepath     = workload["filepath"]
-                    relativepath = workload["relativeFilepath"]
-                    filename     = workload["filename"]
+                    #TODO validate workload dict
+                    for workload in workloadList:
+                        sourcePath   = workload["sourcePath"]
+                        relativepath = workload["relativePath"]
+                        filename     = workload["filename"]
 
-                    # send the file to the fileMover
-                    self.passFileToZeromq(filepath, relativepath, filename)
+                        # send the file to the fileMover
+                        self.passFileToZeromq(sourcePath, relativepath, filename)
             except KeyboardInterrupt:
                 logging.info("Keyboard interruption detected. Shuting down")
         finally:
-            eventDetector.stop()
+            self.eventDetector.stop()
 
         self.shuttingDown()
 
@@ -149,10 +158,10 @@ def getDefaultConfig():
 
     elif helperScript.isLinux():
         defaultConfigDict = {
-                            "logfilePath"    : "/tmp/log/"
+                            "logfilePath"    : "/tmp/log/",
                             "logfileName"    : "watchFolder.log",
                             "pushServerPort" : "6060",
-                            "pushServerIp"   : "Linux" : "127.0.0.1",
+                            "pushServerIp"   : "127.0.0.1",
                         }
     else:
         return ""
@@ -163,16 +172,17 @@ def getDefaultConfig():
 
 def argumentParsing():
 
+    defaultConfig = getDefaultConfig()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--watchFolder" , type=str, help="folder you want to monitor for changes")
     parser.add_argument("--staticNotification",
                         help="disables new file-events. just sends a list of currently available files within the defined 'watchFolder'.",
                         action="store_true")
-    parser.add_argument("--logfilePath" , type=str, help="path where logfile will be created", default=getDefaultConfig["logfilePath"])
-    parser.add_argument("--logfileName" , type=str, help="filename used for logging", default=getDefaultConfig["logfileName"])
-    parser.add_argument("--pushServerIp", type=str, help="zqm endpoint (IP-address) to send file events to", default=getDefaultConfig["pushServerIp"])
-    parser.add_argument("--pushServerPort", type=str, help="zqm endpoint (port) to send file events to", default=getDefaultConfig["pushServerPort"])
+    parser.add_argument("--logfilePath" , type=str, help="path where logfile will be created", default=defaultConfig["logfilePath"])
+    parser.add_argument("--logfileName" , type=str, help="filename used for logging", default=defaultConfig["logfileName"])
+    parser.add_argument("--pushServerIp", type=str, help="zqm endpoint (IP-address) to send file events to", default=defaultConfig["pushServerIp"])
+    parser.add_argument("--pushServerPort", type=str, help="zqm endpoint (port) to send file events to", default=defaultConfig["pushServerPort"])
     parser.add_argument("--verbose"     ,           help="more verbose output", action="store_true")
 
     arguments = parser.parse_args()
