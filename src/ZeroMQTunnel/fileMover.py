@@ -287,6 +287,7 @@ class WorkerProcess():
         #send message
         try:
             self.log.debug("Passing multipart-message...")
+            print "sending file: ", sourceFilePathFull
             chunkNumber = 0
             stillChunksToRead = True
             while stillChunksToRead:

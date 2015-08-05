@@ -36,7 +36,7 @@ class FileReceiver:
     exchangeSocket           = None
 
 
-    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, context = None):
+    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, maxRingBuffersize, context = None):
         self.outputDir          = outputDir
         self.zmqDataStreamIp    = zmqDataStreamIp
         self.zmqDataStreamPort  = zmqDataStreamPort
@@ -52,7 +52,7 @@ class FileReceiver:
         self.log.debug("Init")
 
         # start file receiver
-        self.receiverThread = threading.Thread(target=Coordinator, args=(self.outputDir, self.zmqDataStreamPort, self.zmqDataStreamIp, self.zmqLiveViewerPort, self.zmqLiveViewerIp))
+        self.receiverThread = threading.Thread(target=Coordinator, args=(self.outputDir, self.zmqDataStreamPort, self.zmqDataStreamIp, self.zmqLiveViewerPort, self.zmqLiveViewerIp, maxRingBuffersize))
         self.receiverThread.start()
 
         # create pull socket
@@ -290,8 +290,7 @@ class Coordinator:
     receiverExchangeIp       = "127.0.0.1"
     receiverExchangePort     = "6072"
     ringBuffer               = []
-    maxRingBufferSize        = 200
-    timeToWaitForRingBuffer  = 2
+    maxRingBufferSize        = None
 
     log                      = None
 
@@ -303,12 +302,14 @@ class Coordinator:
     zmqliveViewerSocket      = None
 
 
-    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, context = None):
+    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, maxRingBufferSize, context = None):
         self.outputDir          = outputDir
         self.zmqDataStreamIp    = zmqDataStreamIp
         self.zmqDataStreamPort  = zmqDataStreamPort
         self.zmqLiveViewerIp    = zmqLiveViewerIp
         self.zmqLiveViewerPort  = zmqLiveViewerPort
+
+        self.maxRingBufferSize  = maxRingBufferSize
 
         self.log = self.getLogger()
         self.log.debug("Init")
@@ -419,9 +420,8 @@ class Coordinator:
         # if the maximal size is exceeded: remove the oldest files
         if len(self.ringBuffer) > self.maxRingBufferSize:
             for mod_time, path in self.ringBuffer[self.maxRingBufferSize:]:
-                if float(time.time()) - mod_time > self.timeToWaitForRingBuffer:
-                    os.remove(path)
-                    self.ringBuffer.remove([mod_time, path])
+                os.remove(path)
+                self.ringBuffer.remove([mod_time, path])
 
 
 
@@ -434,6 +434,7 @@ def argumentParsing():
     parser.add_argument("--logfile"               , type=str, help="file used for logging", default="/tmp/watchdog/fileReceiver.log")
     parser.add_argument("--bindingIpForDataStream", type=str, help="local ip to bind dataStream to", default="127.0.0.1")
     parser.add_argument("--bindingIpForLiveViewer", type=str, help="local ip to bind LiveViewer to", default="127.0.0.1")
+    parser.add_argument("--maxRingBufferSize"     , type=int, help="size of the ring buffer for the live viewer", default="100")
     parser.add_argument("--verbose"       ,           help="more verbose output", action="store_true")
 
     arguments = parser.parse_args()
@@ -456,6 +457,7 @@ if __name__ == "__main__":
     zmqLiveViewerPort = str(arguments.tcpPortLiveViewer)
     logFile           = arguments.logfile
     logfileFilePath   = arguments.logfile
+    maxRingBufferSize = int(arguments.maxRingBufferSize)
 
 
     #enable logging
@@ -463,4 +465,4 @@ if __name__ == "__main__":
 
 
     #start file receiver
-    myWorker = FileReceiver(outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp)
+    myWorker = FileReceiver(outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, maxRingBufferSize)
