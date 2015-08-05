@@ -62,7 +62,7 @@ class DirectoryWatcherHandler():
         return logger
 
 
-    def passFileToZeromq(self, sourcePath, relativePath, filename):
+    def passFileToZeromq(self, targetSocket, sourcePath, relativePath, filename):
         '''
         Taking the filename, creating a buffer and then
         sending the data as multipart message to the socket.
@@ -97,7 +97,7 @@ class DirectoryWatcherHandler():
         try:
             logging.info("Sending message...")
             logging.debug(str(messageDictJson))
-            self.messageSocket.send(messageDictJson)
+            targetSocket.send(messageDictJson)
             logging.info("Sending message...done.")
         except KeyboardInterrupt:
             logging.error("Sending message...failed because of KeyboardInterrupt.")
@@ -128,11 +128,13 @@ class DirectoryWatcherHandler():
                     #TODO validate workload dict
                     for workload in workloadList:
                         sourcePath   = workload["sourcePath"]
-                        relativepath = workload["relativePath"]
+                        # the folders local, current, and commissioning are monitored by default
+                        (sourcePath,relDir) = os.path.split(sourcePath)
+                        relativePath = os.path.normpath(relDir + os.sep + workload["relativePath"])
                         filename     = workload["filename"]
 
                         # send the file to the fileMover
-                        self.passFileToZeromq(sourcePath, relativepath, filename)
+                        self.passFileToZeromq(self.messageSocket, sourcePath, relativePath, filename)
             except KeyboardInterrupt:
                 logging.info("Keyboard interruption detected. Shuting down")
         finally:

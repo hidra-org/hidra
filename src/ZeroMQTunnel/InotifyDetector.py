@@ -127,23 +127,28 @@ class InotifyDetector():
         eventMessageList = []
         eventMessage = {}
 
+#        print "wd_to_path: ", self.wd_to_path
         events = self.get_events(self.fd)
         for event in events:
             path = self.wd_to_path[event.wd]
-            parts = [event.get_mask_description()]
             parts = event.get_mask_description()
             parts_array = parts.split("|")
 
             if not event.name:
                 return []
 
+#            print path, event.name, parts
+
             is_dir     = ("IN_ISDIR" in parts_array)
-            is_closed  = ("IN_CLOSE" in parts_array or "IN_CLOSE_WRITE" in parts_array)
+            is_closed  = ("IN_CLOSE_WRITE" in parts_array)
+#            is_closed  = ("IN_CLOSE" in parts_array or "IN_CLOSE_WRITE" in parts_array)
             is_created = ("IN_CREATE" in parts_array)
 
             # if a new directory is created inside the monitored one,
             # this one has to be monitored as well
             if is_created and is_dir and event.name:
+#                print "is_created and is_dir"
+#                print path, event.name, parts
                 dirname =  path + os.sep + event.name
                 if dirname in self.paths:
                     self.log.debug("Directory already contained in path list: " + str(dirname))
@@ -154,26 +159,32 @@ class InotifyDetector():
 
             # only closed files are send
             if is_closed and not is_dir:
+#                print "is_closed and not is_dir"
+#                print path, event.name, parts
                 parentDir    = path
                 relativePath = ""
                 eventMessage = {}
 
-                if parentDir not in self.paths:
-                    (parentDir,relDir) = os.path.split(parentDir)
-                    relativePath += os.sep + relDir
-                else:
-                    # the event for a file /tmp/test/source/local/file1.tif is of the form:
-                    # {
-                    #   "sourcePath" : "/tmp/test/source/"
-                    #   "relativePath": "local"
-                    #   "filename"   : "file1.tif"
-                    # }
-                    eventMessage = {
-                            "sourcePath"  : parentDir,
-                            "relativePath": relativePath,
-                            "filename"    : event.name
-                            }
-                    eventMessageList.append(eventMessage)
+                # traverse the relative path till the original path is reached
+                # e.g. created file: /source/dir1/dir2/test.tif
+                while True:
+                    if parentDir not in self.paths:
+                        (parentDir,relDir) = os.path.split(parentDir)
+                        relativePath += os.sep + relDir
+                    else:
+                        # the event for a file /tmp/test/source/local/file1.tif is of the form:
+                        # {
+                        #   "sourcePath" : "/tmp/test/source/"
+                        #   "relativePath": "local"
+                        #   "filename"   : "file1.tif"
+                        # }
+                        eventMessage = {
+                                "sourcePath"  : parentDir,
+                                "relativePath": relativePath,
+                                "filename"    : event.name
+                                }
+                        eventMessageList.append(eventMessage)
+                        break
 
         return eventMessageList
 
