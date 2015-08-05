@@ -156,12 +156,11 @@ class WorkerProcess():
             #extract fileEvent metadata
             try:
                 #TODO validate fileEventMessageDict dict
-                filename       = fileEventMessageDict["filename"]
-                sourcePath     = fileEventMessageDict["sourcePath"]
-                relativeParent = fileEventMessageDict["relativeParent"]
+                filename     = fileEventMessageDict["filename"]
+                sourcePath   = fileEventMessageDict["sourcePath"]
+                relativePath = fileEventMessageDict["relativePath"]
             except Exception, e:
-                errorMessage   = "Invalid fileEvent message received."
-                self.log.error(errorMessage)
+                self.log.error("Invalid fileEvent message received.")
                 self.log.debug("Error was: " + str(e))
                 self.log.debug("fileEventMessageDict=" + str(fileEventMessageDict))
                 #skip all further instructions and continue with next iteration
@@ -170,7 +169,7 @@ class WorkerProcess():
             #passing file to data-messagPipe
             try:
                 self.log.debug("worker-" + str(id) + ": passing new file to data-messagePipe...")
-                self.passFileToDataStream(filename, sourcePath, relativeParent)
+                self.passFileToDataStream(filename, sourcePath, relativePath)
                 self.log.debug("worker-" + str(id) + ": passing new file to data-messagePipe...success.")
             except Exception, e:
                 errorMessage = "Unable to pass new file to data-messagePipe."
@@ -211,21 +210,23 @@ class WorkerProcess():
         return maxWaitTime
 
 
-    def passFileToDataStream(self, filename, sourcePath, relativeParent):
+    def passFileToDataStream(self, filename, sourcePath, relativePath):
         """filesizeRequested == filesize submitted by file-event. In theory it can differ to real file size"""
 
         # filename = "img.tiff"
         # filepath = "C:\dir"
         #
         # -->  sourceFilePathFull = 'C:\\dir\img.tiff'
-        sourceFilePathFull = os.path.join(sourcePath, filename)
+        sourceFilePath     = os.path.normpath(sourcePath + os.sep + relativePath)
+        sourceFilePathFull = os.path.join(sourceFilePath, filename)
 
         #reading source file into memory
         try:
             #wait x seconds if file was modified within past y seconds
             fileWaitTimeInMs    = self.getFileWaitTimeInMs()
             fileMaxWaitTimeInMs = self.getFileMaxWaitTimeInMs()
-            fileIsStillInUse = True #true == still being written to file by a process
+            fileIsStillInUse = False #true == still being written to file by a process
+#            fileIsStillInUse = True #true == still being written to file by a process
             timeStartWaiting = time.time()
             while fileIsStillInUse:
                 #skip waiting periode if waiting to long for file to get closed
@@ -276,7 +277,7 @@ class WorkerProcess():
 
         #build payload for message-pipe by putting source-file into a message
         try:
-            payloadMetadata = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativeParent)
+            payloadMetadata = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath)
         except Exception, e:
             self.log.error("Unable to assemble multi-part message.")
             self.log.debug("Error was: " + str(e))
@@ -341,14 +342,14 @@ class WorkerProcess():
 
 
 
-    def buildPayloadMetadata(self, filename, filesize, fileModificationTime, sourcePath, relativeParent):
+    def buildPayloadMetadata(self, filename, filesize, fileModificationTime, sourcePath, relativePath):
         """
         builds metadata for zmq-multipart-message. should be used as first element for payload.
         :param filename:
         :param filesize:
         :param fileModificationTime:
         :param sourcePath:
-        :param relativeParent:
+        :param relativePath:
         :return:
         """
 
@@ -359,7 +360,7 @@ class WorkerProcess():
                          "filesize"             : filesize,
                          "fileModificationTime" : fileModificationTime,
                          "sourcePath"           : sourcePath,
-                         "relativeParent"       : relativeParent,
+                         "relativePath"         : relativePath,
                          "chunkSize"            : self.getChunkSize()}
 
         self.log.debug("metadataDict = " + str(metadataDict))
@@ -555,7 +556,7 @@ class FileMover():
     def stop(self):
         self.messageSocket.close(0)
         self.routerSocket.close(0)
-                                                                                                                            FILE=filepath))
+
 
 
 def argumentParsing():
@@ -566,6 +567,7 @@ def argumentParsing():
     parser.add_argument("--bindingPortForSocket", type=str, help="local port to bind to", default="6060")
     parser.add_argument("--dataStreamIp"  , type=str, help="ip of dataStream-socket to push new files to", default="127.0.0.1")
     parser.add_argument("--dataStreamPort", type=str, help="port number of dataStream-socket to push new files to", default="6061")
+    parser.add_argument("--cleanerTargetPath", type=str, help="Target to move the files into")
     parser.add_argument("--zmqCleanerIp"  , type=str, help="zmq-pull-socket which deletes given files", default="127.0.0.1")
     parser.add_argument("--zmqCleanerPort", type=str, help="zmq-pull-socket which deletes given files", default="6063")
     parser.add_argument("--parallelDataStreams", type=int, help="number of parallel data streams. default is 1", default="1")
@@ -594,6 +596,7 @@ if __name__ == '__main__':
     logfilePath          = str(arguments.logfilePath)
     logfileName          = str(arguments.logfileName)
     parallelDataStreams  = str(arguments.parallelDataStreams)
+    cleanerTargetPath    = str(arguments.cleanerTargetPath)
     zmqCleanerIp         = str(arguments.zmqCleanerIp)
     zmqCleanerPort       = str(arguments.zmqCleanerPort)
     chunkSize            = arguments.chunkSize
@@ -613,7 +616,7 @@ if __name__ == '__main__':
     logging.info("registering zmq global context")
 
 
-    cleanerThread = Process(target=Cleaner, args=(zmqCleanerIp, zmqCleanerPort, zmqContext))
+    cleanerThread = Process(target=Cleaner, args=(cleanerTargetPath, zmqCleanerIp, zmqCleanerPort, zmqContext))
     cleanerThread.start()
     logging.debug("cleaner thread started")
 

@@ -43,10 +43,11 @@ class Cleaner():
     # to get the logging only handling this class
     log                  = None
 
-    def __init__(self, bindingIp="127.0.0.1", bindingPort="6062", context = None, verbose=False):
+    def __init__(self, targetPath, bindingIp="127.0.0.1", bindingPort="6062", context = None, verbose=False):
         self.bindingPortForSocket = bindingPort
         self.bindingIpForSocket   = bindingIp
         self.zmqContextForCleaner = context or zmq.Context()
+        self.targetPath           = targetPath
 
         self.log = self.getLogger()
         self.log.debug("Init")
@@ -103,8 +104,7 @@ class Cleaner():
                 #TODO validate fileEventMessageDict dict
                 filename       = workloadDict["filename"]
                 sourcePath     = workloadDict["sourcePath"]
-                relativeParent = workloadDict["relativeParent"]
-                targetPath     = workloadDict["targetPath"]
+                relativePath   = workloadDict["relativePath"]
                 # filesize       = workloadDict["filesize"]
             except Exception, e:
                 errorMessage   = "Invalid fileEvent message received."
@@ -119,12 +119,14 @@ class Cleaner():
             try:
                 self.log.debug("removing source file...")
                 #generate target filepath
-                sourceFilepath = os.path.join(sourcePath,filename)
+                sourcePath = os.path.normpath(sourcePath + os.sep + relativePath)
+                sourceFullPath = os.path.join(sourcePath,filename)
+                targetFullPath = os.path.normpath(self.targetPath + relativePath)
 #                self.removeFile(sourceFilepath)
                 self.log.debug ("sourcePath: " + str (sourcePath))
                 self.log.debug ("filename: " + str (filename))
-                self.log.debug ("targetPath: " + str (targetPath))
-                self.moveFile(sourcePath, filename, targetPath)
+                self.log.debug ("targetPath: " + str (targetFullPath))
+                self.moveFile(sourcePath, filename, targetFullPath)
 
                 # #show filesystem statistics
                 # try:
@@ -132,11 +134,11 @@ class Cleaner():
                 # except Exception, f:
                 #     logging.warning("Unable to get filesystem statistics")
                 #     logging.debug("Error was: " + str(f))
-                self.log.debug("file removed: " + str(sourcePath))
+                self.log.debug("file removed: " + str(sourceFullPath))
                 self.log.debug("removing source file...success.")
 
             except Exception, e:
-                errorMessage = "Unable to remove source file: " + str (sourcePath)
+                errorMessage = "Unable to remove source file: " + str (sourceFullPath)
                 self.log.error(errorMessage)
                 trace = traceback.format_exc()
                 self.log.error("Error was: " + str(trace))
