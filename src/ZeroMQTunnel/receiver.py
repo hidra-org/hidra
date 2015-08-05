@@ -171,12 +171,12 @@ class FileReceiver:
 
         """
         targetFilename     = configDict["filename"]
-        targetRelativePath = configDict["relativeParent"]
+        targetRelativePath = configDict["relativePath"]
 
         if targetRelativePath is '' or targetRelativePath is None:
             targetPath = self.getOutputDir()
         else:
-            targetPath = os.path.join(self.getOutputDir(), targetRelativePath)
+            targetPath = os.path.normpath(self.getOutputDir() + os.sep + targetRelativePath)
 
         targetFilepath =  os.path.join(targetPath, targetFilename)
 
@@ -192,7 +192,7 @@ class FileReceiver:
         generates path where target file will saved to.
 
         """
-        targetRelativePath = configDict["relativeParent"]
+        targetRelativePath = configDict["relativePath"]
         outputDir = self.getOutputDir()
 
         targetPath = os.path.join(outputDir, targetRelativePath)
