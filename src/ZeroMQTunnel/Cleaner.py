@@ -70,8 +70,7 @@ class Cleaner():
             self.log.error("Stopping cleanerProcess due to unknown error condition.")
             self.log.debug("Error was: " + str(trace))
 
-        self.zmqCleanerSocket.close(0)
-        self.zmqContextForCleaner.destroy()
+        self.stop()
 
 
     def getLogger(self):
