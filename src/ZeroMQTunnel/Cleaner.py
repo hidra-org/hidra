@@ -89,6 +89,9 @@ class Cleaner():
             except Exception as e:
                 self.log.error("Error in receiving job: " + str(e))
 
+            if workload == "STOP":
+                self.log.info("Stopping cleaner")
+                self.stop()
 
             #transform to dictionary
             try:
@@ -219,3 +222,8 @@ class Cleaner():
             raise Exception("maxAttemptsToRemoveFile reached (value={ATTEMPT}). Unable to remove file '{FILE}'.".format(ATTEMPT=str(iterationCount),
                                                                                                                             FILE=filepath))
 
+    def stop(self):
+        self.debug("Closing socket")
+        self.zmqCleanerSocket.close(0)
+        self.debug("Destroying context")
+        self.zmqContextForCleaner.destroy()

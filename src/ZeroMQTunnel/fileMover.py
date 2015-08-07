@@ -19,7 +19,8 @@ import helperScript
 from Cleaner import Cleaner
 
 
-DEFAULT_CHUNK_SIZE = 1048576
+#DEFAULT_CHUNK_SIZE = 1073741824 # = 1024*1024*1024
+DEFAULT_CHUNK_SIZE = 1048576 # = 1024*1024
 
 
 #
@@ -86,17 +87,13 @@ class WorkerProcess():
             self.process()
         except KeyboardInterrupt:
             # trace = traceback.format_exc()
-            self.log.debug("KeyboardInterrupt detected. Shutting down workerProcess.")
+            self.log.debug("KeyboardInterrupt detected. Shutting down workerProcess " + str(self.id) + ".")
         else:
             trace = traceback.format_exc()
             self.log.error("Stopping workerProcess due to unknown error condition.")
             self.log.debug("Error was: " + str(trace))
-
-        self.log.info("Closing sockets")
-        self.zmqDataStreamSocket.close(0)
-        self.routerSocket.close(0)
-        self.cleanerSocket.close(0)
-        self.zmqContextForWorker.destroy()
+        finally:
+            self.stop()
 
 
     def process(self):
@@ -317,6 +314,7 @@ class WorkerProcess():
 
             #close file
             fileDescriptor.close()
+            print "sending file: ", sourceFilePathFull, "done"
 
             # self.zmqDataStreamSocket.send_multipart(multipartMessage)
             self.log.debug("Passing multipart-message...done.")
@@ -390,6 +388,16 @@ class WorkerProcess():
         highWaterMark = 85
         if int(freeUserSpaceLeft_percent) >= int(highWaterMark):
             self.log.warning("Running low in disk space! " + str(int(freeUserSpaceLeft_percent)) + "% free disk space left.")
+
+
+    def stop(self):
+        self.log.debug("Sending stop singnal to cleaner from worker" + str(self.id))
+        self.cleanerSocket.send("STOP")
+        self.log.info("Closing sockets for worker " + str(self.id))
+        self.zmqDataStreamSocket.close(0)
+        self.routerSocket.close(0)
+        self.cleanerSocket.close(0)
+        self.zmqContextForWorker.destroy()
 
 
 
@@ -555,6 +563,7 @@ class FileMover():
 
 
     def stop(self):
+        self.log.debug("Closing sockets")
         self.messageSocket.close(0)
         self.routerSocket.close(0)
 
@@ -643,6 +652,8 @@ if __name__ == '__main__':
         logging.error(sys.exc_info())
         logging.error("shutting down zeromq...failed.")
 
+    # give the other threads time to close the sockets
+    time.sleep(0.1)
     try:
         logging.debug("closing zmqContext...")
         zmqContext.destroy()

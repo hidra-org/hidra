@@ -15,7 +15,7 @@ from InotifyDetector import InotifyDetector as EventDetector
 #  --------------------------  class: DirectoryWatcherHandler  --------------------------------------
 #
 
-class DirectoryWatcherHandler():
+class DirectoryWatcher():
     patterns                   = ["*"]
     zmqContext                 = None
     externalContext            = None    # if the context was created outside this class or not
@@ -25,11 +25,15 @@ class DirectoryWatcherHandler():
     watchFolder                = None
     eventDetector              = None
     monitoredDefaultSubfolders = ["commissioning", "current", "local"]
+    log                        = None
 
 
     def __init__(self, fileEventServerIp, watchFolder, fileEventServerPort, zmqContext = None):
-        logging.debug("DirectoryWatcherHandler: __init__()")
-        logging.info("registering zmq context")
+
+        self.log = self.getLogger()
+
+        self.log.debug("DirectoryWatcherHandler: __init__()")
+        self.log.info("registering zmq context")
         if zmqContext:
             self.zmqContext      = zmqContext
             self.externalContext = True
@@ -52,7 +56,7 @@ class DirectoryWatcherHandler():
         self.messageSocket = self.zmqContext.socket(zmq.PUSH)
         zmqSocketStr = "tcp://" + self.fileEventServerIp + ":" + str(self.fileEventServerPort)
         self.messageSocket.connect(zmqSocketStr)
-        logging.debug("Connecting to ZMQ socket: " + str(zmqSocketStr))
+        self.log.debug("Connecting to ZMQ socket: " + str(zmqSocketStr))
 
         self.process()
 
@@ -77,33 +81,33 @@ class DirectoryWatcherHandler():
 
         #build message dict
         try:
-            logging.debug("Building message dict...")
+            self.log.debug("Building message dict...")
             messageDict = { "filename"     : filename,
                             "sourcePath"   : sourcePath,
                             "relativePath" : relativePath
                             }
 
             messageDictJson = json.dumps(messageDict)  #sets correct escape characters
-            logging.debug("Building message dict...done.")
+            self.log.debug("Building message dict...done.")
         except Exception, e:
             errorMessage = "Unable to assemble message dict."
-            logging.error(errorMessage)
-            logging.debug("Error was: " + str(e))
-            logging.debug("Building message dict...failed.")
+            self.log.error(errorMessage)
+            self.log.debug("Error was: " + str(e))
+            self.log.debug("Building message dict...failed.")
             raise Exception(e)
 
 
         #send message
         try:
-            logging.info("Sending message...")
-            logging.debug(str(messageDictJson))
+            self.log.info("Sending message...")
+            self.log.debug(str(messageDictJson))
             targetSocket.send(messageDictJson)
-            logging.info("Sending message...done.")
+            self.log.info("Sending message...done.")
         except KeyboardInterrupt:
-            logging.error("Sending message...failed because of KeyboardInterrupt.")
+            self.log.error("Sending message...failed because of KeyboardInterrupt.")
         except Exception, e:
-            logging.error("Sending message...failed.")
-            logging.debug("Error was: " + str(e))
+            self.log.error("Sending message...failed.")
+            self.log.debug("Error was: " + str(e))
             raise Exception(e)
 
 
@@ -120,8 +124,8 @@ class DirectoryWatcherHandler():
                         # }
                         workloadList = self.eventDetector.getNewEvent()
                     except Exception, e:
-                        logging.error("Invalid fileEvent message received.")
-                        logging.debug("Error was: " + str(e))
+                        self.log.error("Invalid fileEvent message received.")
+                        self.log.debug("Error was: " + str(e))
                         #skip all further instructions and continue with next iteration
                         continue
 
@@ -136,7 +140,7 @@ class DirectoryWatcherHandler():
                         # send the file to the fileMover
                         self.passFileToZeromq(self.messageSocket, sourcePath, relativePath, filename)
             except KeyboardInterrupt:
-                logging.info("Keyboard interruption detected. Shuting down")
+                self.log.info("Keyboard interruption detected. Shuting down")
         finally:
             self.eventDetector.stop()
 
@@ -235,8 +239,7 @@ if __name__ == '__main__':
 
     fileEventServerIp   = str(arguments.pushServerIp)
     fileEventServerPort = str(arguments.pushServerPort)
-    communicationWithLcyncdIp   = "127.0.0.1"
-    communicationWithLcyncdPort = "6080"
+
 
     #enable logging
     helperScript.initLogging(logfileFilePath, verbose)
@@ -244,5 +247,5 @@ if __name__ == '__main__':
 
     #run only once, skipping file events
     #just get a list of all files in watchDir and pass to zeromq
-    directoryWatcher = DirectoryWatcherHandler(fileEventServerIp, watchFolder, fileEventServerPort)
+    directoryWatcher = DirectoryWatcher(fileEventServerIp, watchFolder, fileEventServerPort)
 

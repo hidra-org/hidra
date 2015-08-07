@@ -244,6 +244,7 @@ class FileReceiver:
                 for chunk in payload:
                     newFile.write(chunk)
             newFile.close()
+#            print "received file: ", targetFilepath
         except Exception, e:
             errorMessage = "unable to append data to file."
             self.log.error(errorMessage)
