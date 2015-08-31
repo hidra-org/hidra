@@ -9,7 +9,6 @@ import zmq
 import os
 import logging
 import sys
-import json
 import traceback
 from multiprocessing import Process, freeze_support
 import subprocess
@@ -18,9 +17,12 @@ import shutil
 import helperScript
 from Cleaner import Cleaner
 
+BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname (  os.path.realpath ( __file__ ) ) ) )
+CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
-#DEFAULT_CHUNK_SIZE = 1073741824 # = 1024*1024*1024
-DEFAULT_CHUNK_SIZE = 1048576 # = 1024*1024
+sys.path.append ( CONFIG_PATH )
+
+from config import defaultConfigSender
 
 
 #
@@ -406,8 +408,7 @@ class WorkerProcess():
 #
 class FileMover():
     zmqContext            = None
-    bindingIpForSocket    = None
-    zqmFileEventServerIp  = "127.0.0.1"  # serverIp for incoming messages
+    fileEventIp           = "127.0.0.1"  # serverIp for incoming messages
     tcpPort_messageStream = "6060"
     dataStreamIp          = "127.0.0.1"  # ip of dataStream-socket to push new files to
     dataStreamPort        = "6061"       # port number of dataStream-socket to push new files to
@@ -426,7 +427,7 @@ class FileMover():
     log                   = None
 
 
-    def __init__(self, bindingIpForSocket, bindingPortForSocket, dataStreamIp, dataStreamPort, parallelDataStreams,
+    def __init__(self, fileEventIp, fileEventPort, dataStreamIp, dataStreamPort, parallelDataStreams,
                  chunkSize, zmqCleanerIp, zmqCleanerPort,
                  fileWaitTimeInMs, fileMaxWaitTimeInMs,
                  context = None):
@@ -434,8 +435,8 @@ class FileMover():
         assert isinstance(context, zmq.sugar.context.Context)
 
         self.zmqContext            = context or zmq.Context()
-        self.bindingIpForSocket    = bindingIpForSocket
-        self.tcpPort_messageStream = bindingPortForSocket
+        self.fileEventIp           = fileEventIp
+        self.tcpPort_messageStream = fileEventPort
         self.dataStreamIp          = dataStreamIp
         self.dataStreamPort        = dataStreamPort
         self.parallelDataStreams   = parallelDataStreams
@@ -451,7 +452,7 @@ class FileMover():
 
         #create zmq sockets. one for incoming file events, one for passing fileObjects to
         self.messageSocket         = self.zmqContext.socket(zmq.PULL)
-        connectionStrMessageSocket = "tcp://" + self.bindingIpForSocket + ":%s" % self.tcpPort_messageStream
+        connectionStrMessageSocket = "tcp://" + self.fileEventIp + ":%s" % self.tcpPort_messageStream
         self.messageSocket.bind(connectionStrMessageSocket)
         self.log.debug("messageSocket started for '" + connectionStrMessageSocket + "'")
 
@@ -567,28 +568,40 @@ class FileMover():
         self.messageSocket.close(0)
         self.routerSocket.close(0)
 
-
-
 def argumentParsing():
+    defConf = defaultConfigSender()
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--logfilePath"   , type=str, help="path where logfile will be created", default="/tmp/log/")
-    parser.add_argument("--logfileName"   , type=str, help="filename used for logging", default="fileMover.log")
-    parser.add_argument("--bindingIpForSocket"  , type=str, help="local ip to bind to", default="127.0.0.1")
-    parser.add_argument("--bindingPortForSocket", type=str, help="local port to bind to", default="6060")
-    parser.add_argument("--dataStreamIp"  , type=str, help="ip of dataStream-socket to push new files to", default="127.0.0.1")
-    parser.add_argument("--dataStreamPort", type=str, help="port number of dataStream-socket to push new files to", default="6061")
-    parser.add_argument("--cleanerTargetPath", type=str, help="Target to move the files into")
-    parser.add_argument("--zmqCleanerIp"  , type=str, help="zmq-pull-socket which deletes given files", default="127.0.0.1")
-    parser.add_argument("--zmqCleanerPort", type=str, help="zmq-pull-socket which deletes given files", default="6063")
-    parser.add_argument("--parallelDataStreams", type=int, help="number of parallel data streams. default is 1", default="1")
-    parser.add_argument("--chunkSize",      type=int, help="chunk size of file-parts getting send via zmq", default=DEFAULT_CHUNK_SIZE)
-    parser.add_argument("--verbose"       ,           help="more verbose output", action="store_true")
+    parser.add_argument("--logfilePath"        , type=str, default=defConf.logfilePath        , help="path where logfile will be created (default=" + str(defConf.logfilePath) + ")")
+    parser.add_argument("--logfileName"        , type=str, default=defConf.logfileName        , help="filename used for logging (default=" + str(defConf.logfileName) + ")")
+    parser.add_argument("--verbose"            ,           action="store_true"                , help="more verbose output")
 
-    parser.add_argument("--fileWaitTimeInMs",    type=int, help=argparse.SUPPRESS, default=2000)
-    parser.add_argument("--fileMaxWaitTimeInMs", type=int, help=argparse.SUPPRESS, default=10000)
+    parser.add_argument("--fileEventIp"        , type=str, default=defConf.fileEventIp        , help="zmq endpoint (IP-address) to send file events to (default=" + str(defConf.fileEventIp) + ")")
+    parser.add_argument("--fileEventPort"      , type=str, default=defConf.fileEventPort      , help="zmq endpoint (port) to send file events to (default=" + str(defConf.fileEventPort) + ")")
 
+    parser.add_argument("--dataStreamIp"       , type=str, default=defConf.dataStreamIp       , help="ip of dataStream-socket to push new files to (default=" + str(defConf.dataStreamIp) + ")")
+    parser.add_argument("--dataStreamPort"     , type=str, default=defConf.dataStreamPort     , help="port number of dataStream-socket to push new files to (default=" + str(defConf.dataStreamPort) + ")")
+    parser.add_argument("--cleanerTargetPath"  , type=str, default=defConf.cleanerTargetPath  , help="Target to move the files into (default=" + str(defConf.cleanerTargetPath) + ")")
+    parser.add_argument("--zmqCleanerIp"       , type=str, default=defConf.zmqCleanerIp       , help="zmq-pull-socket ip which deletes/moves given files (default=" + str(defConf.zmqCleanerIp) + ")")
+    parser.add_argument("--zmqCleanerPort"     , type=str, default=defConf.zmqCleanerPort     , help="zmq-pull-socket port which deletes/moves given files (default=" + str(defConf.zmqCleanerPort) + ")")
+    parser.add_argument("--parallelDataStreams", type=int, default=defConf.parallelDataStreams, help="number of parallel data streams (default=" + str(defConf.parallelDataStreams) + ")")
+    parser.add_argument("--chunkSize"          , type=int, default=defConf.chunkSize          , help="chunk size of file-parts getting send via zmq (default=" + str(defConf.chunkSize) + ")")
+
+    parser.add_argument("--fileWaitTimeInMs"   , type=int, default=2000                       , help=argparse.SUPPRESS)
+    parser.add_argument("--fileMaxWaitTimeInMs", type=int, default=10000                      , help=argparse.SUPPRESS)
 
     arguments = parser.parse_args()
+
+    # TODO: check watchFolder-directory for existance
+
+    logfilePath = str(arguments.logfilePath)
+    logfileName = str(arguments.logfileName)
+
+    #check logfile-path for existance
+    helperScript.checkFolderExistance(logfilePath)
+
+    #error if logfile cannot be written
+    helperScript.checkLogFileWritable(logfilePath, logfileName)
 
     return arguments
 
@@ -597,21 +610,23 @@ def argumentParsing():
 if __name__ == '__main__':
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
     arguments = argumentParsing()
-    logFile = str(arguments.logfilePath) + "/" + str(arguments.logfileName)
 
-    bindingIpForSocket   = str(arguments.bindingIpForSocket)
-    bindingPortForSocket = str(arguments.bindingPortForSocket)
-    dataStreamIp         = str(arguments.dataStreamIp)
-    dataStreamPort       = str(arguments.dataStreamPort)
     logfilePath          = str(arguments.logfilePath)
     logfileName          = str(arguments.logfileName)
-    parallelDataStreams  = str(arguments.parallelDataStreams)
+    logfileFullPath      = os.path.join(logfilePath, logfileName)
+    verbose              = arguments.verbose
+
+    fileEventIp          = str(arguments.fileEventIp)
+    fileEventPort        = str(arguments.fileEventPort)
+
+    dataStreamIp         = str(arguments.dataStreamIp)
+    dataStreamPort       = str(arguments.dataStreamPort)
     cleanerTargetPath    = str(arguments.cleanerTargetPath)
     zmqCleanerIp         = str(arguments.zmqCleanerIp)
     zmqCleanerPort       = str(arguments.zmqCleanerPort)
-    chunkSize            = arguments.chunkSize
-    verbose              = arguments.verbose
-    logfileFullPath      = os.path.join(logfilePath, logfileName)
+    parallelDataStreams  = str(arguments.parallelDataStreams)
+    chunkSize            = int(arguments.chunkSize)
+
     fileWaitTimeInMs     = float(arguments.fileWaitTimeInMs)
     fileMaxWaitTimeInMs  = float(arguments.fileMaxWaitTimeInMs)
 
@@ -631,7 +646,7 @@ if __name__ == '__main__':
     logging.debug("cleaner thread started")
 
     #start new fileMover
-    fileMover = FileMover(bindingIpForSocket, bindingPortForSocket, dataStreamIp, dataStreamPort,
+    fileMover = FileMover(fileEventIp, fileEventPort, dataStreamIp, dataStreamPort,
                           parallelDataStreams, chunkSize,
                           zmqCleanerIp, zmqCleanerPort,
                           fileWaitTimeInMs, fileMaxWaitTimeInMs,

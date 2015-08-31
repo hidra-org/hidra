@@ -20,15 +20,15 @@ class DirectoryWatcher():
     zmqContext                 = None
     externalContext            = None    # if the context was created outside this class or not
     messageSocket              = None    # strings only, control plane
-    fileEventServerIp          = None
-    fileEventServerPort        = None
+    fileEventIp                = None
+    fileEventPort              = None
     watchFolder                = None
     eventDetector              = None
     monitoredDefaultSubfolders = ["commissioning", "current", "local"]
     log                        = None
 
 
-    def __init__(self, fileEventServerIp, watchFolder, fileEventServerPort, zmqContext = None):
+    def __init__(self, fileEventIp, watchFolder, fileEventPort, zmqContext = None):
 
         self.log = self.getLogger()
 
@@ -42,8 +42,8 @@ class DirectoryWatcher():
             self.externalContext = False
 
         self.watchFolder         = os.path.normpath(watchFolder)
-        self.fileEventServerIp   = fileEventServerIp
-        self.fileEventServerPort = fileEventServerPort
+        self.fileEventIp   = fileEventIp
+        self.fileEventPort = fileEventPort
 
 
         monitoredFolders        = [self.watchFolder + os.sep + folder for folder in self.monitoredDefaultSubfolders]
@@ -54,7 +54,7 @@ class DirectoryWatcher():
 
         #create zmq sockets
         self.messageSocket = self.zmqContext.socket(zmq.PUSH)
-        zmqSocketStr = "tcp://" + self.fileEventServerIp + ":" + str(self.fileEventServerPort)
+        zmqSocketStr = "tcp://" + self.fileEventIp + ":" + str(self.fileEventPort)
         self.messageSocket.connect(zmqSocketStr)
         self.log.debug("Connecting to ZMQ socket: " + str(zmqSocketStr))
 
@@ -156,18 +156,18 @@ class DirectoryWatcher():
 def getDefaultConfig():
     if helperScript.isWindows():
         defaultConfigDict = {
-                            "logfilePath"    : "C:\\",
-                            "logfileName"    : "watchFolder.log",
-                            "pushServerPort" : "6060",
-                            "pushServerIp"   : "127.0.0.1",
+                            "logfilePath"   : "C:\\",
+                            "logfileName"   : "watchFolder.log",
+                            "fileEventPort" : "6060",
+                            "fileEventIp"   : "127.0.0.1",
                         }
 
     elif helperScript.isLinux():
         defaultConfigDict = {
-                            "logfilePath"    : "/tmp/log/",
-                            "logfileName"    : "watchFolder.log",
-                            "pushServerPort" : "6060",
-                            "pushServerIp"   : "127.0.0.1",
+                            "logfilePath"   : "/tmp/log/",
+                            "logfileName"   : "watchFolder.log",
+                            "fileEventPort" : "6060",
+                            "fileEventIp"   : "127.0.0.1",
                         }
     else:
         return ""
@@ -181,15 +181,15 @@ def argumentParsing():
     defaultConfig = getDefaultConfig()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--watchFolder" , type=str, help="folder you want to monitor for changes")
+    parser.add_argument("--watchFolder"  , type=str, help="folder you want to monitor for changes")
     parser.add_argument("--staticNotification",
                         help="disables new file-events. just sends a list of currently available files within the defined 'watchFolder'.",
                         action="store_true")
-    parser.add_argument("--logfilePath" , type=str, help="path where logfile will be created", default=defaultConfig["logfilePath"])
-    parser.add_argument("--logfileName" , type=str, help="filename used for logging", default=defaultConfig["logfileName"])
-    parser.add_argument("--pushServerIp", type=str, help="zqm endpoint (IP-address) to send file events to", default=defaultConfig["pushServerIp"])
-    parser.add_argument("--pushServerPort", type=str, help="zqm endpoint (port) to send file events to", default=defaultConfig["pushServerPort"])
-    parser.add_argument("--verbose"     ,           help="more verbose output", action="store_true")
+    parser.add_argument("--logfilePath"  , type=str, help="path where logfile will be created"              , default=defaultConfig["logfilePath"])
+    parser.add_argument("--logfileName"  , type=str, help="filename used for logging"                       , default=defaultConfig["logfileName"])
+    parser.add_argument("--fileEventIp"  , type=str, help="zqm endpoint (IP-address) to send file events to", default=defaultConfig["fileEventIp"])
+    parser.add_argument("--fileEventPort", type=str, help="zqm endpoint (port) to send file events to"      , default=defaultConfig["fileEventPort"])
+    parser.add_argument("--verbose"      ,           help="more verbose output", action="store_true")
 
     arguments = parser.parse_args()
 
@@ -198,7 +198,7 @@ def argumentParsing():
     watchFolder = str(arguments.watchFolder)
     assert isinstance(type(watchFolder), type(str))
 
-    #exit with error if now watchFolder path was provided
+    #exit with error if no watchFolder path was provided
     if (watchFolder == None) or (watchFolder == "") or (watchFolder == "None"):
         print """You need to set the following option:
 --watchFolder {FOLDER}
@@ -237,8 +237,8 @@ if __name__ == '__main__':
     verbose     = arguments.verbose
     logfileFilePath = os.path.join(arguments.logfilePath, arguments.logfileName)
 
-    fileEventServerIp   = str(arguments.pushServerIp)
-    fileEventServerPort = str(arguments.pushServerPort)
+    fileEventIp   = str(arguments.fileEventIp)
+    fileEventPort = str(arguments.fileEventPort)
 
 
     #enable logging
@@ -247,5 +247,5 @@ if __name__ == '__main__':
 
     #run only once, skipping file events
     #just get a list of all files in watchDir and pass to zeromq
-    directoryWatcher = DirectoryWatcher(fileEventServerIp, watchFolder, fileEventServerPort)
+    directoryWatcher = DirectoryWatcher(fileEventIp, watchFolder, fileEventPort)
 
