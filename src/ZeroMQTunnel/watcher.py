@@ -42,13 +42,11 @@ class DirectoryWatcher():
             self.externalContext = False
 
         self.watchFolder         = os.path.normpath(watchFolder)
-        self.fileEventIp   = fileEventIp
-        self.fileEventPort = fileEventPort
+        self.fileEventIp         = fileEventIp
+        self.fileEventPort       = fileEventPort
 
-
-        monitoredFolders        = [self.watchFolder + os.sep + folder for folder in self.monitoredDefaultSubfolders]
+        monitoredFolders         = [self.watchFolder + os.sep + folder for folder in self.monitoredDefaultSubfolders]
         self.eventDetector       = EventDetector(monitoredFolders)
-
 
         assert isinstance(self.zmqContext, zmq.sugar.context.Context)
 
@@ -143,52 +141,27 @@ class DirectoryWatcher():
                 self.log.info("Keyboard interruption detected. Shuting down")
         finally:
             self.eventDetector.stop()
+            self.stop()
 
-        self.shuttingDown()
 
-
-    def shuttingDown(self):
+    def stop(self):
         self.messageSocket.close(0)
         if not self.externalContext:
             self.zmqContext.destroy()
 
 
-def getDefaultConfig():
-    if helperScript.isWindows():
-        defaultConfigDict = {
-                            "logfilePath"   : "C:\\",
-                            "logfileName"   : "watchFolder.log",
-                            "fileEventPort" : "6060",
-                            "fileEventIp"   : "127.0.0.1",
-                        }
-
-    elif helperScript.isLinux():
-        defaultConfigDict = {
-                            "logfilePath"   : "/tmp/log/",
-                            "logfileName"   : "watchFolder.log",
-                            "fileEventPort" : "6060",
-                            "fileEventIp"   : "127.0.0.1",
-                        }
-    else:
-        return ""
-
-    return defaultConfigDict
-
-
 
 def argumentParsing():
-
-    defaultConfig = getDefaultConfig()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--watchFolder"  , type=str, help="folder you want to monitor for changes")
     parser.add_argument("--staticNotification",
                         help="disables new file-events. just sends a list of currently available files within the defined 'watchFolder'.",
                         action="store_true")
-    parser.add_argument("--logfilePath"  , type=str, help="path where logfile will be created"              , default=defaultConfig["logfilePath"])
-    parser.add_argument("--logfileName"  , type=str, help="filename used for logging"                       , default=defaultConfig["logfileName"])
-    parser.add_argument("--fileEventIp"  , type=str, help="zqm endpoint (IP-address) to send file events to", default=defaultConfig["fileEventIp"])
-    parser.add_argument("--fileEventPort", type=str, help="zqm endpoint (port) to send file events to"      , default=defaultConfig["fileEventPort"])
+    parser.add_argument("--logfilePath"  , type=str, help="path where logfile will be created"              , default="/tmp/log/")
+    parser.add_argument("--logfileName"  , type=str, help="filename used for logging"                       , default="watchFolder.log")
+    parser.add_argument("--fileEventIp"  , type=str, help="zqm endpoint (IP-address) to send file events to", default="127.0.0.1")
+    parser.add_argument("--fileEventPort", type=str, help="zqm endpoint (port) to send file events to"      , default="6060")
     parser.add_argument("--verbose"      ,           help="more verbose output", action="store_true")
 
     arguments = parser.parse_args()

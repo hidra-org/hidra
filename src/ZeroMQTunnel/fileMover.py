@@ -15,6 +15,7 @@ import subprocess
 import json
 import shutil
 import helperScript
+from watcher import DirectoryWatcher
 from Cleaner import Cleaner
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname (  os.path.realpath ( __file__ ) ) ) )
@@ -393,7 +394,7 @@ class WorkerProcess():
 
 
     def stop(self):
-        self.log.debug("Sending stop singnal to cleaner from worker" + str(self.id))
+        self.log.debug("Sending stop signal to cleaner from worker" + str(self.id))
         self.cleanerSocket.send("STOP")
         self.log.info("Closing sockets for worker " + str(self.id))
         self.zmqDataStreamSocket.close(0)
@@ -568,6 +569,7 @@ class FileMover():
         self.messageSocket.close(0)
         self.routerSocket.close(0)
 
+
 def argumentParsing():
     defConf = defaultConfigSender()
 
@@ -576,6 +578,7 @@ def argumentParsing():
     parser.add_argument("--logfileName"        , type=str, default=defConf.logfileName        , help="filename used for logging (default=" + str(defConf.logfileName) + ")")
     parser.add_argument("--verbose"            ,           action="store_true"                , help="more verbose output")
 
+    parser.add_argument("--watchFolder"        , type=str, default=defConf.watchFolder        , help="folder you want to monitor for changes")
     parser.add_argument("--fileEventIp"        , type=str, default=defConf.fileEventIp        , help="zmq endpoint (IP-address) to send file events to (default=" + str(defConf.fileEventIp) + ")")
     parser.add_argument("--fileEventPort"      , type=str, default=defConf.fileEventPort      , help="zmq endpoint (port) to send file events to (default=" + str(defConf.fileEventPort) + ")")
 
@@ -587,15 +590,17 @@ def argumentParsing():
     parser.add_argument("--parallelDataStreams", type=int, default=defConf.parallelDataStreams, help="number of parallel data streams (default=" + str(defConf.parallelDataStreams) + ")")
     parser.add_argument("--chunkSize"          , type=int, default=defConf.chunkSize          , help="chunk size of file-parts getting send via zmq (default=" + str(defConf.chunkSize) + ")")
 
-    parser.add_argument("--fileWaitTimeInMs"   , type=int, default=2000                       , help=argparse.SUPPRESS)
-    parser.add_argument("--fileMaxWaitTimeInMs", type=int, default=10000                      , help=argparse.SUPPRESS)
+    parser.add_argument("--fileWaitTimeInMs"   , type=int, default=defConf.fileWaitTimeInMs   , help=argparse.SUPPRESS)
+    parser.add_argument("--fileMaxWaitTimeInMs", type=int, default=defConf.fileMaxWaitTimeInMs, help=argparse.SUPPRESS)
 
     arguments = parser.parse_args()
 
-    # TODO: check watchFolder-directory for existance
-
+    watchFolder = str(arguments.watchFolder)
     logfilePath = str(arguments.logfilePath)
     logfileName = str(arguments.logfileName)
+
+    #check watchFolder for existance
+    helperScript.checkFolderExistance(watchFolder)
 
     #check logfile-path for existance
     helperScript.checkFolderExistance(logfilePath)
@@ -611,24 +616,25 @@ if __name__ == '__main__':
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
     arguments = argumentParsing()
 
-    logfilePath          = str(arguments.logfilePath)
-    logfileName          = str(arguments.logfileName)
-    logfileFullPath      = os.path.join(logfilePath, logfileName)
-    verbose              = arguments.verbose
+    logfilePath         = str(arguments.logfilePath)
+    logfileName         = str(arguments.logfileName)
+    logfileFullPath     = os.path.join(logfilePath, logfileName)
+    verbose             = arguments.verbose
 
-    fileEventIp          = str(arguments.fileEventIp)
-    fileEventPort        = str(arguments.fileEventPort)
+    watchFolder         = str(arguments.watchFolder)
+    fileEventIp         = str(arguments.fileEventIp)
+    fileEventPort       = str(arguments.fileEventPort)
 
-    dataStreamIp         = str(arguments.dataStreamIp)
-    dataStreamPort       = str(arguments.dataStreamPort)
-    cleanerTargetPath    = str(arguments.cleanerTargetPath)
-    zmqCleanerIp         = str(arguments.zmqCleanerIp)
-    zmqCleanerPort       = str(arguments.zmqCleanerPort)
-    parallelDataStreams  = str(arguments.parallelDataStreams)
-    chunkSize            = int(arguments.chunkSize)
+    dataStreamIp        = str(arguments.dataStreamIp)
+    dataStreamPort      = str(arguments.dataStreamPort)
+    cleanerTargetPath   = str(arguments.cleanerTargetPath)
+    zmqCleanerIp        = str(arguments.zmqCleanerIp)
+    zmqCleanerPort      = str(arguments.zmqCleanerPort)
+    parallelDataStreams = str(arguments.parallelDataStreams)
+    chunkSize           = int(arguments.chunkSize)
 
-    fileWaitTimeInMs     = float(arguments.fileWaitTimeInMs)
-    fileMaxWaitTimeInMs  = float(arguments.fileMaxWaitTimeInMs)
+    fileWaitTimeInMs    = float(arguments.fileWaitTimeInMs)
+    fileMaxWaitTimeInMs = float(arguments.fileMaxWaitTimeInMs)
 
 
     #enable logging
@@ -640,6 +646,9 @@ if __name__ == '__main__':
     zmqContext = zmq.Context.instance()
     logging.info("registering zmq global context")
 
+    watcherThread = Process(target=DirectoryWatcher, args=(fileEventIp, watchFolder, fileEventPort, zmqContext))
+    watcherThread.start()
+    logging.debug("watcher thread started")
 
     cleanerThread = Process(target=Cleaner, args=(cleanerTargetPath, zmqCleanerIp, zmqCleanerPort, zmqContext))
     cleanerThread.start()

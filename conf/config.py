@@ -39,7 +39,7 @@ class defaultConfigSender():
     fileMaxWaitTimeInMs = 10000
 
     #filename used for logging
-    logfileName         = "watchFolder.log"
+    logfileName         = "zmq_sender.log"
 
     # path where logfile will be created
     if helperScript.isWindows():
