@@ -25,6 +25,7 @@ sys.path.append ( CONFIG_PATH )
 
 from config import defaultConfigSender
 
+useLiveViewer = True
 
 #
 #  --------------------------  class: WorkerProcess  --------------------------------------
@@ -96,6 +97,7 @@ class WorkerProcess():
 
 
     def process(self):
+        global useLiveViewer
         """
           sends a 'ready' to a broker and receives a 'job' to process.
           The 'job' will be to pass the file of an fileEvent to the
@@ -138,42 +140,44 @@ class WorkerProcess():
                 break
             jobCount += 1
 
-            #convert fileEventMessage back to a dictionary
-            fileEventMessageDict = None
-            try:
-                fileEventMessageDict = json.loads(str(workload))
-                self.log.debug("str(messageDict) = " + str(fileEventMessageDict) + "  type(messageDict) = " + str(type(fileEventMessageDict)))
-            except Exception, e:
-                errorMessage = "Unable to convert message into a dictionary."
-                self.log.error(errorMessage)
-                self.log.debug("Error was: " + str(e))
+            print useLiveViewer
+            if useLiveViewer:
+                #convert fileEventMessage back to a dictionary
+                fileEventMessageDict = None
+                try:
+                    fileEventMessageDict = json.loads(str(workload))
+                    self.log.debug("str(messageDict) = " + str(fileEventMessageDict) + "  type(messageDict) = " + str(type(fileEventMessageDict)))
+                except Exception, e:
+                    errorMessage = "Unable to convert message into a dictionary."
+                    self.log.error(errorMessage)
+                    self.log.debug("Error was: " + str(e))
 
 
-            #extract fileEvent metadata
-            try:
-                #TODO validate fileEventMessageDict dict
-                filename     = fileEventMessageDict["filename"]
-                sourcePath   = fileEventMessageDict["sourcePath"]
-                relativePath = fileEventMessageDict["relativePath"]
-            except Exception, e:
-                self.log.error("Invalid fileEvent message received.")
-                self.log.debug("Error was: " + str(e))
-                self.log.debug("fileEventMessageDict=" + str(fileEventMessageDict))
-                #skip all further instructions and continue with next iteration
-                continue
+                #extract fileEvent metadata
+                try:
+                    #TODO validate fileEventMessageDict dict
+                    filename     = fileEventMessageDict["filename"]
+                    sourcePath   = fileEventMessageDict["sourcePath"]
+                    relativePath = fileEventMessageDict["relativePath"]
+                except Exception, e:
+                    self.log.error("Invalid fileEvent message received.")
+                    self.log.debug("Error was: " + str(e))
+                    self.log.debug("fileEventMessageDict=" + str(fileEventMessageDict))
+                    #skip all further instructions and continue with next iteration
+                    continue
 
-            #passing file to data-messagPipe
-            try:
-                self.log.debug("worker-" + str(id) + ": passing new file to data-messagePipe...")
-                self.passFileToDataStream(filename, sourcePath, relativePath)
-                self.log.debug("worker-" + str(id) + ": passing new file to data-messagePipe...success.")
-            except Exception, e:
-                errorMessage = "Unable to pass new file to data-messagePipe."
-                self.log.error(errorMessage)
-                self.log.error("Error was: " + str(e))
-                self.log.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
-                #skip all further instructions and continue with next iteration
-                continue
+                #passing file to data-messagPipe
+                try:
+                    self.log.debug("worker-" + str(id) + ": passing new file to data-messagePipe...")
+                    self.passFileToDataStream(filename, sourcePath, relativePath)
+                    self.log.debug("worker-" + str(id) + ": passing new file to data-messagePipe...success.")
+                except Exception, e:
+                    errorMessage = "Unable to pass new file to data-messagePipe."
+                    self.log.error(errorMessage)
+                    self.log.error("Error was: " + str(e))
+                    self.log.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
+                    #skip all further instructions and continue with next iteration
+                    continue
 
 
             #send remove-request to message pipe
@@ -194,16 +198,6 @@ class WorkerProcess():
     def getLogger(self):
         logger = logging.getLogger("workerProcess")
         return logger
-
-
-    def getFileWaitTimeInMs(self):
-        waitTime = 2000.0
-        return waitTime
-
-
-    def getFileMaxWaitTimeInMs(self):
-        maxWaitTime = 10000.0
-        return maxWaitTime
 
 
     def passFileToDataStream(self, filename, sourcePath, relativePath):
@@ -381,14 +375,16 @@ class FileMover():
     fileEventPort       = "6060"
     dataStreamIp        = "127.0.0.1"  # ip of dataStream-socket to push new files to
     dataStreamPort      = "6061"       # port number of dataStream-socket to push new files to
-    zmqCleanerIp        = "127.0.0.1"  # zmq pull endpoint, responsable to delete files
-    zmqCleanerPort      = "6062"       # zmq pull endpoint, responsable to delete files
-    fileMaxWaitTimeInMs = None
+    zmqCleanerIp        = "127.0.0.1"  # zmq pull endpoint, responsable to delete/move files
+    zmqCleanerPort      = "6062"       # zmq pull endpoint, responsable to delete/move files
+    receiverComIp       = "127.0.0.1"  # ip for socket to communicate with receiver
+    receiverComPort     = "6080"       # port for socket to communicate receiver
     parallelDataStreams = None
     chunkSize           = None
 
     # sockets
-    messageSocket       = None         # to receiver fileMove-jobs as json-encoded dictionary
+    fileEventSocket     = None         # to receive fileMove-jobs as json-encoded dictionary
+    receiverComSocket   = None         # to exchange messages with the receiver
     routerSocket        = None
 
     # to get the logging only handling this class
@@ -415,12 +411,23 @@ class FileMover():
         self.log = self.getLogger()
         self.log.debug("Init")
 
-        # create zmq sockets. one for incoming file events, one for passing fileObjects to
-        self.messageSocket         = self.zmqContext.socket(zmq.PULL)
-        connectionStrMessageSocket = "tcp://{ip}:{port}".format(ip=self.fileEventIp, port=self.fileEventPort)
-        self.messageSocket.bind(connectionStrMessageSocket)
-        self.log.debug("messageSocket started for '" + connectionStrMessageSocket + "'")
+        # create zmq socket for incoming file events
+        self.fileEventSocket         = self.zmqContext.socket(zmq.PULL)
+        connectionStrFileEventSocket = "tcp://{ip}:{port}".format(ip=self.fileEventIp, port=self.fileEventPort)
+        self.fileEventSocket.bind(connectionStrFileEventSocket)
+        self.log.debug("fileEventSocket started for '" + connectionStrFileEventSocket + "'")
 
+
+        # create zmq socket for communitation with receiver
+        self.receiverComSocket         = self.zmqContext.socket(zmq.REP)
+        connectionStrReceiverComSocket = "tcp://{ip}:{port}".format(ip=self.receiverComIp, port=self.receiverComPort)
+        self.receiverComSocket.bind(connectionStrReceiverComSocket)
+        self.log.debug("receiverComSocket started for '" + connectionStrReceiverComSocket + "'")
+
+        # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
+        self.poller = zmq.Poller()
+        self.poller.register(self.fileEventSocket, zmq.POLLIN)
+        self.poller.register(self.receiverComSocket, zmq.POLLIN)
 
         # setting up router for load-balancing worker-threads.
         # each worker-thread will handle a file event
@@ -452,6 +459,8 @@ class FileMover():
 
 
     def startReceiving(self):
+        global useLiveViewer
+
         self.log.debug("new message-socket crated for: new file events.")
         parallelDataStreams = int(self.parallelDataStreams)
 
@@ -480,21 +489,39 @@ class FileMover():
         self.log.debug("waiting for new fileEvent-messages")
         try:
             while continueReceiving:
-                try:
-                    incomingMessage = self.messageSocket.recv()
-                    self.log.debug("new fileEvent-message received.")
-                    self.log.debug("message content: " + str(incomingMessage))
-                    incomingMessageCounter += 1
+                socks = dict(self.poller.poll())
 
-                    self.log.debug("processFileEvent..." + str(incomingMessageCounter))
-                    self.processFileEvent(incomingMessage)  #TODO refactor as separate process to emphasize unblocking
-                    self.log.debug("processFileEvent...done")
-                except Exception, e:
-                    self.log.error("Failed to receive new fileEvent-message.")
-                    self.log.error(sys.exc_info())
+                if self.fileEventSocket in socks and socks[self.fileEventSocket] == zmq.POLLIN:
+                    try:
+                        incomingMessage = self.fileEventSocket.recv()
+                        self.log.debug("new fileEvent-message received.")
+                        self.log.debug("message content: " + str(incomingMessage))
+                        incomingMessageCounter += 1
 
-                    #TODO might using a error-count and threshold when to stop receiving, e.g. after 100 misses?
-                    # continueReceiving = False
+                        self.log.debug("processFileEvent..." + str(incomingMessageCounter))
+                        self.processFileEvent(incomingMessage)  #TODO refactor as separate process to emphasize unblocking
+                        self.log.debug("processFileEvent...done")
+                    except Exception, e:
+                        self.log.error("Failed to receive new fileEvent-message.")
+                        self.log.error(sys.exc_info())
+
+                        #TODO might using a error-count and threshold when to stop receiving, e.g. after 100 misses?
+                        # continueReceiving = False
+
+                if self.receiverComSocket in socks and socks[self.receiverComSocket] == zmq.POLLIN:
+                    incomingMessage = self.receiverComSocket.recv()
+                    self.log.debug("Recieved control command: %s" % incomingMessage )
+                    if incomingMessage == "STOP_LIVE_VIEWER":
+                        self.log.debug("Received live viewer stop command, stopping live viewer")
+                        useLiveViewer = False
+                        print "Signal", useLiveViewer
+                        continue
+                    elif incomingMessage == "START_LIVE_VIEWER":
+                        self.log.debug("Received AddFile command")
+                        self.log.debug("Received live viewer start command, starting live viewer")
+                        useLiveViewer = True
+                        continue
+
         except KeyboardInterrupt:
             self.log.info("Keyboard interuption detected. Stop receiving")
 
@@ -522,7 +549,8 @@ class FileMover():
 
     def stop(self):
         self.log.debug("Closing sockets")
-        self.messageSocket.close(0)
+        self.fileEventSocket.close(0)
+        self.receiverComSocket.close(0)
         self.routerSocket.close(0)
 
 
@@ -596,13 +624,17 @@ if __name__ == '__main__':
     zmqContext = zmq.Context.instance()
     logging.info("registering zmq global context")
 
+    logging.debug("start watcher thread...")
     watcherThread = Process(target=DirectoryWatcher, args=(fileEventIp, watchFolder, fileEventPort, zmqContext))
+    logging.debug("watcher thread registered")
     watcherThread.start()
-    logging.debug("watcher thread started")
+    logging.debug("start watcher thread...done")
 
+    logging.debug("start cleaner thread...")
     cleanerThread = Process(target=Cleaner, args=(cleanerTargetPath, zmqCleanerIp, zmqCleanerPort, zmqContext))
+    logging.debug("cleaner thread registered")
     cleanerThread.start()
-    logging.debug("cleaner thread started")
+    logging.debug("start cleaner thread...done")
 
     #start new fileMover
     fileMover = FileMover(fileEventIp, fileEventPort, dataStreamIp, dataStreamPort,

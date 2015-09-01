@@ -29,18 +29,21 @@ from config import defaultConfigReceiver
 class FileReceiver:
     zmqContext               = None
     outputDir                = None
-    zqmDataStreamIp          = None
+    zmqDataStreamIp          = None
     zmqDataStreamPort        = None
     zmqLiveViewerIp          = None
     zmqLiveViewerPort        = None
     exchangeIp               = "127.0.0.1"
     exchangePort             = "6072"
+    receiverComIp            = "127.0.0.1"  # ip for socket to communicate with receiver
+    receiverComPort          = "6080"       # port for socket to communicate receiver
 
     log                      = None
 
     # sockets
-    zmqSocket                = None
-    exchangeSocket           = None
+    zmqSocket                = None         #
+    exchangeSocket           = None         # socket to communicate with Coordinator class
+    senderComSocket          = None         # socket to communicate with sender
 
 
     def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, maxRingBuffersize, context = None):
@@ -49,6 +52,8 @@ class FileReceiver:
         self.zmqDataStreamPort  = zmqDataStreamPort
         self.zmqLiveViewerIp    = zmqLiveViewerIp
         self.zmqLiveViewerPort  = zmqLiveViewerPort
+        self.receiverComIp      = zmqDataStreamIp    # ip for socket to communicate with receiver; is the same ip as the data stream
+        self.receiverComPort    = "6080"             # port for socket to communicate receiver
 
         if context:
             assert isinstance(context, zmq.sugar.context.Context)
@@ -64,14 +69,20 @@ class FileReceiver:
 
         # create pull socket
         self.zmqSocket         = self.zmqContext.socket(zmq.PULL)
-        connectionStrZmqSocket = "tcp://" + self.zmqDataStreamIp + ":%s" % self.zmqDataStreamPort
+        connectionStrZmqSocket = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
         self.zmqSocket.bind(connectionStrZmqSocket)
         self.log.debug("zmqSocket started (bind) for '" + connectionStrZmqSocket + "'")
 
         self.exchangeSocket = self.zmqContext.socket(zmq.PAIR)
-        connectionStrExchangeSocket = "tcp://" + self.exchangeIp + ":%s" % self.exchangePort
+        connectionStrExchangeSocket = "tcp://{ip}:{port}".format(ip=self.exchangeIp, port=self.exchangePort)
         self.exchangeSocket.connect(connectionStrExchangeSocket)
         self.log.debug("exchangeSocket started (connect) for '" + connectionStrExchangeSocket + "'")
+
+        self.senderComSocket = self.zmqContext.socket(zmq.REQ)
+        connectionStrSenderComSocket = "tcp://{ip}:{port}".format(ip=self.receiverComIp, port=self.receiverComPort)
+        self.senderComSocket.connect(connectionStrSenderComSocket)
+        self.log.debug("senderComSocket started (connect) for '" + connectionStrSenderComSocket + "'")
+
 
         try:
             self.log.info("Start receiving new files")
@@ -269,12 +280,16 @@ class FileReceiver:
             self.log.error("closing zmqSocket...failed.")
             self.log.error(sys.exc_info())
 
-        self.log.debug("sending exit signal to thread...")
+        self.log.debug("sending exit signal to coordinator...")
         self.exchangeSocket.send("Exit")
+        self.log.debug("sending stop signal to sender...")
+        self.senderComSocket.send("STOP_LIVE_VIEWER")
         # give the signal time to arrive
         time.sleep(0.1)
+        self.log.debug("closing signal communication sockets...")
         self.exchangeSocket.close(0)
-        self.log.debug("sending exit signal to thread...done")
+        self.senderComSocket.close(0)
+        self.log.debug("closing signal communication sockets...done")
 
         try:
             zmqContext.destroy()
@@ -291,12 +306,13 @@ class Coordinator:
     zmqContext               = None
     liveViewerZmqContext     = None
     outputDir                = None
-    zqmDataStreamIp          = None
+    zmqDataStreamIp          = None
     zmqDataStreamPort        = None
     zmqLiveViewerIp          = None
     zmqLiveViewerPort        = None
     receiverExchangeIp       = "127.0.0.1"
     receiverExchangePort     = "6072"
+
     ringBuffer               = []
     maxRingBufferSize        = None
 
@@ -306,8 +322,8 @@ class Coordinator:
     liveViewerThread         = None
 
     # sockets
-    receiverExchangeSocket   = None
-    zmqliveViewerSocket      = None
+    receiverExchangeSocket   = None         # socket to communicate with FileReceiver class
+    zmqliveViewerSocket      = None         # socket to communicate with live viewer
 
 
     def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, maxRingBufferSize, context = None):
@@ -387,9 +403,9 @@ class Coordinator:
                 message = self.receiverExchangeSocket.recv()
                 self.log.debug("Recieved control command: %s" % message )
                 if message == "Exit":
-                    self.log.debug("Recieved exit command, coordinator thread will stop recieving messages")
+                    self.log.debug("Received exit command, coordinator thread will stop recieving messages")
                     should_continue = False
-                    self.liveViewerSocket.send("Exit")
+                    self.zmqliveViewerSocket.send("Exit")
                     break
                 elif message.startswith("AddFile"):
                     self.log.debug("Received AddFile command")
