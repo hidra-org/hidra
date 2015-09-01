@@ -35,8 +35,6 @@ class defaultConfigSender():
     chunkSize           = 1048576 # = 1024*1024
     #chunkSize           = 1073741824 # = 1024*1024*1024
 
-    fileWaitTimeInMs    = 2000
-    fileMaxWaitTimeInMs = 10000
 
 #    # path where logfile will be created
 #    if helperScript.isWindows():
