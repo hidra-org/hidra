@@ -64,20 +64,21 @@ class WorkerProcess():
         self.log = self.getLogger()
 
 
-        dataStreamIp   = self.dataStreamIp
-        dataStreamPort = self.dataStreamPort
-
         self.log.debug("new workerThread started. id=" + str(self.id))
 
         # initialize sockets
         self.zmqDataStreamSocket      = self.zmqContextForWorker.socket(zmq.PUSH)
-        connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=dataStreamIp, port=self.dataStreamPort)
+        connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
         self.zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
         self.log.debug("zmqDataStreamSocket started for '" + connectionStrDataStreamSocket + "'")
 
+
+        routerIp   = "127.0.0.1"
+        routerPort = "50000"
+
         self.routerSocket             = self.zmqContextForWorker.socket(zmq.REQ)
         self.routerSocket.identity    = u"worker-{ID}".format(ID=self.id).encode("ascii")
-        connectionStrRouterSocket     = "tcp://{ip}:{port}".format(ip="127.0.0.1", port="50000")
+        connectionStrRouterSocket     = "tcp://{ip}:{port}".format(ip=routerIp, port=routerPort)
         self.routerSocket.connect(connectionStrRouterSocket)
         self.log.debug("routerSocket started for '" + connectionStrRouterSocket + "'")
 
@@ -408,21 +409,21 @@ class WorkerProcess():
 #  --------------------------  class: FileMover  --------------------------------------
 #
 class FileMover():
-    zmqContext            = None
-    fileEventIp           = "127.0.0.1"  # serverIp for incoming messages
-    tcpPort_messageStream = "6060"
-    dataStreamIp          = "127.0.0.1"  # ip of dataStream-socket to push new files to
-    dataStreamPort        = "6061"       # port number of dataStream-socket to push new files to
-    zmqCleanerIp          = "127.0.0.1"  # zmq pull endpoint, responsable to delete files
-    zmqCleanerPort        = "6062"       # zmq pull endpoint, responsable to delete files
-    fileWaitTimeInMs      = None
-    fileMaxWaitTimeInMs   = None
-    parallelDataStreams   = None
-    chunkSize             = None
+    zmqContext          = None
+    fileEventIp         = "127.0.0.1"  # serverIp for incoming messages
+    fileEventPort       = "6060"
+    dataStreamIp        = "127.0.0.1"  # ip of dataStream-socket to push new files to
+    dataStreamPort      = "6061"       # port number of dataStream-socket to push new files to
+    zmqCleanerIp        = "127.0.0.1"  # zmq pull endpoint, responsable to delete files
+    zmqCleanerPort      = "6062"       # zmq pull endpoint, responsable to delete files
+    fileWaitTimeInMs    = None
+    fileMaxWaitTimeInMs = None
+    parallelDataStreams = None
+    chunkSize           = None
 
     # sockets
-    messageSocket         = None         # to receiver fileMove-jobs as json-encoded dictionary
-    routerSocket          = None
+    messageSocket       = None         # to receiver fileMove-jobs as json-encoded dictionary
+    routerSocket        = None
 
     # to get the logging only handling this class
     log                   = None
@@ -435,32 +436,36 @@ class FileMover():
 
         assert isinstance(context, zmq.sugar.context.Context)
 
-        self.zmqContext            = context or zmq.Context()
-        self.fileEventIp           = fileEventIp
-        self.tcpPort_messageStream = fileEventPort
-        self.dataStreamIp          = dataStreamIp
-        self.dataStreamPort        = dataStreamPort
-        self.parallelDataStreams   = parallelDataStreams
-        self.chunkSize             = chunkSize
-        self.zmqCleanerIp          = zmqCleanerIp
-        self.zmqCleanerPort        = zmqCleanerPort
-        self.fileWaitTimeInMs      = fileWaitTimeInMs
-        self.fileMaxWaitTimeInMs   = fileMaxWaitTimeInMs
+        self.zmqContext          = context or zmq.Context()
+        self.fileEventIp         = fileEventIp
+        self.fileEventPort       = fileEventPort
+        self.dataStreamIp        = dataStreamIp
+        self.dataStreamPort      = dataStreamPort
+        self.parallelDataStreams = parallelDataStreams
+        self.chunkSize           = chunkSize
+        self.zmqCleanerIp        = zmqCleanerIp
+        self.zmqCleanerPort      = zmqCleanerPort
+        self.fileWaitTimeInMs    = fileWaitTimeInMs
+        self.fileMaxWaitTimeInMs = fileMaxWaitTimeInMs
 
 
         self.log = self.getLogger()
         self.log.debug("Init")
 
-        #create zmq sockets. one for incoming file events, one for passing fileObjects to
+        # create zmq sockets. one for incoming file events, one for passing fileObjects to
         self.messageSocket         = self.zmqContext.socket(zmq.PULL)
-        connectionStrMessageSocket = "tcp://" + self.fileEventIp + ":%s" % self.tcpPort_messageStream
+        connectionStrMessageSocket = "tcp://{ip}:{port}".format(ip=self.fileEventIp, port=self.fileEventPort)
         self.messageSocket.bind(connectionStrMessageSocket)
         self.log.debug("messageSocket started for '" + connectionStrMessageSocket + "'")
 
-        #setting up router for load-balancing worker-threads.
-        #each worker-thread will handle a file event
+
+        # setting up router for load-balancing worker-threads.
+        # each worker-thread will handle a file event
+        routerIp   = "127.0.0.1"
+        routerPort = "50000"
+
         self.routerSocket         = self.zmqContext.socket(zmq.ROUTER)
-        connectionStrRouterSocket = "tcp://127.0.0.1:50000"
+        connectionStrRouterSocket = "tcp://{ip}:{port}".format(ip=routerIp, port=routerPort)
         self.routerSocket.bind(connectionStrRouterSocket)
         self.log.debug("routerSocket started for '" + connectionStrRouterSocket + "'")
 
