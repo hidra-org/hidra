@@ -31,21 +31,23 @@ class defaultConfigSender():
     zmqCleanerIp        = LOCAL_IP
     # zmq-pull-socket port which deletes/moves given files
     zmqCleanerPort      = "6063"
-    #chunk size of file-parts getting send via zmq
+    # chunk size of file-parts getting send via zmq
     chunkSize           = 1048576 # = 1024*1024
     #chunkSize           = 1073741824 # = 1024*1024*1024
 
     fileWaitTimeInMs    = 2000
     fileMaxWaitTimeInMs = 10000
 
-    #filename used for logging
-    logfileName         = "zmq_sender.log"
+#    # path where logfile will be created
+#    if helperScript.isWindows():
+#        logfilePath = "C:\\"
+#    elif helperScript.isLinux():
+#        logfilePath = "/space/projects/live-viewer/logs"
 
     # path where logfile will be created
-    if helperScript.isWindows():
-        logfilePath = "C:\\"
-    elif helperScript.isLinux():
-        logfilePath = "/space/projects/live-viewer/logs"
+    logfilePath         = "/space/projects/live-viewer/logs"
+    # filename used for logging
+    logfileName         = "zmq_sender.log"
 
 
     def __init__(self):
@@ -53,6 +55,36 @@ class defaultConfigSender():
         helperScript.checkFolderExistance(self.logfilePath)
         helperScript.checkFolderExistance(self.watchFolder)
         helperScript.checkFolderExistance(self.cleanerTargetPath)
+
+        # check if logfile is writable
+        helperScript.checkLogFileWritable(self.logfilePath, self.logfileName)
+
+
+class defaultConfigReceiver():
+
+    # where incoming data will be stored to"
+    targetDir         = "/space/projects/live-viewer/data/zmq_target"
+
+    # local ip to bind dataStream to
+    dataStreamIp      = LOCAL_IP
+    # tcp port of data pipe"
+    dataStreamPort    = "6061"
+    # local ip to bind LiveViewer to
+    liveViewerIp      = LOCAL_IP
+    # tcp port of live viewer"
+    liveViewerPort    = "6071"
+
+    # path where logfile will be created
+    logfilePath       = "/space/projects/live-viewer/logs"
+    # filename used for logging
+    logfileName       = "zmq_receiver.log"
+    # size of the ring buffer for the live viewer
+    maxRingBufferSize = 100
+
+
+    def __init__(self):
+        # check if folders exists
+        helperScript.checkFolderExistance(self.targetDir)
 
         # check if logfile is writable
         helperScript.checkLogFileWritable(self.logfilePath, self.logfileName)

@@ -15,6 +15,13 @@ from stat import S_ISREG, ST_MTIME, ST_MODE
 import threading
 import helperScript
 
+BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname (  os.path.realpath ( __file__ ) ) ) )
+CONFIG_PATH = BASE_PATH + os.sep + "conf"
+
+sys.path.append ( CONFIG_PATH )
+
+from config import defaultConfigReceiver
+
 
 #
 #  --------------------------  class: FileReceiver  --------------------------------------
@@ -427,20 +434,25 @@ class Coordinator:
 
 
 def argumentParsing():
+    defConf = defaultConfigReceiver()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--outputDir"             , type=str, help="where incoming data will be stored to", default="/tmp/watchdog/data_mirror/")
-    parser.add_argument("--tcpPortDataStream"     , type=int, help="tcp port of data pipe", default=6061)
-    parser.add_argument("--tcpPortLiveViewer"     , type=int, help="tcp port of live viewer", default=6071)
-    parser.add_argument("--logfile"               , type=str, help="file used for logging", default="/tmp/watchdog/fileReceiver.log")
-    parser.add_argument("--bindingIpForDataStream", type=str, help="local ip to bind dataStream to", default="127.0.0.1")
-    parser.add_argument("--bindingIpForLiveViewer", type=str, help="local ip to bind LiveViewer to", default="127.0.0.1")
-    parser.add_argument("--maxRingBufferSize"     , type=int, help="size of the ring buffer for the live viewer", default="100")
-    parser.add_argument("--verbose"       ,           help="more verbose output", action="store_true")
+    parser.add_argument("--targetDir"        , type=str, default=defConf.targetDir        , help="where incoming data will be stored to")
+    parser.add_argument("--dataStreamPort"   , type=str, default=defConf.dataStreamPort   , help="tcp port of data pipe")
+    parser.add_argument("--liveViewerPort"   , type=str, default=defConf.liveViewerPort   , help="tcp port of live viewer")
+    parser.add_argument("--logfilePath"      , type=str, default=defConf.logfilePath      , help="path where logfile will be created")
+    parser.add_argument("--logfileName"      , type=str, default=defConf.logfileName      , help="filename used for logging")
+    parser.add_argument("--dataStreamIp"     , type=str, default=defConf.dataStreamIp     , help="local ip to bind dataStream to")
+    parser.add_argument("--liveViewerIp"     , type=str, default=defConf.liveViewerIp     , help="local ip to bind LiveViewer to")
+    parser.add_argument("--maxRingBufferSize", type=int, default=defConf.maxRingBufferSize, help="size of the ring buffer for the live viewer")
+    parser.add_argument("--verbose"          ,           action="store_true"              , help="more verbose output")
 
     arguments = parser.parse_args()
 
-    # TODO: check folder-directory for existance
+    targetDir = str(arguments.targetDir)
+
+    # check target directory for existance
+    helperScript.checkFolderExistance(targetDir)
 
     return arguments
 
@@ -450,19 +462,23 @@ if __name__ == "__main__":
 
     #argument parsing
     arguments         = argumentParsing()
-    outputDir         = arguments.outputDir
+
+    logfilePath       = str(arguments.logfilePath)
+    logfileName       = str(arguments.logfileName)
+    logfileFullPath   = os.path.join(logfilePath, logfileName)
     verbose           = arguments.verbose
-    zmqDataStreamIp   = str(arguments.bindingIpForDataStream)
-    zmqDataStreamPort = str(arguments.tcpPortDataStream)
-    zmqLiveViewerIp   = str(arguments.bindingIpForLiveViewer)
-    zmqLiveViewerPort = str(arguments.tcpPortLiveViewer)
-    logFile           = arguments.logfile
-    logfileFilePath   = arguments.logfile
+
+    outputDir         = str(arguments.targetDir)
+    zmqDataStreamIp   = str(arguments.dataStreamIp)
+    zmqDataStreamPort = str(arguments.dataStreamPort)
+
+    zmqLiveViewerIp   = str(arguments.liveViewerIp)
+    zmqLiveViewerPort = str(arguments.liveViewerPort)
     maxRingBufferSize = int(arguments.maxRingBufferSize)
 
 
     #enable logging
-    helperScript.initLogging(logfileFilePath, verbose)
+    helperScript.initLogging(logfileFullPath, verbose)
 
 
     #start file receiver
