@@ -30,7 +30,9 @@ class defaultConfigSender():
     # zmq-pull-socket ip which deletes/moves given files
     zmqCleanerIp        = LOCAL_IP
     # zmq-pull-socket port which deletes/moves given files
-    zmqCleanerPort      = "6063"
+    zmqCleanerPort      = "6062"
+    # port number of dataStream-socket to receive signals from the receiver
+    receiverComPort     = "6080"
     # chunk size of file-parts getting send via zmq
     chunkSize           = 1048576 # = 1024*1024
     #chunkSize           = 1073741824 # = 1024*1024*1024
@@ -60,16 +62,21 @@ class defaultConfigSender():
 class defaultConfigReceiver():
 
     # where incoming data will be stored to"
-    targetDir         = "/space/projects/live-viewer/data/zmq_target"
+    targetDir             = "/space/projects/live-viewer/data/zmq_target"
 
     # local ip to bind dataStream to
-    dataStreamIp      = LOCAL_IP
+    dataStreamIp          = LOCAL_IP
     # tcp port of data pipe"
-    dataStreamPort    = "6061"
+    dataStreamPort        = "6061"
     # local ip to bind LiveViewer to
-    liveViewerIp      = LOCAL_IP
+    liveViewerIp          = LOCAL_IP
     # tcp port of live viewer"
-    liveViewerPort    = "6071"
+    liveViewerPort        = "6071"
+
+    # port number of dataStream-socket to send signals back to the sender
+    senderComPort         = "6080"
+    # time to wait for the sender to give a confirmation of the signal
+    senderResponseTimeout = 1000
 
     # path where logfile will be created
     logfilePath       = "/space/projects/live-viewer/logs"

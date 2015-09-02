@@ -35,25 +35,29 @@ class FileReceiver:
     zmqLiveViewerPort        = None
     exchangeIp               = "127.0.0.1"
     exchangePort             = "6072"
-    receiverComIp            = "127.0.0.1"  # ip for socket to communicate with receiver
-    receiverComPort          = "6080"       # port for socket to communicate receiver
+    senderComIp              = None         # ip for socket to communicate with receiver
+    senderComPort            = None         # port for socket to communicate receiver
+    socketResponseTimeout    = None         # time in milliseconds to wait for the sender to answer to a signal
 
     log                      = None
 
     # sockets
-    zmqSocket                = None         #
+    zmqDataStreamSocket      = None         # socket to receive the data from
     exchangeSocket           = None         # socket to communicate with Coordinator class
     senderComSocket          = None         # socket to communicate with sender
 
 
-    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, maxRingBuffersize, context = None):
-        self.outputDir          = outputDir
-        self.zmqDataStreamIp    = zmqDataStreamIp
-        self.zmqDataStreamPort  = zmqDataStreamPort
-        self.zmqLiveViewerIp    = zmqLiveViewerIp
-        self.zmqLiveViewerPort  = zmqLiveViewerPort
-        self.receiverComIp      = zmqDataStreamIp    # ip for socket to communicate with receiver; is the same ip as the data stream
-        self.receiverComPort    = "6080"             # port for socket to communicate receiver
+    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, senderComPort,
+                 maxRingBuffersize, senderResponseTimeout = 1000, context = None):
+
+        self.outputDir             = outputDir
+        self.zmqDataStreamIp       = zmqDataStreamIp
+        self.zmqDataStreamPort     = zmqDataStreamPort
+        self.zmqLiveViewerIp       = zmqLiveViewerIp
+        self.zmqLiveViewerPort     = zmqLiveViewerPort
+        self.senderComIp           = zmqDataStreamIp        # ip for socket to communicate with sender; is the same ip as the data stream ip
+        self.senderComPort         = senderComPort
+        self.socketResponseTimeout = senderResponseTimeout
 
         if context:
             assert isinstance(context, zmq.sugar.context.Context)
@@ -68,10 +72,10 @@ class FileReceiver:
         self.receiverThread.start()
 
         # create pull socket
-        self.zmqSocket         = self.zmqContext.socket(zmq.PULL)
+        self.zmqDataStreamSocket = self.zmqContext.socket(zmq.PULL)
         connectionStrZmqSocket = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
-        self.zmqSocket.bind(connectionStrZmqSocket)
-        self.log.debug("zmqSocket started (bind) for '" + connectionStrZmqSocket + "'")
+        self.zmqDataStreamSocket.bind(connectionStrZmqSocket)
+        self.log.debug("zmqDataStreamSocket started (bind) for '" + connectionStrZmqSocket + "'")
 
         self.exchangeSocket = self.zmqContext.socket(zmq.PAIR)
         connectionStrExchangeSocket = "tcp://{ip}:{port}".format(ip=self.exchangeIp, port=self.exchangePort)
@@ -79,16 +83,24 @@ class FileReceiver:
         self.log.debug("exchangeSocket started (connect) for '" + connectionStrExchangeSocket + "'")
 
         self.senderComSocket = self.zmqContext.socket(zmq.REQ)
-        connectionStrSenderComSocket = "tcp://{ip}:{port}".format(ip=self.receiverComIp, port=self.receiverComPort)
+        # time to wait for the sender to give a confirmation of the signal
+        self.senderComSocket.RCVTIMEO = self.socketResponseTimeout
+        connectionStrSenderComSocket = "tcp://{ip}:{port}".format(ip=self.senderComIp, port=self.senderComPort)
         self.senderComSocket.connect(connectionStrSenderComSocket)
         self.log.debug("senderComSocket started (connect) for '" + connectionStrSenderComSocket + "'")
 
         self.log.info("Sending start signal to sender...")
         self.senderComSocket.send("START_LIVE_VIEWER")
 
-        senderMessage = self.senderComSocket.recv()
-        print "answer to start live viewer: ", senderMessage
-        self.log.debug("Received message from sender: " + str(senderMessage) )
+        senderMessage = None
+        try:
+            senderMessage = self.senderComSocket.recv()
+            print "answer to start live viewer: ", senderMessage
+            self.log.debug("Received message from sender: " + str(senderMessage) )
+        except Exception as e:
+            self.log.error("No message received from sender")
+            self.log.debug("Error was: " + str(e))
+            self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
 
         if senderMessage == "START_LIVE_VIEWER":
             self.log.info("Received confirmation from sender...start receiving files")
@@ -116,11 +128,11 @@ class FileReceiver:
         return logger
 
 
-    def combineMessage(self, zmqSocket):
+    def combineMessage(self, zmqDataStreamSocket):
         receivingMessages = True
         #save all chunks to file
         while receivingMessages:
-            multipartMessage = zmqSocket.recv_multipart()
+            multipartMessage = zmqDataStreamSocket.recv_multipart()
 
             #extract multipart message
             try:
@@ -166,7 +178,6 @@ class FileReceiver:
         self.exchangeSocket.send(message)
 
 
-
     def startReceiving(self):
         #run loop, and wait for incoming messages
         loopCounter       = 0    #counter of total received messages
@@ -174,7 +185,7 @@ class FileReceiver:
         self.log.debug("Waiting for new messages...")
         while continueReceiving:
             try:
-                self.combineMessage(self.zmqSocket)
+                self.combineMessage(self.zmqDataStreamSocket)
                 loopCounter+=1
             except KeyboardInterrupt:
                 self.log.debug("Keyboard interrupt detected. Stop receiving.")
@@ -187,7 +198,7 @@ class FileReceiver:
 
         self.log.info("shutting down receiver...")
         try:
-            self.stopReceiving(self.zmqSocket, self.zmqContext)
+            self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext)
             self.log.debug("shutting down receiver...done.")
         except:
             self.log.error(sys.exc_info())
@@ -281,31 +292,35 @@ class FileReceiver:
             raise Exception(errorMessage)
 
 
-    def stopReceiving(self, zmqSocket, zmqContext):
+    def stopReceiving(self, zmqDataStreamSocket, zmqContext, sendToSender = True):
 
         self.log.debug("stopReceiving...")
         try:
-            zmqSocket.close(0)
-            self.log.debug("closing zmqSocket...done.")
+            zmqDataStreamSocket.close(0)
+            self.log.debug("closing zmqDataStreamSocket...done.")
         except:
-            self.log.error("closing zmqSocket...failed.")
+            self.log.error("closing zmqDataStreamSocket...failed.")
             self.log.error(sys.exc_info())
 
         self.log.debug("sending exit signal to coordinator...")
         self.exchangeSocket.send("Exit")
 
-        self.log.debug("sending stop signal to sender...")
-        self.senderComSocket.send("STOP_LIVE_VIEWER", zmq.NOBLOCK)
+        if sendToSender:
+            self.log.debug("sending stop signal to sender...")
+            self.senderComSocket.send("STOP_LIVE_VIEWER", zmq.NOBLOCK)
 
-        senderMessage = self.senderComSocket.recv()
-        print "answer to stop live viewer: ", senderMessage
-        self.log.debug("Received message from sender: " + str(senderMessage) )
+            try:
+                senderMessage = self.senderComSocket.recv()
+                print "answer to stop live viewer: ", senderMessage
+                self.log.debug("Received message from sender: " + str(senderMessage) )
 
-        if senderMessage == "STOP_LIVE_VIEWER":
-            self.log.info("Received confirmation from sender...")
-        else:
-            self.log.error("Received confirmation from sender...failed")
-
+                if senderMessage == "STOP_LIVE_VIEWER":
+                    self.log.info("Received confirmation from sender...")
+                else:
+                    self.log.error("Received confirmation from sender...failed")
+            except Exception as e:
+                self.log.error("sending stop signal to sender...failed.")
+                self.log.debug("Error was: " + str(e))
 
         # give the signal time to arrive
         time.sleep(0.1)
@@ -428,7 +443,8 @@ class Coordinator:
                 if message == "Exit":
                     self.log.debug("Received exit command, coordinator thread will stop recieving messages")
                     should_continue = False
-                    self.zmqliveViewerSocket.send("Exit", zmq.NOBLOCK)
+                    # TODO why sending signal to live viewer?
+#                    self.zmqliveViewerSocket.send("Exit", zmq.NOBLOCK)
                     break
                 elif message.startswith("AddFile"):
                     self.log.debug("Received AddFile command")
@@ -476,15 +492,17 @@ def argumentParsing():
     defConf = defaultConfigReceiver()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--targetDir"        , type=str, default=defConf.targetDir        , help="where incoming data will be stored to")
-    parser.add_argument("--dataStreamPort"   , type=str, default=defConf.dataStreamPort   , help="tcp port of data pipe")
-    parser.add_argument("--liveViewerPort"   , type=str, default=defConf.liveViewerPort   , help="tcp port of live viewer")
-    parser.add_argument("--logfilePath"      , type=str, default=defConf.logfilePath      , help="path where logfile will be created")
-    parser.add_argument("--logfileName"      , type=str, default=defConf.logfileName      , help="filename used for logging")
-    parser.add_argument("--dataStreamIp"     , type=str, default=defConf.dataStreamIp     , help="local ip to bind dataStream to")
-    parser.add_argument("--liveViewerIp"     , type=str, default=defConf.liveViewerIp     , help="local ip to bind LiveViewer to")
-    parser.add_argument("--maxRingBufferSize", type=int, default=defConf.maxRingBufferSize, help="size of the ring buffer for the live viewer")
-    parser.add_argument("--verbose"          ,           action="store_true"              , help="more verbose output")
+    parser.add_argument("--logfilePath"          , type=str, default=defConf.logfilePath          , help="path where logfile will be created (default=" + str(defConf.logfilePath) + ")")
+    parser.add_argument("--logfileName"          , type=str, default=defConf.logfileName          , help="filename used for logging (default=" + str(defConf.logfileName) + ")")
+    parser.add_argument("--targetDir"            , type=str, default=defConf.targetDir            , help="where incoming data will be stored to (default=" + str(defConf.targetDir) + ")")
+    parser.add_argument("--dataStreamIp"         , type=str, default=defConf.dataStreamIp         , help="ip of dataStream-socket to pull new files from (default=" + str(defConf.dataStreamIp) + ")")
+    parser.add_argument("--dataStreamPort"       , type=str, default=defConf.dataStreamPort       , help="port number of dataStream-socket to pull new files from (default=" + str(defConf.dataStreamPort) + ")")
+    parser.add_argument("--liveViewerIp"         , type=str, default=defConf.liveViewerIp         , help="local ip to bind LiveViewer to (default=" + str(defConf.liveViewerIp) + ")")
+    parser.add_argument("--liveViewerPort"       , type=str, default=defConf.liveViewerPort       , help="tcp port of live viewer (default=" + str(defConf.liveViewerPort) + ")")
+    parser.add_argument("--senderComPort"        , type=str, default=defConf.senderComPort        , help="port number of dataStream-socket to send signals back to the sender (default=" + str(defConf.senderComPort) + ")")
+    parser.add_argument("--maxRingBufferSize"    , type=int, default=defConf.maxRingBufferSize    , help="size of the ring buffer for the live viewer (default=" + str(defConf.maxRingBufferSize) + ")")
+    parser.add_argument("--senderResponseTimeout", type=int, default=defConf.senderResponseTimeout, help=argparse.SUPPRESS)
+    parser.add_argument("--verbose"              ,           action="store_true"                  , help="more verbose output")
 
     arguments = parser.parse_args()
 
@@ -500,20 +518,22 @@ if __name__ == "__main__":
 
 
     #argument parsing
-    arguments         = argumentParsing()
+    arguments             = argumentParsing()
 
-    logfilePath       = str(arguments.logfilePath)
-    logfileName       = str(arguments.logfileName)
-    logfileFullPath   = os.path.join(logfilePath, logfileName)
-    verbose           = arguments.verbose
+    logfilePath           = str(arguments.logfilePath)
+    logfileName           = str(arguments.logfileName)
+    logfileFullPath       = os.path.join(logfilePath, logfileName)
+    verbose               = arguments.verbose
 
-    outputDir         = str(arguments.targetDir)
-    zmqDataStreamIp   = str(arguments.dataStreamIp)
-    zmqDataStreamPort = str(arguments.dataStreamPort)
+    outputDir             = str(arguments.targetDir)
+    zmqDataStreamIp       = str(arguments.dataStreamIp)
+    zmqDataStreamPort     = str(arguments.dataStreamPort)
 
-    zmqLiveViewerIp   = str(arguments.liveViewerIp)
-    zmqLiveViewerPort = str(arguments.liveViewerPort)
-    maxRingBufferSize = int(arguments.maxRingBufferSize)
+    zmqLiveViewerIp       = str(arguments.liveViewerIp)
+    zmqLiveViewerPort     = str(arguments.liveViewerPort)
+    senderComPort         = str(arguments.senderComPort)
+    maxRingBufferSize     = int(arguments.maxRingBufferSize)
+    senderResponseTimeout = int(arguments.senderResponseTimeout)
 
 
     #enable logging
@@ -521,4 +541,4 @@ if __name__ == "__main__":
 
 
     #start file receiver
-    myWorker = FileReceiver(outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, maxRingBufferSize)
+    myWorker = FileReceiver(outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, senderComPort, maxRingBufferSize, senderResponseTimeout)

@@ -34,14 +34,14 @@ class WorkerProcess():
     dataStreamPort       = None
     zmqContextForWorker  = None
     zmqMessageChunkSize  = None
-    zmqCleanerIp         = None              # responsable to delete/move files
-    zmqCleanerPort       = None              # responsable to delete/move files
+    zmqCleanerIp         = None         # responsable to delete/move files
+    zmqCleanerPort       = None         # responsable to delete/move files
 
     zmqDataStreamSocket  = None
     routerSocket         = None
     cleanerSocket        = None
 
-    useLiveViewer        = False              # boolian to inform if the receiver to show the files in the live viewer is running
+    useLiveViewer        = False        # boolian to inform if the receiver to show the files in the live viewer is running
 
     # to get the logging only handling this class
     log                   = None
@@ -63,13 +63,12 @@ class WorkerProcess():
 
         self.log.debug("new workerProcess started. id=" + str(self.id))
 
-        # initialize sockets
         self.zmqDataStreamSocket      = self.zmqContextForWorker.socket(zmq.PUSH)
         connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
         self.zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
         self.log.debug("zmqDataStreamSocket started for '" + connectionStrDataStreamSocket + "'")
 
-
+        # initialize sockets
         routerIp   = "127.0.0.1"
         routerPort = "50000"
 
@@ -141,16 +140,18 @@ class WorkerProcess():
                 break
             jobCount += 1
 
-            stopLV = workload == b"STOP_LIVE_VIEWER"
-            if stopLV:
-                self.useLiveViewer = False
-                self.log.info("worker-"+str(self.id)+": Received live viewer stop command...stopping live viewer")
-                continue
-
+            # the live viewer is turned on
             startLV = workload == b"START_LIVE_VIEWER"
             if startLV:
-                self.useLiveViewer = True
                 self.log.info("worker-"+str(self.id)+": Received live viewer start command...starting live viewer")
+                self.useLiveViewer = True
+                continue
+
+            # the live viewer is turned of
+            stopLV = workload == b"STOP_LIVE_VIEWER"
+            if stopLV:
+                self.log.info("worker-"+str(self.id)+": Received live viewer stop command...stopping live viewer")
+                self.useLiveViewer = False
                 continue
 
             if self.useLiveViewer:
@@ -289,7 +290,7 @@ class WorkerProcess():
                 chunkPayload.append(fileContentAsByteObject)
 
                 #send to zmq pipe
-                self.zmqDataStreamSocket.send_multipart(chunkPayload)
+                self.zmqDataStreamSocket.send_multipart(chunkPayload, zmq.NOBLOCK)
 
             #close file
             fileDescriptor.close()
@@ -373,7 +374,8 @@ class WorkerProcess():
         self.log.debug("Sending stop signal to cleaner from worker" + str(self.id))
         self.cleanerSocket.send("STOP")
         self.log.info("Closing sockets for worker " + str(self.id))
-        self.zmqDataStreamSocket.close(0)
+        if self.zmqDataStreamSocket:
+            self.zmqDataStreamSocket.close(0)
         self.routerSocket.close(0)
         self.cleanerSocket.close(0)
         self.zmqContextForWorker.destroy()
@@ -385,29 +387,29 @@ class WorkerProcess():
 #
 class FileMover():
     zmqContext          = None
-    fileEventIp         = "127.0.0.1"  # serverIp for incoming messages
-    fileEventPort       = "6060"
-    dataStreamIp        = "127.0.0.1"  # ip of dataStream-socket to push new files to
-    dataStreamPort      = "6061"       # port number of dataStream-socket to push new files to
-    zmqCleanerIp        = "127.0.0.1"  # zmq pull endpoint, responsable to delete/move files
-    zmqCleanerPort      = "6062"       # zmq pull endpoint, responsable to delete/move files
-    receiverComIp       = "127.0.0.1"  # ip for socket to communicate with receiver
-    receiverComPort     = "6080"       # port for socket to communicate receiver
+    fileEventIp         = None      # serverIp for incoming messages
+    fileEventPort       = None
+    dataStreamIp        = None      # ip of dataStream-socket to push new files to
+    dataStreamPort      = None      # port number of dataStream-socket to push new files to
+    zmqCleanerIp        = None      # zmq pull endpoint, responsable to delete/move files
+    zmqCleanerPort      = None      # zmq pull endpoint, responsable to delete/move files
+    receiverComIp       = None      # ip for socket to communicate with receiver
+    receiverComPort     = None      # port for socket to communicate receiver
     parallelDataStreams = None
     chunkSize           = None
 
     # sockets
-    fileEventSocket     = None         # to receive fileMove-jobs as json-encoded dictionary
-    receiverComSocket   = None         # to exchange messages with the receiver
+    fileEventSocket     = None      # to receive fileMove-jobs as json-encoded dictionary
+    receiverComSocket   = None      # to exchange messages with the receiver
     routerSocket        = None
 
-    useLiveViewer       = False       # boolian to inform if the receiver to show the files in the live viewer is running
+    useLiveViewer       = False     # boolian to inform if the receiver to show the files in the live viewer is running
 
     # to get the logging only handling this class
     log                   = None
 
 
-    def __init__(self, fileEventIp, fileEventPort, dataStreamIp, dataStreamPort, parallelDataStreams,
+    def __init__(self, fileEventIp, fileEventPort, dataStreamIp, dataStreamPort, receiverComPort, parallelDataStreams,
                  chunkSize, zmqCleanerIp, zmqCleanerPort,
                  context = None):
 
@@ -418,10 +420,12 @@ class FileMover():
         self.fileEventPort       = fileEventPort
         self.dataStreamIp        = dataStreamIp
         self.dataStreamPort      = dataStreamPort
-        self.parallelDataStreams = parallelDataStreams
-        self.chunkSize           = chunkSize
         self.zmqCleanerIp        = zmqCleanerIp
         self.zmqCleanerPort      = zmqCleanerPort
+        self.receiverComIp       = dataStreamIp         # ip for socket to communicate with receiver; is the same ip as the data stream ip
+        self.receiverComPort     = receiverComPort
+        self.parallelDataStreams = parallelDataStreams
+        self.chunkSize           = chunkSize
 
 
         self.log = self.getLogger()
@@ -604,6 +608,7 @@ def argumentParsing():
     parser.add_argument("--cleanerTargetPath"  , type=str, default=defConf.cleanerTargetPath  , help="Target to move the files into (default=" + str(defConf.cleanerTargetPath) + ")")
     parser.add_argument("--zmqCleanerIp"       , type=str, default=defConf.zmqCleanerIp       , help="zmq-pull-socket ip which deletes/moves given files (default=" + str(defConf.zmqCleanerIp) + ")")
     parser.add_argument("--zmqCleanerPort"     , type=str, default=defConf.zmqCleanerPort     , help="zmq-pull-socket port which deletes/moves given files (default=" + str(defConf.zmqCleanerPort) + ")")
+    parser.add_argument("--receiverComPort"    , type=str, default=defConf.receiverComPort    , help="port number of dataStream-socket to receive signals from the receiver (default=" + str(defConf.receiverComPort) + ")")
     parser.add_argument("--parallelDataStreams", type=int, default=defConf.parallelDataStreams, help="number of parallel data streams (default=" + str(defConf.parallelDataStreams) + ")")
     parser.add_argument("--chunkSize"          , type=int, default=defConf.chunkSize          , help="chunk size of file-parts getting send via zmq (default=" + str(defConf.chunkSize) + ")")
 
@@ -644,6 +649,7 @@ if __name__ == '__main__':
     cleanerTargetPath   = str(arguments.cleanerTargetPath)
     zmqCleanerIp        = str(arguments.zmqCleanerIp)
     zmqCleanerPort      = str(arguments.zmqCleanerPort)
+    receiverComPort     = str(arguments.receiverComPort)
     parallelDataStreams = str(arguments.parallelDataStreams)
     chunkSize           = int(arguments.chunkSize)
 
@@ -670,7 +676,7 @@ if __name__ == '__main__':
     logging.debug("start cleaner process...done")
 
     #start new fileMover
-    fileMover = FileMover(fileEventIp, fileEventPort, dataStreamIp, dataStreamPort,
+    fileMover = FileMover(fileEventIp, fileEventPort, dataStreamIp, dataStreamPort, receiverComPort,
                           parallelDataStreams, chunkSize,
                           zmqCleanerIp, zmqCleanerPort,
                           zmqContext)
