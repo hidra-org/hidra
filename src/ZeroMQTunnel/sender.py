@@ -25,8 +25,6 @@ sys.path.append ( CONFIG_PATH )
 
 from config import defaultConfigSender
 
-useLiveViewer = True
-
 #
 #  --------------------------  class: WorkerProcess  --------------------------------------
 #
@@ -38,9 +36,12 @@ class WorkerProcess():
     zmqMessageChunkSize  = None
     zmqCleanerIp         = None              # responsable to delete/move files
     zmqCleanerPort       = None              # responsable to delete/move files
+
     zmqDataStreamSocket  = None
     routerSocket         = None
     cleanerSocket        = None
+
+    useLiveViewer        = True              # boolian to inform if the receiver to show the files in the live viewer is running
 
     # to get the logging only handling this class
     log                   = None
@@ -97,7 +98,6 @@ class WorkerProcess():
 
 
     def process(self):
-        global useLiveViewer
         """
           sends a 'ready' to a broker and receives a 'job' to process.
           The 'job' will be to pass the file of an fileEvent to the
@@ -133,6 +133,7 @@ class WorkerProcess():
             self.log.debug("worker-"+str(self.id)+": waiting for new job")
             workload = self.routerSocket.recv()
             self.log.debug("worker-"+str(self.id)+": new job received")
+
             finished = workload == b"END"
             if finished:
                 processingJobs = False
@@ -140,8 +141,20 @@ class WorkerProcess():
                 break
             jobCount += 1
 
-            print useLiveViewer
-            if useLiveViewer:
+            stopLV = workload == b"STOP_LIVE_VIEWER"
+            if stopLV:
+                self.useLiveViewer = False
+                self.log.info("worker-"+str(self.id)+": Received live viewer stop command...stopping live viewer")
+                continue
+
+            startLV = workload == b"START_LIVE_VIEWER"
+            if startLV:
+                self.useLiveViewer = True
+                self.log.info("worker-"+str(self.id)+": Received live viewer start command...starting live viewer")
+                continue
+
+            print "worker-"+str(self.id)+":", self.useLiveViewer
+            if self.useLiveViewer:
                 #convert fileEventMessage back to a dictionary
                 fileEventMessageDict = None
                 try:
@@ -387,6 +400,8 @@ class FileMover():
     receiverComSocket   = None         # to exchange messages with the receiver
     routerSocket        = None
 
+    useLiveViewer       = True       # boolian to inform if the receiver to show the files in the live viewer is running
+
     # to get the logging only handling this class
     log                   = None
 
@@ -459,18 +474,14 @@ class FileMover():
 
 
     def startReceiving(self):
-        global useLiveViewer
 
         self.log.debug("new message-socket crated for: new file events.")
-        parallelDataStreams = int(self.parallelDataStreams)
-
-        self.log.debug("new message-socket crated for: passing file objects.")
 
         incomingMessageCounter = 0
 
         #start worker-processes. each will have its own PushSocket.
         workerProcessList      = list()
-        numberOfWorkerProcesses = parallelDataStreams
+        numberOfWorkerProcesses = int(self.parallelDataStreams)
         for processNumber in range(numberOfWorkerProcesses):
             self.log.debug("instantiate new workerProcess (nr " + str(processNumber) + " )")
             newWorkerProcess = Process(target=WorkerProcess, args=(processNumber,
@@ -507,19 +518,22 @@ class FileMover():
 
                         #TODO might using a error-count and threshold when to stop receiving, e.g. after 100 misses?
                         # continueReceiving = False
+                    continue
 
                 if self.receiverComSocket in socks and socks[self.receiverComSocket] == zmq.POLLIN:
                     incomingMessage = self.receiverComSocket.recv()
                     self.log.debug("Recieved control command: %s" % incomingMessage )
                     if incomingMessage == "STOP_LIVE_VIEWER":
-                        self.log.debug("Received live viewer stop command, stopping live viewer")
-                        useLiveViewer = False
-                        print "Signal", useLiveViewer
+                        self.log.info("Received live viewer stop command...stopping live viewer")
+                        self.useLiveViewer = False
+                        print "FileMover: Signal", self.useLiveViewer
+                        self.sendLiveViewerSignal(incomingMessage)
                         continue
                     elif incomingMessage == "START_LIVE_VIEWER":
-                        self.log.debug("Received AddFile command")
-                        self.log.debug("Received live viewer start command, starting live viewer")
-                        useLiveViewer = True
+                        self.log.info("Received live viewer start command...starting live viewer")
+                        self.useLiveViewer = True
+                        print "FileMover: Signal", self.useLiveViewer
+                        self.sendLiveViewerSignal(incomingMessage)
                         continue
 
         except KeyboardInterrupt:
@@ -528,12 +542,11 @@ class FileMover():
 
 
     def processFileEvent(self, fileEventMessage):
-        # LRU worker is next waiting in the queue
         self.log.debug("waiting for available workerProcess.")
 
         # address == "worker-0"
-        # empty   == ""
-        # ready   == "READY"
+        # empty   == b''                   # as delimiter
+        # ready   == b'READY'
         address, empty, ready = self.routerSocket.recv_multipart()
         self.log.debug("available workerProcess detected.")
 
@@ -545,6 +558,24 @@ class FileMover():
                                     ])
 
         self.log.debug("passing job to workerProcess...done.")
+
+
+    def sendLiveViewerSignal(self, signal):
+        numberOfWorkerProcesses = int(self.parallelDataStreams)
+        for processNumber in range(numberOfWorkerProcesses):
+            self.log.debug("send live viewer signal " + str(signal) + " to workerProcess (nr " + str(processNumber) + " )")
+
+            address, empty, ready = self.routerSocket.recv_multipart()
+            self.log.debug("available workerProcess detected.")
+
+            # address == "worker-0"
+            # empty   == b''                   # as delimiter
+            # ready   == b'START_LIVE_VIEWER'
+            self.routerSocket.send_multipart([
+                                         address,
+                                         b'',
+                                         signal,
+                                        ])
 
 
     def stop(self):

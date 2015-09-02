@@ -131,15 +131,16 @@ class FileReceiver:
                 #TODO: instead of open/close file for each chunk recyle the file-descriptor for all chunks opened
                 self.appendChunksToFileFromMultipartMessage(payloadMetadataDict, multipartMessage)
                 self.log.debug("append to file based on multipart-message...success.")
+            except KeyboardInterrupt:
+                errorMessage = "KeyboardInterrupt detected. Unable to append multipart-content to file."
+                self.log.info(errorMessage)
+                break
             except Exception, e:
                 errorMessage = "Unable to append multipart-content to file."
                 self.log.error(errorMessage)
                 self.log.debug("Error was: " + str(e))
                 self.log.debug("append to file based on multipart-message...failed.")
-            except:
-                errorMessage = "Unable to append multipart-content to file. Unknown Error."
-                self.log.error(errorMessage)
-                self.log.debug("append to file based on multipart-message...failed.")
+
             if len(multipartMessage[1]) < payloadMetadataDict["chunkSize"] :
                 #indicated end of file. closing file and leave loop
                 self.log.debug("last file-chunk received. stop appending.")
@@ -157,7 +158,6 @@ class FileReceiver:
 
     def startReceiving(self):
         #run loop, and wait for incoming messages
-        continueStreaming = True
         loopCounter       = 0    #counter of total received messages
         continueReceiving = True #receiving will stop if value gets False
         self.log.debug("Waiting for new messages...")
@@ -282,6 +282,7 @@ class FileReceiver:
 
         self.log.debug("sending exit signal to coordinator...")
         self.exchangeSocket.send("Exit")
+
         self.log.debug("sending stop signal to sender...")
         self.senderComSocket.send("STOP_LIVE_VIEWER")
         # give the signal time to arrive
@@ -405,7 +406,7 @@ class Coordinator:
                 if message == "Exit":
                     self.log.debug("Received exit command, coordinator thread will stop recieving messages")
                     should_continue = False
-                    self.zmqliveViewerSocket.send("Exit")
+                    self.zmqliveViewerSocket.send("Exit", zmq.NOBLOCK)
                     break
                 elif message.startswith("AddFile"):
                     self.log.debug("Received AddFile command")
