@@ -25,6 +25,7 @@ class defaultConfigSender():
     fileEventPort       = "6060"
     # ip of dataStream-socket to push new files to
     dataStreamIp        = LOCAL_IP
+#    dataStreamIp        = "131.169.185.121"   # zitpcx19282.desy.de
     # port number of dataStream-socket to push new files to
     dataStreamPort      = "6061"
     # zmq-pull-socket ip which deletes/moves given files
@@ -66,6 +67,8 @@ class defaultConfigReceiver():
 
     # local ip to bind dataStream to
     dataStreamIp          = LOCAL_IP
+#    dataStreamIp          = "*"
+#    dataStreamIp          = "131.169.55.170"      # lsdma-lab04.desy.de
     # tcp port of data pipe"
     dataStreamPort        = "6061"
     # local ip to bind LiveViewer to

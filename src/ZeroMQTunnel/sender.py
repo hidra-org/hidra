@@ -65,7 +65,7 @@ class WorkerProcess():
 
         self.zmqDataStreamSocket      = self.zmqContextForWorker.socket(zmq.PUSH)
         connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
-        self.zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
+        self.zmqDataStreamSocket.bind(connectionStrDataStreamSocket)
         self.log.debug("zmqDataStreamSocket started for '" + connectionStrDataStreamSocket + "'")
 
         # initialize sockets

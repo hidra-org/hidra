@@ -74,7 +74,7 @@ class FileReceiver:
         # create pull socket
         self.zmqDataStreamSocket = self.zmqContext.socket(zmq.PULL)
         connectionStrZmqSocket = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
-        self.zmqDataStreamSocket.bind(connectionStrZmqSocket)
+        self.zmqDataStreamSocket.connect(connectionStrZmqSocket)
         self.log.debug("zmqDataStreamSocket started (bind) for '" + connectionStrZmqSocket + "'")
 
         self.exchangeSocket = self.zmqContext.socket(zmq.PAIR)
