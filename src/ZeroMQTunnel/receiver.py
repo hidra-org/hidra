@@ -15,6 +15,13 @@ from stat import S_ISREG, ST_MTIME, ST_MODE
 import threading
 import helperScript
 
+BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname (  os.path.realpath ( __file__ ) ) ) )
+CONFIG_PATH = BASE_PATH + os.sep + "conf"
+
+sys.path.append ( CONFIG_PATH )
+
+from config import defaultConfigReceiver
+
 
 #
 #  --------------------------  class: FileReceiver  --------------------------------------
@@ -22,26 +29,35 @@ import helperScript
 class FileReceiver:
     zmqContext               = None
     outputDir                = None
-    zqmDataStreamIp          = None
+    zmqDataStreamIp          = None
     zmqDataStreamPort        = None
     zmqLiveViewerIp          = None
     zmqLiveViewerPort        = None
     exchangeIp               = "127.0.0.1"
     exchangePort             = "6072"
+    senderComIp              = None         # ip for socket to communicate with receiver
+    senderComPort            = None         # port for socket to communicate receiver
+    socketResponseTimeout    = None         # time in milliseconds to wait for the sender to answer to a signal
 
     log                      = None
 
     # sockets
-    zmqSocket                = None
-    exchangeSocket           = None
+    zmqDataStreamSocket      = None         # socket to receive the data from
+    exchangeSocket           = None         # socket to communicate with Coordinator class
+    senderComSocket          = None         # socket to communicate with sender
 
 
-    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, maxRingBuffersize, context = None):
-        self.outputDir          = outputDir
-        self.zmqDataStreamIp    = zmqDataStreamIp
-        self.zmqDataStreamPort  = zmqDataStreamPort
-        self.zmqLiveViewerIp    = zmqLiveViewerIp
-        self.zmqLiveViewerPort  = zmqLiveViewerPort
+    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, senderComPort,
+                 maxRingBuffersize, senderResponseTimeout = 1000, context = None):
+
+        self.outputDir             = outputDir
+        self.zmqDataStreamIp       = zmqDataStreamIp
+        self.zmqDataStreamPort     = zmqDataStreamPort
+        self.zmqLiveViewerIp       = zmqLiveViewerIp
+        self.zmqLiveViewerPort     = zmqLiveViewerPort
+        self.senderComIp           = zmqDataStreamIp        # ip for socket to communicate with sender; is the same ip as the data stream ip
+        self.senderComPort         = senderComPort
+        self.socketResponseTimeout = senderResponseTimeout
 
         if context:
             assert isinstance(context, zmq.sugar.context.Context)
@@ -56,28 +72,53 @@ class FileReceiver:
         self.receiverThread.start()
 
         # create pull socket
-        self.zmqSocket         = self.zmqContext.socket(zmq.PULL)
-        connectionStrZmqSocket = "tcp://" + self.zmqDataStreamIp + ":%s" % self.zmqDataStreamPort
-        self.zmqSocket.bind(connectionStrZmqSocket)
-        self.log.debug("zmqSocket started (bind) for '" + connectionStrZmqSocket + "'")
+        self.zmqDataStreamSocket = self.zmqContext.socket(zmq.PULL)
+        connectionStrZmqSocket = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
+        self.zmqDataStreamSocket.bind(connectionStrZmqSocket)
+        self.log.debug("zmqDataStreamSocket started (bind) for '" + connectionStrZmqSocket + "'")
 
         self.exchangeSocket = self.zmqContext.socket(zmq.PAIR)
-        connectionStrExchangeSocket = "tcp://" + self.exchangeIp + ":%s" % self.exchangePort
+        connectionStrExchangeSocket = "tcp://{ip}:{port}".format(ip=self.exchangeIp, port=self.exchangePort)
         self.exchangeSocket.connect(connectionStrExchangeSocket)
         self.log.debug("exchangeSocket started (connect) for '" + connectionStrExchangeSocket + "'")
 
+        self.senderComSocket = self.zmqContext.socket(zmq.REQ)
+        # time to wait for the sender to give a confirmation of the signal
+        self.senderComSocket.RCVTIMEO = self.socketResponseTimeout
+        connectionStrSenderComSocket = "tcp://{ip}:{port}".format(ip=self.senderComIp, port=self.senderComPort)
+        self.senderComSocket.connect(connectionStrSenderComSocket)
+        self.log.debug("senderComSocket started (connect) for '" + connectionStrSenderComSocket + "'")
+
+        self.log.info("Sending start signal to sender...")
+        self.senderComSocket.send("START_LIVE_VIEWER")
+
+        senderMessage = None
         try:
-            self.log.info("Start receiving new files")
-            self.startReceiving()
-            self.log.info("Stopped receiving.")
-        except Exception, e:
-            self.log.error("Unknown error while receiving files. Need to abort.")
+            senderMessage = self.senderComSocket.recv()
+            print "answer to start live viewer: ", senderMessage
+            self.log.debug("Received message from sender: " + str(senderMessage) )
+        except Exception as e:
+            self.log.error("No message received from sender")
             self.log.debug("Error was: " + str(e))
-        except:
-            trace = traceback.format_exc()
-            self.log.info("Unkown error state. Shutting down...")
-            self.log.debug("Error was: " + str(trace))
-            self.zmqContext.destroy()
+            self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
+
+        if senderMessage == "START_LIVE_VIEWER":
+            self.log.info("Received confirmation from sender...start receiving files")
+            try:
+                self.log.info("Start receiving new files")
+                self.startReceiving()
+                self.log.info("Stopped receiving.")
+            except Exception, e:
+                self.log.error("Unknown error while receiving files. Need to abort.")
+                self.log.debug("Error was: " + str(e))
+            except:
+                trace = traceback.format_exc()
+                self.log.info("Unkown error state. Shutting down...")
+                self.log.debug("Error was: " + str(trace))
+                self.zmqContext.destroy()
+        else:
+            self.log.info("Sending start signal to sender...failed.")
+
 
         self.log.info("Quitting.")
 
@@ -87,11 +128,11 @@ class FileReceiver:
         return logger
 
 
-    def combineMessage(self, zmqSocket):
+    def combineMessage(self, zmqDataStreamSocket):
         receivingMessages = True
         #save all chunks to file
         while receivingMessages:
-            multipartMessage = zmqSocket.recv_multipart()
+            multipartMessage = zmqDataStreamSocket.recv_multipart()
 
             #extract multipart message
             try:
@@ -113,15 +154,16 @@ class FileReceiver:
                 #TODO: instead of open/close file for each chunk recyle the file-descriptor for all chunks opened
                 self.appendChunksToFileFromMultipartMessage(payloadMetadataDict, multipartMessage)
                 self.log.debug("append to file based on multipart-message...success.")
+            except KeyboardInterrupt:
+                errorMessage = "KeyboardInterrupt detected. Unable to append multipart-content to file."
+                self.log.info(errorMessage)
+                break
             except Exception, e:
                 errorMessage = "Unable to append multipart-content to file."
                 self.log.error(errorMessage)
                 self.log.debug("Error was: " + str(e))
                 self.log.debug("append to file based on multipart-message...failed.")
-            except:
-                errorMessage = "Unable to append multipart-content to file. Unknown Error."
-                self.log.error(errorMessage)
-                self.log.debug("append to file based on multipart-message...failed.")
+
             if len(multipartMessage[1]) < payloadMetadataDict["chunkSize"] :
                 #indicated end of file. closing file and leave loop
                 self.log.debug("last file-chunk received. stop appending.")
@@ -136,16 +178,14 @@ class FileReceiver:
         self.exchangeSocket.send(message)
 
 
-
     def startReceiving(self):
         #run loop, and wait for incoming messages
-        continueStreaming = True
         loopCounter       = 0    #counter of total received messages
         continueReceiving = True #receiving will stop if value gets False
         self.log.debug("Waiting for new messages...")
         while continueReceiving:
             try:
-                self.combineMessage(self.zmqSocket)
+                self.combineMessage(self.zmqDataStreamSocket)
                 loopCounter+=1
             except KeyboardInterrupt:
                 self.log.debug("Keyboard interrupt detected. Stop receiving.")
@@ -158,7 +198,7 @@ class FileReceiver:
 
         self.log.info("shutting down receiver...")
         try:
-            self.stopReceiving(self.zmqSocket, self.zmqContext)
+            self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext)
             self.log.debug("shutting down receiver...done.")
         except:
             self.log.error(sys.exc_info())
@@ -252,22 +292,42 @@ class FileReceiver:
             raise Exception(errorMessage)
 
 
-    def stopReceiving(self, zmqSocket, zmqContext):
+    def stopReceiving(self, zmqDataStreamSocket, zmqContext, sendToSender = True):
 
         self.log.debug("stopReceiving...")
         try:
-            zmqSocket.close(0)
-            self.log.debug("closing zmqSocket...done.")
+            zmqDataStreamSocket.close(0)
+            self.log.debug("closing zmqDataStreamSocket...done.")
         except:
-            self.log.error("closing zmqSocket...failed.")
+            self.log.error("closing zmqDataStreamSocket...failed.")
             self.log.error(sys.exc_info())
 
-        self.log.debug("sending exit signal to thread...")
+        self.log.debug("sending exit signal to coordinator...")
         self.exchangeSocket.send("Exit")
+
+        if sendToSender:
+            self.log.debug("sending stop signal to sender...")
+            self.senderComSocket.send("STOP_LIVE_VIEWER", zmq.NOBLOCK)
+
+            try:
+                senderMessage = self.senderComSocket.recv()
+                print "answer to stop live viewer: ", senderMessage
+                self.log.debug("Received message from sender: " + str(senderMessage) )
+
+                if senderMessage == "STOP_LIVE_VIEWER":
+                    self.log.info("Received confirmation from sender...")
+                else:
+                    self.log.error("Received confirmation from sender...failed")
+            except Exception as e:
+                self.log.error("sending stop signal to sender...failed.")
+                self.log.debug("Error was: " + str(e))
+
         # give the signal time to arrive
         time.sleep(0.1)
+        self.log.debug("closing signal communication sockets...")
         self.exchangeSocket.close(0)
-        self.log.debug("sending exit signal to thread...done")
+        self.senderComSocket.close(0)
+        self.log.debug("closing signal communication sockets...done")
 
         try:
             zmqContext.destroy()
@@ -284,12 +344,13 @@ class Coordinator:
     zmqContext               = None
     liveViewerZmqContext     = None
     outputDir                = None
-    zqmDataStreamIp          = None
+    zmqDataStreamIp          = None
     zmqDataStreamPort        = None
     zmqLiveViewerIp          = None
     zmqLiveViewerPort        = None
     receiverExchangeIp       = "127.0.0.1"
     receiverExchangePort     = "6072"
+
     ringBuffer               = []
     maxRingBufferSize        = None
 
@@ -299,8 +360,8 @@ class Coordinator:
     liveViewerThread         = None
 
     # sockets
-    receiverExchangeSocket   = None
-    zmqliveViewerSocket      = None
+    receiverExchangeSocket   = None         # socket to communicate with FileReceiver class
+    zmqliveViewerSocket      = None         # socket to communicate with live viewer
 
 
     def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, maxRingBufferSize, context = None):
@@ -380,9 +441,10 @@ class Coordinator:
                 message = self.receiverExchangeSocket.recv()
                 self.log.debug("Recieved control command: %s" % message )
                 if message == "Exit":
-                    self.log.debug("Recieved exit command, coordinator thread will stop recieving messages")
+                    self.log.debug("Received exit command, coordinator thread will stop recieving messages")
                     should_continue = False
-                    self.liveViewerSocket.send("Exit")
+                    # TODO why sending signal to live viewer?
+#                    self.zmqliveViewerSocket.send("Exit", zmq.NOBLOCK)
                     break
                 elif message.startswith("AddFile"):
                     self.log.debug("Received AddFile command")
@@ -427,20 +489,27 @@ class Coordinator:
 
 
 def argumentParsing():
+    defConf = defaultConfigReceiver()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--outputDir"             , type=str, help="where incoming data will be stored to", default="/tmp/watchdog/data_mirror/")
-    parser.add_argument("--tcpPortDataStream"     , type=int, help="tcp port of data pipe", default=6061)
-    parser.add_argument("--tcpPortLiveViewer"     , type=int, help="tcp port of live viewer", default=6071)
-    parser.add_argument("--logfile"               , type=str, help="file used for logging", default="/tmp/watchdog/fileReceiver.log")
-    parser.add_argument("--bindingIpForDataStream", type=str, help="local ip to bind dataStream to", default="127.0.0.1")
-    parser.add_argument("--bindingIpForLiveViewer", type=str, help="local ip to bind LiveViewer to", default="127.0.0.1")
-    parser.add_argument("--maxRingBufferSize"     , type=int, help="size of the ring buffer for the live viewer", default="100")
-    parser.add_argument("--verbose"       ,           help="more verbose output", action="store_true")
+    parser.add_argument("--logfilePath"          , type=str, default=defConf.logfilePath          , help="path where logfile will be created (default=" + str(defConf.logfilePath) + ")")
+    parser.add_argument("--logfileName"          , type=str, default=defConf.logfileName          , help="filename used for logging (default=" + str(defConf.logfileName) + ")")
+    parser.add_argument("--targetDir"            , type=str, default=defConf.targetDir            , help="where incoming data will be stored to (default=" + str(defConf.targetDir) + ")")
+    parser.add_argument("--dataStreamIp"         , type=str, default=defConf.dataStreamIp         , help="ip of dataStream-socket to pull new files from (default=" + str(defConf.dataStreamIp) + ")")
+    parser.add_argument("--dataStreamPort"       , type=str, default=defConf.dataStreamPort       , help="port number of dataStream-socket to pull new files from (default=" + str(defConf.dataStreamPort) + ")")
+    parser.add_argument("--liveViewerIp"         , type=str, default=defConf.liveViewerIp         , help="local ip to bind LiveViewer to (default=" + str(defConf.liveViewerIp) + ")")
+    parser.add_argument("--liveViewerPort"       , type=str, default=defConf.liveViewerPort       , help="tcp port of live viewer (default=" + str(defConf.liveViewerPort) + ")")
+    parser.add_argument("--senderComPort"        , type=str, default=defConf.senderComPort        , help="port number of dataStream-socket to send signals back to the sender (default=" + str(defConf.senderComPort) + ")")
+    parser.add_argument("--maxRingBufferSize"    , type=int, default=defConf.maxRingBufferSize    , help="size of the ring buffer for the live viewer (default=" + str(defConf.maxRingBufferSize) + ")")
+    parser.add_argument("--senderResponseTimeout", type=int, default=defConf.senderResponseTimeout, help=argparse.SUPPRESS)
+    parser.add_argument("--verbose"              ,           action="store_true"                  , help="more verbose output")
 
     arguments = parser.parse_args()
 
-    # TODO: check folder-directory for existance
+    targetDir = str(arguments.targetDir)
+
+    # check target directory for existance
+    helperScript.checkFolderExistance(targetDir)
 
     return arguments
 
@@ -449,21 +518,27 @@ if __name__ == "__main__":
 
 
     #argument parsing
-    arguments         = argumentParsing()
-    outputDir         = arguments.outputDir
-    verbose           = arguments.verbose
-    zmqDataStreamIp   = str(arguments.bindingIpForDataStream)
-    zmqDataStreamPort = str(arguments.tcpPortDataStream)
-    zmqLiveViewerIp   = str(arguments.bindingIpForLiveViewer)
-    zmqLiveViewerPort = str(arguments.tcpPortLiveViewer)
-    logFile           = arguments.logfile
-    logfileFilePath   = arguments.logfile
-    maxRingBufferSize = int(arguments.maxRingBufferSize)
+    arguments             = argumentParsing()
+
+    logfilePath           = str(arguments.logfilePath)
+    logfileName           = str(arguments.logfileName)
+    logfileFullPath       = os.path.join(logfilePath, logfileName)
+    verbose               = arguments.verbose
+
+    outputDir             = str(arguments.targetDir)
+    zmqDataStreamIp       = str(arguments.dataStreamIp)
+    zmqDataStreamPort     = str(arguments.dataStreamPort)
+
+    zmqLiveViewerIp       = str(arguments.liveViewerIp)
+    zmqLiveViewerPort     = str(arguments.liveViewerPort)
+    senderComPort         = str(arguments.senderComPort)
+    maxRingBufferSize     = int(arguments.maxRingBufferSize)
+    senderResponseTimeout = int(arguments.senderResponseTimeout)
 
 
     #enable logging
-    helperScript.initLogging(logfileFilePath, verbose)
+    helperScript.initLogging(logfileFullPath, verbose)
 
 
     #start file receiver
-    myWorker = FileReceiver(outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, maxRingBufferSize)
+    myWorker = FileReceiver(outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, senderComPort, maxRingBufferSize, senderResponseTimeout)

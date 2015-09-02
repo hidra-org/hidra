@@ -222,7 +222,7 @@ class Cleaner():
                                                                                                                             FILE=filepath))
 
     def stop(self):
-        self.debug("Closing socket")
+        self.log.debug("Closing socket")
         self.zmqCleanerSocket.close(0)
-        self.debug("Destroying context")
+        self.log.debug("Destroying context")
         self.zmqContextForCleaner.destroy()

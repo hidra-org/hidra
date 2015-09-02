@@ -142,6 +142,7 @@ def createZmqSocket(zmqIp, zmqPort):
 
     return context, socket
 
+
 def communicateWithReceiver(socket):
     print "Asking for next file"
     socket.send ("NextFile")
@@ -149,6 +150,7 @@ def communicateWithReceiver(socket):
     message = socket.recv()
     print "Next file: ", message
     return message
+
 
 def stopZmq(zmqSocket, zmqContext):
     try:

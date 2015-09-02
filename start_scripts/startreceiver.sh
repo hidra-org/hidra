@@ -1,5 +1,5 @@
 #/bin/sh
 
-BASE_DIR="/space/projects/live-viewer/"
+BASE_DIR="/space/projects/live-viewer"
 
-python ../src/ZeroMQTunnel/receiver.py --outputDir "${BASE_DIR}/data/zmq_target" --tcpPortDataStream 6061 --bindingIpForDataStream 127.0.01 --logfile ../logs/receiver.log --maxRingBufferSize 20 --verbose
+python ../src/ZeroMQTunnel/receiver.py --targetDir "${BASE_DIR}/data/zmq_target" --dataStreamIp "*" --logfilePath "${BASE_DIR}/logs" --logfileName "receiver.log" --maxRingBufferSize 10 --verbose

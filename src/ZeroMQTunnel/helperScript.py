@@ -76,6 +76,20 @@ def checkFolderExistance(folderPath):
         sys.exit(1)
 
 
+def checkLogFileWritable(filepath, filename):
+    #error if logfile cannot be written
+    try:
+        fullPath = os.path.join(filepath, filename)
+        logFile = open(fullPath, "a")
+    except:
+        print "Unable to create the logfile """ + str(fullPath)
+        print """Please specify a new target by setting the following arguments:
+--logfileName
+--logfilePath
+"""
+        sys.exit(1)
+
+
 def initLogging(filenameFullPath, verbose):
     #@see https://docs.python.org/2/howto/logging-cookbook.html
 
