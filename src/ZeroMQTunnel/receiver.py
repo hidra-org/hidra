@@ -83,19 +83,30 @@ class FileReceiver:
         self.senderComSocket.connect(connectionStrSenderComSocket)
         self.log.debug("senderComSocket started (connect) for '" + connectionStrSenderComSocket + "'")
 
+        self.log.info("Sending start signal to sender...")
+        self.senderComSocket.send("START_LIVE_VIEWER")
 
-        try:
-            self.log.info("Start receiving new files")
-            self.startReceiving()
-            self.log.info("Stopped receiving.")
-        except Exception, e:
-            self.log.error("Unknown error while receiving files. Need to abort.")
-            self.log.debug("Error was: " + str(e))
-        except:
-            trace = traceback.format_exc()
-            self.log.info("Unkown error state. Shutting down...")
-            self.log.debug("Error was: " + str(trace))
-            self.zmqContext.destroy()
+        senderMessage = self.senderComSocket.recv()
+        print "answer to start live viewer: ", senderMessage
+        self.log.debug("Received message from sender: " + str(senderMessage) )
+
+        if senderMessage == "START_LIVE_VIEWER":
+            self.log.info("Received confirmation from sender...start receiving files")
+            try:
+                self.log.info("Start receiving new files")
+                self.startReceiving()
+                self.log.info("Stopped receiving.")
+            except Exception, e:
+                self.log.error("Unknown error while receiving files. Need to abort.")
+                self.log.debug("Error was: " + str(e))
+            except:
+                trace = traceback.format_exc()
+                self.log.info("Unkown error state. Shutting down...")
+                self.log.debug("Error was: " + str(trace))
+                self.zmqContext.destroy()
+        else:
+            self.log.info("Sending start signal to sender...failed.")
+
 
         self.log.info("Quitting.")
 
@@ -284,7 +295,18 @@ class FileReceiver:
         self.exchangeSocket.send("Exit")
 
         self.log.debug("sending stop signal to sender...")
-        self.senderComSocket.send("STOP_LIVE_VIEWER")
+        self.senderComSocket.send("STOP_LIVE_VIEWER", zmq.NOBLOCK)
+
+        senderMessage = self.senderComSocket.recv()
+        print "answer to stop live viewer: ", senderMessage
+        self.log.debug("Received message from sender: " + str(senderMessage) )
+
+        if senderMessage == "STOP_LIVE_VIEWER":
+            self.log.info("Received confirmation from sender...")
+        else:
+            self.log.error("Received confirmation from sender...failed")
+
+
         # give the signal time to arrive
         time.sleep(0.1)
         self.log.debug("closing signal communication sockets...")

@@ -41,7 +41,7 @@ class WorkerProcess():
     routerSocket         = None
     cleanerSocket        = None
 
-    useLiveViewer        = True              # boolian to inform if the receiver to show the files in the live viewer is running
+    useLiveViewer        = False              # boolian to inform if the receiver to show the files in the live viewer is running
 
     # to get the logging only handling this class
     log                   = None
@@ -153,7 +153,6 @@ class WorkerProcess():
                 self.log.info("worker-"+str(self.id)+": Received live viewer start command...starting live viewer")
                 continue
 
-            print "worker-"+str(self.id)+":", self.useLiveViewer
             if self.useLiveViewer:
                 #convert fileEventMessage back to a dictionary
                 fileEventMessageDict = None
@@ -191,6 +190,8 @@ class WorkerProcess():
                     self.log.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
                     #skip all further instructions and continue with next iteration
                     continue
+            else:
+                print "worker-"+str(self.id)+": no data sent"
 
 
             #send remove-request to message pipe
@@ -400,7 +401,7 @@ class FileMover():
     receiverComSocket   = None         # to exchange messages with the receiver
     routerSocket        = None
 
-    useLiveViewer       = True       # boolian to inform if the receiver to show the files in the live viewer is running
+    useLiveViewer       = False       # boolian to inform if the receiver to show the files in the live viewer is running
 
     # to get the logging only handling this class
     log                   = None
@@ -576,6 +577,7 @@ class FileMover():
                                          b'',
                                          signal,
                                         ])
+            self.receiverComSocket.send(signal, zmq.NOBLOCK)
 
 
     def stop(self):
