@@ -97,6 +97,9 @@ class FileReceiver:
             senderMessage = self.senderComSocket.recv()
             print "answer to start live viewer: ", senderMessage
             self.log.debug("Received message from sender: " + str(senderMessage) )
+        except KeyboardInterrupt:
+            self.log.error("KeyboardInterrupt: No message received from sender")
+            self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
         except Exception as e:
             self.log.error("No message received from sender")
             self.log.debug("Error was: " + str(e))
@@ -318,6 +321,8 @@ class FileReceiver:
                     self.log.info("Received confirmation from sender...")
                 else:
                     self.log.error("Received confirmation from sender...failed")
+            except KeyboardInterrupt:
+                self.log.error("KeyboardInterrupt: No message received from sender")
             except Exception as e:
                 self.log.error("sending stop signal to sender...failed.")
                 self.log.debug("Error was: " + str(e))
