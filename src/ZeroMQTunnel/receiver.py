@@ -73,9 +73,10 @@ class FileReceiver:
 
         # create pull socket
         self.zmqDataStreamSocket = self.zmqContext.socket(zmq.PULL)
-        connectionStrZmqSocket = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
-        self.zmqDataStreamSocket.connect(connectionStrZmqSocket)
-        self.log.debug("zmqDataStreamSocket started (bind) for '" + connectionStrZmqSocket + "'")
+        connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
+        print "connectionStrDataSTreamSocket", connectionStrDataStreamSocket
+        self.zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
+        self.log.debug("zmqDataStreamSocket started (connect) for '" + connectionStrZmqSocket + "'")
 
         self.exchangeSocket = self.zmqContext.socket(zmq.PAIR)
         connectionStrExchangeSocket = "tcp://{ip}:{port}".format(ip=self.exchangeIp, port=self.exchangePort)
@@ -86,6 +87,7 @@ class FileReceiver:
         # time to wait for the sender to give a confirmation of the signal
         self.senderComSocket.RCVTIMEO = self.socketResponseTimeout
         connectionStrSenderComSocket = "tcp://{ip}:{port}".format(ip=self.senderComIp, port=self.senderComPort)
+        print "connectionStrSenderComSocket", connectionStrSenderComSocket
         self.senderComSocket.connect(connectionStrSenderComSocket)
         self.log.debug("senderComSocket started (connect) for '" + connectionStrSenderComSocket + "'")
 
@@ -136,6 +138,7 @@ class FileReceiver:
         #save all chunks to file
         while receivingMessages:
             multipartMessage = zmqDataStreamSocket.recv_multipart()
+            print "receiving multipart message from data pipe"
 
             #extract multipart message
             try:

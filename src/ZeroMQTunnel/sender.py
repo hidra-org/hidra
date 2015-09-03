@@ -65,6 +65,7 @@ class WorkerProcess():
 
         self.zmqDataStreamSocket      = self.zmqContextForWorker.socket(zmq.PUSH)
         connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
+        print "connectionStrDataStreamSocket", connectionStrDataStreamSocket
         self.zmqDataStreamSocket.bind(connectionStrDataStreamSocket)
         self.log.debug("zmqDataStreamSocket started for '" + connectionStrDataStreamSocket + "'")
 
@@ -198,9 +199,9 @@ class WorkerProcess():
             #send remove-request to message pipe
             try:
                 #sending to pipe
-                self.log.debug("send file-event to cleaner-pipe...")
+                self.log.debug("send file-event for file " + str(sourcePath) + str(relativePath) + str(filename) + " to cleaner-pipe...")
                 self.cleanerSocket.send(workload)
-                self.log.debug("send file-event to cleaner-pipe...success.")
+                self.log.debug("send file-event for file " + str(sourcePath) + str(relativePath) + str(filename) + " to cleaner-pipe...success.")
 
                 #TODO: remember workload. append to list?
                 # can be used to verify files which have been processed twice or more
@@ -263,7 +264,7 @@ class WorkerProcess():
 
         #send message
         try:
-            self.log.debug("Passing multipart-message...")
+            self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...")
             print "sending file: ", sourceFilePathFull
             chunkNumber = 0
             stillChunksToRead = True
@@ -297,9 +298,9 @@ class WorkerProcess():
             print "sending file: ", sourceFilePathFull, "done"
 
             # self.zmqDataStreamSocket.send_multipart(multipartMessage)
-            self.log.debug("Passing multipart-message...done.")
+            self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...done.")
         except Exception, e:
-            self.log.error("Unable to send multipart-message")
+            self.log.error("Unable to send multipart-message for file " + str(sourceFilePathFull))
             self.log.debug("Error was: " + str(e))
             self.log.info("Passing multipart-message...failed.")
             raise Exception(e)
@@ -435,14 +436,15 @@ class FileMover():
         self.fileEventSocket         = self.zmqContext.socket(zmq.PULL)
         connectionStrFileEventSocket = "tcp://{ip}:{port}".format(ip=self.fileEventIp, port=self.fileEventPort)
         self.fileEventSocket.bind(connectionStrFileEventSocket)
-        self.log.debug("fileEventSocket started for '" + connectionStrFileEventSocket + "'")
+        self.log.debug("fileEventSocket started (bind) for '" + connectionStrFileEventSocket + "'")
 
 
         # create zmq socket for communitation with receiver
         self.receiverComSocket         = self.zmqContext.socket(zmq.REP)
         connectionStrReceiverComSocket = "tcp://{ip}:{port}".format(ip=self.receiverComIp, port=self.receiverComPort)
+        print "connectionStrReceiverComSocket", connectionStrReceiverComSocket
         self.receiverComSocket.bind(connectionStrReceiverComSocket)
-        self.log.debug("receiverComSocket started for '" + connectionStrReceiverComSocket + "'")
+        self.log.debug("receiverComSocket started (bind) for '" + connectionStrReceiverComSocket + "'")
 
         # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
         self.poller = zmq.Poller()
@@ -457,7 +459,7 @@ class FileMover():
         self.routerSocket         = self.zmqContext.socket(zmq.ROUTER)
         connectionStrRouterSocket = "tcp://{ip}:{port}".format(ip=routerIp, port=routerPort)
         self.routerSocket.bind(connectionStrRouterSocket)
-        self.log.debug("routerSocket started for '" + connectionStrRouterSocket + "'")
+        self.log.debug("routerSocket started (bind) for '" + connectionStrRouterSocket + "'")
 
 
     def process(self):

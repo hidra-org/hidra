@@ -8,6 +8,7 @@ sys.path.append ( ZMQ_PATH )
 
 import helperScript
 
+#LOCAL_IP= "0.0.0.0"
 LOCAL_IP= "127.0.0.1"
 
 class defaultConfigSender():
@@ -24,8 +25,8 @@ class defaultConfigSender():
     # zmq endpoint (port) to send file events to
     fileEventPort       = "6060"
     # ip of dataStream-socket to push new files to
-    dataStreamIp        = LOCAL_IP
-#    dataStreamIp        = "131.169.185.121"   # zitpcx19282.desy.de
+#    dataStreamIp        = LOCAL_IP
+    dataStreamIp        = "0.0.0.0"
     # port number of dataStream-socket to push new files to
     dataStreamPort      = "6061"
     # zmq-pull-socket ip which deletes/moves given files
@@ -65,10 +66,10 @@ class defaultConfigReceiver():
     # where incoming data will be stored to"
     targetDir             = "/space/projects/live-viewer/data/zmq_target"
 
-    # local ip to bind dataStream to
-    dataStreamIp          = LOCAL_IP
-#    dataStreamIp          = "*"
+    # local ip to connect dataStream to
+#    dataStreamIp          = LOCAL_IP
 #    dataStreamIp          = "131.169.55.170"      # lsdma-lab04.desy.de
+    dataStreamIp          = "131.169.185.121"     # zitpcx19282.desy.de
     # tcp port of data pipe"
     dataStreamPort        = "6061"
     # local ip to bind LiveViewer to
