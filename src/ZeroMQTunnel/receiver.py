@@ -76,7 +76,7 @@ class FileReceiver:
         connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
         print "connectionStrDataSTreamSocket", connectionStrDataStreamSocket
         self.zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
-        self.log.debug("zmqDataStreamSocket started (connect) for '" + connectionStrZmqSocket + "'")
+        self.log.debug("zmqDataStreamSocket started (connect) for '" + connectionStrDataStreamSocket + "'")
 
         self.exchangeSocket = self.zmqContext.socket(zmq.PAIR)
         connectionStrExchangeSocket = "tcp://{ip}:{port}".format(ip=self.exchangeIp, port=self.exchangePort)
