@@ -11,12 +11,14 @@ import helperScript
 #LOCAL_IP= "0.0.0.0"
 LOCAL_IP= "127.0.0.1"
 
+BASE_PATH = "/space/projects/live-viewer"
+
 class defaultConfigSender():
 
     # folder you want to monitor for changes
-    watchFolder         = "/space/projects/live-viewer/data/source/"
+    watchFolder         = BASE_PATH + "/data/source/"
     # Target to move the files into
-    cleanerTargetPath   = "/space/projects/live-viewer/data/target/"
+    cleanerTargetPath   = BASE_PATH + "/data/target/"
     # number of parallel data streams
     parallelDataStreams = "1"
 
@@ -43,10 +45,10 @@ class defaultConfigSender():
 #    if helperScript.isWindows():
 #        logfilePath = "C:\\"
 #    elif helperScript.isLinux():
-#        logfilePath = "/space/projects/live-viewer/logs"
+#        logfilePath = BASE_PATH + "/logs"
 
     # path where logfile will be created
-    logfilePath         = "/space/projects/live-viewer/logs"
+    logfilePath         = BASE_PATH + "/logs"
     # filename used for logging
     logfileName         = "zmq_sender.log"
 
@@ -64,12 +66,13 @@ class defaultConfigSender():
 class defaultConfigReceiver():
 
     # where incoming data will be stored to"
-    targetDir             = "/space/projects/live-viewer/data/zmq_target"
+    targetDir             = BASE_PATH + "/data/zmq_target"
 
     # local ip to connect dataStream to
 #    dataStreamIp          = LOCAL_IP
 #    dataStreamIp          = "131.169.55.170"      # lsdma-lab04.desy.de
     dataStreamIp          = "131.169.185.121"     # zitpcx19282.desy.de
+#    dataStreamIp          = "131.169.185.34"      # zitpcx22614.desy.de
     # tcp port of data pipe"
     dataStreamPort        = "6061"
     # local ip to bind LiveViewer to
@@ -83,7 +86,7 @@ class defaultConfigReceiver():
     senderResponseTimeout = 1000
 
     # path where logfile will be created
-    logfilePath       = "/space/projects/live-viewer/logs"
+    logfilePath       = BASE_PATH + "/logs"
     # filename used for logging
     logfileName       = "zmq_receiver.log"
     # size of the ring buffer for the live viewer

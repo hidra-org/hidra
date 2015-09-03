@@ -138,7 +138,6 @@ class FileReceiver:
         #save all chunks to file
         while receivingMessages:
             multipartMessage = zmqDataStreamSocket.recv_multipart()
-            print "receiving multipart message from data pipe"
 
             #extract multipart message
             try:
@@ -146,6 +145,7 @@ class FileReceiver:
                 payloadMetadata = str(multipartMessage[0])
             except:
                 self.log.error("an empty config was transferred for multipartMessage")
+
 
             #TODO validate multipartMessage (like correct dict-values for metadata)
             self.log.debug("multipartMessage.metadata = " + str(payloadMetadata))
@@ -176,6 +176,7 @@ class FileReceiver:
                 break
         filename            = self.generateTargetFilepath(payloadMetadataDict)
         fileModTime         = payloadMetadataDict["fileModificationTime"]
+        print "receiving multipart message from data pipe: ", filename
         self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
 
         # send the file to the coordinator to add it to the ring buffer

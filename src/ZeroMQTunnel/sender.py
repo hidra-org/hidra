@@ -67,7 +67,7 @@ class WorkerProcess():
         connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
         print "connectionStrDataStreamSocket", connectionStrDataStreamSocket
         self.zmqDataStreamSocket.bind(connectionStrDataStreamSocket)
-        self.log.debug("zmqDataStreamSocket started for '" + connectionStrDataStreamSocket + "'")
+        self.log.debug("zmqDataStreamSocket started (bind) for '" + connectionStrDataStreamSocket + "'")
 
         # initialize sockets
         routerIp   = "127.0.0.1"
@@ -77,12 +77,13 @@ class WorkerProcess():
         self.routerSocket.identity    = u"worker-{ID}".format(ID=self.id).encode("ascii")
         connectionStrRouterSocket     = "tcp://{ip}:{port}".format(ip=routerIp, port=routerPort)
         self.routerSocket.connect(connectionStrRouterSocket)
-        self.log.debug("routerSocket started for '" + connectionStrRouterSocket + "'")
+        self.log.debug("routerSocket started (connect) for '" + connectionStrRouterSocket + "'")
 
         #init Cleaner message-pipe
         self.cleanerSocket            = self.zmqContextForWorker.socket(zmq.PUSH)
         connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.zmqCleanerIp, port=self.zmqCleanerPort)
         self.cleanerSocket.connect(connectionStrCleanerSocket)
+        self.log.debug("cleanerSocket started (connect) for '" + connectionStrCleanerSocket + "'")
 
         try:
             self.process()
