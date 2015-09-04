@@ -22,6 +22,11 @@ class defaultConfigSender():
     # number of parallel data streams
     parallelDataStreams = "1"
 
+    # list of hosts allowed to connect to the sender
+#    receiverWhiteList   = ["lsdma-lab04"]
+#    receiverWhiteList   = ["zitpcx19282"]
+    receiverWhiteList   = ["zitpcx19282", "zitpcx22614", "lsdma-lab04"]
+
     # zmq endpoint (IP-address) to send file events to
     fileEventIp         = LOCAL_IP
     # zmq endpoint (port) to send file events to
@@ -37,6 +42,7 @@ class defaultConfigSender():
     zmqCleanerPort      = "6062"
     # port number of dataStream-socket to receive signals from the receiver
     receiverComPort     = "6080"
+
     # chunk size of file-parts getting send via zmq
     chunkSize           = 1048576 # = 1024*1024
     #chunkSize           = 1073741824 # = 1024*1024*1024

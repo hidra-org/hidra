@@ -110,10 +110,12 @@ class FileReceiver:
         except KeyboardInterrupt:
             self.log.error("KeyboardInterrupt: No message received from sender")
             self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
+            sys.exit(1)
         except Exception as e:
             self.log.error("No message received from sender")
             self.log.debug("Error was: " + str(e))
             self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
+            sys.exit(1)
 
         if senderMessage == "START_LIVE_VIEWER":
             self.log.info("Received confirmation from sender...start receiving files")
