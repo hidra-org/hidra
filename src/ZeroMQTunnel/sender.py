@@ -398,7 +398,7 @@ class FileMover():
     zmqCleanerPort      = None      # zmq pull endpoint, responsable to delete/move files
     receiverComIp       = None      # ip for socket to communicate with receiver
     receiverComPort     = None      # port for socket to communicate receiver
-    receiverWhiteList   = socket.gethostname()
+    receiverWhiteList   = None
     parallelDataStreams = None
     chunkSize           = None
 
@@ -413,8 +413,10 @@ class FileMover():
     log                   = None
 
 
-    def __init__(self, fileEventIp, fileEventPort, dataStreamIp, dataStreamPort, receiverComPort, parallelDataStreams,
-                 chunkSize, zmqCleanerIp, zmqCleanerPort,
+    def __init__(self, fileEventIp, fileEventPort, dataStreamIp, dataStreamPort,
+                 receiverComPort, receiverWhiteList,
+                 parallelDataStreams, chunkSize,
+                 zmqCleanerIp, zmqCleanerPort,
                  context = None):
 
         assert isinstance(context, zmq.sugar.context.Context)
@@ -428,6 +430,7 @@ class FileMover():
         self.zmqCleanerPort      = zmqCleanerPort
         self.receiverComIp       = dataStreamIp         # ip for socket to communicate with receiver; is the same ip as the data stream ip
         self.receiverComPort     = receiverComPort
+        self.receiverWhiteList   = receiverWhiteList
         self.parallelDataStreams = parallelDataStreams
         self.chunkSize           = chunkSize
 
@@ -547,6 +550,16 @@ class FileMover():
                         self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
                         continue
 
+                    self.log.debug("Check if signal sending host is in WhiteList...")
+                    if signalHostname in self.receiverWhiteList:
+                        self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
+                    else:
+                        self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
+                        self.log.debug("Signal from host " + str(signalHostname) + " is discarded.")
+                        print "Signal from host " + str(signalHostname) + " is discarded."
+                        continue
+
+
                     if signal == "STOP_LIVE_VIEWER":
                         self.log.info("Received live viewer stop signal from host " + str(signalHostname) + "...stopping live viewer")
                         print "Received live viewer stop signal from host " + signalHostname + "...stopping live viewer"
@@ -617,22 +630,24 @@ def argumentParsing():
     defConf = defaultConfigSender()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--logfilePath"        , type=str, default=defConf.logfilePath        , help="path where logfile will be created (default=" + str(defConf.logfilePath) + ")")
-    parser.add_argument("--logfileName"        , type=str, default=defConf.logfileName        , help="filename used for logging (default=" + str(defConf.logfileName) + ")")
+    parser.add_argument("--logfilePath"        , type=str , default=defConf.logfilePath        , help="path where logfile will be created (default=" + str(defConf.logfilePath) + ")")
+    parser.add_argument("--logfileName"        , type=str , default=defConf.logfileName        , help="filename used for logging (default=" + str(defConf.logfileName) + ")")
     parser.add_argument("--verbose"            ,           action="store_true"                , help="more verbose output")
 
-    parser.add_argument("--watchFolder"        , type=str, default=defConf.watchFolder        , help="folder you want to monitor for changes")
-    parser.add_argument("--fileEventIp"        , type=str, default=defConf.fileEventIp        , help="zmq endpoint (IP-address) to send file events to (default=" + str(defConf.fileEventIp) + ")")
-    parser.add_argument("--fileEventPort"      , type=str, default=defConf.fileEventPort      , help="zmq endpoint (port) to send file events to (default=" + str(defConf.fileEventPort) + ")")
+    parser.add_argument("--watchFolder"        , type=str , default=defConf.watchFolder        , help="folder you want to monitor for changes")
+    parser.add_argument("--fileEventIp"        , type=str , default=defConf.fileEventIp        , help="zmq endpoint (IP-address) to send file events to (default=" + str(defConf.fileEventIp) + ")")
+    parser.add_argument("--fileEventPort"      , type=str , default=defConf.fileEventPort      , help="zmq endpoint (port) to send file events to (default=" + str(defConf.fileEventPort) + ")")
 
-    parser.add_argument("--dataStreamIp"       , type=str, default=defConf.dataStreamIp       , help="ip of dataStream-socket to push new files to (default=" + str(defConf.dataStreamIp) + ")")
-    parser.add_argument("--dataStreamPort"     , type=str, default=defConf.dataStreamPort     , help="port number of dataStream-socket to push new files to (default=" + str(defConf.dataStreamPort) + ")")
-    parser.add_argument("--cleanerTargetPath"  , type=str, default=defConf.cleanerTargetPath  , help="Target to move the files into (default=" + str(defConf.cleanerTargetPath) + ")")
-    parser.add_argument("--zmqCleanerIp"       , type=str, default=defConf.zmqCleanerIp       , help="zmq-pull-socket ip which deletes/moves given files (default=" + str(defConf.zmqCleanerIp) + ")")
-    parser.add_argument("--zmqCleanerPort"     , type=str, default=defConf.zmqCleanerPort     , help="zmq-pull-socket port which deletes/moves given files (default=" + str(defConf.zmqCleanerPort) + ")")
-    parser.add_argument("--receiverComPort"    , type=str, default=defConf.receiverComPort    , help="port number of dataStream-socket to receive signals from the receiver (default=" + str(defConf.receiverComPort) + ")")
-    parser.add_argument("--parallelDataStreams", type=int, default=defConf.parallelDataStreams, help="number of parallel data streams (default=" + str(defConf.parallelDataStreams) + ")")
-    parser.add_argument("--chunkSize"          , type=int, default=defConf.chunkSize          , help="chunk size of file-parts getting send via zmq (default=" + str(defConf.chunkSize) + ")")
+    parser.add_argument("--dataStreamIp"       , type=str , default=defConf.dataStreamIp       , help="ip of dataStream-socket to push new files to (default=" + str(defConf.dataStreamIp) + ")")
+    parser.add_argument("--dataStreamPort"     , type=str , default=defConf.dataStreamPort     , help="port number of dataStream-socket to push new files to (default=" + str(defConf.dataStreamPort) + ")")
+    parser.add_argument("--cleanerTargetPath"  , type=str , default=defConf.cleanerTargetPath  , help="Target to move the files into (default=" + str(defConf.cleanerTargetPath) + ")")
+    parser.add_argument("--zmqCleanerIp"       , type=str , default=defConf.zmqCleanerIp       , help="zmq-pull-socket ip which deletes/moves given files (default=" + str(defConf.zmqCleanerIp) + ")")
+    parser.add_argument("--zmqCleanerPort"     , type=str , default=defConf.zmqCleanerPort     , help="zmq-pull-socket port which deletes/moves given files (default=" + str(defConf.zmqCleanerPort) + ")")
+    parser.add_argument("--receiverComPort"    , type=str , default=defConf.receiverComPort    , help="port number of dataStream-socket to receive signals from the receiver (default=" + str(defConf.receiverComPort) + ")")
+    parser.add_argument("--receiverWhiteList"  , nargs='+', default=defConf.receiverWhiteList  , help="names of the hosts allowed to receive data (default=" + str(defConf.receiverWhiteList) + ")")
+
+    parser.add_argument("--parallelDataStreams", type=int , default=defConf.parallelDataStreams, help="number of parallel data streams (default=" + str(defConf.parallelDataStreams) + ")")
+    parser.add_argument("--chunkSize"          , type=int , default=defConf.chunkSize          , help="chunk size of file-parts getting send via zmq (default=" + str(defConf.chunkSize) + ")")
 
     arguments = parser.parse_args()
 
@@ -672,6 +687,8 @@ if __name__ == '__main__':
     zmqCleanerIp        = str(arguments.zmqCleanerIp)
     zmqCleanerPort      = str(arguments.zmqCleanerPort)
     receiverComPort     = str(arguments.receiverComPort)
+    receiverWhiteList   = arguments.receiverWhiteList
+
     parallelDataStreams = str(arguments.parallelDataStreams)
     chunkSize           = int(arguments.chunkSize)
 
@@ -698,7 +715,8 @@ if __name__ == '__main__':
     logging.debug("start cleaner process...done")
 
     #start new fileMover
-    fileMover = FileMover(fileEventIp, fileEventPort, dataStreamIp, dataStreamPort, receiverComPort,
+    fileMover = FileMover(fileEventIp, fileEventPort, dataStreamIp, dataStreamPort,
+                          receiverComPort, receiverWhiteList,
                           parallelDataStreams, chunkSize,
                           zmqCleanerIp, zmqCleanerPort,
                           zmqContext)
