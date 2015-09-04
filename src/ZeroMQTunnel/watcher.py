@@ -45,7 +45,7 @@ class DirectoryWatcher():
         self.fileEventIp         = fileEventIp
         self.fileEventPort       = fileEventPort
 
-        monitoredFolders         = [self.watchFolder + os.sep + folder for folder in self.monitoredDefaultSubfolders]
+        monitoredFolders         = self.getDirectoryStructure()
         self.eventDetector       = EventDetector(monitoredFolders)
 
         assert isinstance(self.zmqContext, zmq.sugar.context.Context)
@@ -62,6 +62,22 @@ class DirectoryWatcher():
     def getLogger(self):
         logger = logging.getLogger("DirectoryWatchHandler")
         return logger
+
+
+    def getDirectoryStructure(self):
+        # Add the default subfolders
+        foldersToWalk    = [self.watchFolder + os.sep + folder for folder in self.monitoredDefaultSubfolders]
+        monitoredFolders = []
+
+        # Walk the tree
+        for folder in foldersToWalk:
+            for root, directories, files in os.walk(folder):
+                # Add the found folders to the list for the inotify-watch
+                monitoredFolders.append(root)
+                self.log.info("Add folder to monitor: " + str(root))
+                print "Add folder to monitor: " + str(root)
+
+        return monitoredFolders
 
 
     def passFileToZeromq(self, targetSocket, sourcePath, relativePath, filename):

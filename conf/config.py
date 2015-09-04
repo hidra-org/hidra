@@ -16,6 +16,7 @@ BASE_PATH = "/space/projects/live-viewer"
 class defaultConfigSender():
 
     # folder you want to monitor for changes
+    # inside this folder only the subdirectories "commissioning", "current" and "local" are monitored
     watchFolder         = BASE_PATH + "/data/source/"
     # Target to move the files into
     cleanerTargetPath   = BASE_PATH + "/data/target/"
