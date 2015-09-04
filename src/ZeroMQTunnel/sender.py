@@ -15,6 +15,7 @@ import subprocess
 import json
 import shutil
 import helperScript
+import socket       # needed to get hostname
 from watcher import DirectoryWatcher
 from Cleaner import Cleaner
 
@@ -397,6 +398,7 @@ class FileMover():
     zmqCleanerPort      = None      # zmq pull endpoint, responsable to delete/move files
     receiverComIp       = None      # ip for socket to communicate with receiver
     receiverComPort     = None      # port for socket to communicate receiver
+    receiverWhiteList   = socket.gethostname()
     parallelDataStreams = None
     chunkSize           = None
 
