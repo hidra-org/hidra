@@ -304,7 +304,7 @@ class WorkerProcess():
             self.log.error("Unable to send multipart-message for file " + str(sourceFilePathFull))
             self.log.debug("Error was: " + str(e))
             self.log.info("Passing multipart-message...failed.")
-            raise Exception(e)
+#            raise Exception(e)
 
 
     def appendFileChunksToPayload(self, payload, sourceFilePathFull, fileDescriptor, chunkSize):
@@ -529,20 +529,37 @@ class FileMover():
                     continue
 
                 if self.receiverComSocket in socks and socks[self.receiverComSocket] == zmq.POLLIN:
+                    # signals are of the form [signal, hostname]
                     incomingMessage = self.receiverComSocket.recv()
                     self.log.debug("Recieved control command: %s" % incomingMessage )
-                    if incomingMessage == "STOP_LIVE_VIEWER":
-                        self.log.info("Received live viewer stop command...stopping live viewer")
+
+                    signal         = None
+                    signalHostname = None
+
+                    try:
+                        incomingMessage = incomingMessage.split(',')
+                        signal          = incomingMessage[0]
+                        signalHostname  = incomingMessage[1]
+                    except Exception as e:
+                        self.log.info("Received live viewer signal from host " + str(signalHostname) + " is of the wrong format")
+                        self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
+                        continue
+
+                    if signal == "STOP_LIVE_VIEWER":
+                        self.log.info("Received live viewer stop signal from host " + str(signalHostname) + "...stopping live viewer")
+                        print "Received live viewer stop signal from host " + signalHostname + "...stopping live viewer"
                         self.useLiveViewer = False
-                        print "FileMover: Signal", self.useLiveViewer
-                        self.sendLiveViewerSignal(incomingMessage)
+                        self.sendLiveViewerSignal(signal)
                         continue
-                    elif incomingMessage == "START_LIVE_VIEWER":
-                        self.log.info("Received live viewer start command...starting live viewer")
+                    elif signal == "START_LIVE_VIEWER":
+                        self.log.info("Received live viewer start signal from host " + str(signalHostname) + "...starting live viewer")
+                        print "Received live viewer start signal from host " + str(signalHostname) + "...starting live viewer"
                         self.useLiveViewer = True
-                        print "FileMover: Signal", self.useLiveViewer
-                        self.sendLiveViewerSignal(incomingMessage)
+                        self.sendLiveViewerSignal(signal)
                         continue
+                    else:
+                        self.log.info("Received live viewer signal from host " + str(signalHostname) + " unkown: " + str(signal))
+                        self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
 
         except KeyboardInterrupt:
             self.log.info("Keyboard interuption detected. Stop receiving")
@@ -578,7 +595,7 @@ class FileMover():
 
             # address == "worker-0"
             # empty   == b''                   # as delimiter
-            # ready   == b'START_LIVE_VIEWER'
+            # signal  == b'START_LIVE_VIEWER'
             self.routerSocket.send_multipart([
                                          address,
                                          b'',

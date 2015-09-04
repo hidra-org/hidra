@@ -13,6 +13,7 @@ import os
 import traceback
 from stat import S_ISREG, ST_MTIME, ST_MODE
 import threading
+import socket       # needed to get hostname
 import helperScript
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname (  os.path.realpath ( __file__ ) ) ) )
@@ -46,6 +47,9 @@ class FileReceiver:
     exchangeSocket           = None         # socket to communicate with Coordinator class
     senderComSocket          = None         # socket to communicate with sender
 
+    hostname                 = socket.gethostname()
+#    print socket.gethostbyname(socket.gethostname())
+
 
     def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, senderComPort,
                  maxRingBuffersize, senderResponseTimeout = 1000, context = None):
@@ -74,7 +78,7 @@ class FileReceiver:
         # create pull socket
         self.zmqDataStreamSocket = self.zmqContext.socket(zmq.PULL)
         connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
-        print "connectionStrDataSTreamSocket", connectionStrDataStreamSocket
+        print "connectionStrDataStreamSocket", connectionStrDataStreamSocket
         self.zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
         self.log.debug("zmqDataStreamSocket started (connect) for '" + connectionStrDataStreamSocket + "'")
 
@@ -91,8 +95,12 @@ class FileReceiver:
         self.senderComSocket.connect(connectionStrSenderComSocket)
         self.log.debug("senderComSocket started (connect) for '" + connectionStrSenderComSocket + "'")
 
+        message = "START_LIVE_VIEWER," + str(self.hostname)
         self.log.info("Sending start signal to sender...")
-        self.senderComSocket.send("START_LIVE_VIEWER")
+        self.log.debug("Sending start signal to sender, message: " + message)
+        print "sending message ", message
+        self.senderComSocket.send(str(message))
+#        self.senderComSocket.send("START_LIVE_VIEWER")
 
         senderMessage = None
         try:
@@ -122,7 +130,9 @@ class FileReceiver:
                 self.log.debug("Error was: " + str(trace))
                 self.zmqContext.destroy()
         else:
+            print "Sending start signal to sender...failed."
             self.log.info("Sending start signal to sender...failed.")
+            self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
 
 
         self.log.info("Quitting.")
@@ -314,7 +324,10 @@ class FileReceiver:
 
         if sendToSender:
             self.log.debug("sending stop signal to sender...")
-            self.senderComSocket.send("STOP_LIVE_VIEWER", zmq.NOBLOCK)
+
+            message = "STOP_LIVE_VIEWER,"+ str(self.hostname)
+            print "sending message ", message
+            self.senderComSocket.send(str(message), zmq.NOBLOCK)
 
             try:
                 senderMessage = self.senderComSocket.recv()
