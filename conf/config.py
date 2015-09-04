@@ -23,7 +23,8 @@ class defaultConfigSender():
     parallelDataStreams = "1"
 
     # list of hosts allowed to connect to the sender
-#    receiverWhiteList   = ["zitpcx22614", "lsdma-lab04"]
+#    receiverWhiteList   = ["lsdma-lab04"]
+#    receiverWhiteList   = ["zitpcx19282"]
     receiverWhiteList   = ["zitpcx19282", "zitpcx22614", "lsdma-lab04"]
 
     # zmq endpoint (IP-address) to send file events to

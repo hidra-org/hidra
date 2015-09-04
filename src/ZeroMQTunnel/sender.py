@@ -557,6 +557,7 @@ class FileMover():
                         self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
                         self.log.debug("Signal from host " + str(signalHostname) + " is discarded.")
                         print "Signal from host " + str(signalHostname) + " is discarded."
+                        self.receiverComSocket.send("NO_VALID_HOST", zmq.NOBLOCK)
                         continue
 
 
