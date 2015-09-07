@@ -309,7 +309,7 @@ class WorkerProcess():
             self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...done.")
         except zmq.error.Again:
             self.log.error("unable to send multiplart-message for file " + str(sourceFilePathFull))
-            self.log.error("Receiver has disconnected").
+            self.log.error("Receiver has disconnected")
         except Exception, e:
             self.log.error("Unable to send multipart-message for file " + str(sourceFilePathFull))
             self.log.debug("Error was: " + str(e))
