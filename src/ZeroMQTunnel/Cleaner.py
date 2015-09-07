@@ -38,6 +38,7 @@ class Cleaner():
     bindingPortForSocket = None
     bindingIpForSocket   = None
     zmqContextForCleaner = None
+    externalContext      = None    # if the context was created outside this class or not
     zmqCleanerSocket     = None
 
     # to get the logging only handling this class
@@ -46,8 +47,14 @@ class Cleaner():
     def __init__(self, targetPath, bindingIp="127.0.0.1", bindingPort="6062", context = None, verbose=False):
         self.bindingPortForSocket = bindingPort
         self.bindingIpForSocket   = bindingIp
-        self.zmqContextForCleaner = context or zmq.Context()
         self.targetPath           = targetPath
+
+        if context:
+            self.zmqContextForCleaner = context
+            self.externalContext      = True
+        else:
+            self.zmqContextForCleaner = zmq.Context()
+            self.externalContext      = False
 
         self.log = self.getLogger()
         self.log.debug("Init")
@@ -91,6 +98,7 @@ class Cleaner():
             if workload == "STOP":
                 self.log.info("Stopping cleaner")
                 self.stop()
+                break
 
             #transform to dictionary
             try:
@@ -224,5 +232,6 @@ class Cleaner():
     def stop(self):
         self.log.debug("Closing socket")
         self.zmqCleanerSocket.close(0)
-        self.log.debug("Destroying context")
-        self.zmqContextForCleaner.destroy()
+        if not self.externalContext:
+            self.log.debug("Destroying context")
+            self.zmqContextForCleaner.destroy()

@@ -34,6 +34,7 @@ class WorkerProcess():
     dataStreamIp         = None
     dataStreamPort       = None
     zmqContextForWorker  = None
+    externalContext      = None    # if the context was created outside this class or not
     zmqMessageChunkSize  = None
     zmqCleanerIp         = None         # responsable to delete/move files
     zmqCleanerPort       = None         # responsable to delete/move files
@@ -45,7 +46,7 @@ class WorkerProcess():
     useLiveViewer        = False        # boolian to inform if the receiver to show the files in the live viewer is running
 
     # to get the logging only handling this class
-    log                   = None
+    log                  = None
 
     def __init__(self, id, dataStreamIp, dataStreamPort, chunkSize, zmqCleanerIp, zmqCleanerPort,
                  context = None):
@@ -57,7 +58,12 @@ class WorkerProcess():
         self.zmqCleanerPort       = zmqCleanerPort
 
         #initialize router
-        self.zmqContextForWorker = context or zmq.Context()
+        if context:
+            self.zmqContextForWorker = context
+            self.externalContext     = True
+        else:
+            self.zmqContextForWorker = zmq.Context()
+            self.externalContext     = False
 
         self.log = self.getLogger()
 
@@ -91,7 +97,7 @@ class WorkerProcess():
         except KeyboardInterrupt:
             # trace = traceback.format_exc()
             self.log.debug("KeyboardInterrupt detected. Shutting down workerProcess " + str(self.id) + ".")
-        else:
+        except:
             trace = traceback.format_exc()
             self.log.error("Stopping workerProcess due to unknown error condition.")
             self.log.debug("Error was: " + str(trace))
@@ -184,9 +190,9 @@ class WorkerProcess():
 
                 #passing file to data-messagPipe
                 try:
-                    self.log.debug("worker-" + str(id) + ": passing new file to data-messagePipe...")
+                    self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
                     self.passFileToDataStream(filename, sourcePath, relativePath)
-                    self.log.debug("worker-" + str(id) + ": passing new file to data-messagePipe...success.")
+                    self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...success.")
                 except Exception, e:
                     errorMessage = "Unable to pass new file to data-messagePipe."
                     self.log.error(errorMessage)
@@ -301,6 +307,9 @@ class WorkerProcess():
 
             # self.zmqDataStreamSocket.send_multipart(multipartMessage)
             self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...done.")
+        except zmq.error.Again:
+            self.log.error("unable to send multiplart-message for file " + str(sourceFilePathFull))
+            self.log.error("Receiver has disconnected").
         except Exception, e:
             self.log.error("Unable to send multipart-message for file " + str(sourceFilePathFull))
             self.log.debug("Error was: " + str(e))
@@ -374,14 +383,16 @@ class WorkerProcess():
 
 
     def stop(self):
-        self.log.debug("Sending stop signal to cleaner from worker" + str(self.id))
+        self.log.debug("Sending stop signal to cleaner from worker-" + str(self.id))
         self.cleanerSocket.send("STOP")
         self.log.info("Closing sockets for worker " + str(self.id))
         if self.zmqDataStreamSocket:
             self.zmqDataStreamSocket.close(0)
         self.routerSocket.close(0)
         self.cleanerSocket.close(0)
-        self.zmqContextForWorker.destroy()
+        if not self.externalContext:
+            self.log.debug("Destroying context")
+            self.zmqContextForWorker.destroy()
 
 
 
