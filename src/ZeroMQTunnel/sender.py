@@ -207,14 +207,15 @@ class WorkerProcess():
             #send remove-request to message pipe
             try:
                 #sending to pipe
-                self.log.debug("send file-event for file " + str(sourcePath) + str(relativePath) + str(filename) + " to cleaner-pipe...")
+                self.log.debug("send file-event for file to cleaner-pipe...")
+                self.log.debug("workload = " + str(workload))
                 self.cleanerSocket.send(workload)
-                self.log.debug("send file-event for file " + str(sourcePath) + str(relativePath) + str(filename) + " to cleaner-pipe...success.")
+                self.log.debug("send file-event for file to cleaner-pipe...success.")
 
                 #TODO: remember workload. append to list?
                 # can be used to verify files which have been processed twice or more
             except Exception, e:
-                errorMessage = "Unable to notify Cleaner-pipe to delete file: " + str(filename)
+                errorMessage = "Unable to notify Cleaner-pipe to delete file: " + str(workload)
                 self.log.error(errorMessage)
                 self.log.debug("fileEventMessageDict=" + str(fileEventMessageDict))
 
