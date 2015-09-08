@@ -740,7 +740,7 @@ class Sender():
         time.sleep(0.1)
         try:
             logging.debug("closing zmqContext...")
-            zmqContext.destroy()
+            self.zmqContext.destroy()
             logging.debug("closing zmqContext...done.")
         except:
             logging.debug("closing zmqContext...failed.")
