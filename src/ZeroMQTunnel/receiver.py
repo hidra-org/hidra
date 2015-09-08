@@ -537,6 +537,7 @@ def argumentParsing():
 
     return arguments
 
+
 class Receiver():
     logfilePath           = None
     logfileName           = None
