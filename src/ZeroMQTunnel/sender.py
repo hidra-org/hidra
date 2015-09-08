@@ -645,9 +645,10 @@ def argumentParsing():
     parser = argparse.ArgumentParser()
     parser.add_argument("--logfilePath"        , type=str , default=defConf.logfilePath        , help="path where logfile will be created (default=" + str(defConf.logfilePath) + ")")
     parser.add_argument("--logfileName"        , type=str , default=defConf.logfileName        , help="filename used for logging (default=" + str(defConf.logfileName) + ")")
-    parser.add_argument("--verbose"            ,           action="store_true"                , help="more verbose output")
+    parser.add_argument("--verbose"            ,           action="store_true"                 , help="more verbose output")
 
-    parser.add_argument("--watchFolder"        , type=str , default=defConf.watchFolder        , help="folder you want to monitor for changes")
+    parser.add_argument("--watchFolder"        , type=str , default=defConf.watchFolder        , help="folder you want to monitor for changes (default=" + str(defConf.watchFolder) + ")")
+    parser.add_argument("--monitoredSubfolders", nargs='+', default=defConf.monitoredSubfolders, help="folder you want to monitor for changes (default=" + str(defConf.monitoredSubfolders) +")")
     parser.add_argument("--fileEventIp"        , type=str , default=defConf.fileEventIp        , help="zmq endpoint (IP-address) to send file events to (default=" + str(defConf.fileEventIp) + ")")
     parser.add_argument("--fileEventPort"      , type=str , default=defConf.fileEventPort      , help="zmq endpoint (port) to send file events to (default=" + str(defConf.fileEventPort) + ")")
 
@@ -691,6 +692,8 @@ if __name__ == '__main__':
     verbose             = arguments.verbose
 
     watchFolder         = str(arguments.watchFolder)
+    monitoredSubfolders = arguments.monitoredSubfolders
+    monitoredSuffixes   = (".tif", ".cbf")
     fileEventIp         = str(arguments.fileEventIp)
     fileEventPort       = str(arguments.fileEventPort)
 
@@ -716,7 +719,7 @@ if __name__ == '__main__':
     logging.info("registering zmq global context")
 
     logging.debug("start watcher process...")
-    watcherProcess = Process(target=DirectoryWatcher, args=(fileEventIp, watchFolder, fileEventPort, zmqContext))
+    watcherProcess = Process(target=DirectoryWatcher, args=(fileEventIp, watchFolder, fileEventPort, monitoredSubfolders, monitoredSuffixes, zmqContext))
     logging.debug("watcher process registered")
     watcherProcess.start()
     logging.debug("start watcher process...done")

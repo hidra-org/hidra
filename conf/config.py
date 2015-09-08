@@ -20,6 +20,12 @@ class defaultConfigSender():
     watchFolder         = BASE_PATH + "/data/source/"
     # Target to move the files into
     cleanerTargetPath   = BASE_PATH + "/data/target/"
+
+    # subfolders of watchFolders to be monitored
+    monitoredSubfolders = ["commissioning", "current", "local"]
+    # the formats to be monitored, files in an other format will be be neglected
+    monitoredFormats    = (".tif", ".cbf")
+
     # number of parallel data streams
     parallelDataStreams = "1"
 
@@ -97,7 +103,7 @@ class defaultConfigReceiver():
     # filename used for logging
     logfileName       = "zmq_receiver.log"
     # size of the ring buffer for the live viewer
-    maxRingBufferSize = 100
+    maxRingBufferSize = 10
 
 
     def __init__(self):

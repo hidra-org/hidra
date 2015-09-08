@@ -79,11 +79,12 @@ class InotifyDetector():
     log        = None
 
 
-    def __init__(self, paths):
+    def __init__(self, paths, monitoredSuffixes):
 
         self.paths = paths
         self.log  = self.getLogger()
         self.fd  = binding.init()
+        self.monitoredSuffixes = monitoredSuffixes
 
         self.add_watch()
 
@@ -137,7 +138,12 @@ class InotifyDetector():
             if not event.name:
                 return []
 
+            if not event.name.endswith(self.monitoredSuffixes):
+#                print "not considered", event.name
+                return []
+
 #            print path, event.name, parts
+#            print event.name
 
             is_dir     = ("IN_ISDIR" in parts_array)
             is_closed  = ("IN_CLOSE_WRITE" in parts_array)
@@ -217,8 +223,21 @@ class InotifyDetector():
 
 
 if __name__ == '__main__':
-    logfilePath = "/tmp/log/inotifyDetector.log"
+    logfilePath = "/space/projects/live-viewer/logs/inotifyDetector.log"
+    verbose=True
 
     #enable logging
     helperScript.initLogging(logfilePath, verbose)
 
+    monitoredFolders = ["/space/projects/live-viewer/data/source/local"]
+    monitoredSuffixes = (".tif", ".cbf")
+
+    eventDetector = InotifyDetector(monitoredFolders, monitoredSuffixes)
+
+    while True:
+        try:
+            eventList = eventDetector.getNewEvent()
+            if eventList:
+                print eventList
+        except KeyboardInterrupt:
+            break

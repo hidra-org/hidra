@@ -25,15 +25,17 @@ class DirectoryWatcher():
     watchFolder                = None
     eventDetector              = None
     monitoredDefaultSubfolders = ["commissioning", "current", "local"]
+    monitoredSuffixes          = (".tif", ".cbf")   # has to be a tuple, not a list
     log                        = None
 
 
-    def __init__(self, fileEventIp, watchFolder, fileEventPort, zmqContext = None):
+    def __init__(self, fileEventIp, watchFolder, fileEventPort, monitoredDefaultSubfolders = None, monitoredSuffixes = None, zmqContext = None):
 
         self.log = self.getLogger()
 
         self.log.debug("DirectoryWatcherHandler: __init__()")
         self.log.info("registering zmq context")
+
         if zmqContext:
             self.zmqContext      = zmqContext
             self.externalContext = True
@@ -45,8 +47,13 @@ class DirectoryWatcher():
         self.fileEventIp         = fileEventIp
         self.fileEventPort       = fileEventPort
 
+        if monitoredDefaultSubfolders:
+            self.monitoredDefaultSubfolders = monitoredDefaultSubfolders
+        self.monitoredSuffixes   = monitoredSuffixes
+        print monitoredSuffixes
+
         monitoredFolders         = self.getDirectoryStructure()
-        self.eventDetector       = EventDetector(monitoredFolders)
+        self.eventDetector       = EventDetector(monitoredFolders, self.monitoredSuffixes)
 
         assert isinstance(self.zmqContext, zmq.sugar.context.Context)
 
