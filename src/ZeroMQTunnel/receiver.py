@@ -537,32 +537,53 @@ def argumentParsing():
 
     return arguments
 
+class Receiver():
+    logfilePath           = None
+    logfileName           = None
+    logfileFullPath       = None
+    verbose               = None
+
+    targetDir             = None
+    zmqDataStreamIp       = None
+    zmqDataStreamPort     = None
+
+    zmqLiveViewerIp       = None
+    zmqLiveViewerPort     = None
+    senderComPort         = None
+    maxRingBufferSize     = None
+    senderResponseTimeout = None
+
+    def __init__(self, verbose):
+        defConf               = defaultConfigReceiver()
+
+        self.logfilePath           = defConf.logfilePath
+        self.logfileName           = defConf.logfileName
+        self.logfileFullPath       = os.path.join(self.logfilePath, self.logfileName)
+        self.verbose               = verbose
+
+        self.targetDir             = defConf.targetDir
+        self.zmqDataStreamIp       = defConf.dataStreamIp
+        self.zmqDataStreamPort     = defConf.dataStreamPort
+
+        self.zmqLiveViewerIp       = defConf.liveViewerIp
+        self.zmqLiveViewerPort     = defConf.liveViewerPort
+        self.senderComPort         = defConf.senderComPort
+        self.maxRingBufferSize     = defConf.maxRingBufferSize
+        self.senderResponseTimeout = defConf.senderResponseTimeout
+
+
+        #enable logging
+        helperScript.initLogging(self.logfileFullPath, self.verbose)
+
+
+        #start file receiver
+        myWorker = FileReceiver(self.targetDir, self.zmqDataStreamPort, self.zmqDataStreamIp, self.zmqLiveViewerPort, self.zmqLiveViewerIp, self.senderComPort, self.maxRingBufferSize, self.senderResponseTimeout)
+
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--verbose", action="store_true", help="more verbose output")
+    arguments = parser.parse_args()
 
-    #argument parsing
-    arguments             = argumentParsing()
-
-    logfilePath           = str(arguments.logfilePath)
-    logfileName           = str(arguments.logfileName)
-    logfileFullPath       = os.path.join(logfilePath, logfileName)
-    verbose               = arguments.verbose
-
-    outputDir             = str(arguments.targetDir)
-    zmqDataStreamIp       = str(arguments.dataStreamIp)
-    zmqDataStreamPort     = str(arguments.dataStreamPort)
-
-    zmqLiveViewerIp       = str(arguments.liveViewerIp)
-    zmqLiveViewerPort     = str(arguments.liveViewerPort)
-    senderComPort         = str(arguments.senderComPort)
-    maxRingBufferSize     = int(arguments.maxRingBufferSize)
-    senderResponseTimeout = int(arguments.senderResponseTimeout)
-
-
-    #enable logging
-    helperScript.initLogging(logfileFullPath, verbose)
-
-
-    #start file receiver
-    myWorker = FileReceiver(outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, senderComPort, maxRingBufferSize, senderResponseTimeout)
+    receiver = Receiver(arguments.verbose)

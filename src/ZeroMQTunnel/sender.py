@@ -639,126 +639,122 @@ class FileMover():
         self.routerSocket.close(0)
 
 
-def argumentParsing():
-    defConf = defaultConfigSender()
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--logfilePath"        , type=str , default=defConf.logfilePath        , help="path where logfile will be created (default=" + str(defConf.logfilePath) + ")")
-    parser.add_argument("--logfileName"        , type=str , default=defConf.logfileName        , help="filename used for logging (default=" + str(defConf.logfileName) + ")")
-    parser.add_argument("--verbose"            ,           action="store_true"                 , help="more verbose output")
+class Sender():
+    logfilePath         = None
+    logfileName         = None
+    logfileFullPath     = None
+    verbose             = None
 
-    parser.add_argument("--watchFolder"        , type=str , default=defConf.watchFolder        , help="folder you want to monitor for changes (default=" + str(defConf.watchFolder) + ")")
-    parser.add_argument("--monitoredSubfolders", nargs='+', default=defConf.monitoredSubfolders, help="folder you want to monitor for changes (default=" + str(defConf.monitoredSubfolders) +")")
-    parser.add_argument("--fileEventIp"        , type=str , default=defConf.fileEventIp        , help="zmq endpoint (IP-address) to send file events to (default=" + str(defConf.fileEventIp) + ")")
-    parser.add_argument("--fileEventPort"      , type=str , default=defConf.fileEventPort      , help="zmq endpoint (port) to send file events to (default=" + str(defConf.fileEventPort) + ")")
+    watchFolder         = None
+    monitoredSubfolders = None
+    monitoredSuffixes   = None
+    fileEventIp         = None
+    fileEventPort       = None
 
-    parser.add_argument("--dataStreamIp"       , type=str , default=defConf.dataStreamIp       , help="ip of dataStream-socket to push new files to (default=" + str(defConf.dataStreamIp) + ")")
-    parser.add_argument("--dataStreamPort"     , type=str , default=defConf.dataStreamPort     , help="port number of dataStream-socket to push new files to (default=" + str(defConf.dataStreamPort) + ")")
-    parser.add_argument("--cleanerTargetPath"  , type=str , default=defConf.cleanerTargetPath  , help="Target to move the files into (default=" + str(defConf.cleanerTargetPath) + ")")
-    parser.add_argument("--zmqCleanerIp"       , type=str , default=defConf.zmqCleanerIp       , help="zmq-pull-socket ip which deletes/moves given files (default=" + str(defConf.zmqCleanerIp) + ")")
-    parser.add_argument("--zmqCleanerPort"     , type=str , default=defConf.zmqCleanerPort     , help="zmq-pull-socket port which deletes/moves given files (default=" + str(defConf.zmqCleanerPort) + ")")
-    parser.add_argument("--receiverComPort"    , type=str , default=defConf.receiverComPort    , help="port number of dataStream-socket to receive signals from the receiver (default=" + str(defConf.receiverComPort) + ")")
-    parser.add_argument("--receiverWhiteList"  , nargs='+', default=defConf.receiverWhiteList  , help="names of the hosts allowed to receive data (default=" + str(defConf.receiverWhiteList) + ")")
+    dataStreamIp        = None
+    dataStreamPort      = None
+    cleanerTargetPath   = None
+    zmqCleanerIp        = None
+    zmqCleanerPort      = None
+    receiverComPort     = None
+    receiverWhiteList   = None
 
-    parser.add_argument("--parallelDataStreams", type=int , default=defConf.parallelDataStreams, help="number of parallel data streams (default=" + str(defConf.parallelDataStreams) + ")")
-    parser.add_argument("--chunkSize"          , type=int , default=defConf.chunkSize          , help="chunk size of file-parts getting send via zmq (default=" + str(defConf.chunkSize) + ")")
+    parallelDataStreams = None
+    chunkSize           = None
 
-    arguments = parser.parse_args()
 
-    watchFolder = str(arguments.watchFolder)
-    logfilePath = str(arguments.logfilePath)
-    logfileName = str(arguments.logfileName)
+    def __init__(self, verbose = True):
+        defConf                  = defaultConfigSender()
 
-    #check watchFolder for existance
-    helperScript.checkFolderExistance(watchFolder)
+        self.logfilePath         = defConf.logfilePath
+        self.logfileName         = defConf.logfileName
+        self.logfileFullPath     = os.path.join(self.logfilePath, self.logfileName)
+        self.verbose             = verbose
 
-    #check logfile-path for existance
-    helperScript.checkFolderExistance(logfilePath)
+        self.watchFolder         = defConf.watchFolder
+        self.monitoredSubfolders = defConf.monitoredSubfolders
+        self.monitoredFormats    = defConf.monitoredFormats
+        self.fileEventIp         = defConf.fileEventIp
+        self.fileEventPort       = defConf.fileEventPort
 
-    #error if logfile cannot be written
-    helperScript.checkLogFileWritable(logfilePath, logfileName)
+        self.dataStreamIp        = defConf.dataStreamIp
+        self.dataStreamPort      = defConf.dataStreamPort
+        self.cleanerTargetPath   = defConf.cleanerTargetPath
+        self.zmqCleanerIp        = defConf.zmqCleanerIp
+        self.zmqCleanerPort      = defConf.zmqCleanerPort
+        self.receiverComPort     = defConf.receiverComPort
+        self.receiverWhiteList   = defConf.receiverWhiteList
 
-    return arguments
+        self.parallelDataStreams = defConf.parallelDataStreams
+        self.chunkSize           = defConf.chunkSize
+
+        #enable logging
+        helperScript.initLogging(self.logfileFullPath, self.verbose)
+
+
+        #create zmq context
+        # there should be only one context in one process
+        self.zmqContext = zmq.Context.instance()
+        logging.info("registering zmq global context")
+
+        self.run()
+
+
+    def run(self):
+        logging.debug("start watcher process...")
+        watcherProcess = Process(target=DirectoryWatcher, args=(self.fileEventIp, self.watchFolder, self.fileEventPort, self.monitoredSubfolders, self.monitoredFormats, self.zmqContext))
+        logging.debug("watcher process registered")
+        watcherProcess.start()
+        logging.debug("start watcher process...done")
+
+        logging.debug("start cleaner process...")
+        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.zmqCleanerIp, self.zmqCleanerPort, self.zmqContext))
+        logging.debug("cleaner process registered")
+        cleanerProcess.start()
+        logging.debug("start cleaner process...done")
+
+        #start new fileMover
+        fileMover = FileMover(self.fileEventIp, self.fileEventPort, self.dataStreamIp, self.dataStreamPort,
+                              self.receiverComPort, self.receiverWhiteList,
+                              self.parallelDataStreams, self.chunkSize,
+                              self.zmqCleanerIp, self.zmqCleanerPort,
+                              self.zmqContext)
+        try:
+            fileMover.process()
+        except KeyboardInterrupt:
+            logging.info("Keyboard interruption detected. Shutting down")
+        # except Exception, e:
+        #     print "unknown exception detected."
+
+
+        logging.debug("shutting down zeromq...")
+        try:
+            fileMover.stop()
+            logging.debug("shutting down zeromq...done.")
+        except:
+            logging.error(sys.exc_info())
+            logging.error("shutting down zeromq...failed.")
+
+        # give the other processes time to close the sockets
+        time.sleep(0.1)
+        try:
+            logging.debug("closing zmqContext...")
+            self.zmqContext.destroy()
+            logging.debug("closing zmqContext...done.")
+        except:
+            logging.debug("closing zmqContext...failed.")
+            logging.error(sys.exc_info())
+
+
 
 
 
 if __name__ == '__main__':
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
-    arguments = argumentParsing()
 
-    logfilePath         = str(arguments.logfilePath)
-    logfileName         = str(arguments.logfileName)
-    logfileFullPath     = os.path.join(logfilePath, logfileName)
-    verbose             = arguments.verbose
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--verbose", action="store_true", help="more verbose output")
+    arguments = parser.parse_args()
 
-    watchFolder         = str(arguments.watchFolder)
-    monitoredSubfolders = arguments.monitoredSubfolders
-    monitoredSuffixes   = (".tif", ".cbf")
-    fileEventIp         = str(arguments.fileEventIp)
-    fileEventPort       = str(arguments.fileEventPort)
-
-    dataStreamIp        = str(arguments.dataStreamIp)
-    dataStreamPort      = str(arguments.dataStreamPort)
-    cleanerTargetPath   = str(arguments.cleanerTargetPath)
-    zmqCleanerIp        = str(arguments.zmqCleanerIp)
-    zmqCleanerPort      = str(arguments.zmqCleanerPort)
-    receiverComPort     = str(arguments.receiverComPort)
-    receiverWhiteList   = arguments.receiverWhiteList
-
-    parallelDataStreams = str(arguments.parallelDataStreams)
-    chunkSize           = int(arguments.chunkSize)
-
-
-    #enable logging
-    helperScript.initLogging(logfileFullPath, verbose)
-
-
-    #create zmq context
-    # there should be only one context in one process
-    zmqContext = zmq.Context.instance()
-    logging.info("registering zmq global context")
-
-    logging.debug("start watcher process...")
-    watcherProcess = Process(target=DirectoryWatcher, args=(fileEventIp, watchFolder, fileEventPort, monitoredSubfolders, monitoredSuffixes, zmqContext))
-    logging.debug("watcher process registered")
-    watcherProcess.start()
-    logging.debug("start watcher process...done")
-
-    logging.debug("start cleaner process...")
-    cleanerProcess = Process(target=Cleaner, args=(cleanerTargetPath, zmqCleanerIp, zmqCleanerPort, zmqContext))
-    logging.debug("cleaner process registered")
-    cleanerProcess.start()
-    logging.debug("start cleaner process...done")
-
-    #start new fileMover
-    fileMover = FileMover(fileEventIp, fileEventPort, dataStreamIp, dataStreamPort,
-                          receiverComPort, receiverWhiteList,
-                          parallelDataStreams, chunkSize,
-                          zmqCleanerIp, zmqCleanerPort,
-                          zmqContext)
-    try:
-        fileMover.process()
-    except KeyboardInterrupt:
-        logging.info("Keyboard interruption detected. Shutting down")
-    # except Exception, e:
-    #     print "unknown exception detected."
-
-
-    logging.debug("shutting down zeromq...")
-    try:
-        fileMover.stop()
-        logging.debug("shutting down zeromq...done.")
-    except:
-        logging.error(sys.exc_info())
-        logging.error("shutting down zeromq...failed.")
-
-    # give the other processes time to close the sockets
-    time.sleep(0.1)
-    try:
-        logging.debug("closing zmqContext...")
-        zmqContext.destroy()
-        logging.debug("closing zmqContext...done.")
-    except:
-        logging.debug("closing zmqContext...failed.")
-        logging.error(sys.exc_info())
-
+    sender = Sender(arguments.verbose)
