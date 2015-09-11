@@ -1,4 +1,4 @@
-__author__ = 'Marco Strutz <marco.strutz@desy.de>', 'Manuela Kuhn <marnuel.kuhn@desy.de>'
+__author__ = 'Manuela Kuhn <marnuel.kuhn@desy.de>', 'Marco Strutz <marco.strutz@desy.de>'
 
 
 import time
@@ -15,6 +15,7 @@ from stat import S_ISREG, ST_MTIME, ST_MODE
 import threading
 import socket       # needed to get hostname
 import helperScript
+from RingBuffer import RingBuffer
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname (  os.path.realpath ( __file__ ) ) ) )
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
@@ -292,11 +293,15 @@ class FileReceiver:
                     self.log.debug("Error was: " + str(f))
                     self.log.debug("targetPath="+str(targetPath))
                     raise Exception(errorMessage)
+            else:
+                self.log.error("failed to append payload to file: '" + targetFilepath + "'")
+                self.log.debug("Error was: " + str(e))
         except Exception, e:
             self.log.error("failed to append payload to file: '" + targetFilepath + "'")
             self.log.debug("Error was: " + str(e))
             self.log.debug("ErrorTyp: " + str(type(e)))
             self.log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
+
         #only write data if a payload exist
         try:
             if payload != None:
@@ -396,6 +401,7 @@ class Coordinator:
         self.zmqLiveViewerPort  = zmqLiveViewerPort
 
         self.maxRingBufferSize  = maxRingBufferSize
+        self.ringBuffer         = RingBuffer(self.maxRingBufferSize, self.outputDir)
 
         self.log = self.getLogger()
         self.log.debug("Init")
@@ -422,19 +428,19 @@ class Coordinator:
         self.poller.register(self.zmqliveViewerSocket, zmq.POLLIN)
 
 
-        # initialize ring buffer
-        # get all entries in the directory
-        # TODO empty target dir -> ringBuffer = []
-        self.ringBuffer = (os.path.join(self.outputDir, fn) for fn in os.listdir(self.outputDir))
-        # get the corresponding stats
-        self.ringBuffer = ((os.stat(path), path) for path in self.ringBuffer)
-        # leave only regular files, insert modification date
-        self.ringBuffer = [[stat[ST_MTIME], path]
-                for stat, path in self.ringBuffer if S_ISREG(stat[ST_MODE])]
-
-        # sort the ring buffer in descending order (new to old files)
-        self.ringBuffer = sorted(self.ringBuffer, reverse=True)
-        self.log.debug("Init ring buffer")
+#        # initialize ring buffer
+#        # get all entries in the directory
+#        # TODO empty target dir -> ringBuffer = []
+#        self.ringBuffer = (os.path.join(self.outputDir, fn) for fn in os.listdir(self.outputDir))
+#        # get the corresponding stats
+#        self.ringBuffer = ((os.stat(path), path) for path in self.ringBuffer)
+#        # leave only regular files, insert modification date
+#        self.ringBuffer = [[stat[ST_MTIME], path]
+#                for stat, path in self.ringBuffer if S_ISREG(stat[ST_MODE])]
+#
+#        # sort the ring buffer in descending order (new to old files)
+#        self.ringBuffer = sorted(self.ringBuffer, reverse=True)
+#        self.log.debug("Init ring buffer")
 
 
         try:
@@ -477,17 +483,13 @@ class Coordinator:
                     filename        = splittedMessage[0]
                     fileModTime     = splittedMessage[1]
                     self.log.debug("Send new file to ring buffer: " + str(filename) + ", " + str(fileModTime))
-                    self.addFileToRingBuffer(filename, fileModTime)
+                    self.ringBuffer.add(filename, fileModTime)
 
             if self.zmqliveViewerSocket in socks and socks[self.zmqliveViewerSocket] == zmq.POLLIN:
                 message = self.zmqliveViewerSocket.recv()
                 self.log.debug("Call for next file... " + message)
-                # send first element in ring buffer to live viewer (the path of this file is the second entry)
-                if self.ringBuffer:
-                    answer = self.ringBuffer[0][1]
-                else:
-                    answer = "None"
-
+                # send newest element in ring buffer to live viewer
+                answer = self.ringBuffer.getNewestFile()
                 print answer
                 try:
                     self.zmqliveViewerSocket.send(answer)
@@ -497,19 +499,6 @@ class Coordinator:
         self.log.debug("Closing socket")
         self.receiverExchangeSocket.close(0)
         self.zmqliveViewerSocket.close(0)
-
-
-    def addFileToRingBuffer(self, filename, fileModTime):
-        # prepend file to ring buffer and restore order
-        self.ringBuffer[:0] = [[fileModTime, filename]]
-        self.ringBuffer = sorted(self.ringBuffer, reverse=True)
-
-        # if the maximal size is exceeded: remove the oldest files
-        if len(self.ringBuffer) > self.maxRingBufferSize:
-            for mod_time, path in self.ringBuffer[self.maxRingBufferSize:]:
-                os.remove(path)
-                self.ringBuffer.remove([mod_time, path])
-
 
 
 def argumentParsing():
