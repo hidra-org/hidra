@@ -43,7 +43,8 @@ class WorkerProcess():
     routerSocket         = None
     cleanerSocket        = None
 
-    useLiveViewer        = False        # boolian to inform if the receiver to show the files in the live viewer is running
+    useLiveViewer        = False        # boolian to inform if the receiver for the live viewer is running
+    useRealTimeAnalysis  = True        # boolian to inform if the receiver for realtime-analysis is running
 
     # to get the logging only handling this class
     log                  = None
@@ -156,14 +157,28 @@ class WorkerProcess():
                 self.useLiveViewer = True
                 continue
 
-            # the live viewer is turned of
+            # the live viewer is turned off
             stopLV = workload == b"STOP_LIVE_VIEWER"
             if stopLV:
                 self.log.info("worker-"+str(self.id)+": Received live viewer stop command...stopping live viewer")
                 self.useLiveViewer = False
                 continue
 
-            if self.useLiveViewer:
+            # the realtime-analysis is turned on
+            startRTA = workload == b"START_REALTIME_ANALYSIS"
+            if startRTA:
+                self.log.info("worker-"+str(self.id)+": Received realtime-analysis start command...starting live viewer")
+                self.useRealTimeAnalysis = True
+                continue
+
+            # the realtime-analysis is turned off
+            stopRTA = workload == b"STOP_REALTIME_ANALYSIS"
+            if stopRTA:
+                self.log.info("worker-"+str(self.id)+": Received realtime-analysis stop command...stopping live viewer")
+                self.useRealTimeAnalysis = False
+                continue
+
+            if self.useLiveViewer or self.useRealTimeAnalysis:
                 #convert fileEventMessage back to a dictionary
                 fileEventMessageDict = None
                 try:
@@ -188,6 +203,7 @@ class WorkerProcess():
                     #skip all further instructions and continue with next iteration
                     continue
 
+            if self.useLiveViewer:
                 #passing file to data-messagPipe
                 try:
                     self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
@@ -203,21 +219,61 @@ class WorkerProcess():
             else:
                 print "worker-"+str(self.id)+": no data sent"
 
+            if self.useRealTimeAnalysis:
+                # -->  sourceFilePathFull = 'C:\\dir\img.tiff'
+                sourceFilePath     = os.path.normpath(sourcePath + os.sep + relativePath)
+                sourceFilePathFull = os.path.join(sourceFilePath, filename)
 
-            #send remove-request to message pipe
-            try:
-                #sending to pipe
-                self.log.debug("send file-event for file to cleaner-pipe...")
-                self.log.debug("workload = " + str(workload))
-                self.cleanerSocket.send(workload)
-                self.log.debug("send file-event for file to cleaner-pipe...success.")
+                #reading source file into memory
+                try:
+                    #for quick testing set filesize of file as chunksize
+                    self.log.debug("get filesize for '" + str(sourceFilePathFull) + "'...")
+                    filesize             = os.path.getsize(sourceFilePathFull)
+                    fileModificationTime = os.stat(sourceFilePathFull).st_mtime
+                    self.log.debug("filesize(%s) = %s" % (sourceFilePathFull, str(filesize)))
+                    self.log.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
+                except Exception, e:
+                    self.log.error("Unable to get file metadata for '" + str(sourceFilePathFull) + "'." )
+                    self.log.debug("Error was: " + str(e))
+                    raise Exception(e)
 
-                #TODO: remember workload. append to list?
-                # can be used to verify files which have been processed twice or more
-            except Exception, e:
-                errorMessage = "Unable to notify Cleaner-pipe to delete file: " + str(workload)
-                self.log.error(errorMessage)
-                self.log.debug("fileEventMessageDict=" + str(fileEventMessageDict))
+                #build payload for message-pipe by putting source-file into a message
+                try:
+                    payloadMetadata = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath)
+                    payloadMetadata = json.dumps(payloadMetadata)
+                except Exception, e:
+                    self.log.error("Unable to assemble multi-part message.")
+                    self.log.debug("Error was: " + str(e))
+                    raise Exception(e)
+
+
+            if self.useRealTimeAnalysis:
+                #send remove-request to message pipe
+                try:
+                    #sending to pipe
+                    self.log.debug("send file-event for file to cleaner-pipe...")
+                    self.log.debug("payloadMetadata = " + str(payloadMetadata))
+                    self.cleanerSocket.send(payloadMetadata)
+                    self.log.debug("send file-event for file to cleaner-pipe...success.")
+                except Exception, e:
+                    self.log.error("Unable to notify Cleaner-pipe to delete file: " + str(workload))
+                    self.log.debug("payloadMetadata=" + str(payloadMetadata))
+
+            else:
+                #send remove-request to message pipe
+                try:
+                    #sending to pipe
+                    self.log.debug("send file-event for file to cleaner-pipe...")
+                    self.log.debug("workload = " + str(workload))
+                    self.cleanerSocket.send(workload)
+                    self.log.debug("send file-event for file to cleaner-pipe...success.")
+
+                    #TODO: remember workload. append to list?
+                    # can be used to verify files which have been processed twice or more
+                except Exception, e:
+                    errorMessage = "Unable to notify Cleaner-pipe to delete file: " + str(workload)
+                    self.log.error(errorMessage)
+                    self.log.debug("fileEventMessageDict=" + str(fileEventMessageDict))
 
 
     def getLogger(self):
@@ -418,8 +474,9 @@ class FileMover():
     fileEventSocket     = None      # to receive fileMove-jobs as json-encoded dictionary
     receiverComSocket   = None      # to exchange messages with the receiver
     routerSocket        = None
+    cleanerSocket       = None      # to echange if a realtime analysis receiver is online
 
-    useLiveViewer       = False     # boolian to inform if the receiver to show the files in the live viewer is running
+    useLiveViewer       = False     # boolian to inform if the receiver for the live viewer is running
 
     # to get the logging only handling this class
     log                   = None
@@ -463,6 +520,12 @@ class FileMover():
         print "connectionStrReceiverComSocket", connectionStrReceiverComSocket
         self.receiverComSocket.bind(connectionStrReceiverComSocket)
         self.log.debug("receiverComSocket started (bind) for '" + connectionStrReceiverComSocket + "'")
+
+        #init Cleaner message-pipe
+        self.cleanerSocket            = self.zmqContext.socket(zmq.PUSH)
+        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.zmqCleanerIp, port=self.zmqCleanerPort)
+        self.cleanerSocket.connect(connectionStrCleanerSocket)
+        self.log.debug("cleanerSocket started (connect) for '" + connectionStrCleanerSocket + "'")
 
         # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
         self.poller = zmq.Poller()
@@ -577,13 +640,25 @@ class FileMover():
                         self.log.info("Received live viewer stop signal from host " + str(signalHostname) + "...stopping live viewer")
                         print "Received live viewer stop signal from host " + signalHostname + "...stopping live viewer"
                         self.useLiveViewer = False
-                        self.sendLiveViewerSignal(signal)
+                        self.sendSignalToReceiver(signal)
                         continue
                     elif signal == "START_LIVE_VIEWER":
                         self.log.info("Received live viewer start signal from host " + str(signalHostname) + "...starting live viewer")
                         print "Received live viewer start signal from host " + str(signalHostname) + "...starting live viewer"
                         self.useLiveViewer = True
-                        self.sendLiveViewerSignal(signal)
+                        self.sendSignalToReceiver(signal)
+                        continue
+                    elif signal == "STOP_REALTIME_ANALYSIS":
+                        self.log.info("Received realtime analysis stop signal from host " + str(signalHostname) + "...stopping realtime analysis")
+                        print "Received realtime analysis stop signal from host " + signalHostname + "...stopping realtime analysis"
+                        self.useRealTimeAnalysis = False
+                        self.sendSignalToCleaner(signal)
+                        continue
+                    elif signal == "START_REALTIME_ANALYSIS":
+                        self.log.info("Received realtime analysis start signal from host " + str(signalHostname) + "...starting realtime analysis")
+                        print "Received realtime analysis start signal from host " + str(signalHostname) + "...starting realtime analysis"
+                        self.useRealTimeAnalysis = True
+                        self.sendSignalToCleaner(signal)
                         continue
                     else:
                         self.log.info("Received live viewer signal from host " + str(signalHostname) + " unkown: " + str(signal))
@@ -613,10 +688,17 @@ class FileMover():
         self.log.debug("passing job to workerProcess...done.")
 
 
-    def sendLiveViewerSignal(self, signal):
+    def sendSignalToCleaner(self, signal):
+        self.log.debug("send signal to cleaner: " + str(signal) )
+        self.cleanerSocket.send(signal)
+        self.log.debug("send confirmation back to receiver: " + str(signal) )
+        self.receiverComSocket.send(signal, zmq.NOBLOCK)
+
+
+    def sendSignalToReceiver(self, signal):
         numberOfWorkerProcesses = int(self.parallelDataStreams)
         for processNumber in range(numberOfWorkerProcesses):
-            self.log.debug("send live viewer signal " + str(signal) + " to workerProcess (nr " + str(processNumber) + " )")
+            self.log.debug("send signal to receiver " + str(signal) + " to workerProcess (nr " + str(processNumber) + " )")
 
             address, empty, ready = self.routerSocket.recv_multipart()
             self.log.debug("available workerProcess detected.")
@@ -629,6 +711,7 @@ class FileMover():
                                          b'',
                                          signal,
                                         ])
+            self.log.debug("send confirmation back to receiver: " + str(signal) )
             self.receiverComSocket.send(signal, zmq.NOBLOCK)
 
 
@@ -636,6 +719,7 @@ class FileMover():
         self.log.debug("Closing sockets")
         self.fileEventSocket.close(0)
         self.receiverComSocket.close(0)
+        self.cleanerSocket.close(0)
         self.routerSocket.close(0)
 
 
@@ -663,6 +747,7 @@ class Sender():
     parallelDataStreams = None
     chunkSize           = None
 
+    zmqContext          = None
 
     def __init__(self, verbose = True):
         defConf                  = defaultConfigSender()
@@ -709,7 +794,7 @@ class Sender():
         logging.debug("start watcher process...done")
 
         logging.debug("start cleaner process...")
-        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.zmqCleanerIp, self.zmqCleanerPort, self.zmqContext))
+        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.zmqCleanerIp, self.zmqCleanerPort, 10, self.zmqContext))
         logging.debug("cleaner process registered")
         cleanerProcess.start()
         logging.debug("start cleaner process...done")

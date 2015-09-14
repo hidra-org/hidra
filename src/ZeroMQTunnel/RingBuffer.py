@@ -57,8 +57,10 @@ class RingBuffer:
     def getNewestFile(self):
         # send first element in ring buffer to live viewer (the path of this file is the second entry)
         if self.ringBuffer:
+            self.log.debug("Newest Event: " + str(self.ringBuffer[0][1]) )
             return self.ringBuffer[0][1]
         else:
+            self.log.debug("Newest Event: None")
             return "None"
 
 
@@ -70,6 +72,7 @@ class RingBuffer:
         # if the maximal size is exceeded: remove the oldest files
         if len(self.ringBuffer) > self.maxRingBufferSize:
             for mod_time, path in self.ringBuffer[self.maxRingBufferSize:]:
+                self.log.debug("Remove file from ring buffer: " + str(path) )
                 os.remove(path)
                 self.ringBuffer.remove([mod_time, path])
 
