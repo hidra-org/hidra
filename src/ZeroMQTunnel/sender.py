@@ -475,6 +475,7 @@ class FileMover():
     receiverComSocket   = None      # to exchange messages with the receiver
     routerSocket        = None
     cleanerSocket       = None      # to echange if a realtime analysis receiver is online
+    cleanerComSocket    = None      # to echange data to send to the realtime analysis receiver
 
     useLiveViewer       = False     # boolian to inform if the receiver for the live viewer is running
 
@@ -526,6 +527,12 @@ class FileMover():
         connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.zmqCleanerIp, port=self.zmqCleanerPort)
         self.cleanerSocket.connect(connectionStrCleanerSocket)
         self.log.debug("cleanerSocket started (connect) for '" + connectionStrCleanerSocket + "'")
+
+        #init Cleaner message-pipe
+        self.cleanerComSocket         = self.zmqContext.socket(zmq.REQ)
+        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.zmqCleanerIp, port=self.zmqCleanerPort)
+        self.cleanerComSocket.connect(connectionStrCleanerSocket)
+        self.log.debug("cleanerComSocket started (connect) for '" + connectionStrCleanerSocket + "'")
 
         # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
         self.poller = zmq.Poller()
@@ -660,6 +667,9 @@ class FileMover():
                         self.useRealTimeAnalysis = True
                         self.sendSignalToCleaner(signal)
                         continue
+                    elif signal == "NEXT_FILE":
+                        self.log.info("Received request for next file")
+                        self.sendRequestToCleaner(signal)
                     else:
                         self.log.info("Received live viewer signal from host " + str(signalHostname) + " unkown: " + str(signal))
                         self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
@@ -688,9 +698,18 @@ class FileMover():
         self.log.debug("passing job to workerProcess...done.")
 
 
+    def sendRequestToCleaner(self, message):
+        self.log.debug("send request to cleaner: " + str(message) )
+        self.cleanerComSocket.send(message)
+#        self.log.debug("send confirmation back to receiver: " + str(signal) )
+#        self.receiverComSocket.send(signal, zmq.NOBLOCK)
+
+
+
     def sendSignalToCleaner(self, signal):
         self.log.debug("send signal to cleaner: " + str(signal) )
         self.cleanerSocket.send(signal)
+#        self.cleanerComSocket.send(signal)
         self.log.debug("send confirmation back to receiver: " + str(signal) )
         self.receiverComSocket.send(signal, zmq.NOBLOCK)
 
@@ -741,6 +760,7 @@ class Sender():
     cleanerTargetPath   = None
     zmqCleanerIp        = None
     zmqCleanerPort      = None
+    cleanerComPort      = None
     receiverComPort     = None
     receiverWhiteList   = None
 
@@ -768,6 +788,7 @@ class Sender():
         self.cleanerTargetPath   = defConf.cleanerTargetPath
         self.zmqCleanerIp        = defConf.zmqCleanerIp
         self.zmqCleanerPort      = defConf.zmqCleanerPort
+        self.cleanerComPort      = "6063"
         self.receiverComPort     = defConf.receiverComPort
         self.receiverWhiteList   = defConf.receiverWhiteList
 
@@ -794,7 +815,7 @@ class Sender():
         logging.debug("start watcher process...done")
 
         logging.debug("start cleaner process...")
-        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.zmqCleanerIp, self.zmqCleanerPort, 10, self.zmqContext))
+        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.zmqCleanerIp, self.zmqCleanerPort, self.cleanerComPort , 10, self.zmqContext))
         logging.debug("cleaner process registered")
         cleanerProcess.start()
         logging.debug("start cleaner process...done")
