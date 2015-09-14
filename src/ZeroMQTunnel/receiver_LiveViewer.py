@@ -22,7 +22,7 @@ CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
 sys.path.append ( CONFIG_PATH )
 
-from config import defaultConfigReceiver
+from config import defaultConfigReceiver as defaultConfig
 
 
 #
@@ -401,7 +401,9 @@ class Coordinator:
         self.zmqLiveViewerPort  = zmqLiveViewerPort
 
         self.maxRingBufferSize  = maxRingBufferSize
-        self.ringBuffer         = RingBuffer(self.maxRingBufferSize, self.outputDir)
+#        # TODO remove outputDir from ringBuffer?
+#        self.ringBuffer         = RingBuffer(self.maxRingBufferSize, self.outputDir)
+        self.ringBuffer         = RingBuffer(self.maxRingBufferSize)
 
         self.log = self.getLogger()
         self.log.debug("Init")
@@ -426,22 +428,6 @@ class Coordinator:
         self.poller = zmq.Poller()
         self.poller.register(self.receiverExchangeSocket, zmq.POLLIN)
         self.poller.register(self.zmqliveViewerSocket, zmq.POLLIN)
-
-
-#        # initialize ring buffer
-#        # get all entries in the directory
-#        # TODO empty target dir -> ringBuffer = []
-#        self.ringBuffer = (os.path.join(self.outputDir, fn) for fn in os.listdir(self.outputDir))
-#        # get the corresponding stats
-#        self.ringBuffer = ((os.stat(path), path) for path in self.ringBuffer)
-#        # leave only regular files, insert modification date
-#        self.ringBuffer = [[stat[ST_MTIME], path]
-#                for stat, path in self.ringBuffer if S_ISREG(stat[ST_MODE])]
-#
-#        # sort the ring buffer in descending order (new to old files)
-#        self.ringBuffer = sorted(self.ringBuffer, reverse=True)
-#        self.log.debug("Init ring buffer")
-
 
         try:
             self.log.info("Start communication")
@@ -482,7 +468,7 @@ class Coordinator:
                     splittedMessage = message[7:].split(", ")
                     filename        = splittedMessage[0]
                     fileModTime     = splittedMessage[1]
-                    self.log.debug("Send new file to ring buffer: " + str(filename) + ", " + str(fileModTime))
+                    self.log.debug("Add new file to ring buffer: " + str(filename) + ", " + str(fileModTime))
                     self.ringBuffer.add(filename, fileModTime)
 
             if self.zmqliveViewerSocket in socks and socks[self.zmqliveViewerSocket] == zmq.POLLIN:
@@ -502,7 +488,7 @@ class Coordinator:
 
 
 def argumentParsing():
-    defConf = defaultConfigReceiver()
+    defConf = defaultConfig()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--logfilePath"          , type=str, default=defConf.logfilePath          , help="path where logfile will be created (default=" + str(defConf.logfilePath) + ")")
@@ -544,7 +530,7 @@ class Receiver():
     senderResponseTimeout = None
 
     def __init__(self, verbose):
-        defConf               = defaultConfigReceiver()
+        defConf = defaultConfig()
 
         self.logfilePath           = defConf.logfilePath
         self.logfileName           = defConf.logfileName
