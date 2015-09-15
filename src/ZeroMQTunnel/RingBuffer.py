@@ -72,6 +72,33 @@ class RingBuffer:
                 return "None"
 
 
+    def popNewestFile(self, byContent = False):
+        # send first element in ring buffer to live viewer (the path of this file is the second entry)
+        if byContent:
+            if self.ringBuffer:
+                elementModTime, elementPath, elementContent = self.ringBuffer[0]
+                try:
+                    os.remove(elementPath)
+                    self.ringBuffer.remove([elementModTime, elementPath, elementContent])
+                    self.log.debug("Newest Event removed")
+                except Exception as e:
+                    self.log.debug("Newest Event removing failed: " + str(elementPath))
+                    self.log.debug("Error was: " + str(e))
+
+                self.log.debug("Newest Event returned")
+                return elementContent
+            else:
+                self.log.debug("Newest Event: None")
+                return "None"
+        else:
+            if self.ringBuffer:
+                self.log.debug("Newest Event: " + str(self.ringBuffer[0][1]) )
+                return self.ringBuffer[0][1]
+            else:
+                self.log.debug("Newest Event: None")
+                return "None"
+
+
     def add(self, filename, fileModTime, fileContent=False):
         if fileContent:
             # prepend file to ring buffer and restore order

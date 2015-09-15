@@ -129,7 +129,7 @@ class Cleaner():
 
                 if workload == "NEXT_FILE":
                     self.log.debug("Receiving request for newest file")
-                    newestFile = self.ringBuffer.getNewestFile(byContent=True)
+                    newestFile = self.ringBuffer.popNewestFile(byContent=True)
                     self.log.debug("Reply newest file")
                     self.senderComSocket.send(str(newestFile), zmq.NOBLOCK)
                 continue
