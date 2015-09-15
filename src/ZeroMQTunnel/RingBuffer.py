@@ -64,17 +64,29 @@ class RingBuffer:
             return "None"
 
 
-    def add(self, filename, fileModTime):
-        # prepend file to ring buffer and restore order
-        self.ringBuffer[:0] = [[fileModTime, filename]]
-        self.ringBuffer = sorted(self.ringBuffer, reverse=True)
+    def add(self, filename, fileModTime, fileContent=False):
+        if fileContent:
+            # prepend file to ring buffer and restore order
+            self.ringBuffer[:0] = [[fileModTime, filename, fileContent]]
+            self.ringBuffer = sorted(self.ringBuffer, reverse=True)
 
-        # if the maximal size is exceeded: remove the oldest files
-        if len(self.ringBuffer) > self.maxRingBufferSize:
-            for mod_time, path in self.ringBuffer[self.maxRingBufferSize:]:
-                self.log.debug("Remove file from ring buffer: " + str(path) )
-                os.remove(path)
-                self.ringBuffer.remove([mod_time, path])
+            # if the maximal size is exceeded: remove the oldest files
+            if len(self.ringBuffer) > self.maxRingBufferSize:
+                for mod_time, path, content in self.ringBuffer[self.maxRingBufferSize:]:
+                    self.log.debug("Remove file from ring buffer: " + str(path) )
+                    os.remove(path)
+                    self.ringBuffer.remove([mod_time, path, content])
+        else:
+            # prepend file to ring buffer and restore order
+            self.ringBuffer[:0] = [[fileModTime, filename]]
+            self.ringBuffer = sorted(self.ringBuffer, reverse=True)
+
+            # if the maximal size is exceeded: remove the oldest files
+            if len(self.ringBuffer) > self.maxRingBufferSize:
+                for mod_time, path in self.ringBuffer[self.maxRingBufferSize:]:
+                    self.log.debug("Remove file from ring buffer: " + str(path) )
+                    os.remove(path)
+                    self.ringBuffer.remove([mod_time, path])
 
 
 if __name__ == "__main__":
@@ -116,8 +128,58 @@ if __name__ == "__main__":
     print "\nadded"
     print ringbuffer
 
-    os.remove(newFileName1)
-    os.remove(newFileName2)
+    try:
+        os.remove(newFileName2)
+    except:
+        pass
+    try:
+        os.remove(newFileName1)
+    except:
+        pass
+
+    print "== with content =="
+
+    ringbuffer = RingBuffer(2, targetDir)
+
+    print "init"
+    print ringbuffer
+
+    # add a file
+    newFileName1 = targetDir + "file1.tif"
+    newFile = open(newFileName1, "w")
+    newFile.write("test")
+    newFile.close()
+
+    newFileModTime = os.stat(newFileName1).st_mtime
+
+    ringbuffer.add(newFileName1, newFileModTime, "testContent")
+
+    print "\nadded"
+    print ringbuffer
+
+    time.sleep(1)
+    # add another file
+    newFileName2 = targetDir + "file2.tif"
+    newFile = open(newFileName2, "w")
+    newFile.write("test")
+    newFile.close()
+
+    newFileModTime = os.stat(newFileName2).st_mtime
+
+    ringbuffer.add(newFileName2, newFileModTime, "testContent")
+
+    print "\nadded"
+    print ringbuffer
+
+    try:
+        os.remove(newFileName1)
+    except:
+        pass
+    try:
+        os.remove(newFileName2)
+    except:
+        pass
+
 
 
 

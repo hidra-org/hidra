@@ -171,14 +171,16 @@ class Cleaner():
                     self.log.debug("workload=" + str(workload))
                     continue
 
-                #extract fileEvent metadata
+                #extract fileEvent metadata/data
                 try:
                     #TODO validate fileEventMessageDict dict
                     filename       = workloadDict["filename"]
                     sourcePath     = workloadDict["sourcePath"]
                     relativePath   = workloadDict["relativePath"]
                     if self.useRealTimeAnalysis:
-                        modTime        = workloadDict["fileModificationTime"]
+                        modTime    = workloadDict["fileModificationTime"]
+                        fileFormat = workloadDict["fileFormat"]
+                        fileContent = workloadDct["fileContent"]
                     # filesize       = workloadDict["filesize"]
                 except Exception, e:
                     errorMessage   = "Invalid fileEvent message received."
