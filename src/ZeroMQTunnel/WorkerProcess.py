@@ -215,14 +215,25 @@ class WorkerProcess():
                     fileModificationTime = os.stat(sourceFilePathFull).st_mtime
                     self.log.debug("filesize(%s) = %s" % (sourceFilePathFull, str(filesize)))
                     self.log.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
+                    fileFormat           = filename.rsplit(".", 2)[1]
+                    self.log.debug("fileFormat(%s) = %s" % (filename, str(fileFormat)))
                 except Exception, e:
                     self.log.error("Unable to get file metadata for '" + str(sourceFilePathFull) + "'." )
                     self.log.debug("Error was: " + str(e))
-                    raise Exception(e)
+#                    raise Exception(e)
+
+                try:
+                    fileContent          = self.getFileContent(sourceFilePathFull, fileFormat)
+                except Exception, e:
+                    self.log.error("Unable to get file content for '" + str(sourceFilePathFull) + "'." )
+                    self.log.debug("Error was: " + str(e))
 
                 #build payload for message-pipe by putting source-file into a message
                 try:
                     dataToSend                = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath)
+                    dataToSend                = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath, fileFormat)
+                    # append the data to store in the ringbuffer
+                    dataToSend["fileContent"] = fileContent
                     dataToSend                = json.dumps(dataToSend)
                 except Exception, e:
                     self.log.error("Unable to assemble multi-part message.")
@@ -263,6 +274,28 @@ class WorkerProcess():
     def getLogger(self):
         logger = logging.getLogger("workerProcess")
         return logger
+
+
+    def getFileContent(self, filePath, fileFormat):
+
+        if fileFormat == "cbf":
+            # initialize a cbfimage opject
+            cbfFile = cbfimage()
+            try:
+                # load the cbf file
+                cbfFile.read(filePath)
+
+                # add the data to the metadata JSON
+                content = cbfFile.header
+                content[u"data"] = cbfFile.data
+            except Exception as e:
+                self.log.error("Unable to read cbf-file")
+                self.log.debug("Error was: " + str(e))
+
+        else:
+            content = "None"
+
+        return content
 
 
     def passFileToDataStream(self, filename, sourcePath, relativePath):
@@ -395,8 +428,8 @@ class WorkerProcess():
                          "relativePath"         : relativePath,
                          "chunkSize"            : self.getChunkSize()
                          }
-#        if fileFormat:
-#            metadataDict["fileFormat"] = fileFormat
+        if fileFormat:
+            metadataDict["fileFormat"] = fileFormat
 
         self.log.debug("metadataDict = " + str(metadataDict))
 
