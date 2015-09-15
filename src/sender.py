@@ -107,7 +107,7 @@ class Sender():
         fileMover = FileMover(self.fileEventIp, self.fileEventPort, self.dataStreamIp, self.dataStreamPort,
                               self.receiverComPort, self.receiverWhiteList,
                               self.parallelDataStreams, self.chunkSize,
-                              self.zmqCleanerIp, self.zmqCleanerPort,
+                              self.zmqCleanerIp, self.zmqCleanerPort, self.cleanerComPort,
                               self.zmqContext)
         try:
             fileMover.process()

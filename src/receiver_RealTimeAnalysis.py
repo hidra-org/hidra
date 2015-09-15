@@ -1,11 +1,23 @@
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+import os
 import sys
 import time
 import zmq
 import logging
 import socket       # needed to get hostname
+
+BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
+ZEROMQ_PATH = BASE_PATH + os.sep + "src" + os.sep + "ZeroMQTunnel"
+CONFIG_PATH = BASE_PATH + os.sep + "conf"
+
+print ZEROMQ_PATH
+
+sys.path.append ( ZEROMQ_PATH )
+sys.path.append ( CONFIG_PATH )
+
 import helperScript
+
 
 class ReceiverRealTimeAnalysis():
     senderComIp     = "127.0.0.1"
@@ -67,8 +79,9 @@ class ReceiverRealTimeAnalysis():
     def askForNextFile(self):
         # get latest file from reveiver
         try:
+            message = "NEXT_FILE,"+ str(self.hostname)
             print "Asking for next file"
-            self.senderComSocket.send ("NextFile")
+            self.senderComSocket.send (message)
             #  Get the reply.
             received_file = self.senderComSocket.recv()
             print "Received_file", received_file
@@ -129,12 +142,12 @@ if __name__ == '__main__':
     helperScript.initLogging(logfilePath, verbose)
 
     receiver = ReceiverRealTimeAnalysis()
-    receiver.stop()
 
-#    while True:
-#        try:
-#            receiver.askForNextFile()
-#            time.sleep(1)
-#        finally:
-#            receiver.stop()
+    while True:
+        try:
+            receiver.askForNextFile()
+            time.sleep(1)
+        except KeyboardInterrupt:
+            receiver.stop()
+            break
 

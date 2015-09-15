@@ -121,26 +121,19 @@ class Cleaner():
             self.log.debug("Waiting for new jobs")
 
             if self.senderComSocket in socks and socks[self.senderComSocket] == zmq.POLLIN:
+                self.log.debug("Receiving message from senderComSocket")
                 try:
                     workload = self.senderComSocket.recv()
                 except Exception as e:
                     self.log.error("Error in communication signal: " + str(e))
 
-                if workload == "STOP":
-                    self.log.info("Stopping cleaner")
-                    self.stop()
-                    break
-                elif workload == "START_REALTIME_ANALYSIS":
-                    self.useRealTimeAnalysis = True
-                    self.log.info("Starting realtime analysis")
-                    break
-                elif workload == "STOP_REALTIME_ANALYSIS":
-                    self.useRealTimeAnalysis = False
-                    self.log.info("Stopping realtime analysis")
-                    break
-                elif workload == "NEXT_FILE":
-                    newestFile = self.ringBuffergetNewestFile()
-                    print newestFile
+                if workload == "NEXT_FILE":
+                    self.log.debug("Receiving request for newest file")
+                    newestFile = self.ringBuffer.getNewestFile()
+                    self.log.debug("Newest file is: " + str(newestFile) )
+                    self.senderComSocket.send(str(newestFile), zmq.NOBLOCK)
+                continue
+
 
             if self.zmqCleanerSocket in socks and socks[self.zmqCleanerSocket] == zmq.POLLIN:
                 try:
@@ -151,15 +144,15 @@ class Cleaner():
                 if workload == "STOP":
                     self.log.info("Stopping cleaner")
                     self.stop()
-                    break
+                    continue
                 elif workload == "START_REALTIME_ANALYSIS":
                     self.useRealTimeAnalysis = True
                     self.log.info("Starting realtime analysis")
-                    break
+                    continue
                 elif workload == "STOP_REALTIME_ANALYSIS":
                     self.useRealTimeAnalysis = False
                     self.log.info("Stopping realtime analysis")
-                    break
+                    continue
 
                 # transform to dictionary
                 # metadataDict = {

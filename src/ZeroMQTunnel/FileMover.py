@@ -17,8 +17,10 @@ class FileMover():
     fileEventPort       = None
     dataStreamIp        = None      # ip of dataStream-socket to push new files to
     dataStreamPort      = None      # port number of dataStream-socket to push new files to
-    zmqCleanerIp        = None      # zmq pull endpoint, responsable to delete/move files
-    zmqCleanerPort      = None      # zmq pull endpoint, responsable to delete/move files
+    cleanerIp           = None      # zmq pull endpoint, responsable to delete/move files
+    cleanerPort         = None      # zmq pull endpoint, responsable to delete/move files
+    cleanerComIp        = None      # ip to communicate with cleaner about new requests from the receiver (the same as cleanerIp)
+    cleanerComPort      = None      # port to communicate with cleaner about new requests from the receiver
     receiverComIp       = None      # ip for socket to communicate with receiver
     receiverComPort     = None      # port for socket to communicate receiver
     receiverWhiteList   = None
@@ -35,13 +37,13 @@ class FileMover():
     useLiveViewer       = False     # boolian to inform if the receiver for the live viewer is running
 
     # to get the logging only handling this class
-    log                   = None
+    log                 = None
 
 
     def __init__(self, fileEventIp, fileEventPort, dataStreamIp, dataStreamPort,
                  receiverComPort, receiverWhiteList,
                  parallelDataStreams, chunkSize,
-                 zmqCleanerIp, zmqCleanerPort,
+                 cleanerIp, cleanerPort, cleanerComPort,
                  context = None):
 
         assert isinstance(context, zmq.sugar.context.Context)
@@ -51,8 +53,10 @@ class FileMover():
         self.fileEventPort       = fileEventPort
         self.dataStreamIp        = dataStreamIp
         self.dataStreamPort      = dataStreamPort
-        self.zmqCleanerIp        = zmqCleanerIp
-        self.zmqCleanerPort      = zmqCleanerPort
+        self.cleanerIp           = cleanerIp
+        self.cleanerPort         = cleanerPort
+        self.cleanerComIp        = self.cleanerIp       # always the same ip as as cleanerIp
+        self.cleanerComPort      = cleanerComPort
         self.receiverComIp       = dataStreamIp         # ip for socket to communicate with receiver; is the same ip as the data stream ip
         self.receiverComPort     = receiverComPort
         self.receiverWhiteList   = receiverWhiteList
@@ -79,13 +83,13 @@ class FileMover():
 
         #init Cleaner message-pipe
         self.cleanerSocket            = self.zmqContext.socket(zmq.PUSH)
-        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.zmqCleanerIp, port=self.zmqCleanerPort)
+        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.cleanerIp, port=self.cleanerPort)
         self.cleanerSocket.connect(connectionStrCleanerSocket)
         self.log.debug("cleanerSocket started (connect) for '" + connectionStrCleanerSocket + "'")
 
         #init Cleaner message-pipe
         self.cleanerComSocket         = self.zmqContext.socket(zmq.REQ)
-        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.zmqCleanerIp, port=self.zmqCleanerPort)
+        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.cleanerComIp, port=self.cleanerComPort)
         self.cleanerComSocket.connect(connectionStrCleanerSocket)
         self.log.debug("cleanerComSocket started (connect) for '" + connectionStrCleanerSocket + "'")
 
@@ -117,7 +121,6 @@ class FileMover():
             self.log.debug("Error was: " + str(trace))
 
 
-
     def getLogger(self):
         logger = logging.getLogger("fileMover")
         return logger
@@ -138,8 +141,8 @@ class FileMover():
                                                                   self.dataStreamIp,
                                                                   self.dataStreamPort,
                                                                   self.chunkSize,
-                                                                  self.zmqCleanerIp,
-                                                                  self.zmqCleanerPort))
+                                                                  self.cleanerIp,
+                                                                  self.cleanerPort))
             workerProcessList.append(newWorkerProcess)
 
             self.log.debug("start worker process nr " + str(processNumber))
@@ -224,6 +227,7 @@ class FileMover():
                         continue
                     elif signal == "NEXT_FILE":
                         self.log.info("Received request for next file")
+                        print "Received request for next file"
                         self.sendRequestToCleaner(signal)
                     else:
                         self.log.info("Received live viewer signal from host " + str(signalHostname) + " unkown: " + str(signal))
@@ -256,8 +260,11 @@ class FileMover():
     def sendRequestToCleaner(self, message):
         self.log.debug("send request to cleaner: " + str(message) )
         self.cleanerComSocket.send(message)
-#        self.log.debug("send confirmation back to receiver: " + str(signal) )
-#        self.receiverComSocket.send(signal, zmq.NOBLOCK)
+        self.log.debug("waiting for answer of cleaner")
+        answer = self.cleanerComSocket.recv()
+        self.log.debug("send confirmation back to receiver: " + str(answer) )
+        self.receiverComSocket.send(answer, zmq.NOBLOCK)
+        print "send answer", answer
 
 
 
@@ -294,6 +301,7 @@ class FileMover():
         self.fileEventSocket.close(0)
         self.receiverComSocket.close(0)
         self.cleanerSocket.close(0)
+        self.cleanerComSocket.close(0)
         self.routerSocket.close(0)
 
 

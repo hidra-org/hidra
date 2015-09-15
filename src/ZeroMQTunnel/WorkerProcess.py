@@ -18,8 +18,8 @@ class WorkerProcess():
     zmqContextForWorker  = None
     externalContext      = None    # if the context was created outside this class or not
     zmqMessageChunkSize  = None
-    zmqCleanerIp         = None         # responsable to delete/move files
-    zmqCleanerPort       = None         # responsable to delete/move files
+    cleanerIp            = None         # responsable to delete/move files
+    cleanerPort          = None         # responsable to delete/move files
 
     zmqDataStreamSocket  = None
     routerSocket         = None
@@ -31,14 +31,14 @@ class WorkerProcess():
     # to get the logging only handling this class
     log                  = None
 
-    def __init__(self, id, dataStreamIp, dataStreamPort, chunkSize, zmqCleanerIp, zmqCleanerPort,
+    def __init__(self, id, dataStreamIp, dataStreamPort, chunkSize, cleanerIp, cleanerPort,
                  context = None):
         self.id                   = id
         self.dataStreamIp         = dataStreamIp
         self.dataStreamPort       = dataStreamPort
         self.zmqMessageChunkSize  = chunkSize
-        self.zmqCleanerIp         = zmqCleanerIp
-        self.zmqCleanerPort       = zmqCleanerPort
+        self.cleanerIp            = cleanerIp
+        self.cleanerPort          = cleanerPort
 
         #initialize router
         if context:
@@ -71,7 +71,7 @@ class WorkerProcess():
 
         #init Cleaner message-pipe
         self.cleanerSocket            = self.zmqContextForWorker.socket(zmq.PUSH)
-        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.zmqCleanerIp, port=self.zmqCleanerPort)
+        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.cleanerIp, port=self.cleanerPort)
         self.cleanerSocket.connect(connectionStrCleanerSocket)
         self.log.debug("cleanerSocket started (connect) for '" + connectionStrCleanerSocket + "'")
 
