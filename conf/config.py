@@ -11,7 +11,7 @@ import helperScript
 #LOCAL_IP= "0.0.0.0"
 LOCAL_IP= "127.0.0.1"
 
-BASE_PATH = "/space/projects/live-viewer"
+BASE_PATH = "/home/kuhnm/Arbeit/live-viewer"
 
 class defaultConfigSender():
 
@@ -84,8 +84,8 @@ class defaultConfigReceiver():
     # local ip to connect dataStream to
 #    dataStreamIp          = LOCAL_IP
 #    dataStreamIp          = "131.169.55.170"      # lsdma-lab04.desy.de
-    dataStreamIp          = "131.169.185.121"     # zitpcx19282.desy.de
-#    dataStreamIp          = "131.169.185.34"      # zitpcx22614.desy.de
+#    dataStreamIp          = "131.169.185.121"     # zitpcx19282.desy.de
+    dataStreamIp          = "127.0.0.1"
     # tcp port of data pipe"
     dataStreamPort        = "6061"
     # local ip to bind LiveViewer to

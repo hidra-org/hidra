@@ -129,8 +129,8 @@ class Cleaner():
 
                 if workload == "NEXT_FILE":
                     self.log.debug("Receiving request for newest file")
-                    newestFile = self.ringBuffer.getNewestFile()
-                    self.log.debug("Newest file is: " + str(newestFile) )
+                    newestFile = self.ringBuffer.getNewestFile(byContent=True)
+                    self.log.debug("Reply newest file")
                     self.senderComSocket.send(str(newestFile), zmq.NOBLOCK)
                 continue
 
@@ -163,13 +163,25 @@ class Cleaner():
                 #   "relativePath"         : relativePath,
                 #   "chunkSize"            : self.getChunkSize()
                 #   }
-                try:
-                    workloadDict = json.loads(str(workload))
-                except:
-                    errorMessage = "invalid job received. skipping job"
-                    self.log.error(errorMessage)
-                    self.log.debug("workload=" + str(workload))
-                    continue
+                if self.useRealTimeAnalysis:
+                    try:
+                        workloadSplit   = workload.split("|||")
+                        workloadDict    = json.loads(str(workloadSplit[0]))
+                        workloadContent = workloadSplit[1]
+                        self.log.debug("Splitted workload")
+                    except:
+                        errorMessage = "invalid job received. skipping job"
+                        self.log.error(errorMessage)
+                        self.log.debug("workload=" + str(workload))
+                        continue
+                else:
+                    try:
+                        workloadDict = json.loads(str(workload))
+                    except:
+                        errorMessage = "invalid job received. skipping job"
+                        self.log.error(errorMessage)
+                        self.log.debug("workload=" + str(workload))
+                        continue
 
                 #extract fileEvent metadata/data
                 try:
@@ -177,13 +189,26 @@ class Cleaner():
                     filename       = workloadDict["filename"]
                     sourcePath     = workloadDict["sourcePath"]
                     relativePath   = workloadDict["relativePath"]
-                    if self.useRealTimeAnalysis:
-                        modTime     = workloadDict["fileModificationTime"]
-                        fileFormat  = workloadDict["fileFormat"]
-                        fileContent = workloadDict["fileContent"]
+#                    if self.useRealTimeAnalysis:
+#                        modTime     = workloadDict["fileModificationTime"]
+#                        fileFormat  = workloadDict["fileFormat"]
                     # filesize       = workloadDict["filesize"]
                 except Exception, e:
                     errorMessage   = "Invalid fileEvent message received."
+                    self.log.error(errorMessage)
+                    self.log.debug("Error was: " + str(e))
+                    self.log.debug("workloadDict=" + str(workloadDict))
+                    #skip all further instructions and continue with next iteration
+                    continue
+
+                #extract fileEvent metadata/data
+                try:
+                    if self.useRealTimeAnalysis:
+                        modTime     = workloadDict["fileModificationTime"]
+                        fileFormat  = workloadDict["fileFormat"]
+                    # filesize       = workloadDict["filesize"]
+                except Exception, e:
+                    errorMessage   = "Invalid fileEvent message received (useRealTimeAnalysis)."
                     self.log.error(errorMessage)
                     self.log.debug("Error was: " + str(e))
                     self.log.debug("workloadDict=" + str(workloadDict))
@@ -226,8 +251,8 @@ class Cleaner():
                         continue
 
                     # add file to ring buffer
-                    self.log.debug("Add new file to ring buffer: " + str(sourceFullPath) + ", " + str(modTime))
-                    self.ringBuffer.add(sourceFullPath, modTime)
+                    self.log.debug("Add new file to ring buffer: \n file: " + str(sourceFullPath) + ",\n modTime: " + str(modTime) + ",\nworkloadContent: " + str(workloadContent))
+                    self.ringBuffer.add(sourceFullPath, modTime, workloadContent)
                 else:
                     try:
                         self.log.debug("Moving source file...")

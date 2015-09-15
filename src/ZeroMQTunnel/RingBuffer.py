@@ -54,14 +54,22 @@ class RingBuffer:
         return returnString
 
 
-    def getNewestFile(self):
+    def getNewestFile(self, byContent = False):
         # send first element in ring buffer to live viewer (the path of this file is the second entry)
-        if self.ringBuffer:
-            self.log.debug("Newest Event: " + str(self.ringBuffer[0][1]) )
-            return self.ringBuffer[0][1]
+        if byContent:
+            if self.ringBuffer:
+                self.log.debug("Newest Event returned")
+                return self.ringBuffer[0][2]
+            else:
+                self.log.debug("Newest Event: None")
+                return "None"
         else:
-            self.log.debug("Newest Event: None")
-            return "None"
+            if self.ringBuffer:
+                self.log.debug("Newest Event: " + str(self.ringBuffer[0][1]) )
+                return self.ringBuffer[0][1]
+            else:
+                self.log.debug("Newest Event: None")
+                return "None"
 
 
     def add(self, filename, fileModTime, fileContent=False):

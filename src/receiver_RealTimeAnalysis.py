@@ -135,7 +135,7 @@ class ReceiverRealTimeAnalysis():
 
 
 if __name__ == '__main__':
-    logfilePath = "/space/projects/live-viewer/logs/receiver_RealTimeAnalysis.log"
+    logfilePath = "/home/kuhnm/Arbeit/live-viewer/logs/receiver_RealTimeAnalysis.log"
     verbose = True
 
     #enable logging
@@ -151,7 +151,7 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             receiver.stop()
             break
-        if i >= 2:
+        if i >= 5:
             break
         else:
             i += 1
