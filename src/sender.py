@@ -21,7 +21,6 @@ sys.path.append ( CONFIG_PATH )
 import helperScript
 from watcher import DirectoryWatcher
 from Cleaner import Cleaner
-from FileMover import FileMover
 
 from config import defaultConfigSender
 
@@ -82,6 +81,7 @@ class Sender():
         helperScript.initLogging(self.logfileFullPath, self.verbose)
 
 
+
         #create zmq context
         # there should be only one context in one process
         self.zmqContext = zmq.Context.instance()
@@ -102,6 +102,10 @@ class Sender():
         logging.debug("cleaner process registered")
         cleanerProcess.start()
         logging.debug("start cleaner process...done")
+
+
+        # due to a logging problem with fabio the import statement (using fabio) have to be placed after the logging is initialized
+        from FileMover import FileMover
 
         #start new fileMover
         fileMover = FileMover(self.fileEventIp, self.fileEventPort, self.dataStreamIp, self.dataStreamPort,

@@ -143,6 +143,7 @@ if __name__ == '__main__':
 
     receiver = ReceiverRealTimeAnalysis()
 
+    i = 0
     while True:
         try:
             receiver.askForNextFile()
@@ -150,4 +151,9 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             receiver.stop()
             break
+        if i >= 2:
+            break
+        else:
+            i += 1
+
 

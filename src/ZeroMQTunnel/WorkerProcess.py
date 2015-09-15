@@ -7,6 +7,7 @@ import os
 import logging
 import traceback
 import json
+from fabio.cbfimage import cbfimage
 
 #
 #  --------------------------  class: WorkerProcess  --------------------------------------
@@ -221,8 +222,8 @@ class WorkerProcess():
 
                 #build payload for message-pipe by putting source-file into a message
                 try:
-                    payloadMetadata = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath)
-                    payloadMetadata = json.dumps(payloadMetadata)
+                    dataToSend                = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath)
+                    dataToSend                = json.dumps(dataToSend)
                 except Exception, e:
                     self.log.error("Unable to assemble multi-part message.")
                     self.log.debug("Error was: " + str(e))
@@ -231,15 +232,16 @@ class WorkerProcess():
 
             if self.useRealTimeAnalysis:
                 #send remove-request to message pipe
+                self.log.debug("send file-event for file to cleaner-pipe...")
                 try:
                     #sending to pipe
-                    self.log.debug("send file-event for file to cleaner-pipe...")
-                    self.log.debug("payloadMetadata = " + str(payloadMetadata))
-                    self.cleanerSocket.send(payloadMetadata)
+                    self.log.debug("dataToSend = " + str(dataToSend))
+                    self.cleanerSocket.send(dataToSend)
                     self.log.debug("send file-event for file to cleaner-pipe...success.")
                 except Exception, e:
                     self.log.error("Unable to notify Cleaner-pipe to delete file: " + str(workload))
-                    self.log.debug("payloadMetadata=" + str(payloadMetadata))
+#                    self.log.debug("dataToSend=" + str(dataToSend))
+                    self.log.debug("Error was: " + str(e))
 
             else:
                 #send remove-request to message pipe
@@ -372,7 +374,7 @@ class WorkerProcess():
 
 
 
-    def buildPayloadMetadata(self, filename, filesize, fileModificationTime, sourcePath, relativePath):
+    def buildPayloadMetadata(self, filename, filesize, fileModificationTime, sourcePath, relativePath, fileFormat = None):
         """
         builds metadata for zmq-multipart-message. should be used as first element for payload.
         :param filename:
@@ -391,7 +393,10 @@ class WorkerProcess():
                          "fileModificationTime" : fileModificationTime,
                          "sourcePath"           : sourcePath,
                          "relativePath"         : relativePath,
-                         "chunkSize"            : self.getChunkSize()}
+                         "chunkSize"            : self.getChunkSize()
+                         }
+#        if fileFormat:
+#            metadataDict["fileFormat"] = fileFormat
 
         self.log.debug("metadataDict = " + str(metadataDict))
 
