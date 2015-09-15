@@ -9,15 +9,17 @@ import helperScript
 
 
 class RingBuffer:
-    targetDir                = None
-    ringBuffer               = []
-    maxRingBufferSize        = None
+    targetDir         = None
+    ringBuffer        = []
+    maxRingBufferSize = None
+    storeContent      = None
 
-    log                      = None
+    log               = None
 
-    def __init__(self, maxRingBufferSize, targetDir = None):
+    def __init__(self, maxRingBufferSize, storeContent = False, targetDir = None):
         self.targetDir          = targetDir
         self.maxRingBufferSize  = maxRingBufferSize
+        self.storeContent       = storeContent
 
         self.log = self.getLogger()
         self.log.debug("Init")
@@ -54,9 +56,9 @@ class RingBuffer:
         return returnString
 
 
-    def getNewestFile(self, byContent = False):
+    def getNewestFile(self):
         # send first element in ring buffer to live viewer (the path of this file is the second entry)
-        if byContent:
+        if self.storeContent:
             if self.ringBuffer:
                 self.log.debug("Newest Event returned")
                 return self.ringBuffer[0][2]
@@ -72,9 +74,9 @@ class RingBuffer:
                 return "None"
 
 
-    def popNewestFile(self, byContent = False):
+    def popNewestFile(self):
         # send first element in ring buffer to live viewer (the path of this file is the second entry)
-        if byContent:
+        if self.storeContent:
             if self.ringBuffer:
                 elementModTime, elementPath, elementContent = self.ringBuffer[0]
                 try:
@@ -100,7 +102,7 @@ class RingBuffer:
 
 
     def add(self, filename, fileModTime, fileContent=False):
-        if fileContent:
+        if fileContent and self.storeContent:
             # prepend file to ring buffer and restore order
             self.ringBuffer[:0] = [[fileModTime, filename, fileContent]]
             self.ringBuffer = sorted(self.ringBuffer, reverse=True)
@@ -122,6 +124,18 @@ class RingBuffer:
                     self.log.debug("Remove file from ring buffer: " + str(path) )
                     os.remove(path)
                     self.ringBuffer.remove([mod_time, path])
+
+    def removeAll(self):
+        self.log.debug("Remove all elements in ring buffer and from disc")
+
+        for i in range(len(self.ringBuffer)):
+            filePath = self.ringBuffer[i][1]
+            self.log.debug("Remove file from disk: " + str(filePath) )
+            os.remove(filePath)
+        self.log.debug("Clear ring buffer")
+        self.ringBuffer = []
+
+
 
 
 if __name__ == "__main__":

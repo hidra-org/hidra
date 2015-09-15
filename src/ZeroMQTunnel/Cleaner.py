@@ -70,7 +70,7 @@ class Cleaner():
             self.maxRingBufferSize    = maxRingBufferSize
 #            # TODO remove targetPath?
 #            self.ringBuffer           = RingBuffer(self.maxRingBufferSize, self.targetPath)
-            self.ringBuffer           = RingBuffer(self.maxRingBufferSize)
+            self.ringBuffer           = RingBuffer(self.maxRingBufferSize, storeContent = True)
 
 
         self.log = self.getLogger()
@@ -129,7 +129,7 @@ class Cleaner():
 
                 if workload == "NEXT_FILE":
                     self.log.debug("Receiving request for newest file")
-                    newestFile = self.ringBuffer.popNewestFile(byContent=True)
+                    newestFile = self.ringBuffer.popNewestFile()
                     self.log.debug("Reply newest file")
                     self.senderComSocket.send(str(newestFile), zmq.NOBLOCK)
                 continue
@@ -391,3 +391,6 @@ class Cleaner():
         if not self.externalContext:
             self.log.debug("Destroying context")
             self.zmqContextForCleaner.destroy()
+
+        # clear ring buffer
+        self.ringBuffer.removeAll()
