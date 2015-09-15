@@ -230,7 +230,7 @@ class WorkerProcess():
 
                 #build payload for message-pipe by putting source-file into a message
                 try:
-                    dataToSend                = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath)
+#                    dataToSend                = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath)
                     dataToSend                = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath, fileFormat)
                     # append the data to store in the ringbuffer
                     dataToSend["fileContent"] = fileContent
@@ -238,7 +238,7 @@ class WorkerProcess():
                 except Exception, e:
                     self.log.error("Unable to assemble multi-part message.")
                     self.log.debug("Error was: " + str(e))
-                    raise Exception(e)
+#                    raise Exception(e)
 
 
             if self.useRealTimeAnalysis:
@@ -287,7 +287,7 @@ class WorkerProcess():
 
                 # add the data to the metadata JSON
                 content = cbfFile.header
-                content[u"data"] = cbfFile.data
+#                content[u"data"] = cbfFile.data
             except Exception as e:
                 self.log.error("Unable to read cbf-file")
                 self.log.debug("Error was: " + str(e))

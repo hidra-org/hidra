@@ -178,9 +178,9 @@ class Cleaner():
                     sourcePath     = workloadDict["sourcePath"]
                     relativePath   = workloadDict["relativePath"]
                     if self.useRealTimeAnalysis:
-                        modTime    = workloadDict["fileModificationTime"]
-                        fileFormat = workloadDict["fileFormat"]
-                        fileContent = workloadDct["fileContent"]
+                        modTime     = workloadDict["fileModificationTime"]
+                        fileFormat  = workloadDict["fileFormat"]
+                        fileContent = workloadDict["fileContent"]
                     # filesize       = workloadDict["filesize"]
                 except Exception, e:
                     errorMessage   = "Invalid fileEvent message received."
