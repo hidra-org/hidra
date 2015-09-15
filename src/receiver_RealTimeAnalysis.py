@@ -1,3 +1,5 @@
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
 import sys
 import time
 import zmq
