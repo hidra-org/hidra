@@ -191,15 +191,16 @@ class FileMover():
                         self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
                         continue
 
-                    self.log.debug("Check if signal sending host is in WhiteList...")
-                    if signalHostname in self.receiverWhiteList:
-                        self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
-                    else:
-                        self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
-                        self.log.debug("Signal from host " + str(signalHostname) + " is discarded.")
-                        print "Signal from host " + str(signalHostname) + " is discarded."
-                        self.receiverComSocket.send("NO_VALID_HOST", zmq.NOBLOCK)
-                        continue
+                    if signal != "NEXT_FILE":
+                        self.log.debug("Check if signal sending host is in WhiteList...")
+                        if signalHostname in self.receiverWhiteList:
+                            self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
+                        else:
+                            self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
+                            self.log.debug("Signal from host " + str(signalHostname) + " is discarded.")
+                            print "Signal from host " + str(signalHostname) + " is discarded."
+                            self.receiverComSocket.send("NO_VALID_HOST", zmq.NOBLOCK)
+                            continue
 
 
                     if signal == "STOP_LIVE_VIEWER":
@@ -217,12 +218,18 @@ class FileMover():
                     elif signal == "STOP_REALTIME_ANALYSIS":
                         self.log.info("Received realtime analysis stop signal from host " + str(signalHostname) + "...stopping realtime analysis")
                         print "Received realtime analysis stop signal from host " + signalHostname + "...stopping realtime analysis"
+                        # send signal to cleaner
                         self.sendSignalToCleaner(signal)
+                        # send signal to workerProcesses and back to receiver
+                        self.sendSignalToReceiver(signal)
                         continue
                     elif signal == "START_REALTIME_ANALYSIS":
                         self.log.info("Received realtime analysis start signal from host " + str(signalHostname) + "...starting realtime analysis")
                         print "Received realtime analysis start signal from host " + str(signalHostname) + "...starting realtime analysis"
+                        # send signal to cleaner
                         self.sendSignalToCleaner(signal)
+                        # send signal to workerProcesses and back to receiver
+                        self.sendSignalToReceiver(signal)
                         continue
                     elif signal == "NEXT_FILE":
                         self.log.info("Received request for next file")
@@ -275,14 +282,12 @@ class FileMover():
             self.log.debug("Error was: " + str(e))
 
 
-
-
     def sendSignalToCleaner(self, signal):
         self.log.debug("send signal to cleaner: " + str(signal) )
         self.cleanerSocket.send(signal)
 #        self.cleanerComSocket.send(signal)
-        self.log.debug("send confirmation back to receiver: " + str(signal) )
-        self.receiverComSocket.send(signal, zmq.NOBLOCK)
+#        self.log.debug("send confirmation back to receiver: " + str(signal) )
+#        self.receiverComSocket.send(signal, zmq.NOBLOCK)
 
 
     def sendSignalToReceiver(self, signal):

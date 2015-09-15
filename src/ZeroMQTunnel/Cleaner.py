@@ -48,7 +48,7 @@ class Cleaner():
     # to get the logging only handling this class
     log                  = None
 
-    useRealTimeAnalysis  = True    # boolian to inform if the receiver for the realtime analysis is running
+    useRealTimeAnalysis  = False    # boolian to inform if the receiver for the realtime analysis is running
     maxRingBufferSize    = None
     ringBuffer           = None
 

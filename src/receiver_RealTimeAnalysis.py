@@ -160,11 +160,12 @@ if __name__ == '__main__':
             receiver.askForNextFile()
             time.sleep(1)
         except KeyboardInterrupt:
-            receiver.stop()
             break
         if i >= 5:
             break
         else:
             i += 1
+
+    receiver.stop()
 
 

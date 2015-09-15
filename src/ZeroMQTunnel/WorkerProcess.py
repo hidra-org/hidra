@@ -27,7 +27,7 @@ class WorkerProcess():
     cleanerSocket        = None
 
     useLiveViewer        = False        # boolian to inform if the receiver for the live viewer is running
-    useRealTimeAnalysis  = True        # boolian to inform if the receiver for realtime-analysis is running
+    useRealTimeAnalysis  = False        # boolian to inform if the receiver for realtime-analysis is running
 
     # to get the logging only handling this class
     log                  = None
@@ -235,7 +235,7 @@ class WorkerProcess():
                     # append the data to store in the ringbuffer
                     payloadMetadata            = json.dumps(payloadMetadata)
                     dataToSend = payloadMetadata + "|||" + str( fileContent)
-		    print dataToSend
+                    print dataToSend
                 except Exception, e:
                     self.log.error("Unable to assemble multi-part message.")
                     self.log.debug("Error was: " + str(e))
