@@ -1,4 +1,4 @@
-__author__ = 'Manuela Kuhn <marnuel.kuhn@desy.de>'
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 import time
