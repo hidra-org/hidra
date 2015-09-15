@@ -81,13 +81,21 @@ class ReceiverRealTimeAnalysis():
         try:
             message = "NEXT_FILE,"+ str(self.hostname)
             print "Asking for next file"
+            self.log.debug("Asking for next file")
             self.senderComSocket.send (message)
+        except Exception as e:
+            self.log.error("Unable to send request")
+            self.log.debug("Error was: ", str(e))
+
+
+        try:
             #  Get the reply.
             received_file = self.senderComSocket.recv()
             print "Received_file", received_file
+            self.log.debug("Received_file" + str(received_file))
         except zmq.error.ZMQError:
             received_file = None
-            print "ZMQError"
+            self.log.error("ZMQError")
 
     def stop(self, sendToSender = True):
 
@@ -96,7 +104,10 @@ class ReceiverRealTimeAnalysis():
 
             message = "STOP_REALTIME_ANALYSIS,"+ str(self.hostname)
             print "sending message ", message
-            self.senderComSocket.send(str(message), zmq.NOBLOCK)
+            try:
+                self.senderComSocket.send(str(message), zmq.NOBLOCK)
+            except zmq.error.ZMQError:
+                self.log.error("Unable to send stop signal to sender")
 
             try:
                 senderMessage = self.senderComSocket.recv()

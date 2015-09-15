@@ -1,6 +1,7 @@
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Marco Strutz <marco.strutz@desy.de>'
 
 
+import time
 import zmq
 import logging
 import sys
@@ -216,13 +217,11 @@ class FileMover():
                     elif signal == "STOP_REALTIME_ANALYSIS":
                         self.log.info("Received realtime analysis stop signal from host " + str(signalHostname) + "...stopping realtime analysis")
                         print "Received realtime analysis stop signal from host " + signalHostname + "...stopping realtime analysis"
-                        self.useRealTimeAnalysis = False
                         self.sendSignalToCleaner(signal)
                         continue
                     elif signal == "START_REALTIME_ANALYSIS":
                         self.log.info("Received realtime analysis start signal from host " + str(signalHostname) + "...starting realtime analysis")
                         print "Received realtime analysis start signal from host " + str(signalHostname) + "...starting realtime analysis"
-                        self.useRealTimeAnalysis = True
                         self.sendSignalToCleaner(signal)
                         continue
                     elif signal == "NEXT_FILE":
@@ -263,8 +262,18 @@ class FileMover():
         self.log.debug("waiting for answer of cleaner")
         answer = self.cleanerComSocket.recv()
         self.log.debug("send confirmation back to receiver: " + str(answer) )
-        self.receiverComSocket.send(answer, zmq.NOBLOCK)
-        print "send answer", answer
+        try:
+            self.receiverComSocket.send(answer, zmq.NOBLOCK)
+            print "send answer", answer
+        except zmq.error.Again:
+            self.log.error("Unable to send answer for file " + str(sourceFilePathFull))
+            self.log.error("Receiver has disconnected")
+            self.log.info("Stopping realtime analysis")
+            self.sendSignalToCleaner("STOP_REALTIME_ANALYSIS")
+        except Exception, e:
+            self.log.error("Unable to send answer for file " + str(sourceFilePathFull))
+            self.log.debug("Error was: " + str(e))
+
 
 
 
