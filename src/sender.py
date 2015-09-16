@@ -68,12 +68,13 @@ class Sender():
         self.dataStreamIp        = defConf.dataStreamIp
         self.dataStreamPort      = defConf.dataStreamPort
         self.cleanerTargetPath   = defConf.cleanerTargetPath
-        self.zmqCleanerIp        = defConf.zmqCleanerIp
-        self.zmqCleanerPort      = defConf.zmqCleanerPort
-        self.cleanerComPort      = "6063"
+        self.cleanerIp           = defConf.cleanerIp
+        self.cleanerPort         = defConf.cleanerPort
+        self.cleanerComPort      = defConf.cleanerComPort
         self.receiverComPort     = defConf.receiverComPort
         self.receiverWhiteList   = defConf.receiverWhiteList
 
+        self.maxRingBufferSize   = defConf.maxRingBufferSize
         self.parallelDataStreams = defConf.parallelDataStreams
         self.chunkSize           = defConf.chunkSize
 
@@ -98,7 +99,7 @@ class Sender():
         logging.debug("start watcher process...done")
 
         logging.debug("start cleaner process...")
-        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.zmqCleanerIp, self.zmqCleanerPort, self.cleanerComPort , 10, self.zmqContext))
+        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.cleanerComPort , self.maxRingBufferSize, self.zmqContext))
         logging.debug("cleaner process registered")
         cleanerProcess.start()
         logging.debug("start cleaner process...done")
@@ -111,7 +112,7 @@ class Sender():
         fileMover = FileMover(self.fileEventIp, self.fileEventPort, self.dataStreamIp, self.dataStreamPort,
                               self.receiverComPort, self.receiverWhiteList,
                               self.parallelDataStreams, self.chunkSize,
-                              self.zmqCleanerIp, self.zmqCleanerPort, self.cleanerComPort,
+                              self.cleanerIp, self.cleanerPort, self.cleanerComPort,
                               self.zmqContext)
         try:
             fileMover.process()

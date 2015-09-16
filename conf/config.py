@@ -44,12 +44,16 @@ class defaultConfigSender():
     # port number of dataStream-socket to push new files to
     dataStreamPort      = "6061"
     # zmq-pull-socket ip which deletes/moves given files
-    zmqCleanerIp        = LOCAL_IP
+    cleanerIp           = LOCAL_IP
     # zmq-pull-socket port which deletes/moves given files
-    zmqCleanerPort      = "6062"
+    cleanerPort         = "6062"
+    # port number to communicate with cleaner to get files for realtime analysis receiver
+    cleanerComPort      = "6063"
     # port number of dataStream-socket to receive signals from the receiver
     receiverComPort     = "6080"
 
+    # size of the ringbuffer used to store data for realtime analysis
+    maxRingBufferSize   = 10
     # chunk size of file-parts getting send via zmq
     chunkSize           = 1048576 # = 1024*1024
     #chunkSize           = 1073741824 # = 1024*1024*1024
