@@ -462,7 +462,7 @@ class WorkerProcess():
 
     def stop(self):
         self.log.debug("Sending stop signal to cleaner from worker-" + str(self.id))
-        self.cleanerSocket.send("STOP")
+#        self.cleanerSocket.send("STOP")        #no communication needed because cleaner detects KeyboardInterrupt signals
         self.log.info("Closing sockets for worker " + str(self.id))
         if self.zmqDataStreamSocket:
             self.zmqDataStreamSocket.close(0)

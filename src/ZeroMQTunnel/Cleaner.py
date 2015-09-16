@@ -143,8 +143,8 @@ class Cleaner():
 
                 if workload == "STOP":
                     self.log.info("Stopping cleaner")
-                    self.stop()
-                    continue
+#                    self.stop()
+                    break
                 elif workload == "START_REALTIME_ANALYSIS":
                     self.useRealTimeAnalysis = True
                     self.log.info("Starting realtime analysis")

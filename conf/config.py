@@ -11,7 +11,7 @@ import helperScript
 #LOCAL_IP= "0.0.0.0"
 LOCAL_IP= "127.0.0.1"
 
-BASE_PATH = "/home/kuhnm/Arbeit/live-viewer"
+BASE_PATH = "/space/projects/live-viewer"
 
 class defaultConfigSender():
 

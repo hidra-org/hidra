@@ -53,7 +53,7 @@ class ReceiverRealTimeAnalysis():
         senderMessage = None
         try:
             senderMessage = self.senderComSocket.recv()
-            print "answer to start live viewer: ", senderMessage
+            print "answer to start realtime analysis: ", senderMessage
             self.log.debug("Received message from sender: " + str(senderMessage) )
         except KeyboardInterrupt:
             self.log.error("KeyboardInterrupt: No message received from sender")
@@ -83,19 +83,26 @@ class ReceiverRealTimeAnalysis():
             print "Asking for next file"
             self.log.debug("Asking for next file")
             self.senderComSocket.send (message)
+
+            time.sleep(1)
+
+            try:
+                #  Get the reply.
+                received_file = self.senderComSocket.recv()
+                print "Received_file", received_file
+                self.log.debug("Received_file" + str(received_file))
+            except zmq.error.ZMQError:
+                received_file = None
+                self.log.error("ZMQError")
+            except Exception as e:
+                self.log.error("Unable receive reply")
+                self.log.debug("Error was: " + str(e))
+
         except Exception as e:
             self.log.error("Unable to send request")
-            self.log.debug("Error was: ", str(e))
+            self.log.debug("Error was: " + str(e))
 
 
-        try:
-            #  Get the reply.
-            received_file = self.senderComSocket.recv()
-            print "Received_file", received_file
-            self.log.debug("Received_file" + str(received_file))
-        except zmq.error.ZMQError:
-            received_file = None
-            self.log.error("ZMQError")
 
     def stop(self, sendToSender = True):
 
@@ -107,17 +114,32 @@ class ReceiverRealTimeAnalysis():
             try:
                 self.senderComSocket.send(str(message), zmq.NOBLOCK)
             except zmq.error.ZMQError:
-                self.log.error("Unable to send stop signal to sender")
+                self.log.debug("Unable to send stop signal to sender")
 
             try:
                 senderMessage = self.senderComSocket.recv()
-                print "answer to stop live viewer: ", senderMessage
+                print "answer to stop realtime analysis: ", senderMessage
                 self.log.debug("Received message from sender: " + str(senderMessage) )
 
                 if senderMessage == "STOP_REALTIME_ANALYSIS":
                     self.log.info("Received confirmation from sender...")
                 else:
-                    self.log.error("Received confirmation from sender...failed")
+                    self.log.debug("Received unexpected response from sender")
+                    self.log.debug("Try to send stop signal again")
+
+                    try:
+                        self.senderComSocket.send(str(message), zmq.NOBLOCK)
+                    except zmq.error.ZMQError:
+                        self.log.debug("Unable to send stop signal to sender (second try)")
+
+                    senderMessage = self.senderComSocket.recv()
+                    print "answer to stop realtime analysis(second try): ", senderMessage
+                    self.log.debug("Received message from sender: " + str(senderMessage) )
+
+                    if senderMessage == "STOP_REALTIME_ANALYSIS":
+                        self.log.info("Received confirmation from sender...")
+                    else:
+                        self.log.error("Received confirmation from sender...failed")
             except KeyboardInterrupt:
                 self.log.error("KeyboardInterrupt: No message received from sender")
             except Exception as e:
@@ -146,7 +168,7 @@ class ReceiverRealTimeAnalysis():
 
 
 if __name__ == '__main__':
-    logfilePath = "/home/kuhnm/Arbeit/live-viewer/logs/receiver_RealTimeAnalysis.log"
+    logfilePath = "/space/projects/live-viewer/logs/receiver_RealTimeAnalysis.log"
     verbose = True
 
     #enable logging
@@ -161,10 +183,10 @@ if __name__ == '__main__':
             time.sleep(1)
         except KeyboardInterrupt:
             break
-        if i >= 5:
-            break
-        else:
-            i += 1
+#        if i >= 5:
+#            break
+#        else:
+#            i += 1
 
     receiver.stop()
 
