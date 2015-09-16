@@ -16,7 +16,6 @@ import subprocess
 import json
 import shutil
 import helperScript
-from RingBuffer import RingBuffer
 
 
 DEFAULT_CHUNK_SIZE = 1048576
@@ -38,24 +37,17 @@ class Cleaner():
     """
     bindingPortForSocket = None
     bindingIpForSocket   = None
-    senderComPort        = None
     senderComIp          = None
     zmqContextForCleaner = None
     externalContext      = None    # if the context was created outside this class or not
     zmqCleanerSocket     = None
-    senderComSocket      = None
 
     # to get the logging only handling this class
     log                  = None
 
-    useRealTimeAnalysis  = False    # boolian to inform if the receiver for the realtime analysis is running
-    maxRingBufferSize    = None
-    ringBuffer           = None
-
-    def __init__(self, targetPath, bindingIp="127.0.0.1", bindingPort="6062", senderComPort="6063", maxRingBufferSize = None, context = None, verbose=False):
+    def __init__(self, targetPath, bindingIp="127.0.0.1", bindingPort="6062", context = None, verbose=False):
         self.bindingPortForSocket = bindingPort
         self.bindingIpForSocket   = bindingIp
-        self.senderComPort        = senderComPort
         self.senderComIp          = self.bindingIpForSocket
         self.targetPath           = targetPath
 
@@ -66,13 +58,6 @@ class Cleaner():
             self.zmqContextForCleaner = zmq.Context()
             self.externalContext      = False
 
-        if maxRingBufferSize:
-            self.maxRingBufferSize    = maxRingBufferSize
-#            # TODO remove targetPath?
-#            self.ringBuffer           = RingBuffer(self.maxRingBufferSize, self.targetPath)
-            self.ringBuffer           = RingBuffer(self.maxRingBufferSize, storeContent = True)
-
-
         self.log = self.getLogger()
         self.log.debug("Init")
 
@@ -81,17 +66,6 @@ class Cleaner():
         connectionStrSocket   = "tcp://" + self.bindingIpForSocket + ":%s" % self.bindingPortForSocket
         self.zmqCleanerSocket.bind(connectionStrSocket)
         self.log.debug("zmqCleanerSocket started for '" + connectionStrSocket + "'")
-
-        #bind to local port
-        self.senderComSocket = self.zmqContextForCleaner.socket(zmq.REP)
-        connectionStrSocket  = "tcp://" + self.senderComIp + ":%s" % self.senderComPort
-        self.senderComSocket.bind(connectionStrSocket)
-        self.log.debug("senderComSocket started for '" + connectionStrSocket + "'")
-
-        # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
-        self.poller = zmq.Poller()
-        self.poller.register(self.zmqCleanerSocket, zmq.POLLIN)
-        self.poller.register(self.senderComSocket, zmq.POLLIN)
 
         try:
             self.process()
@@ -116,166 +90,90 @@ class Cleaner():
     def process(self):
         #processing messaging
         while True:
-            socks = dict(self.poller.poll())
             #waiting for new jobs
             self.log.debug("Waiting for new jobs")
 
-            if self.senderComSocket in socks and socks[self.senderComSocket] == zmq.POLLIN:
-                self.log.debug("Receiving message from senderComSocket")
-                try:
-                    workload = self.senderComSocket.recv()
-                except Exception as e:
-                    self.log.error("Error in communication signal: " + str(e))
+            try:
+                workload = self.zmqCleanerSocket.recv()
+            except Exception as e:
+                self.log.error("Error in receiving job: " + str(e))
 
-                if workload == "NEXT_FILE":
-                    self.log.debug("Receiving request for newest file")
-                    newestFile = self.ringBuffer.popNewestFile()
-                    self.log.debug("Reply newest file")
-                    self.senderComSocket.send(str(newestFile), zmq.NOBLOCK)
+            if workload == "STOP":
+                self.log.info("Stopping cleaner")
+#                    self.stop()
+                break
+
+            # transform to dictionary
+            # metadataDict = {
+            #   "filename"             : filename,
+            #   "filesize"             : filesize,
+            #   "fileModificationTime" : fileModificationTime,
+            #   "sourcePath"           : sourcePath,
+            #   "relativePath"         : relativePath,
+            #   "chunkSize"            : self.getChunkSize()
+            #   }
+            try:
+                workloadDict = json.loads(str(workload))
+            except:
+                errorMessage = "invalid job received. skipping job"
+                self.log.error(errorMessage)
+                self.log.debug("workload=" + str(workload))
                 continue
 
+            #extract fileEvent metadata/data
+            try:
+                #TODO validate fileEventMessageDict dict
+                filename       = workloadDict["filename"]
+                sourcePath     = workloadDict["sourcePath"]
+                relativePath   = workloadDict["relativePath"]
+            except Exception, e:
+                errorMessage   = "Invalid fileEvent message received."
+                self.log.error(errorMessage)
+                self.log.debug("Error was: " + str(e))
+                self.log.debug("workloadDict=" + str(workloadDict))
+                #skip all further instructions and continue with next iteration
+                continue
 
-            if self.zmqCleanerSocket in socks and socks[self.zmqCleanerSocket] == zmq.POLLIN:
-                try:
-                    workload = self.zmqCleanerSocket.recv()
-                except Exception as e:
-                    self.log.error("Error in receiving job: " + str(e))
+            #source file
+            sourceFullpath = None
+            try:
+                #generate target filepath
+                sourcePath = os.path.normpath(sourcePath + os.sep + relativePath)
+                sourceFullPath = os.path.join(sourcePath,filename)
+                targetFullPath = os.path.normpath(self.targetPath + relativePath)
+                self.log.debug("sourcePath: " + str (sourcePath))
+                self.log.debug("filename: " + str (filename))
+                self.log.debug("targetPath: " + str (targetFullPath))
 
-                if workload == "STOP":
-                    self.log.info("Stopping cleaner")
-#                    self.stop()
-                    break
-                elif workload == "START_REALTIME_ANALYSIS":
-                    self.useRealTimeAnalysis = True
-                    self.log.info("Starting realtime analysis")
-                    continue
-                elif workload == "STOP_REALTIME_ANALYSIS":
-                    self.useRealTimeAnalysis = False
-                    self.log.info("Stopping realtime analysis")
-                    continue
+            except Exception, e:
+                self.log.error("Unable to generate file paths")
+                trace = traceback.format_exc()
+                self.log.error("Error was: " + str(trace))
+                #skip all further instructions and continue with next iteration
+                continue
 
-                # transform to dictionary
-                # metadataDict = {
-                #   "filename"             : filename,
-                #   "filesize"             : filesize,
-                #   "fileModificationTime" : fileModificationTime,
-                #   "sourcePath"           : sourcePath,
-                #   "relativePath"         : relativePath,
-                #   "chunkSize"            : self.getChunkSize()
-                #   }
-                if self.useRealTimeAnalysis:
-                    try:
-                        workloadSplit   = workload.split("|||")
-                        workloadDict    = json.loads(str(workloadSplit[0]))
-                        workloadContent = workloadSplit[1]
-                        self.log.debug("Splitted workload")
-                    except:
-                        errorMessage = "invalid job received. skipping job"
-                        self.log.error(errorMessage)
-                        self.log.debug("workload=" + str(workload))
-                        continue
-                else:
-                    try:
-                        workloadDict = json.loads(str(workload))
-                    except:
-                        errorMessage = "invalid job received. skipping job"
-                        self.log.error(errorMessage)
-                        self.log.debug("workload=" + str(workload))
-                        continue
+            try:
+                self.log.debug("Moving source file...")
+                self.moveFile(sourcePath, filename, targetFullPath)
+#                    self.removeFile(sourceFullpath)
 
-                #extract fileEvent metadata/data
-                try:
-                    #TODO validate fileEventMessageDict dict
-                    filename       = workloadDict["filename"]
-                    sourcePath     = workloadDict["sourcePath"]
-                    relativePath   = workloadDict["relativePath"]
-#                    if self.useRealTimeAnalysis:
-#                        modTime     = workloadDict["fileModificationTime"]
-#                        fileFormat  = workloadDict["fileFormat"]
-                    # filesize       = workloadDict["filesize"]
-                except Exception, e:
-                    errorMessage   = "Invalid fileEvent message received."
-                    self.log.error(errorMessage)
-                    self.log.debug("Error was: " + str(e))
-                    self.log.debug("workloadDict=" + str(workloadDict))
-                    #skip all further instructions and continue with next iteration
-                    continue
+                # #show filesystem statistics
+                # try:
+                #     self.showFilesystemStatistics(sourcePath)
+                # except Exception, f:
+                #     logging.warning("Unable to get filesystem statistics")
+                #     logging.debug("Error was: " + str(f))
+                self.log.debug("File moved: " + str(sourceFullPath))
+                self.log.debug("Moving source file...success.")
 
-                #extract fileEvent metadata/data
-                try:
-                    if self.useRealTimeAnalysis:
-                        modTime     = workloadDict["fileModificationTime"]
-                        fileFormat  = workloadDict["fileFormat"]
-                    # filesize       = workloadDict["filesize"]
-                except Exception, e:
-                    errorMessage   = "Invalid fileEvent message received (useRealTimeAnalysis)."
-                    self.log.error(errorMessage)
-                    self.log.debug("Error was: " + str(e))
-                    self.log.debug("workloadDict=" + str(workloadDict))
-                    #skip all further instructions and continue with next iteration
-                    continue
-
-                #source file
-                sourceFullpath = None
-                try:
-                    #generate target filepath
-                    sourcePath = os.path.normpath(sourcePath + os.sep + relativePath)
-                    sourceFullPath = os.path.join(sourcePath,filename)
-                    targetFullPath = os.path.normpath(self.targetPath + relativePath)
-                    self.log.debug("sourcePath: " + str (sourcePath))
-                    self.log.debug("filename: " + str (filename))
-                    self.log.debug("targetPath: " + str (targetFullPath))
-
-                except Exception, e:
-                    self.log.error("Unable to generate file paths")
-                    trace = traceback.format_exc()
-                    self.log.error("Error was: " + str(trace))
-                    #skip all further instructions and continue with next iteration
-                    continue
-
-                if self.useRealTimeAnalysis:
-                    # copy file
-                    try:
-                        self.log.debug("Copying source file...")
-                        self.copyFile(sourcePath, filename, targetFullPath)
-                        self.log.debug("File copied: " + str(sourceFullPath))
-                        self.log.debug("Copying source file...success.")
-
-                    except Exception, e:
-                        self.log.error("Unable to copy source file: " + str (sourceFullPath) )
-                        trace = traceback.format_exc()
-                        self.log.error("Error was: " + str(trace))
-                        self.log.debug("sourceFullpath="+str(sourceFullpath))
-                        self.log.debug("Copying source file...failed.")
-                        #skip all further instructions and continue with next iteration
-                        continue
-
-                    # add file to ring buffer
-                    self.log.debug("Add new file to ring buffer: \n file: " + str(sourceFullPath) + ",\n modTime: " + str(modTime) + ",\nworkloadContent: " + str(workloadContent))
-                    self.ringBuffer.add(sourceFullPath, modTime, workloadContent)
-                else:
-                    try:
-                        self.log.debug("Moving source file...")
-                        self.moveFile(sourcePath, filename, targetFullPath)
-    #                    self.removeFile(sourceFullpath)
-
-                        # #show filesystem statistics
-                        # try:
-                        #     self.showFilesystemStatistics(sourcePath)
-                        # except Exception, f:
-                        #     logging.warning("Unable to get filesystem statistics")
-                        #     logging.debug("Error was: " + str(f))
-                        self.log.debug("File moved: " + str(sourceFullPath))
-                        self.log.debug("Moving source file...success.")
-
-                    except Exception, e:
-                        self.log.error("Unable to move source file: " + str (sourceFullPath) )
-                        trace = traceback.format_exc()
-                        self.log.error("Error was: " + str(trace))
-                        self.log.debug("sourceFullpath="+str(sourceFullpath))
-                        self.log.debug("Moving source file...failed.")
-                        #skip all further instructions and continue with next iteration
-                        continue
+            except Exception, e:
+                self.log.error("Unable to move source file: " + str (sourceFullPath) )
+                trace = traceback.format_exc()
+                self.log.error("Error was: " + str(trace))
+                self.log.debug("sourceFullpath="+str(sourceFullpath))
+                self.log.debug("Moving source file...failed.")
+                #skip all further instructions and continue with next iteration
+                continue
 
 
     def copyFile(self, source, filename, target):
@@ -391,6 +289,3 @@ class Cleaner():
         if not self.externalContext:
             self.log.debug("Destroying context")
             self.zmqContextForCleaner.destroy()
-
-        # clear ring buffer
-        self.ringBuffer.removeAll()

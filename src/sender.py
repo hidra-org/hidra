@@ -70,11 +70,11 @@ class Sender():
         self.cleanerTargetPath   = defConf.cleanerTargetPath
         self.cleanerIp           = defConf.cleanerIp
         self.cleanerPort         = defConf.cleanerPort
-        self.cleanerComPort      = defConf.cleanerComPort
         self.receiverComPort     = defConf.receiverComPort
+        self.ondaIps             = defConf.ondaIps
+        self.ondaPorts           = defConf.ondaPorts
         self.receiverWhiteList   = defConf.receiverWhiteList
 
-        self.maxRingBufferSize   = defConf.maxRingBufferSize
         self.parallelDataStreams = defConf.parallelDataStreams
         self.chunkSize           = defConf.chunkSize
 
@@ -99,7 +99,7 @@ class Sender():
         logging.debug("start watcher process...done")
 
         logging.debug("start cleaner process...")
-        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.cleanerComPort , self.maxRingBufferSize, self.zmqContext))
+        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.zmqContext))
         logging.debug("cleaner process registered")
         cleanerProcess.start()
         logging.debug("start cleaner process...done")
@@ -112,7 +112,8 @@ class Sender():
         fileMover = FileMover(self.fileEventIp, self.fileEventPort, self.dataStreamIp, self.dataStreamPort,
                               self.receiverComPort, self.receiverWhiteList,
                               self.parallelDataStreams, self.chunkSize,
-                              self.cleanerIp, self.cleanerPort, self.cleanerComPort,
+                              self.cleanerIp, self.cleanerPort,
+                              self.ondaIps, self.ondaPorts,
                               self.zmqContext)
         try:
             fileMover.process()

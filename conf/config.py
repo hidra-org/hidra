@@ -11,7 +11,7 @@ import helperScript
 #LOCAL_IP= "0.0.0.0"
 LOCAL_IP= "127.0.0.1"
 
-BASE_PATH = "/space/projects/live-viewer"
+BASE_PATH = "/home/kuhnm/Arbeit/live-viewer"
 
 class defaultConfigSender():
 
@@ -47,13 +47,13 @@ class defaultConfigSender():
     cleanerIp           = LOCAL_IP
     # zmq-pull-socket port which deletes/moves given files
     cleanerPort         = "6062"
-    # port number to communicate with cleaner to get files for realtime analysis receiver
-    cleanerComPort      = "6063"
     # port number of dataStream-socket to receive signals from the receiver
     receiverComPort     = "6080"
+    # ports and ips to communicate with onda/realtime analysis
+    # there needs to be one entry for each workerProcess (meaning streams)
+    ondaIps             = ["0.0.0.0"]
+    ondaPorts           = ["6081"]
 
-    # size of the ringbuffer used to store data for realtime analysis
-    maxRingBufferSize   = 10
     # chunk size of file-parts getting send via zmq
     chunkSize           = 1048576 # = 1024*1024
     #chunkSize           = 1073741824 # = 1024*1024*1024

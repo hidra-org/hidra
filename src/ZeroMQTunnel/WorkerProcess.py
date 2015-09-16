@@ -32,7 +32,7 @@ class WorkerProcess():
     # to get the logging only handling this class
     log                  = None
 
-    def __init__(self, id, dataStreamIp, dataStreamPort, chunkSize, cleanerIp, cleanerPort,
+    def __init__(self, id, dataStreamIp, dataStreamPort, chunkSize, cleanerIp, cleanerPort, ondaIp, ondaPort,
                  context = None):
         self.id                   = id
         self.dataStreamIp         = dataStreamIp
@@ -40,6 +40,8 @@ class WorkerProcess():
         self.zmqMessageChunkSize  = chunkSize
         self.cleanerIp            = cleanerIp
         self.cleanerPort          = cleanerPort
+        self.ondaIp               = ondaIp
+        self.ondaPort             = ondaPort
 
         #initialize router
         if context:
@@ -55,10 +57,16 @@ class WorkerProcess():
         self.log.debug("new workerProcess started. id=" + str(self.id))
 
         self.zmqDataStreamSocket      = self.zmqContextForWorker.socket(zmq.PUSH)
-        connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
-        print "connectionStrDataStreamSocket", connectionStrDataStreamSocket
-        self.zmqDataStreamSocket.bind(connectionStrDataStreamSocket)
-        self.log.debug("zmqDataStreamSocket started (bind) for '" + connectionStrDataStreamSocket + "'")
+        connectionStr = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
+        self.zmqDataStreamSocket.bind(connectionStr)
+        self.log.debug("zmqDataStreamSocket started (bind) for '" + connectionStr + "'")
+        print"zmqDataStreamSocket started (bind) for '" + connectionStr + "'"
+
+        self.ondaComSocket      = self.zmqContextForWorker.socket(zmq.REP)
+        connectionStr = "tcp://{ip}:{port}".format(ip=self.ondaIp, port=self.ondaPort)
+        self.ondaComSocket.bind(connectionStr)
+        self.log.debug("ondaSocket started (bind) for '" + connectionStr + "'")
+        print "ondaSocket started (bind) for '" + connectionStr + "'"
 
         # initialize sockets
         routerIp   = "127.0.0.1"
@@ -75,6 +83,12 @@ class WorkerProcess():
         connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.cleanerIp, port=self.cleanerPort)
         self.cleanerSocket.connect(connectionStrCleanerSocket)
         self.log.debug("cleanerSocket started (connect) for '" + connectionStrCleanerSocket + "'")
+
+        # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
+        self.poller = zmq.Poller()
+        self.poller.register(self.routerSocket, zmq.POLLIN)
+        self.poller.register(self.ondaComSocket, zmq.POLLIN)
+
 
         try:
             self.process()
@@ -113,149 +127,126 @@ class WorkerProcess():
 
         processingJobs = True
         jobCount = 0
+        ondaRequest = False
+        print "ondaRequest", ondaRequest
 
         while processingJobs:
+
             #sending a "ready"-signal to the router.
             #the reply will contain the actual job/task.
             self.log.debug("worker-"+str(self.id)+": sending ready signal")
 
             self.routerSocket.send(b"READY")
 
-            # Get workload from router, until finished
-            self.log.debug("worker-"+str(self.id)+": waiting for new job")
-            workload = self.routerSocket.recv()
-            self.log.debug("worker-"+str(self.id)+": new job received")
+            socks = dict(self.poller.poll())
 
-            finished = workload == b"END"
-            if finished:
-                processingJobs = False
-                self.log.debug("router requested to shutdown worker-process. Worker processed: %d files" % jobCount)
-                break
-            jobCount += 1
-
-            # the live viewer is turned on
-            startLV = workload == b"START_LIVE_VIEWER"
-            if startLV:
-                self.log.info("worker-"+str(self.id)+": Received live viewer start command...starting live viewer")
-                self.useLiveViewer = True
-                continue
-
-            # the live viewer is turned off
-            stopLV = workload == b"STOP_LIVE_VIEWER"
-            if stopLV:
-                self.log.info("worker-"+str(self.id)+": Received live viewer stop command...stopping live viewer")
-                self.useLiveViewer = False
-                continue
-
-            # the realtime-analysis is turned on
-            startRTA = workload == b"START_REALTIME_ANALYSIS"
-            if startRTA:
-                self.log.info("worker-"+str(self.id)+": Received realtime-analysis start command...starting live viewer")
-                self.useRealTimeAnalysis = True
-                continue
-
-            # the realtime-analysis is turned off
-            stopRTA = workload == b"STOP_REALTIME_ANALYSIS"
-            if stopRTA:
-                self.log.info("worker-"+str(self.id)+": Received realtime-analysis stop command...stopping live viewer")
-                self.useRealTimeAnalysis = False
-                continue
-
-            if self.useLiveViewer or self.useRealTimeAnalysis:
-                #convert fileEventMessage back to a dictionary
-                fileEventMessageDict = None
-                try:
-                    fileEventMessageDict = json.loads(str(workload))
-                    self.log.debug("str(messageDict) = " + str(fileEventMessageDict) + "  type(messageDict) = " + str(type(fileEventMessageDict)))
-                except Exception, e:
-                    errorMessage = "Unable to convert message into a dictionary."
-                    self.log.error(errorMessage)
-                    self.log.debug("Error was: " + str(e))
-
-
-                #extract fileEvent metadata
-                try:
-                    #TODO validate fileEventMessageDict dict
-                    filename     = fileEventMessageDict["filename"]
-                    sourcePath   = fileEventMessageDict["sourcePath"]
-                    relativePath = fileEventMessageDict["relativePath"]
-                except Exception, e:
-                    self.log.error("Invalid fileEvent message received.")
-                    self.log.debug("Error was: " + str(e))
-                    self.log.debug("fileEventMessageDict=" + str(fileEventMessageDict))
-                    #skip all further instructions and continue with next iteration
+            if self.ondaComSocket in socks and socks[self.ondaComSocket] == zmq.POLLIN:
+                workload = self.ondaComSocket.recv()
+                self.log.debug("worker-"+str(self.id)+": received new request from onda")
+                print "workload", workload
+                request = workload == b"NEXT_FILE"
+                if request:
+                    ondaRequest = True
+                    print "ondaRequest = True"
                     continue
 
-            if self.useLiveViewer:
-                #passing file to data-messagPipe
-                try:
-                    self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
-                    self.passFileToDataStream(filename, sourcePath, relativePath)
-                    self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...success.")
-                except Exception, e:
-                    errorMessage = "Unable to pass new file to data-messagePipe."
-                    self.log.error(errorMessage)
-                    self.log.error("Error was: " + str(e))
-                    self.log.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
-                    #skip all further instructions and continue with next iteration
+
+            if self.routerSocket in socks and socks[self.routerSocket] == zmq.POLLIN:
+                # Get workload from router, until finished
+                self.log.debug("worker-"+str(self.id)+": waiting for new job")
+                workload = self.routerSocket.recv()
+                self.log.debug("worker-"+str(self.id)+": new job received")
+
+                finished = workload == b"END"
+                if finished:
+                    processingJobs = False
+                    self.log.debug("router requested to shutdown worker-process. Worker processed: %d files" % jobCount)
+                    break
+                jobCount += 1
+
+                # the live viewer is turned on
+                startLV = workload == b"START_LIVE_VIEWER"
+                if startLV:
+                    self.log.info("worker-"+str(self.id)+": Received live viewer start command...starting live viewer")
+                    self.useLiveViewer = True
                     continue
-            else:
-                print "worker-"+str(self.id)+": no data sent"
 
-            if self.useRealTimeAnalysis:
-                # -->  sourceFilePathFull = 'C:\\dir\img.tiff'
-                sourceFilePath     = os.path.normpath(sourcePath + os.sep + relativePath)
-                sourceFilePathFull = os.path.join(sourceFilePath, filename)
+                # the live viewer is turned off
+                stopLV = workload == b"STOP_LIVE_VIEWER"
+                if stopLV:
+                    self.log.info("worker-"+str(self.id)+": Received live viewer stop command...stopping live viewer")
+                    self.useLiveViewer = False
+                    continue
 
-                #reading source file into memory
-                try:
-                    #for quick testing set filesize of file as chunksize
-                    self.log.debug("get filesize for '" + str(sourceFilePathFull) + "'...")
-                    filesize             = os.path.getsize(sourceFilePathFull)
-                    fileModificationTime = os.stat(sourceFilePathFull).st_mtime
-                    self.log.debug("filesize(%s) = %s" % (sourceFilePathFull, str(filesize)))
-                    self.log.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
-                    fileFormat           = filename.rsplit(".", 2)[1]
-                    self.log.debug("fileFormat(%s) = %s" % (filename, str(fileFormat)))
-                except Exception, e:
-                    self.log.error("Unable to get file metadata for '" + str(sourceFilePathFull) + "'." )
-                    self.log.debug("Error was: " + str(e))
-#                    raise Exception(e)
+                # the realtime-analysis is turned on
+                startRTA = workload == b"START_REALTIME_ANALYSIS"
+                if startRTA:
+                    self.log.info("worker-"+str(self.id)+": Received realtime-analysis start command...starting live viewer")
+                    self.useRealTimeAnalysis = True
+                    continue
 
-                try:
-                    fileContent          = self.getFileContent(sourceFilePathFull, fileFormat)
-                except Exception, e:
-                    self.log.error("Unable to get file content for '" + str(sourceFilePathFull) + "'." )
-                    self.log.debug("Error was: " + str(e))
+                # the realtime-analysis is turned off
+                stopRTA = workload == b"STOP_REALTIME_ANALYSIS"
+                if stopRTA:
+                    self.log.info("worker-"+str(self.id)+": Received realtime-analysis stop command...stopping live viewer")
+                    self.useRealTimeAnalysis = False
+                    continue
 
-                #build payload for message-pipe by putting source-file into a message
-                try:
-#                    dataToSend                = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath)
-                    payloadMetadata            = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath, fileFormat)
-                    # append the data to store in the ringbuffer
-                    payloadMetadata            = json.dumps(payloadMetadata)
-                    dataToSend = payloadMetadata + "|||" + str( fileContent)
-#                    print dataToSend
-                except Exception, e:
-                    self.log.error("Unable to assemble multi-part message.")
-                    self.log.debug("Error was: " + str(e))
-#                    raise Exception(e)
+                if self.useLiveViewer or self.useRealTimeAnalysis:
+                    #convert fileEventMessage back to a dictionary
+                    fileEventMessageDict = None
+                    try:
+                        fileEventMessageDict = json.loads(str(workload))
+                        self.log.debug("str(messageDict) = " + str(fileEventMessageDict) + "  type(messageDict) = " + str(type(fileEventMessageDict)))
+                    except Exception, e:
+                        errorMessage = "Unable to convert message into a dictionary."
+                        self.log.error(errorMessage)
+                        self.log.debug("Error was: " + str(e))
 
 
-            if self.useRealTimeAnalysis:
-                #send remove-request to message pipe
-                self.log.debug("send file-event for file to cleaner-pipe...")
-                try:
-                    #sending to pipe
-                    self.log.debug("dataToSend = " + str(dataToSend))
-                    self.cleanerSocket.send(dataToSend)
-                    self.log.debug("send file-event for file to cleaner-pipe...success.")
-                except Exception, e:
-                    self.log.error("Unable to notify Cleaner-pipe to hanlde file: " + str(workload))
-#                    self.log.debug("dataToSend=" + str(dataToSend))
-                    self.log.debug("Error was: " + str(e))
+                    #extract fileEvent metadata
+                    try:
+                        #TODO validate fileEventMessageDict dict
+                        filename     = fileEventMessageDict["filename"]
+                        sourcePath   = fileEventMessageDict["sourcePath"]
+                        relativePath = fileEventMessageDict["relativePath"]
+                    except Exception, e:
+                        self.log.error("Invalid fileEvent message received.")
+                        self.log.debug("Error was: " + str(e))
+                        self.log.debug("fileEventMessageDict=" + str(fileEventMessageDict))
+                        #skip all further instructions and continue with next iteration
+                        continue
 
-            else:
+                if self.useLiveViewer:
+                    #passing file to data-messagPipe
+                    try:
+                        self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
+                        self.passFileToDataStream(filename, sourcePath, relativePath, zmqDataStreamSocket)
+                        self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...success.")
+                    except Exception, e:
+                        self.log.error("Unable to pass new file to data-messagePipe.")
+                        self.log.error("Error was: " + str(e))
+                        self.log.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
+                        #skip all further instructions and continue with next iteration
+                        continue
+                else:
+                    print "worker-"+str(self.id)+": no data sent"
+
+                if self.useRealTimeAnalysis and ondaRequest:
+                    #passing file to data-messagPipe
+                    try:
+                        self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
+                        self.passFileToDataStream(filename, sourcePath, relativePath, ondaStreamSocket)
+                        ondoRequest = False
+                        self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...success.")
+                    except Exception, e:
+                        self.log.error("Unable to pass new file to data-messagePipe.")
+                        self.log.error("Error was: " + str(e))
+                        self.log.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
+                        #skip all further instructions and continue with next iteration
+                        continue
+
+
                 #send remove-request to message pipe
                 try:
                     #sending to pipe
@@ -299,7 +290,7 @@ class WorkerProcess():
         return content
 
 
-    def passFileToDataStream(self, filename, sourcePath, relativePath):
+    def passFileToDataStream(self, filename, sourcePath, relativePath, streamSocket):
         """filesizeRequested == filesize submitted by file-event. In theory it can differ to real file size"""
 
         # filename = "img.tiff"
@@ -374,7 +365,7 @@ class WorkerProcess():
                 chunkPayload.append(fileContentAsByteObject)
 
                 #send to zmq pipe
-                self.zmqDataStreamSocket.send_multipart(chunkPayload, zmq.NOBLOCK)
+                self.streamSocket.send_multipart(chunkPayload, zmq.NOBLOCK)
 
             #close file
             fileDescriptor.close()
@@ -466,6 +457,7 @@ class WorkerProcess():
         self.log.info("Closing sockets for worker " + str(self.id))
         if self.zmqDataStreamSocket:
             self.zmqDataStreamSocket.close(0)
+        self.ondaComSocket.close(0)
         self.routerSocket.close(0)
         self.cleanerSocket.close(0)
         if not self.externalContext:

@@ -80,7 +80,7 @@ class RingBuffer:
             if self.ringBuffer:
                 elementModTime, elementPath, elementContent = self.ringBuffer[0]
                 try:
-                    os.remove(elementPath)
+#                    os.remove(elementPath)
                     self.ringBuffer.remove([elementModTime, elementPath, elementContent])
                     self.log.debug("Newest Event removed")
                 except Exception as e:
@@ -111,7 +111,7 @@ class RingBuffer:
             if len(self.ringBuffer) > self.maxRingBufferSize:
                 for mod_time, path, content in self.ringBuffer[self.maxRingBufferSize:]:
                     self.log.debug("Remove file from ring buffer: " + str(path) )
-                    os.remove(path)
+#                    os.remove(path)
                     self.ringBuffer.remove([mod_time, path, content])
         else:
             # prepend file to ring buffer and restore order
@@ -122,7 +122,7 @@ class RingBuffer:
             if len(self.ringBuffer) > self.maxRingBufferSize:
                 for mod_time, path in self.ringBuffer[self.maxRingBufferSize:]:
                     self.log.debug("Remove file from ring buffer: " + str(path) )
-                    os.remove(path)
+#                    os.remove(path)
                     self.ringBuffer.remove([mod_time, path])
 
     def removeAll(self):

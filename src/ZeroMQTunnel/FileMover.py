@@ -20,10 +20,10 @@ class FileMover():
     dataStreamPort      = None      # port number of dataStream-socket to push new files to
     cleanerIp           = None      # zmq pull endpoint, responsable to delete/move files
     cleanerPort         = None      # zmq pull endpoint, responsable to delete/move files
-    cleanerComIp        = None      # ip to communicate with cleaner about new requests from the receiver (the same as cleanerIp)
-    cleanerComPort      = None      # port to communicate with cleaner about new requests from the receiver
     receiverComIp       = None      # ip for socket to communicate with receiver
     receiverComPort     = None      # port for socket to communicate receiver
+    ondaIps             = []
+    ondaPorts           = []
     receiverWhiteList   = None
     parallelDataStreams = None
     chunkSize           = None
@@ -32,8 +32,6 @@ class FileMover():
     fileEventSocket     = None      # to receive fileMove-jobs as json-encoded dictionary
     receiverComSocket   = None      # to exchange messages with the receiver
     routerSocket        = None
-    cleanerSocket       = None      # to echange if a realtime analysis receiver is online
-    cleanerComSocket    = None      # to echange data to send to the realtime analysis receiver
 
     useLiveViewer       = False     # boolian to inform if the receiver for the live viewer is running
 
@@ -44,10 +42,11 @@ class FileMover():
     def __init__(self, fileEventIp, fileEventPort, dataStreamIp, dataStreamPort,
                  receiverComPort, receiverWhiteList,
                  parallelDataStreams, chunkSize,
-                 cleanerIp, cleanerPort, cleanerComPort,
+                 cleanerIp, cleanerPort,
+                 ondaIps, ondaPorts,
                  context = None):
 
-        assert isinstance(context, zmq.sugar.context.Context)
+#        assert isinstance(context, zmq.sugar.context.Context)
 
         self.zmqContext          = context or zmq.Context()
         self.fileEventIp         = fileEventIp
@@ -56,10 +55,11 @@ class FileMover():
         self.dataStreamPort      = dataStreamPort
         self.cleanerIp           = cleanerIp
         self.cleanerPort         = cleanerPort
-        self.cleanerComIp        = self.cleanerIp       # always the same ip as as cleanerIp
-        self.cleanerComPort      = cleanerComPort
         self.receiverComIp       = dataStreamIp         # ip for socket to communicate with receiver; is the same ip as the data stream ip
         self.receiverComPort     = receiverComPort
+        self.ondaIps             = ondaIps
+        self.ondaPorts           = ondaPorts
+
         self.receiverWhiteList   = receiverWhiteList
         self.parallelDataStreams = parallelDataStreams
         self.chunkSize           = chunkSize
@@ -81,18 +81,6 @@ class FileMover():
         print "connectionStrReceiverComSocket", connectionStrReceiverComSocket
         self.receiverComSocket.bind(connectionStrReceiverComSocket)
         self.log.debug("receiverComSocket started (bind) for '" + connectionStrReceiverComSocket + "'")
-
-        #init Cleaner message-pipe
-        self.cleanerSocket            = self.zmqContext.socket(zmq.PUSH)
-        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.cleanerIp, port=self.cleanerPort)
-        self.cleanerSocket.connect(connectionStrCleanerSocket)
-        self.log.debug("cleanerSocket started (connect) for '" + connectionStrCleanerSocket + "'")
-
-        #init Cleaner message-pipe
-        self.cleanerComSocket         = self.zmqContext.socket(zmq.REQ)
-        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.cleanerComIp, port=self.cleanerComPort)
-        self.cleanerComSocket.connect(connectionStrCleanerSocket)
-        self.log.debug("cleanerComSocket started (connect) for '" + connectionStrCleanerSocket + "'")
 
         # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
         self.poller = zmq.Poller()
@@ -143,7 +131,10 @@ class FileMover():
                                                                   self.dataStreamPort,
                                                                   self.chunkSize,
                                                                   self.cleanerIp,
-                                                                  self.cleanerPort))
+                                                                  self.cleanerPort,
+                                                                  self.ondaIps[processNumber],
+                                                                  self.ondaPorts[processNumber]
+                                                                  ))
             workerProcessList.append(newWorkerProcess)
 
             self.log.debug("start worker process nr " + str(processNumber))
@@ -191,17 +182,15 @@ class FileMover():
                         self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
                         continue
 
-                    if signal != "NEXT_FILE":
-                        self.log.debug("Check if signal sending host is in WhiteList...")
-                        if signalHostname in self.receiverWhiteList:
-                            self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
-                        else:
-                            self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
-                            self.log.debug("Signal from host " + str(signalHostname) + " is discarded.")
-                            print "Signal from host " + str(signalHostname) + " is discarded."
-                            self.receiverComSocket.send("NO_VALID_HOST", zmq.NOBLOCK)
-                            continue
-
+                    self.log.debug("Check if signal sending host is in WhiteList...")
+                    if signalHostname in self.receiverWhiteList:
+                        self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
+                    else:
+                        self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
+                        self.log.debug("Signal from host " + str(signalHostname) + " is discarded.")
+                        print "Signal from host " + str(signalHostname) + " is discarded."
+                        self.receiverComSocket.send("NO_VALID_HOST", zmq.NOBLOCK)
+                        continue
 
                     if signal == "STOP_LIVE_VIEWER":
                         self.log.info("Received live viewer stop signal from host " + str(signalHostname) + "...stopping live viewer")
@@ -218,23 +207,15 @@ class FileMover():
                     elif signal == "STOP_REALTIME_ANALYSIS":
                         self.log.info("Received realtime analysis stop signal from host " + str(signalHostname) + "...stopping realtime analysis")
                         print "Received realtime analysis stop signal from host " + signalHostname + "...stopping realtime analysis"
-                        # send signal to cleaner
-                        self.sendSignalToCleaner(signal)
                         # send signal to workerProcesses and back to receiver
                         self.sendSignalToReceiver(signal)
                         continue
                     elif signal == "START_REALTIME_ANALYSIS":
                         self.log.info("Received realtime analysis start signal from host " + str(signalHostname) + "...starting realtime analysis")
                         print "Received realtime analysis start signal from host " + str(signalHostname) + "...starting realtime analysis"
-                        # send signal to cleaner
-                        self.sendSignalToCleaner(signal)
                         # send signal to workerProcesses and back to receiver
                         self.sendSignalToReceiver(signal)
                         continue
-                    elif signal == "NEXT_FILE":
-                        self.log.info("Received request for next file")
-                        print "Received request for next file"
-                        self.sendRequestToCleaner(signal)
                     else:
                         self.log.info("Received live viewer signal from host " + str(signalHostname) + " unkown: " + str(signal))
                         self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
@@ -263,37 +244,10 @@ class FileMover():
         self.log.debug("passing job to workerProcess...done.")
 
 
-    def sendRequestToCleaner(self, message):
-        self.log.debug("send request to cleaner: " + str(message) )
-        self.cleanerComSocket.send(message)
-        self.log.debug("waiting for answer of cleaner")
-        answer = self.cleanerComSocket.recv()
-        self.log.debug("send confirmation back to receiver: " + str(answer) )
-        try:
-            self.receiverComSocket.send(answer, zmq.NOBLOCK)
-            print "send answer", answer[:45]
-        except zmq.error.Again:
-            self.log.error("Unable to send answer for file " + str(sourceFilePathFull))
-            self.log.error("Receiver has disconnected")
-            self.log.info("Stopping realtime analysis")
-            self.sendSignalToCleaner("STOP_REALTIME_ANALYSIS")
-        except Exception, e:
-            self.log.error("Unable to send answer for file " + str(sourceFilePathFull))
-            self.log.debug("Error was: " + str(e))
-
-
-    def sendSignalToCleaner(self, signal):
-        self.log.debug("send signal to cleaner: " + str(signal) )
-        self.cleanerSocket.send(signal)
-#        self.cleanerComSocket.send(signal)
-#        self.log.debug("send confirmation back to receiver: " + str(signal) )
-#        self.receiverComSocket.send(signal, zmq.NOBLOCK)
-
-
     def sendSignalToReceiver(self, signal):
         numberOfWorkerProcesses = int(self.parallelDataStreams)
         for processNumber in range(numberOfWorkerProcesses):
-            self.log.debug("send signal to receiver " + str(signal) + " to workerProcess (nr " + str(processNumber) + " )")
+            self.log.debug("send signal " + str(signal) + " to workerProcess (nr " + str(processNumber) + " )")
 
             address, empty, ready = self.routerSocket.recv_multipart()
             self.log.debug("available workerProcess detected.")
@@ -314,8 +268,6 @@ class FileMover():
         self.log.debug("Closing sockets")
         self.fileEventSocket.close(0)
         self.receiverComSocket.close(0)
-        self.cleanerSocket.close(0)
-        self.cleanerComSocket.close(0)
         self.routerSocket.close(0)
 
 

@@ -22,6 +22,8 @@ import helperScript
 class ReceiverRealTimeAnalysis():
     senderComIp     = "127.0.0.1"
     senderComPort   = "6080"
+    senderDataIp    = "127.0.0.1"
+    senderDataPort  = "6081"
     zmqContext      = None
     senderComSocket = None
     hostname        = socket.gethostname()
@@ -38,10 +40,17 @@ class ReceiverRealTimeAnalysis():
         self.senderComSocket = self.zmqContext.socket(zmq.REQ)
         # time to wait for the sender to give a confirmation of the signal
         self.senderComSocket.RCVTIMEO = self.socketResponseTimeout
-        connectionStrSenderComSocket = "tcp://{ip}:{port}".format(ip=self.senderComIp, port=self.senderComPort)
-        print "connectionStrSenderComSocket", connectionStrSenderComSocket
-        self.senderComSocket.connect(connectionStrSenderComSocket)
-        self.log.debug("senderComSocket started (connect) for '" + connectionStrSenderComSocket + "'")
+        connectionStr = "tcp://{ip}:{port}".format(ip=self.senderComIp, port=self.senderComPort)
+        self.senderComSocket.connect(connectionStr)
+        self.log.debug("senderComSocket started (connect) for '" + connectionStr + "'")
+        print "senderComSocket started (connect) for '" + connectionStr + "'"
+
+        self.senderDataSocket = self.zmqContext.socket(zmq.REQ)
+        # time to wait for the sender to give a confirmation of the signal
+        connectionStr = "tcp://{ip}:{port}".format(ip=self.senderDataIp, port=self.senderDataPort)
+        self.senderComSocket.connect(connectionStr)
+        self.log.debug("senderComSocket started (connect) for '" + connectionStr + "'")
+        print "senderDataSocket started (connect) for '" + connectionStr + "'"
 
         message = "START_REALTIME_ANALYSIS," + str(self.hostname)
         self.log.info("Sending start signal to sender...")
@@ -78,18 +87,18 @@ class ReceiverRealTimeAnalysis():
 
     def askForNextFile(self):
         # get latest file from reveiver
-        message = "NEXT_FILE,"+ str(self.hostname)
+        message = "NEXT_FILE,"
         while True:
             try:
                 print "Asking for next file"
                 self.log.debug("Asking for next file")
-                self.senderComSocket.send(message)
+                self.senderDataSocket.send(message)
 
                 time.sleep(1)
 
                 try:
                     #  Get the reply.
-                    received_file = self.senderComSocket.recv()
+                    received_file = self.senderDataSocket.recv()
                     print "Received_file", received_file[:45]
                     self.log.debug("Received_file" + str(received_file))
                 except zmq.error.ZMQError:
@@ -105,7 +114,7 @@ class ReceiverRealTimeAnalysis():
                 self.log.debug("Try to drain queue")
                 try:
                     #  Get the reply.
-                    received_file = self.senderComSocket.recv()
+                    received_file = self.senderDataSocket.recv()
                     print "Received_file", received_file[:45]
                     self.log.debug("Received_file" + str(received_file))
                 except zmq.error.ZMQError:
@@ -168,11 +177,12 @@ class ReceiverRealTimeAnalysis():
 
         # close ZeroMQ socket and destroy ZeroMQ context
         try:
-            self.log.debug("closing signal communication sockets...")
+            self.log.debug("closing sockets...")
             self.senderComSocket.close(linger=0)
-            self.log.debug("closing signal communication sockets...done")
+            self.senderDataSocket.close(linger=0)
+            self.log.debug("closing sockets...done")
         except Exception as e:
-            self.log.error("closing signal communication sockets...failed")
+            self.log.error("closing sockets...failed")
             self.log.debug("Error was: " + str(e))
 
         try:
@@ -185,7 +195,7 @@ class ReceiverRealTimeAnalysis():
 
 
 if __name__ == '__main__':
-    logfilePath = "/space/projects/live-viewer/logs/receiver_RealTimeAnalysis.log"
+    logfilePath = "/home/kuhnm/Arbeit/live-viewer/logs/receiver_RealTimeAnalysis.log"
     verbose = True
 
     #enable logging
@@ -193,6 +203,7 @@ if __name__ == '__main__':
 
     receiver = ReceiverRealTimeAnalysis()
 
+    time.sleep(0.5)
     i = 0
     while True:
         try:

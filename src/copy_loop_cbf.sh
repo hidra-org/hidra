@@ -1,7 +1,9 @@
 #/bin/sh
 
-FILES=/space/test_data/test_015_00001.cbf
-TARGET=/space/projects/live-viewer/data/source/local
+BASEPATH=/home/kuhnm/Arbeit
+
+FILES=${BASEPATH}/test_data/test_015_00001.cbf
+TARGET=$BASEPATH/live-viewer/data/source/local
 i=1
 LIMIT=1000
 while [ "$i" -le $LIMIT ]
