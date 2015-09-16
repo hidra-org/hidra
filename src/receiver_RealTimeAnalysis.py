@@ -48,8 +48,8 @@ class ReceiverRealTimeAnalysis():
         self.senderDataSocket = self.zmqContext.socket(zmq.REQ)
         # time to wait for the sender to give a confirmation of the signal
         connectionStr = "tcp://{ip}:{port}".format(ip=self.senderDataIp, port=self.senderDataPort)
-        self.senderComSocket.connect(connectionStr)
-        self.log.debug("senderComSocket started (connect) for '" + connectionStr + "'")
+        self.senderDataSocket.connect(connectionStr)
+        self.log.debug("senderDataSocket started (connect) for '" + connectionStr + "'")
         print "senderDataSocket started (connect) for '" + connectionStr + "'"
 
         message = "START_REALTIME_ANALYSIS," + str(self.hostname)
@@ -87,19 +87,21 @@ class ReceiverRealTimeAnalysis():
 
     def askForNextFile(self):
         # get latest file from reveiver
-        message = "NEXT_FILE,"
+        message = "NEXT_FILE"
         while True:
             try:
                 print "Asking for next file"
                 self.log.debug("Asking for next file")
                 self.senderDataSocket.send(message)
+                self.log.debug("Asking for next file...done")
+                print "Asking for next file...done"
 
                 time.sleep(1)
 
                 try:
                     #  Get the reply.
-                    received_file = self.senderDataSocket.recv()
-                    print "Received_file", received_file[:45]
+                    received_file = self.senderDataSocket.recv_multipart()
+                    print "Received_file", "".join(received_file)
                     self.log.debug("Received_file" + str(received_file))
                 except zmq.error.ZMQError:
                     received_file = None
@@ -108,21 +110,6 @@ class ReceiverRealTimeAnalysis():
                     self.log.error("Unable receive reply")
                     self.log.debug("Error was: " + str(e))
                 break
-
-            except zmq.error.ZMQError:
-                self.log.debug("Sending new request failed")
-                self.log.debug("Try to drain queue")
-                try:
-                    #  Get the reply.
-                    received_file = self.senderDataSocket.recv()
-                    print "Received_file", received_file[:45]
-                    self.log.debug("Received_file" + str(received_file))
-                except zmq.error.ZMQError:
-                    received_file = None
-                    self.log.warning("Unable to receive reply (seconf try): sender is currently busy")
-                except Exception as e:
-                    self.log.error("Unable receive reply")
-                    self.log.debug("Error was: " + str(e))
 
             except Exception as e:
                 self.log.error("Unable to send request")
