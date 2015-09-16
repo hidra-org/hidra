@@ -271,7 +271,7 @@ class FileMover():
         self.log.debug("send confirmation back to receiver: " + str(answer) )
         try:
             self.receiverComSocket.send(answer, zmq.NOBLOCK)
-            print "send answer", answer
+            print "send answer", answer[:45]
         except zmq.error.Again:
             self.log.error("Unable to send answer for file " + str(sourceFilePathFull))
             self.log.error("Receiver has disconnected")

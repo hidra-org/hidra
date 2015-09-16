@@ -78,29 +78,46 @@ class ReceiverRealTimeAnalysis():
 
     def askForNextFile(self):
         # get latest file from reveiver
-        try:
-            message = "NEXT_FILE,"+ str(self.hostname)
-            print "Asking for next file"
-            self.log.debug("Asking for next file")
-            self.senderComSocket.send (message)
-
-            time.sleep(1)
-
+        message = "NEXT_FILE,"+ str(self.hostname)
+        while True:
             try:
-                #  Get the reply.
-                received_file = self.senderComSocket.recv()
-                print "Received_file", received_file
-                self.log.debug("Received_file" + str(received_file))
-            except zmq.error.ZMQError:
-                received_file = None
-                self.log.error("ZMQError")
-            except Exception as e:
-                self.log.error("Unable receive reply")
-                self.log.debug("Error was: " + str(e))
+                print "Asking for next file"
+                self.log.debug("Asking for next file")
+                self.senderComSocket.send(message)
 
-        except Exception as e:
-            self.log.error("Unable to send request")
-            self.log.debug("Error was: " + str(e))
+                time.sleep(1)
+
+                try:
+                    #  Get the reply.
+                    received_file = self.senderComSocket.recv()
+                    print "Received_file", received_file[:45]
+                    self.log.debug("Received_file" + str(received_file))
+                except zmq.error.ZMQError:
+                    received_file = None
+                    self.log.warning("Unable to reveice reply: sender is currently busy")
+                except Exception as e:
+                    self.log.error("Unable receive reply")
+                    self.log.debug("Error was: " + str(e))
+                break
+
+            except zmq.error.ZMQError:
+                self.log.debug("Sending new request failed")
+                self.log.debug("Try to drain queue")
+                try:
+                    #  Get the reply.
+                    received_file = self.senderComSocket.recv()
+                    print "Received_file", received_file[:45]
+                    self.log.debug("Received_file" + str(received_file))
+                except zmq.error.ZMQError:
+                    received_file = None
+                    self.log.warning("Unable to receive reply (seconf try): sender is currently busy")
+                except Exception as e:
+                    self.log.error("Unable receive reply")
+                    self.log.debug("Error was: " + str(e))
+
+            except Exception as e:
+                self.log.error("Unable to send request")
+                self.log.debug("Error was: " + str(e))
 
 
 
