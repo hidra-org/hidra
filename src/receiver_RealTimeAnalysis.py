@@ -81,9 +81,11 @@ class ReceiverRealTimeAnalysis():
             self.log.info("Sending start signal to sender...failed.")
             self.stop(sendToSender = False)
 
+
     def getLogger(self):
         logger = logging.getLogger("Receiver")
         return logger
+
 
     def askForNextFile(self):
         # get latest file from reveiver
@@ -114,7 +116,6 @@ class ReceiverRealTimeAnalysis():
             except Exception as e:
                 self.log.error("Unable to send request")
                 self.log.debug("Error was: " + str(e))
-
 
 
     def stop(self, sendToSender = True):

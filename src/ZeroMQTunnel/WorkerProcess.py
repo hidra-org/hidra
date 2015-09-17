@@ -202,12 +202,18 @@ class WorkerProcess():
                     self.log.debug("fileEventMessageDict=" + str(fileEventMessageDict))
                     #skip all further instructions and continue with next iteration
                     continue
+            else:
+                filename     = None
+                sourcePath   = None
+                relativePath = None
+
+            socketListToSendData = dict()
 
             if self.useLiveViewer:
                 #passing file to data-messagPipe
                 try:
                     self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
-                    self.passFileToDataStream(filename, sourcePath, relativePath, zmqDataStreamSocket)
+                    socketListToSendData["liveViewer"] = self.zmqDataStreamSocket
                     self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...success.")
                 except Exception, e:
                     self.log.error("Unable to pass new file to data-messagePipe.")
@@ -232,15 +238,17 @@ class WorkerProcess():
                         #passing file to data-messagPipe
                         try:
                             self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
-                            self.passFileToDataStream(filename, sourcePath, relativePath, self.ondaComSocket)
+                            socketListToSendData["onda"] = self.ondaComSocket
                             self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...success.")
                         except Exception, e:
                             self.log.error("Unable to pass new file to data-messagePipe.")
                             self.log.error("Error was: " + str(e))
-                            self.log.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
+                            self.log.debug("worker-"+str(self.id) + ": passing new file to data-messagePipe...failed.")
                             #skip all further instructions and continue with next iteration
                             continue
 
+
+            self.passFileToDataStream(filename, sourcePath, relativePath, socketListToSendData)
 
             #send remove-request to message pipe
             try:
@@ -285,98 +293,107 @@ class WorkerProcess():
         return content
 
 
-    def passFileToDataStream(self, filename, sourcePath, relativePath, streamSocket):
-        """filesizeRequested == filesize submitted by file-event. In theory it can differ to real file size"""
+    def passFileToDataStream(self, filename, sourcePath, relativePath, socketDict):
+        if socketDict:
+            """filesizeRequested == filesize submitted by file-event. In theory it can differ to real file size"""
 
-        # filename = "img.tiff"
-        # filepath = "C:\dir"
-        #
-        # -->  sourceFilePathFull = 'C:\\dir\img.tiff'
-        sourceFilePath     = os.path.normpath(sourcePath + os.sep + relativePath)
-        sourceFilePathFull = os.path.join(sourceFilePath, filename)
+            # filename = "img.tiff"
+            # filepath = "C:\dir"
+            #
+            # -->  sourceFilePathFull = 'C:\\dir\img.tiff'
+            sourceFilePath     = os.path.normpath(sourcePath + os.sep + relativePath)
+            sourceFilePathFull = os.path.join(sourceFilePath, filename)
 
-        #reading source file into memory
-        try:
-            #for quick testing set filesize of file as chunksize
-            self.log.debug("get filesize for '" + str(sourceFilePathFull) + "'...")
-            filesize             = os.path.getsize(sourceFilePathFull)
-            fileModificationTime = os.stat(sourceFilePathFull).st_mtime
-            chunksize            = filesize    #can be used later on to split multipart message
-            self.log.debug("filesize(%s) = %s" % (sourceFilePathFull, str(filesize)))
-            self.log.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
+            #reading source file into memory
+            try:
+                #for quick testing set filesize of file as chunksize
+                self.log.debug("get filesize for '" + str(sourceFilePathFull) + "'...")
+                filesize             = os.path.getsize(sourceFilePathFull)
+                fileModificationTime = os.stat(sourceFilePathFull).st_mtime
+                chunksize            = filesize    #can be used later on to split multipart message
+                self.log.debug("filesize(%s) = %s" % (sourceFilePathFull, str(filesize)))
+                self.log.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
 
-        except Exception, e:
-            errorMessage = "Unable to get file metadata for '" + str(sourceFilePathFull) + "'."
-            self.log.error(errorMessage)
-            self.log.debug("Error was: " + str(e))
-            raise Exception(e)
+            except Exception, e:
+                errorMessage = "Unable to get file metadata for '" + str(sourceFilePathFull) + "'."
+                self.log.error(errorMessage)
+                self.log.debug("Error was: " + str(e))
+                raise Exception(e)
 
-        try:
-            self.log.debug("opening '" + str(sourceFilePathFull) + "'...")
-            fileDescriptor = open(str(sourceFilePathFull), "rb")
+            try:
+                self.log.debug("opening '" + str(sourceFilePathFull) + "'...")
+                fileDescriptor = open(str(sourceFilePathFull), "rb")
 
-        except Exception, e:
-            errorMessage = "Unable to read source file '" + str(sourceFilePathFull) + "'."
-            self.log.error(errorMessage)
-            self.log.debug("Error was: " + str(e))
-            raise Exception(e)
-
-
-        #build payload for message-pipe by putting source-file into a message
-        try:
-            payloadMetadata = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath)
-        except Exception, e:
-            self.log.error("Unable to assemble multi-part message.")
-            self.log.debug("Error was: " + str(e))
-            raise Exception(e)
+            except Exception, e:
+                errorMessage = "Unable to read source file '" + str(sourceFilePathFull) + "'."
+                self.log.error(errorMessage)
+                self.log.debug("Error was: " + str(e))
+                raise Exception(e)
 
 
-        #send message
-        try:
-            self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...")
-            print "sending file: ", sourceFilePathFull
-            chunkNumber = 0
-            stillChunksToRead = True
-            while stillChunksToRead:
-                chunkNumber += 1
+            #build payload for message-pipe by putting source-file into a message
+            try:
+                payloadMetadata = self.buildPayloadMetadata(filename, filesize, fileModificationTime, sourcePath, relativePath)
+            except Exception, e:
+                self.log.error("Unable to assemble multi-part message.")
+                self.log.debug("Error was: " + str(e))
+                raise Exception(e)
 
-                #read next chunk from file
-                fileContentAsByteObject = fileDescriptor.read(self.getChunkSize())
 
-                #detect if end of file has been reached
-                if not fileContentAsByteObject:
-                    stillChunksToRead = False
+            #send message
+            try:
+                self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...")
+                print "sending file: ", sourceFilePathFull
+                chunkNumber = 0
+                stillChunksToRead = True
+                payloadAll = []
+                while stillChunksToRead:
+                    chunkNumber += 1
 
-                    #as chunk is empty decrease chunck-counter
-                    chunkNumber -= 1
-                    break
+                    #read next chunk from file
+                    fileContentAsByteObject = fileDescriptor.read(self.getChunkSize())
 
-                #assemble metadata for zmq-message
-                chunkPayloadMetadata = payloadMetadata.copy()
-                chunkPayloadMetadata["chunkNumber"] = chunkNumber
-                chunkPayloadMetadataJson = json.dumps(chunkPayloadMetadata)
-                chunkPayload = []
-                chunkPayload.append(chunkPayloadMetadataJson)
-                chunkPayload.append(fileContentAsByteObject)
+                    #detect if end of file has been reached
+                    if not fileContentAsByteObject:
+                        stillChunksToRead = False
 
-            print "before sending multipart"
-            #send to zmq pipe
-            streamSocket.send_multipart(chunkPayload, zmq.NOBLOCK)
+                        #as chunk is empty decrease chunck-counter
+                        chunkNumber -= 1
+                        break
 
-            #close file
-            fileDescriptor.close()
-            print "sending file: ", sourceFilePathFull, "done"
+                    #assemble metadata for zmq-message
+                    chunkPayloadMetadata = payloadMetadata.copy()
+                    chunkPayloadMetadata["chunkNumber"] = chunkNumber
+                    chunkPayloadMetadataJson = json.dumps(chunkPayloadMetadata)
+                    chunkPayload = []
+                    if socketDict.has_key("liveViewer"):
+                        chunkPayload.append(chunkPayloadMetadataJson)
+                        chunkPayload.append(fileContentAsByteObject)
+                    if socketDict.has_key("onda"):
+                        payloadAll.append(fileContentAsByteObject)
 
-            # self.zmqDataStreamSocket.send_multipart(multipartMessage)
-            self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...done.")
-        except zmq.error.Again:
-            self.log.error("unable to send multiplart-message for file " + str(sourceFilePathFull))
-            self.log.error("Receiver has disconnected")
-        except Exception, e:
-            self.log.error("Unable to send multipart-message for file " + str(sourceFilePathFull))
-            self.log.debug("Error was: " + str(e))
-            self.log.info("Passing multipart-message...failed.")
-#            raise Exception(e)
+                    #send data to the live viewer
+                    if socketDict.has_key("liveViewer"):
+                        socketDict["liveViewer"].send_multipart(chunkPayload, zmq.NOBLOCK)
+
+                # send data to onda
+                if socketDict.has_key("onda"):
+                    socketDict["onda"].send_multipart(payloadAll, zmq.NOBLOCK)
+
+                #close file
+                fileDescriptor.close()
+                print "sending file: ", sourceFilePathFull, "done"
+
+                # self.zmqDataStreamSocket.send_multipart(multipartMessage)
+                self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...done.")
+            except zmq.error.Again:
+                self.log.error("unable to send multiplart-message for file " + str(sourceFilePathFull))
+                self.log.error("Receiver has disconnected")
+            except Exception, e:
+                self.log.error("Unable to send multipart-message for file " + str(sourceFilePathFull))
+                self.log.debug("Error was: " + str(e))
+                self.log.info("Passing multipart-message...failed.")
+    #            raise Exception(e)
 
 
     def appendFileChunksToPayload(self, payload, sourceFilePathFull, fileDescriptor, chunkSize):
