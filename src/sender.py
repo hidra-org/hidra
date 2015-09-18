@@ -121,25 +121,24 @@ class Sender():
             logging.info("Keyboard interruption detected. Shutting down")
         # except Exception, e:
         #     print "unknown exception detected."
+        finally:
+            logging.debug("shutting down zeromq...")
+            try:
+                fileMover.stop()
+                logging.debug("shutting down zeromq...done.")
+            except:
+                logging.error(sys.exc_info())
+                logging.error("shutting down zeromq...failed.")
 
-
-        logging.debug("shutting down zeromq...")
-        try:
-            fileMover.stop()
-            logging.debug("shutting down zeromq...done.")
-        except:
-            logging.error(sys.exc_info())
-            logging.error("shutting down zeromq...failed.")
-
-        # give the other processes time to close the sockets
-        time.sleep(0.1)
-        try:
-            logging.debug("closing zmqContext...")
-            self.zmqContext.destroy()
-            logging.debug("closing zmqContext...done.")
-        except:
-            logging.debug("closing zmqContext...failed.")
-            logging.error(sys.exc_info())
+            # give the other processes time to close the sockets
+            time.sleep(0.1)
+            try:
+                logging.debug("closing zmqContext...")
+                self.zmqContext.destroy()
+                logging.debug("closing zmqContext...done.")
+            except:
+                logging.debug("closing zmqContext...failed.")
+                logging.error(sys.exc_info())
 
 
 

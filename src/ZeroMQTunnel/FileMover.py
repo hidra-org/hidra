@@ -60,7 +60,14 @@ class FileMover():
         self.ondaIps             = ondaIps
         self.ondaPorts           = ondaPorts
 
-        self.receiverWhiteList   = receiverWhiteList
+        #remove .desy.de from hostnames
+        self.receiverWhiteList = []
+        for host in receiverWhiteList:
+            if host.endswith(".desy.de"):
+                self.receiverWhiteList.append(host[:-8])
+            else:
+                self.receiverWhiteList.append(host)
+
         self.parallelDataStreams = parallelDataStreams
         self.chunkSize           = chunkSize
 
@@ -182,8 +189,11 @@ class FileMover():
                         self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
                         continue
 
+                    if signalHostname.endswith(".desy.de"):
+                        signalHostnameModified = signalHostname[:-8]
+
                     self.log.debug("Check if signal sending host is in WhiteList...")
-                    if signalHostname in self.receiverWhiteList:
+                    if signalHostname in self.receiverWhiteList or signalHostnameModified in self.receiverWhiteList:
                         self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
                     else:
                         self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
