@@ -78,8 +78,8 @@ class Cleaner():
             trace = traceback.format_exc()
             self.log.error("Stopping cleanerProcess due to unknown error condition.")
             self.log.debug("Error was: " + str(trace))
-
-        self.stop()
+        finally:
+            self.stop()
 
 
     def getLogger(self):
@@ -100,7 +100,6 @@ class Cleaner():
 
             if workload == "STOP":
                 self.log.info("Stopping cleaner")
-#                    self.stop()
                 break
 
             # transform to dictionary

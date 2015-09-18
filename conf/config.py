@@ -55,7 +55,8 @@ class defaultConfigSender():
     ondaPorts           = ["6081"]
 
     # chunk size of file-parts getting send via zmq
-    chunkSize           = 1048576 # = 1024*1024
+    #chunkSize           = 1048576 # = 1024*1024
+    chunkSize           = 10485760 # = 1024*1024*10
     #chunkSize           = 1073741824 # = 1024*1024*1024
 
 #    # path where logfile will be created

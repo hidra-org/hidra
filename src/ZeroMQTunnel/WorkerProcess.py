@@ -126,11 +126,8 @@ class WorkerProcess():
 
         processingJobs = True
         jobCount = 0
-        ondaRequest = False
-        print "ondaRequest", ondaRequest
 
         while processingJobs:
-            print "while"
             #sending a "ready"-signal to the router.
             #the reply will contain the actual job/task.
             self.log.debug("worker-"+str(self.id)+": sending ready signal")
@@ -222,12 +219,10 @@ class WorkerProcess():
                     #skip all further instructions and continue with next iteration
                     continue
             else:
-                print "worker-"+str(self.id)+": no data sent"
+                print "worker-"+str(self.id)+": no data sent to live viewer"
 
             if self.useRealTimeAnalysis:
-                print "waiting"
                 socks = dict(self.poller.poll(0))
-                print "waiting..done"
 
                 if self.ondaComSocket in socks and socks[self.ondaComSocket] == zmq.POLLIN:
                     ondaWorkload = self.ondaComSocket.recv()
@@ -466,7 +461,7 @@ class WorkerProcess():
 
     def stop(self):
         self.log.debug("Sending stop signal to cleaner from worker-" + str(self.id))
-#        self.cleanerSocket.send("STOP")        #no communication needed because cleaner detects KeyboardInterrupt signals
+        self.cleanerSocket.send("STOP")        #no communication needed because cleaner detects KeyboardInterrupt signals
         self.log.info("Closing sockets for worker " + str(self.id))
         if self.zmqDataStreamSocket:
             self.zmqDataStreamSocket.close(0)

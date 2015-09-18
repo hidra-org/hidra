@@ -103,7 +103,8 @@ class ReceiverRealTimeAnalysis():
                 try:
                     #  Get the reply.
                     received_file = self.senderDataSocket.recv_multipart()
-                    print "Received_file", "".join(received_file)
+#                    print "Received_file", "".join(received_file)[:45]
+                    print "Received_file", received_file[0][:45]
                     self.log.debug("Received_file" + str(received_file))
                 except zmq.error.ZMQError:
                     received_file = None
