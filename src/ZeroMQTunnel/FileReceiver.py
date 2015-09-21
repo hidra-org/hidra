@@ -79,11 +79,15 @@ class FileReceiver:
 
         self.senderComSocket = self.zmqContext.socket(zmq.REQ)
         # time to wait for the sender to give a confirmation of the signal
-        self.senderComSocket.RCVTIMEO = self.socketResponseTimeout
+#        self.senderComSocket.RCVTIMEO = self.socketResponseTimeout
         connectionStrSenderComSocket = "tcp://{ip}:{port}".format(ip=self.senderComIp, port=self.senderComPort)
         print "connectionStrSenderComSocket", connectionStrSenderComSocket
         self.senderComSocket.connect(connectionStrSenderComSocket)
         self.log.debug("senderComSocket started (connect) for '" + connectionStrSenderComSocket + "'")
+
+        # using a Poller to implement the senderComSocket timeout because in older ZMQ version there is
+        self.poller = zmq.Poller()
+        self.poller.register(self.senderComSocket, zmq.POLLIN)
 
         message = "START_LIVE_VIEWER," + str(self.hostname)
         self.log.info("Sending start signal to sender...")
@@ -93,19 +97,22 @@ class FileReceiver:
 #        self.senderComSocket.send("START_LIVE_VIEWER")
 
         senderMessage = None
-        try:
-            senderMessage = self.senderComSocket.recv()
-            print "answer to start live viewer: ", senderMessage
-            self.log.debug("Received message from sender: " + str(senderMessage) )
-        except KeyboardInterrupt:
-            self.log.error("KeyboardInterrupt: No message received from sender")
-            self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
-            sys.exit(1)
-        except Exception as e:
-            self.log.error("No message received from sender")
-            self.log.debug("Error was: " + str(e))
-            self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
-            sys.exit(1)
+
+        socks = dict(self.poller.poll(self.socketResponseTimeout))
+        if self.senderComSocket in socks and socks[self.senderComSocket] == zmq.POLLIN:
+            try:
+                senderMessage = self.senderComSocket.recv()
+                print "answer to start live viewer: ", senderMessage
+                self.log.debug("Received message from sender: " + str(senderMessage) )
+            except KeyboardInterrupt:
+                self.log.error("KeyboardInterrupt: No message received from sender")
+                self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
+                sys.exit(1)
+            except Exception as e:
+                self.log.error("No message received from sender")
+                self.log.debug("Error was: " + str(e))
+                self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
+                sys.exit(1)
 
         if senderMessage == "START_LIVE_VIEWER":
             self.log.info("Received confirmation from sender...start receiving files")
@@ -325,20 +332,22 @@ class FileReceiver:
             print "sending message ", message
             self.senderComSocket.send(str(message), zmq.NOBLOCK)
 
-            try:
-                senderMessage = self.senderComSocket.recv()
-                print "answer to stop live viewer: ", senderMessage
-                self.log.debug("Received message from sender: " + str(senderMessage) )
+            socks = dict(self.poller.poll(self.socketResponseTimeout))
+            if self.senderComSocket in socks and socks[self.senderComSocket] == zmq.POLLIN:
+                try:
+                    senderMessage = self.senderComSocket.recv()
+                    print "answer to stop live viewer: ", senderMessage
+                    self.log.debug("Received message from sender: " + str(senderMessage) )
 
-                if senderMessage == "STOP_LIVE_VIEWER":
-                    self.log.info("Received confirmation from sender...")
-                else:
-                    self.log.error("Received confirmation from sender...failed")
-            except KeyboardInterrupt:
-                self.log.error("KeyboardInterrupt: No message received from sender")
-            except Exception as e:
-                self.log.error("sending stop signal to sender...failed.")
-                self.log.debug("Error was: " + str(e))
+                    if senderMessage == "STOP_LIVE_VIEWER":
+                        self.log.info("Received confirmation from sender...")
+                    else:
+                        self.log.error("Received confirmation from sender...failed")
+                except KeyboardInterrupt:
+                    self.log.error("KeyboardInterrupt: No message received from sender")
+                except Exception as e:
+                    self.log.error("sending stop signal to sender...failed.")
+                    self.log.debug("Error was: " + str(e))
 
         # give the signal time to arrive
         time.sleep(0.1)
