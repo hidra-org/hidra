@@ -178,6 +178,10 @@ class InotifyDetector():
                         (parentDir,relDir) = os.path.split(parentDir)
                         relativePath += os.sep + relDir
                     else:
+                        # add the local, commissional or current to the relativePath as well
+                        (parentDir,relDir) = os.path.split(parentDir)
+                        relativePath += os.sep + relDir
+
                         # the event for a file /tmp/test/source/local/file1.tif is of the form:
                         # {
                         #   "sourcePath" : "/tmp/test/source/"
