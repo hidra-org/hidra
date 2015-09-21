@@ -218,8 +218,8 @@ class WorkerProcess():
                     self.log.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
                     #skip all further instructions and continue with next iteration
                     continue
-            else:
-                print "worker-"+str(self.id)+": no data sent to live viewer"
+#            else:
+#                print "worker-"+str(self.id)+": no data sent to live viewer"
 
             if self.useRealTimeAnalysis:
                 socks = dict(self.poller.poll(0))
@@ -227,7 +227,7 @@ class WorkerProcess():
                 if self.ondaComSocket in socks and socks[self.ondaComSocket] == zmq.POLLIN:
                     ondaWorkload = self.ondaComSocket.recv()
                     self.log.debug("worker-"+str(self.id)+": received new request from onda")
-                    print "ondaWorkload", ondaWorkload
+#                    print "ondaWorkload", ondaWorkload
                     request = ondaWorkload == b"NEXT_FILE"
                     if request:
                         #passing file to data-messagPipe
@@ -338,7 +338,7 @@ class WorkerProcess():
             #send message
             try:
                 self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...")
-                print "sending file: ", sourceFilePathFull
+#                print "sending file: ", sourceFilePathFull
                 chunkNumber = 0
                 stillChunksToRead = True
                 payloadAll = []
@@ -377,7 +377,7 @@ class WorkerProcess():
 
                 #close file
                 fileDescriptor.close()
-                print "sending file: ", sourceFilePathFull, "done"
+#                print "sending file: ", sourceFilePathFull, "done"
 
                 # self.zmqDataStreamSocket.send_multipart(multipartMessage)
                 self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...done.")
