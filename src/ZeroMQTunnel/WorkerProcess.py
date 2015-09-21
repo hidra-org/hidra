@@ -368,8 +368,12 @@ class WorkerProcess():
                         payloadAll.append(fileContentAsByteObject)
 
                     #send data to the live viewer
-                    if socketDict.has_key("liveViewer"):
-                        socketDict["liveViewer"].send_multipart(chunkPayload, zmq.NOBLOCK)
+#                    if socketDict.has_key("liveViewer"):
+#                        socketDict["liveViewer"].send_multipart(chunkPayload, zmq.NOBLOCK)
+
+                #send data to the live viewer
+                if socketDict.has_key("liveViewer"):
+                    socketDict["liveViewer"].send_multipart(payloadAll, zmq.NOBLOCK)
 
                 # send data to onda
                 if socketDict.has_key("onda"):
