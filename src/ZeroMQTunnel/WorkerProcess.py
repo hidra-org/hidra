@@ -364,6 +364,7 @@ class WorkerProcess():
                     if socketDict.has_key("liveViewer"):
                         chunkPayload.append(chunkPayloadMetadataJson)
                         chunkPayload.append(fileContentAsByteObject)
+                        payloadAll.append(fileContentAsByteObject)
                     if socketDict.has_key("onda"):
                         payloadAll.append(fileContentAsByteObject)
 
@@ -391,6 +392,7 @@ class WorkerProcess():
             except Exception, e:
                 self.log.error("Unable to send multipart-message for file " + str(sourceFilePathFull))
                 self.log.debug("Error was: " + str(e))
+                self.log.debug("Error was: " + str(trace))
                 self.log.info("Passing multipart-message...failed.")
     #            raise Exception(e)
 
