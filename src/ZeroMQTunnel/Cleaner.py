@@ -198,7 +198,8 @@ class Cleaner():
                 targetFile = target + os.sep + filename
                 self.log.debug("sourceFile: " + str(sourceFile))
                 self.log.debug("targetFile: " + str(targetFile))
-                shutil.copyfile(sourceFile, targetFile)
+#                shutil.copyfile(sourceFile, targetFile)
+                subprocess.call(["mv", sourceFile, targetFile])
                 fileWasCopied = True
                 self.log.debug("Copying file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
             except IOError:
