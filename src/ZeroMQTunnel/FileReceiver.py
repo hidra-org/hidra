@@ -53,8 +53,8 @@ class FileReceiver:
         self.senderComPort         = senderComPort
         self.socketResponseTimeout = senderResponseTimeout
 
-        if context:
-            assert isinstance(context, zmq.sugar.context.Context)
+#        if context:
+#            assert isinstance(context, zmq.sugar.context.Context)
 
         self.zmqContext = context or zmq.Context()
 

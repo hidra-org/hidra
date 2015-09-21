@@ -55,7 +55,7 @@ class DirectoryWatcher():
         monitoredFolders         = self.getDirectoryStructure()
         self.eventDetector       = EventDetector(monitoredFolders, self.monitoredSuffixes)
 
-        assert isinstance(self.zmqContext, zmq.sugar.context.Context)
+#        assert isinstance(self.zmqContext, zmq.sugar.context.Context)
 
         #create zmq sockets
         self.messageSocket = self.zmqContext.socket(zmq.PUSH)

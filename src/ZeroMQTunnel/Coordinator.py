@@ -48,8 +48,8 @@ class Coordinator:
         self.log = self.getLogger()
         self.log.debug("Init")
 
-        if context:
-            assert isinstance(context, zmq.sugar.context.Context)
+#        if context:
+#            assert isinstance(context, zmq.sugar.context.Context)
 
         self.zmqContext = context or zmq.Context()
 
