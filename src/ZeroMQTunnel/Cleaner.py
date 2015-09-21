@@ -240,12 +240,12 @@ class Cleaner():
                 self.log.debug("targetFile: " + str(targetFile))
                 shutil.move(sourceFile, targetFile)
                 fileWasMoved = True
-                self.log.debug("Moving file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+                self.log.debug("Moving file '" + str(filename) + "' from '" + str(sourceFile) + "' to '" + str(targetFile) + "' (attempt " + str(iterationCount) + ")...success.")
             except IOError:
                 self.log.debug ("IOError: " + str(filename))
             except Exception, e:
                 trace = traceback.format_exc()
-                warningMessage = "Unable to move file {FILE}.".format(FILE=str(source) + str(filename))
+                warningMessage = "Unable to move file {FILE}.".format(FILE=str(sourceFile))
                 self.log.warning(warningMessage)
                 self.log.debug("trace=" + str(trace))
                 self.log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
