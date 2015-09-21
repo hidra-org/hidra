@@ -221,7 +221,6 @@ class Cleaner():
 
 
         iterationCount = 0
-        self.log.info("Moving file '" + str(filename) + "' from '" +  str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
         fileWasMoved = False
 
         while iterationCount <= maxAttemptsToMoveFile and not fileWasMoved:
