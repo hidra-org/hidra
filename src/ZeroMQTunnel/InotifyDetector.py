@@ -171,8 +171,8 @@ class InotifyDetector():
             # this one has to be monitored as well
 #            print path, event.name, parts
 
-#            if is_created and is_dir and event.name:
-            if is_dir and event.name:
+            if is_created and is_dir and event.name:
+#            if is_dir and event.name:
                 dirname =  path + os.sep + event.name
                 self.log.info("Directory event detected: " + str(dirname) + "," + str(parts))
                 if dirname in self.paths:
