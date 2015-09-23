@@ -125,6 +125,7 @@ class Cleaner():
                 filename       = workloadDict["filename"]
                 sourcePath     = workloadDict["sourcePath"]
                 relativePath   = workloadDict["relativePath"]
+#                print "workloadDict:", workloadDict
             except Exception, e:
                 errorMessage   = "Invalid fileEvent message received."
                 self.log.error(errorMessage)
@@ -234,6 +235,7 @@ class Cleaner():
                     except OSError:
                         pass
                 # moving the file
+#                print 'paths:', source, target, os.sep, filename
                 sourceFile = source + os.sep + filename
                 targetFile = target + os.sep + filename
                 self.log.debug("sourceFile: " + str(sourceFile))
@@ -251,7 +253,7 @@ class Cleaner():
                 self.log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
         if not fileWasMoved:
-            self.log.error("Moving file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            self.log.error("Moving file '" + str(filename) + " from " + str(sourceFile) + " to " + str(targetFile) + "' (attempt " + str(iterationCount) + ")...FAILED.")
             raise Exception("maxAttemptsToMoveFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filename))
 
 

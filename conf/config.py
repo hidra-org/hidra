@@ -9,17 +9,23 @@ sys.path.append ( ZMQ_PATH )
 import helperScript
 
 #LOCAL_IP= "0.0.0.0"
-LOCAL_IP= "127.0.0.1"
+#LOCAL_IP= "127.0.0.1"
+LOCAL_IP= "131.169.66.47"
 
-BASE_PATH = "/home/kuhnm/Arbeit/live-viewer"
+#BASE_PATH = "/space/projects/live-viewer"
+BASE_PATH = "/home/p11user/live-viewer"
 
 class defaultConfigSender():
 
     # folder you want to monitor for changes
     # inside this folder only the subdirectories "commissioning", "current" and "local" are monitored
-    watchFolder         = BASE_PATH + "/data/source/"
+#    watchFolder         = BASE_PATH + "/data/source/"
+    watchFolder         = "/rd/"
+    watchFolder         = "/rd_temp/"
     # Target to move the files into
-    cleanerTargetPath   = BASE_PATH + "/data/target/"
+#    cleanerTargetPath   = BASE_PATH + "/data/target/"
+    cleanerTargetPath   = "/gpfs/"    
+#    cleanerTargetPath   = "/rd/temp/"
 
     # subfolders of watchFolders to be monitored
     monitoredSubfolders = ["commissioning", "current", "local"]
@@ -32,7 +38,7 @@ class defaultConfigSender():
     # list of hosts allowed to connect to the sender
 #    receiverWhiteList   = ["lsdma-lab04"]
 #    receiverWhiteList   = ["zitpcx19282"]
-    receiverWhiteList   = ["zitpcx19282", "zitpcx22614", "lsdma-lab04"]
+    receiverWhiteList   = ["zitpcx19282", "zitpcx22614", "lsdma-lab04" , "haspp11eval01" , "it-hpc-cxi04", "it-hpc-cxi03" ]
 
     # zmq endpoint (IP-address) to send file events to
     fileEventIp         = LOCAL_IP
@@ -66,7 +72,7 @@ class defaultConfigSender():
 #        logfilePath = BASE_PATH + "/logs"
 
     # path where logfile will be created
-    logfilePath         = BASE_PATH + "/logs"
+    logfilePath         = "/home/p11user/logs"
     # filename used for logging
     logfileName         = "zmq_sender.log"
 

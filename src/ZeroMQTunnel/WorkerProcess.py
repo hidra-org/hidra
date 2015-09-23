@@ -28,6 +28,8 @@ class WorkerProcess():
     useLiveViewer        = False        # boolian to inform if the receiver for the live viewer is running
     useRealTimeAnalysis  = False        # boolian to inform if the receiver for realtime-analysis is running
 
+    requestFromOnda      = False
+
     # to get the logging only handling this class
     log                  = None
 
@@ -230,6 +232,7 @@ class WorkerProcess():
 #                    print "ondaWorkload", ondaWorkload
                     request = ondaWorkload == b"NEXT_FILE"
                     if request:
+                        self.requestFromOnda = True
                         #passing file to data-messagPipe
                         try:
                             self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
@@ -241,9 +244,23 @@ class WorkerProcess():
                             self.log.debug("worker-"+str(self.id) + ": passing new file to data-messagePipe...failed.")
                             #skip all further instructions and continue with next iteration
                             continue
+                elif self.requestFromOnda:
+		    #passing file to data-messagPipe
+		    try:
+		        self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
+		        socketListToSendData["onda"] = self.ondaComSocket
+		        self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...success.")
+		    except Exception, e:
+		        self.log.error("Unable to pass new file to data-messagePipe.")
+		        self.log.error("Error was: " + str(e))
+		        self.log.debug("worker-"+str(self.id) + ": passing new file to data-messagePipe...failed.")
+		        #skip all further instructions and continue with next iteration
+		        continue
 
 
-            self.passFileToDataStream(filename, sourcePath, relativePath, socketListToSendData)
+
+
+            return_value = self.passFileToDataStream(filename, sourcePath, relativePath, socketListToSendData)
 
             #send remove-request to message pipe
             try:
@@ -313,7 +330,8 @@ class WorkerProcess():
                 errorMessage = "Unable to get file metadata for '" + str(sourceFilePathFull) + "'."
                 self.log.error(errorMessage)
                 self.log.debug("Error was: " + str(e))
-                raise Exception(e)
+                return None
+#                raise Exception(e)
 
             try:
                 self.log.debug("opening '" + str(sourceFilePathFull) + "'...")
@@ -323,7 +341,8 @@ class WorkerProcess():
                 errorMessage = "Unable to read source file '" + str(sourceFilePathFull) + "'."
                 self.log.error(errorMessage)
                 self.log.debug("Error was: " + str(e))
-                raise Exception(e)
+                return None
+#                raise Exception(e)
 
 
             #build payload for message-pipe by putting source-file into a message
@@ -332,7 +351,8 @@ class WorkerProcess():
             except Exception, e:
                 self.log.error("Unable to assemble multi-part message.")
                 self.log.debug("Error was: " + str(e))
-                raise Exception(e)
+                return None
+#                raise Exception(e)
 
 
             #send message
@@ -379,6 +399,7 @@ class WorkerProcess():
                 # send data to onda
                 if socketDict.has_key("onda"):
                     socketDict["onda"].send_multipart(payloadAll, zmq.NOBLOCK)
+                    self.requestFromOnda = False
 
                 #close file
                 fileDescriptor.close()
@@ -395,6 +416,7 @@ class WorkerProcess():
                 self.log.debug("Error was: " + str(trace))
                 self.log.info("Passing multipart-message...failed.")
     #            raise Exception(e)
+        return
 
 
     def appendFileChunksToPayload(self, payload, sourceFilePathFull, fileDescriptor, chunkSize):
@@ -409,7 +431,8 @@ class WorkerProcess():
                 payload.append(fileContentAsByteObject)
                 fileContentAsByteObject = fileDescriptor.read(chunkSize)
         except Exception, e:
-            raise Exception(str(e))
+             self.log("Error was: " + str(e))
+#            raise Exception(str(e))
 
 
 

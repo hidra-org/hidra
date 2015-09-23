@@ -52,8 +52,9 @@ class DirectoryWatcher():
         self.monitoredSuffixes   = monitoredSuffixes
         print monitoredSuffixes
 
-        monitoredFolders         = self.getDirectoryStructure()
-        self.eventDetector       = EventDetector(monitoredFolders, self.monitoredSuffixes)
+#        monitoredFolders         = self.getDirectoryStructure()
+        monitoredFolders         = [self.watchFolder]
+        self.eventDetector       = EventDetector(monitoredFolders, self.monitoredDefaultSubfolders, self.monitoredSuffixes)
 
 #        assert isinstance(self.zmqContext, zmq.sugar.context.Context)
 
@@ -154,10 +155,12 @@ class DirectoryWatcher():
                     for workload in workloadList:
                         sourcePath   = workload["sourcePath"]
                         # the folders local, current, and commissioning are monitored by default
-                        (sourcePath,relDir) = os.path.split(sourcePath)
-                        relativePath = os.path.normpath(relDir + os.sep + workload["relativePath"])
+#                        (sourcePath,relDir) = os.path.split(sourcePath)
+#                        relativePath = os.path.normpath(relDir + os.sep + workload["relativePath"])
+                        relativePath = workload["relativePath"]
                         filename     = workload["filename"]
 
+#                        print "eventDetector:", sourcePath, relativePath, filename
                         # send the file to the fileMover
                         self.passFileToZeromq(self.messageSocket, sourcePath, relativePath, filename)
             except KeyboardInterrupt:
