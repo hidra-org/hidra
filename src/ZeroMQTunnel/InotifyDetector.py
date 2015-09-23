@@ -190,7 +190,8 @@ class InotifyDetector():
 #                return []
 
             if '.cbf' not in event.name :
-                print "not a cbf-file: ", event.name, parts 
+                self.log.debug("not a cbf-file: " + str(event.name))
+                self.log.debug("detected events were: " + str(parts)) 
                 return []
 
             # only closed files are send
@@ -199,8 +200,10 @@ class InotifyDetector():
 #                print "is_closed and not is_dir"
 #                print path, event.name, parts
 		if event.name[0] == '.' :
+                    self.log.debug("Removing '.' and suffix from event name: " + str(event.name))
 		    event_name_dirty_hack = event.name.rsplit(".", 1)[0][1:]
                 else :
+                    self.log.debug("Correct eevent name format: " + str(event.name))
 		    event_name_dirty_hack = event.name
                 parentDir    = path
                 relativePath = ""

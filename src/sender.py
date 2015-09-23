@@ -24,6 +24,7 @@ from Cleaner import Cleaner
 
 from config import defaultConfigSender
 
+import datetime
 
 class Sender():
     logfilePath         = None
@@ -55,7 +56,9 @@ class Sender():
         defConf                  = defaultConfigSender()
 
         self.logfilePath         = defConf.logfilePath
-        self.logfileName         = defConf.logfileName
+        now                      = datetime.datetime.now()
+        nowFormated              = now.strftime("%Y-%m-%d_%H:%M")
+        self.logfileName         = defConf.logfileName + "_" + nowFormated
         self.logfileFullPath     = os.path.join(self.logfilePath, self.logfileName)
         self.verbose             = verbose
 

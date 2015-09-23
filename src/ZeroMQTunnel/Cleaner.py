@@ -69,15 +69,13 @@ class Cleaner():
 
         try:
             self.process()
-        except zmq.error.ZMQError:
-            self.log.error("ZMQError: "+ str(e))
-            self.log.debug("Shutting down cleaner.")
         except KeyboardInterrupt:
             self.log.info("KeyboardInterrupt detected. Shutting down cleaner.")
-        except:
+        except Exception as e:
             trace = traceback.format_exc()
             self.log.error("Stopping cleanerProcess due to unknown error condition.")
-            self.log.debug("Error was: " + str(trace))
+            self.log.debug("Error was: " + str(e))
+            self.log.debug("Trace was: " + str(trace))
         finally:
             self.stop()
 
@@ -169,7 +167,7 @@ class Cleaner():
             except Exception, e:
                 self.log.error("Unable to move source file: " + str (sourceFullPath) )
                 trace = traceback.format_exc()
-                self.log.error("Error was: " + str(trace))
+                self.log.debug("Error was: " + str(trace))
                 self.log.debug("sourceFullpath="+str(sourceFullpath))
                 self.log.debug("Moving source file...failed.")
                 #skip all further instructions and continue with next iteration
@@ -208,12 +206,12 @@ class Cleaner():
             except Exception, e:
                 trace = traceback.format_exc()
                 warningMessage = "Unable to copy file {FILE}.".format(FILE=str(source) + str(filename))
-                self.log.warning(warningMessage)
+                self.log.debug(warningMessage)
                 self.log.debug("trace=" + str(trace))
-                self.log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
+                self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
         if not fileWasCopied:
-            self.log.error("Copying file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            self.log.debug("Copying file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
             raise Exception("maxAttemptsToCopyFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filename))
 
 
@@ -248,12 +246,12 @@ class Cleaner():
             except Exception, e:
                 trace = traceback.format_exc()
                 warningMessage = "Unable to move file {FILE}.".format(FILE=str(sourceFile))
-                self.log.warning(warningMessage)
+                self.log.debug(warningMessage)
                 self.log.debug("trace=" + str(trace))
-                self.log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
+                self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
         if not fileWasMoved:
-            self.log.error("Moving file '" + str(filename) + " from " + str(sourceFile) + " to " + str(targetFile) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            self.log.debug("Moving file '" + str(filename) + " from " + str(sourceFile) + " to " + str(targetFile) + "' (attempt " + str(iterationCount) + ")...FAILED.")
             raise Exception("maxAttemptsToMoveFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filename))
 
 
@@ -275,12 +273,12 @@ class Cleaner():
             except Exception, e:
                 trace = traceback.format_exc()
                 warningMessage = "Unable to remove file {FILE}.".format(FILE=str(filepath))
-                self.log.warning(warningMessage)
+                self.log.debug(warningMessage)
                 self.log.debug("trace=" + str(trace))
-                self.log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
+                self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
         if not fileWasRemoved:
-            self.log.error("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            self.log.debug("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
             raise Exception("maxAttemptsToRemoveFile reached (value={ATTEMPT}). Unable to remove file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filepath))
 
 
