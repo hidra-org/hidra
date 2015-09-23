@@ -194,35 +194,30 @@ class FileMover():
 
                     self.log.debug("Check if signal sending host is in WhiteList...")
                     if signalHostname in self.receiverWhiteList or signalHostnameModified in self.receiverWhiteList:
-                        self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
+                        self.log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
                     else:
-                        self.log.info("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
-                        self.log.debug("Signal from host " + str(signalHostname) + " is discarded.")
-                        print "Signal from host " + str(signalHostname) + " is discarded."
+                        self.log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
+                        self.log.info("Signal from host " + str(signalHostname) + " is discarded.")
                         self.receiverComSocket.send("NO_VALID_HOST", zmq.NOBLOCK)
                         continue
 
                     if signal == "STOP_LIVE_VIEWER":
                         self.log.info("Received live viewer stop signal from host " + str(signalHostname) + "...stopping live viewer")
-                        print "Received live viewer stop signal from host " + signalHostname + "...stopping live viewer"
                         self.useLiveViewer = False
                         self.sendSignalToReceiver(signal)
                         continue
                     elif signal == "START_LIVE_VIEWER":
                         self.log.info("Received live viewer start signal from host " + str(signalHostname) + "...starting live viewer")
-                        print "Received live viewer start signal from host " + str(signalHostname) + "...starting live viewer"
                         self.useLiveViewer = True
                         self.sendSignalToReceiver(signal)
                         continue
                     elif signal == "STOP_REALTIME_ANALYSIS":
                         self.log.info("Received realtime analysis stop signal from host " + str(signalHostname) + "...stopping realtime analysis")
-                        print "Received realtime analysis stop signal from host " + signalHostname + "...stopping realtime analysis"
                         # send signal to workerProcesses and back to receiver
                         self.sendSignalToReceiver(signal)
                         continue
                     elif signal == "START_REALTIME_ANALYSIS":
                         self.log.info("Received realtime analysis start signal from host " + str(signalHostname) + "...starting realtime analysis")
-                        print "Received realtime analysis start signal from host " + str(signalHostname) + "...starting realtime analysis"
                         # send signal to workerProcesses and back to receiver
                         self.sendSignalToReceiver(signal)
                         continue
@@ -231,7 +226,7 @@ class FileMover():
                         self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
 
         except KeyboardInterrupt:
-            self.log.info("Keyboard interuption detected. Stop receiving")
+            self.log.debug("Keyboard interuption detected. Stop receiving")
 
 
 

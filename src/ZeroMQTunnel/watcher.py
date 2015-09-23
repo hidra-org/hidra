@@ -34,7 +34,7 @@ class DirectoryWatcher():
         self.log = self.getLogger()
 
         self.log.debug("DirectoryWatcherHandler: __init__()")
-        self.log.info("registering zmq context")
+        self.log.debug("registering zmq context")
 
         if zmqContext:
             self.zmqContext      = zmqContext
@@ -50,7 +50,7 @@ class DirectoryWatcher():
         if monitoredDefaultSubfolders:
             self.monitoredDefaultSubfolders = monitoredDefaultSubfolders
         self.monitoredSuffixes   = monitoredSuffixes
-        print monitoredSuffixes
+        self.log.info ("Monitoried suffixes are: " + str( monitoredSuffixes ))
 
 #        monitoredFolders         = self.getDirectoryStructure()
         monitoredFolders         = [self.watchFolder]
@@ -121,10 +121,10 @@ class DirectoryWatcher():
 
         #send message
         try:
-            self.log.info("Sending message...")
+            self.log.debug("Sending message...")
             self.log.debug(str(messageDictJson))
             targetSocket.send(messageDictJson)
-            self.log.info("Sending message...done.")
+            self.log.debug("Sending message...done.")
         except KeyboardInterrupt:
             self.log.error("Sending message...failed because of KeyboardInterrupt.")
         except Exception, e:
@@ -164,7 +164,7 @@ class DirectoryWatcher():
                         # send the file to the fileMover
                         self.passFileToZeromq(self.messageSocket, sourcePath, relativePath, filename)
             except KeyboardInterrupt:
-                self.log.info("Keyboard interruption detected. Shuting down")
+                self.log.debug("Keyboard interruption detected. Shuting down")
         finally:
             self.eventDetector.stop()
             self.stop()

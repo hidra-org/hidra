@@ -70,7 +70,7 @@ class Cleaner():
         try:
             self.process()
         except KeyboardInterrupt:
-            self.log.info("KeyboardInterrupt detected. Shutting down cleaner.")
+            self.log.debug("KeyboardInterrupt detected. Shutting down cleaner.")
         except Exception as e:
             trace = traceback.format_exc()
             self.log.error("Stopping cleanerProcess due to unknown error condition.")
@@ -97,7 +97,7 @@ class Cleaner():
                 self.log.error("Error in receiving job: " + str(e))
 
             if workload == "STOP":
-                self.log.info("Stopping cleaner")
+                self.log.debug("Stopping cleaner")
                 break
 
             # transform to dictionary
@@ -180,7 +180,7 @@ class Cleaner():
 
 
         iterationCount = 0
-        self.log.info("Copying file '" + str(filename) + "' from '" +  str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+        self.log.debug("Copying file '" + str(filename) + "' from '" +  str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
         fileWasCopied = False
 
         while iterationCount <= maxAttemptsToCopyFile and not fileWasCopied:
@@ -240,7 +240,7 @@ class Cleaner():
                 self.log.debug("targetFile: " + str(targetFile))
                 shutil.move(sourceFile, targetFile)
                 fileWasMoved = True
-                self.log.debug("Moving file '" + str(filename) + "' from '" + str(sourceFile) + "' to '" + str(targetFile) + "' (attempt " + str(iterationCount) + ")...success.")
+                self.log.info("Moving file '" + str(filename) + "' from '" + str(sourceFile) + "' to '" + str(targetFile) + "' (attempt " + str(iterationCount) + ")...success.")
             except IOError:
                 self.log.debug ("IOError: " + str(filename))
             except Exception, e:
@@ -251,7 +251,7 @@ class Cleaner():
                 self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
         if not fileWasMoved:
-            self.log.debug("Moving file '" + str(filename) + " from " + str(sourceFile) + " to " + str(targetFile) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            self.log.info("Moving file '" + str(filename) + " from " + str(sourceFile) + " to " + str(targetFile) + "' (attempt " + str(iterationCount) + ")...FAILED.")
             raise Exception("maxAttemptsToMoveFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filename))
 
 
@@ -261,7 +261,7 @@ class Cleaner():
 
 
         iterationCount = 0
-        self.log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...")
+        self.log.debug("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...")
         fileWasRemoved = False
 
         while iterationCount <= maxAttemptsToRemoveFile and not fileWasRemoved:

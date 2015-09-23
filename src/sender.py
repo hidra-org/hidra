@@ -89,7 +89,7 @@ class Sender():
         #create zmq context
         # there should be only one context in one process
         self.zmqContext = zmq.Context.instance()
-        logging.info("registering zmq global context")
+        logging.debug("registering zmq global context")
 
         self.run()
 
@@ -121,7 +121,7 @@ class Sender():
         try:
             fileMover.process()
         except KeyboardInterrupt:
-            logging.info("Keyboard interruption detected. Shutting down")
+            logging.debug("Keyboard interruption detected. Shutting down")
         # except Exception, e:
         #     print "unknown exception detected."
         finally:

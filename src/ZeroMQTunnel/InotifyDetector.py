@@ -128,9 +128,9 @@ class InotifyDetector():
 
     def getDirectoryStructure(self):
         # Add the default subfolders
-        print "paths:", self.paths
+        self.log.info("paths:" + str(self.paths))
         foldersToWalk    = [self.paths[0] + os.sep + folder for folder in self.monitoredSubfolders]
-        print "foldersToWalk:", foldersToWalk
+        self.log.info("foldersToWalk:" + str(foldersToWalk))
         monitoredFolders = []
 
         # Walk the tree
@@ -139,7 +139,6 @@ class InotifyDetector():
                 # Add the found folders to the list for the inotify-watch
                 monitoredFolders.append(root)
                 self.log.info("Add folder to monitor: " + str(root))
-                print "Add folder to monitor: " + str(root)
 
         return monitoredFolders
 
@@ -158,7 +157,6 @@ class InotifyDetector():
             if not event.name:
                 return []
 
-
 #            print path, event.name, parts
 #            print event.name
 
@@ -175,9 +173,8 @@ class InotifyDetector():
 
 #            if is_created and is_dir and event.name:
             if is_dir and event.name:
-                print "is_created and is_dir"
-#                print path, event.name, parts
                 dirname =  path + os.sep + event.name
+                self.log.info("Directory event detected: " + str(dirname) + "," + str(parts))
                 if dirname in self.paths:
                     self.log.debug("Directory already contained in path list: " + str(dirname))
                 else:
@@ -191,20 +188,19 @@ class InotifyDetector():
 
             if '.cbf' not in event.name :
                 self.log.debug("not a cbf-file: " + str(event.name))
-                self.log.debug("detected events were: " + str(parts)) 
+                self.log.debug("detected events were: " + str(parts))
                 return []
 
             # only closed files are send
             if is_closed and not is_dir:
 #            if (is_moved and not is_dir) or (is_closed and not is_dir):
-#                print "is_closed and not is_dir"
 #                print path, event.name, parts
-		if event.name[0] == '.' :
+                if event.name[0] == '.' :
                     self.log.debug("Removing '.' and suffix from event name: " + str(event.name))
-		    event_name_dirty_hack = event.name.rsplit(".", 1)[0][1:]
+                    event_name_dirty_hack = event.name.rsplit(".", 1)[0][1:]
                 else :
                     self.log.debug("Correct eevent name format: " + str(event.name))
-		    event_name_dirty_hack = event.name
+                    event_name_dirty_hack = event.name
                 parentDir    = path
                 relativePath = ""
                 eventMessage = {}
@@ -218,12 +214,6 @@ class InotifyDetector():
                         relativePath = os.sep + relDir + relativePath
 #                        print "debug11:", relativePath
                     else:
-                        # add the local, commissional or current to the relativePath as well
-#                        (parentDir,relDir) = os.path.split(parentDir)
-#                        print "debug2:", parentDir, relDir
-#                        relativePath = os.sep + relDir + relativePath
-#                        print "debug22:", relativePath
-
                         # the event for a file /tmp/test/source/local/file1.tif is of the form:
                         # {
                         #   "sourcePath" : "/tmp/test/source/"
@@ -235,7 +225,7 @@ class InotifyDetector():
                                 "relativePath": relativePath,
                                 "filename"    : event_name_dirty_hack
                                 }
-                        print "eventMessage:", eventMessage
+#                        print "eventMessage:", eventMessage
                         eventMessageList.append(eventMessage)
                         break
 

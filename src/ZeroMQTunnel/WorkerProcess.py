@@ -357,7 +357,7 @@ class WorkerProcess():
 
             #send message
             try:
-                self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...")
+                self.log.debug("Passing multipart-message for file " + str(sourceFilePathFull) + "...")
 #                print "sending file: ", sourceFilePathFull
                 chunkNumber = 0
                 stillChunksToRead = True
@@ -406,7 +406,7 @@ class WorkerProcess():
 #                print "sending file: ", sourceFilePathFull, "done"
 
                 # self.zmqDataStreamSocket.send_multipart(multipartMessage)
-                self.log.info("Passing multipart-message for file " + str(sourceFilePathFull) + "...done.")
+                self.log.debug("Passing multipart-message for file " + str(sourceFilePathFull) + "...done.")
             except zmq.error.Again:
                 self.log.error("unable to send multiplart-message for file " + str(sourceFilePathFull))
                 self.log.error("Receiver has disconnected")
@@ -414,7 +414,7 @@ class WorkerProcess():
                 self.log.error("Unable to send multipart-message for file " + str(sourceFilePathFull))
                 self.log.debug("Error was: " + str(e))
                 self.log.debug("Error was: " + str(trace))
-                self.log.info("Passing multipart-message...failed.")
+                self.log.debug("Passing multipart-message...failed.")
     #            raise Exception(e)
         return
 
@@ -491,7 +491,7 @@ class WorkerProcess():
     def stop(self):
         self.log.debug("Sending stop signal to cleaner from worker-" + str(self.id))
         self.cleanerSocket.send("STOP")        #no communication needed because cleaner detects KeyboardInterrupt signals
-        self.log.info("Closing sockets for worker " + str(self.id))
+        self.log.debug("Closing sockets for worker " + str(self.id))
         if self.zmqDataStreamSocket:
             self.zmqDataStreamSocket.close(0)
         self.ondaComSocket.close(0)
