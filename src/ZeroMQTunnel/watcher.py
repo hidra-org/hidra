@@ -83,7 +83,7 @@ class DirectoryWatcher():
                 # Add the found folders to the list for the inotify-watch
                 monitoredFolders.append(root)
                 self.log.info("Add folder to monitor: " + str(root))
-                print "Add folder to monitor: " + str(root)
+#                print "Add folder to monitor: " + str(root)
 
         return monitoredFolders
 

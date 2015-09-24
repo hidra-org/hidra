@@ -78,6 +78,9 @@ class InotifyDetector():
     fd         = None
     log        = None
 
+    previousEventPath = ""
+    previousEventName = ""
+
 
     def __init__(self, paths, monitoredSubfolders, monitoredSuffixes):
 
@@ -129,12 +132,13 @@ class InotifyDetector():
     def getDirectoryStructure(self):
         # Add the default subfolders
         self.log.info("paths:" + str(self.paths))
-        foldersToWalk    = [self.paths[0] + os.sep + folder for folder in self.monitoredSubfolders]
+        foldersToWalk    = [os.path.normpath(self.paths[0] + os.sep + folder) for folder in self.monitoredSubfolders]
         self.log.info("foldersToWalk:" + str(foldersToWalk))
         monitoredFolders = []
 
         # Walk the tree
         for folder in foldersToWalk:
+            monitoredFolders.append(folder)
             for root, directories, files in os.walk(folder):
                 # Add the found folders to the list for the inotify-watch
                 monitoredFolders.append(root)
@@ -193,41 +197,46 @@ class InotifyDetector():
 
             # only closed files are send
             if is_closed and not is_dir:
+                if self.previousEventPath != path or self.previousEventName != event.name:
 #            if (is_moved and not is_dir) or (is_closed and not is_dir):
 #                print path, event.name, parts
-                if event.name[0] == '.' :
-                    self.log.debug("Removing '.' and suffix from event name: " + str(event.name))
-                    event_name_dirty_hack = event.name.rsplit(".", 1)[0][1:]
-                else :
-                    self.log.debug("Correct eevent name format: " + str(event.name))
-                    event_name_dirty_hack = event.name
-                parentDir    = path
-                relativePath = ""
-                eventMessage = {}
+#                if event.name[0] == '.' :
+#                    self.log.debug("Removing '.' and suffix from event name: " + str(event.name))
+#                    event_name_dirty_hack = event.name.rsplit(".", 1)[0][1:]
+#                else :
+#                    self.log.debug("Correct eevent name format: " + str(event.name))
+#                    event_name_dirty_hack = event.name
+                    parentDir    = path
+                    relativePath = ""
+                    eventMessage = {}
 
-                # traverse the relative path till the original path is reached
-                # e.g. created file: /source/dir1/dir2/test.tif
-                while True:
-                    if parentDir not in self.paths:
-                        (parentDir,relDir) = os.path.split(parentDir)
-#                        print "debug1:", parentDir, relDir
-                        relativePath = os.sep + relDir + relativePath
-#                        print "debug11:", relativePath
-                    else:
-                        # the event for a file /tmp/test/source/local/file1.tif is of the form:
-                        # {
-                        #   "sourcePath" : "/tmp/test/source/"
-                        #   "relativePath": "local"
-                        #   "filename"   : "file1.tif"
-                        # }
-                        eventMessage = {
-                                "sourcePath"  : parentDir,
-                                "relativePath": relativePath,
-                                "filename"    : event_name_dirty_hack
-                                }
-#                        print "eventMessage:", eventMessage
-                        eventMessageList.append(eventMessage)
-                        break
+                    # traverse the relative path till the original path is reached
+                    # e.g. created file: /source/dir1/dir2/test.tif
+                    while True:
+                        if parentDir not in self.paths:
+                            (parentDir,relDir) = os.path.split(parentDir)
+#                            print "debug1:", parentDir, relDir
+                            relativePath = os.sep + relDir + relativePath
+#                            print "debug11:", relativePath
+                        else:
+                            # the event for a file /tmp/test/source/local/file1.tif is of the form:
+                            # {
+                            #   "sourcePath" : "/tmp/test/source/"
+                            #   "relativePath": "local"
+                            #   "filename"   : "file1.tif"
+                            # }
+                            eventMessage = {
+                                    "sourcePath"  : parentDir,
+                                    "relativePath": relativePath,
+    #                                "filename"    : event_name_dirty_hack
+                                    "filename"    : event.name
+                                    }
+#                            print "eventMessage:", eventMessage
+                            eventMessageList.append(eventMessage)
+
+                            self.previousEventPath = path
+                            self.previousEventName = event.name
+                            break
 
         return eventMessageList
 
@@ -260,16 +269,18 @@ class InotifyDetector():
 
 
 if __name__ == '__main__':
-    logfilePath = "/space/projects/live-viewer/logs/inotifyDetector.log"
+    base_path = "/home/kuhnm/Arbeit/live-viewer"
+    logfilePath = base_path + "/logs/inotifyDetector.log"
     verbose=True
 
     #enable logging
     helperScript.initLogging(logfilePath, verbose)
 
-    monitoredFolders = ["/space/projects/live-viewer/data/source/local"]
+    paths             = [base_path + "/data/source"]
+    monitoredSubfolders = ["local"]
     monitoredSuffixes = (".tif", ".cbf")
 
-    eventDetector = InotifyDetector(monitoredFolders, monitoredSuffixes)
+    eventDetector = InotifyDetector(paths, monitoredSubfolders, monitoredSuffixes)
 
     while True:
         try:
