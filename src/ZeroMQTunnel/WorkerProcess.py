@@ -166,14 +166,14 @@ class WorkerProcess():
             # the realtime-analysis is turned on
             startRTA = workload == b"START_REALTIME_ANALYSIS"
             if startRTA:
-                self.log.info("worker-"+str(self.id)+": Received realtime-analysis start command...starting live viewer")
+                self.log.info("worker-"+str(self.id)+": Received realtime-analysis start command...starting realtime analysis")
                 self.useRealTimeAnalysis = True
                 continue
 
             # the realtime-analysis is turned off
             stopRTA = workload == b"STOP_REALTIME_ANALYSIS"
             if stopRTA:
-                self.log.info("worker-"+str(self.id)+": Received realtime-analysis stop command...stopping live viewer")
+                self.log.info("worker-"+str(self.id)+": Received realtime-analysis stop command...stopping realtime analysis")
                 self.useRealTimeAnalysis = False
                 continue
 
