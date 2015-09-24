@@ -1,5 +1,6 @@
 import os
 import sys
+import datetime
 
 BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname (  os.path.realpath ( __file__ ) ) ) )
 ZMQ_PATH  = BASE_PATH + os.sep + "src" + os.sep + "ZeroMQTunnel"
@@ -8,12 +9,15 @@ sys.path.append ( ZMQ_PATH )
 
 import helperScript
 
-#LOCAL_IP= "0.0.0.0"
-#LOCAL_IP= "127.0.0.1"
-LOCAL_IP= "131.169.66.47"
+#LOCAL_IP    = "0.0.0.0"
+#LOCAL_IP    = "127.0.0.1"
+LOCAL_IP    = "131.169.66.47"
 
 #BASE_PATH = "/space/projects/live-viewer"
-BASE_PATH = "/home/p11user/live-viewer"
+BASE_PATH   = "/home/p11user/live-viewer"
+
+now         = datetime.datetime.now()
+nowFormated = now.strftime("%Y-%m-%d")
 
 class defaultConfigSender():
 
@@ -24,7 +28,7 @@ class defaultConfigSender():
     watchFolder         = "/rd_temp/"
     # Target to move the files into
 #    cleanerTargetPath   = BASE_PATH + "/data/target/"
-    cleanerTargetPath   = "/gpfs/"    
+    cleanerTargetPath   = "/gpfs/"
 #    cleanerTargetPath   = "/rd/temp/"
 
     # subfolders of watchFolders to be monitored
@@ -73,8 +77,10 @@ class defaultConfigSender():
 
     # path where logfile will be created
     logfilePath         = "/home/p11user/logs"
+#    logfilePath = BASE_PATH + "/logs"
+
     # filename used for logging
-    logfileName         = "zmq_sender.log"
+    logfileName         = "zmq_sender.log_" + nowFormated
 
 
     def __init__(self):
@@ -111,8 +117,9 @@ class defaultConfigReceiver():
 
     # path where logfile will be created
     logfilePath       = BASE_PATH + "/logs"
+#    logfilePath         = "/home/p11user/logs"
     # filename used for logging
-    logfileName       = "zmq_receiver.log"
+    logfileName       = "zmq_receiver.log_" + nowFormated
     # size of the ring buffer for the live viewer
     maxRingBufferSize = 10
 
