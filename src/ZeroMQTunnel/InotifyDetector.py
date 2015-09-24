@@ -138,11 +138,14 @@ class InotifyDetector():
 
         # Walk the tree
         for folder in foldersToWalk:
-            monitoredFolders.append(folder)
-            for root, directories, files in os.walk(folder):
-                # Add the found folders to the list for the inotify-watch
-                monitoredFolders.append(root)
-                self.log.info("Add folder to monitor: " + str(root))
+            if os.path.isdir(folder):
+                monitoredFolders.append(folder)
+                for root, directories, files in os.walk(folder):
+                    # Add the found folders to the list for the inotify-watch
+                    monitoredFolders.append(root)
+                    self.log.info("Add folder to monitor: " + str(root))
+            else:
+                self.log.info("Folder does not exists: " + str(folder))
 
         return monitoredFolders
 
