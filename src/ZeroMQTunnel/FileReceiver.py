@@ -230,17 +230,13 @@ class FileReceiver:
         targetRelativePath = configDict["relativePath"]
 
         if targetRelativePath is '' or targetRelativePath is None:
-            targetPath = self.getOutputDir()
+            targetPath = self.outputDir
         else:
-            targetPath = os.path.normpath(self.getOutputDir() + os.sep + targetRelativePath)
+            targetPath = os.path.normpath(self.outputDir + os.sep + targetRelativePath)
 
         targetFilepath =  os.path.join(targetPath, targetFilename)
 
         return targetFilepath
-
-
-    def getOutputDir(self):
-        return self.outputDir
 
 
     def generateTargetPath(self,configDict):
@@ -249,7 +245,10 @@ class FileReceiver:
 
         """
         targetRelativePath = configDict["relativePath"]
-        outputDir = self.getOutputDir()
+        # if the relative path starts with a slash path.join will consider it as absolute path
+        if targetRelativePath.startswith("/"):
+            targetRelativePath = targetRelativePath[1:]
+        outputDir = self.outputDir
 
         targetPath = os.path.join(outputDir, targetRelativePath)
 
