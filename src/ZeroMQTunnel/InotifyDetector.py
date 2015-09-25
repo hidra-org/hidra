@@ -200,7 +200,8 @@ class InotifyDetector():
 
             # only closed files are send
             if is_closed and not is_dir:
-                if self.previousEventPath != path or self.previousEventName != event.name:
+#                if self.previousEventPath != path or self.previousEventName != event.name:
+                if True:
 #            if (is_moved and not is_dir) or (is_closed and not is_dir):
 #                print path, event.name, parts
 #                if event.name[0] == '.' :
