@@ -1,6 +1,6 @@
 from __builtin__ import open, type
 
-__author__ = 'Manuela Kuhn <marnuel.kuhn@desy.de>', 'Marco Strutz <marco.strutz@desy.de>'
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Marco Strutz <marco.strutz@desy.de>'
 
 
 import time
@@ -37,6 +37,7 @@ class Cleaner():
     """
     bindingPortForSocket = None
     bindingIpForSocket   = None
+    senderComIp          = None
     zmqContextForCleaner = None
     externalContext      = None    # if the context was created outside this class or not
     zmqCleanerSocket     = None
@@ -47,6 +48,7 @@ class Cleaner():
     def __init__(self, targetPath, bindingIp="127.0.0.1", bindingPort="6062", context = None, verbose=False):
         self.bindingPortForSocket = bindingPort
         self.bindingIpForSocket   = bindingIp
+        self.senderComIp          = self.bindingIpForSocket
         self.targetPath           = targetPath
 
         if context:
@@ -60,24 +62,22 @@ class Cleaner():
         self.log.debug("Init")
 
         #bind to local port
-        self.zmqCleanerSocket      = self.zmqContextForCleaner.socket(zmq.PULL)
-        connectionStrCleanerSocket = "tcp://" + self.bindingIpForSocket + ":%s" % self.bindingPortForSocket
-        self.zmqCleanerSocket.bind(connectionStrCleanerSocket)
-        self.log.debug("zmqCleanerSocket started for '" + connectionStrCleanerSocket + "'")
+        self.zmqCleanerSocket = self.zmqContextForCleaner.socket(zmq.PULL)
+        connectionStrSocket   = "tcp://" + self.bindingIpForSocket + ":%s" % self.bindingPortForSocket
+        self.zmqCleanerSocket.bind(connectionStrSocket)
+        self.log.debug("zmqCleanerSocket started for '" + connectionStrSocket + "'")
 
         try:
             self.process()
-        except zmq.error.ZMQError:
-            self.log.error("ZMQError: "+ str(e))
-            self.log.debug("Shutting down cleaner.")
         except KeyboardInterrupt:
-            self.log.info("KeyboardInterrupt detected. Shutting down cleaner.")
-        except:
+            self.log.debug("KeyboardInterrupt detected. Shutting down cleaner.")
+        except Exception as e:
             trace = traceback.format_exc()
             self.log.error("Stopping cleanerProcess due to unknown error condition.")
-            self.log.debug("Error was: " + str(trace))
-
-        self.stop()
+            self.log.debug("Error was: " + str(e))
+            self.log.debug("Trace was: " + str(trace))
+        finally:
+            self.stop()
 
 
     def getLogger(self):
@@ -90,17 +90,25 @@ class Cleaner():
         while True:
             #waiting for new jobs
             self.log.debug("Waiting for new jobs")
+
             try:
                 workload = self.zmqCleanerSocket.recv()
             except Exception as e:
                 self.log.error("Error in receiving job: " + str(e))
 
             if workload == "STOP":
-                self.log.info("Stopping cleaner")
-                self.stop()
+                self.log.debug("Stopping cleaner")
                 break
 
-            #transform to dictionary
+            # transform to dictionary
+            # metadataDict = {
+            #   "filename"             : filename,
+            #   "filesize"             : filesize,
+            #   "fileModificationTime" : fileModificationTime,
+            #   "sourcePath"           : sourcePath,
+            #   "relativePath"         : relativePath,
+            #   "chunkSize"            : self.getChunkSize()
+            #   }
             try:
                 workloadDict = json.loads(str(workload))
             except:
@@ -109,13 +117,13 @@ class Cleaner():
                 self.log.debug("workload=" + str(workload))
                 continue
 
-            #extract fileEvent metadata
+            #extract fileEvent metadata/data
             try:
                 #TODO validate fileEventMessageDict dict
                 filename       = workloadDict["filename"]
                 sourcePath     = workloadDict["sourcePath"]
                 relativePath   = workloadDict["relativePath"]
-                # filesize       = workloadDict["filesize"]
+#                print "workloadDict:", workloadDict
             except Exception, e:
                 errorMessage   = "Invalid fileEvent message received."
                 self.log.error(errorMessage)
@@ -124,19 +132,28 @@ class Cleaner():
                 #skip all further instructions and continue with next iteration
                 continue
 
-            #moving source file
-            sourceFilepath = None
+            #source file
+            sourceFullpath = None
             try:
-                self.log.debug("removing source file...")
                 #generate target filepath
                 sourcePath = os.path.normpath(sourcePath + os.sep + relativePath)
                 sourceFullPath = os.path.join(sourcePath,filename)
                 targetFullPath = os.path.normpath(self.targetPath + relativePath)
-#                self.removeFile(sourceFilepath)
-                self.log.debug ("sourcePath: " + str (sourcePath))
-                self.log.debug ("filename: " + str (filename))
-                self.log.debug ("targetPath: " + str (targetFullPath))
+                self.log.debug("sourcePath: " + str (sourcePath))
+                self.log.debug("filename: " + str (filename))
+                self.log.debug("targetPath: " + str (targetFullPath))
+
+            except Exception, e:
+                self.log.error("Unable to generate file paths")
+                trace = traceback.format_exc()
+                self.log.error("Error was: " + str(trace))
+                #skip all further instructions and continue with next iteration
+                continue
+
+            try:
+                self.log.debug("Moving source file...")
                 self.moveFile(sourcePath, filename, targetFullPath)
+#                    self.removeFile(sourceFullpath)
 
                 # #show filesystem statistics
                 # try:
@@ -144,31 +161,29 @@ class Cleaner():
                 # except Exception, f:
                 #     logging.warning("Unable to get filesystem statistics")
                 #     logging.debug("Error was: " + str(f))
-                self.log.debug("file removed: " + str(sourceFullPath))
-                self.log.debug("removing source file...success.")
+                self.log.debug("File moved: " + str(sourceFullPath))
+                self.log.debug("Moving source file...success.")
 
             except Exception, e:
-                errorMessage = "Unable to remove source file: " + str (sourceFullPath)
-                self.log.error(errorMessage)
+                self.log.error("Unable to move source file: " + str (sourceFullPath) )
                 trace = traceback.format_exc()
-                self.log.error("Error was: " + str(trace))
-                self.log.debug("sourceFilepath="+str(sourceFilepath))
-                self.log.debug("removing source file...failed.")
+                self.log.debug("Error was: " + str(trace))
+                self.log.debug("sourceFullpath="+str(sourceFullpath))
+                self.log.debug("Moving source file...failed.")
                 #skip all further instructions and continue with next iteration
                 continue
 
 
-
-    def moveFile(self, source, filename, target):
-        maxAttemptsToRemoveFile     = 2
+    def copyFile(self, source, filename, target):
+        maxAttemptsToCopyFile     = 2
         waitTimeBetweenAttemptsInMs = 500
 
 
         iterationCount = 0
-        self.log.info("Moving file '" + str(filename) + "' from '" +  str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
-        fileWasMoved = False
+        self.log.debug("Copying file '" + str(filename) + "' from '" +  str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+        fileWasCopied = False
 
-        while iterationCount <= maxAttemptsToRemoveFile and not fileWasMoved:
+        while iterationCount <= maxAttemptsToCopyFile and not fileWasCopied:
             iterationCount+=1
             try:
                 # check if the directory exists before moving the file
@@ -182,23 +197,62 @@ class Cleaner():
                 targetFile = target + os.sep + filename
                 self.log.debug("sourceFile: " + str(sourceFile))
                 self.log.debug("targetFile: " + str(targetFile))
-                shutil.move(sourceFile, targetFile)
-                fileWasMoved = True
-                self.log.debug("Moving file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+#                shutil.copyfile(sourceFile, targetFile)
+                subprocess.call(["mv", sourceFile, targetFile])
+                fileWasCopied = True
+                self.log.debug("Copying file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
             except IOError:
                 self.log.debug ("IOError: " + str(filename))
             except Exception, e:
                 trace = traceback.format_exc()
-                warningMessage = "Unable to move file {FILE}.".format(FILE=str(source) + str(filename))
-                self.log.warning(warningMessage)
+                warningMessage = "Unable to copy file {FILE}.".format(FILE=str(source) + str(filename))
+                self.log.debug(warningMessage)
                 self.log.debug("trace=" + str(trace))
-                self.log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
+                self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
+        if not fileWasCopied:
+            self.log.debug("Copying file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            raise Exception("maxAttemptsToCopyFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filename))
+
+
+    def moveFile(self, source, filename, target):
+        maxAttemptsToMoveFile     = 2
+        waitTimeBetweenAttemptsInMs = 500
+
+
+        iterationCount = 0
+        fileWasMoved = False
+
+        while iterationCount <= maxAttemptsToMoveFile and not fileWasMoved:
+            iterationCount+=1
+            try:
+                # check if the directory exists before moving the file
+                if not os.path.exists(target):
+                    try:
+                        os.makedirs(target)
+                    except OSError:
+                        pass
+                # moving the file
+#                print 'paths:', source, target, os.sep, filename
+                sourceFile = source + os.sep + filename
+                targetFile = target + os.sep + filename
+                self.log.debug("sourceFile: " + str(sourceFile))
+                self.log.debug("targetFile: " + str(targetFile))
+                shutil.move(sourceFile, targetFile)
+                fileWasMoved = True
+                self.log.info("Moving file '" + str(filename) + "' from '" + str(sourceFile) + "' to '" + str(targetFile) + "' (attempt " + str(iterationCount) + ")...success.")
+            except IOError:
+                self.log.debug ("IOError: " + str(filename))
+            except Exception, e:
+                trace = traceback.format_exc()
+                warningMessage = "Unable to move file {FILE}.".format(FILE=str(sourceFile))
+                self.log.debug(warningMessage)
+                self.log.debug("trace=" + str(trace))
+                self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
         if not fileWasMoved:
-            self.log.error("Moving file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
-            raise Exception("maxAttemptsToMoveFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount),
-                                                                                                                            FILE=filename))
+            self.log.info("Moving file '" + str(filename) + " from " + str(sourceFile) + " to " + str(targetFile) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            raise Exception("maxAttemptsToMoveFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filename))
 
 
     def removeFile(self, filepath):
@@ -207,7 +261,7 @@ class Cleaner():
 
 
         iterationCount = 0
-        self.log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...")
+        self.log.debug("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...")
         fileWasRemoved = False
 
         while iterationCount <= maxAttemptsToRemoveFile and not fileWasRemoved:
@@ -219,15 +273,14 @@ class Cleaner():
             except Exception, e:
                 trace = traceback.format_exc()
                 warningMessage = "Unable to remove file {FILE}.".format(FILE=str(filepath))
-                self.log.warning(warningMessage)
+                self.log.debug(warningMessage)
                 self.log.debug("trace=" + str(trace))
-                self.log.warning("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
-
+                self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
         if not fileWasRemoved:
-            self.log.error("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
-            raise Exception("maxAttemptsToRemoveFile reached (value={ATTEMPT}). Unable to remove file '{FILE}'.".format(ATTEMPT=str(iterationCount),
-                                                                                                                            FILE=filepath))
+            self.log.debug("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            raise Exception("maxAttemptsToRemoveFile reached (value={ATTEMPT}). Unable to remove file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filepath))
+
 
     def stop(self):
         self.log.debug("Closing socket")

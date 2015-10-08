@@ -34,7 +34,7 @@ class DirectoryWatcher():
         self.log = self.getLogger()
 
         self.log.debug("DirectoryWatcherHandler: __init__()")
-        self.log.info("registering zmq context")
+        self.log.debug("registering zmq context")
 
         if zmqContext:
             self.zmqContext      = zmqContext
@@ -50,12 +50,13 @@ class DirectoryWatcher():
         if monitoredDefaultSubfolders:
             self.monitoredDefaultSubfolders = monitoredDefaultSubfolders
         self.monitoredSuffixes   = monitoredSuffixes
-        print monitoredSuffixes
+        self.log.info ("Monitoried suffixes are: " + str( monitoredSuffixes ))
 
-        monitoredFolders         = self.getDirectoryStructure()
-        self.eventDetector       = EventDetector(monitoredFolders, self.monitoredSuffixes)
+#        monitoredFolders         = self.getDirectoryStructure()
+        monitoredFolders         = [self.watchFolder]
+        self.eventDetector       = EventDetector(monitoredFolders, self.monitoredDefaultSubfolders, self.monitoredSuffixes)
 
-        assert isinstance(self.zmqContext, zmq.sugar.context.Context)
+#        assert isinstance(self.zmqContext, zmq.sugar.context.Context)
 
         #create zmq sockets
         self.messageSocket = self.zmqContext.socket(zmq.PUSH)
@@ -82,7 +83,7 @@ class DirectoryWatcher():
                 # Add the found folders to the list for the inotify-watch
                 monitoredFolders.append(root)
                 self.log.info("Add folder to monitor: " + str(root))
-                print "Add folder to monitor: " + str(root)
+#                print "Add folder to monitor: " + str(root)
 
         return monitoredFolders
 
@@ -120,10 +121,10 @@ class DirectoryWatcher():
 
         #send message
         try:
-            self.log.info("Sending message...")
+            self.log.debug("Sending message...")
             self.log.debug(str(messageDictJson))
             targetSocket.send(messageDictJson)
-            self.log.info("Sending message...done.")
+            self.log.debug("Sending message...done.")
         except KeyboardInterrupt:
             self.log.error("Sending message...failed because of KeyboardInterrupt.")
         except Exception, e:
@@ -154,14 +155,16 @@ class DirectoryWatcher():
                     for workload in workloadList:
                         sourcePath   = workload["sourcePath"]
                         # the folders local, current, and commissioning are monitored by default
-                        (sourcePath,relDir) = os.path.split(sourcePath)
-                        relativePath = os.path.normpath(relDir + os.sep + workload["relativePath"])
+#                        (sourcePath,relDir) = os.path.split(sourcePath)
+#                        relativePath = os.path.normpath(relDir + os.sep + workload["relativePath"])
+                        relativePath = workload["relativePath"]
                         filename     = workload["filename"]
 
+#                        print "eventDetector:", sourcePath, relativePath, filename
                         # send the file to the fileMover
                         self.passFileToZeromq(self.messageSocket, sourcePath, relativePath, filename)
             except KeyboardInterrupt:
-                self.log.info("Keyboard interruption detected. Shuting down")
+                self.log.debug("Keyboard interruption detected. Shuting down")
         finally:
             self.eventDetector.stop()
             self.stop()
