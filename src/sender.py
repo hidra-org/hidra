@@ -16,7 +16,7 @@ CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
 sys.path.append ( CONFIG_PATH )
 
-import helperScript
+import shared.helperScript as helperScript
 from sender.DirectoryWatcher import DirectoryWatcher
 from sender.FileMover import FileMover
 from sender.Cleaner import Cleaner

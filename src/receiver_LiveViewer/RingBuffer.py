@@ -143,9 +143,8 @@ if __name__ == "__main__":
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname (  os.path.realpath ( __file__ ) )))
     SRC_PATH  = BASE_PATH + os.sep + "src"
     sys.path.append ( SRC_PATH )
-    print BASE_PATH
 
-    import helperScript
+    import shared.helperScript as helperScript
 
 
     logfile = BASE_PATH + os.sep + "logs/RingBuffer.log"

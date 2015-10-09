@@ -235,7 +235,7 @@ if __name__ == '__main__':
 
     sys.path.append ( SRC_PATH )
 
-    import helperScript
+    import shared.helperScript as helperScript
 
     arguments   = argumentParsing()
     watchFolder = arguments.watchFolder

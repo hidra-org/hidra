@@ -278,7 +278,7 @@ if __name__ == '__main__':
 
     sys.path.append ( SRC_PATH )
 
-    import helperScript
+    import shared.helperScript as helperScript
 
     logfilePath = BASE_PATH + "/logs/inotifyDetector.log"
     verbose=True

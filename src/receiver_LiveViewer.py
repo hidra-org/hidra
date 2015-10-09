@@ -13,7 +13,7 @@ CONFIG_PATH = BASE_PATH + os.sep + "conf"
 #sys.path.append ( ZEROMQ_PATH )
 sys.path.append ( CONFIG_PATH )
 
-import helperScript
+import shared.helperScript as helperScript
 from receiver_LiveViewer.FileReceiver import FileReceiver
 
 from config import defaultConfigReceiver as defaultConfig
