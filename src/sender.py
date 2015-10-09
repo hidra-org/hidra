@@ -12,17 +12,17 @@ import sys
 from multiprocessing import Process, freeze_support
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
-ZEROMQ_PATH = BASE_PATH + os.sep + "src" + os.sep + "ZeroMQTunnel"
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
-sys.path.append ( ZEROMQ_PATH )
 sys.path.append ( CONFIG_PATH )
 
 import helperScript
-from watcher import DirectoryWatcher
-from Cleaner import Cleaner
+from sender.DirectoryWatcher import DirectoryWatcher
+from sender.FileMover import FileMover
+from sender.Cleaner import Cleaner
 
 from config import defaultConfigSender
+
 
 class Sender():
     logfilePath         = None
@@ -103,9 +103,6 @@ class Sender():
         cleanerProcess.start()
         logging.debug("start cleaner process...done")
 
-
-        # due to a logging problem with fabio the import statement (using fabio) have to be placed after the logging is initialized
-        from FileMover import FileMover
 
         #start new fileMover
         fileMover = FileMover(self.fileEventIp, self.fileEventPort, self.dataStreamIp, self.dataStreamPort,

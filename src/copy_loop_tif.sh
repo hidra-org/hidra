@@ -1,6 +1,6 @@
 #/bin/sh
 
-FILES=/space/test_data/flat/bf_00000.tif
+FILES=/space/projects/test_data/flat/bf_00000.tif
 TARGET=/space/projects/live-viewer/data/source/local
 i=1
 LIMIT=1000

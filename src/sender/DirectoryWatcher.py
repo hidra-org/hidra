@@ -7,7 +7,6 @@ import os
 import logging
 import sys
 import json
-import helperScript
 from InotifyDetector import InotifyDetector as EventDetector
 
 
@@ -231,6 +230,13 @@ def argumentParsing():
 
 
 if __name__ == '__main__':
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+    SRC_PATH  = BASE_PATH + os.sep + "src"
+
+    sys.path.append ( SRC_PATH )
+
+    import helperScript
+
     arguments   = argumentParsing()
     watchFolder = arguments.watchFolder
     verbose     = arguments.verbose

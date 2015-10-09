@@ -8,12 +8,11 @@ import logging
 import socket       # needed to get hostname
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
-ZEROMQ_PATH = BASE_PATH + os.sep + "src" + os.sep + "ZeroMQTunnel"
+#ZEROMQ_PATH = BASE_PATH + os.sep + "src" + os.sep + "ZeroMQTunnel"
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
-print ZEROMQ_PATH
 
-sys.path.append ( ZEROMQ_PATH )
+#sys.path.append ( ZEROMQ_PATH )
 sys.path.append ( CONFIG_PATH )
 
 import helperScript
@@ -184,7 +183,7 @@ class ReceiverRealTimeAnalysis():
 
 
 if __name__ == '__main__':
-    logfilePath = "/home/kuhnm/Arbeit/live-viewer/logs/receiver_RealTimeAnalysis.log"
+    logfilePath = BASE_PATH + os.sep + "logs/receiver_RealTimeAnalysis.log"
     verbose = True
 
     #enable logging

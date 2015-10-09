@@ -5,7 +5,6 @@ import time
 import logging
 import os
 from stat import S_ISREG, ST_MTIME, ST_MODE
-import helperScript
 
 
 class RingBuffer:
@@ -139,8 +138,18 @@ class RingBuffer:
 
 
 if __name__ == "__main__":
-    logfile = "/space/projects/live-viewer/logs/RingBuffer.log"
-    targetDir = "/space/projects/live-viewer/data/zmq_target/"
+    import sys
+
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname (  os.path.realpath ( __file__ ) )))
+    SRC_PATH  = BASE_PATH + os.sep + "src"
+    sys.path.append ( SRC_PATH )
+    print BASE_PATH
+
+    import helperScript
+
+
+    logfile = BASE_PATH + os.sep + "logs/RingBuffer.log"
+    targetDir = BASE_PATH + os.sep + "data/zmq_target/"
 
     #enable logging
     helperScript.initLogging(logfile, True)

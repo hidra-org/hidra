@@ -1,9 +1,11 @@
 #/bin/sh
 
+#BASEPATH=/space/projects/live-viewer
 BASEPATH=/home/p11user/live-viewer
 
-FILES=/tmp/PhilipPBS_3_00001.cbf
 #FILES=${BASEPATH}/test_015_00001.cbf
+FILES=/tmp/PhilipPBS_3_00001.cbf
+#TARGET=${BASEPATH}/data/source/local
 TARGET=/rd/local/sender_test
 i=1
 LIMIT=1000

@@ -15,7 +15,6 @@ from multiprocessing import Process, freeze_support
 import subprocess
 import json
 import shutil
-import helperScript
 
 
 DEFAULT_CHUNK_SIZE = 1048576

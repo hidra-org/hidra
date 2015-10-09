@@ -7,14 +7,14 @@ import logging
 import os
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
-ZEROMQ_PATH = BASE_PATH + os.sep + "src" + os.sep + "ZeroMQTunnel"
+#ZEROMQ_PATH = BASE_PATH + os.sep + "src" + os.sep + "ZeroMQTunnel"
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
-sys.path.append ( ZEROMQ_PATH )
+#sys.path.append ( ZEROMQ_PATH )
 sys.path.append ( CONFIG_PATH )
 
 import helperScript
-from FileReceiver import FileReceiver
+from receiver_LiveViewer.FileReceiver import FileReceiver
 
 from config import defaultConfigReceiver as defaultConfig
 

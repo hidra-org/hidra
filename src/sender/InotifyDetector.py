@@ -6,8 +6,6 @@ import logging
 from inotifyx import binding
 from inotifyx.distinfo import version as __version__
 
-import helperScript
-
 constants = {}
 
 for name in dir(binding):
@@ -273,14 +271,22 @@ class InotifyDetector():
 
 
 if __name__ == '__main__':
-    base_path = "/home/kuhnm/Arbeit/live-viewer"
-    logfilePath = base_path + "/logs/inotifyDetector.log"
+    import sys
+
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+    SRC_PATH  = BASE_PATH + os.sep + "src"
+
+    sys.path.append ( SRC_PATH )
+
+    import helperScript
+
+    logfilePath = BASE_PATH + "/logs/inotifyDetector.log"
     verbose=True
 
     #enable logging
     helperScript.initLogging(logfilePath, verbose)
 
-    paths             = [base_path + "/data/source"]
+    paths             = [BASE_PATH + "/data/source"]
     monitoredSubfolders = ["local"]
     monitoredSuffixes = (".tif", ".cbf")
 
