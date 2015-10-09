@@ -20,11 +20,17 @@ class WorkerProcess():
     zmqMessageChunkSize  = None
     cleanerIp            = None         # responsable to delete/move files
     cleanerPort          = None         # responsable to delete/move files
+    liveViewerIp         = None
+    liveViewerPort       = None
+    ondaIp               = None
+    ondaPort             = None
 
-    zmqDataStreamSocket  = None
     routerSocket         = None
     cleanerSocket        = None
+    liveViewerSocket     = None
+    ondaComSocket        = None
 
+    useDataStream        = True         # boolian to inform if the data should be send to the data stream pipe (to the storage system)
     useLiveViewer        = False        # boolian to inform if the receiver for the live viewer is running
     useRealTimeAnalysis  = False        # boolian to inform if the receiver for realtime-analysis is running
 
@@ -33,14 +39,16 @@ class WorkerProcess():
     # to get the logging only handling this class
     log                  = None
 
-    def __init__(self, id, dataStreamIp, dataStreamPort, chunkSize, cleanerIp, cleanerPort, ondaIp, ondaPort,
-                 context = None):
+    def __init__(self, id, dataStreamIp, dataStreamPort, chunkSize, cleanerIp, cleanerPort, liveViewerIp, liveViewerPort, ondaIp, ondaPort,
+                 useDataStream = True, context = None):
         self.id                   = id
         self.dataStreamIp         = dataStreamIp
         self.dataStreamPort       = dataStreamPort
         self.zmqMessageChunkSize  = chunkSize
         self.cleanerIp            = cleanerIp
         self.cleanerPort          = cleanerPort
+        self.liveViewerIp         = liveViewerIp
+        self.liveViewerPort       = liveViewerPort
         self.ondaIp               = ondaIp
         self.ondaPort             = ondaPort
 
@@ -57,17 +65,20 @@ class WorkerProcess():
 
         self.log.debug("new workerProcess started. id=" + str(self.id))
 
-        self.zmqDataStreamSocket      = self.zmqContextForWorker.socket(zmq.PUSH)
-        connectionStr = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
-        self.zmqDataStreamSocket.bind(connectionStr)
-        self.log.debug("zmqDataStreamSocket started (bind) for '" + connectionStr + "'")
-        print"zmqDataStreamSocket started (bind) for '" + connectionStr + "'"
+        self.dataStreamSocket = self.zmqContextForWorker.socket(zmq.PUSH)
+        connectionStr         = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
+        self.dataStreamSocket.bind(connectionStr)
+        self.log.info("dataStreamSocket started (bind) for '" + connectionStr + "'")
 
-        self.ondaComSocket      = self.zmqContextForWorker.socket(zmq.REP)
-        connectionStr = "tcp://{ip}:{port}".format(ip=self.ondaIp, port=self.ondaPort)
+        self.liveViewerSocket = self.zmqContextForWorker.socket(zmq.PUSH)
+        connectionStr         = "tcp://{ip}:{port}".format(ip=self.liveViewerIp, port=self.liveViewerPort)
+        self.liveViewerSocket.bind(connectionStr)
+        self.log.info("liveViewerSocket started (bind) for '" + connectionStr + "'")
+
+        self.ondaComSocket    = self.zmqContextForWorker.socket(zmq.REP)
+        connectionStr         = "tcp://{ip}:{port}".format(ip=self.ondaIp, port=self.ondaPort)
         self.ondaComSocket.bind(connectionStr)
-        self.log.debug("ondaSocket started (bind) for '" + connectionStr + "'")
-        print "ondaSocket started (bind) for '" + connectionStr + "'"
+        self.log.info("ondaSocket started (bind) for '" + connectionStr + "'")
 
         # initialize sockets
         routerIp   = "127.0.0.1"
@@ -177,7 +188,7 @@ class WorkerProcess():
                 self.useRealTimeAnalysis = False
                 continue
 
-            if self.useLiveViewer or self.useRealTimeAnalysis:
+            if self.useDataStream or self.useLiveViewer or self.useRealTimeAnalysis:
                 #convert fileEventMessage back to a dictionary
                 fileEventMessageDict = None
                 try:
@@ -206,13 +217,15 @@ class WorkerProcess():
                 sourcePath   = None
                 relativePath = None
 
-            socketListToSendData = dict()
+            # dict with all sockets to send data to (additionally to the dataStreamSocket)
+            socketListToSendData = {"dataStream": self.dataStreamSocket}
+#            socketListToSendData = dict()
 
             if self.useLiveViewer:
                 #passing file to data-messagPipe
                 try:
                     self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
-                    socketListToSendData["liveViewer"] = self.zmqDataStreamSocket
+                    socketListToSendData["liveViewer"] = self.liveViewerSocket
                     self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...success.")
                 except Exception, e:
                     self.log.error("Unable to pass new file to data-messagePipe.")
@@ -381,20 +394,17 @@ class WorkerProcess():
                     chunkPayloadMetadata["chunkNumber"] = chunkNumber
                     chunkPayloadMetadataJson = json.dumps(chunkPayloadMetadata)
                     chunkPayload = []
-                    if socketDict.has_key("liveViewer"):
-                        chunkPayload.append(chunkPayloadMetadataJson)
-                        chunkPayload.append(fileContentAsByteObject)
-#                        payloadAll.append(fileContentAsByteObject)
+                    chunkPayload.append(chunkPayloadMetadataJson)
+                    chunkPayload.append(fileContentAsByteObject)
                     if socketDict.has_key("onda"):
                         payloadAll.append(fileContentAsByteObject)
+
+                    # send data to the data stream to store it in the storage system
+                    socketDict["dataStream"].send_multipart(chunkPayload, zmq.NOBLOCK)
 
                     #send data to the live viewer
                     if socketDict.has_key("liveViewer"):
                         socketDict["liveViewer"].send_multipart(chunkPayload, zmq.NOBLOCK)
-
-                #send data to the live viewer
-#                if socketDict.has_key("liveViewer"):
-#                    socketDict["liveViewer"].send_multipart(payloadAll, zmq.NOBLOCK)
 
                 # send data to onda
                 if socketDict.has_key("onda"):
@@ -405,7 +415,7 @@ class WorkerProcess():
                 fileDescriptor.close()
 #                print "sending file: ", sourceFilePathFull, "done"
 
-                # self.zmqDataStreamSocket.send_multipart(multipartMessage)
+                # self.liveViewerSocket.send_multipart(multipartMessage)
                 self.log.debug("Passing multipart-message for file " + str(sourceFilePathFull) + "...done.")
             except zmq.error.Again:
                 self.log.error("unable to send multiplart-message for file " + str(sourceFilePathFull))
@@ -492,8 +502,8 @@ class WorkerProcess():
         self.log.debug("Sending stop signal to cleaner from worker-" + str(self.id))
         self.cleanerSocket.send("STOP")        #no communication needed because cleaner detects KeyboardInterrupt signals
         self.log.debug("Closing sockets for worker " + str(self.id))
-        if self.zmqDataStreamSocket:
-            self.zmqDataStreamSocket.close(0)
+        if self.liveViewerSocket:
+            self.liveViewerSocket.close(0)
         self.ondaComSocket.close(0)
         self.routerSocket.close(0)
         self.cleanerSocket.close(0)

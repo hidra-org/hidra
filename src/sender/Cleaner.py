@@ -41,14 +41,18 @@ class Cleaner():
     externalContext      = None    # if the context was created outside this class or not
     zmqCleanerSocket     = None
 
+    useDataStream       = True      # boolian to inform if the data should be send to the data stream pipe (to the storage system)
+
     # to get the logging only handling this class
     log                  = None
 
-    def __init__(self, targetPath, bindingIp="127.0.0.1", bindingPort="6062", context = None, verbose=False):
+    def __init__(self, targetPath, bindingIp="127.0.0.1", bindingPort="6062", useDataStream = True, context = None, verbose=False):
         self.bindingPortForSocket = bindingPort
         self.bindingIpForSocket   = bindingIp
         self.senderComIp          = self.bindingIpForSocket
         self.targetPath           = targetPath
+
+        self.useDataStream       = useDataStream
 
         if context:
             self.zmqContextForCleaner = context
@@ -150,9 +154,10 @@ class Cleaner():
                 continue
 
             try:
-                self.log.debug("Moving source file...")
-                self.moveFile(sourcePath, filename, targetFullPath)
-#                    self.removeFile(sourceFullpath)
+                if self.useDataStream:
+                    self.removeFile(sourceFullPath)
+                else:
+                    self.moveFile(sourcePath, filename, targetFullPath)
 
                 # #show filesystem statistics
                 # try:
@@ -160,8 +165,6 @@ class Cleaner():
                 # except Exception, f:
                 #     logging.warning("Unable to get filesystem statistics")
                 #     logging.debug("Error was: " + str(f))
-                self.log.debug("File moved: " + str(sourceFullPath))
-                self.log.debug("Moving source file...success.")
 
             except Exception, e:
                 self.log.error("Unable to move source file: " + str (sourceFullPath) )
@@ -268,7 +271,7 @@ class Cleaner():
             try:
                 os.remove(filepath)
                 fileWasRemoved = True
-                self.log.debug("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...success.")
+                self.log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...success.")
             except Exception, e:
                 trace = traceback.format_exc()
                 warningMessage = "Unable to remove file {FILE}.".format(FILE=str(filepath))
@@ -277,7 +280,7 @@ class Cleaner():
                 self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
         if not fileWasRemoved:
-            self.log.debug("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            self.log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
             raise Exception("maxAttemptsToRemoveFile reached (value={ATTEMPT}). Unable to remove file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filepath))
 
 

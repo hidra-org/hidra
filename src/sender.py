@@ -21,7 +21,7 @@ from sender.DirectoryWatcher import DirectoryWatcher
 from sender.FileMover import FileMover
 from sender.Cleaner import Cleaner
 
-from config import defaultConfigSender
+from senderConf import defaultConfig
 
 
 class Sender():
@@ -43,6 +43,10 @@ class Sender():
     zmqCleanerPort      = None
     cleanerComPort      = None
     receiverComPort     = None
+    liveViewerIp        = None
+    liveViewerPort      = None
+    ondaIps             = None
+    ondaPorts           = None
     receiverWhiteList   = None
 
     parallelDataStreams = None
@@ -51,7 +55,7 @@ class Sender():
     zmqContext          = None
 
     def __init__(self, verbose = True):
-        defConf                  = defaultConfigSender()
+        defConf                  = defaultConfig()
 
         self.logfilePath         = defConf.logfilePath
         self.logfileName         = defConf.logfileName
@@ -64,12 +68,15 @@ class Sender():
         self.fileEventIp         = defConf.fileEventIp
         self.fileEventPort       = defConf.fileEventPort
 
+        self.useDataStream       = defConf.useDataStream
         self.dataStreamIp        = defConf.dataStreamIp
         self.dataStreamPort      = defConf.dataStreamPort
         self.cleanerTargetPath   = defConf.cleanerTargetPath
         self.cleanerIp           = defConf.cleanerIp
         self.cleanerPort         = defConf.cleanerPort
         self.receiverComPort     = defConf.receiverComPort
+        self.liveViewerIp        = defConf.liveViewerIp
+        self.liveViewerPort      = defConf.liveViewerPort
         self.ondaIps             = defConf.ondaIps
         self.ondaPorts           = defConf.ondaPorts
         self.receiverWhiteList   = defConf.receiverWhiteList
@@ -98,7 +105,7 @@ class Sender():
         logging.debug("start watcher process...done")
 
         logging.debug("start cleaner process...")
-        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.zmqContext))
+        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.useDataStream, self.zmqContext))
         logging.debug("cleaner process registered")
         cleanerProcess.start()
         logging.debug("start cleaner process...done")
@@ -109,7 +116,9 @@ class Sender():
                               self.receiverComPort, self.receiverWhiteList,
                               self.parallelDataStreams, self.chunkSize,
                               self.cleanerIp, self.cleanerPort,
+                              self.liveViewerIp, self.liveViewerPort,
                               self.ondaIps, self.ondaPorts,
+                              self.useDataStream,
                               self.zmqContext)
         try:
             fileMover.process()

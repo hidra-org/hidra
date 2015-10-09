@@ -41,7 +41,7 @@ class FileReceiver:
 #    print socket.gethostbyname(socket.gethostname())
 
 
-    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, senderComPort,
+    def __init__(self, outputDir, zmqDataStreamIp, zmqDataStreamPort, zmqLiveViewerPort, zmqLiveViewerIp, senderComPort,
                  maxRingBuffersize, senderResponseTimeout = 1000, context = None):
 
         self.outputDir             = outputDir

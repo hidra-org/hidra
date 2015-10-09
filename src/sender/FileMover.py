@@ -22,6 +22,8 @@ class FileMover():
     cleanerPort         = None      # zmq pull endpoint, responsable to delete/move files
     receiverComIp       = None      # ip for socket to communicate with receiver
     receiverComPort     = None      # port for socket to communicate receiver
+    liveViewer          = None
+    liveViewerPort      = None
     ondaIps             = []
     ondaPorts           = []
     receiverWhiteList   = None
@@ -33,6 +35,7 @@ class FileMover():
     receiverComSocket   = None      # to exchange messages with the receiver
     routerSocket        = None
 
+    useDataStream       = True      # boolian to inform if the data should be send to the data stream pipe (to the storage system)
     useLiveViewer       = False     # boolian to inform if the receiver for the live viewer is running
 
     # to get the logging only handling this class
@@ -43,7 +46,9 @@ class FileMover():
                  receiverComPort, receiverWhiteList,
                  parallelDataStreams, chunkSize,
                  cleanerIp, cleanerPort,
+                 liveViewerIp, liveViewerPort,
                  ondaIps, ondaPorts,
+                 useDataStream = True,
                  context = None):
 
 #        assert isinstance(context, zmq.sugar.context.Context)
@@ -57,8 +62,12 @@ class FileMover():
         self.cleanerPort         = cleanerPort
         self.receiverComIp       = dataStreamIp         # ip for socket to communicate with receiver; is the same ip as the data stream ip
         self.receiverComPort     = receiverComPort
+        self.liveViewerIp        = liveViewerIp
+        self.liveViewerPort      = liveViewerPort
         self.ondaIps             = ondaIps
         self.ondaPorts           = ondaPorts
+
+        self.useDataStream       = useDataStream
 
         #remove .desy.de from hostnames
         self.receiverWhiteList = []
@@ -85,9 +94,8 @@ class FileMover():
         # create zmq socket for communitation with receiver
         self.receiverComSocket         = self.zmqContext.socket(zmq.REP)
         connectionStrReceiverComSocket = "tcp://{ip}:{port}".format(ip=self.receiverComIp, port=self.receiverComPort)
-        print "connectionStrReceiverComSocket", connectionStrReceiverComSocket
         self.receiverComSocket.bind(connectionStrReceiverComSocket)
-        self.log.debug("receiverComSocket started (bind) for '" + connectionStrReceiverComSocket + "'")
+        self.log.info("receiverComSocket started (bind) for '" + connectionStrReceiverComSocket + "'")
 
         # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
         self.poller = zmq.Poller()
@@ -139,8 +147,11 @@ class FileMover():
                                                                   self.chunkSize,
                                                                   self.cleanerIp,
                                                                   self.cleanerPort,
+                                                                  self.liveViewerIp,
+                                                                  self.liveViewerPort,
                                                                   self.ondaIps[processNumber],
-                                                                  self.ondaPorts[processNumber]
+                                                                  self.ondaPorts[processNumber],
+                                                                  self.useDataStream
                                                                   ))
             workerProcessList.append(newWorkerProcess)
 
