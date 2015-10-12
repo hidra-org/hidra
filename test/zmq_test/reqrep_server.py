@@ -3,8 +3,8 @@ import time
 import sys
 
 port = "5556"
-#ip = "*"
-ip="zitpcx19282.desy.de"
+ip = "*"
+#ip="zitpcx19282.desy.de"
 
 context = zmq.Context()
 socket = context.socket(zmq.REP)

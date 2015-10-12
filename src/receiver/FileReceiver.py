@@ -41,10 +41,10 @@ class FileReceiver:
 
         # create pull socket
         self.zmqDataStreamSocket = self.zmqContext.socket(zmq.PULL)
-        connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
-        print "connectionStrDataStreamSocket", connectionStrDataStreamSocket
-        self.zmqDataStreamSocket.bind(connectionStrDataStreamSocket)
-        self.log.debug("zmqDataStreamSocket started (connect) for '" + connectionStrDataStreamSocket + "'")
+        connectionStr            = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
+        print "connectionStr", connectionStr
+        self.zmqDataStreamSocket.bind(connectionStr)
+        self.log.debug("zmqDataStreamSocket started (bind) for '" + connectionStr + "'")
 
         try:
             self.log.info("Start receiving new files")

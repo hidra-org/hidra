@@ -241,7 +241,6 @@ class WorkerProcess():
                 if self.ondaComSocket in socks and socks[self.ondaComSocket] == zmq.POLLIN:
                     ondaWorkload = self.ondaComSocket.recv()
                     self.log.debug("worker-"+str(self.id)+": received new request from onda")
-#                    print "ondaWorkload", ondaWorkload
                     request = ondaWorkload == b"NEXT_FILE"
                     if request:
                         self.requestFromOnda = True
@@ -368,7 +367,6 @@ class WorkerProcess():
             #send message
             try:
                 self.log.debug("Passing multipart-message for file " + str(sourceFilePathFull) + "...")
-#                print "sending file: ", sourceFilePathFull
                 chunkNumber = 0
                 stillChunksToRead = True
                 payloadAll = []
@@ -398,7 +396,16 @@ class WorkerProcess():
 
                     # send data to the data stream to store it in the storage system
                     if self.useDataStream:
-                        self.dataStreamSocket.send_multipart(chunkPayload)
+                        print "Sending data to data stream..."
+
+                        tracker = self.dataStreamSocket.send_multipart(chunkPayload, copy=False, track=True)
+
+                        if not tracker.done:
+                            self.log.info("Message part from file " + str(sourceFilePathFull) + " has not been sent yet, waiting ...")
+                            tracker.wait()
+                            self.log.info("Message part from file " + str(sourceFilePathFull) + " has not been sent yet, waiting ...done")
+
+                        print "Sending data to data stream...done"
 
                     #send data to the live viewer
                     if socketDict.has_key("liveViewer"):
@@ -411,7 +418,6 @@ class WorkerProcess():
 
                 #close file
                 fileDescriptor.close()
-#                print "sending file: ", sourceFilePathFull, "done"
 
                 # self.liveViewerSocket.send_multipart(multipartMessage)
                 self.log.debug("Passing multipart-message for file " + str(sourceFilePathFull) + "...done.")
@@ -500,6 +506,7 @@ class WorkerProcess():
         self.log.debug("Sending stop signal to cleaner from worker-" + str(self.id))
         self.cleanerSocket.send("STOP")        #no communication needed because cleaner detects KeyboardInterrupt signals
         self.log.debug("Closing sockets for worker " + str(self.id))
+        self.dataStreamSocket.close(0)
         if self.liveViewerSocket:
             self.liveViewerSocket.close(0)
         self.ondaComSocket.close(0)
