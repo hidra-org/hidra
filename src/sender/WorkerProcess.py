@@ -218,8 +218,7 @@ class WorkerProcess():
                 relativePath = None
 
             # dict with all sockets to send data to (additionally to the dataStreamSocket)
-            socketListToSendData = {"dataStream": self.dataStreamSocket}
-#            socketListToSendData = dict()
+            socketListToSendData = dict()
 
             if self.useLiveViewer:
                 #passing file to data-messagPipe
@@ -271,8 +270,6 @@ class WorkerProcess():
 		        continue
 
 
-
-
             return_value = self.passFileToDataStream(filename, sourcePath, relativePath, socketListToSendData)
 
             #send remove-request to message pipe
@@ -319,7 +316,7 @@ class WorkerProcess():
 
 
     def passFileToDataStream(self, filename, sourcePath, relativePath, socketDict):
-        if socketDict:
+        if self.useDataStream or socketDict:
             """filesizeRequested == filesize submitted by file-event. In theory it can differ to real file size"""
 
             # filename = "img.tiff"
@@ -400,7 +397,8 @@ class WorkerProcess():
                         payloadAll.append(fileContentAsByteObject)
 
                     # send data to the data stream to store it in the storage system
-                    socketDict["dataStream"].send_multipart(chunkPayload, zmq.NOBLOCK)
+                    if self.useDataStream:
+                        self.dataStreamSocket.send_multipart(chunkPayload)
 
                     #send data to the live viewer
                     if socketDict.has_key("liveViewer"):

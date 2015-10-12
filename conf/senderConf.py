@@ -44,7 +44,7 @@ class defaultConfig():
 #    receiverWhiteList   = ["zitpcx19282"]
     receiverWhiteList   = ["zitpcx19282", "zitpcx22614", "lsdma-lab04" , "haspp11eval01" , "it-hpc-cxi04", "it-hpc-cxi03" ]
 
-    useDataStream       = False
+    useDataStream       = True
 
     # zmq endpoint (IP-address) to send file events to
     fileEventIp         = LOCAL_IP
