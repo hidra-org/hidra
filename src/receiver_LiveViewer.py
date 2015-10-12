@@ -35,12 +35,17 @@ def argumentParsing():
     parser.add_argument("--senderResponseTimeout", type=int, default=defConf.senderResponseTimeout, help=argparse.SUPPRESS)
     parser.add_argument("--verbose"              ,           action="store_true"                  , help="more verbose output")
 
-    arguments = parser.parse_args()
+    arguments   = parser.parse_args()
 
-    targetDir = str(arguments.targetDir)
+    targetDir   = str(arguments.targetDir)
+    logfilePath = str(arguments.logfilePath)
+    logfileName = str(arguments.logfileName)
 
     # check target directory for existance
     helperScript.checkFolderExistance(targetDir)
+
+    # check if logfile is writable
+    helperScript.checkLogFileWritable(logfilePath, logfileName)
 
     return arguments
 
@@ -61,23 +66,23 @@ class ReceiverLiveViewer():
     maxRingBufferSize     = None
     senderResponseTimeout = None
 
-    def __init__(self, verbose):
-        defConf = defaultConfig()
+    def __init__(self):
+        arguments = argumentParsing()
 
-        self.logfilePath           = defConf.logfilePath
-        self.logfileName           = defConf.logfileName
+        self.logfilePath           = arguments.logfilePath
+        self.logfileName           = arguments.logfileName
         self.logfileFullPath       = os.path.join(self.logfilePath, self.logfileName)
-        self.verbose               = verbose
+        self.verbose               = arguments.verbose
 
-        self.targetDir             = defConf.targetDir
-        self.zmqDataStreamIp       = defConf.dataStreamIp
-        self.zmqDataStreamPort     = defConf.dataStreamPort
+        self.targetDir             = arguments.targetDir
+        self.zmqDataStreamIp       = arguments.dataStreamIp
+        self.zmqDataStreamPort     = arguments.dataStreamPort
 
-        self.zmqLiveViewerIp       = defConf.liveViewerIp
-        self.zmqLiveViewerPort     = defConf.liveViewerPort
-        self.senderComPort         = defConf.senderComPort
-        self.maxRingBufferSize     = defConf.maxRingBufferSize
-        self.senderResponseTimeout = defConf.senderResponseTimeout
+        self.zmqLiveViewerIp       = arguments.liveViewerIp
+        self.zmqLiveViewerPort     = arguments.liveViewerPort
+        self.senderComPort         = arguments.senderComPort
+        self.maxRingBufferSize     = arguments.maxRingBufferSize
+        self.senderResponseTimeout = arguments.senderResponseTimeout
 
 
         #enable logging
@@ -89,9 +94,4 @@ class ReceiverLiveViewer():
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--verbose", action="store_true", help="more verbose output")
-    arguments = parser.parse_args()
-
-    receiver = ReceiverLiveViewer(arguments.verbose)
+    receiver = ReceiverLiveViewer()
