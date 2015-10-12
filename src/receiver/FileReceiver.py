@@ -43,7 +43,7 @@ class FileReceiver:
         self.zmqDataStreamSocket = self.zmqContext.socket(zmq.PULL)
         connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
         print "connectionStrDataStreamSocket", connectionStrDataStreamSocket
-        self.zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
+        self.zmqDataStreamSocket.bind(connectionStrDataStreamSocket)
         self.log.debug("zmqDataStreamSocket started (connect) for '" + connectionStrDataStreamSocket + "'")
 
         try:
@@ -110,7 +110,6 @@ class FileReceiver:
                 break
         filename            = self.generateTargetFilepath(payloadMetadataDict)
         fileModTime         = payloadMetadataDict["fileModificationTime"]
-        print "receiving multipart message from data pipe: ", filename
         self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
 
 

@@ -74,6 +74,7 @@ class Sender():
         self.cleanerTargetPath   = defConf.cleanerTargetPath
         self.cleanerIp           = defConf.cleanerIp
         self.cleanerPort         = defConf.cleanerPort
+        self.receiverComIp       = defConf.receiverComIp
         self.receiverComPort     = defConf.receiverComPort
         self.liveViewerIp        = defConf.liveViewerIp
         self.liveViewerPort      = defConf.liveViewerPort
@@ -113,7 +114,7 @@ class Sender():
 
         #start new fileMover
         fileMover = FileMover(self.fileEventIp, self.fileEventPort, self.dataStreamIp, self.dataStreamPort,
-                              self.receiverComPort, self.receiverWhiteList,
+                              self.receiverComIp, self.receiverComPort, self.receiverWhiteList,
                               self.parallelDataStreams, self.chunkSize,
                               self.cleanerIp, self.cleanerPort,
                               self.liveViewerIp, self.liveViewerPort,

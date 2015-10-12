@@ -43,7 +43,7 @@ class FileMover():
 
 
     def __init__(self, fileEventIp, fileEventPort, dataStreamIp, dataStreamPort,
-                 receiverComPort, receiverWhiteList,
+                 receiverComIp, receiverComPort, receiverWhiteList,
                  parallelDataStreams, chunkSize,
                  cleanerIp, cleanerPort,
                  liveViewerIp, liveViewerPort,
@@ -60,7 +60,7 @@ class FileMover():
         self.dataStreamPort      = dataStreamPort
         self.cleanerIp           = cleanerIp
         self.cleanerPort         = cleanerPort
-        self.receiverComIp       = dataStreamIp         # ip for socket to communicate with receiver; is the same ip as the data stream ip
+        self.receiverComIp       = receiverComIp         # ip for socket to communicate with receiver;
         self.receiverComPort     = receiverComPort
         self.liveViewerIp        = liveViewerIp
         self.liveViewerPort      = liveViewerPort
@@ -85,17 +85,18 @@ class FileMover():
         self.log.debug("Init")
 
         # create zmq socket for incoming file events
-        self.fileEventSocket         = self.zmqContext.socket(zmq.PULL)
-        connectionStrFileEventSocket = "tcp://{ip}:{port}".format(ip=self.fileEventIp, port=self.fileEventPort)
-        self.fileEventSocket.bind(connectionStrFileEventSocket)
-        self.log.debug("fileEventSocket started (bind) for '" + connectionStrFileEventSocket + "'")
+        self.fileEventSocket = self.zmqContext.socket(zmq.PULL)
+        connectionStr        = "tcp://{ip}:{port}".format(ip=self.fileEventIp, port=self.fileEventPort)
+        print connectionStr
+        self.fileEventSocket.bind(connectionStr)
+        self.log.debug("fileEventSocket started (bind) for '" + connectionStr + "'")
 
 
         # create zmq socket for communitation with receiver
-        self.receiverComSocket         = self.zmqContext.socket(zmq.REP)
-        connectionStrReceiverComSocket = "tcp://{ip}:{port}".format(ip=self.receiverComIp, port=self.receiverComPort)
-        self.receiverComSocket.bind(connectionStrReceiverComSocket)
-        self.log.info("receiverComSocket started (bind) for '" + connectionStrReceiverComSocket + "'")
+        self.receiverComSocket = self.zmqContext.socket(zmq.REP)
+        connectionStr          = "tcp://{ip}:{port}".format(ip=self.receiverComIp, port=self.receiverComPort)
+        self.receiverComSocket.bind(connectionStr)
+        self.log.info("receiverComSocket started (bind) for '" + connectionStr + "'")
 
         # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
         self.poller = zmq.Poller()
@@ -107,10 +108,10 @@ class FileMover():
         routerIp   = "127.0.0.1"
         routerPort = "50000"
 
-        self.routerSocket         = self.zmqContext.socket(zmq.ROUTER)
-        connectionStrRouterSocket = "tcp://{ip}:{port}".format(ip=routerIp, port=routerPort)
-        self.routerSocket.bind(connectionStrRouterSocket)
-        self.log.debug("routerSocket started (bind) for '" + connectionStrRouterSocket + "'")
+        self.routerSocket = self.zmqContext.socket(zmq.ROUTER)
+        connectionStr     = "tcp://{ip}:{port}".format(ip=routerIp, port=routerPort)
+        self.routerSocket.bind(connectionStr)
+        self.log.debug("routerSocket started (bind) for '" + connectionStr + "'")
 
 
     def process(self):

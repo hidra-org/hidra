@@ -27,8 +27,7 @@ class defaultConfig():
     # local ip to connect dataStream to
 #    dataStreamIp          = LOCAL_IP
 #    dataStreamIp          = "131.169.55.170"      # lsdma-lab04.desy.de
-#    dataStreamIp          = "131.169.185.121"     # zitpcx19282.desy.de
-    dataStreamIp          = "127.0.0.1"
+    dataStreamIp          = "131.169.185.121"     # zitpcx19282.desy.de
     # tcp port of data pipe"
     dataStreamPort        = "6061"
 

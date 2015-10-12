@@ -11,6 +11,7 @@ import shared.helperScript as helperScript
 
 #LOCAL_IP    = "0.0.0.0"
 LOCAL_IP    = "127.0.0.1"
+#LOCAL_IP    = "zitpcx19282.desy.de"
 #LOCAL_IP    = "131.169.66.47"
 
 BASE_PATH = "/space/projects/live-viewer"
@@ -52,14 +53,17 @@ class defaultConfig():
     fileEventPort       = "6060"
     # ip of dataStream-socket to push new files to
 #    dataStreamIp        = LOCAL_IP
-    dataStreamIp        = "0.0.0.0"
+#    dataStreamIp        = "0.0.0.0"
+    dataStreamIp        = "zitpcx19282.desy.de"
     # port number of dataStream-socket to push new files to
     dataStreamPort      = "6061"
     # zmq-pull-socket ip which deletes/moves given files
     cleanerIp           = LOCAL_IP
     # zmq-pull-socket port which deletes/moves given files
     cleanerPort         = "6062"
-    # port number of dataStream-socket to receive signals from the receiver
+    # ip receive signals from the receiver
+    receiverComIp       = LOCAL_IP
+    # port number to receive signals from the receiver
     receiverComPort     = "6080"
     # ip of liveViewer-socket to send new files to
     liveViewerIp        = LOCAL_IP
@@ -67,7 +71,8 @@ class defaultConfig():
     liveViewerPort      = "6070"
     # ports and ips to communicate with onda/realtime analysis
     # there needs to be one entry for each workerProcess (meaning streams)
-    ondaIps             = ["0.0.0.0"]
+    ondaIps             = [LOCAL_IP]
+#    ondaIps             = ["0.0.0.0"]
     ondaPorts           = ["6081"]
 
     # chunk size of file-parts getting send via zmq
