@@ -24,6 +24,55 @@ from sender.Cleaner import Cleaner
 from senderConf import defaultConfig
 
 
+def argumentParsing():
+    defConf = defaultConfig()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--logfilePath"          , type=str, default=defConf.logfilePath          , help="path where logfile will be created (default=" + str(defConf.logfilePath) + ")")
+    parser.add_argument("--logfileName"          , type=str, default=defConf.logfileName          , help="filename used for logging (default=" + str(defConf.logfileName) + ")")
+    parser.add_argument("--verbose"              ,           action="store_true"                  , help="more verbose output")
+
+    parser.add_argument("--watchFolder"          , type=str, default=defConf.watchFolder          , help="(default=" + str(defConf.watchFolder) + ")")
+    parser.add_argument("--monitoredSubfolders"  , type=str, default=defConf.monitoredSubfolders  , help="(default=" + str(defConf.monitoredSubfolders) + ")")
+    parser.add_argument("--monitoredFormats"     , type=str, default=defConf.monitoredFormats     , help="(default=" + str(defConf.monitoredFormats) + ")")
+    parser.add_argument("--fileEventIp"          , type=str, default=defConf.fileEventIp          , help="(default=" + str(defConf.fileEventIp) + ")")
+    parser.add_argument("--fileEventPort"        , type=str, default=defConf.fileEventPort        , help="(default=" + str(defConf.fileEventPort) + ")")
+
+    parser.add_argument("--useDataStream"        , type=str, default=defConf.useDataStream        , help="(default=" + str(defConf.useDataStream) + ")")
+    parser.add_argument("--dataStreamIp"         , type=str, default=defConf.dataStreamIp         , help="(default=" + str(defConf.dataStreamIp) + ")")
+    parser.add_argument("--dataStreamPort"       , type=str, default=defConf.dataStreamPort       , help="(default=" + str(defConf.dataStreamPort) + ")")
+    parser.add_argument("--cleanerTargetPath"    , type=str, default=defConf.cleanerTargetPath    , help="(default=" + str(defConf.cleanerTargetPath) + ")")
+    parser.add_argument("--cleanerIp"            , type=str, default=defConf.cleanerIp            , help="(default=" + str(defConf.cleanerIp) + ")")
+    parser.add_argument("--cleanerPort"          , type=str, default=defConf.cleanerPort          , help="(default=" + str(defConf.cleanerPort) + ")")
+    parser.add_argument("--receiverComIp"        , type=str, default=defConf.receiverComIp        , help="(default=" + str(defConf.receiverComIp) + ")")
+    parser.add_argument("--receiverComPort"      , type=str, default=defConf.receiverComPort      , help="(default=" + str(defConf.receiverComPort) + ")")
+    parser.add_argument("--liveViewerIp"         , type=str, default=defConf.liveViewerIp         , help="(default=" + str(defConf.liveViewerIp) + ")")
+    parser.add_argument("--liveViewerPort"       , type=str, default=defConf.liveViewerPort       , help="(default=" + str(defConf.liveViewerPort) + ")")
+    parser.add_argument("--ondaIps"              , type=str, default=defConf.ondaIps              , help="(default=" + str(defConf.ondaIps) + ")")
+    parser.add_argument("--ondaPorts"            , type=str, default=defConf.ondaPorts            , help="(default=" + str(defConf.ondaPorts) + ")")
+    parser.add_argument("--receiverWhiteList"    , type=str, default=defConf.receiverWhiteList    , help="(default=" + str(defConf.receiverWhiteList) + ")")
+
+    parser.add_argument("--parallelDataStreams"  , type=str, default=defConf.parallelDataStreams  , help="(default=" + str(defConf.parallelDataStreams) + ")")
+    parser.add_argument("--chunkSize"            , type=str, default=defConf.chunkSize            , help="(default=" + str(defConf.chunkSize) + ")")
+
+    arguments         = parser.parse_args()
+
+    logfilePath       = str(arguments.logfilePath)
+    logfileName       = str(arguments.logfileName)
+    watchFolder       = str(arguments.watchFolder)
+    cleanerTargetPath = str(arguments.cleanerTargetPath)
+
+    # check if folders exists
+    helperScript.checkFolderExistance(logfilePath)
+    helperScript.checkFolderExistance(watchFolder)
+    helperScript.checkFolderExistance(cleanerTargetPath)
+
+    # check if logfile is writable
+    helperScript.checkLogFileWritable(logfilePath, logfileName)
+
+    return arguments
+
+
 class Sender():
     logfilePath         = None
     logfileName         = None
@@ -54,36 +103,37 @@ class Sender():
 
     zmqContext          = None
 
-    def __init__(self, verbose = True):
-        defConf                  = defaultConfig()
+    def __init__(self):
+#        defConf                  = defaultConfig()
+        arguments = argumentParsing()
 
-        self.logfilePath         = defConf.logfilePath
-        self.logfileName         = defConf.logfileName
+        self.logfilePath         = arguments.logfilePath
+        self.logfileName         = arguments.logfileName
         self.logfileFullPath     = os.path.join(self.logfilePath, self.logfileName)
-        self.verbose             = verbose
+        self.verbose             = arguments.verbose
 
-        self.watchFolder         = defConf.watchFolder
-        self.monitoredSubfolders = defConf.monitoredSubfolders
-        self.monitoredFormats    = defConf.monitoredFormats
-        self.fileEventIp         = defConf.fileEventIp
-        self.fileEventPort       = defConf.fileEventPort
+        self.watchFolder         = arguments.watchFolder
+        self.monitoredSubfolders = arguments.monitoredSubfolders
+        self.monitoredFormats    = arguments.monitoredFormats
+        self.fileEventIp         = arguments.fileEventIp
+        self.fileEventPort       = arguments.fileEventPort
 
-        self.useDataStream       = defConf.useDataStream
-        self.dataStreamIp        = defConf.dataStreamIp
-        self.dataStreamPort      = defConf.dataStreamPort
-        self.cleanerTargetPath   = defConf.cleanerTargetPath
-        self.cleanerIp           = defConf.cleanerIp
-        self.cleanerPort         = defConf.cleanerPort
-        self.receiverComIp       = defConf.receiverComIp
-        self.receiverComPort     = defConf.receiverComPort
-        self.liveViewerIp        = defConf.liveViewerIp
-        self.liveViewerPort      = defConf.liveViewerPort
-        self.ondaIps             = defConf.ondaIps
-        self.ondaPorts           = defConf.ondaPorts
-        self.receiverWhiteList   = defConf.receiverWhiteList
+        self.useDataStream       = arguments.useDataStream
+        self.dataStreamIp        = arguments.dataStreamIp
+        self.dataStreamPort      = arguments.dataStreamPort
+        self.cleanerTargetPath   = arguments.cleanerTargetPath
+        self.cleanerIp           = arguments.cleanerIp
+        self.cleanerPort         = arguments.cleanerPort
+        self.receiverComIp       = arguments.receiverComIp
+        self.receiverComPort     = arguments.receiverComPort
+        self.liveViewerIp        = arguments.liveViewerIp
+        self.liveViewerPort      = arguments.liveViewerPort
+        self.ondaIps             = arguments.ondaIps
+        self.ondaPorts           = arguments.ondaPorts
+        self.receiverWhiteList   = arguments.receiverWhiteList
 
-        self.parallelDataStreams = defConf.parallelDataStreams
-        self.chunkSize           = defConf.chunkSize
+        self.parallelDataStreams = arguments.parallelDataStreams
+        self.chunkSize           = arguments.chunkSize
 
         #enable logging
         helperScript.initLogging(self.logfileFullPath, self.verbose)
@@ -152,9 +202,4 @@ class Sender():
 
 if __name__ == '__main__':
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--verbose", action="store_true", help="more verbose output")
-    arguments = parser.parse_args()
-
-    sender = Sender(arguments.verbose)
+    sender = Sender()
