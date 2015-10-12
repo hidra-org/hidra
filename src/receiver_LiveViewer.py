@@ -5,35 +5,58 @@ import sys
 import argparse
 import logging
 import os
-
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
-#ZEROMQ_PATH = BASE_PATH + os.sep + "src" + os.sep + "ZeroMQTunnel"
-CONFIG_PATH = BASE_PATH + os.sep + "conf"
-
-#sys.path.append ( ZEROMQ_PATH )
-sys.path.append ( CONFIG_PATH )
+import ConfigParser
 
 import shared.helperScript as helperScript
 from receiver_LiveViewer.FileReceiver import FileReceiver
 
-from receiverLiveViewerConf import defaultConfig
+BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
+CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
 
 def argumentParsing():
-    defConf = defaultConfig()
+    configFile = CONFIG_PATH + os.sep + "receiverLiveViewer.conf"
+
+    config = ConfigParser.RawConfigParser()
+    config.readfp(helperScript.FakeSecHead(open(configFile)))
+
+
+    logfilePath           = config.get('asection', 'logfilePath')
+    logfileName           = config.get('asection', 'logfileName')
+    targetDir             = config.get('asection', 'targetDir')
+    dataStreamIp          = config.get('asection', 'dataStreamIp')
+    dataStreamPort        = config.get('asection', 'dataStreamPort')
+    liveViewerIp          = config.get('asection', 'liveViewerIp')
+    liveViewerPort        = config.get('asection', 'liveViewerPort')
+    senderComPort         = config.get('asection', 'senderComPort')
+    maxRingBufferSize     = config.get('asection', 'maxRingBufferSize')
+    senderResponseTimeout = config.get('asection', 'senderResponseTimeout')
+
+
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--logfilePath"          , type=str, default=defConf.logfilePath          , help="path where logfile will be created (default=" + str(defConf.logfilePath) + ")")
-    parser.add_argument("--logfileName"          , type=str, default=defConf.logfileName          , help="filename used for logging (default=" + str(defConf.logfileName) + ")")
-    parser.add_argument("--targetDir"            , type=str, default=defConf.targetDir            , help="where incoming data will be stored to (default=" + str(defConf.targetDir) + ")")
-    parser.add_argument("--dataStreamIp"         , type=str, default=defConf.dataStreamIp         , help="ip of dataStream-socket to pull new files from (default=" + str(defConf.dataStreamIp) + ")")
-    parser.add_argument("--dataStreamPort"       , type=str, default=defConf.dataStreamPort       , help="port number of dataStream-socket to pull new files from (default=" + str(defConf.dataStreamPort) + ")")
-    parser.add_argument("--liveViewerIp"         , type=str, default=defConf.liveViewerIp         , help="local ip to bind LiveViewer to (default=" + str(defConf.liveViewerIp) + ")")
-    parser.add_argument("--liveViewerPort"       , type=str, default=defConf.liveViewerPort       , help="tcp port of live viewer (default=" + str(defConf.liveViewerPort) + ")")
-    parser.add_argument("--senderComPort"        , type=str, default=defConf.senderComPort        , help="port number of dataStream-socket to send signals back to the sender (default=" + str(defConf.senderComPort) + ")")
-    parser.add_argument("--maxRingBufferSize"    , type=int, default=defConf.maxRingBufferSize    , help="size of the ring buffer for the live viewer (default=" + str(defConf.maxRingBufferSize) + ")")
-    parser.add_argument("--senderResponseTimeout", type=int, default=defConf.senderResponseTimeout, help=argparse.SUPPRESS)
-    parser.add_argument("--verbose"              ,           action="store_true"                  , help="more verbose output")
+    parser.add_argument("--logfilePath"          , type=str, default=logfilePath,
+                                                   help="path where logfile will be created (default=" + str(logfilePath) + ")")
+    parser.add_argument("--logfileName"          , type=str, default=logfileName,
+                                                   help="filename used for logging (default=" + str(logfileName) + ")")
+    parser.add_argument("--targetDir"            , type=str, default=targetDir,
+                                                   help="where incoming data will be stored to (default=" + str(targetDir) + ")")
+    parser.add_argument("--dataStreamIp"         , type=str, default=dataStreamIp,
+                                                   help="ip of dataStream-socket to pull new files from (default=" + str(dataStreamIp) + ")")
+    parser.add_argument("--dataStreamPort"       , type=str, default=dataStreamPort,
+                                                   help="port number of dataStream-socket to pull new files from (default=" + str(dataStreamPort) + ")")
+    parser.add_argument("--liveViewerIp"         , type=str, default=liveViewerIp,
+                                                   help="local ip to bind LiveViewer to (default=" + str(liveViewerIp) + ")")
+    parser.add_argument("--liveViewerPort"       , type=str, default=liveViewerPort,
+                                                   help="tcp port of live viewer (default=" + str(liveViewerPort) + ")")
+    parser.add_argument("--senderComPort"        , type=str, default=senderComPort,
+                                                   help="port number of dataStream-socket to send signals back to the sender (default=" + str(senderComPort) + ")")
+    parser.add_argument("--maxRingBufferSize"    , type=int, default=maxRingBufferSize,
+                                                   help="size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")")
+    parser.add_argument("--senderResponseTimeout", type=int, default=senderResponseTimeout,
+                                                   help=argparse.SUPPRESS)
+    parser.add_argument("--verbose"              , action="store_true",
+                                                   help="more verbose output")
 
     arguments   = parser.parse_args()
 
