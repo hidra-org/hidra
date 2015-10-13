@@ -45,11 +45,12 @@ class defaultConfig():
 #    receiverWhiteList   = ["zitpcx19282"]
     receiverWhiteList   = ["zitpcx19282", "zitpcx22614", "lsdma-lab04" , "haspp11eval01" , "it-hpc-cxi04", "it-hpc-cxi03" ]
 
+    # enable ZMQ pipe into storage system (if set to false: the file is moved into the cleanerTargetPath)
     useDataStream       = True
 
-    # zmq endpoint (IP-address) to send file events to
+    # zmq endpoint (IP-address) to send file events to for the live viewer
     fileEventIp         = LOCAL_IP
-    # zmq endpoint (port) to send file events to
+    # zmq endpoint (port) to send file events to for the live viewer
     fileEventPort       = "6060"
     # ip of dataStream-socket to push new files to
 #    dataStreamIp        = LOCAL_IP
@@ -86,7 +87,7 @@ class defaultConfig():
 #    elif helperScript.isLinux():
 #        logfilePath = BASE_PATH + "/logs"
 
-    # path where logfile will be created
+    # path where the logfile will be created
 #    logfilePath         = "/home/p11user/logs"
     logfilePath = BASE_PATH + "/logs"
 

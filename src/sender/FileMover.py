@@ -203,6 +203,8 @@ class FileMover():
 
                     if signalHostname.endswith(".desy.de"):
                         signalHostnameModified = signalHostname[:-8]
+                    else:
+                        signalHostnameModified = signalHostname
 
                     self.log.debug("Check if signal sending host is in WhiteList...")
                     if signalHostname in self.receiverWhiteList or signalHostnameModified in self.receiverWhiteList:

@@ -97,7 +97,7 @@ class Coordinator:
                 message = self.receiverExchangeSocket.recv()
                 self.log.debug("Recieved control command: %s" % message )
                 if message == "Exit":
-                    self.log.debug("Received exit command, coordinator thread will stop recieving messages")
+                    self.log.debug("Received exit command, coordinator thread will stop receiving messages")
                     should_continue = False
                     # TODO why sending signal to live viewer?
 #                    self.zmqliveViewerSocket.send("Exit", zmq.NOBLOCK)

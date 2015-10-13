@@ -9,7 +9,9 @@ import zmq
 import os
 import logging
 import sys
+import json
 from multiprocessing import Process, freeze_support
+import ConfigParser
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
@@ -25,35 +27,89 @@ from senderConf import defaultConfig
 
 
 def argumentParsing():
-    defConf = defaultConfig()
+    configFile = CONFIG_PATH + os.sep + "sender.conf"
+
+    config = ConfigParser.RawConfigParser()
+    config.readfp(helperScript.FakeSecHead(open(configFile)))
+
+    logfilePath         = config.get('asection', 'logfilePath')
+    logfileName         = config.get('asection', 'logfileName')
+
+    watchFolder         = config.get('asection', 'watchfolder')
+    monitoredSubfolders = json.loads(config.get('asection', 'monitoredSubfolders'))
+    monitoredFormats    = tuple(json.loads(config.get('asection', 'monitoredFormats')))
+    fileEventIp         = config.get('asection', 'fileEventIp')
+    fileEventPort       = config.get('asection', 'fileEventPort')
+
+    useDataStream       = config.get('asection', 'useDataStream')
+    dataStreamIp        = config.get('asection', 'dataStreamIp')
+    dataStreamPort      = config.get('asection', 'dataStreamPort')
+    cleanerTargetPath   = config.get('asection', 'cleanerTargetPath')
+    cleanerIp           = config.get('asection', 'cleanerIp')
+    cleanerPort         = config.get('asection', 'cleanerPort')
+
+    receiverComIp       = config.get('asection', 'receiverComIp')
+    receiverComPort     = config.get('asection', 'receiverComPort')
+    liveViewerIp        = config.get('asection', 'liveViewerIp')
+    liveViewerPort      = config.get('asection', 'liveViewerPort')
+    ondaIps             = json.loads(config.get('asection', 'ondaIps'))
+    ondaPorts           = json.loads(config.get('asection', 'ondaPorts'))
+    receiverWhiteList   = json.loads(config.get('asection', 'receiverWhiteList'))
+
+    parallelDataStreams = config.get('asection', 'parallelDataStreams')
+    chunkSize           = int(config.get('asection', 'chunkSize'))
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--logfilePath"          , type=str, default=defConf.logfilePath          , help="path where logfile will be created (default=" + str(defConf.logfilePath) + ")")
-    parser.add_argument("--logfileName"          , type=str, default=defConf.logfileName          , help="filename used for logging (default=" + str(defConf.logfileName) + ")")
-    parser.add_argument("--verbose"              ,           action="store_true"                  , help="more verbose output")
+    parser.add_argument("--logfilePath"        , type=str, default=logfilePath,
+                                                 help="Path where the logfile will be created (default=" + str(logfilePath) + ")")
+    parser.add_argument("--logfileName"        , type=str, default=logfileName,
+                                                 help="Filename used for logging (default=" + str(logfileName) + ")")
+    parser.add_argument("--verbose"            , action="store_true",
+                                                 help="More verbose output")
 
-    parser.add_argument("--watchFolder"          , type=str, default=defConf.watchFolder          , help="(default=" + str(defConf.watchFolder) + ")")
-    parser.add_argument("--monitoredSubfolders"  , type=str, default=defConf.monitoredSubfolders  , help="(default=" + str(defConf.monitoredSubfolders) + ")")
-    parser.add_argument("--monitoredFormats"     , type=str, default=defConf.monitoredFormats     , help="(default=" + str(defConf.monitoredFormats) + ")")
-    parser.add_argument("--fileEventIp"          , type=str, default=defConf.fileEventIp          , help="(default=" + str(defConf.fileEventIp) + ")")
-    parser.add_argument("--fileEventPort"        , type=str, default=defConf.fileEventPort        , help="(default=" + str(defConf.fileEventPort) + ")")
+    parser.add_argument("--watchFolder"        , type=str, default=watchFolder,
+                                                 help="Folder you want to monitor for changes; inside this folder only the specified subfolders are monitred (default=" + str(watchFolder) + ")")
+    parser.add_argument("--monitoredSubfolders", type=str, default=monitoredSubfolders,
+                                                 help="Subfolders of watchFolders to be monitored (default=" + str(monitoredSubfolders) + ")")
+    parser.add_argument("--monitoredFormats"   , type=str, default=monitoredFormats,
+                                                 help="The formats to be monitored, files in an other format will be be neglected (default=" + str(monitoredFormats) + ")")
+    parser.add_argument("--fileEventIp"        , type=str, default=fileEventIp,
+                                                 help="ZMQ endpoint (IP-address) to send file events to for the live viewer (default=" + str(fileEventIp) + ")")
+    parser.add_argument("--fileEventPort"      , type=str, default=fileEventPort,
+                                                 help="ZMQ endpoint (port) to send file events to for the live viewer (default=" + str(fileEventPort) + ")")
 
-    parser.add_argument("--useDataStream"        , type=str, default=defConf.useDataStream        , help="(default=" + str(defConf.useDataStream) + ")")
-    parser.add_argument("--dataStreamIp"         , type=str, default=defConf.dataStreamIp         , help="(default=" + str(defConf.dataStreamIp) + ")")
-    parser.add_argument("--dataStreamPort"       , type=str, default=defConf.dataStreamPort       , help="(default=" + str(defConf.dataStreamPort) + ")")
-    parser.add_argument("--cleanerTargetPath"    , type=str, default=defConf.cleanerTargetPath    , help="(default=" + str(defConf.cleanerTargetPath) + ")")
-    parser.add_argument("--cleanerIp"            , type=str, default=defConf.cleanerIp            , help="(default=" + str(defConf.cleanerIp) + ")")
-    parser.add_argument("--cleanerPort"          , type=str, default=defConf.cleanerPort          , help="(default=" + str(defConf.cleanerPort) + ")")
-    parser.add_argument("--receiverComIp"        , type=str, default=defConf.receiverComIp        , help="(default=" + str(defConf.receiverComIp) + ")")
-    parser.add_argument("--receiverComPort"      , type=str, default=defConf.receiverComPort      , help="(default=" + str(defConf.receiverComPort) + ")")
-    parser.add_argument("--liveViewerIp"         , type=str, default=defConf.liveViewerIp         , help="(default=" + str(defConf.liveViewerIp) + ")")
-    parser.add_argument("--liveViewerPort"       , type=str, default=defConf.liveViewerPort       , help="(default=" + str(defConf.liveViewerPort) + ")")
-    parser.add_argument("--ondaIps"              , type=str, default=defConf.ondaIps              , help="(default=" + str(defConf.ondaIps) + ")")
-    parser.add_argument("--ondaPorts"            , type=str, default=defConf.ondaPorts            , help="(default=" + str(defConf.ondaPorts) + ")")
-    parser.add_argument("--receiverWhiteList"    , type=str, default=defConf.receiverWhiteList    , help="(default=" + str(defConf.receiverWhiteList) + ")")
+    parser.add_argument("--useDataStream"      , type=str, default=useDataStream,
+                                                 help="Enable ZMQ pipe into storage system (if set to false: the file is moved into the cleanerTargetPath) (default=" + str(useDataStream) + ")")
+    parser.add_argument("--dataStreamIp"       , type=str, default=dataStreamIp,
+                                                 help="IP of dataStream-socket to push new files to (default=" + str(dataStreamIp) + ")")
+    parser.add_argument("--dataStreamPort"     , type=str, default=dataStreamPort,
+                                                 help="Port number of dataStream-socket to push new files to (default=" + str(dataStreamPort) + ")")
+    parser.add_argument("--cleanerTargetPath"  , type=str, default=cleanerTargetPath,
+                                                 help="Target to move the files into (default=" + str(cleanerTargetPath) + ")")
+    parser.add_argument("--cleanerIp"          , type=str, default=cleanerIp,
+                                                 help="ZMQ-pull-socket IP which deletes/moves given files (default=" + str(cleanerIp) + ")")
+    parser.add_argument("--cleanerPort"        , type=str, default=cleanerPort,
+                                                 help="ZMQ-pull-socket port which deletes/moves given file (default=" + str(cleanerPort) + ")")
 
-    parser.add_argument("--parallelDataStreams"  , type=str, default=defConf.parallelDataStreams  , help="(default=" + str(defConf.parallelDataStreams) + ")")
-    parser.add_argument("--chunkSize"            , type=str, default=defConf.chunkSize            , help="(default=" + str(defConf.chunkSize) + ")")
+    parser.add_argument("--receiverComIp"      , type=str, default=receiverComIp,
+                                                 help="IP receive signals from the receiver (default=" + str(receiverComIp) + ")")
+    parser.add_argument("--receiverComPort"    , type=str, default=receiverComPort,
+                                                 help="Port number to receive signals from the receiver (default=" + str(receiverComPort) + ")")
+    parser.add_argument("--liveViewerIp"       , type=str, default=liveViewerIp,
+                                                 help="IP of liveViewer-socket to send new files to (default=" + str(liveViewerIp) + ")")
+    parser.add_argument("--liveViewerPort"     , type=str, default=liveViewerPort,
+                                                 help="Port number of liveViewer-socket to send data to (default=" + str(liveViewerPort) + ")")
+    parser.add_argument("--ondaIps"            , type=str, default=ondaIps,
+                                                 help="IPs to communicate with onda/realtime analysis; there needs to be one entry for each streams (default=" + str(ondaIps) + ")")
+    parser.add_argument("--ondaPorts"          , type=str, default=ondaPorts,
+                                                 help="Ports to communicate with onda/realtime analysis; there needs to be one entry for each streams (default=" + str(ondaPorts) + ")")
+    parser.add_argument("--receiverWhiteList"  , type=str, default=receiverWhiteList,
+                                                 help="List of hosts allowed to connect to the sender (default=" + str(receiverWhiteList) + ")")
+
+    parser.add_argument("--parallelDataStreams", type=int, default=parallelDataStreams,
+                                                 help="Number of parallel data streams (default=" + str(parallelDataStreams) + ")")
+    parser.add_argument("--chunkSize"          , type=int, default=chunkSize,
+                                                 help="Chunk size of file-parts getting send via ZMQ (default=" + str(chunkSize) + ")")
 
     arguments         = parser.parse_args()
 

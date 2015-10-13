@@ -427,6 +427,7 @@ class WorkerProcess():
             except Exception, e:
                 self.log.error("Unable to send multipart-message for file " + str(sourceFilePathFull))
                 self.log.debug("Error was: " + str(e))
+                trace = traceback.format_exc()
                 self.log.debug("Error was: " + str(trace))
                 self.log.debug("Passing multipart-message...failed.")
     #            raise Exception(e)
