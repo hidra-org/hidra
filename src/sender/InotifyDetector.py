@@ -172,10 +172,11 @@ class InotifyDetector():
 #            is_closed  = ("IN_CLOSE" in parts_array or "IN_CLOSE_WRITE" in parts_array)
             is_created = ("IN_CREATE" in parts_array)
 
+#            if is_dir and event.name:
+#                print path, event.name, parts
+
             # if a new directory is created inside the monitored one,
             # this one has to be monitored as well
-#            print path, event.name, parts
-
             if is_created and is_dir and event.name:
 #            if is_dir and event.name:
                 dirname =  path + os.sep + event.name
@@ -220,14 +221,20 @@ class InotifyDetector():
                     while True:
                         if parentDir not in self.paths:
                             (parentDir,relDir) = os.path.split(parentDir)
-#                            print "debug1:", parentDir, relDir
+                            print "debug1:", parentDir, relDir
+                            # the os.sep is needed at the beginning because the relative path is built up from the right
+                            # e.g.
+                            # self.paths = ["/tmp/test/source"]
+                            # path = /tmp/test/source/local/testfolder
+                            # first iteration:  parentDir = /tmp/test/source/local, relDir = /testfolder
+                            # second iteration: parentDir = /tmp/test/source,       relDir = /local/testfolder
                             relativePath = os.sep + relDir + relativePath
-#                            print "debug11:", relativePath
+                            print "debug11:", relativePath
                         else:
                             # the event for a file /tmp/test/source/local/file1.tif is of the form:
                             # {
-                            #   "sourcePath" : "/tmp/test/source/"
-                            #   "relativePath": "local"
+                            #   "sourcePath" : "/tmp/test/source"
+                            #   "relativePath": "/local"
                             #   "filename"   : "file1.tif"
                             # }
                             eventMessage = {

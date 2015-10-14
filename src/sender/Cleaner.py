@@ -50,7 +50,7 @@ class Cleaner():
         self.bindingPortForSocket = bindingPort
         self.bindingIpForSocket   = bindingIp
         self.senderComIp          = self.bindingIpForSocket
-        self.targetPath           = targetPath
+        self.targetPath           = os.path.normpath(targetPath)
 
         self.useDataStream       = useDataStream
 
@@ -139,9 +139,10 @@ class Cleaner():
             sourceFullpath = None
             try:
                 #generate target filepath
+                # use normpath here instead of join because relativePath is starting with a "/" and join would see that as absolut path
                 sourcePath = os.path.normpath(sourcePath + os.sep + relativePath)
                 sourceFullPath = os.path.join(sourcePath,filename)
-                targetFullPath = os.path.normpath(self.targetPath + relativePath)
+                targetFullPath = os.path.normpath(self.targetPath + os.sep +  relativePath)
                 self.log.debug("sourcePath: " + str (sourcePath))
                 self.log.debug("filename: " + str (filename))
                 self.log.debug("targetPath: " + str (targetFullPath))
