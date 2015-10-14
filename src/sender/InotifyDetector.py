@@ -180,7 +180,7 @@ class InotifyDetector():
 #            is_closed  = ("IN_CLOSE" in parts_array or "IN_CLOSE_WRITE" in parts_array)
             is_created = ("IN_CREATE" in parts_array)
 
-            # if a new directory is created inside the monitored one,
+            # if a new directory is created or a directory is renamed inside the monitored one,
             # this one has to be monitored as well
             if is_dir and (is_created or is_moved_to):
                 dirname = os.path.join(path, event.name)
@@ -193,8 +193,8 @@ class InotifyDetector():
                     self.log.info("Added new directory to watch:" + str(dirname))
                 continue
 
+            # if a directory is renamed the old watch has to be removed
             if is_dir and is_moved_from:
-                print "---moved from", event.name
                 dirname = os.path.join(path, event.name)
                 for watch, watchPath in self.wd_to_path.iteritems():
                     if watchPath == dirname:
@@ -209,19 +209,21 @@ class InotifyDetector():
                 del self.wd_to_path[foundWatch]
                 continue
 
-            # TODO check if still necessary
-            # checks if one of the suffixes to monitore is contained in the event.name
-            resultSuffix = filter(lambda x: x in event.name, self.monitoredSuffixes)
-
-            if not resultSuffix:
-            #if not event.name.endswith(self.monitoredSuffixes):
-                self.log.debug("File ending not in monitored Suffixes: " + str(event.name))
-                self.log.debug("detected events were: " + str(parts))
-                continue
-
 
             # only closed files are send
             if not is_dir and is_closed:
+
+                # TODO check if still necessary
+                # checks if one of the suffixes to monitore is contained in the event.name
+                resultSuffix = filter(lambda x: x in event.name, self.monitoredSuffixes)
+
+                # only files with end with a suffix specified in monitoredSuffixed are monitored
+                if not resultSuffix:
+                #if not event.name.endswith(self.monitoredSuffixes):
+                    self.log.debug("File ending not in monitored Suffixes: " + str(event.name))
+                    self.log.debug("detected events were: " + str(parts))
+                    continue
+
 #                if self.previousEventPath != path or self.previousEventName != event.name:
                 if True:
 #            if (is_moved and not is_dir) or (is_closed and not is_dir):
@@ -242,7 +244,7 @@ class InotifyDetector():
                     while splitPath:
                         if parentDir not in self.paths:
                             (parentDir,relDir) = os.path.split(parentDir)
-                            print "debug1:", parentDir, relDir
+#                            print "debug1:", parentDir, relDir
                             # the os.sep is needed at the beginning because the relative path is built up from the right
                             # e.g.
                             # self.paths = ["/tmp/test/source"]
@@ -250,7 +252,7 @@ class InotifyDetector():
                             # first iteration:  parentDir = /tmp/test/source/local, relDir = /testfolder
                             # second iteration: parentDir = /tmp/test/source,       relDir = /local/testfolder
                             relativePath = os.sep + relDir + relativePath
-                            print "debug11:", relativePath
+#                            print "debug11:", relativePath
                         else:
                             # the event for a file /tmp/test/source/local/file1.tif is of the form:
                             # {

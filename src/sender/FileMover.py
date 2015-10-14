@@ -87,7 +87,6 @@ class FileMover():
         # create zmq socket for incoming file events
         self.fileEventSocket = self.zmqContext.socket(zmq.PULL)
         connectionStr        = "tcp://{ip}:{port}".format(ip=self.fileEventIp, port=self.fileEventPort)
-        print connectionStr
         self.fileEventSocket.bind(connectionStr)
         self.log.debug("fileEventSocket started (bind) for '" + connectionStr + "'")
 
