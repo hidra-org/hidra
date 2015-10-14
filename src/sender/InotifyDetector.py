@@ -187,14 +187,17 @@ class InotifyDetector():
                     self.wd_to_path[wd] = dirname
                     self.log.info("Added new directory to watch:" + str(dirname))
 
-#            if not event.name.endswith(self.monitoredSuffixes):
-#                print "not considered", event.name
-#                return []
 
-            if '.cbf' not in event.name :
-                self.log.debug("not a cbf-file: " + str(event.name))
+            # TODO check if still necessary
+            # checks if one of the suffixes to monitore is contained in the event.name
+            resultSuffix = filter(lambda x: x in event.name, self.monitoredSuffixes)
+
+            if not resultSuffix:
+            #if not event.name.endswith(self.monitoredSuffixes):
+                self.log.debug("File ending not in monitored Suffixes: " + str(event.name))
                 self.log.debug("detected events were: " + str(parts))
                 return []
+
 
             # only closed files are send
             if is_closed and not is_dir:
