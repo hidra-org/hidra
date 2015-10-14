@@ -396,16 +396,13 @@ class WorkerProcess():
 
                     # send data to the data stream to store it in the storage system
                     if self.useDataStream:
-                        print "Sending data to data stream..."
 
                         tracker = self.dataStreamSocket.send_multipart(chunkPayload, copy=False, track=True)
 
                         if not tracker.done:
-                            self.log.info("Message part from file " + str(sourceFilePathFull) + " has not been sent yet, waiting ...")
+                            self.log.info("Message part from file " + str(sourceFilePathFull) + " has not been sent yet, waiting...")
                             tracker.wait()
-                            self.log.info("Message part from file " + str(sourceFilePathFull) + " has not been sent yet, waiting ...done")
-
-                        print "Sending data to data stream...done"
+                            self.log.info("Message part from file " + str(sourceFilePathFull) + " has not been sent yet, waiting...done")
 
                     #send data to the live viewer
                     if socketDict.has_key("liveViewer"):

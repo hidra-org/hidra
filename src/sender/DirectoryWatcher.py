@@ -49,7 +49,7 @@ class DirectoryWatcher():
         if monitoredDefaultSubfolders:
             self.monitoredDefaultSubfolders = monitoredDefaultSubfolders
         self.monitoredSuffixes   = monitoredSuffixes
-        self.log.info ("Monitoried suffixes are: " + str( monitoredSuffixes ))
+        self.log.info ("Monitored suffixes are: " + str( monitoredSuffixes ))
 
 #        monitoredFolders         = self.getDirectoryStructure()
         monitoredFolders         = [self.watchFolder]

@@ -153,14 +153,20 @@ class InotifyDetector():
         eventMessage = {}
 
 #        print "wd_to_path: ", self.wd_to_path
+#        print "fd:", self.fd
         events = self.get_events(self.fd)
+        removedWd = None
         for event in events:
-            path = self.wd_to_path[event.wd]
-            parts = event.get_mask_description()
-            parts_array = parts.split("|")
 
             if not event.name:
-                return []
+                continue
+
+            try:
+                path = self.wd_to_path[event.wd]
+            except:
+                path = removedWd
+            parts = event.get_mask_description()
+            parts_array = parts.split("|")
 
 #            print path, event.name, parts
 #            print event.name
@@ -168,18 +174,16 @@ class InotifyDetector():
             is_dir     = ("IN_ISDIR" in parts_array)
             is_closed  = ("IN_CLOSE_WRITE" in parts_array)
             is_moved   = ("IN_MOVE" in parts_array)
+            is_moved_from = ("IN_MOVED_FROM" in parts_array)
+            is_moved_to = ("IN_MOVED_TO" in parts_array)
 #            is_closed  = ("IN_CLOSE" in parts_array)
 #            is_closed  = ("IN_CLOSE" in parts_array or "IN_CLOSE_WRITE" in parts_array)
             is_created = ("IN_CREATE" in parts_array)
 
-#            if is_dir and event.name:
-#                print path, event.name, parts
-
             # if a new directory is created inside the monitored one,
             # this one has to be monitored as well
-            if is_created and is_dir and event.name:
-#            if is_dir and event.name:
-                dirname =  path + os.sep + event.name
+            if is_dir and (is_created or is_moved_to):
+                dirname = os.path.join(path, event.name)
                 self.log.info("Directory event detected: " + str(dirname) + "," + str(parts))
                 if dirname in self.paths:
                     self.log.debug("Directory already contained in path list: " + str(dirname))
@@ -187,7 +191,23 @@ class InotifyDetector():
                     wd = binding.add_watch(self.fd, dirname)
                     self.wd_to_path[wd] = dirname
                     self.log.info("Added new directory to watch:" + str(dirname))
+                continue
 
+            if is_dir and is_moved_from:
+                print "---moved from", event.name
+                dirname = os.path.join(path, event.name)
+                for watch, watchPath in self.wd_to_path.iteritems():
+                    if watchPath == dirname:
+                        foundWatch = watch
+                binding.rm_watch(self.fd, foundWatch)
+                self.log.info("Removed directory from watch:" + str(dirname))
+                # the IN_MOVE_FROM event always apears before the IN_MOVE_TO (+ additional) events
+                # and thus has to be stored till loop is finished
+                removedWd = self.wd_to_path[foundWatch]
+                # removing the watch out of the dictionary cannot be done inside the loop
+                # (would throw error: dictionary changed size during iteration)
+                del self.wd_to_path[foundWatch]
+                continue
 
             # TODO check if still necessary
             # checks if one of the suffixes to monitore is contained in the event.name
@@ -197,11 +217,11 @@ class InotifyDetector():
             #if not event.name.endswith(self.monitoredSuffixes):
                 self.log.debug("File ending not in monitored Suffixes: " + str(event.name))
                 self.log.debug("detected events were: " + str(parts))
-                return []
+                continue
 
 
             # only closed files are send
-            if is_closed and not is_dir:
+            if not is_dir and is_closed:
 #                if self.previousEventPath != path or self.previousEventName != event.name:
                 if True:
 #            if (is_moved and not is_dir) or (is_closed and not is_dir):
@@ -218,7 +238,8 @@ class InotifyDetector():
 
                     # traverse the relative path till the original path is reached
                     # e.g. created file: /source/dir1/dir2/test.tif
-                    while True:
+                    splitPath = True
+                    while splitPath:
                         if parentDir not in self.paths:
                             (parentDir,relDir) = os.path.split(parentDir)
                             print "debug1:", parentDir, relDir
@@ -248,7 +269,7 @@ class InotifyDetector():
 
                             self.previousEventPath = path
                             self.previousEventName = event.name
-                            break
+                            splitPath = False
 
         return eventMessageList
 
