@@ -27,7 +27,7 @@ class FileReceiver:
 
     def __init__(self, outputDir, zmqDataStreamIp, zmqDataStreamPort, context = None):
 
-        self.outputDir             = outputDir
+        self.outputDir             = os.path.normpath(outputDir)
         self.zmqDataStreamIp       = zmqDataStreamIp
         self.zmqDataStreamPort     = zmqDataStreamPort
 

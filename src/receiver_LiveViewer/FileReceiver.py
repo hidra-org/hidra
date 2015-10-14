@@ -44,7 +44,7 @@ class FileReceiver:
     def __init__(self, outputDir, zmqDataStreamIp, zmqDataStreamPort, zmqLiveViewerPort, zmqLiveViewerIp, senderComPort,
                  maxRingBuffersize, senderResponseTimeout = 1000, context = None):
 
-        self.outputDir             = outputDir
+        self.outputDir             = os.path.normpath(outputDir)
         self.zmqDataStreamIp       = zmqDataStreamIp
         self.zmqDataStreamPort     = zmqDataStreamPort
         self.zmqLiveViewerIp       = zmqLiveViewerIp
