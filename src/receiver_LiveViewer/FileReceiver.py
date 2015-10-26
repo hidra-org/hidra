@@ -20,10 +20,10 @@ from Coordinator import Coordinator
 class FileReceiver:
     zmqContext               = None
     outputDir                = None
-    zmqDataStreamIp          = None
-    zmqDataStreamPort        = None
-    zmqLiveViewerIp          = None
-    zmqLiveViewerPort        = None
+    dataStreamIp             = None
+    dataStreamPorts          = []
+    liveViewerIp             = None
+    liveViewerPort           = None
     exchangeIp               = "127.0.0.1"
     exchangePort             = "6072"
     senderComIp              = None         # ip for socket to communicate with receiver
@@ -33,7 +33,7 @@ class FileReceiver:
     log                      = None
 
     # sockets
-    zmqDataStreamSocket      = None         # socket to receive the data from
+    dataStreamSockets        = []           # socket to receive the data from
     exchangeSocket           = None         # socket to communicate with Coordinator class
     senderComSocket          = None         # socket to communicate with sender
 
@@ -41,15 +41,15 @@ class FileReceiver:
 #    print socket.gethostbyname(socket.gethostname())
 
 
-    def __init__(self, outputDir, zmqDataStreamIp, zmqDataStreamPort, zmqLiveViewerPort, zmqLiveViewerIp, senderComPort,
+    def __init__(self, outputDir, dataStreamIp, dataStreamPorts, liveViewerPort, liveViewerIp, senderComPort,
                  maxRingBuffersize, senderResponseTimeout = 1000, context = None):
 
         self.outputDir             = os.path.normpath(outputDir)
-        self.zmqDataStreamIp       = zmqDataStreamIp
-        self.zmqDataStreamPort     = zmqDataStreamPort
-        self.zmqLiveViewerIp       = zmqLiveViewerIp
-        self.zmqLiveViewerPort     = zmqLiveViewerPort
-        self.senderComIp           = zmqDataStreamIp        # ip for socket to communicate with sender; is the same ip as the data stream ip
+        self.dataStreamIp          = dataStreamIp
+        self.dataStreamPorts       = dataStreamPorts
+        self.liveViewerIp          = liveViewerIp
+        self.liveViewerPort        = liveViewerPort
+        self.senderComIp           = dataStreamIp        # ip for socket to communicate with sender; is the same ip as the data stream ip
         self.senderComPort         = senderComPort
         self.socketResponseTimeout = senderResponseTimeout
 
@@ -62,43 +62,25 @@ class FileReceiver:
         self.log.debug("Init")
 
         # start file receiver
-        self.receiverThread = threading.Thread(target=Coordinator, args=(self.outputDir, self.zmqDataStreamPort, self.zmqDataStreamIp, self.zmqLiveViewerPort, self.zmqLiveViewerIp, maxRingBuffersize))
+        self.receiverThread = threading.Thread(target=Coordinator, args=(self.outputDir, self.liveViewerPort, self.liveViewerIp, maxRingBuffersize))
         self.receiverThread.start()
 
-        # create pull socket
-        self.zmqDataStreamSocket = self.zmqContext.socket(zmq.PULL)
-        connectionStrDataStreamSocket = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
-        print "connectionStrDataStreamSocket", connectionStrDataStreamSocket
-        self.zmqDataStreamSocket.connect(connectionStrDataStreamSocket)
-        self.log.debug("zmqDataStreamSocket started (connect) for '" + connectionStrDataStreamSocket + "'")
+        # create sockets
+        self.createSockets()
 
-        self.exchangeSocket = self.zmqContext.socket(zmq.PAIR)
-        connectionStrExchangeSocket = "tcp://{ip}:{port}".format(ip=self.exchangeIp, port=self.exchangePort)
-        self.exchangeSocket.connect(connectionStrExchangeSocket)
-        self.log.debug("exchangeSocket started (connect) for '" + connectionStrExchangeSocket + "'")
-
-        self.senderComSocket = self.zmqContext.socket(zmq.REQ)
-        # time to wait for the sender to give a confirmation of the signal
-#        self.senderComSocket.RCVTIMEO = self.socketResponseTimeout
-        connectionStrSenderComSocket = "tcp://{ip}:{port}".format(ip=self.senderComIp, port=self.senderComPort)
-        print "connectionStrSenderComSocket", connectionStrSenderComSocket
-        self.senderComSocket.connect(connectionStrSenderComSocket)
-        self.log.debug("senderComSocket started (connect) for '" + connectionStrSenderComSocket + "'")
-
-        # using a Poller to implement the senderComSocket timeout because in older ZMQ version there is
-        self.poller = zmq.Poller()
-        self.poller.register(self.senderComSocket, zmq.POLLIN)
-
+        # Starting live viewer
         message = "START_LIVE_VIEWER," + str(self.hostname)
         self.log.info("Sending start signal to sender...")
         self.log.debug("Sending start signal to sender, message: " + message)
         print "sending message ", message
         self.senderComSocket.send(str(message))
-#        self.senderComSocket.send("START_LIVE_VIEWER")
 
         senderMessage = None
 
+        # wait for response of sender till timeout is reached
         socks = dict(self.poller.poll(self.socketResponseTimeout))
+
+        # if there was a response
         if self.senderComSocket in socks and socks[self.senderComSocket] == zmq.POLLIN:
             try:
                 senderMessage = self.senderComSocket.recv()
@@ -106,14 +88,15 @@ class FileReceiver:
                 self.log.debug("Received message from sender: " + str(senderMessage) )
             except KeyboardInterrupt:
                 self.log.error("KeyboardInterrupt: No message received from sender")
-                self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
+                self.stopReceiving(sendToSender = False)
                 sys.exit(1)
             except Exception as e:
                 self.log.error("No message received from sender")
                 self.log.debug("Error was: " + str(e))
-                self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
+                self.stopReceiving(sendToSender = False)
                 sys.exit(1)
 
+        # if the response was correct: start data retrieving
         if senderMessage == "START_LIVE_VIEWER":
             self.log.info("Received confirmation from sender...start receiving files")
             try:
@@ -128,10 +111,11 @@ class FileReceiver:
                 self.log.info("Unkown error state. Shutting down...")
                 self.log.debug("Error was: " + str(trace))
                 self.zmqContext.destroy()
+        # if there was no response or the response was of the wrong format, the receiver should be shut down
         else:
             print "Sending start signal to sender...failed."
             self.log.info("Sending start signal to sender...failed.")
-            self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext, sendToSender = False)
+            self.stopReceiving(sendToSender = False)
 
 
         self.log.info("Quitting.")
@@ -142,11 +126,80 @@ class FileReceiver:
         return logger
 
 
-    def combineMessage(self, zmqDataStreamSocket):
+    def createSockets(self):
+        # create socket to exchange signals with Sender
+        self.senderComSocket = self.zmqContext.socket(zmq.REQ)
+        # time to wait for the sender to give a confirmation of the signal
+#        self.senderComSocket.RCVTIMEO = self.socketResponseTimeout
+        connectionStr = "tcp://{ip}:{port}".format(ip=self.senderComIp, port=self.senderComPort)
+        self.senderComSocket.connect(connectionStr)
+        self.log.info("senderComSocket started (connect) for '" + connectionStr + "'")
+
+        # using a Poller to implement the senderComSocket timeout (in older ZMQ version there is no option RCVTIMEO)
+        self.poller = zmq.Poller()
+        self.poller.register(self.senderComSocket, zmq.POLLIN)
+
+        # create socket to communicate with Coordinator
+        self.exchangeSocket = self.zmqContext.socket(zmq.PAIR)
+        connectionStr = "tcp://{ip}:{port}".format(ip=self.exchangeIp, port=self.exchangePort)
+        self.exchangeSocket.connect(connectionStr)
+        self.log.debug("exchangeSocket started (connect) for '" + connectionStr + "'")
+
+        # create poller to differentiate between the different data stream port
+        self.dataPoller = zmq.Poller()
+
+        # create sockets to retrieve data from Sender
+        for dataStreamPort in self.dataStreamPorts:
+            dataStreamSocket = self.zmqContext.socket(zmq.PULL)
+            connectionStr = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=dataStreamPort)
+            dataStreamSocket.connect(connectionStr)
+            self.log.info("dataStreamSocket started (connect) for '" + connectionStr + "'")
+
+            self.dataStreamSockets.append(dataStreamSocket)
+
+            self.dataPoller.register(dataStreamSocket, zmq.POLLIN)
+
+
+    def startReceiving(self):
+        #run loop, and wait for incoming messages
+        loopCounter       = 0    #counter of total received messages
+        continueReceiving = True #receiving will stop if value gets False
+        self.log.debug("Waiting for new messages...")
+        while continueReceiving:
+            try:
+                self.pollDifferentSockets()
+                loopCounter+=1
+            except KeyboardInterrupt:
+                self.log.debug("Keyboard interrupt detected. Stop receiving.")
+                continueReceiving = False
+                break
+            except:
+                self.log.error("receive message...failed.")
+                self.log.error(sys.exc_info())
+                continueReceiving = False
+
+        self.log.info("shutting down receiver...")
+        try:
+            self.stopReceiving()
+            self.log.debug("shutting down receiver...done.")
+        except:
+            self.log.error(sys.exc_info())
+            self.log.error("shutting down receiver...failed.")
+
+
+    def pollDifferentSockets(self):
+        socks = dict(self.dataPoller.poll())
+
+        for dataStreamSocket in self.dataStreamSockets:
+            if dataStreamSocket in socks and socks[dataStreamSocket] == zmq.POLLIN:
+                self.combineMessage(dataStreamSocket)
+
+
+    def combineMessage(self, dataStreamSocket):
         receivingMessages = True
         #save all chunks to file
         while receivingMessages:
-            multipartMessage = zmqDataStreamSocket.recv_multipart()
+            multipartMessage = dataStreamSocket.recv_multipart()
 
             #extract multipart message
             try:
@@ -185,40 +238,12 @@ class FileReceiver:
                 break
         filename            = self.generateTargetFilepath(payloadMetadataDict)
         fileModTime         = payloadMetadataDict["fileModificationTime"]
-        print "receiving multipart message from data pipe: ", filename
         self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
 
         # send the file to the coordinator to add it to the ring buffer
         message = "AddFile" + str(filename) + ", " + str(fileModTime)
         self.log.debug("Send file to coordinator: " + message )
         self.exchangeSocket.send(message)
-
-
-    def startReceiving(self):
-        #run loop, and wait for incoming messages
-        loopCounter       = 0    #counter of total received messages
-        continueReceiving = True #receiving will stop if value gets False
-        self.log.debug("Waiting for new messages...")
-        while continueReceiving:
-            try:
-                self.combineMessage(self.zmqDataStreamSocket)
-                loopCounter+=1
-            except KeyboardInterrupt:
-                self.log.debug("Keyboard interrupt detected. Stop receiving.")
-                continueReceiving = False
-                break
-            except:
-                self.log.error("receive message...failed.")
-                self.log.error(sys.exc_info())
-                continueReceiving = False
-
-        self.log.info("shutting down receiver...")
-        try:
-            self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext)
-            self.log.debug("shutting down receiver...done.")
-        except:
-            self.log.error(sys.exc_info())
-            self.log.error("shutting down receiver...failed.")
 
 
     def generateTargetFilepath(self,configDict):
@@ -311,15 +336,16 @@ class FileReceiver:
             raise Exception(errorMessage)
 
 
-    def stopReceiving(self, zmqDataStreamSocket, zmqContext, sendToSender = True):
+    def stopReceiving(self, sendToSender = True):
 
         self.log.debug("stopReceiving...")
-        try:
-            zmqDataStreamSocket.close(0)
-            self.log.debug("closing zmqDataStreamSocket...done.")
-        except:
-            self.log.error("closing zmqDataStreamSocket...failed.")
-            self.log.error(sys.exc_info())
+        for dataStreamSocket in self.dataStreamSockets:
+            try:
+                dataStreamSocket.close(0)
+                self.log.debug("closing dataStreamSocket...done.")
+            except:
+                self.log.error("closing dataStreamSocket...failed.")
+                self.log.error(sys.exc_info())
 
         self.log.debug("sending exit signal to coordinator...")
         self.exchangeSocket.send("Exit")
@@ -356,7 +382,7 @@ class FileReceiver:
         self.log.debug("closing signal communication sockets...done")
 
         try:
-            zmqContext.destroy()
+            self.zmqContext.destroy()
             self.log.debug("closing zmqContext...done.")
         except:
             self.log.error("closing zmqContext...failed.")

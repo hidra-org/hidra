@@ -30,7 +30,7 @@ class WorkerProcess():
     liveViewerSocket     = None
     ondaComSocket        = None
 
-    useDataStream        = True         # boolian to inform if the data should be send to the data stream pipe (to the storage system)
+    useDataStream        = False        # boolian to inform if the data should be send to the data stream pipe (to the storage system)
     useLiveViewer        = False        # boolian to inform if the receiver for the live viewer is running
     useRealTimeAnalysis  = False        # boolian to inform if the receiver for realtime-analysis is running
 
@@ -40,7 +40,7 @@ class WorkerProcess():
     log                  = None
 
     def __init__(self, id, dataStreamIp, dataStreamPort, chunkSize, cleanerIp, cleanerPort, liveViewerIp, liveViewerPort, ondaIp, ondaPort,
-                 useDataStream = True, context = None):
+                 useDataStream, context = None):
         self.id                   = id
         self.dataStreamIp         = dataStreamIp
         self.dataStreamPort       = dataStreamPort
@@ -51,6 +51,8 @@ class WorkerProcess():
         self.liveViewerPort       = liveViewerPort
         self.ondaIp               = ondaIp
         self.ondaPort             = ondaPort
+
+        self.useDataStream        = useDataStream
 
         #initialize router
         if context:
@@ -407,10 +409,12 @@ class WorkerProcess():
                     #send data to the live viewer
                     if socketDict.has_key("liveViewer"):
                         socketDict["liveViewer"].send_multipart(chunkPayload, zmq.NOBLOCK)
+                        self.log.info("Sending message part from file " + str(sourceFilePathFull) + " to LiveViewer")
 
                 # send data to onda
                 if socketDict.has_key("onda"):
                     socketDict["onda"].send_multipart(payloadAll, zmq.NOBLOCK)
+                    self.log.info("Sending from file " + str(sourceFilePathFull) + " to OnDA")
                     self.requestFromOnda = False
 
                 #close file

@@ -5,6 +5,7 @@ import sys
 import argparse
 import logging
 import os
+import json
 import ConfigParser
 
 import shared.helperScript as helperScript
@@ -25,7 +26,7 @@ def argumentParsing():
     logfileName           = config.get('asection', 'logfileName')
     targetDir             = config.get('asection', 'targetDir')
     dataStreamIp          = config.get('asection', 'dataStreamIp')
-    dataStreamPort        = config.get('asection', 'dataStreamPort')
+    dataStreamPorts       = json.loads(config.get('asection', 'dataStreamPorts'))
     liveViewerIp          = config.get('asection', 'liveViewerIp')
     liveViewerPort        = config.get('asection', 'liveViewerPort')
     senderComPort         = config.get('asection', 'senderComPort')
@@ -43,8 +44,8 @@ def argumentParsing():
                                                    help="where incoming data will be stored to (default=" + str(targetDir) + ")")
     parser.add_argument("--dataStreamIp"         , type=str, default=dataStreamIp,
                                                    help="ip of dataStream-socket to pull new files from (default=" + str(dataStreamIp) + ")")
-    parser.add_argument("--dataStreamPort"       , type=str, default=dataStreamPort,
-                                                   help="port number of dataStream-socket to pull new files from (default=" + str(dataStreamPort) + ")")
+    parser.add_argument("--dataStreamPorts"      , type=str, default=dataStreamPorts,
+                                                   help="port number of dataStream-socket to pull new files from; there needs to be one entry for each streams (default=" + str(dataStreamPorts) + ")")
     parser.add_argument("--liveViewerIp"         , type=str, default=liveViewerIp,
                                                    help="local ip to bind LiveViewer to (default=" + str(liveViewerIp) + ")")
     parser.add_argument("--liveViewerPort"       , type=str, default=liveViewerPort,
@@ -80,11 +81,11 @@ class ReceiverLiveViewer():
     verbose               = None
 
     targetDir             = None
-    zmqDataStreamIp       = None
-    zmqDataStreamPort     = None
+    dataStreamIp          = None
+    dataStreamPorts       = None
 
-    zmqLiveViewerIp       = None
-    zmqLiveViewerPort     = None
+    liveViewerIp          = None
+    liveViewerPort        = None
     senderComPort         = None
     maxRingBufferSize     = None
     senderResponseTimeout = None
@@ -98,11 +99,11 @@ class ReceiverLiveViewer():
         self.verbose               = arguments.verbose
 
         self.targetDir             = arguments.targetDir
-        self.zmqDataStreamIp       = arguments.dataStreamIp
-        self.zmqDataStreamPort     = arguments.dataStreamPort
+        self.dataStreamIp          = arguments.dataStreamIp
+        self.dataStreamPorts       = arguments.dataStreamPorts
 
-        self.zmqLiveViewerIp       = arguments.liveViewerIp
-        self.zmqLiveViewerPort     = arguments.liveViewerPort
+        self.liveViewerIp          = arguments.liveViewerIp
+        self.liveViewerPort        = arguments.liveViewerPort
         self.senderComPort         = arguments.senderComPort
         self.maxRingBufferSize     = arguments.maxRingBufferSize
         self.senderResponseTimeout = arguments.senderResponseTimeout
@@ -113,7 +114,7 @@ class ReceiverLiveViewer():
 
 
         #start file receiver
-        myWorker = FileReceiver(self.targetDir, self.zmqDataStreamIp, self.zmqDataStreamPort, self.zmqLiveViewerPort, self.zmqLiveViewerIp, self.senderComPort, self.maxRingBufferSize, self.senderResponseTimeout)
+        myWorker = FileReceiver(self.targetDir, self.dataStreamIp, self.dataStreamPorts, self.liveViewerPort, self.liveViewerIp, self.senderComPort, self.maxRingBufferSize, self.senderResponseTimeout)
 
 
 if __name__ == "__main__":

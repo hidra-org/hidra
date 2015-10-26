@@ -23,7 +23,7 @@ class FileMover():
     receiverComIp       = None      # ip for socket to communicate with receiver
     receiverComPort     = None      # port for socket to communicate receiver
     liveViewer          = None
-    liveViewerPort      = None
+    liveViewerPorts     = []
     ondaIps             = []
     ondaPorts           = []
     receiverWhiteList   = None
@@ -46,9 +46,9 @@ class FileMover():
                  receiverComIp, receiverComPort, receiverWhiteList,
                  parallelDataStreams, chunkSize,
                  cleanerIp, cleanerPort,
-                 liveViewerIp, liveViewerPort,
+                 liveViewerIp, liveViewerPorts,
                  ondaIps, ondaPorts,
-                 useDataStream = True,
+                 useDataStream,
                  context = None):
 
 #        assert isinstance(context, zmq.sugar.context.Context)
@@ -60,10 +60,11 @@ class FileMover():
         self.dataStreamPort      = dataStreamPort
         self.cleanerIp           = cleanerIp
         self.cleanerPort         = cleanerPort
-        self.receiverComIp       = receiverComIp         # ip for socket to communicate with receiver;
+        self.receiverComIp       = receiverComIp            # ip for socket to communicate with receiver;
         self.receiverComPort     = receiverComPort
         self.liveViewerIp        = liveViewerIp
-        self.liveViewerPort      = liveViewerPort
+        self.liveViewerPorts     = liveViewerPorts          # needs a list of ports because every WorkerProcess
+                                                            # binds to one port (this is not possible for only one port
         self.ondaIps             = ondaIps
         self.ondaPorts           = ondaPorts
 
@@ -148,7 +149,7 @@ class FileMover():
                                                                   self.cleanerIp,
                                                                   self.cleanerPort,
                                                                   self.liveViewerIp,
-                                                                  self.liveViewerPort,
+                                                                  self.liveViewerPorts[processNumber],
                                                                   self.ondaIps[processNumber],
                                                                   self.ondaPorts[processNumber],
                                                                   self.useDataStream
