@@ -35,7 +35,7 @@ class FileMover():
     receiverComSocket   = None      # to exchange messages with the receiver
     routerSocket        = None
 
-    useDataStream       = True      # boolian to inform if the data should be send to the data stream pipe (to the storage system)
+    useDataStream       = False     # boolian to inform if the data should be send to the data stream pipe (to the storage system)
     useLiveViewer       = False     # boolian to inform if the receiver for the live viewer is running
 
     # to get the logging only handling this class

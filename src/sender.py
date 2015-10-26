@@ -41,7 +41,7 @@ def argumentParsing():
     fileEventIp         = config.get('asection', 'fileEventIp')
     fileEventPort       = config.get('asection', 'fileEventPort')
 
-    useDataStream       = config.get('asection', 'useDataStream')
+    useDataStream       = config.getboolean('asection', 'useDataStream')
     dataStreamIp        = config.get('asection', 'dataStreamIp')
     dataStreamPort      = config.get('asection', 'dataStreamPort')
     cleanerTargetPath   = config.get('asection', 'cleanerTargetPath')
