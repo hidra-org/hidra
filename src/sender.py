@@ -23,8 +23,6 @@ from sender.DirectoryWatcher import DirectoryWatcher
 from sender.FileMover import FileMover
 from sender.Cleaner import Cleaner
 
-from senderConf import defaultConfig
-
 
 def argumentParsing():
     configFile = CONFIG_PATH + os.sep + "sender.conf"
@@ -98,7 +96,7 @@ def argumentParsing():
     parser.add_argument("--liveViewerIp"       , type=str, default=liveViewerIp,
                                                  help="IP of liveViewer-socket to send new files to (default=" + str(liveViewerIp) + ")")
     parser.add_argument("--liveViewerPorts"     , type=str, default=liveViewerPorts,
-                                                 help="Ports number of liveViewer-socket to send data to; there needs to be one entry for each streams (default=" + str(liveViewerPorts) + ")")
+                                                 help="Ports number of liveViewer-socket to send data to; there needs to be one entry for each stream (default=" + str(liveViewerPorts) + ")")
     parser.add_argument("--ondaIps"            , type=str, default=ondaIps,
                                                  help="IPs to communicate with onda/realtime analysis; there needs to be one entry for each streams (default=" + str(ondaIps) + ")")
     parser.add_argument("--ondaPorts"          , type=str, default=ondaPorts,
@@ -160,7 +158,6 @@ class Sender():
     zmqContext          = None
 
     def __init__(self):
-#        defConf                  = defaultConfig()
         arguments = argumentParsing()
 
         self.logfilePath         = arguments.logfilePath
