@@ -169,3 +169,17 @@ def stopZmq(zmqSocket, zmqContext):
         print "closing zmqContext...failed."
         print e
 
+
+
+if __name__ == '__main__':
+
+    import sys
+
+    from threading import Thread
+
+    lv = LiveView()
+
+    lv.start()
+
+    time.sleep(100)
+    lv.stop()
