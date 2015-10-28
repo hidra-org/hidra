@@ -106,7 +106,7 @@ class FileMover():
         # setting up router for load-balancing worker-processes.
         # each worker-process will handle a file event
         routerIp   = "127.0.0.1"
-        routerPort = "50000"
+        routerPort = "50002"
 
         self.routerSocket = self.zmqContext.socket(zmq.ROUTER)
         connectionStr     = "tcp://{ip}:{port}".format(ip=routerIp, port=routerPort)

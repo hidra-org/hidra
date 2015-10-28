@@ -84,7 +84,7 @@ class WorkerProcess():
 
         # initialize sockets
         routerIp   = "127.0.0.1"
-        routerPort = "50000"
+        routerPort = "50002"
 
         self.routerSocket             = self.zmqContextForWorker.socket(zmq.REQ)
         self.routerSocket.identity    = u"worker-{ID}".format(ID=self.id).encode("ascii")

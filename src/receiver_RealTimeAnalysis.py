@@ -12,9 +12,9 @@ import shared.helperScript as helperScript
 
 class ReceiverRealTimeAnalysis():
     senderComIp     = "127.0.0.1"
-    senderComPort   = "6080"
+    senderComPort   = "50000"
     senderDataIp    = "127.0.0.1"
-    senderDataPort  = "6081"
+    senderDataPort  = "50200"
     zmqContext      = None
     senderComSocket = None
     hostname        = socket.gethostname()
