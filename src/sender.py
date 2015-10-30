@@ -45,6 +45,7 @@ def argumentParsing():
     cleanerTargetPath   = config.get('asection', 'cleanerTargetPath')
     cleanerIp           = config.get('asection', 'cleanerIp')
     cleanerPort         = config.get('asection', 'cleanerPort')
+    routerPort          = config.get('asection', 'routerPort')
 
     receiverComIp       = config.get('asection', 'receiverComIp')
     receiverComPort     = config.get('asection', 'receiverComPort')
@@ -86,6 +87,8 @@ def argumentParsing():
                                                  help="ZMQ-pull-socket IP which deletes/moves given files (default=" + str(cleanerIp) + ")")
     parser.add_argument("--cleanerPort"        , type=str, default=cleanerPort,
                                                  help="ZMQ-pull-socket port which deletes/moves given file (default=" + str(cleanerPort) + ")")
+    parser.add_argument("--routerPort"         , type=str, default=routerPort,
+                                                 help="ZMQ-router port which coordinates the load-balancing to the worker-processes (default=" + str(routerPort) + ")")
 
     parser.add_argument("--receiverComIp"      , type=str, default=receiverComIp,
                                                  help="IP receive signals from the receiver (default=" + str(receiverComIp) + ")")
@@ -129,16 +132,19 @@ class Sender():
 
     watchFolder         = None
     monitoredSubfolders = None
-    monitoredSuffixes   = None
+    monitoredFormats    = None
     fileEventIp         = None
     fileEventPort       = None
+
+    useDataStream       = False
 
     dataStreamIp        = None
     dataStreamPort      = None
     cleanerTargetPath   = None
-    zmqCleanerIp        = None
-    zmqCleanerPort      = None
-    cleanerComPort      = None
+    cleanerIp           = None
+    cleanerPort         = None
+    routerPort          = None
+    receiverComIp       = None
     receiverComPort     = None
     ondaIps             = None
     ondaPorts           = None
@@ -169,6 +175,7 @@ class Sender():
         self.cleanerTargetPath   = arguments.cleanerTargetPath
         self.cleanerIp           = arguments.cleanerIp
         self.cleanerPort         = arguments.cleanerPort
+        self.routerPort          = arguments.cleanerPort
         self.receiverComIp       = arguments.receiverComIp
         self.receiverComPort     = arguments.receiverComPort
         self.ondaIps             = arguments.ondaIps
@@ -209,7 +216,7 @@ class Sender():
         fileMover = FileMover(self.fileEventIp, self.fileEventPort, self.dataStreamIp, self.dataStreamPort,
                               self.receiverComIp, self.receiverComPort, self.receiverWhiteList,
                               self.parallelDataStreams, self.chunkSize,
-                              self.cleanerIp, self.cleanerPort,
+                              self.cleanerIp, self.cleanerPort, self.routerPort,
                               self.ondaIps, self.ondaPorts,
                               self.useDataStream,
                               self.zmqContext)

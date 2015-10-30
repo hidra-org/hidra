@@ -22,7 +22,7 @@ class LiveView(QThread):
     mutex = None
 
     zmqIp = "127.0.0.1"
-    zmqPort = "6071"
+    zmqPort = "50021"
     zmqContext = None
     zmqSocket = None
 

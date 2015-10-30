@@ -15,8 +15,8 @@ class Coordinator:
     outputDir                = None
     liveViewerIp             = None
     liveViewerPort           = None
-    receiverExchangeIp       = "127.0.0.1"
-    receiverExchangePort     = "6072"
+    receiverExchangeIp       = None
+    receiverExchangePort     = None
 
     ringBuffer               = []
     maxRingBufferSize        = None
@@ -31,10 +31,12 @@ class Coordinator:
     liveViewerSocket         = None         # socket to communicate with live viewer
 
 
-    def __init__(self, outputDir, liveViewerPort, liveViewerIp, maxRingBufferSize, context = None):
-        self.outputDir          = outputDir
-        self.liveViewerIp       = liveViewerIp
-        self.liveViewerPort     = liveViewerPort
+    def __init__(self, outputDir, receiverExchangePort, liveViewerPort, liveViewerIp, maxRingBufferSize, context = None):
+        self.outputDir            = outputDir
+        self.receiverExchangeIp   = "127.0.0.1"
+        self.receiverExchangePort = receiverExchangePort
+        self.liveViewerIp         = liveViewerIp
+        self.liveViewerPort       = liveViewerPort
 
         self.maxRingBufferSize  = maxRingBufferSize
 #        # TODO remove outputDir from ringBuffer?

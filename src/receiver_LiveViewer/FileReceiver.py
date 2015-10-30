@@ -18,40 +18,43 @@ from Coordinator import Coordinator
 #  --------------------------  class: FileReceiver  --------------------------------------
 #
 class FileReceiver:
-    zmqContext               = None
-    outputDir                = None
-    dataStreamIp             = None
-    dataStreamPort           = None
-    liveViewerIp             = None
-    liveViewerPort           = None
-    exchangeIp               = "127.0.0.1"
-    exchangePort             = "6072"
-    senderComIp              = None         # ip for socket to communicate with receiver
-    senderComPort            = None         # port for socket to communicate receiver
-    socketResponseTimeout    = None         # time in milliseconds to wait for the sender to answer to a signal
+    zmqContext                = None
+    outputDir                 = None
+    dataStreamIp              = None
+    dataStreamPort            = None
+    liveViewerIp              = None
+    liveViewerPort            = None
+    coordinatorExchangeIp     = None
+    coordinatorExchangePort   = None
+    senderComIp               = None         # ip for socket to communicate with receiver
+    senderComPort             = None         # port for socket to communicate receiver
+    socketResponseTimeout     = None         # time in milliseconds to wait for the sender to answer to a signal
 
-    log                      = None
+    log                       = None
 
     # sockets
-    dataStreamSocket         = None         # socket to receive the data from
-    exchangeSocket           = None         # socket to communicate with Coordinator class
-    senderComSocket          = None         # socket to communicate with sender
+    dataStreamSocket          = None         # socket to receive the data from
+    coordinatorExchangeSocket = None         # socket to communicate with Coordinator class
+    senderComSocket           = None         # socket to communicate with sender
 
-    hostname                 = socket.gethostname()
+    hostname                  = socket.gethostname()
 #    print socket.gethostbyname(socket.gethostname())
 
 
-    def __init__(self, outputDir, dataStreamIp, dataStreamPort, liveViewerPort, liveViewerIp, senderComPort,
+    def __init__(self, outputDir, dataStreamIp, dataStreamPort,
+                 liveViewerPort, liveViewerIp, coordinatorExchangePort, senderComPort,
                  maxRingBuffersize, senderResponseTimeout = 1000, context = None):
 
-        self.outputDir             = os.path.normpath(outputDir)
-        self.dataStreamIp          = dataStreamIp
-        self.dataStreamPort        = dataStreamPort
-        self.liveViewerIp          = liveViewerIp
-        self.liveViewerPort        = liveViewerPort
-        self.senderComIp           = dataStreamIp        # ip for socket to communicate with sender; is the same ip as the data stream ip
-        self.senderComPort         = senderComPort
-        self.socketResponseTimeout = senderResponseTimeout
+        self.outputDir               = os.path.normpath(outputDir)
+        self.dataStreamIp            = dataStreamIp
+        self.dataStreamPort          = dataStreamPort
+        self.liveViewerIp            = liveViewerIp
+        self.liveViewerPort          = liveViewerPort
+        self.coordinatorExchangeIp   = "127.0.0.1"
+        self.coordinatorExchangePort = coordinatorExchangePort
+        self.senderComIp             = dataStreamIp        # ip for socket to communicate with sender; is the same ip as the data stream ip
+        self.senderComPort           = senderComPort
+        self.socketResponseTimeout   = senderResponseTimeout
 
 #        if context:
 #            assert isinstance(context, zmq.sugar.context.Context)
@@ -62,7 +65,7 @@ class FileReceiver:
         self.log.debug("Init")
 
         # start file receiver
-        self.receiverThread = threading.Thread(target=Coordinator, args=(self.outputDir, self.liveViewerPort, self.liveViewerIp, maxRingBuffersize))
+        self.receiverThread = threading.Thread(target=Coordinator, args=(self.outputDir, self.coordinatorExchangePort, self.liveViewerPort, self.liveViewerIp, maxRingBuffersize))
         self.receiverThread.start()
 
         # create sockets
@@ -140,10 +143,10 @@ class FileReceiver:
         self.poller.register(self.senderComSocket, zmq.POLLIN)
 
         # create socket to communicate with Coordinator
-        self.exchangeSocket = self.zmqContext.socket(zmq.PAIR)
-        connectionStr = "tcp://{ip}:{port}".format(ip=self.exchangeIp, port=self.exchangePort)
-        self.exchangeSocket.connect(connectionStr)
-        self.log.debug("exchangeSocket started (connect) for '" + connectionStr + "'")
+        self.coordinatorExchangeSocket = self.zmqContext.socket(zmq.PAIR)
+        connectionStr = "tcp://{ip}:{port}".format(ip=self.coordinatorExchangeIp, port=self.coordinatorExchangePort)
+        self.coordinatorExchangeSocket.connect(connectionStr)
+        self.log.debug("coordinatorExchangeSocket started (connect) for '" + connectionStr + "'")
 
         # create sockets to retrieve data from Sender
         self.dataStreamSocket = self.zmqContext.socket(zmq.PULL)
@@ -227,7 +230,7 @@ class FileReceiver:
         # send the file to the coordinator to add it to the ring buffer
         message = "AddFile" + str(filename) + ", " + str(fileModTime)
         self.log.debug("Send file to coordinator: " + message )
-        self.exchangeSocket.send(message)
+        self.coordinatorExchangeSocket.send(message)
 
 
     def generateTargetFilepath(self,configDict):
@@ -331,7 +334,7 @@ class FileReceiver:
             self.log.error(sys.exc_info())
 
         self.log.debug("sending exit signal to coordinator...")
-        self.exchangeSocket.send("Exit")
+        self.coordinatorExchangeSocket.send("Exit")
 
         if sendToSender:
             self.log.debug("sending stop signal to sender...")
@@ -360,7 +363,7 @@ class FileReceiver:
         # give the signal time to arrive
         time.sleep(0.1)
         self.log.debug("closing signal communication sockets...")
-        self.exchangeSocket.close(0)
+        self.coordinatorExchangeSocket.close(0)
         self.senderComSocket.close(0)
         self.log.debug("closing signal communication sockets...done")
 

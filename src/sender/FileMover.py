@@ -20,6 +20,8 @@ class FileMover():
     dataStreamPort      = None      # port number of dataStream-socket to push new files to
     cleanerIp           = None      # zmq pull endpoint, responsable to delete/move files
     cleanerPort         = None      # zmq pull endpoint, responsable to delete/move files
+    routerIp            = None      # ip  of router for load-balancing worker-processes
+    routerPort          = None      # port of router for load-balancing worker-processes
     receiverComIp       = None      # ip for socket to communicate with receiver
     receiverComPort     = None      # port for socket to communicate receiver
     liveViewer          = None
@@ -44,7 +46,7 @@ class FileMover():
     def __init__(self, fileEventIp, fileEventPort, dataStreamIp, dataStreamPort,
                  receiverComIp, receiverComPort, receiverWhiteList,
                  parallelDataStreams, chunkSize,
-                 cleanerIp, cleanerPort,
+                 cleanerIp, cleanerPort, routerPort,
                  ondaIps, ondaPorts,
                  useDataStream,
                  context = None):
@@ -58,6 +60,8 @@ class FileMover():
         self.dataStreamPort      = dataStreamPort
         self.cleanerIp           = cleanerIp
         self.cleanerPort         = cleanerPort
+        self.routerIp            = "127.0.0.1"
+        self.routerPort          = routerPort
         self.receiverComIp       = receiverComIp            # ip for socket to communicate with receiver;
         self.receiverComPort     = receiverComPort
 
@@ -101,11 +105,8 @@ class FileMover():
 
         # setting up router for load-balancing worker-processes.
         # each worker-process will handle a file event
-        routerIp   = "127.0.0.1"
-        routerPort = "50002"
-
         self.routerSocket = self.zmqContext.socket(zmq.ROUTER)
-        connectionStr     = "tcp://{ip}:{port}".format(ip=routerIp, port=routerPort)
+        connectionStr     = "tcp://{ip}:{port}".format(ip=self.routerIp, port=self.routerPort)
         self.routerSocket.bind(connectionStr)
         self.log.debug("routerSocket started (bind) for '" + connectionStr + "'")
 
