@@ -40,7 +40,7 @@ class WorkerProcess():
     # to get the logging only handling this class
     log                  = None
 
-    def __init__(self, id, dataStreamIp, dataStreamPort, chunkSize, cleanerIp, cleanerPort, liveViewerIp, liveViewerPort, ondaIp, ondaPort,
+    def __init__(self, id, dataStreamIp, dataStreamPort, chunkSize, cleanerIp, cleanerPort, ondaIp, ondaPort,
                  useDataStream, context = None):
         self.id                   = id
         self.dataStreamIp         = dataStreamIp
@@ -48,8 +48,6 @@ class WorkerProcess():
         self.zmqMessageChunkSize  = chunkSize
         self.cleanerIp            = cleanerIp
         self.cleanerPort          = cleanerPort
-        self.liveViewerIp         = liveViewerIp
-        self.liveViewerPort       = liveViewerPort
         self.ondaIp               = ondaIp
         self.ondaPort             = ondaPort
 
@@ -155,16 +153,30 @@ class WorkerProcess():
             jobCount += 1
 
             # the live viewer is turned on
-            startLV = workload == b"START_LIVE_VIEWER"
+            print "workload", workload
+            startLV= workload.startswith("START_LIVE_VIEWER")
+#            startLV = workload == b"START_LIVE_VIEWER"
             if startLV:
                 self.log.info("worker-"+str(self.id)+": Received live viewer start command...")
                 self.useLiveViewer = True
 
+                try:
+                    workloadSplit       = workload.split(',')
+                    self.liveViewerIp   = workloadSplit[1]
+                    self.liveViewerPort = workloadSplit[2]
+                except Exception as e:
+                    self.log.error("Could not encode command:" + worload + " ... live viewer not started")
+                    self.log.debug("Error was:" + str(e))
+                    continue
+
                 # create the socket to send data to the live viewer
                 self.liveViewerSocket = self.zmqContextForWorker.socket(zmq.PUSH)
                 connectionStr         = "tcp://{ip}:{port}".format(ip=self.liveViewerIp, port=self.liveViewerPort)
-                self.liveViewerSocket.bind(connectionStr)
-                self.log.info("liveViewerSocket started (bind) for '" + connectionStr + "'")
+                try:
+                    self.liveViewerSocket.connect(connectionStr)
+                    self.log.info("liveViewerSocket started (connect) for '" + connectionStr + "'")
+                except:
+                    self.log.info("liveViewerSocket could not be started for '" + connectionStr + "'")
 
                 continue
 

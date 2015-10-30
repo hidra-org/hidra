@@ -23,7 +23,6 @@ class FileMover():
     receiverComIp       = None      # ip for socket to communicate with receiver
     receiverComPort     = None      # port for socket to communicate receiver
     liveViewer          = None
-    liveViewerPorts     = []
     ondaIps             = []
     ondaPorts           = []
     receiverWhiteList   = None
@@ -46,7 +45,6 @@ class FileMover():
                  receiverComIp, receiverComPort, receiverWhiteList,
                  parallelDataStreams, chunkSize,
                  cleanerIp, cleanerPort,
-                 liveViewerIp, liveViewerPorts,
                  ondaIps, ondaPorts,
                  useDataStream,
                  context = None):
@@ -62,9 +60,7 @@ class FileMover():
         self.cleanerPort         = cleanerPort
         self.receiverComIp       = receiverComIp            # ip for socket to communicate with receiver;
         self.receiverComPort     = receiverComPort
-        self.liveViewerIp        = liveViewerIp
-        self.liveViewerPorts     = liveViewerPorts          # needs a list of ports because every WorkerProcess
-                                                            # binds to one port (this is not possible for only one port
+
         self.ondaIps             = ondaIps
         self.ondaPorts           = ondaPorts
 
@@ -148,8 +144,6 @@ class FileMover():
                                                                   self.chunkSize,
                                                                   self.cleanerIp,
                                                                   self.cleanerPort,
-                                                                  self.liveViewerIp,
-                                                                  self.liveViewerPorts[processNumber],
                                                                   self.ondaIps[processNumber],
                                                                   self.ondaPorts[processNumber],
                                                                   self.useDataStream
@@ -193,9 +187,9 @@ class FileMover():
                     signalHostname = None
 
                     try:
-                        incomingMessage = incomingMessage.split(',')
-                        signal          = incomingMessage[0]
-                        signalHostname  = incomingMessage[1]
+                        incomingMessageSplit = incomingMessage.split(',')
+                        signal          = incomingMessageSplit[0]
+                        signalHostname  = incomingMessageSplit[1]
                     except Exception as e:
                         self.log.info("Received live viewer signal from host " + str(signalHostname) + " is of the wrong format")
                         self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
@@ -223,7 +217,7 @@ class FileMover():
                     elif signal == "START_LIVE_VIEWER":
                         self.log.info("Received live viewer start signal from host " + str(signalHostname) + "...starting live viewer")
                         self.useLiveViewer = True
-                        self.sendSignalToReceiver(signal)
+                        self.sendSignalToReceiver(incomingMessage)
                         continue
                     elif signal == "STOP_REALTIME_ANALYSIS":
                         self.log.info("Received realtime analysis stop signal from host " + str(signalHostname) + "...stopping realtime analysis")

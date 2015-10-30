@@ -21,7 +21,7 @@ class FileReceiver:
     zmqContext               = None
     outputDir                = None
     dataStreamIp             = None
-    dataStreamPorts          = []
+    dataStreamPort           = None
     liveViewerIp             = None
     liveViewerPort           = None
     exchangeIp               = "127.0.0.1"
@@ -33,7 +33,7 @@ class FileReceiver:
     log                      = None
 
     # sockets
-    dataStreamSockets        = []           # socket to receive the data from
+    dataStreamSocket         = None         # socket to receive the data from
     exchangeSocket           = None         # socket to communicate with Coordinator class
     senderComSocket          = None         # socket to communicate with sender
 
@@ -41,12 +41,12 @@ class FileReceiver:
 #    print socket.gethostbyname(socket.gethostname())
 
 
-    def __init__(self, outputDir, dataStreamIp, dataStreamPorts, liveViewerPort, liveViewerIp, senderComPort,
+    def __init__(self, outputDir, dataStreamIp, dataStreamPort, liveViewerPort, liveViewerIp, senderComPort,
                  maxRingBuffersize, senderResponseTimeout = 1000, context = None):
 
         self.outputDir             = os.path.normpath(outputDir)
         self.dataStreamIp          = dataStreamIp
-        self.dataStreamPorts       = dataStreamPorts
+        self.dataStreamPort        = dataStreamPort
         self.liveViewerIp          = liveViewerIp
         self.liveViewerPort        = liveViewerPort
         self.senderComIp           = dataStreamIp        # ip for socket to communicate with sender; is the same ip as the data stream ip
@@ -69,7 +69,7 @@ class FileReceiver:
         self.createSockets()
 
         # Starting live viewer
-        message = "START_LIVE_VIEWER," + str(self.hostname)
+        message = "START_LIVE_VIEWER," + str(self.hostname) + "," + str(self.dataStreamPort)
         self.log.info("Sending start signal to sender...")
         self.log.debug("Sending start signal to sender, message: " + message)
         print "sending message ", message
@@ -97,7 +97,7 @@ class FileReceiver:
                 sys.exit(1)
 
         # if the response was correct: start data retrieving
-        if senderMessage == "START_LIVE_VIEWER":
+        if senderMessage and senderMessage.startswith("START_LIVE_VIEWER"):
             self.log.info("Received confirmation from sender...start receiving files")
             try:
                 self.log.info("Start receiving new files")
@@ -145,19 +145,11 @@ class FileReceiver:
         self.exchangeSocket.connect(connectionStr)
         self.log.debug("exchangeSocket started (connect) for '" + connectionStr + "'")
 
-        # create poller to differentiate between the different data stream port
-        self.dataPoller = zmq.Poller()
-
         # create sockets to retrieve data from Sender
-        for dataStreamPort in self.dataStreamPorts:
-            dataStreamSocket = self.zmqContext.socket(zmq.PULL)
-            connectionStr = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=dataStreamPort)
-            dataStreamSocket.connect(connectionStr)
-            self.log.info("dataStreamSocket started (connect) for '" + connectionStr + "'")
-
-            self.dataStreamSockets.append(dataStreamSocket)
-
-            self.dataPoller.register(dataStreamSocket, zmq.POLLIN)
+        self.dataStreamSocket = self.zmqContext.socket(zmq.PULL)
+        connectionStr = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
+        self.dataStreamSocket.bind(connectionStr)
+        self.log.info("dataStreamSocket started (bind) for '" + connectionStr + "'")
 
 
     def startReceiving(self):
@@ -167,7 +159,7 @@ class FileReceiver:
         self.log.debug("Waiting for new messages...")
         while continueReceiving:
             try:
-                self.pollDifferentSockets()
+                self.combineMessage()
                 loopCounter+=1
             except KeyboardInterrupt:
                 self.log.debug("Keyboard interrupt detected. Stop receiving.")
@@ -187,19 +179,11 @@ class FileReceiver:
             self.log.error("shutting down receiver...failed.")
 
 
-    def pollDifferentSockets(self):
-        socks = dict(self.dataPoller.poll())
-
-        for dataStreamSocket in self.dataStreamSockets:
-            if dataStreamSocket in socks and socks[dataStreamSocket] == zmq.POLLIN:
-                self.combineMessage(dataStreamSocket)
-
-
-    def combineMessage(self, dataStreamSocket):
+    def combineMessage(self):
         receivingMessages = True
         #save all chunks to file
         while receivingMessages:
-            multipartMessage = dataStreamSocket.recv_multipart()
+            multipartMessage = self.dataStreamSocket.recv_multipart()
 
             #extract multipart message
             try:
@@ -339,13 +323,12 @@ class FileReceiver:
     def stopReceiving(self, sendToSender = True):
 
         self.log.debug("stopReceiving...")
-        for dataStreamSocket in self.dataStreamSockets:
-            try:
-                dataStreamSocket.close(0)
-                self.log.debug("closing dataStreamSocket...done.")
-            except:
-                self.log.error("closing dataStreamSocket...failed.")
-                self.log.error(sys.exc_info())
+        try:
+            self.dataStreamSocket.close(0)
+            self.log.debug("closing dataStreamSocket...done.")
+        except:
+            self.log.error("closing dataStreamSocket...failed.")
+            self.log.error(sys.exc_info())
 
         self.log.debug("sending exit signal to coordinator...")
         self.exchangeSocket.send("Exit")
