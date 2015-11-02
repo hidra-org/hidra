@@ -51,17 +51,25 @@ class Coordinator:
 
         self.zmqContext = context or zmq.Context()
 
-        # create sockets
+        # create socket to exchange informations with FileReceiver
         self.receiverExchangeSocket = self.zmqContext.socket(zmq.PAIR)
         connectionStr               = "tcp://" + self.receiverExchangeIp + ":%s" % self.receiverExchangePort
-        self.receiverExchangeSocket.bind(connectionStr)
-        self.log.debug("receiverExchangeSocket started (bind) for '" + connectionStr + "'")
+        try:
+            self.receiverExchangeSocket.bind(connectionStr)
+            self.log.debug("receiverExchangeSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start receiverExchangeSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
         # create socket for live viewer
         self.liveViewerSocket = self.zmqContext.socket(zmq.REP)
         connectionStr         = "tcp://" + self.liveViewerIp + ":%s" % self.liveViewerPort
-        self.liveViewerSocket.bind(connectionStr)
-        self.log.debug("zmqLiveViewerSocket started (bind) for '" + connectionStr + "'")
+        try:
+            self.liveViewerSocket.bind(connectionStr)
+            self.log.debug("liveViewerSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start liveViewerSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
         self.poller = zmq.Poller()
         self.poller.register(self.receiverExchangeSocket, zmq.POLLIN)

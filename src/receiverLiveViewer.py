@@ -9,7 +9,7 @@ import json
 import ConfigParser
 
 import shared.helperScript as helperScript
-from receiver_LiveViewer.FileReceiver import FileReceiver
+from receiverLiveViewer.FileReceiver import FileReceiver
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
