@@ -132,3 +132,6 @@ class Coordinator:
         self.receiverExchangeSocket.close(0)
         self.liveViewerSocket.close(0)
 
+        self.log.debug("Clearing Ringbuffer")
+        self.ringBuffer.removeAll
+
