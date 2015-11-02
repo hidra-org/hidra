@@ -80,6 +80,26 @@ class FakeSecHead(object):
             return self.fp.readline()
 
 
+def checkSubDirExistance(dirPath, subDirs):
+    """
+    abort if dir does not exist
+
+    :return:
+    """
+    dirPath = os.path.normpath(dirPath)
+    dirsToCheck = [dirPath + os.sep + directory for directory in subDirs]
+    noSubdir = True
+
+    for d in dirsToCheck:
+        #check directory path for existance. exits if it does not exist
+        if os.path.exists(d):
+            noSubdir = False
+
+    if noSubdir:
+        logging.error("There are none of the specified subdirectories inside '%s'. Abort." % str(dirPath))
+        logging.error("Checked paths: " + str(dirsToCheck))
+        sys.exit(1)
+
 
 def checkDirExistance(dirPath):
     """

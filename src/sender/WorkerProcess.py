@@ -153,7 +153,6 @@ class WorkerProcess():
             jobCount += 1
 
             # the live viewer is turned on
-            print "workload", workload
             startLV= workload.startswith("START_LIVE_VIEWER")
 #            startLV = workload == b"START_LIVE_VIEWER"
             if startLV:

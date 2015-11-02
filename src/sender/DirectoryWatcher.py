@@ -48,6 +48,7 @@ class DirectoryWatcher():
 
         if monitoredDefaultSubdirs:
             self.monitoredDefaultSubdirs = monitoredDefaultSubdirs
+
         self.monitoredSuffixes   = monitoredSuffixes
         self.log.info ("Monitored suffixes are: " + str( monitoredSuffixes ))
 

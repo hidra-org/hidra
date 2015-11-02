@@ -35,7 +35,7 @@ def argumentParsing():
 
     watchDir            = config.get('asection', 'watchDir')
     monitoredSubdirs    = json.loads(config.get('asection', 'monitoredSubdirs'))
-    monitoredFormats    = tuple(json.loads(config.get('asection', 'monitoredFormats')))
+    monitoredFormats    = json.loads(config.get('asection', 'monitoredFormats'))
     fileEventIp         = config.get('asection', 'fileEventIp')
     fileEventPort       = config.get('asection', 'fileEventPort')
 
@@ -112,12 +112,13 @@ def argumentParsing():
     logfileName       = str(arguments.logfileName)
     watchDir          = str(arguments.watchDir)
 
-    monitoredSubdirs  = str(arguments.monitoredSubdirs)
+    monitoredSubdirs  = arguments.monitoredSubdirs
     cleanerTargetPath = str(arguments.cleanerTargetPath)
 
     # check if directories exists
     helperScript.checkDirExistance(logfilePath)
     helperScript.checkDirExistance(watchDir)
+    helperScript.checkSubDirExistance(watchDir, monitoredSubdirs)
     helperScript.checkDirExistance(cleanerTargetPath)
 
     # check if logfile is writable
