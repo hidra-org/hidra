@@ -26,8 +26,8 @@ class FileReceiver:
     liveViewerPort            = None
     coordinatorExchangeIp     = None
     coordinatorExchangePort   = None
-    senderComIp               = None         # ip for socket to communicate with receiver
-    senderComPort             = None         # port for socket to communicate receiver
+    senderComIp               = None         # ip for socket to communicate with the sender
+    senderComPort             = None         # port for socket to communicate with the sender
     socketResponseTimeout     = None         # time in milliseconds to wait for the sender to answer to a signal
 
     log                       = None
@@ -41,9 +41,12 @@ class FileReceiver:
 #    print socket.gethostbyname(socket.gethostname())
 
 
-    def __init__(self, outputDir, dataStreamIp, dataStreamPort,
-                 liveViewerPort, liveViewerIp, coordinatorExchangePort, senderComPort,
-                 maxRingBuffersize, senderResponseTimeout = 1000, context = None):
+    def __init__(self, outputDir,
+                 senderComIp, senderComPort,
+                 dataStreamIp, dataStreamPort,
+                 liveViewerPort, liveViewerIp,
+                 coordinatorExchangePort, maxRingBuffersize, senderResponseTimeout = 1000,
+                 context = None):
 
         self.outputDir               = os.path.normpath(outputDir)
         self.dataStreamIp            = dataStreamIp
@@ -52,7 +55,7 @@ class FileReceiver:
         self.liveViewerPort          = liveViewerPort
         self.coordinatorExchangeIp   = "127.0.0.1"
         self.coordinatorExchangePort = coordinatorExchangePort
-        self.senderComIp             = dataStreamIp        # ip for socket to communicate with sender; is the same ip as the data stream ip
+        self.senderComIp             = senderComIp
         self.senderComPort           = senderComPort
         self.socketResponseTimeout   = senderResponseTimeout
 
@@ -135,8 +138,12 @@ class FileReceiver:
         # time to wait for the sender to give a confirmation of the signal
 #        self.senderComSocket.RCVTIMEO = self.socketResponseTimeout
         connectionStr = "tcp://{ip}:{port}".format(ip=self.senderComIp, port=self.senderComPort)
-        self.senderComSocket.connect(connectionStr)
-        self.log.info("senderComSocket started (connect) for '" + connectionStr + "'")
+        try:
+            self.senderComSocket.connect(connectionStr)
+            self.log.info("senderComSocket started (connect) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start senderComSocket (connect): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
         # using a Poller to implement the senderComSocket timeout (in older ZMQ version there is no option RCVTIMEO)
         self.poller = zmq.Poller()
@@ -145,14 +152,22 @@ class FileReceiver:
         # create socket to communicate with Coordinator
         self.coordinatorExchangeSocket = self.zmqContext.socket(zmq.PAIR)
         connectionStr = "tcp://{ip}:{port}".format(ip=self.coordinatorExchangeIp, port=self.coordinatorExchangePort)
-        self.coordinatorExchangeSocket.connect(connectionStr)
-        self.log.debug("coordinatorExchangeSocket started (connect) for '" + connectionStr + "'")
+        try:
+            self.coordinatorExchangeSocket.connect(connectionStr)
+            self.log.debug("coordinatorExchangeSocket started (connect) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start coordinatorExchangeSocket (connect): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
         # create sockets to retrieve data from Sender
         self.dataStreamSocket = self.zmqContext.socket(zmq.PULL)
         connectionStr = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
-        self.dataStreamSocket.bind(connectionStr)
-        self.log.info("dataStreamSocket started (bind) for '" + connectionStr + "'")
+        try:
+            self.dataStreamSocket.bind(connectionStr)
+            self.log.info("dataStreamSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
 
     def startReceiving(self):

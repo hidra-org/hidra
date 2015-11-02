@@ -30,6 +30,7 @@ def argumentParsing():
     liveViewerIp            = config.get('asection', 'liveViewerIp')
     liveViewerPort          = config.get('asection', 'liveViewerPort')
     coordinatorExchangePort = config.get('asection', 'coordinatorExchangePort')
+    senderComIp             = config.get('asection', 'senderComIp')
     senderComPort           = config.get('asection', 'senderComPort')
     maxRingBufferSize       = config.get('asection', 'maxRingBufferSize')
     senderResponseTimeout   = config.get('asection', 'senderResponseTimeout')
@@ -53,6 +54,8 @@ def argumentParsing():
                                                      help="tcp port of live viewer (default=" + str(liveViewerPort) + ")")
     parser.add_argument("--coordinatorExchangePort", type=str, default=coordinatorExchangePort,
                                                      help="port to exchange data and signals between receiver and coordinato (default=" + str(coordinatorExchangePort) + ")")
+    parser.add_argument("--senderComIp"            , type=str, default=senderComIp,
+                                                     help="port number of dataStream-socket to send signals back to the sender (default=" + str(senderComIp) + ")")
     parser.add_argument("--senderComPort"          , type=str, default=senderComPort,
                                                      help="port number of dataStream-socket to send signals back to the sender (default=" + str(senderComPort) + ")")
     parser.add_argument("--maxRingBufferSize"      , type=int, default=maxRingBufferSize,
@@ -90,6 +93,7 @@ class ReceiverLiveViewer():
     liveViewerIp            = None
     liveViewerPort          = None
     coordinatorExchangePort = None
+    senderComIp             = None
     senderComPort           = None
     maxRingBufferSize       = None
     senderResponseTimeout   = None
@@ -109,6 +113,7 @@ class ReceiverLiveViewer():
         self.liveViewerIp            = arguments.liveViewerIp
         self.liveViewerPort          = arguments.liveViewerPort
         self.coordinatorExchangePort = arguments.coordinatorExchangePort
+        self.senderComIp             = arguments.senderComIp
         self.senderComPort           = arguments.senderComPort
         self.maxRingBufferSize       = arguments.maxRingBufferSize
         self.senderResponseTimeout   = arguments.senderResponseTimeout
@@ -119,8 +124,11 @@ class ReceiverLiveViewer():
 
 
         #start file receiver
-        myWorker = FileReceiver(self.targetDir, self.dataStreamIp, self.dataStreamPort, self.liveViewerPort, self.liveViewerIp, self.coordinatorExchangePort, self.senderComPort, self.maxRingBufferSize, self.senderResponseTimeout)
-
+        myWorker = FileReceiver(self.targetDir,
+                self.senderComIp, self.senderComPort,
+                self.dataStreamIp, self.dataStreamPort,
+                self.liveViewerPort, self.liveViewerIp,
+                self.coordinatorExchangePort, self.maxRingBufferSize, self.senderResponseTimeout)
 
 if __name__ == "__main__":
     receiver = ReceiverLiveViewer()
