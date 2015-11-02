@@ -88,15 +88,23 @@ class FileMover():
         # create zmq socket for incoming file events
         self.fileEventSocket = self.zmqContext.socket(zmq.PULL)
         connectionStr        = "tcp://{ip}:{port}".format(ip=self.fileEventIp, port=self.fileEventPort)
-        self.fileEventSocket.bind(connectionStr)
-        self.log.debug("fileEventSocket started (bind) for '" + connectionStr + "'")
+        try:
+            self.fileEventSocket.bind(connectionStr)
+            self.log.debug("fileEventSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start fileEventSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
 
         # create zmq socket for communitation with receiver
         self.receiverComSocket = self.zmqContext.socket(zmq.REP)
         connectionStr          = "tcp://{ip}:{port}".format(ip=self.receiverComIp, port=self.receiverComPort)
-        self.receiverComSocket.bind(connectionStr)
-        self.log.info("receiverComSocket started (bind) for '" + connectionStr + "'")
+        try:
+            self.receiverComSocket.bind(connectionStr)
+            self.log.info("receiverComSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start receiverComSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
         # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
         self.poller = zmq.Poller()
@@ -107,8 +115,12 @@ class FileMover():
         # each worker-process will handle a file event
         self.routerSocket = self.zmqContext.socket(zmq.ROUTER)
         connectionStr     = "tcp://{ip}:{port}".format(ip=self.routerIp, port=self.routerPort)
-        self.routerSocket.bind(connectionStr)
-        self.log.debug("routerSocket started (bind) for '" + connectionStr + "'")
+        try:
+            self.routerSocket.bind(connectionStr)
+            self.log.debug("routerSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start routerSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
 
     def process(self):
