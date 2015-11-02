@@ -175,7 +175,7 @@ class Sender():
         self.cleanerTargetPath   = arguments.cleanerTargetPath
         self.cleanerIp           = arguments.cleanerIp
         self.cleanerPort         = arguments.cleanerPort
-        self.routerPort          = arguments.cleanerPort
+        self.routerPort          = arguments.routerPort
         self.receiverComIp       = arguments.receiverComIp
         self.receiverComPort     = arguments.receiverComPort
         self.ondaIps             = arguments.ondaIps
