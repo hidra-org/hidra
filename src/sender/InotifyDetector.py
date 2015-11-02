@@ -80,13 +80,13 @@ class InotifyDetector():
     previousEventName = ""
 
 
-    def __init__(self, paths, monitoredSubfolders, monitoredSuffixes):
+    def __init__(self, paths, monitoredSubdirs, monitoredSuffixes):
 
-        self.paths = paths
-        self.log  = self.getLogger()
-        self.fd  = binding.init()
-        self.monitoredSuffixes   = monitoredSuffixes
-        self.monitoredSubfolders = monitoredSubfolders
+        self.paths             = paths
+        self.log               = self.getLogger()
+        self.fd                = binding.init()
+        self.monitoredSuffixes = monitoredSuffixes
+        self.monitoredSubdirs  = monitoredSubdirs
 
         self.add_watch()
 
@@ -114,10 +114,10 @@ class InotifyDetector():
 
 
     def add_watch(self):
-        foldersToRegister=self.getDirectoryStructure()
+        dirsToRegister=self.getDirectoryStructure()
         try:
 #            for path in self.paths:
-            for path in foldersToRegister:
+            for path in dirsToRegister:
                 wd = binding.add_watch(self.fd, path)
                 self.wd_to_path[wd] = path
                 self.log.debug("Register watch for path:" + str(path) )
@@ -128,24 +128,24 @@ class InotifyDetector():
 
 
     def getDirectoryStructure(self):
-        # Add the default subfolders
+        # Add the default subdirs
         self.log.info("paths:" + str(self.paths))
-        foldersToWalk    = [os.path.normpath(self.paths[0] + os.sep + folder) for folder in self.monitoredSubfolders]
-        self.log.info("foldersToWalk:" + str(foldersToWalk))
-        monitoredFolders = []
+        dirsToWalk    = [os.path.normpath(self.paths[0] + os.sep + directory) for directory in self.monitoredSubdirs]
+        self.log.info("dirsToWalk:" + str(dirsToWalk))
+        monitoredDirs = []
 
         # Walk the tree
-        for folder in foldersToWalk:
-            if os.path.isdir(folder):
-                monitoredFolders.append(folder)
-                for root, directories, files in os.walk(folder):
-                    # Add the found folders to the list for the inotify-watch
-                    monitoredFolders.append(root)
-                    self.log.info("Add folder to monitor: " + str(root))
+        for directory in dirsToWalk:
+            if os.path.isdir(directory):
+                monitoredDirs.append(directory)
+                for root, directories, files in os.walk(directory):
+                    # Add the found dirs to the list for the inotify-watch
+                    monitoredDirs.append(root)
+                    self.log.info("Add directory to monitor: " + str(root))
             else:
-                self.log.info("Folder does not exists: " + str(folder))
+                self.log.info("Dir does not exists: " + str(directory))
 
-        return monitoredFolders
+        return monitoredDirs
 
     def getNewEvent(self):
 
@@ -171,14 +171,14 @@ class InotifyDetector():
 #            print path, event.name, parts
 #            print event.name
 
-            is_dir     = ("IN_ISDIR" in parts_array)
-            is_closed  = ("IN_CLOSE_WRITE" in parts_array)
-            is_moved   = ("IN_MOVE" in parts_array)
+            is_dir        = ("IN_ISDIR" in parts_array)
+            is_closed     = ("IN_CLOSE_WRITE" in parts_array)
+            is_moved      = ("IN_MOVE" in parts_array)
             is_moved_from = ("IN_MOVED_FROM" in parts_array)
             is_moved_to = ("IN_MOVED_TO" in parts_array)
 #            is_closed  = ("IN_CLOSE" in parts_array)
 #            is_closed  = ("IN_CLOSE" in parts_array or "IN_CLOSE_WRITE" in parts_array)
-            is_created = ("IN_CREATE" in parts_array)
+            is_created    = ("IN_CREATE" in parts_array)
 
             # if a new directory is created or a directory is renamed inside the monitored one,
             # this one has to be monitored as well
@@ -248,9 +248,9 @@ class InotifyDetector():
                             # the os.sep is needed at the beginning because the relative path is built up from the right
                             # e.g.
                             # self.paths = ["/tmp/test/source"]
-                            # path = /tmp/test/source/local/testfolder
-                            # first iteration:  parentDir = /tmp/test/source/local, relDir = /testfolder
-                            # second iteration: parentDir = /tmp/test/source,       relDir = /local/testfolder
+                            # path = /tmp/test/source/local/testdir
+                            # first iteration:  parentDir = /tmp/test/source/local, relDir = /testdir
+                            # second iteration: parentDir = /tmp/test/source,       relDir = /local/testdir
                             relativePath = os.sep + relDir + relativePath
 #                            print "debug11:", relativePath
                         else:
@@ -320,10 +320,10 @@ if __name__ == '__main__':
     helperScript.initLogging(logfilePath, verbose)
 
     paths             = [BASE_PATH + "/data/source"]
-    monitoredSubfolders = ["local"]
-    monitoredSuffixes = (".tif", ".cbf")
+    monitoredSubdirs  = ["local"]
+    monitoredSuffixes = [".tif", ".cbf"]
 
-    eventDetector = InotifyDetector(paths, monitoredSubfolders, monitoredSuffixes)
+    eventDetector = InotifyDetector(paths, monitoredSubdirs, monitoredSuffixes)
 
     while True:
         try:

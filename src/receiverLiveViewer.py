@@ -72,7 +72,7 @@ def argumentParsing():
     logfileName = str(arguments.logfileName)
 
     # check target directory for existance
-    helperScript.checkFolderExistance(targetDir)
+    helperScript.checkDirExistance(targetDir)
 
     # check if logfile is writable
     helperScript.checkLogFileWritable(logfilePath, logfileName)

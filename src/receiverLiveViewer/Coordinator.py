@@ -12,7 +12,6 @@ from RingBuffer import RingBuffer
 class Coordinator:
     zmqContext               = None
     liveViewerZmqContext     = None
-    outputDir                = None
     liveViewerIp             = None
     liveViewerPort           = None
     receiverExchangeIp       = None
@@ -31,16 +30,17 @@ class Coordinator:
     liveViewerSocket         = None         # socket to communicate with live viewer
 
 
-    def __init__(self, outputDir, receiverExchangePort, liveViewerPort, liveViewerIp, maxRingBufferSize, context = None):
-        self.outputDir            = outputDir
+    def __init__(self, receiverExchangePort,
+            liveViewerPort, liveViewerIp,
+            maxRingBufferSize,
+            context = None):
+
         self.receiverExchangeIp   = "127.0.0.1"
         self.receiverExchangePort = receiverExchangePort
         self.liveViewerIp         = liveViewerIp
         self.liveViewerPort       = liveViewerPort
 
         self.maxRingBufferSize  = maxRingBufferSize
-#        # TODO remove outputDir from ringBuffer?
-#        self.ringBuffer         = RingBuffer(self.maxRingBufferSize, self.outputDir)
         self.ringBuffer         = RingBuffer(self.maxRingBufferSize)
 
         self.log = self.getLogger()

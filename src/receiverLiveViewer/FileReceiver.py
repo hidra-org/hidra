@@ -68,7 +68,7 @@ class FileReceiver:
         self.log.debug("Init")
 
         # start file receiver
-        self.receiverThread = threading.Thread(target=Coordinator, args=(self.outputDir, self.coordinatorExchangePort, self.liveViewerPort, self.liveViewerIp, maxRingBuffersize))
+        self.receiverThread = threading.Thread(target=Coordinator, args=(self.coordinatorExchangePort, self.liveViewerPort, self.liveViewerIp, maxRingBuffersize))
         self.receiverThread.start()
 
         # create sockets
@@ -275,9 +275,8 @@ class FileReceiver:
         # if the relative path starts with a slash path.join will consider it as absolute path
         if targetRelativePath.startswith("/"):
             targetRelativePath = targetRelativePath[1:]
-        outputDir = self.outputDir
 
-        targetPath = os.path.join(outputDir, targetRelativePath)
+        targetPath = os.path.join(self.outputDir, targetRelativePath)
 
         return targetPath
 

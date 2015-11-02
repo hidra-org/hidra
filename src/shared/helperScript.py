@@ -81,16 +81,16 @@ class FakeSecHead(object):
 
 
 
-def checkFolderExistance(folderPath):
+def checkDirExistance(dirPath):
     """
-    abort if folder does not exist
+    abort if dir does not exist
 
     :return:
     """
 
-    #check folder path for existance. exits if it does not exist
-    if not os.path.exists(folderPath):
-        logging.error("Folder '%s' does not exist. Abort." % str(folderPath))
+    #check directory path for existance. exits if it does not exist
+    if not os.path.exists(dirPath):
+        logging.error("Dir '%s' does not exist. Abort." % str(dirPath))
         sys.exit(1)
 
 
