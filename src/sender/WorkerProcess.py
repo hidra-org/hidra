@@ -397,7 +397,7 @@ class WorkerProcess():
                 self.log.debug("Passing multipart-message for file " + str(sourceFilePathFull) + "...")
                 chunkNumber = 0
                 stillChunksToRead = True
-                payloadAll = []
+                payloadAll = [json.dumps(payloadMetadata.copy())]
                 while stillChunksToRead:
                     chunkNumber += 1
 
@@ -448,12 +448,12 @@ class WorkerProcess():
 
                 # self.liveViewerSocket.send_multipart(multipartMessage)
                 self.log.debug("Passing multipart-message for file " + str(sourceFilePathFull) + "...done.")
-            except zmq.error.Again:
-                self.log.error("unable to send multiplart-message for file " + str(sourceFilePathFull))
-                self.log.error("Receiver has disconnected")
+#            except zmq.error.Again:
+#                self.log.error("unable to send multiplart-message for file " + str(sourceFilePathFull))
+#                self.log.error("Receiver has disconnected")
             except Exception, e:
                 self.log.error("Unable to send multipart-message for file " + str(sourceFilePathFull))
-                self.log.debug("Error was: " + str(e))
+#                self.log.debug("Error was: " + str(e))
                 trace = traceback.format_exc()
                 self.log.debug("Error was: " + str(trace))
                 self.log.debug("Passing multipart-message...failed.")
