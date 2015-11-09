@@ -12,13 +12,10 @@ from RingBuffer import RingBuffer
 class Coordinator:
     zmqContext               = None
     liveViewerZmqContext     = None
-    outputDir                = None
-    zmqDataStreamIp          = None
-    zmqDataStreamPort        = None
-    zmqLiveViewerIp          = None
-    zmqLiveViewerPort        = None
-    receiverExchangeIp       = "127.0.0.1"
-    receiverExchangePort     = "6072"
+    liveViewerIp             = None
+    liveViewerPort           = None
+    receiverExchangeIp       = None
+    receiverExchangePort     = None
 
     ringBuffer               = []
     maxRingBufferSize        = None
@@ -30,19 +27,20 @@ class Coordinator:
 
     # sockets
     receiverExchangeSocket   = None         # socket to communicate with FileReceiver class
-    zmqliveViewerSocket      = None         # socket to communicate with live viewer
+    liveViewerSocket         = None         # socket to communicate with live viewer
 
 
-    def __init__(self, outputDir, zmqDataStreamPort, zmqDataStreamIp, zmqLiveViewerPort, zmqLiveViewerIp, maxRingBufferSize, context = None):
-        self.outputDir          = outputDir
-        self.zmqDataStreamIp    = zmqDataStreamIp
-        self.zmqDataStreamPort  = zmqDataStreamPort
-        self.zmqLiveViewerIp    = zmqLiveViewerIp
-        self.zmqLiveViewerPort  = zmqLiveViewerPort
+    def __init__(self, receiverExchangePort,
+            liveViewerPort, liveViewerIp,
+            maxRingBufferSize,
+            context = None):
+
+        self.receiverExchangeIp   = "127.0.0.1"
+        self.receiverExchangePort = receiverExchangePort
+        self.liveViewerIp         = liveViewerIp
+        self.liveViewerPort       = liveViewerPort
 
         self.maxRingBufferSize  = maxRingBufferSize
-#        # TODO remove outputDir from ringBuffer?
-#        self.ringBuffer         = RingBuffer(self.maxRingBufferSize, self.outputDir)
         self.ringBuffer         = RingBuffer(self.maxRingBufferSize)
 
         self.log = self.getLogger()
@@ -53,21 +51,29 @@ class Coordinator:
 
         self.zmqContext = context or zmq.Context()
 
-        # create sockets
-        self.receiverExchangeSocket         = self.zmqContext.socket(zmq.PAIR)
-        connectionStrReceiverExchangeSocket = "tcp://" + self.receiverExchangeIp + ":%s" % self.receiverExchangePort
-        self.receiverExchangeSocket.bind(connectionStrReceiverExchangeSocket)
-        self.log.debug("receiverExchangeSocket started (bind) for '" + connectionStrReceiverExchangeSocket + "'")
+        # create socket to exchange informations with FileReceiver
+        self.receiverExchangeSocket = self.zmqContext.socket(zmq.PAIR)
+        connectionStr               = "tcp://" + self.receiverExchangeIp + ":%s" % self.receiverExchangePort
+        try:
+            self.receiverExchangeSocket.bind(connectionStr)
+            self.log.debug("receiverExchangeSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start receiverExchangeSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
         # create socket for live viewer
-        self.zmqliveViewerSocket         = self.zmqContext.socket(zmq.REP)
-        connectionStrLiveViewerSocket    = "tcp://" + self.zmqLiveViewerIp + ":%s" % self.zmqLiveViewerPort
-        self.zmqliveViewerSocket.bind(connectionStrLiveViewerSocket)
-        self.log.debug("zmqLiveViewerSocket started (bind) for '" + connectionStrLiveViewerSocket + "'")
+        self.liveViewerSocket = self.zmqContext.socket(zmq.REP)
+        connectionStr         = "tcp://" + self.liveViewerIp + ":%s" % self.liveViewerPort
+        try:
+            self.liveViewerSocket.bind(connectionStr)
+            self.log.debug("liveViewerSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start liveViewerSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
         self.poller = zmq.Poller()
         self.poller.register(self.receiverExchangeSocket, zmq.POLLIN)
-        self.poller.register(self.zmqliveViewerSocket, zmq.POLLIN)
+        self.poller.register(self.liveViewerSocket, zmq.POLLIN)
 
         try:
             self.log.info("Start communication")
@@ -97,10 +103,10 @@ class Coordinator:
                 message = self.receiverExchangeSocket.recv()
                 self.log.debug("Recieved control command: %s" % message )
                 if message == "Exit":
-                    self.log.debug("Received exit command, coordinator thread will stop recieving messages")
+                    self.log.debug("Received exit command, coordinator thread will stop receiving messages")
                     should_continue = False
                     # TODO why sending signal to live viewer?
-#                    self.zmqliveViewerSocket.send("Exit", zmq.NOBLOCK)
+#                    self.liveViewerSocket.send("Exit", zmq.NOBLOCK)
                     break
                 elif message.startswith("AddFile"):
                     self.log.debug("Received AddFile command")
@@ -111,18 +117,21 @@ class Coordinator:
                     self.log.debug("Add new file to ring buffer: " + str(filename) + ", " + str(fileModTime))
                     self.ringBuffer.add(filename, fileModTime)
 
-            if self.zmqliveViewerSocket in socks and socks[self.zmqliveViewerSocket] == zmq.POLLIN:
-                message = self.zmqliveViewerSocket.recv()
+            if self.liveViewerSocket in socks and socks[self.liveViewerSocket] == zmq.POLLIN:
+                message = self.liveViewerSocket.recv()
                 self.log.debug("Call for next file... " + message)
                 # send newest element in ring buffer to live viewer
                 answer = self.ringBuffer.getNewestFile()
                 print answer
                 try:
-                    self.zmqliveViewerSocket.send(answer)
+                    self.liveViewerSocket.send(answer)
                 except zmq.error.ContextTerminated:
                     break
 
         self.log.debug("Closing socket")
         self.receiverExchangeSocket.close(0)
-        self.zmqliveViewerSocket.close(0)
+        self.liveViewerSocket.close(0)
+
+        self.log.debug("Clearing Ringbuffer")
+        self.ringBuffer.removeAll
 

@@ -22,7 +22,7 @@ class LiveView(QThread):
     mutex = None
 
     zmqIp = "127.0.0.1"
-    zmqPort = "6071"
+    zmqPort = "50021"
     zmqContext = None
     zmqSocket = None
 
@@ -169,3 +169,17 @@ def stopZmq(zmqSocket, zmqContext):
         print "closing zmqContext...failed."
         print e
 
+
+
+if __name__ == '__main__':
+
+    import sys
+
+    from threading import Thread
+
+    lv = LiveView()
+
+    lv.start()
+
+    time.sleep(100)
+    lv.stop()

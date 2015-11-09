@@ -7,7 +7,6 @@ import os
 import logging
 import sys
 import json
-import helperScript
 from InotifyDetector import InotifyDetector as EventDetector
 
 
@@ -16,20 +15,20 @@ from InotifyDetector import InotifyDetector as EventDetector
 #
 
 class DirectoryWatcher():
-    patterns                   = ["*"]
-    zmqContext                 = None
-    externalContext            = None    # if the context was created outside this class or not
-    messageSocket              = None    # strings only, control plane
-    fileEventIp                = None
-    fileEventPort              = None
-    watchFolder                = None
-    eventDetector              = None
-    monitoredDefaultSubfolders = ["commissioning", "current", "local"]
-    monitoredSuffixes          = (".tif", ".cbf")   # has to be a tuple, not a list
-    log                        = None
+    patterns                = ["*"]
+    zmqContext              = None
+    externalContext         = None    # if the context was created outside this class or not
+    messageSocket           = None    # strings only, control plane
+    fileEventIp             = None
+    fileEventPort           = None
+    watchDir                = None
+    eventDetector           = None
+    monitoredDefaultSubdirs = ["commissioning", "current", "local"]
+    monitoredSuffixes       = [".tif", ".cbf"]
+    log                     = None
 
 
-    def __init__(self, fileEventIp, watchFolder, fileEventPort, monitoredDefaultSubfolders = None, monitoredSuffixes = None, zmqContext = None):
+    def __init__(self, fileEventIp, watchDir, fileEventPort, monitoredDefaultSubdirs = None, monitoredSuffixes = None, zmqContext = None):
 
         self.log = self.getLogger()
 
@@ -43,18 +42,19 @@ class DirectoryWatcher():
             self.zmqContext      = zmq.Context()
             self.externalContext = False
 
-        self.watchFolder         = os.path.normpath(watchFolder)
+        self.watchDir            = os.path.normpath(watchDir)
         self.fileEventIp         = fileEventIp
         self.fileEventPort       = fileEventPort
 
-        if monitoredDefaultSubfolders:
-            self.monitoredDefaultSubfolders = monitoredDefaultSubfolders
-        self.monitoredSuffixes   = monitoredSuffixes
-        self.log.info ("Monitoried suffixes are: " + str( monitoredSuffixes ))
+        if monitoredDefaultSubdirs:
+            self.monitoredDefaultSubdirs = monitoredDefaultSubdirs
 
-#        monitoredFolders         = self.getDirectoryStructure()
-        monitoredFolders         = [self.watchFolder]
-        self.eventDetector       = EventDetector(monitoredFolders, self.monitoredDefaultSubfolders, self.monitoredSuffixes)
+        self.monitoredSuffixes   = monitoredSuffixes
+        self.log.info ("Monitored suffixes are: " + str( monitoredSuffixes ))
+
+#        monitoredDirs         = self.getDirectoryStructure()
+        monitoredDirs            = [self.watchDir]
+        self.eventDetector       = EventDetector(monitoredDirs, self.monitoredDefaultSubdirs, self.monitoredSuffixes)
 
 #        assert isinstance(self.zmqContext, zmq.sugar.context.Context)
 
@@ -73,19 +73,19 @@ class DirectoryWatcher():
 
 
     def getDirectoryStructure(self):
-        # Add the default subfolders
-        foldersToWalk    = [self.watchFolder + os.sep + folder for folder in self.monitoredDefaultSubfolders]
-        monitoredFolders = []
+        # Add the default subdirs
+        dirsToWalk    = [self.watchDir + os.sep + directory for directory in self.monitoredDefaultSubdirs]
+        monitoredDirs = []
 
         # Walk the tree
-        for folder in foldersToWalk:
-            for root, directories, files in os.walk(folder):
-                # Add the found folders to the list for the inotify-watch
-                monitoredFolders.append(root)
-                self.log.info("Add folder to monitor: " + str(root))
-#                print "Add folder to monitor: " + str(root)
+        for directory in dirsToWalk:
+            for root, directories, files in os.walk(directory):
+                # Add the found directorys to the list for the inotify-watch
+                monitoredDirs.append(root)
+                self.log.info("Add directory to monitor: " + str(root))
+#                print "Add directory to monitor: " + str(root)
 
-        return monitoredFolders
+        return monitoredDirs
 
 
     def passFileToZeromq(self, targetSocket, sourcePath, relativePath, filename):
@@ -154,7 +154,7 @@ class DirectoryWatcher():
                     #TODO validate workload dict
                     for workload in workloadList:
                         sourcePath   = workload["sourcePath"]
-                        # the folders local, current, and commissioning are monitored by default
+                        # the directories local, current, and commissioning are monitored by default
 #                        (sourcePath,relDir) = os.path.split(sourcePath)
 #                        relativePath = os.path.normpath(relDir + os.sep + workload["relativePath"])
                         relativePath = workload["relativePath"]
@@ -180,33 +180,33 @@ class DirectoryWatcher():
 def argumentParsing():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--watchFolder"  , type=str, help="folder you want to monitor for changes")
+    parser.add_argument("--watchDir"  , type=str, help="directory you want to monitor for changes")
     parser.add_argument("--staticNotification",
-                        help="disables new file-events. just sends a list of currently available files within the defined 'watchFolder'.",
+                        help="disables new file-events. just sends a list of currently available files within the defined 'watchDir'.",
                         action="store_true")
     parser.add_argument("--logfilePath"  , type=str, help="path where logfile will be created"              , default="/tmp/log/")
-    parser.add_argument("--logfileName"  , type=str, help="filename used for logging"                       , default="watchFolder.log")
+    parser.add_argument("--logfileName"  , type=str, help="filename used for logging"                       , default="watchDir.log")
     parser.add_argument("--fileEventIp"  , type=str, help="zqm endpoint (IP-address) to send file events to", default="127.0.0.1")
     parser.add_argument("--fileEventPort", type=str, help="zqm endpoint (port) to send file events to"      , default="6060")
     parser.add_argument("--verbose"      ,           help="more verbose output", action="store_true")
 
     arguments = parser.parse_args()
 
-    # TODO: check watchFolder-directory for existance
+    # TODO: check watchDir-directory for existance
 
-    watchFolder = str(arguments.watchFolder)
-    assert isinstance(type(watchFolder), type(str))
+    watchDir = str(arguments.watchDir)
+    assert isinstance(type(watchDir), type(str))
 
-    #exit with error if no watchFolder path was provided
-    if (watchFolder == None) or (watchFolder == "") or (watchFolder == "None"):
+    #exit with error if no watchDir path was provided
+    if (watchDir == None) or (watchDir == "") or (watchDir == "None"):
         print """You need to set the following option:
---watchFolder {FOLDER}
+--watchDir {DIRECTORY}
 """
         sys.exit(1)
 
 
-    #abort if watch-folder does not exist
-    helperScript.checkFolderExistance(watchFolder)
+    #abort if watchDir does not exist
+    helperScript.checkDirExistance(watchDir)
 
 
     #error if logfile cannot be written
@@ -222,7 +222,7 @@ def argumentParsing():
         sys.exit(1)
 
     #check logfile-path for existance
-    helperScript.checkFolderExistance(arguments.logfilePath)
+    helperScript.checkDirExistance(arguments.logfilePath)
 
 
     return arguments
@@ -231,13 +231,20 @@ def argumentParsing():
 
 
 if __name__ == '__main__':
-    arguments   = argumentParsing()
-    watchFolder = arguments.watchFolder
-    verbose     = arguments.verbose
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+    SRC_PATH  = BASE_PATH + os.sep + "src"
+
+    sys.path.append ( SRC_PATH )
+
+    import shared.helperScript as helperScript
+
+    arguments       = argumentParsing()
+    watchDir        = arguments.watchDir
+    verbose         = arguments.verbose
     logfileFilePath = os.path.join(arguments.logfilePath, arguments.logfileName)
 
-    fileEventIp   = str(arguments.fileEventIp)
-    fileEventPort = str(arguments.fileEventPort)
+    fileEventIp     = str(arguments.fileEventIp)
+    fileEventPort   = str(arguments.fileEventPort)
 
 
     #enable logging
@@ -246,5 +253,5 @@ if __name__ == '__main__':
 
     #run only once, skipping file events
     #just get a list of all files in watchDir and pass to zeromq
-    directoryWatcher = DirectoryWatcher(fileEventIp, watchFolder, fileEventPort)
+    directoryWatcher = DirectoryWatcher(fileEventIp, watchDir, fileEventPort)
 

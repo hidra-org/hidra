@@ -7,23 +7,14 @@ import zmq
 import logging
 import socket       # needed to get hostname
 
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
-ZEROMQ_PATH = BASE_PATH + os.sep + "src" + os.sep + "ZeroMQTunnel"
-CONFIG_PATH = BASE_PATH + os.sep + "conf"
-
-print ZEROMQ_PATH
-
-sys.path.append ( ZEROMQ_PATH )
-sys.path.append ( CONFIG_PATH )
-
-import helperScript
+import shared.helperScript as helperScript
 
 
 class ReceiverRealTimeAnalysis():
     senderComIp     = "127.0.0.1"
-    senderComPort   = "6080"
+    senderComPort   = "50000"
     senderDataIp    = "127.0.0.1"
-    senderDataPort  = "6081"
+    senderDataPort  = "50200"
     zmqContext      = None
     senderComSocket = None
     hostname        = socket.gethostname()
@@ -184,7 +175,13 @@ class ReceiverRealTimeAnalysis():
 
 
 if __name__ == '__main__':
-    logfilePath = "/home/kuhnm/Arbeit/live-viewer/logs/receiver_RealTimeAnalysis.log"
+    BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
+    CONFIG_PATH = BASE_PATH + os.sep + "conf"
+
+    sys.path.append ( CONFIG_PATH )
+
+
+    logfilePath = BASE_PATH + os.sep + "logs/receiver_RealTimeAnalysis.log"
     verbose = True
 
     #enable logging

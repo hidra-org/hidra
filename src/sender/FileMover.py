@@ -20,8 +20,11 @@ class FileMover():
     dataStreamPort      = None      # port number of dataStream-socket to push new files to
     cleanerIp           = None      # zmq pull endpoint, responsable to delete/move files
     cleanerPort         = None      # zmq pull endpoint, responsable to delete/move files
+    routerIp            = None      # ip  of router for load-balancing worker-processes
+    routerPort          = None      # port of router for load-balancing worker-processes
     receiverComIp       = None      # ip for socket to communicate with receiver
     receiverComPort     = None      # port for socket to communicate receiver
+    liveViewer          = None
     ondaIps             = []
     ondaPorts           = []
     receiverWhiteList   = None
@@ -33,6 +36,7 @@ class FileMover():
     receiverComSocket   = None      # to exchange messages with the receiver
     routerSocket        = None
 
+    useDataStream       = False     # boolian to inform if the data should be send to the data stream pipe (to the storage system)
     useLiveViewer       = False     # boolian to inform if the receiver for the live viewer is running
 
     # to get the logging only handling this class
@@ -40,10 +44,11 @@ class FileMover():
 
 
     def __init__(self, fileEventIp, fileEventPort, dataStreamIp, dataStreamPort,
-                 receiverComPort, receiverWhiteList,
+                 receiverComIp, receiverComPort, receiverWhiteList,
                  parallelDataStreams, chunkSize,
-                 cleanerIp, cleanerPort,
+                 cleanerIp, cleanerPort, routerPort,
                  ondaIps, ondaPorts,
+                 useDataStream,
                  context = None):
 
 #        assert isinstance(context, zmq.sugar.context.Context)
@@ -55,10 +60,15 @@ class FileMover():
         self.dataStreamPort      = dataStreamPort
         self.cleanerIp           = cleanerIp
         self.cleanerPort         = cleanerPort
-        self.receiverComIp       = dataStreamIp         # ip for socket to communicate with receiver; is the same ip as the data stream ip
+        self.routerIp            = "127.0.0.1"
+        self.routerPort          = routerPort
+        self.receiverComIp       = receiverComIp            # ip for socket to communicate with receiver;
         self.receiverComPort     = receiverComPort
+
         self.ondaIps             = ondaIps
         self.ondaPorts           = ondaPorts
+
+        self.useDataStream       = useDataStream
 
         #remove .desy.de from hostnames
         self.receiverWhiteList = []
@@ -76,18 +86,25 @@ class FileMover():
         self.log.debug("Init")
 
         # create zmq socket for incoming file events
-        self.fileEventSocket         = self.zmqContext.socket(zmq.PULL)
-        connectionStrFileEventSocket = "tcp://{ip}:{port}".format(ip=self.fileEventIp, port=self.fileEventPort)
-        self.fileEventSocket.bind(connectionStrFileEventSocket)
-        self.log.debug("fileEventSocket started (bind) for '" + connectionStrFileEventSocket + "'")
+        self.fileEventSocket = self.zmqContext.socket(zmq.PULL)
+        connectionStr        = "tcp://{ip}:{port}".format(ip=self.fileEventIp, port=self.fileEventPort)
+        try:
+            self.fileEventSocket.bind(connectionStr)
+            self.log.debug("fileEventSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start fileEventSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
 
         # create zmq socket for communitation with receiver
-        self.receiverComSocket         = self.zmqContext.socket(zmq.REP)
-        connectionStrReceiverComSocket = "tcp://{ip}:{port}".format(ip=self.receiverComIp, port=self.receiverComPort)
-        print "connectionStrReceiverComSocket", connectionStrReceiverComSocket
-        self.receiverComSocket.bind(connectionStrReceiverComSocket)
-        self.log.debug("receiverComSocket started (bind) for '" + connectionStrReceiverComSocket + "'")
+        self.receiverComSocket = self.zmqContext.socket(zmq.REP)
+        connectionStr          = "tcp://{ip}:{port}".format(ip=self.receiverComIp, port=self.receiverComPort)
+        try:
+            self.receiverComSocket.bind(connectionStr)
+            self.log.info("receiverComSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start receiverComSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
         # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
         self.poller = zmq.Poller()
@@ -96,13 +113,14 @@ class FileMover():
 
         # setting up router for load-balancing worker-processes.
         # each worker-process will handle a file event
-        routerIp   = "127.0.0.1"
-        routerPort = "50000"
-
-        self.routerSocket         = self.zmqContext.socket(zmq.ROUTER)
-        connectionStrRouterSocket = "tcp://{ip}:{port}".format(ip=routerIp, port=routerPort)
-        self.routerSocket.bind(connectionStrRouterSocket)
-        self.log.debug("routerSocket started (bind) for '" + connectionStrRouterSocket + "'")
+        self.routerSocket = self.zmqContext.socket(zmq.ROUTER)
+        connectionStr     = "tcp://{ip}:{port}".format(ip=self.routerIp, port=self.routerPort)
+        try:
+            self.routerSocket.bind(connectionStr)
+            self.log.debug("routerSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start routerSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
 
     def process(self):
@@ -140,7 +158,8 @@ class FileMover():
                                                                   self.cleanerIp,
                                                                   self.cleanerPort,
                                                                   self.ondaIps[processNumber],
-                                                                  self.ondaPorts[processNumber]
+                                                                  self.ondaPorts[processNumber],
+                                                                  self.useDataStream
                                                                   ))
             workerProcessList.append(newWorkerProcess)
 
@@ -181,9 +200,9 @@ class FileMover():
                     signalHostname = None
 
                     try:
-                        incomingMessage = incomingMessage.split(',')
-                        signal          = incomingMessage[0]
-                        signalHostname  = incomingMessage[1]
+                        incomingMessageSplit = incomingMessage.split(',')
+                        signal          = incomingMessageSplit[0]
+                        signalHostname  = incomingMessageSplit[1]
                     except Exception as e:
                         self.log.info("Received live viewer signal from host " + str(signalHostname) + " is of the wrong format")
                         self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
@@ -191,6 +210,8 @@ class FileMover():
 
                     if signalHostname.endswith(".desy.de"):
                         signalHostnameModified = signalHostname[:-8]
+                    else:
+                        signalHostnameModified = signalHostname
 
                     self.log.debug("Check if signal sending host is in WhiteList...")
                     if signalHostname in self.receiverWhiteList or signalHostnameModified in self.receiverWhiteList:
@@ -209,7 +230,7 @@ class FileMover():
                     elif signal == "START_LIVE_VIEWER":
                         self.log.info("Received live viewer start signal from host " + str(signalHostname) + "...starting live viewer")
                         self.useLiveViewer = True
-                        self.sendSignalToReceiver(signal)
+                        self.sendSignalToReceiver(incomingMessage)
                         continue
                     elif signal == "STOP_REALTIME_ANALYSIS":
                         self.log.info("Received realtime analysis stop signal from host " + str(signalHostname) + "...stopping realtime analysis")
