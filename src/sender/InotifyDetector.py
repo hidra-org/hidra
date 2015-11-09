@@ -85,7 +85,7 @@ class InotifyDetector():
         self.paths             = paths
         self.log               = self.getLogger()
         self.fd                = binding.init()
-        self.monitoredSuffixes = monitoredSuffixes
+        self.monitoredSuffixes = tuple(monitoredSuffixes)
         self.monitoredSubdirs  = monitoredSubdirs
 
         self.add_watch()
@@ -209,17 +209,19 @@ class InotifyDetector():
                 del self.wd_to_path[foundWatch]
                 continue
 
+            # only moved files are send
+            if not is_dir and is_moved_to:
 
-            # only closed files are send
-            if not is_dir and is_closed:
+#                print path, event.name, parts
+#                print event.name
 
                 # TODO check if still necessary
                 # checks if one of the suffixes to monitore is contained in the event.name
                 resultSuffix = filter(lambda x: x in event.name, self.monitoredSuffixes)
 
                 # only files with end with a suffix specified in monitoredSuffixed are monitored
-                if not resultSuffix:
-                #if not event.name.endswith(self.monitoredSuffixes):
+#                if not resultSuffix:
+                if not event.name.endswith(self.monitoredSuffixes):
                     self.log.debug("File ending not in monitored Suffixes: " + str(event.name))
                     self.log.debug("detected events were: " + str(parts))
                     continue
