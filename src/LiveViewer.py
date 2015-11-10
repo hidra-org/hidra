@@ -21,7 +21,7 @@ class LiveView(QThread):
     subframe = None
     mutex = None
 
-    zmqIp = "127.0.0.1"
+    zmqIp = "haspp11eval01.desy.de"
     zmqPort = "50021"
     zmqContext = None
     zmqSocket = None
@@ -134,7 +134,7 @@ class LiveView(QThread):
 
 def createZmqSocket(zmqIp, zmqPort):
     context = zmq.Context()
-    assert isinstance(context, zmq.sugar.context.Context)
+#    assert isinstance(context, zmq.sugar.context.Context)
 
     socket = context.socket(zmq.REQ)
     connectionStrSocket = "tcp://{ip}:{port}".format(ip=zmqIp, port=zmqPort)
