@@ -136,5 +136,5 @@ class Coordinator:
         self.liveViewerSocket.close(0)
 
         self.log.debug("Clearing Ringbuffer")
-        self.ringBuffer.removeAll
+        self.ringBuffer.removeAll()
 
