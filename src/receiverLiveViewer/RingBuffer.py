@@ -133,7 +133,12 @@ class RingBuffer:
                     if len(self.dataQueue) >= self.maxQueueSize:
                         oldFile = self.dataQueue.pop()
                         self.log.debug("Remove file from disc: " + str(oldFile) )
-                        os.remove(oldFile)
+                        try:
+                            os.remove(oldFile)
+                        except Exception as e:
+                            self.log.debug("Unable to remove file from disc: " + str(oldFile) )
+                            self.log.debug("Error was: " + str(e) )
+
 
                     self.dataQueue.appendleft(path)
                     self.log.debug("Adding File to Queue: " + str(path) )
