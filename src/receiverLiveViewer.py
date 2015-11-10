@@ -33,6 +33,7 @@ def argumentParsing():
     senderComIp             = config.get('asection', 'senderComIp')
     senderComPort           = config.get('asection', 'senderComPort')
     maxRingBufferSize       = config.get('asection', 'maxRingBufferSize')
+    maxQueueSize            = config.get('asection', 'maxQueueSize')
     senderResponseTimeout   = config.get('asection', 'senderResponseTimeout')
 
 
@@ -60,6 +61,8 @@ def argumentParsing():
                                                      help="port number of dataStream-socket to send signals back to the sender (default=" + str(senderComPort) + ")")
     parser.add_argument("--maxRingBufferSize"      , type=int, default=maxRingBufferSize,
                                                      help="size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")")
+    parser.add_argument("--maxQueueSize"            , type=int, default=maxQueueSize,
+                                                     help="size of the queue for the live viewer (default=" + str(maxQueueSize) + ")")
     parser.add_argument("--senderResponseTimeout"  , type=int, default=senderResponseTimeout,
                                                      help=argparse.SUPPRESS)
     parser.add_argument("--verbose"                , action="store_true",
@@ -96,6 +99,7 @@ class ReceiverLiveViewer():
     senderComIp             = None
     senderComPort           = None
     maxRingBufferSize       = None
+    maxQueueSize            = None
     senderResponseTimeout   = None
 
     def __init__(self):
@@ -116,6 +120,7 @@ class ReceiverLiveViewer():
         self.senderComIp             = arguments.senderComIp
         self.senderComPort           = arguments.senderComPort
         self.maxRingBufferSize       = arguments.maxRingBufferSize
+        self.maxQueueSize            = arguments.maxQueueSize
         self.senderResponseTimeout   = arguments.senderResponseTimeout
 
 
@@ -128,7 +133,7 @@ class ReceiverLiveViewer():
                 self.senderComIp, self.senderComPort,
                 self.dataStreamIp, self.dataStreamPort,
                 self.liveViewerPort, self.liveViewerIp,
-                self.coordinatorExchangePort, self.maxRingBufferSize, self.senderResponseTimeout)
+                self.coordinatorExchangePort, self.maxRingBufferSize, self.maxQueueSize, self.senderResponseTimeout)
 
 if __name__ == "__main__":
     receiver = ReceiverLiveViewer()

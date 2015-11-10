@@ -19,6 +19,7 @@ class Coordinator:
 
     ringBuffer               = []
     maxRingBufferSize        = None
+    maxQueueSize             = None
 
     log                      = None
 
@@ -32,7 +33,7 @@ class Coordinator:
 
     def __init__(self, receiverExchangePort,
             liveViewerPort, liveViewerIp,
-            maxRingBufferSize,
+            maxRingBufferSize, maxQueueSize,
             context = None):
 
         self.receiverExchangeIp   = "127.0.0.1"
@@ -41,7 +42,9 @@ class Coordinator:
         self.liveViewerPort       = liveViewerPort
 
         self.maxRingBufferSize  = maxRingBufferSize
-        self.ringBuffer         = RingBuffer(self.maxRingBufferSize)
+        self.maxQueueSize        = maxQueueSize
+
+        self.ringBuffer         = RingBuffer(self.maxRingBufferSize, self.maxQueueSize)
 
         self.log = self.getLogger()
         self.log.debug("Init")

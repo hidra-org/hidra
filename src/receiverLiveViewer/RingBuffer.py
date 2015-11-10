@@ -5,20 +5,26 @@ import time
 import logging
 import os
 from stat import S_ISREG, ST_MTIME, ST_MODE
-
+import collections
 
 class RingBuffer:
     targetDir         = None
     ringBuffer        = []
     maxRingBufferSize = None
     storeContent      = None
+    dataQueue         = None
+
 
     log               = None
 
-    def __init__(self, maxRingBufferSize, storeContent = False, targetDir = None):
+
+    def __init__(self, maxRingBufferSize, maxQueueSize, storeContent = False, targetDir = None):
         self.targetDir          = targetDir
         self.maxRingBufferSize  = maxRingBufferSize
         self.storeContent       = storeContent
+
+        self.maxQueueSize       = maxQueueSize
+        self.dataQueue          = collections.deque(maxlen = maxQueueSize)
 
         self.log = self.getLogger()
         self.log.debug("Init")
@@ -123,6 +129,15 @@ class RingBuffer:
                     self.log.debug("Remove file from ring buffer: " + str(path) )
 #                    os.remove(path)
                     self.ringBuffer.remove([mod_time, path])
+                    print len(self.dataQueue), self.maxQueueSize, len(self.dataQueue) > self.maxQueueSize
+                    if len(self.dataQueue) >= self.maxQueueSize:
+                        oldFile = self.dataQueue.pop()
+                        self.log.debug("Remove file from disc: " + str(oldFile) )
+                        os.remove(oldFile)
+
+                    self.dataQueue.appendleft(path)
+                    self.log.debug("Adding File to Queue: " + str(path) )
+
 
     def removeAll(self):
         self.log.debug("Remove all elements in ring buffer and from disc")
@@ -131,8 +146,14 @@ class RingBuffer:
             filePath = self.ringBuffer[i][1]
             self.log.debug("Remove file from disk: " + str(filePath) )
             os.remove(filePath)
-        self.log.debug("Clear ring buffer")
         self.ringBuffer = []
+
+        self.log.debug("Remove all elements in queue and from disc")
+
+        while len(self.dataQueue) > 0:
+            filePath = self.dataQueue.pop()
+            self.log.debug("Remove file from disk: " + str(filePath) )
+            os.remove(filePath)
 
 
 
@@ -153,89 +174,80 @@ if __name__ == "__main__":
     #enable logging
     helperScript.initLogging(logfile, True)
 
-    ringbuffer = RingBuffer(2, targetDir)
+    ringbuffer = RingBuffer(2, 3, targetDir)
 
     print "init"
     print ringbuffer
 
-    # add a file
-    newFileName1 = targetDir + "file1.tif"
-    newFile = open(newFileName1, "w")
-    newFile.write("test")
-    newFile.close()
+    for i in range(6):
+        time.sleep(0.1)
+        # add a file
+        newFileName = targetDir + "file" + str(i) + ".tif"
+        newFile = open(newFileName, "w")
+        newFile.write("test")
+        newFile.close()
 
-    newFileModTime = os.stat(newFileName1).st_mtime
+        newFileModTime = os.stat(newFileName).st_mtime
 
-    ringbuffer.add(newFileName1, newFileModTime)
+        ringbuffer.add(newFileName, newFileModTime)
 
-    print "\nadded"
-    print ringbuffer
+        print "\nadded"
+        print ringbuffer
+        print ringbuffer.dataQueue
 
-    time.sleep(1)
-    # add another file
-    newFileName2 = targetDir + "file2.tif"
-    newFile = open(newFileName2, "w")
-    newFile.write("test")
-    newFile.close()
 
-    newFileModTime = os.stat(newFileName2).st_mtime
-
-    ringbuffer.add(newFileName2, newFileModTime)
-
-    print "\nadded"
-    print ringbuffer
-
-    try:
-        os.remove(newFileName2)
-    except:
-        pass
-    try:
-        os.remove(newFileName1)
-    except:
-        pass
-
-    print "== with content =="
-
-    ringbuffer = RingBuffer(2, targetDir)
-
-    print "init"
-    print ringbuffer
-
-    # add a file
-    newFileName1 = targetDir + "file1.tif"
-    newFile = open(newFileName1, "w")
-    newFile.write("test")
-    newFile.close()
-
-    newFileModTime = os.stat(newFileName1).st_mtime
-
-    ringbuffer.add(newFileName1, newFileModTime, "testContent")
-
-    print "\nadded"
-    print ringbuffer
-
-    time.sleep(1)
-    # add another file
-    newFileName2 = targetDir + "file2.tif"
-    newFile = open(newFileName2, "w")
-    newFile.write("test")
-    newFile.close()
-
-    newFileModTime = os.stat(newFileName2).st_mtime
-
-    ringbuffer.add(newFileName2, newFileModTime, "testContent")
-
-    print "\nadded"
-    print ringbuffer
-
-    try:
-        os.remove(newFileName1)
-    except:
-        pass
-    try:
-        os.remove(newFileName2)
-    except:
-        pass
+    ringbuffer.removeAll()
+#    try:
+#        os.remove(newFileName2)
+#    except:
+#        pass
+#    try:
+#        os.remove(newFileName1)
+#    except:
+#        pass
+#
+#    print "== with content =="
+#
+#    ringbuffer = RingBuffer(2, 5, targetDir)
+#
+#    print "init"
+#    print ringbuffer
+#
+#    # add a file
+#    newFileName1 = targetDir + "file1.tif"
+#    newFile = open(newFileName1, "w")
+#    newFile.write("test")
+#    newFile.close()
+#
+#    newFileModTime = os.stat(newFileName1).st_mtime
+#
+#    ringbuffer.add(newFileName1, newFileModTime, "testContent")
+#
+#    print "\nadded"
+#    print ringbuffer
+#
+#    time.sleep(1)
+#    # add another file
+#    newFileName2 = targetDir + "file2.tif"
+#    newFile = open(newFileName2, "w")
+#    newFile.write("test")
+#    newFile.close()
+#
+#    newFileModTime = os.stat(newFileName2).st_mtime
+#
+#    ringbuffer.add(newFileName2, newFileModTime, "testContent")
+#
+#    print "\nadded"
+#    print ringbuffer
+#
+#    try:
+#        os.remove(newFileName1)
+#    except:
+#        pass
+#    try:
+#        os.remove(newFileName2)
+#    except:
+#        pass
 
 
 

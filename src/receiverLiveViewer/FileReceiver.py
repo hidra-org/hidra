@@ -45,7 +45,7 @@ class FileReceiver:
                  senderComIp, senderComPort,
                  dataStreamIp, dataStreamPort,
                  liveViewerPort, liveViewerIp,
-                 coordinatorExchangePort, maxRingBuffersize, senderResponseTimeout = 1000,
+                 coordinatorExchangePort, maxRingBuffersize, maxQueueSize, senderResponseTimeout = 1000,
                  context = None):
 
         self.outputDir               = os.path.normpath(outputDir)
@@ -68,7 +68,7 @@ class FileReceiver:
         self.log.debug("Init")
 
         # start file receiver
-        self.receiverThread = threading.Thread(target=Coordinator, args=(self.coordinatorExchangePort, self.liveViewerPort, self.liveViewerIp, maxRingBuffersize))
+        self.receiverThread = threading.Thread(target=Coordinator, args=(self.coordinatorExchangePort, self.liveViewerPort, self.liveViewerIp, maxRingBuffersize, maxQueueSize))
         self.receiverThread.start()
 
         # create sockets
