@@ -196,6 +196,13 @@ class WorkerProcess():
                 self.log.info("worker-"+str(self.id)+": Received realtime-analysis start command...")
                 self.useRealTimeAnalysis = True
 
+                # close the socket to send data to the realtime analysis
+                if self.ondaComSocket:
+                    self.ondaComSocket.close(0)
+                    #TODO unbind?
+                    self.ondaComSocket = None
+                    self.log.debug("ondaComSocket refreshed")
+
                 # create the socket to send data to the realtime analysis
                 self.ondaComSocket    = self.zmqContextForWorker.socket(zmq.REP)
                 connectionStr         = "tcp://{ip}:{port}".format(ip=self.ondaIp, port=self.ondaPort)
