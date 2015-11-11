@@ -76,6 +76,7 @@ def argumentParsing():
 
     # check target directory for existance
     helperScript.checkDirExistance(targetDir)
+#    helperScript.checkDirEmpty(targetDir)
 
     # check if logfile is writable
     helperScript.checkLogFileWritable(logfilePath, logfileName)
