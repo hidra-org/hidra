@@ -220,7 +220,7 @@ def initLogging(filenameFullPath, verbose):
 
     #log info to stdout, display messages with different format than the file output
     console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
+    console.setLevel(logging.ERROR)
     formatter = logging.Formatter("%(asctime)s >  %(message)s")
     console.setFormatter(formatter)
 
