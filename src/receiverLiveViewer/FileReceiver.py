@@ -78,7 +78,6 @@ class FileReceiver:
         message = "START_LIVE_VIEWER," + str(self.hostname) + "," + str(self.dataStreamPort)
         self.log.info("Sending start signal to sender...")
         self.log.debug("Sending start signal to sender, message: " + message)
-#        print "sending message ", message
         self.senderComSocket.send(str(message))
 
         senderMessage = None
@@ -90,8 +89,7 @@ class FileReceiver:
         if self.senderComSocket in socks and socks[self.senderComSocket] == zmq.POLLIN:
             try:
                 senderMessage = self.senderComSocket.recv()
-#                print "answer to start live viewer: ", senderMessage
-                self.log.debug("Received message from sender: " + str(senderMessage) )
+                self.log.info("Received message from sender: " + str(senderMessage) )
             except KeyboardInterrupt:
                 self.log.error("KeyboardInterrupt: No message received from sender")
                 self.stopReceiving(sendToSender = False)
@@ -119,7 +117,6 @@ class FileReceiver:
                 self.zmqContext.destroy()
         # if there was no response or the response was of the wrong format, the receiver should be shut down
         else:
-#            print "Sending start signal to sender...failed."
             self.log.info("Sending start signal to sender...failed.")
             self.stopReceiving(sendToSender = False)
 
@@ -329,7 +326,7 @@ class FileReceiver:
                 for chunk in payload:
                     newFile.write(chunk)
             newFile.close()
-#            print "received file: ", targetFilepath
+            self.log.info("received file: " + str(targetFilepath))
         except Exception, e:
             errorMessage = "unable to append data to file."
             self.log.error(errorMessage)
@@ -351,18 +348,16 @@ class FileReceiver:
         self.coordinatorExchangeSocket.send("Exit")
 
         if sendToSender:
-            self.log.debug("sending stop signal to sender...")
-
             message = "STOP_LIVE_VIEWER,"+ str(self.hostname)
-#            print "sending message ", message
+            self.log.info("sending stop signal to sender...")
+            self.log.debug("Sending stop signal to sender, message: " + message)
             self.senderComSocket.send(str(message), zmq.NOBLOCK)
 
             socks = dict(self.poller.poll(self.socketResponseTimeout))
             if self.senderComSocket in socks and socks[self.senderComSocket] == zmq.POLLIN:
                 try:
                     senderMessage = self.senderComSocket.recv()
-#                    print "answer to stop live viewer: ", senderMessage
-                    self.log.debug("Received message from sender: " + str(senderMessage) )
+                    self.log.info("Received message from sender: " + str(senderMessage) )
 
                     if senderMessage == "STOP_LIVE_VIEWER":
                         self.log.info("Received confirmation from sender...")

@@ -125,7 +125,6 @@ class Coordinator:
                 self.log.debug("Call for next file... " + message)
                 # send newest element in ring buffer to live viewer
                 answer = self.ringBuffer.getNewestFile()
-#                print answer
                 try:
                     self.liveViewerSocket.send(answer)
                 except zmq.error.ContextTerminated:

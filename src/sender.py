@@ -34,6 +34,7 @@ def argumentParsing():
     logfileName         = config.get('asection', 'logfileName')
 
     watchDir            = config.get('asection', 'watchDir')
+    monitoredEventType  = config.get('asection', 'monitoredEventType')
     monitoredSubdirs    = json.loads(config.get('asection', 'monitoredSubdirs'))
     monitoredFormats    = json.loads(config.get('asection', 'monitoredFormats'))
     fileEventIp         = config.get('asection', 'fileEventIp')
@@ -66,6 +67,8 @@ def argumentParsing():
 
     parser.add_argument("--watchDir"           , type=str, default=watchDir,
                                                  help="Dir you want to monitor for changes; inside this directory only the specified subdirectories are monitred (default=" + str(watchDir) + ")")
+    parser.add_argument("--monitoredEventType" , type=str, default=monitoredEventType,
+                                                 help="Event type of files to be monitored (default=" + str(monitoredEventType) + ")")
     parser.add_argument("--monitoredSubdirs"   , type=str, default=monitoredSubdirs,
                                                  help="Subdirectories of watchDirs to be monitored (default=" + str(monitoredSubdirs) + ")")
     parser.add_argument("--monitoredFormats"   , type=str, default=monitoredFormats,
@@ -134,6 +137,7 @@ class Sender():
     verbose             = None
 
     watchDir            = None
+    monitoredEventType  = None
     monitoredSubdirs    = None
     monitoredFormats    = None
     fileEventIp         = None
@@ -167,6 +171,7 @@ class Sender():
         self.verbose             = arguments.verbose
 
         self.watchDir            = arguments.watchDir
+        self.monitoredEventType  = arguments.monitoredEventType
         self.monitoredSubdirs    = arguments.monitoredSubdirs
         self.monitoredFormats    = arguments.monitoredFormats
         self.fileEventIp         = arguments.fileEventIp
@@ -203,7 +208,7 @@ class Sender():
 
     def run(self):
         logging.debug("start watcher process...")
-        watcherProcess = Process(target=DirectoryWatcher, args=(self.fileEventIp, self.watchDir, self.fileEventPort, self.monitoredSubdirs, self.monitoredFormats, self.zmqContext))
+        watcherProcess = Process(target=DirectoryWatcher, args=(self.fileEventIp, self.watchDir, self.fileEventPort, self.monitoredEventType, self.monitoredSubdirs, self.monitoredFormats, self.zmqContext))
         logging.debug("watcher process registered")
         watcherProcess.start()
         logging.debug("start watcher process...done")

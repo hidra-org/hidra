@@ -23,12 +23,13 @@ class DirectoryWatcher():
     fileEventPort           = None
     watchDir                = None
     eventDetector           = None
+    monitoredEventType      = "IN_CLOSE_WRITE"
     monitoredDefaultSubdirs = ["commissioning", "current", "local"]
     monitoredSuffixes       = [".tif", ".cbf"]
     log                     = None
 
 
-    def __init__(self, fileEventIp, watchDir, fileEventPort, monitoredDefaultSubdirs = None, monitoredSuffixes = None, zmqContext = None):
+    def __init__(self, fileEventIp, watchDir, fileEventPort, monitoredEventType = None, monitoredDefaultSubdirs = None, monitoredSuffixes = None, zmqContext = None):
 
         self.log = self.getLogger()
 
@@ -46,15 +47,22 @@ class DirectoryWatcher():
         self.fileEventIp         = fileEventIp
         self.fileEventPort       = fileEventPort
 
+        if monitoredEventType:
+            self.monitoredEventType  = monitoredEventType
+
+        self.log.info ("Monitored event type is: " + str( monitoredEventType ))
+
         if monitoredDefaultSubdirs:
             self.monitoredDefaultSubdirs = monitoredDefaultSubdirs
 
-        self.monitoredSuffixes   = monitoredSuffixes
+        if monitoredSuffixes:
+            self.monitoredSuffixes   = monitoredSuffixes
+
         self.log.info ("Monitored suffixes are: " + str( monitoredSuffixes ))
 
 #        monitoredDirs         = self.getDirectoryStructure()
         monitoredDirs            = [self.watchDir]
-        self.eventDetector       = EventDetector(monitoredDirs, self.monitoredDefaultSubdirs, self.monitoredSuffixes)
+        self.eventDetector       = EventDetector(monitoredDirs, self.monitoredEventType, self.monitoredDefaultSubdirs, self.monitoredSuffixes)
 
 #        assert isinstance(self.zmqContext, zmq.sugar.context.Context)
 

@@ -71,22 +71,26 @@ class InotifyEvent(object):
 # Copyright (c) 2005 Manuel Amador
 # Copyright (c) 2009-2011 Forest Bond
 class InotifyDetector():
-    paths      = []
-    wd_to_path = {}
-    fd         = None
-    log        = None
+    paths              = []
+    wd_to_path         = {}
+    fd                 = None
+    log                = None
 
-    previousEventPath = ""
-    previousEventName = ""
+    monitoredEventType = None
+    monitoredSuffixes  = []
+    monitoredSubdirs   = []
 
 
-    def __init__(self, paths, monitoredSubdirs, monitoredSuffixes):
+    def __init__(self, paths, monitoredEventType, monitoredSubdirs, monitoredSuffixes):
 
-        self.paths             = paths
-        self.log               = self.getLogger()
-        self.fd                = binding.init()
-        self.monitoredSuffixes = tuple(monitoredSuffixes)
-        self.monitoredSubdirs  = monitoredSubdirs
+        self.paths              = paths
+        self.log                = self.getLogger()
+        self.fd                 = binding.init()
+
+        self.monitoredEventType = monitoredEventType
+#        self.monitoredEventType = "IN_MOVED_TO"
+        self.monitoredSuffixes  = tuple(monitoredSuffixes)
+        self.monitoredSubdirs   = monitoredSubdirs
 
         self.add_watch()
 
@@ -172,13 +176,11 @@ class InotifyDetector():
 #            print event.name
 
             is_dir        = ("IN_ISDIR" in parts_array)
-            is_closed     = ("IN_CLOSE_WRITE" in parts_array)
-            is_moved      = ("IN_MOVE" in parts_array)
-            is_moved_from = ("IN_MOVED_FROM" in parts_array)
-            is_moved_to = ("IN_MOVED_TO" in parts_array)
-#            is_closed  = ("IN_CLOSE" in parts_array)
-#            is_closed  = ("IN_CLOSE" in parts_array or "IN_CLOSE_WRITE" in parts_array)
             is_created    = ("IN_CREATE" in parts_array)
+            is_moved_from = ("IN_MOVED_FROM" in parts_array)
+            is_moved_to   = ("IN_MOVED_TO" in parts_array)
+
+            is_ofEventType = (self.monitoredEventType in parts_array)
 
             # if a new directory is created or a directory is renamed inside the monitored one,
             # this one has to be monitored as well
@@ -209,71 +211,50 @@ class InotifyDetector():
                 del self.wd_to_path[foundWatch]
                 continue
 
-            # only moved files are send
-            if not is_dir and is_moved_to:
+            # only files of the configured event type are send
+            if not is_dir and is_ofEventType:
 
 #                print path, event.name, parts
 #                print event.name
 
-                # TODO check if still necessary
-                # checks if one of the suffixes to monitore is contained in the event.name
-                resultSuffix = filter(lambda x: x in event.name, self.monitoredSuffixes)
-
                 # only files with end with a suffix specified in monitoredSuffixed are monitored
-#                if not resultSuffix:
                 if not event.name.endswith(self.monitoredSuffixes):
                     self.log.debug("File ending not in monitored Suffixes: " + str(event.name))
                     self.log.debug("detected events were: " + str(parts))
                     continue
 
-#                if self.previousEventPath != path or self.previousEventName != event.name:
-                if True:
-#            if (is_moved and not is_dir) or (is_closed and not is_dir):
-#                print path, event.name, parts
-#                if event.name[0] == '.' :
-#                    self.log.debug("Removing '.' and suffix from event name: " + str(event.name))
-#                    event_name_dirty_hack = event.name.rsplit(".", 1)[0][1:]
-#                else :
-#                    self.log.debug("Correct eevent name format: " + str(event.name))
-#                    event_name_dirty_hack = event.name
-                    parentDir    = path
-                    relativePath = ""
-                    eventMessage = {}
+                parentDir    = path
+                relativePath = ""
+                eventMessage = {}
 
-                    # traverse the relative path till the original path is reached
-                    # e.g. created file: /source/dir1/dir2/test.tif
-                    splitPath = True
-                    while splitPath:
-                        if parentDir not in self.paths:
-                            (parentDir,relDir) = os.path.split(parentDir)
-#                            print "debug1:", parentDir, relDir
-                            # the os.sep is needed at the beginning because the relative path is built up from the right
-                            # e.g.
-                            # self.paths = ["/tmp/test/source"]
-                            # path = /tmp/test/source/local/testdir
-                            # first iteration:  parentDir = /tmp/test/source/local, relDir = /testdir
-                            # second iteration: parentDir = /tmp/test/source,       relDir = /local/testdir
-                            relativePath = os.sep + relDir + relativePath
-#                            print "debug11:", relativePath
-                        else:
-                            # the event for a file /tmp/test/source/local/file1.tif is of the form:
-                            # {
-                            #   "sourcePath" : "/tmp/test/source"
-                            #   "relativePath": "/local"
-                            #   "filename"   : "file1.tif"
-                            # }
-                            eventMessage = {
-                                    "sourcePath"  : parentDir,
-                                    "relativePath": relativePath,
-    #                                "filename"    : event_name_dirty_hack
-                                    "filename"    : event.name
-                                    }
-#                            print "eventMessage:", eventMessage
-                            eventMessageList.append(eventMessage)
+                # traverse the relative path till the original path is reached
+                # e.g. created file: /source/dir1/dir2/test.tif
+                splitPath = True
+                while splitPath:
+                    if parentDir not in self.paths:
+                        (parentDir,relDir) = os.path.split(parentDir)
+                        # the os.sep is needed at the beginning because the relative path is built up from the right
+                        # e.g.
+                        # self.paths = ["/tmp/test/source"]
+                        # path = /tmp/test/source/local/testdir
+                        # first iteration: self.monitoredEventType parentDir = /tmp/test/source/local, relDir = /testdir
+                        # second iteration: parentDir = /tmp/test/source,       relDir = /local/testdir
+                        relativePath = os.sep + relDir + relativePath
+                    else:
+                        # the event for a file /tmp/test/source/local/file1.tif is of the form:
+                        # {
+                        #   "sourcePath" : "/tmp/test/source"
+                        #   "relativePath": "/local"
+                        #   "filename"   : "file1.tif"
+                        # }
+                        eventMessage = {
+                                "sourcePath"  : parentDir,
+                                "relativePath": relativePath,
+                                "filename"    : event.name
+                                }
+                        eventMessageList.append(eventMessage)
 
-                            self.previousEventPath = path
-                            self.previousEventName = event.name
-                            splitPath = False
+                        splitPath = False
 
         return eventMessageList
 
@@ -321,11 +302,13 @@ if __name__ == '__main__':
     #enable logging
     helperScript.initLogging(logfilePath, verbose)
 
-    paths             = [BASE_PATH + "/data/source"]
-    monitoredSubdirs  = ["local"]
-    monitoredSuffixes = [".tif", ".cbf"]
+    paths              = [BASE_PATH + "/data/source"]
+    monitoredEventType = "IN_MOVED_TO"
+#    monitoredSubdirs   = "ON_CLOSE_WRITE"
+    monitoredSubdirs   = ["local"]
+    monitoredSuffixes  = [".tif", ".cbf"]
 
-    eventDetector = InotifyDetector(paths, monitoredSubdirs, monitoredSuffixes)
+    eventDetector = InotifyDetector(paths, monitoredEventType, monitoredSubdirs, monitoredSuffixes)
 
     while True:
         try:
