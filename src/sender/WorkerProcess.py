@@ -186,8 +186,9 @@ class WorkerProcess():
                 self.useLiveViewer = False
 
                 # close the socket to send data to the live viewer
-                self.liveViewerSocket.close(0)
-                self.log.info("liveViewerSocket closed")
+                if self.liveViewerSocket:
+                    self.liveViewerSocket.close(0)
+                    self.log.info("liveViewerSocket closed")
                 continue
 
             # the realtime-analysis is turned on
@@ -219,8 +220,9 @@ class WorkerProcess():
                 self.useRealTimeAnalysis = False
 
                 # close the socket to send data to the realtime analysis
-                self.ondaComSocket.close(0)
-                self.log.info("ondaComSocket closed")
+                if self.ondaComSocket:
+                    self.ondaComSocket.close(0)
+                    self.log.info("ondaComSocket closed")
                 continue
 
             if self.useDataStream or self.useLiveViewer or self.useRealTimeAnalysis:
