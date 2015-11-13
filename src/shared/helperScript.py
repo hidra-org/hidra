@@ -2,6 +2,7 @@ import os
 import platform
 import logging
 import sys
+import shutil
 
 
 def isWindows():
@@ -132,12 +133,19 @@ def checkDirEmpty(dirPath):
 
     #check if directory is empty
     if os.listdir(dirPath):
-        logging.info("Directory '%s' is not empty." % str(dirPath))
+        logging.debug("Directory '%s' is not empty." % str(dirPath))
         if confirm(prompt="Directory " + str(dirPath) + " is not empty.\nShould its content be removed?",
                    resp = True):
             for element in os.listdir(dirPath):
-                os.remove(element)
-            logging.info("All elements were removed.")
+                path = dirPath + os.sep + element
+                if os.path.isdir(path):
+                   try:
+                        os.rmdir(path)
+                   except OSError:
+                        shutil.rmtree(path)
+                else:
+                    os.remove(path)
+            logging.info("All elements of directory " + str(dirPath) + " were removed.")
 
 
 
@@ -219,8 +227,8 @@ def initLogging(filenameFullPath, verbose):
 
     #log info to stdout, display messages with different format than the file output
     console = logging.StreamHandler()
-    console.setLevel(logging.ERROR)
-#    console.setLevel(logging.INFO)
+#    console.setLevel(logging.ERROR)
+    console.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s >  %(message)s")
     console.setFormatter(formatter)
 
