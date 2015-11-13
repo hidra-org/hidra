@@ -41,10 +41,10 @@ class Coordinator:
         self.liveViewerIp         = liveViewerIp
         self.liveViewerPort       = liveViewerPort
 
-        self.maxRingBufferSize  = maxRingBufferSize
-        self.maxQueueSize        = maxQueueSize
+        self.maxRingBufferSize    = maxRingBufferSize
+        self.maxQueueSize         = maxQueueSize
 
-        self.ringBuffer         = RingBuffer(self.maxRingBufferSize, self.maxQueueSize)
+        self.ringBuffer           = RingBuffer(self.maxRingBufferSize, self.maxQueueSize)
 
         self.log = self.getLogger()
         self.log.debug("Init")
@@ -104,7 +104,7 @@ class Coordinator:
 
             if self.receiverExchangeSocket in socks and socks[self.receiverExchangeSocket] == zmq.POLLIN:
                 message = self.receiverExchangeSocket.recv()
-                self.log.debug("Recieved control command: %s" % message )
+                self.log.debug("Received control command: %s" % message )
                 if message == "Exit":
                     self.log.debug("Received exit command, coordinator thread will stop receiving messages")
                     should_continue = False

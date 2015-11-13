@@ -35,43 +35,45 @@ class Cleaner():
       - poll the watched directory and reissue new files
         to fileMover which have not been detected yet
     """
-    bindingPortForSocket = None
-    bindingIpForSocket   = None
+    newJobPort           = None
+    newJobIp             = None
     senderComIp          = None
-    zmqContextForCleaner = None
+    contextForCleaner    = None
     externalContext      = None    # if the context was created outside this class or not
-    zmqCleanerSocket     = None
 
-    useDataStream        = True      # boolian to inform if the data should be send to the data stream pipe (to the storage system)
+    newJobSocket         = None
+    LVCommunicatorSocket = None    # socket to communicate with Coordinator class
 
-    lastMovedFiles       = collections.deque(maxlen = 20)
+    useDataStream        = True    # boolian to inform if the data should be send to the data stream pipe (to the storage system)
+
+    lastHandledFiles     = collections.deque(maxlen = 20)
 
     # to get the logging only handling this class
     log                  = None
 
-    def __init__(self, targetPath, bindingIp="127.0.0.1", bindingPort="6062", useDataStream = True, context = None, verbose=False):
-        self.bindingPortForSocket = bindingPort
-        self.bindingIpForSocket   = bindingIp
-        self.senderComIp          = self.bindingIpForSocket
-        self.targetPath           = os.path.normpath(targetPath)
+    def __init__(self, targetPath, newJobIp="127.0.0.1", newJobPort="6062", useDataStream = True, context = None, verbose=False):
+        self.newJobIp       = newJobIp
+        self.newJobPort     = newJobPort
+        self.senderComIp    = self.newJobIp
+        self.targetPath     = os.path.normpath(targetPath)
 
-        self.useDataStream       = useDataStream
+        self.useDataStream  = useDataStream
 
         if context:
-            self.zmqContextForCleaner = context
+            self.contextForCleaner = context
             self.externalContext      = True
         else:
-            self.zmqContextForCleaner = zmq.Context()
+            self.contextForCleaner = zmq.Context()
             self.externalContext      = False
 
         self.log = self.getLogger()
         self.log.debug("Init")
 
         #bind to local port
-        self.zmqCleanerSocket = self.zmqContextForCleaner.socket(zmq.PULL)
-        connectionStrSocket   = "tcp://" + self.bindingIpForSocket + ":%s" % self.bindingPortForSocket
-        self.zmqCleanerSocket.bind(connectionStrSocket)
-        self.log.debug("zmqCleanerSocket started for '" + connectionStrSocket + "'")
+        self.newJobSocket = self.contextForCleaner.socket(zmq.PULL)
+        connectionStrSocket   = "tcp://" + self.newJobIp + ":%s" % self.newJobPort
+        self.newJobSocket.bind(connectionStrSocket)
+        self.log.debug("newJobSocket started for '" + connectionStrSocket + "'")
 
         try:
             self.process()
@@ -98,7 +100,7 @@ class Cleaner():
             self.log.debug("Waiting for new jobs")
 
             try:
-                workload = self.zmqCleanerSocket.recv()
+                workload = self.newJobSocket.recv()
             except Exception as e:
                 self.log.error("Error in receiving job: " + str(e))
 
@@ -161,8 +163,8 @@ class Cleaner():
                 if self.useDataStream:
                     self.removeFile(sourceFullPath)
                 else:
-#                    self.copyFile(sourcePath, filename, targetFullPath)
                     self.moveFile(sourcePath, filename, targetFullPath)
+#                    self.copyFile(sourcePath, filename, targetFullPath)
 
                 # #show filesystem statistics
                 # try:
@@ -198,16 +200,26 @@ class Cleaner():
                         os.makedirs(target)
                     except OSError:
                         pass
-                # moving the file
+                # copying the file
                 sourceFile = source + os.sep + filename
                 targetFile = target + os.sep + filename
 #                targetFile = "/gpfs/current/scratch_bl/test" + os.sep + filename
                 self.log.debug("sourceFile: " + str(sourceFile))
                 self.log.debug("targetFile: " + str(targetFile))
-                shutil.copyfile(sourceFile, targetFile)
-#                subprocess.call(["mv", sourceFile, targetFile])
-                fileWasCopied = True
-                self.log.info("Copying file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+                try:
+                    shutil.copyfile(sourceFile, targetFile)
+                    self.lastHandledFiles.append(filename)
+                    fileWasCopied = True
+                    self.log.info("Copying file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+                except Exception, e:
+                    self.log.debug ("Checking if file was already copied: " + str(filename))
+                    self.log.debug ("Error was: " + str(e))
+                    if filename in self.lastHandledFiles:
+                       self.log.info("File was found in history.")
+                       fileWasCopied = True
+                    else:
+                       self.log.info("File was not found in history.")
+
             except IOError:
                 self.log.debug ("IOError: " + str(filename))
             except Exception, e:
@@ -240,7 +252,6 @@ class Cleaner():
                     except OSError:
                         pass
                 # moving the file
-#                print 'paths:', source, target, os.sep, filename
                 sourceFile = source + os.sep + filename
                 targetFile = target + os.sep + filename
 #                targetFile = "/gpfs/current/scratch_bl/test" + os.sep + filename
@@ -248,16 +259,16 @@ class Cleaner():
                 self.log.debug("targetFile: " + str(targetFile))
                 try:
 		    shutil.move(sourceFile, targetFile)
-                    self.lastMovedFiles.append(filename)
+                    self.lastHandledFiles.append(filename)
                     fileWasMoved = True
                     self.log.info("Moving file '" + str(filename) + "' from '" + str(sourceFile) + "' to '" + str(targetFile) + "' (attempt " + str(iterationCount) + ")...success.")
                 except Exception, e:
                     self.log.debug ("Checking if file was already moved: " + str(filename))
                     self.log.debug ("Error was: " + str(e))
-                    if filename in self.lastMovedFiles:
+                    if filename in self.lastHandledFiles:
                        self.log.info("File was found in history.")
                        fileWasMoved = True
-                    else: 
+                    else:
                        self.log.info("File was not found in history.")
 
             except Exception, e:
@@ -301,7 +312,7 @@ class Cleaner():
 
     def stop(self):
         self.log.debug("Closing socket")
-        self.zmqCleanerSocket.close(0)
+        self.newJobSocket.close(0)
         if not self.externalContext:
             self.log.debug("Destroying context")
-            self.zmqContextForCleaner.destroy()
+            self.contextForCleaner.destroy()

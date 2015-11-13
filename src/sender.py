@@ -22,6 +22,7 @@ import shared.helperScript as helperScript
 from sender.DirectoryWatcher import DirectoryWatcher
 from sender.FileMover import FileMover
 from sender.Cleaner import Cleaner
+from receiverLiveViewer.Coordinator import Coordinator as LiveViewerCommunicator
 
 
 def argumentParsing():
@@ -56,6 +57,12 @@ def argumentParsing():
 
     parallelDataStreams = config.get('asection', 'parallelDataStreams')
     chunkSize           = int(config.get('asection', 'chunkSize'))
+
+    cleanerExchangePort = config.get('asection', 'cleanerExchangePort')
+    liveViewerPort      = config.get('asection', 'liveViewerPort')
+    liveViewerIp        = config.get('asection', 'liveViewerIp')
+    maxRingBufferSize   = config.get('asection', 'maxRingBufferSize')
+    maxQueueSize        = config.get('asection', 'maxQueueSize')
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--logfilePath"        , type=str, default=logfilePath,
@@ -109,6 +116,19 @@ def argumentParsing():
     parser.add_argument("--chunkSize"          , type=int, default=chunkSize,
                                                  help="Chunk size of file-parts getting send via ZMQ (default=" + str(chunkSize) + ")")
 
+    parser.add_argument("--useRingbuffer"      , action="store_true",
+                                                 help="Put the data into a ringbuffer followed by a queue to delay the removal of the files.")
+    parser.add_argument("--cleanerExchangePort", type=str, default=cleanerExchangePort,
+                                                 help="Port number to exchange data and signals between Cleaner and LiveViewerCommunicator (default=" + str(cleanerExchangePort) + ")")
+    parser.add_argument("--liveViewerIp"       , type=str, default=liveViewerIp,
+                                                 help="IP to bind communication to LiveViewer to (default=" + str(liveViewerIp) + ")")
+    parser.add_argument("--liveViewerPort"     , type=str, default=liveViewerPort,
+                                                 help="Port number to communicate with live viewer (default=" + str(liveViewerPort) + ")")
+    parser.add_argument("--maxRingBufferSize"  , type=int, default=maxRingBufferSize,
+                                                 help="Size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")")
+    parser.add_argument("--maxQueueSize"       , type=int, default=maxQueueSize,
+                                                 help="Size of the queue for the live viewer (default=" + str(maxQueueSize) + ")")
+
     arguments         = parser.parse_args()
 
     logfilePath       = str(arguments.logfilePath)
@@ -161,6 +181,13 @@ class Sender():
     parallelDataStreams = None
     chunkSize           = None
 
+    useRingbuffer       = False
+    cleanerExchangePort = None
+    liveViewerPort      = None
+    liveViewerIp        = None
+    maxRingBufferSize   = None
+    maxQueueSize        = None
+
     zmqContext          = None
 
     def __init__(self):
@@ -189,6 +216,12 @@ class Sender():
         self.parallelDataStreams = arguments.parallelDataStreams
         self.chunkSize           = arguments.chunkSize
 
+        self.useRingbuffer       = arguments.useRingbuffer
+        self.cleanerExchangePort = arguments.cleanerExchangePort
+        self.liveViewerPort      = arguments.liveViewerPort
+        self.liveViewerIp        = arguments.liveViewerIp
+        self.maxRingBufferSize   = arguments.maxRingBufferSize
+        self.maxQueueSize        = arguments.maxQueueSize
 
         #create zmq context
         # there should be only one context in one process
@@ -211,6 +244,12 @@ class Sender():
         cleanerProcess.start()
         logging.debug("start cleaner process...done")
 
+        if self.useRingbuffer:
+            logging.debug("start liveViewercommunicator process...")
+            liveViewercommunicatorProcess = Process(target=LiveViewerCommunicator, args=(self.cleanerExchangePort, self.liveViewerPort, self.liveViewerIp, self.maxRingBufferSize, self.maxQueueSize, self.context))
+            logging.debug("liveViewercommunicator process registered")
+            liveViewercommunicatorProcess.start()
+            logging.debug("start liveViewercommunicator process...done")
 
         #start new fileMover
         fileMover = FileMover(self.fileEventIp, self.fileEventPort, self.dataStreamIp, self.dataStreamPort,
