@@ -113,10 +113,16 @@ def argumentParsing():
 
     logfilePath       = str(arguments.logfilePath)
     logfileName       = str(arguments.logfileName)
+    logfileFullPath     = os.path.join(logfilePath, logfileName)
+    verbose             = arguments.verbose
+
     watchDir          = str(arguments.watchDir)
 
     monitoredSubdirs  = arguments.monitoredSubdirs
     cleanerTargetPath = str(arguments.cleanerTargetPath)
+
+    #enable logging
+    helperScript.initLogging(logfileFullPath, verbose)
 
     # check if directories exists
     helperScript.checkDirExistance(logfilePath)
@@ -131,11 +137,6 @@ def argumentParsing():
 
 
 class Sender():
-    logfilePath         = None
-    logfileName         = None
-    logfileFullPath     = None
-    verbose             = None
-
     watchDir            = None
     monitoredEventType  = None
     monitoredSubdirs    = None
@@ -165,11 +166,6 @@ class Sender():
     def __init__(self):
         arguments = argumentParsing()
 
-        self.logfilePath         = arguments.logfilePath
-        self.logfileName         = arguments.logfileName
-        self.logfileFullPath     = os.path.join(self.logfilePath, self.logfileName)
-        self.verbose             = arguments.verbose
-
         self.watchDir            = arguments.watchDir
         self.monitoredEventType  = arguments.monitoredEventType
         self.monitoredSubdirs    = arguments.monitoredSubdirs
@@ -192,10 +188,6 @@ class Sender():
 
         self.parallelDataStreams = arguments.parallelDataStreams
         self.chunkSize           = arguments.chunkSize
-
-        #enable logging
-        helperScript.initLogging(self.logfileFullPath, self.verbose)
-
 
 
         #create zmq context

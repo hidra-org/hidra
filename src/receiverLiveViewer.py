@@ -73,10 +73,16 @@ def argumentParsing():
     targetDir   = str(arguments.targetDir)
     logfilePath = str(arguments.logfilePath)
     logfileName = str(arguments.logfileName)
+    logfileFullPath = os.path.join(logfilePath, logfileName)
+    verbose         = arguments.verbose
+
+
+    #enable logging
+    helperScript.initLogging(logfileFullPath, verbose)
 
     # check target directory for existance
     helperScript.checkDirExistance(targetDir)
-#    helperScript.checkDirEmpty(targetDir)
+    helperScript.checkDirEmpty(targetDir)
 
     # check if logfile is writable
     helperScript.checkLogFileWritable(logfilePath, logfileName)
@@ -85,11 +91,6 @@ def argumentParsing():
 
 
 class ReceiverLiveViewer():
-    logfilePath             = None
-    logfileName             = None
-    logfileFullPath         = None
-    verbose                 = None
-
     targetDir               = None
     dataStreamIp            = None
     dataStreamPort          = None
@@ -106,11 +107,6 @@ class ReceiverLiveViewer():
     def __init__(self):
         arguments = argumentParsing()
 
-        self.logfilePath             = arguments.logfilePath
-        self.logfileName             = arguments.logfileName
-        self.logfileFullPath         = os.path.join(self.logfilePath, self.logfileName)
-        self.verbose                 = arguments.verbose
-
         self.targetDir               = arguments.targetDir
         self.dataStreamIp            = arguments.dataStreamIp
         self.dataStreamPort          = arguments.dataStreamPort
@@ -123,10 +119,6 @@ class ReceiverLiveViewer():
         self.maxRingBufferSize       = arguments.maxRingBufferSize
         self.maxQueueSize            = arguments.maxQueueSize
         self.senderResponseTimeout   = arguments.senderResponseTimeout
-
-
-        #enable logging
-        helperScript.initLogging(self.logfileFullPath, self.verbose)
 
 
         #start file receiver

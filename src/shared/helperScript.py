@@ -4,7 +4,6 @@ import logging
 import sys
 
 
-
 def isWindows():
     returnValue = False
     windowsName = "Windows"
@@ -112,7 +111,7 @@ def confirm(prompt=None, resp=False):
             ans = raw_input(prompt)
         except KeyboardInterrupt:
             logging.error("Keyboard Interruption detected.")
-            break
+            sys.exit(1)
         except Exception as e:
             logging.error("Something went wrong with the confirmation.")
             logging.debug("Error was: " + str(e))
@@ -220,7 +219,7 @@ def initLogging(filenameFullPath, verbose):
 
     #log info to stdout, display messages with different format than the file output
     console = logging.StreamHandler()
-    console.setLevel(logging.ERROR)
+    console.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s >  %(message)s")
     console.setFormatter(formatter)
 

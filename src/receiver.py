@@ -42,9 +42,15 @@ def argumentParsing():
 
     arguments = parser.parse_args()
 
+    logfilePath     = str(arguments.logfilePath)
+    logfileName     = str(arguments.logfileName)
+    logfileFullPath = os.path.join(logfilePath, logfileName)
+    verbose         = arguments.verbose
+
     targetDir   = str(arguments.targetDir)
-    logfilePath = str(arguments.logfilePath)
-    logfileName = str(arguments.logfileName)
+
+    #enable logging
+    helperScript.initLogging(logfileFullPath, verbose)
 
     # check target directory for existance
     helperScript.checkDirExistance(targetDir)
@@ -56,11 +62,6 @@ def argumentParsing():
 
 
 class ReceiverLiveViewer():
-    logfilePath           = None
-    logfileName           = None
-    logfileFullPath       = None
-    verbose               = None
-
     targetDir             = None
     zmqDataStreamIp       = None
     zmqDataStreamPort     = None
@@ -74,18 +75,9 @@ class ReceiverLiveViewer():
     def __init__(self):
         arguments = argumentParsing()
 
-        self.logfilePath           = arguments.logfilePath
-        self.logfileName           = arguments.logfileName
-        self.logfileFullPath       = os.path.join(self.logfilePath, self.logfileName)
-        self.verbose               = arguments.verbose
-
         self.targetDir             = arguments.targetDir
         self.zmqDataStreamIp       = arguments.dataStreamIp
         self.zmqDataStreamPort     = arguments.dataStreamPort
-
-        #enable logging
-        helperScript.initLogging(self.logfileFullPath, self.verbose)
-
 
         #start file receiver
         myWorker = FileReceiver(self.targetDir, self.zmqDataStreamIp, self.zmqDataStreamPort)
