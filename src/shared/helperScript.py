@@ -136,8 +136,8 @@ def checkDirEmpty(dirPath):
         if confirm(prompt="Directory " + str(dirPath) + " is not empty.\nShould its content be removed?",
                    resp = True):
             for element in os.listdir(dirPath):
-                print "Removing elements"
                 os.remove(element)
+            logging.info("All elements were removed.")
 
 
 
@@ -219,7 +219,8 @@ def initLogging(filenameFullPath, verbose):
 
     #log info to stdout, display messages with different format than the file output
     console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
+    console.setLevel(logging.ERROR)
+#    console.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s >  %(message)s")
     console.setFormatter(formatter)
 
