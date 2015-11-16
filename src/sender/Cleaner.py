@@ -190,15 +190,17 @@ class Cleaner():
 
             if self.useRingbuffer:
 
-                try:
-                    self.copyFile(sourcePath, filename, targetFullPath)
-                except Exception as e:
-                    self.log.error("Unable to handle source file: " + str (sourceFullPath) )
-                    trace = traceback.format_exc()
-                    self.log.debug("Error was: " + str(e))
-                    self.log.debug("Trace: " + str(trace))
-                    #skip all further instructions and continue with next iteration
-                    continue
+                if not self.useDataStream:
+                    try:
+                        self.copyFile(sourcePath, filename, targetFullPath)
+                    except Exception as e:
+                        self.log.error("Unable to handle source file: " + str (sourceFullPath) )
+                        trace = traceback.format_exc()
+                        self.log.debug("Error was: " + str(e))
+                        self.log.debug("Trace: " + str(trace))
+                        #skip all further instructions and continue with next iteration
+                        continue
+
                 try:
                     # send the file to the coordinator to add it to the ring buffer
                     message = "AddFile" + str(sourceFullPath) + ", " + str(fileModTime)
