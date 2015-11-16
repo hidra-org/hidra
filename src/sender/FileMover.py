@@ -85,6 +85,15 @@ class FileMover():
         self.log = self.getLogger()
         self.log.debug("Init")
 
+        self.createSockets()
+
+
+    def getLogger(self):
+        logger = logging.getLogger("fileMover")
+        return logger
+
+
+    def createSockets(self):
         # create zmq socket for incoming file events
         self.fileEventSocket = self.zmqContext.socket(zmq.PULL)
         connectionStr        = "tcp://{ip}:{port}".format(ip=self.fileEventIp, port=self.fileEventPort)
@@ -133,11 +142,6 @@ class FileMover():
             trace = traceback.format_exc()
             self.log.info("Stopping fileMover due to unknown error condition.")
             self.log.debug("Error was: " + str(trace))
-
-
-    def getLogger(self):
-        logger = logging.getLogger("fileMover")
-        return logger
 
 
     def startReceiving(self):

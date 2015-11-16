@@ -63,36 +63,9 @@ class WorkerProcess():
 
         self.log = self.getLogger()
 
-
         self.log.debug("new workerProcess started. id=" + str(self.id))
 
-        if self.useDataStream:
-            self.dataStreamSocket = self.zmqContextForWorker.socket(zmq.PUSH)
-            connectionStr         = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
-            self.dataStreamSocket.connect(connectionStr)
-            self.log.info("dataStreamSocket started (connect) for '" + connectionStr + "'")
-
-        # initialize sockets
-        routerIp   = "127.0.0.1"
-        routerPort = "50002"
-
-        self.routerSocket             = self.zmqContextForWorker.socket(zmq.REQ)
-        self.routerSocket.identity    = u"worker-{ID}".format(ID=self.id).encode("ascii")
-        connectionStrRouterSocket     = "tcp://{ip}:{port}".format(ip=routerIp, port=routerPort)
-        self.routerSocket.connect(connectionStrRouterSocket)
-        self.log.debug("routerSocket started (connect) for '" + connectionStrRouterSocket + "'")
-
-        #init Cleaner message-pipe
-        self.cleanerSocket            = self.zmqContextForWorker.socket(zmq.PUSH)
-        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.cleanerIp, port=self.cleanerPort)
-        self.cleanerSocket.connect(connectionStrCleanerSocket)
-        self.log.debug("cleanerSocket started (connect) for '" + connectionStrCleanerSocket + "'")
-
-        # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
-        self.poller = zmq.Poller()
-        #TODO do I need to register the routerSocket in here?
-        self.poller.register(self.routerSocket, zmq.POLLIN)
-
+        self.createSockets()
 
         try:
             self.process()
@@ -105,6 +78,44 @@ class WorkerProcess():
             self.log.debug("Error was: " + str(trace))
         finally:
             self.stop()
+
+
+    def createSockets(self):
+        if self.useDataStream:
+            self.dataStreamSocket = self.zmqContextForWorker.socket(zmq.PUSH)
+            connectionStr         = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
+            self.dataStreamSocket.connect(connectionStr)
+            self.log.info("dataStreamSocket started (connect) for '" + connectionStr + "'")
+
+        # initialize sockets
+        routerIp   = "127.0.0.1"
+        routerPort = "50002"
+
+        self.routerSocket             = self.zmqContextForWorker.socket(zmq.REQ)
+        self.routerSocket.identity    = u"worker-{ID}".format(ID=self.id).encode("ascii")
+        connectionStr                 = "tcp://{ip}:{port}".format(ip=routerIp, port=routerPort)
+        try:
+            self.routerSocket.connect(connectionStr)
+            self.log.debug("routerSocket started (connect) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start routerSocket (connect): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
+
+        #init Cleaner message-pipe
+        self.cleanerSocket            = self.zmqContextForWorker.socket(zmq.PUSH)
+        connectionStrCleanerSocket    = "tcp://{ip}:{port}".format(ip=self.cleanerIp, port=self.cleanerPort)
+        try:
+            self.cleanerSocket.connect(connectionStrCleanerSocket)
+            self.log.debug("cleanerSocket started (connect) for '" + connectionStrCleanerSocket + "'")
+        except Exception as e:
+            self.log.error("Failed to start cleanerSocket (connect): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
+
+        # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
+        self.poller = zmq.Poller()
+        #TODO do I need to register the routerSocket in here?
+        self.poller.register(self.routerSocket, zmq.POLLIN)
+
 
 
     def process(self):

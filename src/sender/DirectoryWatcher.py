@@ -66,11 +66,7 @@ class DirectoryWatcher():
 
 #        assert isinstance(self.zmqContext, zmq.sugar.context.Context)
 
-        #create zmq sockets
-        self.messageSocket = self.zmqContext.socket(zmq.PUSH)
-        zmqSocketStr = "tcp://" + self.fileEventIp + ":" + str(self.fileEventPort)
-        self.messageSocket.connect(zmqSocketStr)
-        self.log.debug("Connecting to ZMQ socket: " + str(zmqSocketStr))
+        self.createSockets()
 
         self.process()
 
@@ -78,6 +74,18 @@ class DirectoryWatcher():
     def getLogger(self):
         logger = logging.getLogger("DirectoryWatchHandler")
         return logger
+
+
+    def createSockets(self):
+        #create zmq socket
+        self.messageSocket = self.zmqContext.socket(zmq.PUSH)
+        connectionStr = "tcp://" + self.fileEventIp + ":" + str(self.fileEventPort)
+        try:
+            self.messageSocket.connect(connectionStr)
+            self.log.debug("Connecting to ZMQ socket: " + str(connectionStr))
+        except Exception as e:
+            self.log.error("Failed to start ZMQ Socket (connect): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
 
 
     def getDirectoryStructure(self):
