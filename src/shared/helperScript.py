@@ -207,8 +207,10 @@ def initLogging(filenameFullPath, verbose):
 
     #more detailed logging if verbose-option has been set
     loggingLevel = logging.INFO
+    screenLoggingLevel = logging.ERROR
     if verbose:
         loggingLevel = logging.DEBUG
+        screenLoggingLevel = logging.INFO
 
     #log everything to file
     logging.basicConfig(level=loggingLevel,
@@ -227,8 +229,7 @@ def initLogging(filenameFullPath, verbose):
 
     #log info to stdout, display messages with different format than the file output
     console = logging.StreamHandler()
-#    console.setLevel(logging.ERROR)
-    console.setLevel(logging.INFO)
+    console.setLevel(screenLoggingLevel)
     formatter = logging.Formatter("%(asctime)s >  %(message)s")
     console.setFormatter(formatter)
 
