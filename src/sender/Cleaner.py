@@ -192,7 +192,7 @@ class Cleaner():
 
                 if not self.useDataStream:
                     try:
-                        self.copyFile(sourcePath, filename, targetFullPath)
+                        self.handleFile("copy", sourcePath, filename, targetFullPath)
                     except Exception as e:
                         self.log.error("Unable to handle source file: " + str (sourceFullPath) )
                         trace = traceback.format_exc()
@@ -214,10 +214,9 @@ class Cleaner():
 
                 try:
                     if self.useDataStream:
-                        self.removeFile(sourceFullPath)
+                        self.handleFile("remove", sourcePath, filename, None)
                     else:
-                        self.moveFile(sourcePath, filename, targetFullPath)
-#                        self.copyFile(sourcePath, filename, targetFullPath)
+                        self.handleFile("move", sourcePath, filename, targetFullPath)
                 except Exception as e:
                     self.log.error("Unable to handle source file: " + str (sourceFullPath) )
                     trace = traceback.format_exc()
@@ -227,40 +226,55 @@ class Cleaner():
                     continue
 
 
-    def copyFile(self, source, filename, target):
-        maxAttemptsToCopyFile     = 2
+    def handleFile(self, fileOperation, source, filename, target):
+
+        if not fileOperation in ["copy", "move", "remove"]:
+            self.log.debug("Requested operation type: " + str(fileOperation) + "; Supported: copy, move, remove")
+            raise Exception("Requested operation type " + str(fileOperation) + " is not supported. Unable to process file " + str(filename))
+
+        maxAttemptsToHandleFile     = 2
         waitTimeBetweenAttemptsInMs = 500
 
-
         iterationCount = 0
-        fileWasCopied = False
+        fileWasHandled = False
 
-        while iterationCount <= maxAttemptsToCopyFile and not fileWasCopied:
+        while iterationCount <= maxAttemptsToHandleFile and not fileWasHandled:
             iterationCount+=1
             try:
-                # check if the directory exists before moving the file
-                if not os.path.exists(target):
-                    try:
-                        os.makedirs(target)
-                    except OSError:
-                        pass
-                # copying the file
-                sourceFile = source + os.sep + filename
-                targetFile = target + os.sep + filename
-#                targetFile = "/gpfs/current/scratch_bl/test" + os.sep + filename
+                sourceFile = os.path.join(source,filename)
                 self.log.debug("sourceFile: " + str(sourceFile))
-                self.log.debug("targetFile: " + str(targetFile))
+
+                # check if the directory exists before moving the file
+                if fileOperation == "copy" or fileOperation == "move":
+                    if not os.path.exists(target):
+                        try:
+                            os.makedirs(target)
+                        except OSError:
+                            pass
+
+                    # handle the file (either copy, move or remove it)
+                    targetFile = os.path.join(target,filename)
+                    self.log.debug("targetFile: " + str(targetFile))
+
                 try:
-                    shutil.copyfile(sourceFile, targetFile)
+                    if fileOperation == "copy":
+                        shutil.copyfile(sourceFile, targetFile)
+                        self.log.info( "Copying file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+                    elif fileOperation == "move":
+                        shutil.move(sourceFile, targetFile)
+                        self.log.info( "Moving file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+                    elif fileOperation == "remove":
+                        os.remove(sourceFile)
+                        self.log.info("Removing file '" + str(sourceFile) + "' (attempt " + str(iterationCount) + ")...success.")
+
                     self.lastHandledFiles.append(filename)
-                    fileWasCopied = True
-                    self.log.info("Copying file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+                    fileWasHandled = True
                 except Exception, e:
-                    self.log.debug ("Checking if file was already copied: " + str(filename))
+                    self.log.debug ("Checking if file was already handled: " + str(filename))
                     self.log.debug ("Error was: " + str(e))
                     if filename in self.lastHandledFiles:
                        self.log.info("File was found in history.")
-                       fileWasCopied = True
+                       fileWasHandled = True
                     else:
                        self.log.info("File was not found in history.")
 
@@ -268,90 +282,20 @@ class Cleaner():
                 self.log.debug ("IOError: " + str(filename))
             except Exception, e:
                 trace = traceback.format_exc()
-                warningMessage = "Unable to copy file {FILE}.".format(FILE=str(source) + str(filename))
+                warningMessage = "Unable to " + str(fileOperation) + " file {FILE}.".format(FILE=str(source) + str(filename))
                 self.log.debug(warningMessage)
                 self.log.debug("trace=" + str(trace))
                 self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
-        if not fileWasCopied:
-            self.log.info("Copying file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
-            raise Exception("maxAttemptsToCopyFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filename))
+        if not fileWasHandled:
+            if fileOperation == "copy":
+                self.log.info( "Copying file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            elif fileOperation == "move":
+                self.log.info( "Moving file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            elif fileOperation == "remove":
+                self.log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
 
-
-    def moveFile(self, source, filename, target):
-        maxAttemptsToMoveFile     = 2
-        waitTimeBetweenAttemptsInMs = 500
-
-
-        iterationCount = 0
-        fileWasMoved = False
-
-        while iterationCount <= maxAttemptsToMoveFile and not fileWasMoved:
-            iterationCount+=1
-            try:
-                # check if the directory exists before moving the file
-                if not os.path.exists(target):
-                    try:
-                        os.makedirs(target)
-                    except OSError:
-                        pass
-                # moving the file
-                sourceFile = source + os.sep + filename
-                targetFile = target + os.sep + filename
-#                targetFile = "/gpfs/current/scratch_bl/test" + os.sep + filename
-                self.log.debug("sourceFile: " + str(sourceFile))
-                self.log.debug("targetFile: " + str(targetFile))
-                try:
-                    shutil.move(sourceFile, targetFile)
-                    self.lastHandledFiles.append(filename)
-                    fileWasMoved = True
-                    self.log.info("Moving file '" + str(filename) + "' from '" + str(sourceFile) + "' to '" + str(targetFile) + "' (attempt " + str(iterationCount) + ")...success.")
-                except Exception, e:
-                    self.log.debug ("Checking if file was already moved: " + str(filename))
-                    self.log.debug ("Error was: " + str(e))
-                    if filename in self.lastHandledFiles:
-                       self.log.info("File was found in history.")
-                       fileWasMoved = True
-                    else:
-                       self.log.info("File was not found in history.")
-
-            except Exception, e:
-                trace = traceback.format_exc()
-                warningMessage = "Unable to move file {FILE}.".format(FILE=str(sourceFile))
-                self.log.debug(warningMessage)
-                self.log.debug("trace=" + str(trace))
-                self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
-
-        if not fileWasMoved:
-            self.log.info("Moving file '" + str(filename) + " from " + str(sourceFile) + " to " + str(targetFile) + "' (attempt " + str(iterationCount) + ")...FAILED.")
-            raise Exception("maxAttemptsToMoveFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filename))
-
-
-    def removeFile(self, filepath):
-        maxAttemptsToRemoveFile     = 2
-        waitTimeBetweenAttemptsInMs = 500
-
-
-        iterationCount = 0
-        self.log.debug("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...")
-        fileWasRemoved = False
-
-        while iterationCount <= maxAttemptsToRemoveFile and not fileWasRemoved:
-            iterationCount+=1
-            try:
-                os.remove(filepath)
-                fileWasRemoved = True
-                self.log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...success.")
-            except Exception, e:
-                trace = traceback.format_exc()
-                warningMessage = "Unable to remove file {FILE}.".format(FILE=str(filepath))
-                self.log.debug(warningMessage)
-                self.log.debug("trace=" + str(trace))
-                self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
-
-        if not fileWasRemoved:
-            self.log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
-            raise Exception("maxAttemptsToRemoveFile reached (value={ATTEMPT}). Unable to remove file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filepath))
+            raise Exception("maxAttemptsToHandleFile reached " + str(iterationCount) + ". Unable to " + str(fileOperation) + " file '" + str(filename) + "'.")
 
 
     def stop(self):
