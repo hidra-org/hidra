@@ -35,45 +35,53 @@ class Cleaner():
       - poll the watched directory and reissue new files
         to fileMover which have not been detected yet
     """
-    newJobPort           = None
-    newJobIp             = None
-    senderComIp          = None
-    contextForCleaner    = None
-    externalContext      = None    # if the context was created outside this class or not
+    newJobPort        = None
+    newJobIp          = None
+    senderComIp       = None
 
-    newJobSocket         = None
-    LVCommunicatorSocket = None    # socket to communicate with Coordinator class
+    contextForCleaner = None
+    externalContext   = None    # if the context was created outside this class or not
 
-    useDataStream        = True    # boolian to inform if the data should be send to the data stream pipe (to the storage system)
+    newJobSocket      = None
+    lvComSocket       = None    # socket to communicate with Coordinator class
 
-    lastHandledFiles     = collections.deque(maxlen = 20)
+    useDataStream     = True    # boolian to inform if the data should be send to the data stream pipe (to the storage system)
+
+    useRingbuffer     = False
+    lvComIp           = None
+    lvComPort         = None
+
+    lastHandledFiles  = collections.deque(maxlen = 20)
 
     # to get the logging only handling this class
-    log                  = None
+    log               = None
 
-    def __init__(self, targetPath, newJobIp="127.0.0.1", newJobPort="6062", useDataStream = True, context = None, verbose=False):
-        self.newJobIp       = newJobIp
-        self.newJobPort     = newJobPort
-        self.senderComIp    = self.newJobIp
-        self.targetPath     = os.path.normpath(targetPath)
+    def __init__(self, targetPath, newJobIp, newJobPort, useDataStream = True, lvComPort = None, context = None):
+        self.newJobIp      = newJobIp
+        self.newJobPort    = newJobPort
+        self.senderComIp   = self.newJobIp
 
-        self.useDataStream  = useDataStream
+        self.targetPath    = os.path.normpath(targetPath)
+
+        self.useDataStream = useDataStream
+
+        if lvComPort:
+            self.useRingbuffer = True
+            self.lvComIp       = self.newJobIp
+            self.lvComPort     = lvComPort
 
         if context:
             self.contextForCleaner = context
-            self.externalContext      = True
+            self.externalContext   = True
         else:
             self.contextForCleaner = zmq.Context()
-            self.externalContext      = False
+            self.externalContext   = False
 
         self.log = self.getLogger()
         self.log.debug("Init")
 
-        #bind to local port
-        self.newJobSocket = self.contextForCleaner.socket(zmq.PULL)
-        connectionStrSocket   = "tcp://" + self.newJobIp + ":%s" % self.newJobPort
-        self.newJobSocket.bind(connectionStrSocket)
-        self.log.debug("newJobSocket started for '" + connectionStrSocket + "'")
+        # create Sockets
+        self.createSockets()
 
         try:
             self.process()
@@ -91,6 +99,27 @@ class Cleaner():
     def getLogger(self):
         logger = logging.getLogger("cleaner")
         return logger
+
+
+    def createSockets(self):
+        self.newJobSocket = self.contextForCleaner.socket(zmq.PULL)
+        connectionStr = "tcp://" + self.newJobIp + ":%s" % self.newJobPort
+        try:
+            self.newJobSocket.bind(connectionStr)
+            self.log.debug("newJobSocket started for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start newJobSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
+
+        if self.useRingbuffer:
+            self.lvComSocket = self.contextForCleaner.socket(zmq.PAIR)
+            connectionStr = "tcp://" + self.lvComIp + ":%s" % self.lvComPort
+            try:
+                self.lvComSocket.connect(connectionStr)
+                self.log.debug("lvComSocket started (connect) for '" + connectionStr + "'")
+            except Exception as e:
+                self.log.error("Failed to start lvComSocket (connect): '" + connectionStr + "'")
+                self.log.debug("Error was:" + str(e))
 
 
     def process(self):
@@ -131,8 +160,9 @@ class Cleaner():
                 filename       = workloadDict["filename"]
                 sourcePath     = workloadDict["sourcePath"]
                 relativePath   = workloadDict["relativePath"]
+                fileModTime    = workloadDict["fileModificationTime"]
 #                print "workloadDict:", workloadDict
-            except Exception, e:
+            except Exception as e:
                 errorMessage   = "Invalid fileEvent message received."
                 self.log.error(errorMessage)
                 self.log.debug("Error was: " + str(e))
@@ -152,35 +182,47 @@ class Cleaner():
                 self.log.debug("filename: " + str (filename))
                 self.log.debug("targetPath: " + str (targetFullPath))
 
-            except Exception, e:
+            except Exception as e:
                 self.log.error("Unable to generate file paths")
-                trace = traceback.format_exc()
-                self.log.error("Error was: " + str(trace))
+                self.log.error("Error was: " + str(e))
                 #skip all further instructions and continue with next iteration
                 continue
 
-            try:
-                if self.useDataStream:
-                    self.removeFile(sourceFullPath)
-                else:
-                    self.moveFile(sourcePath, filename, targetFullPath)
-#                    self.copyFile(sourcePath, filename, targetFullPath)
+            if self.useRingbuffer:
 
-                # #show filesystem statistics
-                # try:
-                #     self.showFilesystemStatistics(sourcePath)
-                # except Exception, f:
-                #     logging.warning("Unable to get filesystem statistics")
-                #     logging.debug("Error was: " + str(f))
+                try:
+                    self.copyFile(sourcePath, filename, targetFullPath)
+                except Exception as e:
+                    self.log.error("Unable to handle source file: " + str (sourceFullPath) )
+                    trace = traceback.format_exc()
+                    self.log.debug("Error was: " + str(e))
+                    self.log.debug("Trace: " + str(trace))
+                    #skip all further instructions and continue with next iteration
+                    continue
+                try:
+                    # send the file to the coordinator to add it to the ring buffer
+                    message = "AddFile" + str(sourceFullPath) + ", " + str(fileModTime)
+                    self.log.debug("Send file to LvCommunicator: " + message )
+                    self.lvComSocket.send(message)
+                except Exception as e:
+                    self.log.error("Unable to send source file to LvCommunicator: " + str (sourceFullPath) )
+                    self.log.debug("Error was: " + str(e))
+                    continue
+            else:
 
-            except Exception, e:
-                self.log.error("Unable to move source file: " + str (sourceFullPath) )
-                trace = traceback.format_exc()
-                self.log.debug("Error was: " + str(trace))
-                self.log.debug("sourceFullpath="+str(sourceFullpath))
-                self.log.debug("Moving source file...failed.")
-                #skip all further instructions and continue with next iteration
-                continue
+                try:
+                    if self.useDataStream:
+                        self.removeFile(sourceFullPath)
+                    else:
+                        self.moveFile(sourcePath, filename, targetFullPath)
+#                        self.copyFile(sourcePath, filename, targetFullPath)
+                except Exception as e:
+                    self.log.error("Unable to handle source file: " + str (sourceFullPath) )
+                    trace = traceback.format_exc()
+                    self.log.debug("Error was: " + str(e))
+                    self.log.debug("Trace: " + str(trace))
+                    #skip all further instructions and continue with next iteration
+                    continue
 
 
     def copyFile(self, source, filename, target):
@@ -258,7 +300,7 @@ class Cleaner():
                 self.log.debug("sourceFile: " + str(sourceFile))
                 self.log.debug("targetFile: " + str(targetFile))
                 try:
-		    shutil.move(sourceFile, targetFile)
+                    shutil.move(sourceFile, targetFile)
                     self.lastHandledFiles.append(filename)
                     fileWasMoved = True
                     self.log.info("Moving file '" + str(filename) + "' from '" + str(sourceFile) + "' to '" + str(targetFile) + "' (attempt " + str(iterationCount) + ")...success.")
@@ -313,6 +355,8 @@ class Cleaner():
     def stop(self):
         self.log.debug("Closing socket")
         self.newJobSocket.close(0)
+        if self.lvComSocket:
+            self.lvComSocket.close(0)
         if not self.externalContext:
             self.log.debug("Destroying context")
             self.contextForCleaner.destroy()

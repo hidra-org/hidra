@@ -58,6 +58,7 @@ def argumentParsing():
     parallelDataStreams = config.get('asection', 'parallelDataStreams')
     chunkSize           = int(config.get('asection', 'chunkSize'))
 
+    useRingbuffer       = config.getboolean('asection', 'useRingbuffer')
     cleanerExchangePort = config.get('asection', 'cleanerExchangePort')
     liveViewerPort      = config.get('asection', 'liveViewerPort')
     liveViewerIp        = config.get('asection', 'liveViewerIp')
@@ -116,8 +117,8 @@ def argumentParsing():
     parser.add_argument("--chunkSize"          , type=int, default=chunkSize,
                                                  help="Chunk size of file-parts getting send via ZMQ (default=" + str(chunkSize) + ")")
 
-    parser.add_argument("--useRingbuffer"      , action="store_true",
-                                                 help="Put the data into a ringbuffer followed by a queue to delay the removal of the files.")
+    parser.add_argument("--useRingbuffer"      , type=str, default=useRingbuffer,
+                                                 help="Put the data into a ringbuffer followed by a queue to delay the removal of the files(default=" + str(useRingbuffer) + ")")
     parser.add_argument("--cleanerExchangePort", type=str, default=cleanerExchangePort,
                                                  help="Port number to exchange data and signals between Cleaner and LiveViewerCommunicator (default=" + str(cleanerExchangePort) + ")")
     parser.add_argument("--liveViewerIp"       , type=str, default=liveViewerIp,
@@ -232,24 +233,29 @@ class Sender():
 
 
     def run(self):
-        logging.debug("start watcher process...")
+        logging.info("start watcher process...")
         watcherProcess = Process(target=DirectoryWatcher, args=(self.fileEventIp, self.watchDir, self.fileEventPort, self.monitoredEventType, self.monitoredSubdirs, self.monitoredFormats, self.zmqContext))
         logging.debug("watcher process registered")
         watcherProcess.start()
         logging.debug("start watcher process...done")
 
-        logging.debug("start cleaner process...")
-        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.useDataStream, self.zmqContext))
-        logging.debug("cleaner process registered")
-        cleanerProcess.start()
-        logging.debug("start cleaner process...done")
-
         if self.useRingbuffer:
-            logging.debug("start liveViewercommunicator process...")
-            liveViewercommunicatorProcess = Process(target=LiveViewerCommunicator, args=(self.cleanerExchangePort, self.liveViewerPort, self.liveViewerIp, self.maxRingBufferSize, self.maxQueueSize, self.context))
+            logging.info("start liveViewercommunicator process...")
+            liveViewercommunicatorProcess = Process(target=LiveViewerCommunicator, args=(self.cleanerExchangePort, self.liveViewerPort, self.liveViewerIp, self.maxRingBufferSize, self.maxQueueSize, self.zmqContext))
             logging.debug("liveViewercommunicator process registered")
             liveViewercommunicatorProcess.start()
             logging.debug("start liveViewercommunicator process...done")
+
+            logging.info("start cleaner process...")
+            cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.useDataStream, self.cleanerExchangePort, self.zmqContext))
+            logging.debug("cleaner process registered")
+        else:
+            logging.info("start cleaner process...")
+            cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.useDataStream, None, self.zmqContext))
+            logging.debug("cleaner process registered")
+
+        cleanerProcess.start()
+        logging.debug("start cleaner process...done")
 
         #start new fileMover
         fileMover = FileMover(self.fileEventIp, self.fileEventPort, self.dataStreamIp, self.dataStreamPort,

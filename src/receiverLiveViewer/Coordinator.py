@@ -54,29 +54,8 @@ class Coordinator:
 
         self.zmqContext = context or zmq.Context()
 
-        # create socket to exchange informations with FileReceiver
-        self.receiverExchangeSocket = self.zmqContext.socket(zmq.PAIR)
-        connectionStr               = "tcp://" + self.receiverExchangeIp + ":%s" % self.receiverExchangePort
-        try:
-            self.receiverExchangeSocket.bind(connectionStr)
-            self.log.debug("receiverExchangeSocket started (bind) for '" + connectionStr + "'")
-        except Exception as e:
-            self.log.error("Failed to start receiverExchangeSocket (bind): '" + connectionStr + "'")
-            self.log.debug("Error was:" + str(e))
-
-        # create socket for live viewer
-        self.liveViewerSocket = self.zmqContext.socket(zmq.REP)
-        connectionStr         = "tcp://" + self.liveViewerIp + ":%s" % self.liveViewerPort
-        try:
-            self.liveViewerSocket.bind(connectionStr)
-            self.log.debug("liveViewerSocket started (bind) for '" + connectionStr + "'")
-        except Exception as e:
-            self.log.error("Failed to start liveViewerSocket (bind): '" + connectionStr + "'")
-            self.log.debug("Error was:" + str(e))
-
-        self.poller = zmq.Poller()
-        self.poller.register(self.receiverExchangeSocket, zmq.POLLIN)
-        self.poller.register(self.liveViewerSocket, zmq.POLLIN)
+        #create sockets
+        self.createSockets()
 
         try:
             self.log.info("Start communication")
@@ -96,11 +75,43 @@ class Coordinator:
         return logger
 
 
+    def createSockets(self):
+        # create socket to exchange informations with FileReceiver
+        self.receiverExchangeSocket = self.zmqContext.socket(zmq.PAIR)
+        connectionStr               = "tcp://" + self.receiverExchangeIp + ":%s" % self.receiverExchangePort
+        try:
+            self.receiverExchangeSocket.bind(connectionStr)
+            self.log.info("receiverExchangeSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start receiverExchangeSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
+
+        # create socket for live viewer
+        self.liveViewerSocket = self.zmqContext.socket(zmq.REP)
+        connectionStr         = "tcp://" + self.liveViewerIp + ":%s" % self.liveViewerPort
+        try:
+            self.liveViewerSocket.bind(connectionStr)
+            self.log.info("liveViewerSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start liveViewerSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
+
+        self.poller = zmq.Poller()
+        self.poller.register(self.receiverExchangeSocket, zmq.POLLIN)
+        self.poller.register(self.liveViewerSocket, zmq.POLLIN)
+
+
+
     def communicate(self):
         should_continue = True
 
         while should_continue:
-            socks = dict(self.poller.poll())
+            try:
+                socks = dict(self.poller.poll())
+            except KeyboardInterrupt:
+                self.log.info("Message could not be received due to KeyboardInterrupt during polling")
+                break
+
 
             if self.receiverExchangeSocket in socks and socks[self.receiverExchangeSocket] == zmq.POLLIN:
                 message = self.receiverExchangeSocket.recv()

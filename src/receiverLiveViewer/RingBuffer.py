@@ -126,9 +126,6 @@ class RingBuffer:
             # if the maximal size is exceeded: remove the oldest files
             if len(self.ringBuffer) > self.maxRingBufferSize:
                 for mod_time, path in self.ringBuffer[self.maxRingBufferSize:]:
-                    self.log.debug("Remove file from ring buffer: " + str(path) )
-#                    os.remove(path)
-                    self.ringBuffer.remove([mod_time, path])
                     if len(self.dataQueue) >= self.maxQueueSize:
                         oldFile = self.dataQueue.pop()
                         self.log.debug("Remove file from disc: " + str(oldFile) )
@@ -138,6 +135,8 @@ class RingBuffer:
                             self.log.debug("Unable to remove file from disc: " + str(oldFile) )
                             self.log.debug("Error was: " + str(e) )
 
+                    self.log.debug("Remove file from ring buffer: " + str(path) )
+                    self.ringBuffer.remove([mod_time, path])
 
                     self.dataQueue.appendleft(path)
                     self.log.debug("Adding File to Queue: " + str(path) )
