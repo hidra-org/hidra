@@ -299,7 +299,7 @@ class WorkerProcess():
                 self.log.debug("passing file to dataStream")
                 self.passFileToDataStream(sourcePathFull, metadataDict, socketListToSendData)
 
-            #send remove-request to message pipe
+            #send file to cleaner pipe
             try:
                 #sending to pipe
                 self.log.debug("send file-event for file to cleaner-pipe...")
@@ -441,7 +441,7 @@ class WorkerProcess():
                 chunkNumber += 1
 
                 #read next chunk from file
-                fileContentAsByteObject = fileDescriptor.read(self.getChunkSize())
+                fileContentAsByteObject = fileDescriptor.read(self.zmqMessageChunkSize)
 
                 #detect if end of file has been reached
                 if not fileContentAsByteObject:
