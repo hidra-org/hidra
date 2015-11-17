@@ -16,42 +16,41 @@ import socket       # needed to get hostname
 #  --------------------------  class: FileReceiver  --------------------------------------
 #
 class FileReceiver:
-    zmqContext                = None
-    externalContext           = None         # if the context was created outside this class or not
-    outputDir                 = None
-    dataStreamIp              = None
-    dataStreamPort            = None
-    coordinatorExchangeIp     = None
-    coordinatorExchangePort   = None
-    senderComIp               = None         # ip for socket to communicate with the sender
-    senderComPort             = None         # port for socket to communicate with the sender
-    socketResponseTimeout     = None         # time in milliseconds to wait for the sender to answer to a signal
-
-    log                       = None
+    zmqContext            = None
+    externalContext       = None         # if the context was created outside this class or not
+    outputDir             = None
+    dataStreamIp          = None
+    dataStreamPort        = None
+    lvCommunicatorIp      = None
+    lvCommunicatorPort    = None
+    senderComIp           = None         # ip for socket to communicate with the sender
+    senderComPort         = None         # port for socket to communicate with the sender
+    socketResponseTimeout = None         # time in milliseconds to wait for the sender to answer to a signal
+    log                   = None
 
     # sockets
-    dataStreamSocket          = None         # socket to receive the data from
-    coordinatorExchangeSocket = None         # socket to communicate with Coordinator class
-    senderComSocket           = None         # socket to communicate with sender
+    dataStreamSocket      = None         # socket to receive the data from
+    lvCommunicatorSocket  = None         # socket to communicate with LiveViewCommunicator class
+    senderComSocket       = None         # socket to communicate with sender
 
-    hostname                  = socket.gethostname()
+    hostname              = socket.gethostname()
 #    print socket.gethostbyname(socket.gethostname())
 
 
     def __init__(self, outputDir,
                  senderComIp, senderComPort,
                  dataStreamIp, dataStreamPort,
-                 coordinatorExchangePort, senderResponseTimeout = 1000,
+                 lvCommunicatorPort, senderResponseTimeout = 1000,
                  context = None):
 
-        self.outputDir               = os.path.normpath(outputDir)
-        self.dataStreamIp            = dataStreamIp
-        self.dataStreamPort          = dataStreamPort
-        self.coordinatorExchangeIp   = "127.0.0.1"
-        self.coordinatorExchangePort = coordinatorExchangePort
-        self.senderComIp             = senderComIp
-        self.senderComPort           = senderComPort
-        self.socketResponseTimeout   = senderResponseTimeout
+        self.outputDir             = os.path.normpath(outputDir)
+        self.dataStreamIp          = dataStreamIp
+        self.dataStreamPort        = dataStreamPort
+        self.lvCommunicatorIp      = "127.0.0.1"
+        self.lvCommunicatorPort    = lvCommunicatorPort
+        self.senderComIp           = senderComIp
+        self.senderComPort         = senderComPort
+        self.socketResponseTimeout = senderResponseTimeout
 
 #        if context:
 #            assert isinstance(context, zmq.sugar.context.Context)
@@ -94,14 +93,14 @@ class FileReceiver:
         self.poller = zmq.Poller()
         self.poller.register(self.senderComSocket, zmq.POLLIN)
 
-        # create socket to communicate with Coordinator
-        self.coordinatorExchangeSocket = self.zmqContext.socket(zmq.PAIR)
-        connectionStr = "tcp://{ip}:{port}".format(ip=self.coordinatorExchangeIp, port=self.coordinatorExchangePort)
+        # create socket to communicate with LiveViewCommunicator
+        self.lvCommunicatorSocket = self.zmqContext.socket(zmq.PAIR)
+        connectionStr = "tcp://{ip}:{port}".format(ip=self.lvCommunicatorIp, port=self.lvCommunicatorPort)
         try:
-            self.coordinatorExchangeSocket.connect(connectionStr)
-            self.log.debug("coordinatorExchangeSocket started (connect) for '" + connectionStr + "'")
+            self.lvCommunicatorSocket.connect(connectionStr)
+            self.log.debug("lvCommunicatorSocket started (connect) for '" + connectionStr + "'")
         except Exception as e:
-            self.log.error("Failed to start coordinatorExchangeSocket (connect): '" + connectionStr + "'")
+            self.log.error("Failed to start lvCommunicatorSocket (connect): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))
 
         # create sockets to retrieve data from Sender
@@ -247,10 +246,10 @@ class FileReceiver:
         fileModTime         = payloadMetadataDict["fileModificationTime"]
         self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
 
-        # send the file to the coordinator to add it to the ring buffer
+        # send the file to the LiveViewCommunicator to add it to the ring buffer
         message = "AddFile" + str(filename) + ", " + str(fileModTime)
-        self.log.debug("Send file to coordinator: " + message )
-        self.coordinatorExchangeSocket.send(message)
+        self.log.debug("Send file to LiveViewCommunicator: " + message )
+        self.lvCommunicatorSocket.send(message)
 
 
     def generateTargetFilepath(self,configDict):
@@ -352,8 +351,8 @@ class FileReceiver:
             self.log.error("closing dataStreamSocket...failed.")
             self.log.error(sys.exc_info())
 
-        self.log.debug("sending exit signal to coordinator...")
-        self.coordinatorExchangeSocket.send("Exit")
+        self.log.debug("sending exit signal to LiveViewCommunicator...")
+        self.lvCommunicatorSocket.send("Exit")
 
         if sendToSender:
             message = "STOP_LIVE_VIEWER,"+ str(self.hostname)
@@ -380,7 +379,7 @@ class FileReceiver:
         # give the signal time to arrive
         time.sleep(0.1)
         self.log.debug("closing signal communication sockets...")
-        self.coordinatorExchangeSocket.close(0)
+        self.lvCommunicatorSocket.close(0)
         self.senderComSocket.close(0)
         self.log.debug("closing signal communication sockets...done")
 

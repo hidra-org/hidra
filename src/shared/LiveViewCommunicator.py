@@ -9,7 +9,7 @@ from RingBuffer import RingBuffer
 #
 #  --------------------------  class: Coordinator  --------------------------------------
 #
-class Coordinator:
+class LiveViewCommunicator:
     zmqContext               = None
     liveViewerZmqContext     = None
     liveViewerIp             = None

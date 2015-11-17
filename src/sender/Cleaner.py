@@ -43,7 +43,7 @@ class Cleaner():
     externalContext   = None    # if the context was created outside this class or not
 
     newJobSocket      = None
-    lvComSocket       = None    # socket to communicate with Coordinator class
+    lvComSocket       = None    # socket to communicate with LiveViewCommunicator class
 
     useDataStream     = True    # boolian to inform if the data should be send to the data stream pipe (to the storage system)
 
@@ -202,12 +202,12 @@ class Cleaner():
                         continue
 
                 try:
-                    # send the file to the coordinator to add it to the ring buffer
+                    # send the file to the LiveViewCommunicator to add it to the ring buffer
                     message = "AddFile" + str(sourceFullPath) + ", " + str(fileModTime)
-                    self.log.debug("Send file to LvCommunicator: " + message )
+                    self.log.debug("Send file to LiveViewCommunicator: " + message )
                     self.lvComSocket.send(message)
                 except Exception as e:
-                    self.log.error("Unable to send source file to LvCommunicator: " + str (sourceFullPath) )
+                    self.log.error("Unable to send source file to LiveViewCommunicator: " + str (sourceFullPath) )
                     self.log.debug("Error was: " + str(e))
                     continue
             else:
