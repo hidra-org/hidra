@@ -148,7 +148,11 @@ class RingBuffer:
         for i in range(len(self.ringBuffer)):
             filePath = self.ringBuffer[i][1]
             self.log.debug("Remove file from disk: " + str(filePath) )
-            os.remove(filePath)
+            try:
+                os.remove(filePath)
+            except Exception as e:
+                self.log.debug("Unable to remove file from disc: " + str(filePath) )
+                self.log.debug("Error was: " + str(e) )
         self.ringBuffer = []
 
         self.log.debug("Remove all elements in queue and from disc")

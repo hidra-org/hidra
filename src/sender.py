@@ -19,10 +19,10 @@ CONFIG_PATH = BASE_PATH + os.sep + "conf"
 sys.path.append ( CONFIG_PATH )
 
 import shared.helperScript as helperScript
+from shared.Coordinator import Coordinator as LiveViewerCommunicator
 from sender.DirectoryWatcher import DirectoryWatcher
 from sender.FileMover import FileMover
 from sender.Cleaner import Cleaner
-from receiverLiveViewer.Coordinator import Coordinator as LiveViewerCommunicator
 
 
 def argumentParsing():
@@ -235,24 +235,20 @@ class Sender():
     def run(self):
         logging.info("start watcher process...")
         watcherProcess = Process(target=DirectoryWatcher, args=(self.fileEventIp, self.watchDir, self.fileEventPort, self.monitoredEventType, self.monitoredSubdirs, self.monitoredFormats, self.zmqContext))
-        logging.debug("watcher process registered")
         watcherProcess.start()
         logging.debug("start watcher process...done")
 
         if self.useRingbuffer:
             logging.info("start liveViewercommunicator process...")
             liveViewercommunicatorProcess = Process(target=LiveViewerCommunicator, args=(self.cleanerExchangePort, self.liveViewerPort, self.liveViewerIp, self.maxRingBufferSize, self.maxQueueSize, self.zmqContext))
-            logging.debug("liveViewercommunicator process registered")
             liveViewercommunicatorProcess.start()
             logging.debug("start liveViewercommunicator process...done")
 
             logging.info("start cleaner process...")
             cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.useDataStream, self.cleanerExchangePort, self.zmqContext))
-            logging.debug("cleaner process registered")
         else:
             logging.info("start cleaner process...")
             cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.useDataStream, None, self.zmqContext))
-            logging.debug("cleaner process registered")
 
         cleanerProcess.start()
         logging.debug("start cleaner process...done")

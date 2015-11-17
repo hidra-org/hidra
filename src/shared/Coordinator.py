@@ -52,7 +52,13 @@ class Coordinator:
 #        if context:
 #            assert isinstance(context, zmq.sugar.context.Context)
 
-        self.zmqContext = context or zmq.Context()
+        #self.zmqContext = context or zmq.Context()
+        if context:
+            self.zmqContext      = context
+            self.externalContext = True
+        else:
+            self.zmqContext      = zmq.Context()
+            self.externalContext = False
 
         #create sockets
         self.createSockets()
@@ -60,14 +66,15 @@ class Coordinator:
         try:
             self.log.info("Start communication")
             self.communicate()
-            self.log.info("Stopped communication.")
-        except Exception, e:
+        except Exception as e:
             trace = traceback.format_exc()
-            self.log.info("Unkown error state. Shutting down...")
+            self.log.error("Unkown error state. Shutting down...")
             self.log.debug("Error was: " + str(e))
+        finally:
+            self.stop()
 
 
-        self.log.info("Quitting.")
+        self.log.info("Quitting Coordinator.")
 
 
     def getLogger(self):
@@ -109,7 +116,12 @@ class Coordinator:
             try:
                 socks = dict(self.poller.poll())
             except KeyboardInterrupt:
-                self.log.info("Message could not be received due to KeyboardInterrupt during polling")
+                self.log.info("Message could not be received due to KeyboardInterrupt during polling.")
+                should_continue = False
+                break
+            except Exception as e:
+                self.log.error("Message could not be received due to unknown error during polling.")
+                self.log.debug("Error was: " + str(e))
                 break
 
 
@@ -119,8 +131,6 @@ class Coordinator:
                 if message == "Exit":
                     self.log.debug("Received exit command, coordinator thread will stop receiving messages")
                     should_continue = False
-                    # TODO why sending signal to live viewer?
-#                    self.liveViewerSocket.send("Exit", zmq.NOBLOCK)
                     break
                 elif message.startswith("AddFile"):
                     self.log.debug("Received AddFile command")
@@ -141,10 +151,21 @@ class Coordinator:
                 except zmq.error.ContextTerminated:
                     break
 
+        self.stop()
+
+    def stop(self):
         self.log.debug("Closing socket")
         self.receiverExchangeSocket.close(0)
         self.liveViewerSocket.close(0)
 
+        if not self.externalContext:
+            self.log.debug("Destroying context")
+            try:
+                self.zmqContext.destroy()
+                self.log.debug("closing ZMQ context...done.")
+            except:
+                self.log.error("closing ZMQ context...failed.")
+                self.log.error(sys.exc_info())
+
         self.log.debug("Clearing Ringbuffer")
         self.ringBuffer.removeAll()
-

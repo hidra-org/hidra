@@ -9,9 +9,7 @@ import logging
 import errno
 import os
 import traceback
-import threading
 import socket       # needed to get hostname
-from Coordinator import Coordinator
 
 
 #
@@ -19,11 +17,10 @@ from Coordinator import Coordinator
 #
 class FileReceiver:
     zmqContext                = None
+    externalContext           = None         # if the context was created outside this class or not
     outputDir                 = None
     dataStreamIp              = None
     dataStreamPort            = None
-    liveViewerIp              = None
-    liveViewerPort            = None
     coordinatorExchangeIp     = None
     coordinatorExchangePort   = None
     senderComIp               = None         # ip for socket to communicate with the sender
@@ -44,15 +41,12 @@ class FileReceiver:
     def __init__(self, outputDir,
                  senderComIp, senderComPort,
                  dataStreamIp, dataStreamPort,
-                 liveViewerPort, liveViewerIp,
-                 coordinatorExchangePort, maxRingBuffersize, maxQueueSize, senderResponseTimeout = 1000,
+                 coordinatorExchangePort, senderResponseTimeout = 1000,
                  context = None):
 
         self.outputDir               = os.path.normpath(outputDir)
         self.dataStreamIp            = dataStreamIp
         self.dataStreamPort          = dataStreamPort
-        self.liveViewerIp            = liveViewerIp
-        self.liveViewerPort          = liveViewerPort
         self.coordinatorExchangeIp   = "127.0.0.1"
         self.coordinatorExchangePort = coordinatorExchangePort
         self.senderComIp             = senderComIp
@@ -62,66 +56,20 @@ class FileReceiver:
 #        if context:
 #            assert isinstance(context, zmq.sugar.context.Context)
 
-        self.zmqContext = context or zmq.Context()
+        if context:
+            self.zmqContext      = context
+            self.externalContext = True
+        else:
+            self.zmqContext      = zmq.Context()
+            self.externalContext = False
+
+        #self.zmqContext = context or zmq.Context()
 
         self.log = self.getLogger()
         self.log.debug("Init")
 
-        # start file receiver
-        self.receiverThread = threading.Thread(target=Coordinator, args=(self.coordinatorExchangePort, self.liveViewerPort, self.liveViewerIp, maxRingBuffersize, maxQueueSize))
-        self.receiverThread.start()
-
         # create sockets
         self.createSockets()
-
-        # Starting live viewer
-        message = "START_LIVE_VIEWER," + str(self.hostname) + "," + str(self.dataStreamPort)
-        self.log.info("Sending start signal to sender...")
-        self.log.debug("Sending start signal to sender, message: " + message)
-        self.senderComSocket.send(str(message))
-
-        senderMessage = None
-
-        # wait for response of sender till timeout is reached
-        socks = dict(self.poller.poll(self.socketResponseTimeout))
-
-        # if there was a response
-        if self.senderComSocket in socks and socks[self.senderComSocket] == zmq.POLLIN:
-            try:
-                senderMessage = self.senderComSocket.recv()
-                self.log.info("Received message from sender: " + str(senderMessage) )
-            except KeyboardInterrupt:
-                self.log.error("KeyboardInterrupt: No message received from sender")
-                self.stopReceiving(sendToSender = False)
-                sys.exit(1)
-            except Exception as e:
-                self.log.error("No message received from sender")
-                self.log.debug("Error was: " + str(e))
-                self.stopReceiving(sendToSender = False)
-                sys.exit(1)
-
-        # if the response was correct: start data retrieving
-        if senderMessage and senderMessage.startswith("START_LIVE_VIEWER"):
-            self.log.info("Received confirmation from sender...start receiving files")
-            try:
-                self.log.info("Start receiving new files")
-                self.startReceiving()
-                self.log.info("Stopped receiving.")
-            except Exception, e:
-                self.log.error("Unknown error while receiving files. Need to abort.")
-                self.log.debug("Error was: " + str(e))
-            except:
-                trace = traceback.format_exc()
-                self.log.info("Unkown error state. Shutting down...")
-                self.log.debug("Error was: " + str(trace))
-                self.zmqContext.destroy()
-        # if there was no response or the response was of the wrong format, the receiver should be shut down
-        else:
-            self.log.info("Sending start signal to sender...failed.")
-            self.stopReceiving(sendToSender = False)
-
-
-        self.log.info("Quitting.")
 
 
     def getLogger(self):
@@ -165,6 +113,66 @@ class FileReceiver:
         except Exception as e:
             self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))
+
+
+    def process(self):
+        # Starting live viewer
+        message = "START_LIVE_VIEWER," + str(self.hostname) + "," + str(self.dataStreamPort)
+        self.log.info("Sending start signal to sender...")
+        self.log.debug("Sending start signal to sender, message: " + message)
+        self.senderComSocket.send(str(message))
+
+        senderMessage = None
+
+        # wait for response of sender till timeout is reached
+        try:
+            socks = dict(self.poller.poll(self.socketResponseTimeout))
+
+            # if there was a response
+            if self.senderComSocket in socks and socks[self.senderComSocket] == zmq.POLLIN:
+                try:
+                    senderMessage = self.senderComSocket.recv()
+                    self.log.info("Received message from sender: " + str(senderMessage) )
+                except KeyboardInterrupt:
+                    self.log.error("KeyboardInterrupt: No message received from sender")
+                    self.stopReceiving(sendToSender = False)
+                    sys.exit(1)
+                except Exception as e:
+                    self.log.error("No message received from sender")
+                    self.log.debug("Error was: " + str(e))
+                    self.stopReceiving(sendToSender = False)
+                    sys.exit(1)
+
+            # if the response was correct: start data retrieving
+            if senderMessage and senderMessage.startswith("START_LIVE_VIEWER"):
+                self.log.info("Received confirmation from sender...start receiving files")
+                try:
+                    self.log.info("Start receiving new files")
+                    self.startReceiving()
+                    self.log.info("Stopped receiving.")
+                except Exception, e:
+                    self.log.error("Unknown error while receiving files. Need to abort.")
+                    self.log.debug("Error was: " + str(e))
+                except:
+                    trace = traceback.format_exc()
+                    self.log.info("Unkown error state. Shutting down...")
+                    self.log.debug("Error was: " + str(trace))
+                    self.zmqContext.destroy()
+            # if there was no response or the response was of the wrong format, the receiver should be shut down
+            else:
+                self.log.info("Sending start signal to sender...failed.")
+                self.stopReceiving(sendToSender = False)
+
+        except KeyboardInterrupt:
+            self.log.info("Message could not be received due to KeyboardInterrupt during polling.")
+            self.stopReceiving(sendToSender = False)
+
+        except Exception as e:
+            self.log.error("Message could not be received due to unknown error during polling.")
+            self.log.debug("Error was: " + str(e))
+            self.stopReceiving(sendToSender = False)
+
+        self.log.info("Quitting FileReceiver.")
 
 
     def startReceiving(self):
@@ -376,10 +384,12 @@ class FileReceiver:
         self.senderComSocket.close(0)
         self.log.debug("closing signal communication sockets...done")
 
-        try:
-            self.zmqContext.destroy()
-            self.log.debug("closing zmqContext...done.")
-        except:
-            self.log.error("closing zmqContext...failed.")
-            self.log.error(sys.exc_info())
+        if not self.externalContext:
+            self.log.debug("Destroying context")
+            try:
+                self.zmqContext.destroy()
+                self.log.debug("closing zmqContext...done.")
+            except:
+                self.log.error("closing zmqContext...failed.")
+                self.log.error(sys.exc_info())
 

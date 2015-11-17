@@ -7,8 +7,12 @@ import logging
 import os
 import json
 import ConfigParser
+import zmq
+import time
+from multiprocessing import Process, freeze_support
 
 import shared.helperScript as helperScript
+from shared.Coordinator import Coordinator
 from receiverLiveViewer.FileReceiver import FileReceiver
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
@@ -120,13 +124,44 @@ class ReceiverLiveViewer():
         self.maxQueueSize            = arguments.maxQueueSize
         self.senderResponseTimeout   = arguments.senderResponseTimeout
 
+        self.context = zmq.Context.instance()
+        logging.debug("registering zmq global context")
+
+        self.run()
+
+
+    def run(self):
+        # start file receiver
+#        coordinatorProcess = threading.Thread(target=Coordinator, args=(self.coordinatorExchangePort, self.liveViewerPort, self.liveViewerIp, self.maxRingBuffersize, self.maxQueueSize))
+        logging.info("start coordinator process...")
+        coordinatorProcess = Process(target=Coordinator, args=(self.coordinatorExchangePort,
+                                                               self.liveViewerPort, self.liveViewerIp,
+                                                               self.maxRingBufferSize, self.maxQueueSize,
+                                                               self.context))
+        coordinatorProcess.start()
 
         #start file receiver
-        myWorker = FileReceiver(self.targetDir,
+        fileReceiver = FileReceiver(self.targetDir,
                 self.senderComIp, self.senderComPort,
                 self.dataStreamIp, self.dataStreamPort,
-                self.liveViewerPort, self.liveViewerIp,
-                self.coordinatorExchangePort, self.maxRingBufferSize, self.maxQueueSize, self.senderResponseTimeout)
+                self.coordinatorExchangePort, self.senderResponseTimeout)
+
+        try:
+            fileReceiver.process()
+        except KeyboardInterrupt:
+            logging.debug("Keyboard interruption detected. Shutting down")
+        # except Exception, e:
+        #     print "unknown exception detected."
+        finally:
+            try:
+                logging.debug("closing ZMQ context...")
+                self.context.destroy()
+                logging.debug("closing ZMQ context...done.")
+            except:
+                logging.debug("closing ZMQ context...failed.")
+                logging.error(sys.exc_info())
+
 
 if __name__ == "__main__":
+    freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
     receiver = ReceiverLiveViewer()

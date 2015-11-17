@@ -53,7 +53,6 @@ class WorkerProcess():
 
         self.useDataStream        = useDataStream
 
-        #initialize router
         if context:
             self.zmqContextForWorker = context
             self.externalContext     = True
