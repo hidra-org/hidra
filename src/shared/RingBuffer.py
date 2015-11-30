@@ -108,38 +108,45 @@ class RingBuffer:
 
     def add(self, filename, fileModTime, fileContent=False):
         if fileContent and self.storeContent:
-            # prepend file to ring buffer and restore order
-            self.ringBuffer[:0] = [[fileModTime, filename, fileContent]]
-            self.ringBuffer = sorted(self.ringBuffer, reverse=True)
+            # prevents to store files multiple times (e.g. if event was thrown multiple times for one file)
+            if [fileModTime, filename] in self.ringBuffer:
+                self.log.info("File already contained in ring buffer: " + str(filename) )
+            else:
+                # prepend file to ring buffer and restore order
+                self.ringBuffer[:0] = [[fileModTime, filename, fileContent]]
+                self.ringBuffer = sorted(self.ringBuffer, reverse=True)
 
-            # if the maximal size is exceeded: remove the oldest files
-            if len(self.ringBuffer) > self.maxRingBufferSize:
-                for mod_time, path, content in self.ringBuffer[self.maxRingBufferSize:]:
-                    self.log.debug("Remove file from ring buffer: " + str(path) )
-#                    os.remove(path)
-                    self.ringBuffer.remove([mod_time, path, content])
+                # if the maximal size is exceeded: remove the oldest files
+                if len(self.ringBuffer) > self.maxRingBufferSize:
+                    for mod_time, path, content in self.ringBuffer[self.maxRingBufferSize:]:
+                        self.log.debug("Remove file from ring buffer: " + str(path) )
+                        self.ringBuffer.remove([mod_time, path, content])
         else:
-            # prepend file to ring buffer and restore order
-            self.ringBuffer[:0] = [[fileModTime, filename]]
-            self.ringBuffer = sorted(self.ringBuffer, reverse=True)
+            # prevents to store files multiple times (e.g. if event was thrown multiple times for one file)
+            if [fileModTime, filename] in self.ringBuffer:
+                self.log.info("File already contained in ring buffer: " + str(filename) )
+            else:
+                # prepend file to ring buffer and restore order
+                self.ringBuffer[:0] = [[fileModTime, filename]]
+                self.ringBuffer = sorted(self.ringBuffer, reverse=True)
 
-            # if the maximal size is exceeded: remove the oldest files
-            if len(self.ringBuffer) > self.maxRingBufferSize:
-                for mod_time, path in self.ringBuffer[self.maxRingBufferSize:]:
-                    if len(self.dataQueue) >= self.maxQueueSize:
-                        oldFile = self.dataQueue.pop()
-                        self.log.debug("Remove file from disc: " + str(oldFile) )
-                        try:
-                            os.remove(oldFile)
-                        except Exception as e:
-                            self.log.debug("Unable to remove file from disc: " + str(oldFile) )
-                            self.log.debug("Error was: " + str(e) )
+                # if the maximal size is exceeded: remove the oldest files
+                if len(self.ringBuffer) > self.maxRingBufferSize:
+                    for mod_time, path in self.ringBuffer[self.maxRingBufferSize:]:
+                        if len(self.dataQueue) >= self.maxQueueSize:
+                            oldFile = self.dataQueue.pop()
+                            self.log.debug("Remove file from disc: " + str(oldFile) )
+                            try:
+                                os.remove(oldFile)
+                            except Exception as e:
+                                self.log.debug("Unable to remove file from disc: " + str(oldFile) )
+                                self.log.debug("Error was: " + str(e) )
 
-                    self.log.debug("Remove file from ring buffer: " + str(path) )
-                    self.ringBuffer.remove([mod_time, path])
+                        self.log.debug("Remove file from ring buffer: " + str(path) )
+                        self.ringBuffer.remove([mod_time, path])
 
-                    self.dataQueue.appendleft(path)
-                    self.log.debug("Adding File to Queue: " + str(path) )
+                        self.dataQueue.appendleft(path)
+                        self.log.debug("Adding File to Queue: " + str(path) )
 
 
     def removeAll(self):
