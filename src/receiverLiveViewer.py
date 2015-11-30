@@ -44,45 +44,48 @@ def argumentParsing():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--logfilePath"           , type=str, default=logfilePath,
-                                                    help="path where logfile will be created (default=" + str(logfilePath) + ")")
+                                                    help="Path where logfile will be created (default=" + str(logfilePath) + ")")
     parser.add_argument("--logfileName"           , type=str, default=logfileName,
-                                                    help="filename used for logging (default=" + str(logfileName) + ")")
+                                                    help="Filename used for logging (default=" + str(logfileName) + ")")
     parser.add_argument("--targetDir"             , type=str, default=targetDir,
-                                                    help="where incoming data will be stored to (default=" + str(targetDir) + ")")
+                                                    help="Where incoming data will be stored to (default=" + str(targetDir) + ")")
     parser.add_argument("--dataStreamIp"          , type=str, default=dataStreamIp,
-                                                    help="ip of dataStream-socket to pull new files from (default=" + str(dataStreamIp) + ")")
+                                                    help="IP of dataStream-socket to pull new files from (default=" + str(dataStreamIp) + ")")
     parser.add_argument("--dataStreamPort"        , type=str, default=dataStreamPort,
-                                                    help="port number of dataStream-socket to pull new files from; there needs to be one entry for each streams (default=" + str(dataStreamPort) + ")")
+                                                    help="Port number of dataStream-socket to pull new files from; there needs to be one entry for each streams (default=" + str(dataStreamPort) + ")")
     parser.add_argument("--liveViewerIp"          , type=str, default=liveViewerIp,
-                                                    help="ip to bind LiveViewer to (default=" + str(liveViewerIp) + ")")
+                                                    help="IP to bind LiveViewer to (default=" + str(liveViewerIp) + ")")
     parser.add_argument("--liveViewerPort"        , type=str, default=liveViewerPort,
-                                                    help="tcp port of live viewer (default=" + str(liveViewerPort) + ")")
+                                                    help="TCP port of live viewer (default=" + str(liveViewerPort) + ")")
     parser.add_argument("--lvCommunicatorPort"    , type=str, default=lvCommunicatorPort,
-                                                    help="port to exchange data and signals between receiver and lvcommunicator (default=" + str(lvCommunicatorPort) + ")")
+                                                    help="Port to exchange data and signals between receiver and lvcommunicator (default=" + str(lvCommunicatorPort) + ")")
     parser.add_argument("--senderComIp"           , type=str, default=senderComIp,
-                                                    help="port number of dataStream-socket to send signals back to the sender (default=" + str(senderComIp) + ")")
+                                                    help="Port number of dataStream-socket to send signals back to the sender (default=" + str(senderComIp) + ")")
     parser.add_argument("--senderComPort"         , type=str, default=senderComPort,
-                                                    help="port number of dataStream-socket to send signals back to the sender (default=" + str(senderComPort) + ")")
+                                                    help="Port number of dataStream-socket to send signals back to the sender (default=" + str(senderComPort) + ")")
     parser.add_argument("--maxRingBufferSize"     , type=int, default=maxRingBufferSize,
-                                                    help="size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")")
+                                                    help="Size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")")
     parser.add_argument("--maxQueueSize"          , type=int, default=maxQueueSize,
-                                                    help="size of the queue for the live viewer (default=" + str(maxQueueSize) + ")")
+                                                    help="Size of the queue for the live viewer (default=" + str(maxQueueSize) + ")")
     parser.add_argument("--senderResponseTimeout" , type=int, default=senderResponseTimeout,
                                                     help=argparse.SUPPRESS)
     parser.add_argument("--verbose"               , action="store_true",
-                                                    help="more verbose output")
+                                                    help="More verbose output")
+    parser.add_argument("--onScreen"              , type=str, default=False,
+                                                    help="Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)")
 
     arguments   = parser.parse_args()
 
-    targetDir   = str(arguments.targetDir)
-    logfilePath = str(arguments.logfilePath)
-    logfileName = str(arguments.logfileName)
+    targetDir       = str(arguments.targetDir)
+    logfilePath     = str(arguments.logfilePath)
+    logfileName     = str(arguments.logfileName)
     logfileFullPath = os.path.join(logfilePath, logfileName)
     verbose         = arguments.verbose
+    onScreen        = arguments.onScreen
 
 
     #enable logging
-    helperScript.initLogging(logfileFullPath, verbose)
+    helperScript.initLogging(logfileFullPath, verbose, onScreen)
 
     # check target directory for existance
     helperScript.checkDirExistance(targetDir)

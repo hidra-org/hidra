@@ -72,6 +72,8 @@ def argumentParsing():
                                                  help="Filename used for logging (default=" + str(logfileName) + ")")
     parser.add_argument("--verbose"            , action="store_true",
                                                  help="More verbose output")
+    parser.add_argument("--onScreen"           , type=str, default=False,
+                                                 help="Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)")
 
     parser.add_argument("--watchDir"           , type=str, default=watchDir,
                                                  help="Dir you want to monitor for changes; inside this directory only the specified subdirectories are monitred (default=" + str(watchDir) + ")")
@@ -134,8 +136,9 @@ def argumentParsing():
 
     logfilePath       = str(arguments.logfilePath)
     logfileName       = str(arguments.logfileName)
-    logfileFullPath     = os.path.join(logfilePath, logfileName)
-    verbose             = arguments.verbose
+    logfileFullPath   = os.path.join(logfilePath, logfileName)
+    verbose           = arguments.verbose
+    onScreen          = arguments.onScreen
 
     watchDir          = str(arguments.watchDir)
 
@@ -143,7 +146,7 @@ def argumentParsing():
     cleanerTargetPath = str(arguments.cleanerTargetPath)
 
     #enable logging
-    helperScript.initLogging(logfileFullPath, verbose)
+    helperScript.initLogging(logfileFullPath, verbose, onScreen)
 
     # check if directories exists
     helperScript.checkDirExistance(logfilePath)
