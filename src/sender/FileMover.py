@@ -4,10 +4,20 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Marco Strutz <marco.strutz@
 import time
 import zmq
 import logging
+import os
 import sys
 import traceback
 from multiprocessing import Process
 from WorkerProcess import WorkerProcess
+
+#path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
+
+if not SHARED_PATH in sys.path:
+    sys.path.append ( SHARED_PATH )
+del SHARED_PATH
+
+import helperScript
 
 #
 #  --------------------------  class: FileMover  --------------------------------------
@@ -200,31 +210,8 @@ class FileMover():
                     incomingMessage = self.receiverComSocket.recv()
                     self.log.debug("Recieved control command: %s" % incomingMessage )
 
-                    signal         = None
-                    signalHostname = None
 
-                    try:
-                        incomingMessageSplit = incomingMessage.split(',')
-                        signal          = incomingMessageSplit[0]
-                        signalHostname  = incomingMessageSplit[1]
-                    except Exception as e:
-                        self.log.info("Received live viewer signal from host " + str(signalHostname) + " is of the wrong format")
-                        self.receiverComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
-                        continue
-
-                    if signalHostname.endswith(".desy.de"):
-                        signalHostnameModified = signalHostname[:-8]
-                    else:
-                        signalHostnameModified = signalHostname
-
-                    self.log.debug("Check if signal sending host is in WhiteList...")
-                    if signalHostname in self.receiverWhiteList or signalHostnameModified in self.receiverWhiteList:
-                        self.log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
-                    else:
-                        self.log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
-                        self.log.info("Signal from host " + str(signalHostname) + " is discarded.")
-                        self.receiverComSocket.send("NO_VALID_HOST", zmq.NOBLOCK)
-                        continue
+                    signal, signalHostname = helperScript.checkSignal(incomingMessage, self.receiverWhiteList, self.receiverComSocket, self.log)
 
                     if signal == "STOP_LIVE_VIEWER":
                         self.log.info("Received live viewer stop signal from host " + str(signalHostname) + "...stopping live viewer")

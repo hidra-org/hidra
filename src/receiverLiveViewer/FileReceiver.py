@@ -355,7 +355,7 @@ class FileReceiver:
         self.lvCommunicatorSocket.send("Exit")
 
         if sendToSender:
-            message = "STOP_LIVE_VIEWER,"+ str(self.hostname)
+            message = "STOP_LIVE_VIEWER," + str(self.hostname)
             self.log.info("sending stop signal to sender...")
             self.log.debug("Sending stop signal to sender, message: " + message)
             self.senderComSocket.send(str(message), zmq.NOBLOCK)
@@ -377,7 +377,7 @@ class FileReceiver:
                     self.log.debug("Error was: " + str(e))
 
         # give the signal time to arrive
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.log.debug("closing signal communication sockets...")
         self.lvCommunicatorSocket.close(0)
         self.senderComSocket.close(0)

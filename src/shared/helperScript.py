@@ -3,6 +3,7 @@ import platform
 import logging
 import sys
 import shutil
+import zmq
 
 
 def isWindows():
@@ -198,6 +199,35 @@ def checkLogFileWritable(filepath, filename):
         sys.exit(1)
 
 
+def checkSignal(message, whiteList, socket, log):
+
+    try:
+        messageSplit    = message.split(',')
+        signal          = messageSplit[0]
+        signalHostname  = messageSplit[1]
+    except Exception as e:
+        log.info("Received live viewer signal from host " + str(signalHostname) + " is of the wrong format")
+        socket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
+        return None, None
+
+    if signalHostname.endswith(".desy.de"):
+        signalHostnameModified = signalHostname[:-8]
+    else:
+        signalHostnameModified = signalHostname
+
+    log.debug("Check if signal sending host is in WhiteList...")
+    if signalHostname in whiteList or signalHostnameModified in whiteList:
+        log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
+    else:
+        log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
+        log.info("Signal from host " + str(signalHostname) + " is discarded.")
+        socket.send("NO_VALID_HOST", zmq.NOBLOCK)
+        return None, None
+
+    return signal, signalHostname
+
+
+
 def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
     #@see https://docs.python.org/2/howto/logging-cookbook.html
 
@@ -234,7 +264,7 @@ def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
                 console.setLevel(screenLoggingLevel)
 
                 screenHandlerFormat = logging.Formatter(datefmt = "%Y-%m-%d_%H:%M:%S",
-                                                        fmt     = "[%(asctime)s] > [%(filename)s] %(message)s")
+                                                        fmt     = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s")
 
                 if not verbose:
                     logging.error("Logging on Screen: Option DEBUG in only active when using verbose option as well (Fallback to INFO).")

@@ -33,6 +33,7 @@ def argumentParsing():
     dataStreamPort        = config.get('asection', 'dataStreamPort')
     liveViewerIp          = config.get('asection', 'liveViewerIp')
     liveViewerPort        = config.get('asection', 'liveViewerPort')
+    liveViewerWhiteList   = json.loads(config.get('asection', 'liveViewerWhiteList'))
     lvCommunicatorPort    = config.get('asection', 'lvCommunicatorPort')
     senderComIp           = config.get('asection', 'senderComIp')
     senderComPort         = config.get('asection', 'senderComPort')
@@ -49,26 +50,34 @@ def argumentParsing():
                                                     help="Filename used for logging (default=" + str(logfileName) + ")")
     parser.add_argument("--targetDir"             , type=str, default=targetDir,
                                                     help="Where incoming data will be stored to (default=" + str(targetDir) + ")")
+
     parser.add_argument("--dataStreamIp"          , type=str, default=dataStreamIp,
                                                     help="IP of dataStream-socket to pull new files from (default=" + str(dataStreamIp) + ")")
     parser.add_argument("--dataStreamPort"        , type=str, default=dataStreamPort,
                                                     help="Port number of dataStream-socket to pull new files from; there needs to be one entry for each streams (default=" + str(dataStreamPort) + ")")
+
     parser.add_argument("--liveViewerIp"          , type=str, default=liveViewerIp,
                                                     help="IP to bind LiveViewer to (default=" + str(liveViewerIp) + ")")
     parser.add_argument("--liveViewerPort"        , type=str, default=liveViewerPort,
                                                     help="TCP port of live viewer (default=" + str(liveViewerPort) + ")")
+    parser.add_argument("--liveViewerWhiteList"   , type=str, default=liveViewerWhiteList,
+                                                     help="List of hosts allowed to connect to the receiver (default=" + str(liveViewerWhiteList) + ")")
+
     parser.add_argument("--lvCommunicatorPort"    , type=str, default=lvCommunicatorPort,
                                                     help="Port to exchange data and signals between receiver and lvcommunicator (default=" + str(lvCommunicatorPort) + ")")
+
     parser.add_argument("--senderComIp"           , type=str, default=senderComIp,
                                                     help="Port number of dataStream-socket to send signals back to the sender (default=" + str(senderComIp) + ")")
     parser.add_argument("--senderComPort"         , type=str, default=senderComPort,
                                                     help="Port number of dataStream-socket to send signals back to the sender (default=" + str(senderComPort) + ")")
+
     parser.add_argument("--maxRingBufferSize"     , type=int, default=maxRingBufferSize,
                                                     help="Size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")")
     parser.add_argument("--maxQueueSize"          , type=int, default=maxQueueSize,
                                                     help="Size of the queue for the live viewer (default=" + str(maxQueueSize) + ")")
     parser.add_argument("--senderResponseTimeout" , type=int, default=senderResponseTimeout,
                                                     help=argparse.SUPPRESS)
+
     parser.add_argument("--verbose"               , action="store_true",
                                                     help="More verbose output")
     parser.add_argument("--onScreen"              , type=str, default=False,
@@ -104,6 +113,7 @@ class ReceiverLiveViewer():
 
     liveViewerIp          = None
     liveViewerPort        = None
+    liveViewerWhiteList   = None
     lvCommunicatorPort    = None
     senderComIp           = None
     senderComPort         = None
@@ -120,6 +130,7 @@ class ReceiverLiveViewer():
 
         self.liveViewerIp          = arguments.liveViewerIp
         self.liveViewerPort        = arguments.liveViewerPort
+        self.liveViewerWhiteList   = arguments.liveViewerWhiteList
         self.lvCommunicatorPort    = arguments.lvCommunicatorPort
         self.senderComIp           = arguments.senderComIp
         self.senderComPort         = arguments.senderComPort
@@ -138,7 +149,7 @@ class ReceiverLiveViewer():
 #        lvCommunicatorProcess = threading.Thread(target=LiveViewCommunicator, args=(self.lvCommunicatorPort, self.liveViewerPort, self.liveViewerIp, self.maxRingBuffersize, self.maxQueueSize))
         logging.info("start lvCommunicator process...")
         lvCommunicatorProcess = Process(target=LiveViewCommunicator, args=(self.lvCommunicatorPort,
-                                                               self.liveViewerPort, self.liveViewerIp,
+                                                               self.liveViewerPort, self.liveViewerIp, self.liveViewerWhiteList,
                                                                self.maxRingBufferSize, self.maxQueueSize,
                                                                self.context))
         lvCommunicatorProcess.start()

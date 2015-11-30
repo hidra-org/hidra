@@ -16,8 +16,6 @@ import ConfigParser
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
-sys.path.append ( CONFIG_PATH )
-
 import shared.helperScript as helperScript
 from shared.LiveViewCommunicator import LiveViewCommunicator
 from sender.DirectoryWatcher import DirectoryWatcher
@@ -60,8 +58,10 @@ def argumentParsing():
 
     useRingbuffer       = config.getboolean('asection', 'useRingbuffer')
     cleanerExchangePort = config.get('asection', 'cleanerExchangePort')
+
     liveViewerPort      = config.get('asection', 'liveViewerPort')
     liveViewerIp        = config.get('asection', 'liveViewerIp')
+    liveViewerWhiteList   = json.loads(config.get('asection', 'liveViewerWhiteList'))
     maxRingBufferSize   = config.get('asection', 'maxRingBufferSize')
     maxQueueSize        = config.get('asection', 'maxQueueSize')
 
@@ -127,6 +127,8 @@ def argumentParsing():
                                                  help="IP to bind communication to LiveViewer to (default=" + str(liveViewerIp) + ")")
     parser.add_argument("--liveViewerPort"     , type=str, default=liveViewerPort,
                                                  help="Port number to communicate with live viewer (default=" + str(liveViewerPort) + ")")
+    parser.add_argument("--liveViewerWhiteList", type=str, default=liveViewerWhiteList,
+                                                 help="List of hosts allowed to connect to the receiver (default=" + str(liveViewerWhiteList) + ")")
     parser.add_argument("--maxRingBufferSize"  , type=int, default=maxRingBufferSize,
                                                  help="Size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")")
     parser.add_argument("--maxQueueSize"       , type=int, default=maxQueueSize,
@@ -189,6 +191,7 @@ class Sender():
     cleanerExchangePort = None
     liveViewerPort      = None
     liveViewerIp        = None
+    liveViewerWhiteList   = None
     maxRingBufferSize   = None
     maxQueueSize        = None
 
@@ -224,6 +227,7 @@ class Sender():
         self.cleanerExchangePort = arguments.cleanerExchangePort
         self.liveViewerPort      = arguments.liveViewerPort
         self.liveViewerIp        = arguments.liveViewerIp
+        self.liveViewerWhiteList = arguments.liveViewerWhiteList
         self.maxRingBufferSize   = arguments.maxRingBufferSize
         self.maxQueueSize        = arguments.maxQueueSize
 
@@ -243,7 +247,10 @@ class Sender():
 
         if self.useRingbuffer:
             logging.info("start liveViewercommunicator process...")
-            liveViewercommunicatorProcess = Process(target=LiveViewCommunicator, args=(self.cleanerExchangePort, self.liveViewerPort, self.liveViewerIp, self.maxRingBufferSize, self.maxQueueSize, self.zmqContext))
+            liveViewercommunicatorProcess = Process(target=LiveViewCommunicator, args=(self.cleanerExchangePort,
+                                                                                        self.liveViewerPort, self.liveViewerIp, self.liveViewerWhiteList,
+                                                                                        self.maxRingBufferSize, self.maxQueueSize,
+                                                                                        self.zmqContext))
             liveViewercommunicatorProcess.start()
             logging.debug("start liveViewercommunicator process...done")
 

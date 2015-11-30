@@ -21,7 +21,8 @@ class LiveView(QThread):
     subframe = None
     mutex = None
 
-    zmqIp = "haspp11eval01.desy.de"
+#    zmqIp = "haspp11eval01.desy.de"
+    zmqIp = "zitpcx19282.desy.de"
     zmqPort = "50021"
     zmqContext = None
     zmqSocket = None
@@ -143,11 +144,14 @@ def createZmqSocket(zmqIp, zmqPort):
     return context, socket
 
 
-def communicateWithReceiver(socket):
+def communicateWithReceiver(zmqSocket):
     print "Asking for next file"
-    socket.send ("NextFile")
+    import socket       # needed to get hostname
+    hostname = socket.gethostname()
+    sendMessage = "NextFile,"+ str(hostname)
+    zmqSocket.send (sendMessage)
     #  Get the reply.
-    message = socket.recv()
+    message = zmqSocket.recv()
     print "Next file: ", message
     return message
 
@@ -172,10 +176,6 @@ def stopZmq(zmqSocket, zmqContext):
 
 
 if __name__ == '__main__':
-
-    import sys
-
-    from threading import Thread
 
     lv = LiveView()
 

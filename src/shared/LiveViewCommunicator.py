@@ -1,11 +1,20 @@
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Marco Strutz <marco.strutz@desy.de>'
 
 
+import os
+import sys
 import zmq
 import logging
 import traceback
 from RingBuffer import RingBuffer
 
+SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
+
+if not SHARED_PATH in sys.path:
+    sys.path.append ( SHARED_PATH )
+del SHARED_PATH
+
+import helperScript
 #
 #  --------------------------  class: Coordinator  --------------------------------------
 #
@@ -14,6 +23,8 @@ class LiveViewCommunicator:
     liveViewerZmqContext     = None
     liveViewerIp             = None
     liveViewerPort           = None
+    liveViewerWhiteList      = None
+
     receiverExchangeIp       = None
     receiverExchangePort     = None
 
@@ -32,7 +43,7 @@ class LiveViewCommunicator:
 
 
     def __init__(self, receiverExchangePort,
-            liveViewerPort, liveViewerIp,
+            liveViewerPort, liveViewerIp, liveViewerWhiteList,
             maxRingBufferSize, maxQueueSize,
             context = None):
 
@@ -40,6 +51,7 @@ class LiveViewCommunicator:
         self.receiverExchangePort = receiverExchangePort
         self.liveViewerIp         = liveViewerIp
         self.liveViewerPort       = liveViewerPort
+        self.liveViewerWhiteList  = liveViewerWhiteList
 
         self.maxRingBufferSize    = maxRingBufferSize
         self.maxQueueSize         = maxQueueSize
@@ -143,13 +155,19 @@ class LiveViewCommunicator:
 
             if self.liveViewerSocket in socks and socks[self.liveViewerSocket] == zmq.POLLIN:
                 message = self.liveViewerSocket.recv()
-                self.log.debug("Call for next file... " + message)
-                # send newest element in ring buffer to live viewer
-                answer = self.ringBuffer.getNewestFile()
-                try:
-                    self.liveViewerSocket.send(answer)
-                except zmq.error.ContextTerminated:
-                    break
+
+                signal, signalHostname = helperScript.checkSignal(message, self.liveViewerWhiteList, self.liveViewerSocket, self.log)
+
+                if signal == "NextFile":
+                    self.log.debug("Call for next file... " + signal)
+                    # send newest element in ring buffer to live viewer
+                    answer = self.ringBuffer.getNewestFile()
+                    try:
+                        self.liveViewerSocket.send(answer)
+                    except zmq.error.ContextTerminated:
+                        break
+                else:
+                    self.log.debug("liveViewer signal not supported: " + str(signal) )
 
         self.stop()
 
