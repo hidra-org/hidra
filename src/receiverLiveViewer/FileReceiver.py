@@ -159,7 +159,7 @@ class FileReceiver:
                     self.zmqContext.destroy()
             # if there was no response or the response was of the wrong format, the receiver should be shut down
             else:
-                self.log.info("Sending start signal to sender...failed.")
+                self.log.error("Sending start signal to sender...failed. Is the sender running?")
                 self.stopReceiving(sendToSender = False)
 
         except KeyboardInterrupt:

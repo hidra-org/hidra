@@ -116,6 +116,10 @@ class WorkerProcess():
         self.poller.register(self.routerSocket, zmq.POLLIN)
 
 
+    def getLogger(self):
+        logger = logging.getLogger("workerProcess")
+        return logger
+
 
     def process(self):
         """
@@ -269,7 +273,7 @@ class WorkerProcess():
                     self.log.error("Error was: " + str(e))
                     self.log.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
                     #skip all further instructions and continue with next iteration
-                    continue
+#                    continue
 
             if self.useRealTimeAnalysis:
                 socks = dict(self.poller.poll(0))
@@ -290,7 +294,7 @@ class WorkerProcess():
                             self.log.error("Error was: " + str(e))
                             self.log.debug("worker-"+str(self.id) + ": passing new file to data-messagePipe...failed.")
                             #skip all further instructions and continue with next iteration
-                            continue
+#                            continue
                 elif self.requestFromOnda:
                     #passing file to data-messagPipe
                     try:
@@ -302,12 +306,16 @@ class WorkerProcess():
                         self.log.error("Error was: " + str(e))
                         self.log.debug("worker-"+str(self.id) + ": passing new file to data-messagePipe...failed.")
                         #skip all further instructions and continue with next iteration
-                        continue
+#                        continue
 
 
             if self.useDataStream or socketListToSendData:
                 self.log.debug("passing file to dataStream")
-                self.passFileToDataStream(sourcePathFull, metadataDict, socketListToSendData)
+                try:
+                    self.passFileToDataStream(sourcePathFull, metadataDict, socketListToSendData)
+                except Exception as e:
+                    self.log.debug("worker-"+str(self.id) + ": passing new file to dataStream...failed.")
+                    self.log.debug("Error was: " + str(e))
 
             #send file to cleaner pipe
             try:
@@ -322,13 +330,7 @@ class WorkerProcess():
                 #TODO: remember workload. append to list?
                 # can be used to verify files which have been processed twice or more
             except Exception, e:
-                errorMessage = "Unable to notify Cleaner-pipe to handle file: " + str(workload)
-                self.log.error(errorMessage)
-
-
-    def getLogger(self):
-        logger = logging.getLogger("workerProcess")
-        return logger
+                self.log.error("Unable to notify Cleaner-pipe to handle file: " + str(workload))
 
 
     def buildMetadataDict(self, workload, reduced = False):
@@ -340,7 +342,7 @@ class WorkerProcess():
             self.log.debug("str(messageDict) = " + str(metadataDict) + "  type(messageDict) = " + str(type(metadataDict)))
         except Exception as e:
             errorMessage = "Unable to convert message into a dictionary."
-            self.log.error(errorMessage)
+            self.log.info(errorMessage)
             self.log.debug("Error was: " + str(e))
             raise Exception(e)
 
@@ -352,7 +354,7 @@ class WorkerProcess():
             sourcePath   = metadataDict["sourcePath"]
             relativePath = metadataDict["relativePath"]
         except Exception as e:
-            self.log.error("Invalid fileEvent message received.")
+            self.log.info("Invalid fileEvent message received.")
             self.log.debug("Error was: " + str(e))
             self.log.debug("metadataDict=" + str(metadataDict))
             #skip all further instructions and continue with next iteration
@@ -370,7 +372,7 @@ class WorkerProcess():
                 fileModificationTime = os.stat(sourceFilePathFull).st_mtime
                 self.log.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
             except Exception as e:
-                self.log.error("Unable to get file metadata for '" + str(sourceFilePathFull) + "'.")
+                self.log.info("Unable to get file metadata for '" + str(sourceFilePathFull) + "'.")
                 self.log.debug("Error was: " + str(e))
                 raise Exception(e)
 
@@ -387,7 +389,7 @@ class WorkerProcess():
 
                 self.log.debug("metadataDict = " + str(metadataDict))
             except Exception as e:
-                self.log.error("Unable to create metadata dictionary.")
+                self.log.info("Unable to create metadata dictionary.")
                 self.log.debug("Error was: " + str(e))
                 raise Exception(e)
         else:
@@ -401,7 +403,7 @@ class WorkerProcess():
                 self.log.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
 
             except Exception as e:
-                self.log.error("Unable to create metadata dictionary.")
+                self.log.info("Unable to create metadata dictionary.")
                 self.log.debug("Error was: " + str(e))
                 raise Exception(e)
 
@@ -422,7 +424,7 @@ class WorkerProcess():
 
                 self.log.debug("metadataDict = " + str(metadataDict))
             except Exception as e:
-                self.log.error("Unable to assemble multi-part message.")
+                self.log.info("Unable to assemble multi-part message.")
                 self.log.debug("Error was: " + str(e))
                 raise Exception(e)
 
