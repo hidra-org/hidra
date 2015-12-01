@@ -205,10 +205,14 @@ def checkSignal(message, whiteList, socket, log):
         messageSplit    = message.split(',')
         signal          = messageSplit[0]
         signalHostname  = messageSplit[1]
+        if len(messageSplit) > 2:
+            liveViewerPort = messageSplit[2]
+        else:
+            liveViewerPort = None
     except Exception as e:
         log.info("Received live viewer signal from host " + str(signalHostname) + " is of the wrong format")
         socket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
-        return None, None
+        return None, None, liveViewerPort
 
     if signalHostname.endswith(".desy.de"):
         signalHostnameModified = signalHostname[:-8]
@@ -224,7 +228,7 @@ def checkSignal(message, whiteList, socket, log):
         socket.send("NO_VALID_HOST", zmq.NOBLOCK)
         return None, None
 
-    return signal, signalHostname
+    return signal, signalHostname, liveViewerPort
 
 
 

@@ -31,8 +31,8 @@ def argumentParsing():
     targetDir             = config.get('asection', 'targetDir')
     dataStreamIp          = config.get('asection', 'dataStreamIp')
     dataStreamPort        = config.get('asection', 'dataStreamPort')
-    liveViewerIp          = config.get('asection', 'liveViewerIp')
-    liveViewerPort        = config.get('asection', 'liveViewerPort')
+    liveViewerComIp       = config.get('asection', 'liveViewerComIp')
+    liveViewerComPort     = config.get('asection', 'liveViewerComPort')
     liveViewerWhiteList   = json.loads(config.get('asection', 'liveViewerWhiteList'))
     lvCommunicatorPort    = config.get('asection', 'lvCommunicatorPort')
     senderComIp           = config.get('asection', 'senderComIp')
@@ -56,10 +56,10 @@ def argumentParsing():
     parser.add_argument("--dataStreamPort"        , type=str, default=dataStreamPort,
                                                     help="Port number of dataStream-socket to pull new files from; there needs to be one entry for each streams (default=" + str(dataStreamPort) + ")")
 
-    parser.add_argument("--liveViewerIp"          , type=str, default=liveViewerIp,
-                                                    help="IP to bind LiveViewer to (default=" + str(liveViewerIp) + ")")
-    parser.add_argument("--liveViewerPort"        , type=str, default=liveViewerPort,
-                                                    help="TCP port of live viewer (default=" + str(liveViewerPort) + ")")
+    parser.add_argument("--liveViewerComIp"       , type=str, default=liveViewerComIp,
+                                                    help="IP to bind LiveViewer to (default=" + str(liveViewerComIp) + ")")
+    parser.add_argument("--liveViewerComPort"     , type=str, default=liveViewerComPort,
+                                                    help="TCP port of live viewer (default=" + str(liveViewerComPort) + ")")
     parser.add_argument("--liveViewerWhiteList"   , type=str, default=liveViewerWhiteList,
                                                      help="List of hosts allowed to connect to the receiver (default=" + str(liveViewerWhiteList) + ")")
 
@@ -111,8 +111,8 @@ class ReceiverLiveViewer():
     dataStreamIp          = None
     dataStreamPort        = None
 
-    liveViewerIp          = None
-    liveViewerPort        = None
+    liveViewerComIp       = None
+    liveViewerComPort     = None
     liveViewerWhiteList   = None
     lvCommunicatorPort    = None
     senderComIp           = None
@@ -128,8 +128,8 @@ class ReceiverLiveViewer():
         self.dataStreamIp          = arguments.dataStreamIp
         self.dataStreamPort        = arguments.dataStreamPort
 
-        self.liveViewerIp          = arguments.liveViewerIp
-        self.liveViewerPort        = arguments.liveViewerPort
+        self.liveViewerComIp       = arguments.liveViewerComIp
+        self.liveViewerComPort     = arguments.liveViewerComPort
         self.liveViewerWhiteList   = arguments.liveViewerWhiteList
         self.lvCommunicatorPort    = arguments.lvCommunicatorPort
         self.senderComIp           = arguments.senderComIp
@@ -146,10 +146,10 @@ class ReceiverLiveViewer():
 
     def run(self):
         # start file receiver
-#        lvCommunicatorProcess = threading.Thread(target=LiveViewCommunicator, args=(self.lvCommunicatorPort, self.liveViewerPort, self.liveViewerIp, self.maxRingBuffersize, self.maxQueueSize))
+#        lvCommunicatorProcess = threading.Thread(target=LiveViewCommunicator, args=(self.lvCommunicatorPort, self.liveViewerComPort, self.liveViewerComIp, self.maxRingBuffersize, self.maxQueueSize))
         logging.info("start lvCommunicator process...")
         lvCommunicatorProcess = Process(target=LiveViewCommunicator, args=(self.lvCommunicatorPort,
-                                                               self.liveViewerPort, self.liveViewerIp, self.liveViewerWhiteList,
+                                                               self.liveViewerComPort, self.liveViewerComIp, self.liveViewerWhiteList,
                                                                self.maxRingBufferSize, self.maxQueueSize,
                                                                self.context))
         lvCommunicatorProcess.start()

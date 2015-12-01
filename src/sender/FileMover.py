@@ -211,7 +211,7 @@ class FileMover():
                     self.log.debug("Recieved control command: %s" % incomingMessage )
 
 
-                    signal, signalHostname = helperScript.checkSignal(incomingMessage, self.receiverWhiteList, self.receiverComSocket, self.log)
+                    signal, signalHostname, port = helperScript.checkSignal(incomingMessage, self.receiverWhiteList, self.receiverComSocket, self.log)
 
                     if signal == "STOP_LIVE_VIEWER":
                         self.log.info("Received live viewer stop signal from host " + str(signalHostname) + "...stopping live viewer")

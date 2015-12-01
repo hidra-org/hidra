@@ -59,8 +59,8 @@ def argumentParsing():
     useRingbuffer       = config.getboolean('asection', 'useRingbuffer')
     cleanerExchangePort = config.get('asection', 'cleanerExchangePort')
 
-    liveViewerPort      = config.get('asection', 'liveViewerPort')
-    liveViewerIp        = config.get('asection', 'liveViewerIp')
+    liveViewerComPort   = config.get('asection', 'liveViewerComPort')
+    liveViewerComIp     = config.get('asection', 'liveViewerComIp')
     liveViewerWhiteList   = json.loads(config.get('asection', 'liveViewerWhiteList'))
     maxRingBufferSize   = config.get('asection', 'maxRingBufferSize')
     maxQueueSize        = config.get('asection', 'maxQueueSize')
@@ -123,10 +123,10 @@ def argumentParsing():
                                                  help="Put the data into a ringbuffer followed by a queue to delay the removal of the files(default=" + str(useRingbuffer) + ")")
     parser.add_argument("--cleanerExchangePort", type=str, default=cleanerExchangePort,
                                                  help="Port number to exchange data and signals between Cleaner and LiveViewCommunicator (default=" + str(cleanerExchangePort) + ")")
-    parser.add_argument("--liveViewerIp"       , type=str, default=liveViewerIp,
-                                                 help="IP to bind communication to LiveViewer to (default=" + str(liveViewerIp) + ")")
-    parser.add_argument("--liveViewerPort"     , type=str, default=liveViewerPort,
-                                                 help="Port number to communicate with live viewer (default=" + str(liveViewerPort) + ")")
+    parser.add_argument("--liveViewerComIp"    , type=str, default=liveViewerComIp,
+                                                 help="IP to bind communication to LiveViewer to (default=" + str(liveViewerComIp) + ")")
+    parser.add_argument("--liveViewerComPort"  , type=str, default=liveViewerComPort,
+                                                 help="Port number to communicate with live viewer (default=" + str(liveViewerComPort) + ")")
     parser.add_argument("--liveViewerWhiteList", type=str, default=liveViewerWhiteList,
                                                  help="List of hosts allowed to connect to the receiver (default=" + str(liveViewerWhiteList) + ")")
     parser.add_argument("--maxRingBufferSize"  , type=int, default=maxRingBufferSize,
@@ -189,9 +189,9 @@ class Sender():
 
     useRingbuffer       = False
     cleanerExchangePort = None
-    liveViewerPort      = None
-    liveViewerIp        = None
-    liveViewerWhiteList   = None
+    liveViewerComPort   = None
+    liveViewerComIp     = None
+    liveViewerWhiteList = None
     maxRingBufferSize   = None
     maxQueueSize        = None
 
@@ -225,8 +225,8 @@ class Sender():
 
         self.useRingbuffer       = arguments.useRingbuffer
         self.cleanerExchangePort = arguments.cleanerExchangePort
-        self.liveViewerPort      = arguments.liveViewerPort
-        self.liveViewerIp        = arguments.liveViewerIp
+        self.liveViewerComPort   = arguments.liveViewerComPort
+        self.liveViewerComIp     = arguments.liveViewerComIp
         self.liveViewerWhiteList = arguments.liveViewerWhiteList
         self.maxRingBufferSize   = arguments.maxRingBufferSize
         self.maxQueueSize        = arguments.maxQueueSize
@@ -248,7 +248,7 @@ class Sender():
         if self.useRingbuffer:
             logging.info("start liveViewercommunicator process...")
             liveViewercommunicatorProcess = Process(target=LiveViewCommunicator, args=(self.cleanerExchangePort,
-                                                                                        self.liveViewerPort, self.liveViewerIp, self.liveViewerWhiteList,
+                                                                                        self.liveViewerComPort, self.liveViewerComIp, self.liveViewerWhiteList,
                                                                                         self.maxRingBufferSize, self.maxQueueSize,
                                                                                         self.zmqContext))
             liveViewercommunicatorProcess.start()

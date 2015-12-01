@@ -5,6 +5,7 @@ import time
 from PyQt4 import QtCore
 from PyQt4.QtCore import SIGNAL, QThread, QMutex
 import zmq
+import socket       # needed to get hostname
 
 class LiveView(QThread):
     FILETYPE_CBF = 0
@@ -21,11 +22,18 @@ class LiveView(QThread):
     subframe = None
     mutex = None
 
-#    zmqIp = "haspp11eval01.desy.de"
-    zmqIp = "zitpcx19282.desy.de"
-    zmqPort = "50021"
     zmqContext = None
-    zmqSocket = None
+
+    hostname = socket.gethostname()
+#    zmqComIp      = "haspp11eval01.desy.de"
+    zmqComIp      = "zitpcx19282.desy.de"
+    zmqComPort    = "50021"
+#    zmqDataIp     = "haspp11eval01.desy.de"
+    zmqDataIp     = "0.0.0.0"
+    zmqDataPort   = "50022"
+
+    zmqComSocket  = None
+    zmqDataSocket = None
 
     def __init__(self, path=None, filetype=None, interval=None, parent=None):
         QThread.__init__(self, parent)
@@ -35,7 +43,12 @@ class LiveView(QThread):
             self.filetype = filetype
         if interval is not None:
             self.interval = interval
-        self.zmqContext, self.zmqSocket = createZmqSocket(self.zmqIp, self.zmqPort)
+
+        self.zmqContext = createZmqContext()
+        self.zmqComSocket  = createZmqSocket(self.zmqContext, self.zmqComIp, self.zmqComPort, "connect")
+        self.zmqDataSocket = createZmqSocket(self.zmqContext, self.zmqDataIp, self.zmqDataPort, "bind")
+        establishDataExchange(self.zmqComSocket, self.hostname, self.zmqDataPort)
+
         self.mutex = QMutex()
 
 
@@ -48,6 +61,7 @@ class LiveView(QThread):
             self.interval = interval
         QThread.start(self)
 
+
     def stop(self, interval=0.0):
         if self.stoptimer < 0.0 and interval > 0.0:
             print "Live view thread: Stopping in %d seconds"%interval
@@ -56,10 +70,11 @@ class LiveView(QThread):
         print "Live view thread: Stopping thread"
         self.alive = False
 
+        # close ZeroMQ socket and destroy ZeroMQ context
+        stopZmq(self.zmqComSocket, self.zmqDataSocket, self.hostname, self.zmqDataPort, self.zmqContext)
+
         self.wait() # waits until run stops on his own
 
-        # close ZeroMQ socket and destroy ZeroMQ context
-        stopZmq(self.zmqSocket, self.zmqContext)
 
 
     def run(self):
@@ -75,7 +90,7 @@ class LiveView(QThread):
 
                 # get latest file from reveiver
                 try:
-                    received_file = communicateWithReceiver(self.zmqSocket)
+                    received_file = communicateWithReceiver(self.zmqDataSocket)
                     print "===received_file", received_file
                 except zmq.error.ZMQError:
                     received_file = None
@@ -133,36 +148,86 @@ class LiveView(QThread):
             self.interval = interval
 
 
-def createZmqSocket(zmqIp, zmqPort):
-    context = zmq.Context()
-#    assert isinstance(context, zmq.sugar.context.Context)
+def createZmqContext():
+    return zmq.Context()
+
+
+def createZmqSocket(context, zmqIp, zmqPort, connectType):
+    if connectType not in ["connect", "bind"]:
+        print "Sockets can only be bound or connected to."
+        return None
 
     socket = context.socket(zmq.REQ)
-    connectionStrSocket = "tcp://{ip}:{port}".format(ip=zmqIp, port=zmqPort)
-    socket.connect(connectionStrSocket)
+    connectionStr = "tcp://{ip}:{port}".format(ip=zmqIp, port=zmqPort)
+    print connectionStr
 
-    return context, socket
+    if connectType == "connect":
+        socket.connect(connectionStr)
+    elif connectType == "bind":
+        socket.bind(connectionStr)
+
+    return socket
+
+
+def establishDataExchange(zmqSocket, hostname, dataPort):
+    print "Sending Start Signal to receiver"
+    sendMessage = "START_DISPLAYER," + str(hostname) + "," + str(dataPort)
+    try:
+        zmqSocket.send (sendMessage)
+        #  Get the reply.
+        message = zmqSocket.recv()
+        print "Recieved signal: ", message
+    except Exception as e:
+        print "Could not communicate with receiver"
+        print "Error was: ", e
 
 
 def communicateWithReceiver(zmqSocket):
     print "Asking for next file"
-    import socket       # needed to get hostname
-    hostname = socket.gethostname()
-    sendMessage = "NextFile,"+ str(hostname)
-    zmqSocket.send (sendMessage)
-    #  Get the reply.
-    message = zmqSocket.recv()
-    print "Next file: ", message
+
+    sendMessage = "NEXT_FILE"
+    print "sendMessage", sendMessage
+    try:
+        print "Sending"
+        zmqSocket.send (sendMessage)
+    except Exception as e:
+        print "Could not communicate with receiver"
+        print "Error was: ", e
+        return ""
+
+    try:
+        #  Get the reply.
+        print "Receiving"
+        message = zmqSocket.recv()
+        print "Next file: ", message
+    except Exception as e:
+        message = ""
+        print "Could not communicate with receiver"
+        print "Error was: ", e
+
     return message
 
 
-def stopZmq(zmqSocket, zmqContext):
+def stopZmq(zmqComSocket, zmqDataSocket, hostname, dataPort, zmqContext):
+
+    print "Sending Start Signal to receiver"
+    sendMessage = "STOP_DISPLAYER," + str(hostname) + "," + str(dataPort)
     try:
-        print "closing zmqSocket..."
-        zmqSocket.close(linger=0)
-        print "closing zmqSocket...done."
+        zmqComSocket.send (sendMessage)
+        #  Get the reply.
+        message = zmqComSocket.recv()
+        print "Recieved signal: ", message
     except Exception as e:
-        print "closing zmqSocket...failed."
+        print "Could not communicate with receiver"
+        print "Error was: ", e
+
+    try:
+        print "closing ZMQ sockets..."
+        zmqComSocket.close(linger=0)
+        zmqDataSocket.close(linger=0)
+        print "closing ZMQ Sockets...done."
+    except Exception as e:
+        print "closing ZMQ Sockets...failed."
         print e
 
     try:

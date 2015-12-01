@@ -20,9 +20,8 @@ import helperScript
 #
 class LiveViewCommunicator:
     zmqContext               = None
-    liveViewerZmqContext     = None
-    liveViewerIp             = None
-    liveViewerPort           = None
+    liveViewerComIp          = None
+    liveViewerComPort        = None
     liveViewerWhiteList      = None
 
     receiverExchangeIp       = None
@@ -39,18 +38,19 @@ class LiveViewCommunicator:
 
     # sockets
     receiverExchangeSocket   = None         # socket to communicate with FileReceiver class
-    liveViewerSocket         = None         # socket to communicate with live viewer
+    liveViewerComSocket      = None         # socket to communicate with live viewer
+    liveViewerDataSocket     = None         # socket to communicate with live viewer
 
 
     def __init__(self, receiverExchangePort,
-            liveViewerPort, liveViewerIp, liveViewerWhiteList,
+            liveViewerComPort, liveViewerComIp, liveViewerWhiteList,
             maxRingBufferSize, maxQueueSize,
             context = None):
 
         self.receiverExchangeIp   = "127.0.0.1"
         self.receiverExchangePort = receiverExchangePort
-        self.liveViewerIp         = liveViewerIp
-        self.liveViewerPort       = liveViewerPort
+        self.liveViewerComIp      = liveViewerComIp
+        self.liveViewerComPort    = liveViewerComPort
         self.liveViewerWhiteList  = liveViewerWhiteList
 
         self.maxRingBufferSize    = maxRingBufferSize
@@ -105,19 +105,19 @@ class LiveViewCommunicator:
             self.log.error("Failed to start receiverExchangeSocket (bind): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))
 
-        # create socket for live viewer
-        self.liveViewerSocket = self.zmqContext.socket(zmq.REP)
-        connectionStr         = "tcp://" + self.liveViewerIp + ":%s" % self.liveViewerPort
+        # create communication socket for live viewer
+        self.liveViewerComSocket = self.zmqContext.socket(zmq.REP)
+        connectionStr         = "tcp://" + self.liveViewerComIp + ":%s" % self.liveViewerComPort
         try:
-            self.liveViewerSocket.bind(connectionStr)
-            self.log.info("liveViewerSocket started (bind) for '" + connectionStr + "'")
+            self.liveViewerComSocket.bind(connectionStr)
+            self.log.info("liveViewerComSocket started (connect) for '" + connectionStr + "'")
         except Exception as e:
-            self.log.error("Failed to start liveViewerSocket (bind): '" + connectionStr + "'")
+            self.log.error("Failed to start liveViewerComSocket (connect): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))
 
         self.poller = zmq.Poller()
         self.poller.register(self.receiverExchangeSocket, zmq.POLLIN)
-        self.poller.register(self.liveViewerSocket, zmq.POLLIN)
+        self.poller.register(self.liveViewerComSocket, zmq.POLLIN)
 
 
 
@@ -153,18 +153,67 @@ class LiveViewCommunicator:
                     self.log.debug("Add new file to ring buffer: " + str(filename) + ", " + str(fileModTime))
                     self.ringBuffer.add(filename, fileModTime)
 
-            if self.liveViewerSocket in socks and socks[self.liveViewerSocket] == zmq.POLLIN:
-                message = self.liveViewerSocket.recv()
+            if self.liveViewerComSocket in socks and socks[self.liveViewerComSocket] == zmq.POLLIN:
+                message = self.liveViewerComSocket.recv()
 
-                signal, signalHostname = helperScript.checkSignal(message, self.liveViewerWhiteList, self.liveViewerSocket, self.log)
+                signal, signalHostname, port = helperScript.checkSignal(message, self.liveViewerWhiteList, self.liveViewerComSocket, self.log)
 
-                if signal == "NextFile":
+                if signal == "START_DISPLAYER":
+                    if self.liveViewerDataSocket:
+                        self.liveViewerDataSocket.close(0)
+                        self.liveViewerDataSocket = None
+                        self.log.debug("liveViewerDataSocket refreshed")
+
+                    # create data socket for live viewer
+                    self.liveViewerDataIp   = signalHostname
+                    self.liveViewerDataPort = port
+                    self.liveViewerDataSocket = self.zmqContext.socket(zmq.REP)
+                    connectionStr         = "tcp://" + self.liveViewerDataIp + ":%s" % self.liveViewerDataPort
+                    try:
+                        self.liveViewerDataSocket.connect(connectionStr)
+                        self.log.info("liveViewerDataSocket started (connect) for '" + connectionStr + "'")
+
+                        self.poller.register(self.liveViewerDataSocket, zmq.POLLIN)
+
+                    except Exception as e:
+                        self.log.error("Failed to start liveViewerDataSocket (connect): '" + connectionStr + "'")
+                        self.log.debug("Error was:" + str(e))
+
+                    try:
+                        self.liveViewerComSocket.send(signal)
+                    except Exception as e:
+                        self.log.error("Could not send verification to LiveViewer. Signal was: " +  str(signal))
+                        self.log.debug("Error was: " + str(e))
+                    continue
+
+                elif signal == "STOP_DISPLAYER":
+                    # create data socket for live viewer
+                    if self.liveViewerDataSocket:
+                        self.log.info("Closing liveViewerDataSocket")
+                        self.liveViewerDataSocket.close(0)
+                        self.liveViewerDataSocket = None
+
+                    try:
+                        self.liveViewerComSocket.send(signal)
+                    except Exception as e:
+                        self.log.error("Could not send verification to LiveViewer. Signal was: " +  str(signal))
+                    continue
+
+                else:
+                    self.log.debug("liveViewer signal not supported: " + str(signal) )
+
+
+            if self.liveViewerDataSocket in socks and socks[self.liveViewerDataSocket] == zmq.POLLIN:
+                signal = self.liveViewerDataSocket.recv()
+
+                if signal == "NEXT_FILE":
                     self.log.debug("Call for next file... " + signal)
                     # send newest element in ring buffer to live viewer
                     answer = self.ringBuffer.getNewestFile()
                     try:
-                        self.liveViewerSocket.send(answer)
+                        self.liveViewerDataSocket.send(answer)
                     except zmq.error.ContextTerminated:
+                        self.log.error("zmq.error.ContextTerminated")
                         break
                 else:
                     self.log.debug("liveViewer signal not supported: " + str(signal) )
@@ -174,7 +223,10 @@ class LiveViewCommunicator:
     def stop(self):
         self.log.debug("Closing socket")
         self.receiverExchangeSocket.close(0)
-        self.liveViewerSocket.close(0)
+        self.liveViewerComSocket.close(0)
+
+        if self.liveViewerDataSocket:
+            self.liveViewerDataSocket.close(0)
 
         if not self.externalContext:
             self.log.debug("Destroying context")
