@@ -12,7 +12,7 @@ if not API_PATH in sys.path:
     sys.path.append ( API_PATH )
 del API_PATH
 
-from receiverLiveViewerAPI import ReceiverQuery
+from dataTransferAPI import dataTransferQuery
 
 
 class LiveView(QThread):
@@ -46,7 +46,8 @@ class LiveView(QThread):
         if interval is not None:
             self.interval = interval
 
-        self.zmqQuery = ReceiverQuery( self.zmqSignalPort, self.zmqSignalIp, self.zmqDataPort )
+        self.zmqQuery = dataTransferQuery( self.zmqSignalPort, self.zmqSignalIp, self.zmqDataPort )
+        self.zmqQuery.initConnection("queryMetadata")
 
         self.mutex = QMutex()
 
@@ -69,9 +70,6 @@ class LiveView(QThread):
         print "Live view thread: Stopping thread"
         self.alive = False
 
-        # close ZeroMQ socket and destroy ZeroMQ context
-        self.stopZmq()
-
         self.wait() # waits until run stops on his own
 
 
@@ -88,7 +86,7 @@ class LiveView(QThread):
                 self.mutex.lock()
 
                 # get latest file from reveiver
-                receivedFile = self.zmqQuery.communicateWithReceiver()
+                receivedFile = self.zmqQuery.communicate()
 
                 # display image
 #                try:
