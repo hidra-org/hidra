@@ -78,7 +78,7 @@ class ReceiverQuery():
         except Exception as e:
             print "Could not communicate with receiver"
             print "Error was: ", e
-            return ""
+            return None
 
         try:
             #  Get the reply.
@@ -87,6 +87,7 @@ class ReceiverQuery():
             message = ""
             print "Could not communicate with receiver"
             print "Error was: ", e
+            return None
 
         return message
 
