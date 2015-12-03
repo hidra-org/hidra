@@ -288,9 +288,9 @@ class dataTransferQuery():
     def stop(self):
         if self.dataSocket:
             if self.streamStarted:
-                signal = "START_LIVE_VIEWER"
+                signal = "STOP_LIVE_VIEWER"
             elif self.queryStarted:
-                signal = "START_REALTIME_ANALYSIS"
+                signal = "STOP_REALTIME_ANALYSIS"
             elif self.queryMetadataStarted:
                 signal = "STOP_DISPLAYER"
 
