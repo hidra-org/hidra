@@ -28,17 +28,15 @@ from dataTransferAPI import dataTransferQuery
 
 signalIp   = "zitpcx19282.desy.de"
 signalPort = "50000"
-dataPort   = "50022"
+dataPort   = "50200"
 
 print
-print "==== TEST: Stream all files ===="
+print "==== TEST: Query for the newest filename ===="
 print
-
 
 query = dataTransferQuery( signalPort, signalIp, dataPort )
 
-query.initConnection("stream")
-
+query.initConnection("queryNewest")
 
 while True:
 #for i in range(5):
@@ -54,12 +52,10 @@ while True:
     print
     time.sleep(0.5)
 
-
 query.stop()
 
 print
-print "==== TEST END: Stream for all files ===="
+print "==== TEST END: Query for the newest filename ===="
 print
-
 
 
