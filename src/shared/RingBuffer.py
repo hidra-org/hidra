@@ -158,7 +158,7 @@ class RingBuffer:
             try:
                 os.remove(filePath)
             except Exception as e:
-                self.log.debug("Unable to remove file from disc: " + str(filePath) )
+                self.log.debug("Unable to remove file from disk: " + str(filePath) )
                 self.log.debug("Error was: " + str(e) )
         self.ringBuffer = []
 

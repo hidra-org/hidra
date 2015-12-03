@@ -86,7 +86,7 @@ class LiveView(QThread):
                 self.mutex.lock()
 
                 # get latest file from reveiver
-                receivedFile = self.zmqQuery.communicate()
+                receivedFile = self.zmqQuery.getData()
 
                 # display image
 #                try:
