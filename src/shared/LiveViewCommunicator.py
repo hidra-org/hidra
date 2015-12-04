@@ -202,6 +202,7 @@ class LiveViewCommunicator:
 
                 else:
                     self.log.debug("liveViewer signal not supported: " + str(signal) )
+                    self.liveViewerComSocket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
 
 
             if self.liveViewerDataSocket in socks and socks[self.liveViewerDataSocket] == zmq.POLLIN:

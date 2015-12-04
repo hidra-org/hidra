@@ -119,15 +119,18 @@ class dataTransfer():
                 signalPort = self.signalPort_MetadataOnly
                 signal     = "START_DISPLAYER"
             else:
-                raise Exception("Other connection type already runnging.\
+                raise Exception("Other connection type already running.\
                         More than one connection type is currently not supported.")
 
             self.__creatSignalSocket(signalPort)
 
             message = self.__sendSignal(signal)
 
+            if message and message == "NO_VALID_SIGNAL":
+                raise Exception("Connection type is not supported for this kind of sender.")
+
             # if the response was correct
-            if message and message.startswith(signal):
+            elif message and message.startswith(signal):
 
                 self.log.info("Received confirmation ...start receiving files")
 
