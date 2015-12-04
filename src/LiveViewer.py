@@ -12,7 +12,7 @@ if not API_PATH in sys.path:
     sys.path.append ( API_PATH )
 del API_PATH
 
-from dataTransferAPI import dataTransferQuery
+from dataTransferAPI import dataTransfer
 
 
 class LiveView(QThread):
@@ -31,10 +31,9 @@ class LiveView(QThread):
     mutex = None
 
     zmqQuery      = None
-    zmqSignalIp      = "haspp11eval01.desy.de"
-#    zmqSignalIp   = "zitpcx19282.desy.de"
+#    zmqSignalIp      = "haspp11eval01.desy.de"
+    zmqSignalIp   = "zitpcx19282.desy.de"
 #    zmqSignalIp   = "psana002.desy.de"
-    zmqSignalPort = "50021"
     zmqDataPort   = "50022"
 
 
@@ -47,7 +46,7 @@ class LiveView(QThread):
         if interval is not None:
             self.interval = interval
 
-        self.zmqQuery = dataTransferQuery( self.zmqSignalPort, self.zmqSignalIp, self.zmqDataPort )
+        self.zmqQuery = dataTransfer( self.zmqSignalIp, self.zmqDataPort )
         self.zmqQuery.initConnection("queryMetadata")
 
         self.mutex = QMutex()
