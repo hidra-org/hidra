@@ -1,19 +1,22 @@
 #/bin/sh
 
-BASEPATH=/space/projects/live-viewer
-#BASEPATH=/home/p11user/live-viewer
+SOURCE=/space/projects/live-viewer
+#SOURCE=/home/p11user/live-viewer
 
-TARGET=${BASEPATH}/data/source/local
+TARGET=${SOURCE}/data/source/local
 LIMIT=10
 
-usage() { echo "Usage: $0 [-f <cbf|tif>] [-t <targetpath>] [-n <number of files>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-f <cbf|tif>] [-s <sourcepath>] [-t <targetpath>] [-n <number of files>]" 1>&2; exit 1; }
 
 
-while getopts ':f:t:n:' OPTION ; do
+while getopts ':f:s:t:n:' OPTION ; do
     case "${OPTION}" in
         f) FORMAT=${OPTARG}
             if [ "${FORMAT}" != "cbf" ] && [ "${FORMAT}" != "tif" ]; then usage; fi
 #           ((${FORMAT} == "cbf" || ${FORMAT} == "tif")) || usage
+            ;;
+        s) SOURCE=${OPTARG}
+            if [ ! -d ${SOURCE} ]; then echo "${SOURCE} does not exist"; exit 1; fi
             ;;
         t) TARGET=${OPTARG}
             if [ ! -d ${TARGET} ]; then echo "${TARGET} does not exist"; exit 1; fi
@@ -33,8 +36,8 @@ if [ -z "${FORMAT}" ]; then
 fi
 
 case "${FORMAT}" in
-    cbf) FILES=${BASEPATH}/test_015_00001.cbf ;;
-    tif) FILES=${BASEPATH}/bf_00000.tif
+    cbf) FILES=${SOURCE}/test_015_00001.cbf ;;
+    tif) FILES=${SOURCE}/bf_00000.tif
 esac
 
 i=1
