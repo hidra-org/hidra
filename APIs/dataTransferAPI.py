@@ -7,7 +7,7 @@ import logging
 import sys
 import json
 
-class dataTransferQuery():
+class dataTransfer():
 
     context         = None
     externalContext = True
@@ -23,13 +23,18 @@ class dataTransferQuery():
 
     log             = None
 
+    supportedConnections = ["stream", "queryNewest", "queryMetadata"]
+
+    signalPort_MetadataOnly = "50021"
+    signalPort_data         = "50000"
+
     streamStarted        = False
     queryNewestStarted   = False
     queryMetadataStarted = False
 
     socketResponseTimeout = None
 
-    def __init__(self, signalPort, signalIp, dataPort, dataIp = "0.0.0.0", useLog = False, context = None):
+    def __init__(self, signalIp, dataPort, dataIp = "0.0.0.0", useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("dataTransferAPI")
@@ -56,7 +61,6 @@ class dataTransferQuery():
 
 
         self.signalIp   = signalIp
-        self.signalPort = signalPort
         self.dataIp     = dataIp
         self.hostname   = socket.gethostname()
         self.dataPort   = dataPort
@@ -67,25 +71,13 @@ class dataTransferQuery():
         # To send a notification that a Displayer is up and running, a communication socket is needed
         # create socket to exchange signals with Sender
         self.signalSocket = self.context.socket(zmq.REQ)
-        # time to wait for the sender to give a confirmation of the signal
-#        self.signalSocket.RCVTIMEO = self.socketResponseTimeout
-        connectionStr = "tcp://" + str(self.signalIp) + ":" + str(self.signalPort)
-        try:
-            self.signalSocket.connect(connectionStr)
-            self.log.info("signalSocket started (connect) for '" + connectionStr + "'")
-        except Exception as e:
-            self.log.error("Failed to start signalSocket (connect): '" + connectionStr + "'")
-            self.log.debug("Error was:" + str(e))
 
-        # using a Poller to implement the signalSocket timeout (in older ZMQ version there is no option RCVTIMEO)
-        self.poller = zmq.Poller()
-        self.poller.register(self.signalSocket, zmq.POLLIN)
 
 
     ##
     #
-    # Initailizes the data transfer socket and
-    # signals the sender which kind of connection should be used
+    # Initailizes the signal and data transfer sockets and
+    # send a signal which the kind of connection to be established
     #
     # Returns 0 if the connection could be initializes without errors
     # Error Codes are:
@@ -99,9 +91,7 @@ class dataTransferQuery():
     ##
     def initConnection(self, connectionType):
 
-        supportedConnections = ["stream", "queryNewest", "queryMetadata"]
-
-        if connectionType not in supportedConnections:
+        if connectionType not in self.supportedConnections:
             self.log.info("Chosen type of connection is not supported.")
             return 10
 
@@ -109,15 +99,33 @@ class dataTransferQuery():
 
         signal = None
         if connectionType == "stream" and not alreadyConnected:
-            signal = "START_LIVE_VIEWER"
+            signalPort = self.signalPort_data
+            signal     = "START_LIVE_VIEWER"
         elif connectionType == "queryNewest" and not alreadyConnected:
-            signal = "START_REALTIME_ANALYSIS"
+            signalPort = self.signalPort_data
+            signal     = "START_REALTIME_ANALYSIS"
         elif connectionType == "queryMetadata" and not alreadyConnected:
-            signal = "START_DISPLAYER"
+            signalPort = self.signalPort_MetadataOnly
+            signal     = "START_DISPLAYER"
         else:
             self.log.info("Other connection type already runnging.")
             self.log.info("More than one connection type is currently not supported.")
             return 11
+
+
+        # time to wait for the sender to give a confirmation of the signal
+#        self.signalSocket.RCVTIMEO = self.socketResponseTimeout
+        connectionStr = "tcp://" + str(self.signalIp) + ":" + str(signalPort)
+        try:
+            self.signalSocket.connect(connectionStr)
+            self.log.info("signalSocket started (connect) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start signalSocket (connect): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
+
+        # using a Poller to implement the signalSocket timeout (in older ZMQ version there is no option RCVTIMEO)
+        self.poller = zmq.Poller()
+        self.poller.register(self.signalSocket, zmq.POLLIN)
 
 
         # Send the signal that the communication infrastructure should be established
@@ -137,6 +145,7 @@ class dataTransferQuery():
             self.log.info("Could not poll for new message")
             self.log.info("Error was: " + str(e))
             return 13
+
 
         # if there was a response
         if self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:

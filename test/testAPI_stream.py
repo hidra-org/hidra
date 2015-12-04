@@ -16,7 +16,7 @@ del API_PATH
 #    sys.path.append ( SHARED_PATH )
 #del SHARED_PATH
 
-from dataTransferAPI import dataTransferQuery
+from dataTransferAPI import dataTransfer
 #import helperScript
 
 
@@ -27,15 +27,14 @@ from dataTransferAPI import dataTransferQuery
 
 
 signalIp   = "zitpcx19282.desy.de"
-signalPort = "50000"
-dataPort   = "50022"
+dataPort   = "50100"
 
 print
 print "==== TEST: Stream all files ===="
 print
 
 
-query = dataTransferQuery( signalPort, signalIp, dataPort )
+query = dataTransfer( signalIp, dataPort )
 
 query.initConnection("stream")
 
@@ -52,7 +51,6 @@ while True:
     print metadata
     print "data", str(data)[:10]
     print
-    time.sleep(0.5)
 
 
 query.stop()

@@ -16,7 +16,7 @@ del SHARED_PATH
 
 import helperScript
 #
-#  --------------------------  class: Coordinator  --------------------------------------
+#  --------------------------  class: LiveViewCommunicator  --------------------------------------
 #
 class LiveViewCommunicator:
     zmqContext               = None
@@ -86,7 +86,7 @@ class LiveViewCommunicator:
             self.stop()
 
 
-        self.log.info("Quitting Coordinator.")
+        self.log.info("Quitting LiveViewCommunicator.")
 
 
     def getLogger(self):
@@ -240,3 +240,9 @@ class LiveViewCommunicator:
 
         self.log.debug("Clearing Ringbuffer")
         self.ringBuffer.removeAll()
+
+    def __exit__(self):
+        self.stop()
+
+    def __del__(self):
+        self.stop()

@@ -16,7 +16,7 @@ del API_PATH
 #    sys.path.append ( SHARED_PATH )
 #del SHARED_PATH
 
-from dataTransferAPI import dataTransferQuery
+from dataTransferAPI import dataTransfer
 #import helperScript
 
 
@@ -27,18 +27,18 @@ from dataTransferAPI import dataTransferQuery
 
 
 signalIp   = "zitpcx19282.desy.de"
-signalPort = "50021"
 dataPort   = "50022"
 
 print
 print "==== TEST: Query for the newest filename ===="
 print
 
-query = dataTransferQuery( signalPort, signalIp, dataPort )
+query = dataTransfer( signalIp, dataPort )
 
 query.initConnection("queryMetadata")
 
-for i in range(5):
+#for i in range(5):
+while True:
     message = query.getData()
     print message
     time.sleep(0.5)
