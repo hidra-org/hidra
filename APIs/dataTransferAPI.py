@@ -194,7 +194,7 @@ class dataTransferQuery():
                 # An additional socket is needed to establish the data retriving mechanism
                 connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
                 try:
-                    self.dataSocket.connect(connectionStr)
+                    self.dataSocket.bind(connectionStr)
                     self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
                 except Exception as e:
                     self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")

@@ -110,9 +110,9 @@ class LiveViewCommunicator:
         connectionStr         = "tcp://" + self.liveViewerComIp + ":%s" % self.liveViewerComPort
         try:
             self.liveViewerComSocket.bind(connectionStr)
-            self.log.info("liveViewerComSocket started (connect) for '" + connectionStr + "'")
+            self.log.info("liveViewerComSocket started (bind) for '" + connectionStr + "'")
         except Exception as e:
-            self.log.error("Failed to start liveViewerComSocket (connect): '" + connectionStr + "'")
+            self.log.error("Failed to start liveViewerComSocket (bind): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))
 
         self.poller = zmq.Poller()
@@ -181,6 +181,7 @@ class LiveViewCommunicator:
 
                     try:
                         self.liveViewerComSocket.send(signal)
+                        self.log.debug("configmation send back: "+ str(signal) )
                     except Exception as e:
                         self.log.error("Could not send verification to LiveViewer. Signal was: " +  str(signal))
                         self.log.debug("Error was: " + str(e))

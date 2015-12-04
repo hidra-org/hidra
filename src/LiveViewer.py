@@ -31,8 +31,9 @@ class LiveView(QThread):
     mutex = None
 
     zmqQuery      = None
-#    zmqSignalIp      = "haspp11eval01.desy.de"
-    zmqSignalIp   = "zitpcx19282.desy.de"
+    zmqSignalIp      = "haspp11eval01.desy.de"
+#    zmqSignalIp   = "zitpcx19282.desy.de"
+#    zmqSignalIp   = "psana002.desy.de"
     zmqSignalPort = "50021"
     zmqDataPort   = "50022"
 
