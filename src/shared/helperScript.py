@@ -3,6 +3,7 @@ import platform
 import logging
 import sys
 import shutil
+import zmq
 
 
 def isWindows():
@@ -198,12 +199,41 @@ def checkLogFileWritable(filepath, filename):
         sys.exit(1)
 
 
-def initLogging(filenameFullPath, verbose):
-    #@see https://docs.python.org/2/howto/logging-cookbook.html
+def checkSignal(message, whiteList, socket, log):
 
-#    def initLogging(self, logfilePath, verbose):
-#
-#        logfilePathFull = os.path.join(logfilePath, "cleaner.log")
+    try:
+        messageSplit    = message.split(',')
+        signal          = messageSplit[0]
+        signalHostname  = messageSplit[1]
+        if len(messageSplit) > 2:
+            liveViewerPort = messageSplit[2]
+        else:
+            liveViewerPort = None
+    except Exception as e:
+        log.info("Received live viewer signal from host " + str(signalHostname) + " is of the wrong format")
+        socket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
+        return None, None, liveViewerPort
+
+    if signalHostname.endswith(".desy.de"):
+        signalHostnameModified = signalHostname[:-8]
+    else:
+        signalHostnameModified = signalHostname
+
+    log.debug("Check if signal sending host is in WhiteList...")
+    if signalHostname in whiteList or signalHostnameModified in whiteList:
+        log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
+    else:
+        log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
+        log.info("Signal from host " + str(signalHostname) + " is discarded.")
+        socket.send("NO_VALID_HOST", zmq.NOBLOCK)
+        return None, None
+
+    return signal, signalHostname, liveViewerPort
+
+
+
+def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
+    #@see https://docs.python.org/2/howto/logging-cookbook.html
 
     #more detailed logging if verbose-option has been set
     loggingLevel = logging.INFO
@@ -217,21 +247,47 @@ def initLogging(filenameFullPath, verbose):
                         filename=filenameFullPath,
                         filemode="a")
 
-#        fileHandler = logging.FileHandler(filename=logfilePathFull,
+#        fileHandler = logging.FileHandler(filename=filenameFullPath,
 #                                          mode="a")
 #        fileHandlerFormat = logging.Formatter(datefmt='%Y-%m-%d_%H:%M:%S',
 #                                              fmt='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s] [%(name)s] [%(levelname)s] %(message)s')
 #        fileHandler.setFormatter(fileHandlerFormat)
 #        fileHandler.setLevel(loggingLevel)
-#        logger.addHandler(fileHandler)
+#        logging.getLogger("").addHandler(fileHandler)
 
     #log info to stdout, display messages with different format than the file output
-    console = logging.StreamHandler()
-#    console.setLevel(logging.ERROR)
-    console.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s >  %(message)s")
-    console.setFormatter(formatter)
+    if onScreenLogLevel:
+        if onScreenLogLevel in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
 
-    logging.getLogger("").addHandler(console)
+            console = logging.StreamHandler()
+            screenHandlerFormat = logging.Formatter(datefmt = "%Y-%m-%d_%H:%M:%S",
+                                                    fmt     = "[%(asctime)s] > %(message)s")
+
+            if onScreenLogLevel == "DEBUG":
+                screenLoggingLevel = logging.DEBUG
+                console.setLevel(screenLoggingLevel)
+
+                screenHandlerFormat = logging.Formatter(datefmt = "%Y-%m-%d_%H:%M:%S",
+                                                        fmt     = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s")
+
+                if not verbose:
+                    logging.error("Logging on Screen: Option DEBUG in only active when using verbose option as well (Fallback to INFO).")
+            elif onScreenLogLevel == "INFO":
+                screenLoggingLevel = logging.INFO
+                console.setLevel(screenLoggingLevel)
+            elif onScreenLogLevel == "WARNING":
+                screenLoggingLevel = logging.WARNING
+                console.setLevel(screenLoggingLevel)
+            elif onScreenLogLevel == "ERROR":
+                screenLoggingLevel = logging.ERROR
+                console.setLevel(screenLoggingLevel)
+            elif onScreenLogLevel == "CRITICAL":
+                screenLoggingLevel = logging.CRITICAL
+                console.setLevel(screenLoggingLevel)
+
+            console.setFormatter(screenHandlerFormat)
+            logging.getLogger("").addHandler(console)
+        else:
+            logging.error("Logging on Screen: Option " + str(onScreenLogLevel) + " is not supported.")
 
 

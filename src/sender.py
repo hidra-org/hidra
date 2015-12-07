@@ -16,9 +16,8 @@ import ConfigParser
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
-sys.path.append ( CONFIG_PATH )
-
 import shared.helperScript as helperScript
+from shared.LiveViewCommunicator import LiveViewCommunicator
 from sender.DirectoryWatcher import DirectoryWatcher
 from sender.FileMover import FileMover
 from sender.Cleaner import Cleaner
@@ -57,6 +56,15 @@ def argumentParsing():
     parallelDataStreams = config.get('asection', 'parallelDataStreams')
     chunkSize           = int(config.get('asection', 'chunkSize'))
 
+    useRingbuffer       = config.getboolean('asection', 'useRingbuffer')
+    cleanerExchangePort = config.get('asection', 'cleanerExchangePort')
+
+    liveViewerComPort   = config.get('asection', 'liveViewerComPort')
+    liveViewerComIp     = config.get('asection', 'liveViewerComIp')
+    liveViewerWhiteList   = json.loads(config.get('asection', 'liveViewerWhiteList'))
+    maxRingBufferSize   = config.get('asection', 'maxRingBufferSize')
+    maxQueueSize        = config.get('asection', 'maxQueueSize')
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--logfilePath"        , type=str, default=logfilePath,
                                                  help="Path where the logfile will be created (default=" + str(logfilePath) + ")")
@@ -64,6 +72,8 @@ def argumentParsing():
                                                  help="Filename used for logging (default=" + str(logfileName) + ")")
     parser.add_argument("--verbose"            , action="store_true",
                                                  help="More verbose output")
+    parser.add_argument("--onScreen"           , type=str, default=False,
+                                                 help="Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)")
 
     parser.add_argument("--watchDir"           , type=str, default=watchDir,
                                                  help="Dir you want to monitor for changes; inside this directory only the specified subdirectories are monitred (default=" + str(watchDir) + ")")
@@ -109,12 +119,28 @@ def argumentParsing():
     parser.add_argument("--chunkSize"          , type=int, default=chunkSize,
                                                  help="Chunk size of file-parts getting send via ZMQ (default=" + str(chunkSize) + ")")
 
+    parser.add_argument("--useRingbuffer"      , type=str, default=useRingbuffer,
+                                                 help="Put the data into a ringbuffer followed by a queue to delay the removal of the files(default=" + str(useRingbuffer) + ")")
+    parser.add_argument("--cleanerExchangePort", type=str, default=cleanerExchangePort,
+                                                 help="Port number to exchange data and signals between Cleaner and LiveViewCommunicator (default=" + str(cleanerExchangePort) + ")")
+    parser.add_argument("--liveViewerComIp"    , type=str, default=liveViewerComIp,
+                                                 help="IP to bind communication to LiveViewer to (default=" + str(liveViewerComIp) + ")")
+    parser.add_argument("--liveViewerComPort"  , type=str, default=liveViewerComPort,
+                                                 help="Port number to communicate with live viewer (default=" + str(liveViewerComPort) + ")")
+    parser.add_argument("--liveViewerWhiteList", type=str, default=liveViewerWhiteList,
+                                                 help="List of hosts allowed to connect to the receiver (default=" + str(liveViewerWhiteList) + ")")
+    parser.add_argument("--maxRingBufferSize"  , type=int, default=maxRingBufferSize,
+                                                 help="Size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")")
+    parser.add_argument("--maxQueueSize"       , type=int, default=maxQueueSize,
+                                                 help="Size of the queue for the live viewer (default=" + str(maxQueueSize) + ")")
+
     arguments         = parser.parse_args()
 
     logfilePath       = str(arguments.logfilePath)
     logfileName       = str(arguments.logfileName)
-    logfileFullPath     = os.path.join(logfilePath, logfileName)
-    verbose             = arguments.verbose
+    logfileFullPath   = os.path.join(logfilePath, logfileName)
+    verbose           = arguments.verbose
+    onScreen          = arguments.onScreen
 
     watchDir          = str(arguments.watchDir)
 
@@ -122,7 +148,7 @@ def argumentParsing():
     cleanerTargetPath = str(arguments.cleanerTargetPath)
 
     #enable logging
-    helperScript.initLogging(logfileFullPath, verbose)
+    helperScript.initLogging(logfileFullPath, verbose, onScreen)
 
     # check if directories exists
     helperScript.checkDirExistance(logfilePath)
@@ -161,6 +187,14 @@ class Sender():
     parallelDataStreams = None
     chunkSize           = None
 
+    useRingbuffer       = False
+    cleanerExchangePort = None
+    liveViewerComPort   = None
+    liveViewerComIp     = None
+    liveViewerWhiteList = None
+    maxRingBufferSize   = None
+    maxQueueSize        = None
+
     zmqContext          = None
 
     def __init__(self):
@@ -189,6 +223,13 @@ class Sender():
         self.parallelDataStreams = arguments.parallelDataStreams
         self.chunkSize           = arguments.chunkSize
 
+        self.useRingbuffer       = arguments.useRingbuffer
+        self.cleanerExchangePort = arguments.cleanerExchangePort
+        self.liveViewerComPort   = arguments.liveViewerComPort
+        self.liveViewerComIp     = arguments.liveViewerComIp
+        self.liveViewerWhiteList = arguments.liveViewerWhiteList
+        self.maxRingBufferSize   = arguments.maxRingBufferSize
+        self.maxQueueSize        = arguments.maxQueueSize
 
         #create zmq context
         # there should be only one context in one process
@@ -199,18 +240,28 @@ class Sender():
 
 
     def run(self):
-        logging.debug("start watcher process...")
+        logging.info("start watcher process...")
         watcherProcess = Process(target=DirectoryWatcher, args=(self.fileEventIp, self.watchDir, self.fileEventPort, self.monitoredEventType, self.monitoredSubdirs, self.monitoredFormats, self.zmqContext))
-        logging.debug("watcher process registered")
         watcherProcess.start()
         logging.debug("start watcher process...done")
 
-        logging.debug("start cleaner process...")
-        cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.useDataStream, self.zmqContext))
-        logging.debug("cleaner process registered")
+        if self.useRingbuffer:
+            logging.info("start liveViewercommunicator process...")
+            liveViewercommunicatorProcess = Process(target=LiveViewCommunicator, args=(self.cleanerExchangePort,
+                                                                                        self.liveViewerComPort, self.liveViewerComIp, self.liveViewerWhiteList,
+                                                                                        self.maxRingBufferSize, self.maxQueueSize,
+                                                                                        self.zmqContext))
+            liveViewercommunicatorProcess.start()
+            logging.debug("start liveViewercommunicator process...done")
+
+            logging.info("start cleaner process...")
+            cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.useDataStream, self.cleanerExchangePort, self.zmqContext))
+        else:
+            logging.info("start cleaner process...")
+            cleanerProcess = Process(target=Cleaner, args=(self.cleanerTargetPath, self.cleanerIp, self.cleanerPort, self.useDataStream, None, self.zmqContext))
+
         cleanerProcess.start()
         logging.debug("start cleaner process...done")
-
 
         #start new fileMover
         fileMover = FileMover(self.fileEventIp, self.fileEventPort, self.dataStreamIp, self.dataStreamPort,

@@ -16,20 +16,20 @@ import threading
 #  --------------------------  class: FileReceiver  --------------------------------------
 #
 class FileReceiver:
-    zmqContext               = None
-    outputDir                = None
-    zmqDataStreamIp          = None
-    zmqDataStreamPort        = None
-    log                      = None
+    zmqContext       = None
+    outputDir        = None
+    dataStreamIp     = None
+    dataStreamPort   = None
+    log              = None
 
     # sockets
-    zmqDataStreamSocket      = None         # socket to receive the data from
+    dataStreamSocket = None         # socket to receive the data from
 
-    def __init__(self, outputDir, zmqDataStreamIp, zmqDataStreamPort, context = None):
+    def __init__(self, outputDir, dataStreamIp, dataStreamPort, context = None):
 
-        self.outputDir             = os.path.normpath(outputDir)
-        self.zmqDataStreamIp       = zmqDataStreamIp
-        self.zmqDataStreamPort     = zmqDataStreamPort
+        self.outputDir          = os.path.normpath(outputDir)
+        self.dataStreamIp       = dataStreamIp
+        self.dataStreamPort     = dataStreamPort
 
 #        if context:
 #            assert isinstance(context, zmq.sugar.context.Context)
@@ -39,11 +39,7 @@ class FileReceiver:
         self.log = self.getLogger()
         self.log.debug("Init")
 
-        # create pull socket
-        self.zmqDataStreamSocket = self.zmqContext.socket(zmq.PULL)
-        connectionStr            = "tcp://{ip}:{port}".format(ip=self.zmqDataStreamIp, port=self.zmqDataStreamPort)
-        self.zmqDataStreamSocket.bind(connectionStr)
-        self.log.info("zmqDataStreamSocket started (bind) for '" + connectionStr + "'")
+        self.createSockets()
 
         try:
             self.log.info("Start receiving new files")
@@ -66,11 +62,23 @@ class FileReceiver:
         return logger
 
 
-    def combineMessage(self, zmqDataStreamSocket):
+    def createSockets(self):
+        # create pull socket
+        self.dataStreamSocket = self.zmqContext.socket(zmq.PULL)
+        connectionStr         = "tcp://{ip}:{port}".format(ip=self.dataStreamIp, port=self.dataStreamPort)
+        try:
+            self.dataStreamSocket.bind(connectionStr)
+            self.log.info("dataStreamSocket started (bind) for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
+
+
+    def combineMessage(self, dataStreamSocket):
         receivingMessages = True
         #save all chunks to file
         while receivingMessages:
-            multipartMessage = zmqDataStreamSocket.recv_multipart()
+            multipartMessage = dataStreamSocket.recv_multipart()
 
             #extract multipart message
             try:
@@ -119,7 +127,7 @@ class FileReceiver:
 
         while continueReceiving:
             try:
-                self.combineMessage(self.zmqDataStreamSocket)
+                self.combineMessage(self.dataStreamSocket)
             except KeyboardInterrupt:
                 self.log.debug("Keyboard interrupt detected. Stop receiving.")
                 continueReceiving = False
@@ -131,7 +139,7 @@ class FileReceiver:
 
         self.log.info("shutting down receiver...")
         try:
-            self.stopReceiving(self.zmqDataStreamSocket, self.zmqContext)
+            self.stopReceiving(self.dataStreamSocket, self.zmqContext)
             self.log.debug("shutting down receiver...done.")
         except:
             self.log.error(sys.exc_info())
@@ -228,14 +236,14 @@ class FileReceiver:
             raise Exception(errorMessage)
 
 
-    def stopReceiving(self, zmqDataStreamSocket, zmqContext, sendToSender = True):
+    def stopReceiving(self, dataStreamSocket, zmqContext, sendToSender = True):
 
         self.log.debug("stopReceiving...")
         try:
-            zmqDataStreamSocket.close(0)
-            self.log.debug("closing zmqDataStreamSocket...done.")
+            dataStreamSocket.close(0)
+            self.log.debug("closing dataStreamSocket...done.")
         except:
-            self.log.error("closing zmqDataStreamSocket...failed.")
+            self.log.error("closing dataStreamSocket...failed.")
             self.log.error(sys.exc_info())
 
         try:

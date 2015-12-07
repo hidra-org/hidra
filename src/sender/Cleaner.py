@@ -35,43 +35,53 @@ class Cleaner():
       - poll the watched directory and reissue new files
         to fileMover which have not been detected yet
     """
-    bindingPortForSocket = None
-    bindingIpForSocket   = None
-    senderComIp          = None
-    zmqContextForCleaner = None
-    externalContext      = None    # if the context was created outside this class or not
-    zmqCleanerSocket     = None
+    newJobPort        = None
+    newJobIp          = None
+    senderComIp       = None
 
-    useDataStream        = True      # boolian to inform if the data should be send to the data stream pipe (to the storage system)
+    contextForCleaner = None
+    externalContext   = None    # if the context was created outside this class or not
 
-    lastMovedFiles       = collections.deque(maxlen = 20)
+    newJobSocket      = None
+    lvComSocket       = None    # socket to communicate with LiveViewCommunicator class
+
+    useDataStream     = True    # boolian to inform if the data should be send to the data stream pipe (to the storage system)
+
+    useRingbuffer     = False
+    lvComIp           = None
+    lvComPort         = None
+
+    lastHandledFiles  = collections.deque(maxlen = 20)
 
     # to get the logging only handling this class
-    log                  = None
+    log               = None
 
-    def __init__(self, targetPath, bindingIp="127.0.0.1", bindingPort="6062", useDataStream = True, context = None, verbose=False):
-        self.bindingPortForSocket = bindingPort
-        self.bindingIpForSocket   = bindingIp
-        self.senderComIp          = self.bindingIpForSocket
-        self.targetPath           = os.path.normpath(targetPath)
+    def __init__(self, targetPath, newJobIp, newJobPort, useDataStream = True, lvComPort = None, context = None):
+        self.newJobIp      = newJobIp
+        self.newJobPort    = newJobPort
+        self.senderComIp   = self.newJobIp
 
-        self.useDataStream       = useDataStream
+        self.targetPath    = os.path.normpath(targetPath)
+
+        self.useDataStream = useDataStream
+
+        if lvComPort:
+            self.useRingbuffer = True
+            self.lvComIp       = self.newJobIp
+            self.lvComPort     = lvComPort
 
         if context:
-            self.zmqContextForCleaner = context
-            self.externalContext      = True
+            self.contextForCleaner = context
+            self.externalContext   = True
         else:
-            self.zmqContextForCleaner = zmq.Context()
-            self.externalContext      = False
+            self.contextForCleaner = zmq.Context()
+            self.externalContext   = False
 
         self.log = self.getLogger()
         self.log.debug("Init")
 
-        #bind to local port
-        self.zmqCleanerSocket = self.zmqContextForCleaner.socket(zmq.PULL)
-        connectionStrSocket   = "tcp://" + self.bindingIpForSocket + ":%s" % self.bindingPortForSocket
-        self.zmqCleanerSocket.bind(connectionStrSocket)
-        self.log.debug("zmqCleanerSocket started for '" + connectionStrSocket + "'")
+        # create Sockets
+        self.createSockets()
 
         try:
             self.process()
@@ -91,6 +101,27 @@ class Cleaner():
         return logger
 
 
+    def createSockets(self):
+        self.newJobSocket = self.contextForCleaner.socket(zmq.PULL)
+        connectionStr = "tcp://" + self.newJobIp + ":%s" % self.newJobPort
+        try:
+            self.newJobSocket.bind(connectionStr)
+            self.log.debug("newJobSocket started for '" + connectionStr + "'")
+        except Exception as e:
+            self.log.error("Failed to start newJobSocket (bind): '" + connectionStr + "'")
+            self.log.debug("Error was:" + str(e))
+
+        if self.useRingbuffer:
+            self.lvComSocket = self.contextForCleaner.socket(zmq.PAIR)
+            connectionStr = "tcp://" + self.lvComIp + ":%s" % self.lvComPort
+            try:
+                self.lvComSocket.connect(connectionStr)
+                self.log.debug("lvComSocket started (connect) for '" + connectionStr + "'")
+            except Exception as e:
+                self.log.error("Failed to start lvComSocket (connect): '" + connectionStr + "'")
+                self.log.debug("Error was:" + str(e))
+
+
     def process(self):
         #processing messaging
         while True:
@@ -98,7 +129,7 @@ class Cleaner():
             self.log.debug("Waiting for new jobs")
 
             try:
-                workload = self.zmqCleanerSocket.recv()
+                workload = self.newJobSocket.recv()
             except Exception as e:
                 self.log.error("Error in receiving job: " + str(e))
 
@@ -129,8 +160,9 @@ class Cleaner():
                 filename       = workloadDict["filename"]
                 sourcePath     = workloadDict["sourcePath"]
                 relativePath   = workloadDict["relativePath"]
+                fileModTime    = workloadDict["fileModificationTime"]
 #                print "workloadDict:", workloadDict
-            except Exception, e:
+            except Exception as e:
                 errorMessage   = "Invalid fileEvent message received."
                 self.log.error(errorMessage)
                 self.log.debug("Error was: " + str(e))
@@ -150,158 +182,127 @@ class Cleaner():
                 self.log.debug("filename: " + str (filename))
                 self.log.debug("targetPath: " + str (targetFullPath))
 
-            except Exception, e:
+            except Exception as e:
                 self.log.error("Unable to generate file paths")
-                trace = traceback.format_exc()
-                self.log.error("Error was: " + str(trace))
+                self.log.error("Error was: " + str(e))
                 #skip all further instructions and continue with next iteration
                 continue
 
-            try:
-                if self.useDataStream:
-                    self.removeFile(sourceFullPath)
-                else:
-#                    self.copyFile(sourcePath, filename, targetFullPath)
-                    self.moveFile(sourcePath, filename, targetFullPath)
+            if self.useRingbuffer:
 
-                # #show filesystem statistics
-                # try:
-                #     self.showFilesystemStatistics(sourcePath)
-                # except Exception, f:
-                #     logging.warning("Unable to get filesystem statistics")
-                #     logging.debug("Error was: " + str(f))
+                if not self.useDataStream:
+                    try:
+                        self.handleFile("copy", sourcePath, filename, targetFullPath)
+                    except Exception as e:
+                        self.log.error("Unable to handle source file: " + str (sourceFullPath) )
+                        trace = traceback.format_exc()
+                        self.log.debug("Error was: " + str(e))
+                        self.log.debug("Trace: " + str(trace))
+                        #skip all further instructions and continue with next iteration
+                        continue
 
-            except Exception, e:
-                self.log.error("Unable to move source file: " + str (sourceFullPath) )
-                trace = traceback.format_exc()
-                self.log.debug("Error was: " + str(trace))
-                self.log.debug("sourceFullpath="+str(sourceFullpath))
-                self.log.debug("Moving source file...failed.")
-                #skip all further instructions and continue with next iteration
-                continue
+                try:
+                    # send the file to the LiveViewCommunicator to add it to the ring buffer
+                    message = "AddFile" + str(sourceFullPath) + ", " + str(fileModTime)
+                    self.log.debug("Send file to LiveViewCommunicator: " + message )
+                    self.lvComSocket.send(message)
+                except Exception as e:
+                    self.log.error("Unable to send source file to LiveViewCommunicator: " + str (sourceFullPath) )
+                    self.log.debug("Error was: " + str(e))
+                    continue
+            else:
+
+                try:
+                    if self.useDataStream:
+                        self.handleFile("remove", sourcePath, filename, None)
+                    else:
+                        self.handleFile("move", sourcePath, filename, targetFullPath)
+                except Exception as e:
+                    self.log.error("Unable to handle source file: " + str (sourceFullPath) )
+                    trace = traceback.format_exc()
+                    self.log.debug("Error was: " + str(e))
+                    self.log.debug("Trace: " + str(trace))
+                    #skip all further instructions and continue with next iteration
+                    continue
 
 
-    def copyFile(self, source, filename, target):
-        maxAttemptsToCopyFile     = 2
+    def handleFile(self, fileOperation, source, filename, target):
+
+        if not fileOperation in ["copy", "move", "remove"]:
+            self.log.debug("Requested operation type: " + str(fileOperation) + "; Supported: copy, move, remove")
+            raise Exception("Requested operation type " + str(fileOperation) + " is not supported. Unable to process file " + str(filename))
+
+        maxAttemptsToHandleFile     = 2
         waitTimeBetweenAttemptsInMs = 500
 
-
         iterationCount = 0
-        fileWasCopied = False
+        fileWasHandled = False
 
-        while iterationCount <= maxAttemptsToCopyFile and not fileWasCopied:
+        while iterationCount <= maxAttemptsToHandleFile and not fileWasHandled:
             iterationCount+=1
             try:
-                # check if the directory exists before moving the file
-                if not os.path.exists(target):
-                    try:
-                        os.makedirs(target)
-                    except OSError:
-                        pass
-                # moving the file
-                sourceFile = source + os.sep + filename
-                targetFile = target + os.sep + filename
-#                targetFile = "/gpfs/current/scratch_bl/test" + os.sep + filename
+                sourceFile = os.path.join(source,filename)
                 self.log.debug("sourceFile: " + str(sourceFile))
-                self.log.debug("targetFile: " + str(targetFile))
-                shutil.copyfile(sourceFile, targetFile)
-#                subprocess.call(["mv", sourceFile, targetFile])
-                fileWasCopied = True
-                self.log.info("Copying file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+
+                # check if the directory exists before moving the file
+                if fileOperation == "copy" or fileOperation == "move":
+                    if not os.path.exists(target):
+                        try:
+                            os.makedirs(target)
+                        except OSError:
+                            pass
+
+                    # handle the file (either copy, move or remove it)
+                    targetFile = os.path.join(target,filename)
+                    self.log.debug("targetFile: " + str(targetFile))
+
+                try:
+                    if fileOperation == "copy":
+                        shutil.copyfile(sourceFile, targetFile)
+                        self.log.info( "Copying file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+                    elif fileOperation == "move":
+                        shutil.move(sourceFile, targetFile)
+                        self.log.info( "Moving file '" + str(filename) + "' from '" + str(source) + "' to '" + str(target) + "' (attempt " + str(iterationCount) + ")...success.")
+                    elif fileOperation == "remove":
+                        os.remove(sourceFile)
+                        self.log.info("Removing file '" + str(sourceFile) + "' (attempt " + str(iterationCount) + ")...success.")
+
+                    self.lastHandledFiles.append(filename)
+                    fileWasHandled = True
+                except Exception, e:
+                    self.log.debug ("Checking if file was already handled: " + str(filename))
+                    self.log.debug ("Error was: " + str(e))
+                    if filename in self.lastHandledFiles:
+                       self.log.info("File was found in history.")
+                       fileWasHandled = True
+                    else:
+                       self.log.info("File was not found in history.")
+
             except IOError:
                 self.log.debug ("IOError: " + str(filename))
             except Exception, e:
                 trace = traceback.format_exc()
-                warningMessage = "Unable to copy file {FILE}.".format(FILE=str(source) + str(filename))
+                warningMessage = "Unable to " + str(fileOperation) + " file {FILE}.".format(FILE=str(source) + str(filename))
                 self.log.debug(warningMessage)
                 self.log.debug("trace=" + str(trace))
                 self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
 
-        if not fileWasCopied:
-            self.log.info("Copying file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
-            raise Exception("maxAttemptsToCopyFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filename))
+        if not fileWasHandled:
+            if fileOperation == "copy":
+                self.log.info( "Copying file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            elif fileOperation == "move":
+                self.log.info( "Moving file '" + str(filename) + " from " + str(source) + " to " + str(target) + "' (attempt " + str(iterationCount) + ")...FAILED.")
+            elif fileOperation == "remove":
+                self.log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
 
-
-    def moveFile(self, source, filename, target):
-        maxAttemptsToMoveFile     = 2
-        waitTimeBetweenAttemptsInMs = 500
-
-
-        iterationCount = 0
-        fileWasMoved = False
-
-        while iterationCount <= maxAttemptsToMoveFile and not fileWasMoved:
-            iterationCount+=1
-            try:
-                # check if the directory exists before moving the file
-                if not os.path.exists(target):
-                    try:
-                        os.makedirs(target)
-                    except OSError:
-                        pass
-                # moving the file
-#                print 'paths:', source, target, os.sep, filename
-                sourceFile = source + os.sep + filename
-                targetFile = target + os.sep + filename
-#                targetFile = "/gpfs/current/scratch_bl/test" + os.sep + filename
-                self.log.debug("sourceFile: " + str(sourceFile))
-                self.log.debug("targetFile: " + str(targetFile))
-                try:
-		    shutil.move(sourceFile, targetFile)
-                    self.lastMovedFiles.append(filename)
-                    fileWasMoved = True
-                    self.log.info("Moving file '" + str(filename) + "' from '" + str(sourceFile) + "' to '" + str(targetFile) + "' (attempt " + str(iterationCount) + ")...success.")
-                except Exception, e:
-                    self.log.debug ("Checking if file was already moved: " + str(filename))
-                    self.log.debug ("Error was: " + str(e))
-                    if filename in self.lastMovedFiles:
-                       self.log.info("File was found in history.")
-                       fileWasMoved = True
-                    else: 
-                       self.log.info("File was not found in history.")
-
-            except Exception, e:
-                trace = traceback.format_exc()
-                warningMessage = "Unable to move file {FILE}.".format(FILE=str(sourceFile))
-                self.log.debug(warningMessage)
-                self.log.debug("trace=" + str(trace))
-                self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
-
-        if not fileWasMoved:
-            self.log.info("Moving file '" + str(filename) + " from " + str(sourceFile) + " to " + str(targetFile) + "' (attempt " + str(iterationCount) + ")...FAILED.")
-            raise Exception("maxAttemptsToMoveFile reached (value={ATTEMPT}). Unable to move file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filename))
-
-
-    def removeFile(self, filepath):
-        maxAttemptsToRemoveFile     = 2
-        waitTimeBetweenAttemptsInMs = 500
-
-
-        iterationCount = 0
-        self.log.debug("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...")
-        fileWasRemoved = False
-
-        while iterationCount <= maxAttemptsToRemoveFile and not fileWasRemoved:
-            iterationCount+=1
-            try:
-                os.remove(filepath)
-                fileWasRemoved = True
-                self.log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...success.")
-            except Exception, e:
-                trace = traceback.format_exc()
-                warningMessage = "Unable to remove file {FILE}.".format(FILE=str(filepath))
-                self.log.debug(warningMessage)
-                self.log.debug("trace=" + str(trace))
-                self.log.debug("will try again in {MS}ms.".format(MS=str(waitTimeBetweenAttemptsInMs)))
-
-        if not fileWasRemoved:
-            self.log.info("Removing file '" + str(filepath) + "' (attempt " + str(iterationCount) + ")...FAILED.")
-            raise Exception("maxAttemptsToRemoveFile reached (value={ATTEMPT}). Unable to remove file '{FILE}'.".format(ATTEMPT=str(iterationCount), FILE=filepath))
+            raise Exception("maxAttemptsToHandleFile reached " + str(iterationCount) + ". Unable to " + str(fileOperation) + " file '" + str(filename) + "'.")
 
 
     def stop(self):
         self.log.debug("Closing socket")
-        self.zmqCleanerSocket.close(0)
+        self.newJobSocket.close(0)
+        if self.lvComSocket:
+            self.lvComSocket.close(0)
         if not self.externalContext:
             self.log.debug("Destroying context")
-            self.zmqContextForCleaner.destroy()
+            self.contextForCleaner.destroy()

@@ -1,10 +1,19 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
 import time
 #from dectris import albula
 from PyQt4 import QtCore
 from PyQt4.QtCore import SIGNAL, QThread, QMutex
-import zmq
+
+API_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "APIs"
+
+if not API_PATH in sys.path:
+    sys.path.append ( API_PATH )
+del API_PATH
+
+from dataTransferAPI import dataTransfer
+
 
 class LiveView(QThread):
     FILETYPE_CBF = 0
@@ -21,10 +30,12 @@ class LiveView(QThread):
     subframe = None
     mutex = None
 
-    zmqIp = "haspp11eval01.desy.de"
-    zmqPort = "50021"
-    zmqContext = None
-    zmqSocket = None
+    zmqQuery      = None
+#    zmqSignalIp      = "haspp11eval01.desy.de"
+    zmqSignalIp   = "zitpcx19282.desy.de"
+#    zmqSignalIp   = "psana002.desy.de"
+    zmqDataPort   = "50022"
+
 
     def __init__(self, path=None, filetype=None, interval=None, parent=None):
         QThread.__init__(self, parent)
@@ -34,7 +45,10 @@ class LiveView(QThread):
             self.filetype = filetype
         if interval is not None:
             self.interval = interval
-        self.zmqContext, self.zmqSocket = createZmqSocket(self.zmqIp, self.zmqPort)
+
+        self.zmqQuery = dataTransfer( self.zmqSignalIp, self.zmqDataPort )
+        self.zmqQuery.initConnection("queryMetadata")
+
         self.mutex = QMutex()
 
 
@@ -47,6 +61,7 @@ class LiveView(QThread):
             self.interval = interval
         QThread.start(self)
 
+
     def stop(self, interval=0.0):
         if self.stoptimer < 0.0 and interval > 0.0:
             print "Live view thread: Stopping in %d seconds"%interval
@@ -57,8 +72,6 @@ class LiveView(QThread):
 
         self.wait() # waits until run stops on his own
 
-        # close ZeroMQ socket and destroy ZeroMQ context
-        stopZmq(self.zmqSocket, self.zmqContext)
 
 
     def run(self):
@@ -73,17 +86,11 @@ class LiveView(QThread):
                 self.mutex.lock()
 
                 # get latest file from reveiver
-                try:
-                    received_file = communicateWithReceiver(self.zmqSocket)
-                    print "===received_file", received_file
-                except zmq.error.ZMQError:
-                    received_file = None
-                    print "ZMQError"
-                    break
+                receivedFile = self.zmqQuery.getData()
 
                 # display image
 #                try:
-#                    self.subframe.loadFile(receiived_file)
+#                    self.subframe.loadFile(receivedFile)
                 # viewer or subframe has been closed by the user
 #                except:
 #                    self.mutex.unlock()
@@ -132,50 +139,7 @@ class LiveView(QThread):
             self.interval = interval
 
 
-def createZmqSocket(zmqIp, zmqPort):
-    context = zmq.Context()
-#    assert isinstance(context, zmq.sugar.context.Context)
-
-    socket = context.socket(zmq.REQ)
-    connectionStrSocket = "tcp://{ip}:{port}".format(ip=zmqIp, port=zmqPort)
-    socket.connect(connectionStrSocket)
-
-    return context, socket
-
-
-def communicateWithReceiver(socket):
-    print "Asking for next file"
-    socket.send ("NextFile")
-    #  Get the reply.
-    message = socket.recv()
-    print "Next file: ", message
-    return message
-
-
-def stopZmq(zmqSocket, zmqContext):
-    try:
-        print "closing zmqSocket..."
-        zmqSocket.close(linger=0)
-        print "closing zmqSocket...done."
-    except Exception as e:
-        print "closing zmqSocket...failed."
-        print e
-
-    try:
-        print"closing zmqContext..."
-        zmqContext.destroy()
-        "closing zmqContext...done."
-    except Exception as e:
-        print "closing zmqContext...failed."
-        print e
-
-
-
 if __name__ == '__main__':
-
-    import sys
-
-    from threading import Thread
 
     lv = LiveView()
 
