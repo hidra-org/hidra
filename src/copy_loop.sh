@@ -1,6 +1,7 @@
 #/bin/sh
 
 SOURCE=/space/projects/live-viewer
+#SOURCE=/home/kuhnm/Arbeit/live-viewer
 #SOURCE=/home/p11user/live-viewer
 
 TARGET=${SOURCE}/data/source/local

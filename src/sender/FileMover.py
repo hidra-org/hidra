@@ -47,7 +47,7 @@ class FileMover():
     routerSocket        = None
 
     useDataStream       = False     # boolian to inform if the data should be send to the data stream pipe (to the storage system)
-    openStreams         = []        # list of all open hosts and ports to which a data stream is opened
+    openConnections     = dict()    # list of all open hosts and ports to which a data stream is opened
 #    useLiveViewer       = False     # boolian to inform if the receiver for the live viewer is running
 
     # to get the logging only handling this class
@@ -80,6 +80,7 @@ class FileMover():
         self.ondaPorts           = ondaPorts
 
         self.useDataStream       = useDataStream
+        self.openConnections     = { "streams" : [], "queryNewest" : [] }
 
         #remove .desy.de from hostnames
         self.receiverWhiteList = []
@@ -220,47 +221,67 @@ class FileMover():
                     if helperScript.checkSignal(signalHostname, self.receiverWhiteList, self.receiverComSocket, self.log):
                         self.log.debug("Host " + str(signalHostname) + " is allowed to connect.")
                     else:
-                        log.debug("Host " + str(signalHostname) + " is not allowed to connect.")
+                        self.log.debug("Host " + str(signalHostname) + " is not allowed to connect.")
                         self.sendResponse("NO_VALID_HOST")
                         continue
 
                     # Checking signal
                     if signal == "START_LIVE_VIEWER":
                         self.log.info("Received signal to start stream to host " + str(signalHostname) + " on port " + str(port))
-                        if [signalHostname, port] not in self.openStreams:
-                            self.openStreams.append([signalHostname,port])
+                        if [signalHostname, port] not in self.openConnections["streams"]:
+                            self.openConnections["streams"].append([signalHostname,port])
                             # send signal to workerProcesses and back to receiver
                             self.sendSignalToWorker(incomingMessage)
                             self.sendResponse(incomingMessage)
                         else:
-                            responseSignal = "STREAM_ALREADY_OPEN"
+                            responseSignal = "CONNECTION_ALREADY_OPEN"
                             self.log.info("Stream to host " + str(signalHostname) + " on port " + str(port) + " is already started")
                             self.sendResponse(responseSignal)
                         continue
+
                     elif signal == "STOP_LIVE_VIEWER":
                         self.log.info("Received signal to stop stream to host " + str(signalHostname) + " on port " + str(port))
-                        if [signalHostname, port] in self.openStreams:
-                            self.openStreams.remove([signalHostname, port])
+                        if [signalHostname, port] in self.openConnections["streams"]:
+                            self.openConnections["streams"].remove([signalHostname, port])
                             # send signal to workerProcesses and back to receiver
                             self.sendSignalToWorker(incomingMessage)
                             self.sendResponse(signal)
                         else:
-                            responseSignal = "NO_OPEN_STREAM_FOUND"
+                            responseSignal = "NO_OPEN_CONNECTION_FOUND"
                             self.log.info("No stream to close was found for host " + str(signalHostname) + " on port " + str(port))
                             self.sendResponse(responseSignal)
                         continue
+
                     elif signal == "START_QUERY_NEWEST" or signal == "START_REALTIME_ANALYSIS":
-                        self.log.info("Received realtime analysis start signal from host " + str(signalHostname) + "...starting realtime analysis")
-                        # send signal to workerProcesses and back to receiver
-                        self.sendSignalToWorker(incomingMessage)
-                        self.sendResponse(signal)
+                        self.log.info("Received signal from host " + str(signalHostname) + " to enable querying for data")
+                        if [signalHostname, port] not in self.openConnections["queryNewest"]:
+                            self.openConnections["queryNewest"].append([signalHostname, port])
+                            # send signal to workerProcesses and back to receiver
+                            self.sendSignalToWorker(incomingMessage)
+                            self.sendResponse(signal)
+                        else:
+                            responseSignal = "CONNECTION_ALREADY_OPEN"
+                            self.log.info("Query connection to host " + str(signalHostname) + " on port " + str(port) + " is already started")
+                            # send signal back to receiver
+                            self.sendResponse(responseSignal)
                         continue
+
                     elif signal == "STOP_QUERY_NEWEST" or signal == "STOP_REALTIME_ANALYSIS":
-                        self.log.info("Received realtime analysis stop signal from host " + str(signalHostname) + "...stopping realtime analysis")
-                        # send signal to workerProcesses and back to receiver
-                        self.sendSignalToWorker(incomingMessage)
-                        self.sendResponse(signal)
+                        self.log.info("Received signal from host " + str(signalHostname) + " to disable querying for data")
+                        if [signalHostname, port] in self.openConnections["queryNewest"]:
+                            self.openConnections["queryNewest"].remove([signalHostname, port])
+                            # send signal to workerProcesses and back to receiver
+                            self.sendSignalToWorker(incomingMessage)
+                            self.log.debug("Send signal to worker: " + str(signal))
+                            self.sendResponse(signal)
+                            self.log.debug("Send response back: " + str(signal))
+                        else:
+                            responseSignal = "NO_OPEN_CONNECTION_FOUND"
+                            self.log.info("No query connection to close was found for host " + str(signalHostname) + " on port " + str(port))
+                            # send signal back to receiver
+                            self.sendResponse(responseSignal)
                         continue
+
                     else:
                         self.log.info("Received signal from host " + str(signalHostname) + " unkown: " + str(signal))
                         self.sendResponse("NO_VALID_SIGNAL")

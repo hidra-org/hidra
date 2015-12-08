@@ -26,7 +26,8 @@ from dataTransferAPI import dataTransfer
 #helperScript.initLogging(logfileFullPath, True, "DEBUG")
 
 
-signalIp   = "zitpcx19282.desy.de"
+#signalIp   = "zitpcx19282.desy.de"
+signalIp   = "localhost"
 dataPort   = "50010"
 
 print

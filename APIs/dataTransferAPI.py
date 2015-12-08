@@ -158,7 +158,7 @@ class dataTransfer():
                     # An additional socket is needed to establish the data retriving mechanism
                     connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
                     try:
-                        self.dataSocket.connect(connectionStr)
+                        self.dataSocket.bind(connectionStr)
                         self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
                     except Exception as e:
                         self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
@@ -227,8 +227,9 @@ class dataTransfer():
     def __sendSignal(self, signal):
 
         # Send the signal that the communication infrastructure should be established
-        self.log.info("Sending Start Signal")
+        self.log.info("Sending Signal")
         sendMessage = str(signal) + "," + str(self.hostname) + "," + str(self.dataPort)
+        self.log.debug("Signal: " + sendMessage)
         try:
             self.signalSocket.send(sendMessage)
         except Exception as e:
@@ -262,6 +263,7 @@ class dataTransfer():
                 raise
 
         return message
+
 
     ##
     #
@@ -370,17 +372,8 @@ class dataTransfer():
             elif self.queryMetadataStarted:
                 signal = "STOP_DISPLAYER"
 
-            self.log.info("Sending Stop Signal")
-            sendMessage = str(signal) + "," + str(self.hostname) + "," + str(self.dataPort)
-            self.log.debug("Stop signal: " + sendMessage)
-            try:
-                self.signalSocket.send (sendMessage)
-                #  Get the reply.
-                message = self.signalSocket.recv()
-                self.log.info("Recieved signal: " + message)
-            except Exception as e:
-                self.log.info("Could not communicate")
-                self.log.info("Error was: " + str(e))
+            message = self.__sendSignal(signal)
+            #TODO need to check correctness of signal?
 
         try:
             if self.signalSocket:

@@ -82,6 +82,7 @@ class LiveViewCommunicator:
             trace = traceback.format_exc()
             self.log.error("Unkown error state. Shutting down...")
             self.log.debug("Error was: " + str(e))
+            self.log.debug("Trace was: " + str(trace))
         finally:
             self.stop()
 
@@ -156,7 +157,16 @@ class LiveViewCommunicator:
             if self.liveViewerComSocket in socks and socks[self.liveViewerComSocket] == zmq.POLLIN:
                 message = self.liveViewerComSocket.recv()
 
-                signal, signalHostname, port = helperScript.checkSignal(message, self.liveViewerWhiteList, self.liveViewerComSocket, self.log)
+                signal, signalHostname, port = helperScript.extractSignal(message, self.log)
+
+                # Checking signal sending host
+                self.log.debug("Check if signal sending host is in WhiteList...")
+                if helperScript.checkSignal(signalHostname, self.liveViewerWhiteList, self.liveViewerComSocket, self.log):
+                    self.log.debug("Host " + str(signalHostname) + " is allowed to connect.")
+                else:
+                    self.log.debug("Host " + str(signalHostname) + " is not allowed to connect.")
+                    self.sendResponse("NO_VALID_HOST")
+                    continue
 
                 if signal == "START_DISPLAYER":
                     if self.liveViewerDataSocket:
