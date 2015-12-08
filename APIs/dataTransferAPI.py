@@ -22,7 +22,7 @@ class dataTransfer():
 
     log             = None
 
-    supportedConnections = ["priorityStream", "stream", "queryNewest", "queryMetadata"]
+    supportedConnections = ["priorityStream", "stream", "queryNewest", "OnDA", "queryMetadata"]
 
     signalPort_MetadataOnly = "50021"
     signalPort_data         = "50000"
@@ -30,6 +30,7 @@ class dataTransfer():
     prioStreamStarted    = False
     streamStarted        = False
     queryNewestStarted   = False
+    ondaStarted          = False
     queryMetadataStarted = False
 
     socketResponseTimeout = None
@@ -89,7 +90,7 @@ class dataTransfer():
         if connectionType not in self.supportedConnections:
             raise Exception("Chosen type of connection is not supported.")
 
-        alreadyConnected = self.streamStarted or self.queryNewestStarted or self.queryMetadataStarted or self.prioStreamStarted
+        alreadyConnected = self.streamStarted or self.queryNewestStarted or self.ondaStarted or self.queryMetadataStarted or self.prioStreamStarted
 
         signal = None
         if connectionType == "priorityStream" and not alreadyConnected:
@@ -113,6 +114,9 @@ class dataTransfer():
                 signalPort = self.signalPort_data
                 signal     = "START_LIVE_VIEWER"
             elif connectionType == "queryNewest" and not alreadyConnected:
+                signalPort = self.signalPort_data
+                signal     = "START_QUERY_NEWEST"
+            elif connectionType == "OnDA" and not alreadyConnected:
                 signalPort = self.signalPort_data
                 signal     = "START_REALTIME_ANALYSIS"
             elif connectionType == "queryMetadata" and not alreadyConnected:
@@ -161,6 +165,20 @@ class dataTransfer():
                         self.log.debug("Error was:" + str(e))
 
                     self.queryNewestStarted = True
+
+                elif connectionType == "OnDA":
+
+                    self.dataSocket = self.context.socket(zmq.REQ)
+                    # An additional socket is needed to establish the data retriving mechanism
+                    connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
+                    try:
+                        self.dataSocket.connect(connectionStr)
+                        self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
+                    except Exception as e:
+                        self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+                        self.log.debug("Error was:" + str(e))
+
+                    self.ondaStarted = True
 
                 elif connectionType == "queryMetadata":
 
@@ -274,7 +292,7 @@ class dataTransfer():
                 self.log.debug("Error was: " + str(e))
                 return None
 
-        elif self.queryNewestStarted or self.queryMetadataStarted:
+        elif self.queryNewestStarted or self.ondaStarted or self.queryMetadataStarted:
 
             sendMessage = "NEXT_FILE"
             self.log.info("Asking for next file with message " + str(sendMessage))
@@ -287,7 +305,7 @@ class dataTransfer():
 
             try:
                 #  Get the reply.
-                if self.queryNewestStarted:
+                if self.queryNewestStarted or self.ondaStarted:
                     message = self.dataSocket.recv_multipart()
                 else:
                     message = self.dataSocket.recv()
@@ -346,12 +364,15 @@ class dataTransfer():
             if self.streamStarted:
                 signal = "STOP_LIVE_VIEWER"
             elif self.queryNewestStarted:
+                signal = "STOP_QUERY_NEWEST"
+            elif self.ondaStarted:
                 signal = "STOP_REALTIME_ANALYSIS"
             elif self.queryMetadataStarted:
                 signal = "STOP_DISPLAYER"
 
             self.log.info("Sending Stop Signal")
             sendMessage = str(signal) + "," + str(self.hostname) + "," + str(self.dataPort)
+            self.log.debug("Stop signal: " + sendMessage)
             try:
                 self.signalSocket.send (sendMessage)
                 #  Get the reply.

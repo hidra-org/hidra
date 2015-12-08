@@ -4,9 +4,19 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Marco Strutz <marco.strutz@
 
 import zmq
 import os
+import sys
 import logging
 import traceback
 import json
+
+#path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
+
+if not SHARED_PATH in sys.path:
+    sys.path.append ( SHARED_PATH )
+del SHARED_PATH
+
+import helperScript
 
 #
 #  --------------------------  class: WorkerProcess  --------------------------------------
@@ -32,7 +42,7 @@ class WorkerProcess():
     ondaComSocket        = None
 
     useDataStream        = False        # boolian to inform if the data should be send to the data stream pipe (to the storage system)
-    useLiveViewer        = False        # boolian to inform if the receiver for the live viewer is running
+    openConnections      = None         # list of all open hosts and ports to which a data stream is opened
     useRealTimeAnalysis  = False        # boolian to inform if the receiver for realtime-analysis is running
 
     requestFromOnda      = False
@@ -52,6 +62,11 @@ class WorkerProcess():
         self.ondaPort             = ondaPort
 
         self.useDataStream        = useDataStream
+
+        self.openConnections = {
+                "streams"     : [] ,
+                "queryNewest" : []
+                }
 
         if context:
             self.zmqContextForWorker = context
@@ -157,6 +172,7 @@ class WorkerProcess():
             # Get workload from router, until finished
             self.log.debug("worker-"+str(self.id)+": waiting for new job")
             workload = self.routerSocket.recv()
+            print "workload", workload
             self.log.debug("worker-"+str(self.id)+": new job received")
 
             finished = workload == b"END"
@@ -166,81 +182,15 @@ class WorkerProcess():
                 break
             jobCount += 1
 
-            # the live viewer is turned on
-            startLV= workload.startswith("START_LIVE_VIEWER")
-#            startLV = workload == b"START_LIVE_VIEWER"
-            if startLV:
-                self.log.info("worker-"+str(self.id)+": Received live viewer start command...")
-                self.useLiveViewer = True
 
-                try:
-                    workloadSplit       = workload.split(',')
-                    self.liveViewerIp   = workloadSplit[1]
-                    self.liveViewerPort = workloadSplit[2]
-                except Exception as e:
-                    self.log.error("Could not encode command:" + worload + " ... live viewer not started")
-                    self.log.debug("Error was:" + str(e))
-                    continue
-
-                # create the socket to send data to the live viewer
-                self.liveViewerSocket = self.zmqContextForWorker.socket(zmq.PUSH)
-                connectionStr         = "tcp://{ip}:{port}".format(ip=self.liveViewerIp, port=self.liveViewerPort)
-                try:
-                    self.liveViewerSocket.connect(connectionStr)
-                    self.log.info("liveViewerSocket started (connect) for '" + connectionStr + "'")
-                except:
-                    self.log.info("liveViewerSocket could not be started for '" + connectionStr + "'")
-
+            # after the signal processing
+            if self.checkForSignals(workload):
                 continue
 
-            # the live viewer is turned off
-            stopLV = workload == b"STOP_LIVE_VIEWER"
-            if stopLV:
-                self.log.info("worker-"+str(self.id)+": Received live viewer stop command...")
-                self.useLiveViewer = False
 
-                # close the socket to send data to the live viewer
-                if self.liveViewerSocket:
-                    self.liveViewerSocket.close(0)
-                    self.log.info("liveViewerSocket closed")
-                continue
-
-            # the realtime-analysis is turned on
-            startRTA = workload == b"START_REALTIME_ANALYSIS"
-            if startRTA:
-                self.log.info("worker-"+str(self.id)+": Received realtime-analysis start command...")
-                self.useRealTimeAnalysis = True
-
-                # close the socket to send data to the realtime analysis
-                if self.ondaComSocket:
-                    self.ondaComSocket.close(0)
-                    #TODO unbind?
-                    self.ondaComSocket = None
-                    self.log.debug("ondaComSocket refreshed")
-
-                # create the socket to send data to the realtime analysis
-                self.ondaComSocket    = self.zmqContextForWorker.socket(zmq.REP)
-                connectionStr         = "tcp://{ip}:{port}".format(ip=self.ondaIp, port=self.ondaPort)
-                self.ondaComSocket.bind(connectionStr)
-                self.log.info("ondaSocket started (bind) for '" + connectionStr + "'")
-
-                self.poller.register(self.ondaComSocket, zmq.POLLIN)
-                continue
-
-            # the realtime-analysis is turned off
-            stopRTA = workload == b"STOP_REALTIME_ANALYSIS"
-            if stopRTA:
-                self.log.info("worker-"+str(self.id)+": Received realtime-analysis stop command...stopping realtime analysis")
-                self.useRealTimeAnalysis = False
-
-                # close the socket to send data to the realtime analysis
-                if self.ondaComSocket:
-                    self.ondaComSocket.close(0)
-                    self.log.info("ondaComSocket closed")
-                continue
 
             # get metadata of the file
-            if self.useDataStream or self.useLiveViewer or self.useRealTimeAnalysis:
+            if self.useDataStream or self.openConnections["streams"] or self.openConnections["queryNewest"] or self.useRealTimeAnalysis:
                 try:
                     self.log.debug("building MetadataDict")
                     sourcePathFull, metadataDict = self.buildMetadataDict(workload)
@@ -262,11 +212,11 @@ class WorkerProcess():
             # dict with all sockets to send data to (additionally to the dataStreamSocket)
             socketListToSendData = dict()
 
-            if self.useLiveViewer:
+            if self.openConnections["streams"]:
                 #passing file to data-messagPipe
                 try:
                     self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
-                    socketListToSendData["liveViewer"] = self.liveViewerSocket
+                    socketListToSendData["liveViewer"] = self.openConnections["streams"][0]["socket"] #TODO
                     self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...success.")
                 except Exception as e:
                     self.log.error("Unable to pass new file to data-messagePipe.")
@@ -331,6 +281,126 @@ class WorkerProcess():
                 # can be used to verify files which have been processed twice or more
             except Exception, e:
                 self.log.error("Unable to notify Cleaner-pipe to handle file: " + str(workload))
+
+
+    def checkForSignals(self, workload):
+
+        signal, host, port = helperScript.extractSignal(workload, self.log)
+
+        # a data stream is turned on
+        if signal == "START_LIVE_VIEWER":
+            self.log.info("worker-"+str(self.id)+": Received signal to start data stream...")
+
+            # parent process has already checked for streams on this host and port: there is none running
+            # create the socket to send data to the live viewer
+            socket        = self.zmqContextForWorker.socket(zmq.PUSH)
+            connectionStr = "tcp://" + str(host) + ":" + str(port)
+            try:
+                socket.connect(connectionStr)
+                self.log.info("liveViewerSocket started (connect) for '" + connectionStr + "'")
+
+                self.openConnections["streams"].append({
+                            "host"   : host,
+                            "port"   : port,
+                            "socket" : socket
+                            })
+            except:
+                self.log.info("liveViewerSocket could not be started for '" + connectionStr + "'")
+
+            return True
+
+        # a data stream is turned off
+        elif signal == "STOP_LIVE_VIEWER":
+            self.log.info("worker-"+str(self.id)+": Received signal to stop data stream...")
+
+            # parent process has already checked for streams on this host and port: there is one running
+            # close the socket to send data to the live viewer
+            for i in range(len(self.openConnections["streams"])):
+                connection = self.openConnections["streams"][i]
+
+                if connection["host"] == host and connection["port"] == port:
+                    connection["socket"].close(0)
+                    self.openConnections["streams"].pop(i)
+                    self.log.info("liveViewerSocket closed")
+                    break
+
+            return True
+
+        # the realtime-analysis is turned on
+        elif signal == "START_QUERY_NEWEST":
+            self.log.info("worker-"+str(self.id)+": Received signal to start a query for the newest file...")
+
+            # create the socket to send data to the realtime analysis
+            socket        = self.zmqContextForWorker.socket(zmq.REP)
+            connectionStr = "tcp://" + str(host) + ":" + str(port)
+            try:
+                socket.connect(connectionStr)
+                self.log.info("queryNewestSocket started (connect) for '" + connectionStr + "'")
+
+                self.poller.register(socket, zmq.POLLIN)
+
+                self.openConnections["queryNewest"].append({
+                            "host"   : host,
+                            "port"   : port,
+                            "socket" : socket
+                            })
+            except:
+                self.log.info("queryNewestSocket could not be started for '" + connectionStr + "'")
+
+            return True
+
+        # the realtime-analysis is turned off
+        elif signal == "STOP_QUERY_NEWEST":
+            self.log.info("worker-"+str(self.id)+": Received signal to stop to query for newest file...")
+
+            # parent process has already checked for streams on this host and port: there is one running
+            # close the socket to send data to the realtime analysis
+            for i in range(len(self.openConnections["queryNewest"])):
+                connection = self.openConnections["queryNewest"][i]
+
+                if connection["host"] == host and connection["port"] == port:
+                    connection["socket"].close(0)
+                    self.openConnections["queryNewest"].pop(i)
+                    self.log.info("queryNewestSocket closed")
+                    break
+
+            return True
+
+        # the realtime-analysis is turned on
+        elif signal == "START_REALTIME_ANALYSIS":
+            self.log.info("worker-"+str(self.id)+": Received realtime-analysis start command...")
+            self.useRealTimeAnalysis = True
+
+            # close the socket to send data to the realtime analysis
+            if self.ondaComSocket:
+                self.ondaComSocket.close(0)
+                #TODO unbind?
+                self.ondaComSocket = None
+                self.log.debug("ondaComSocket refreshed")
+
+            # create the socket to send data to the realtime analysis
+            self.ondaComSocket    = self.zmqContextForWorker.socket(zmq.REP)
+            connectionStr         = "tcp://{ip}:{port}".format(ip=self.ondaIp, port=self.ondaPort)
+            self.ondaComSocket.bind(connectionStr)
+            self.log.info("ondaSocket started (bind) for '" + connectionStr + "'")
+
+            self.poller.register(self.ondaComSocket, zmq.POLLIN)
+
+            return True
+
+        # the realtime-analysis is turned off
+        elif signal == "STOP_REALTIME_ANALYSIS":
+            self.log.info("worker-"+str(self.id)+": Received realtime-analysis stop command...stopping realtime analysis")
+            self.useRealTimeAnalysis = False
+
+            # close the socket to send data to the realtime analysis
+            if self.ondaComSocket:
+                self.ondaComSocket.close(0)
+                self.log.info("ondaComSocket closed")
+
+            return True
+
+        return False
 
 
     def buildMetadataDict(self, workload, reduced = False):

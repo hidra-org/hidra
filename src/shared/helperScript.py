@@ -199,36 +199,38 @@ def checkLogFileWritable(filepath, filename):
         sys.exit(1)
 
 
-def checkSignal(message, whiteList, socket, log):
-
+def extractSignal(message, log):
     try:
-        messageSplit    = message.split(',')
-        signal          = messageSplit[0]
-        signalHostname  = messageSplit[1]
-        if len(messageSplit) > 2:
-            liveViewerPort = messageSplit[2]
-        else:
-            liveViewerPort = None
+        messageSplit = message.split(',')
     except Exception as e:
-        log.info("Received live viewer signal from host " + str(signalHostname) + " is of the wrong format")
-        socket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
-        return None, None, liveViewerPort
+        log.info("Received signal is of the wrong format")
+        log.debug("Received signal: " + str(message))
+        return None, None, None
 
-    if signalHostname.endswith(".desy.de"):
-        signalHostnameModified = signalHostname[:-8]
+    if len(messageSplit) < 3:
+        log.info("Received signal is of the wrong format")
+        log.debug("Received signal is too long: " + str(message))
+        return None, None, None
+
+    signal   = messageSplit[0]
+    hostname = messageSplit[1]
+    port     = messageSplit[2]
+
+    return signal, hostname, port
+
+
+def checkSignal(hostname, whiteList, socket, log):
+
+    if hostname.endswith(".desy.de"):
+        hostnameModified = hostname[:-8]
     else:
-        signalHostnameModified = signalHostname
+        hostnameModified = hostname
 
-    log.debug("Check if signal sending host is in WhiteList...")
-    if signalHostname in whiteList or signalHostnameModified in whiteList:
-        log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
+    if hostname in whiteList or hostnameModified in whiteList:
+        return True
     else:
-        log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
-        log.info("Signal from host " + str(signalHostname) + " is discarded.")
-        socket.send("NO_VALID_HOST", zmq.NOBLOCK)
-        return None, None
+        return False
 
-    return signal, signalHostname, liveViewerPort
 
 
 
