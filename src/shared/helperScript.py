@@ -259,13 +259,14 @@ def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
 
     #log info to stdout, display messages with different format than the file output
     if onScreenLogLevel:
-        if onScreenLogLevel in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+        onScreenLogLevelLower = onScreenLogLevel.lower()
+        if onScreenLogLevelLower in ["debug", "info", "warning", "error", "critical"]:
 
             console = logging.StreamHandler()
             screenHandlerFormat = logging.Formatter(datefmt = "%Y-%m-%d_%H:%M:%S",
                                                     fmt     = "[%(asctime)s] > %(message)s")
 
-            if onScreenLogLevel == "DEBUG":
+            if onScreenLogLevelLower == "debug":
                 screenLoggingLevel = logging.DEBUG
                 console.setLevel(screenLoggingLevel)
 
@@ -274,16 +275,16 @@ def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
 
                 if not verbose:
                     logging.error("Logging on Screen: Option DEBUG in only active when using verbose option as well (Fallback to INFO).")
-            elif onScreenLogLevel == "INFO":
+            elif onScreenLogLevelLower == "info":
                 screenLoggingLevel = logging.INFO
                 console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevel == "WARNING":
+            elif onScreenLogLevelLower == "warning":
                 screenLoggingLevel = logging.WARNING
                 console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevel == "ERROR":
+            elif onScreenLogLevelLower == "error":
                 screenLoggingLevel = logging.ERROR
                 console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevel == "CRITICAL":
+            elif onScreenLogLevelLower == "critical":
                 screenLoggingLevel = logging.CRITICAL
                 console.setLevel(screenLoggingLevel)
 
