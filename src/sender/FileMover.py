@@ -255,7 +255,7 @@ class FileMover():
                         self.sendSignalToWorker(incomingMessage)
                         self.sendResponse(signal)
                         continue
-                    elif signal == "START_QUERY_NEWEST" or signal == "STOP_REALTIME_ANALYSIS":
+                    elif signal == "STOP_QUERY_NEWEST" or signal == "STOP_REALTIME_ANALYSIS":
                         self.log.info("Received realtime analysis stop signal from host " + str(signalHostname) + "...stopping realtime analysis")
                         # send signal to workerProcesses and back to receiver
                         self.sendSignalToWorker(incomingMessage)

@@ -172,7 +172,6 @@ class WorkerProcess():
             # Get workload from router, until finished
             self.log.debug("worker-"+str(self.id)+": waiting for new job")
             workload = self.routerSocket.recv()
-            print "workload", workload
             self.log.debug("worker-"+str(self.id)+": new job received")
 
             finished = workload == b"END"
@@ -213,22 +212,28 @@ class WorkerProcess():
             socketListToSendData = dict()
 
             if self.openConnections["streams"]:
-                #passing file to data-messagPipe
-                try:
-                    self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...")
-                    socketListToSendData["liveViewer"] = self.openConnections["streams"][0]["socket"] #TODO
-                    self.log.debug("worker-" + str(self.id) + ": passing new file to data-messagePipe...success.")
-                except Exception as e:
-                    self.log.error("Unable to pass new file to data-messagePipe.")
-                    self.log.error("Error was: " + str(e))
-                    self.log.debug("worker-"+str(id) + ": passing new file to data-messagePipe...failed.")
-                    #skip all further instructions and continue with next iteration
-#                    continue
+                socketListToSendData["liveViewer"] = self.openConnections["streams"][0]["socket"] #TODO
+                self.log.debug("worker-" + str(self.id) + ": Add socket from host " + str(self.openConnections["streams"][0]["host"])
+                        + " on port " + str(self.openConnections["streams"][0]["port"]) + " to sockets to send data to.")
 
-            if self.useRealTimeAnalysis:
+            if self.useRealTimeAnalysis or self.openConnections["queryNewest"]:
                 socks = dict(self.poller.poll(0))
 
-                if self.ondaComSocket in socks and socks[self.ondaComSocket] == zmq.POLLIN:
+                queryCandidate = self.openConnections["queryNewest"][0]
+
+                if queryCandidate["socket"] in socks and socks[queryCandidate["socket"]] == zmq.POLLIN:
+
+                    request = queryCandidate["socket"].recv()
+                    self.log.debug("worker-"+str(self.id)+": received new request for newest File from "
+                            + str(queryCandidate["host"]) + " on port " + str(queryCandidate["port"]))
+
+                    if request == b"NEXT_FILE":
+                        queryCandidate["request"] = True
+                        self.log.debug("worker-" + str(self.id) + ": mark socket as requested...")
+                        #skip all further instructions and continue with next iteration
+#                        continue
+
+                elif self.ondaComSocket in socks and socks[self.ondaComSocket] == zmq.POLLIN:
                     ondaWorkload = self.ondaComSocket.recv()
                     self.log.debug("worker-"+str(self.id)+": received new request from onda")
                     request = ondaWorkload == b"NEXT_FILE"
@@ -245,6 +250,7 @@ class WorkerProcess():
                             self.log.debug("worker-"+str(self.id) + ": passing new file to data-messagePipe...failed.")
                             #skip all further instructions and continue with next iteration
 #                            continue
+
                 elif self.requestFromOnda:
                     #passing file to data-messagPipe
                     try:
@@ -340,9 +346,10 @@ class WorkerProcess():
                 self.poller.register(socket, zmq.POLLIN)
 
                 self.openConnections["queryNewest"].append({
-                            "host"   : host,
-                            "port"   : port,
-                            "socket" : socket
+                            "host"    : host,
+                            "port"    : port,
+                            "socket"  : socket,
+                            "request" : False
                             })
             except:
                 self.log.info("queryNewestSocket could not be started for '" + connectionStr + "'")
