@@ -30,22 +30,15 @@ class WorkerProcess():
     zmqMessageChunkSize  = None
     cleanerIp            = None         # responsable to delete/move files
     cleanerPort          = None         # responsable to delete/move files
-    liveViewerIp         = None
-    liveViewerPort       = None
     ondaIp               = None
     ondaPort             = None
 
     routerSocket         = None
     cleanerSocket        = None
     dataStreamSocket     = None
-    liveViewerSocket     = None
-    ondaComSocket        = None
+    openConnections      = None         # dict with informations of all open sockets to which a data stream is opened (host, port,...)
 
     useDataStream        = False        # boolian to inform if the data should be send to the data stream pipe (to the storage system)
-    openConnections      = None         # list of all open hosts and ports to which a data stream is opened
-    useRealTimeAnalysis  = False        # boolian to inform if the receiver for realtime-analysis is running
-
-    requestFromOnda      = False
 
     # to get the logging only handling this class
     log                  = None
@@ -129,7 +122,7 @@ class WorkerProcess():
         # Poller to get either messages from the watcher or communication messages to stop sending data to the live viewer
         self.poller = zmq.Poller()
         #TODO do I need to register the routerSocket in here?
-        self.poller.register(self.routerSocket, zmq.POLLIN)
+#        self.poller.register(self.routerSocket, zmq.POLLIN)
 
 
     def getLogger(self):
@@ -190,7 +183,7 @@ class WorkerProcess():
 
 
             # get metadata of the file
-            if self.useDataStream or self.openConnections["streams"] or self.openConnections["queryNewest"] or self.useRealTimeAnalysis:
+            if self.useDataStream or self.openConnections["streams"] or self.openConnections["queryNewest"] or self.openConnections["OnDA"]:
                 try:
                     self.log.debug("building MetadataDict")
                     sourcePathFull, metadataDict = self.buildMetadataDict(workload)
@@ -209,39 +202,36 @@ class WorkerProcess():
                     #skip all further instructions and continue with next iteration
                     continue
 
-            if self.useRealTimeAnalysis or self.openConnections["queryNewest"]:
+
+            if self.openConnections["OnDA"] or self.openConnections["queryNewest"]:
                 socks = dict(self.poller.poll(0))
 
                 if self.openConnections["queryNewest"]:
-                    queryCandidate = self.openConnections["queryNewest"][0]
+                    for connection in self.openConnections["queryNewest"]:
 
-                    if queryCandidate["socket"] in socks and socks[queryCandidate["socket"]] == zmq.POLLIN:
+                        if connection["socket"] in socks and socks[connection["socket"]] == zmq.POLLIN:
 
-                        request = queryCandidate["socket"].recv()
-                        self.log.debug("worker-"+str(self.id)+": received new request for newest File from "
-                                + str(queryCandidate["host"]) + " on port " + str(queryCandidate["port"]))
+                            request = connection["socket"].recv()
+                            self.log.debug("worker-"+str(self.id)+": received new request for newest File from "
+                                    + str(connection["host"]) + " on port " + str(connection["port"]))
 
-                        if request == b"NEXT_FILE":
-                            queryCandidate["request"] = True
-                            self.log.debug("worker-" + str(self.id) + ": mark socket as requested...")
-                            #skip all further instructions and continue with next iteration
-    #                        continue
+                            if request == b"NEXT_FILE":
+                                connection["request"] = True
+                                self.log.debug("worker-" + str(self.id) + ": mark socket as requested...")
 
                 if self.openConnections["OnDA"]:
-                    queryCandidate = self.openConnections["OnDA"]
+                    connection = self.openConnections["OnDA"]
 
-                    if queryCandidate["socket"] in socks and socks[queryCandidate["socket"]] == zmq.POLLIN:
+                    if connection["socket"] in socks and socks[connection["socket"]] == zmq.POLLIN:
 
-                        ondaWorkload = queryCandidate["socket"].recv()
+                        ondaWorkload = connection["socket"].recv()
                         self.log.debug("worker-"+str(self.id)+": received new request from onda")
 
                         request = ondaWorkload == b"NEXT_FILE"
                         if request:
-                            queryCandidate["request"] = True
-                            self.requestFromOnda = True
+                            connection["request"] = True
                             self.log.debug("worker-" + str(self.id) + ": mark ondaSocket as requested...")
-                            #skip all further instructions and continue with next iteration
-#                            continue
+
 
             if self.useDataStream or self.openConnections["streams"] or self.openConnections["queryNewest"] or self.openConnections["OnDA"]:
                 self.log.debug("passing file to dataStream")
@@ -281,7 +271,7 @@ class WorkerProcess():
             connectionStr = "tcp://" + str(host) + ":" + str(port)
             try:
                 socket.connect(connectionStr)
-                self.log.info("liveViewerSocket started (connect) for '" + connectionStr + "'")
+                self.log.info("streamSocket started (connect) for '" + connectionStr + "'")
 
                 self.openConnections["streams"].append({
                             "host"   : host,
@@ -289,7 +279,7 @@ class WorkerProcess():
                             "socket" : socket
                             })
             except:
-                self.log.info("liveViewerSocket could not be started for '" + connectionStr + "'")
+                self.log.info("streamSocket could not be started for '" + connectionStr + "'")
 
             return True
 
@@ -305,7 +295,7 @@ class WorkerProcess():
                 if connection["host"] == host and connection["port"] == port:
                     connection["socket"].close(0)
                     self.openConnections["streams"].pop(i)
-                    self.log.info("liveViewerSocket closed")
+                    self.log.info("streamSocket closed")
                     break
 
             return True
@@ -358,7 +348,6 @@ class WorkerProcess():
         # the realtime-analysis is turned on
         elif signal == "START_REALTIME_ANALYSIS":
             self.log.info("worker-"+str(self.id)+": Received realtime-analysis start command...")
-            self.useRealTimeAnalysis = True
 
             # close the socket to send data to the realtime analysis
             if self.openConnections["OnDA"] and self.openConnections["OnDA"]["socket"]:
@@ -390,12 +379,13 @@ class WorkerProcess():
         # the realtime-analysis is turned off
         elif signal == "STOP_REALTIME_ANALYSIS":
             self.log.info("worker-"+str(self.id)+": Received realtime-analysis stop command...stopping realtime analysis")
-            self.useRealTimeAnalysis = False
 
             # close the socket to send data to the realtime analysis
             if self.openConnections["OnDA"] and self.openConnections["OnDA"]["socket"]:
                 self.openConnections["OnDA"]["socket"].close(0)
                 self.log.info("ondaSocket closed")
+
+            self.openConnections["OnDA"] = {}
 
             return True
 
@@ -513,8 +503,8 @@ class WorkerProcess():
             raise Exception(e)
 
         request = False
-        for queryHost in self.openConnections["queryNewest"]:
-            if queryHost["request"]:
+        for connection in self.openConnections["queryNewest"]:
+            if connection["request"]:
                 request = True
 
         if self.openConnections["OnDA"] and self.openConnections["OnDA"]["request"]:
@@ -569,17 +559,17 @@ class WorkerProcess():
 
 
             # answer to query
-            for queryHost in self.openConnections["queryNewest"]:
-                if queryHost["request"]:
-                    queryHost["socket"].send_multipart(payloadAll, zmq.NOBLOCK)
-                    self.log.info("Sending message part from file " + str(sourceFilePathFull) + " to querying host")
-                    self.log.debug("Sending to host " + str(queryHost["host"]) + " on port " + str(queryHost["port"]))
-                    queryHost["request"] = False
+            for connection in self.openConnections["queryNewest"]:
+                if connection["request"]:
+                    connection["socket"].send_multipart(payloadAll, zmq.NOBLOCK)
+                    self.log.info("Sending file " + str(sourceFilePathFull) + " to querying host")
+                    self.log.debug("Sending to host " + str(connection["host"]) + " on port " + str(connection["port"]))
+                    connection["request"] = False
 
             # send data to onda
             if self.openConnections["OnDA"] and self.openConnections["OnDA"]["request"]:
                 self.openConnections["OnDA"]["socket"].send_multipart(payloadAll, zmq.NOBLOCK)
-                self.log.info("Sending from file " + str(sourceFilePathFull) + " to OnDA")
+                self.log.info("Sending file " + str(sourceFilePathFull) + " to OnDA")
                 self.openConnections["OnDA"]["request"] = False
 
             #close file
@@ -647,8 +637,6 @@ class WorkerProcess():
             connection["socket"].close(0)
         if self.openConnections["OnDA"]:
             self.openConnections["OnDA"]["socket"].close(0)
-        if self.liveViewerSocket:
-            self.liveViewerSocket.close(0)
         self.routerSocket.close(0)
         self.cleanerSocket.close(0)
         if not self.externalContext:
