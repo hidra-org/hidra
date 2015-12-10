@@ -209,7 +209,7 @@ def extractSignal(message, log):
 
     if len(messageSplit) < 3:
         log.info("Received signal is of the wrong format")
-        log.debug("Received signal is too long: " + str(message))
+        log.debug("Received signal is too short: " + str(message))
         return None, None, None
 
     signal   = messageSplit[0]
@@ -219,18 +219,19 @@ def extractSignal(message, log):
     return signal, hostname, port
 
 
-def checkSignal(hostname, whiteList, socket, log):
+def checkSignal(hostname, whiteList ):
 
-    if hostname.endswith(".desy.de"):
-        hostnameModified = hostname[:-8]
-    else:
-        hostnameModified = hostname
+    if hostname and whiteList:
 
-    if hostname in whiteList or hostnameModified in whiteList:
-        return True
-    else:
-        return False
+        if hostname.endswith(".desy.de"):
+            hostnameModified = hostname[:-8]
+        else:
+            hostnameModified = hostname
 
+        if hostname in whiteList or hostnameModified in whiteList:
+            return True
+
+    return False
 
 
 

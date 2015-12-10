@@ -36,7 +36,7 @@ print
 
 query = dataTransfer( signalIp, dataPort )
 
-query.initConnection("queryNewest")
+query.start("queryNewest")
 
 while True:
 #for i in range(5):

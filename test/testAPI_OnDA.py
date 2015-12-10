@@ -36,7 +36,7 @@ print
 
 query = dataTransfer( signalIp, dataPort )
 
-query.initConnection("OnDA")
+query.start("OnDA")
 
 while True:
     try:

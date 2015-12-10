@@ -36,7 +36,7 @@ print
 
 query = dataTransfer( signalIp, dataPort )
 
-query.initConnection("priorityStream")
+query.start("priorityStream")
 
 while True:
 #for i in range(5):

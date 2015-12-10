@@ -161,7 +161,7 @@ class LiveViewCommunicator:
 
                 # Checking signal sending host
                 self.log.debug("Check if signal sending host is in WhiteList...")
-                if helperScript.checkSignal(signalHostname, self.liveViewerWhiteList, self.liveViewerComSocket, self.log):
+                if helperScript.checkSignal(signalHostname, self.liveViewerWhiteList):
                     self.log.debug("Host " + str(signalHostname) + " is allowed to connect.")
                 else:
                     self.log.debug("Host " + str(signalHostname) + " is not allowed to connect.")

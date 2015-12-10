@@ -1,6 +1,5 @@
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Marco Strutz <marco.strutz@desy.de>'
 
-
 import time
 import zmq
 import logging
@@ -48,7 +47,6 @@ class FileMover():
 
     useDataStream       = False     # boolian to inform if the data should be send to the data stream pipe (to the storage system)
     openConnections     = dict()    # list of all open hosts and ports to which a data stream is opened
-#    useLiveViewer       = False     # boolian to inform if the receiver for the live viewer is running
 
     # to get the logging only handling this class
     log                 = None
@@ -212,18 +210,20 @@ class FileMover():
                     incomingMessage = self.receiverComSocket.recv()
                     self.log.debug("Recieved control command: %s" % incomingMessage )
 
-#                    signal, signalHostname, port = helperScript.checkSignal(incomingMessage, self.receiverWhiteList, self.receiverComSocket, self.log)
+#                    signal, signalHostname, port = helperScript.checkSignal(incomingMessage, self.receiverWhiteList)
 
                     signal, signalHostname, port = helperScript.extractSignal(incomingMessage, self.log)
 
-                    # Checking signal sending host
-                    self.log.debug("Check if signal sending host is in WhiteList...")
-                    if helperScript.checkSignal(signalHostname, self.receiverWhiteList, self.receiverComSocket, self.log):
-                        self.log.debug("Host " + str(signalHostname) + " is allowed to connect.")
-                    else:
-                        self.log.debug("Host " + str(signalHostname) + " is not allowed to connect.")
-                        self.sendResponse("NO_VALID_HOST")
-                        continue
+                    if signal and signalHostname and port:
+
+                        # Checking signal sending host
+                        self.log.debug("Check if signal sending host is in WhiteList...")
+                        if helperScript.checkSignal(signalHostname, self.receiverWhiteList):
+                            self.log.debug("Host " + str(signalHostname) + " is allowed to connect.")
+                        else:
+                            self.log.debug("Host " + str(signalHostname) + " is not allowed to connect.")
+                            self.sendResponse("NO_VALID_HOST")
+                            continue
 
                     # Checking signal
                     if signal == "START_LIVE_VIEWER":

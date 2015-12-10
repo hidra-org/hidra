@@ -37,7 +37,7 @@ print
 
 query = dataTransfer( signalIp, dataPort )
 
-query.initConnection("stream")
+query.start("stream")
 
 
 while True:

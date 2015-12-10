@@ -1,5 +1,7 @@
 # API to communicate with a data transfer unit
 
+__version__ = '0.0.1'
+
 from __future__ import print_function
 import zmq
 import socket
@@ -85,7 +87,7 @@ class dataTransfer():
     # 15    if the response was not correct
     #
     ##
-    def initConnection(self, connectionType):
+    def start(self, connectionType):
 
         if connectionType not in self.supportedConnections:
             raise Exception("Chosen type of connection is not supported.")
@@ -316,6 +318,8 @@ class dataTransfer():
                 self.log.info("Could not receive answer to request")
                 self.log.info("Error was: " + str(e))
                 return None
+
+            self.log.info("Received file: " + str(message))
 
             return message
 

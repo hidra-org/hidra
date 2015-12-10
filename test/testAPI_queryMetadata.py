@@ -36,7 +36,7 @@ print
 
 query = dataTransfer( signalIp, dataPort )
 
-query.initConnection("queryMetadata")
+query.start("queryMetadata")
 
 #for i in range(5):
 while True:
