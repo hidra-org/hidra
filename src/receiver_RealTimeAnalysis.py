@@ -48,7 +48,6 @@ class ReceiverRealTimeAnalysis():
         self.log.debug("Sending start signal to sender, message: " + message)
         print "sending message ", message
         self.senderComSocket.send(str(message))
-#        self.senderComSocket.send("START_LIVE_VIEWER")
 
         senderMessage = None
         try:

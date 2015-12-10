@@ -27,6 +27,7 @@ from dataTransferAPI import dataTransfer
 
 
 signalIp   = "zitpcx19282.desy.de"
+#signalIp   = "zitpcx22614.desy.de"
 dataPort   = "50022"
 
 print
@@ -35,12 +36,14 @@ print
 
 query = dataTransfer( signalIp, dataPort )
 
-query.initConnection("queryMetadata")
+query.start("queryMetadata")
 
 #for i in range(5):
 while True:
     message = query.getData()
+    print
     print message
+    print
     time.sleep(0.5)
 
 query.stop()

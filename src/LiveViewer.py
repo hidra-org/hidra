@@ -33,7 +33,6 @@ class LiveView(QThread):
     zmqQuery      = None
 #    zmqSignalIp      = "haspp11eval01.desy.de"
     zmqSignalIp   = "zitpcx19282.desy.de"
-#    zmqSignalIp   = "psana002.desy.de"
     zmqDataPort   = "50022"
 
 
@@ -47,7 +46,7 @@ class LiveView(QThread):
             self.interval = interval
 
         self.zmqQuery = dataTransfer( self.zmqSignalIp, self.zmqDataPort )
-        self.zmqQuery.initConnection("queryMetadata")
+        self.zmqQuery.start("queryMetadata")
 
         self.mutex = QMutex()
 

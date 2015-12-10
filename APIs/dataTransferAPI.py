@@ -1,5 +1,7 @@
 # API to communicate with a data transfer unit
 
+__version__ = '0.0.1'
+
 from __future__ import print_function
 import zmq
 import socket
@@ -22,7 +24,7 @@ class dataTransfer():
 
     log             = None
 
-    supportedConnections = ["priorityStream", "stream", "queryNewest", "queryMetadata"]
+    supportedConnections = ["priorityStream", "stream", "queryNewest", "OnDA", "queryMetadata"]
 
     signalPort_MetadataOnly = "50021"
     signalPort_data         = "50000"
@@ -30,6 +32,7 @@ class dataTransfer():
     prioStreamStarted    = False
     streamStarted        = False
     queryNewestStarted   = False
+    ondaStarted          = False
     queryMetadataStarted = False
 
     socketResponseTimeout = None
@@ -84,12 +87,12 @@ class dataTransfer():
     # 15    if the response was not correct
     #
     ##
-    def initConnection(self, connectionType):
+    def start(self, connectionType):
 
         if connectionType not in self.supportedConnections:
             raise Exception("Chosen type of connection is not supported.")
 
-        alreadyConnected = self.streamStarted or self.queryNewestStarted or self.queryMetadataStarted or self.prioStreamStarted
+        alreadyConnected = self.streamStarted or self.queryNewestStarted or self.ondaStarted or self.queryMetadataStarted or self.prioStreamStarted
 
         signal = None
         if connectionType == "priorityStream" and not alreadyConnected:
@@ -113,6 +116,9 @@ class dataTransfer():
                 signalPort = self.signalPort_data
                 signal     = "START_LIVE_VIEWER"
             elif connectionType == "queryNewest" and not alreadyConnected:
+                signalPort = self.signalPort_data
+                signal     = "START_QUERY_NEWEST"
+            elif connectionType == "OnDA" and not alreadyConnected:
                 signalPort = self.signalPort_data
                 signal     = "START_REALTIME_ANALYSIS"
             elif connectionType == "queryMetadata" and not alreadyConnected:
@@ -154,13 +160,27 @@ class dataTransfer():
                     # An additional socket is needed to establish the data retriving mechanism
                     connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
                     try:
-                        self.dataSocket.connect(connectionStr)
+                        self.dataSocket.bind(connectionStr)
                         self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
                     except Exception as e:
                         self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
                         self.log.debug("Error was:" + str(e))
 
                     self.queryNewestStarted = True
+
+                elif connectionType == "OnDA":
+
+                    self.dataSocket = self.context.socket(zmq.REQ)
+                    # An additional socket is needed to establish the data retriving mechanism
+                    connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
+                    try:
+                        self.dataSocket.connect(connectionStr)
+                        self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
+                    except Exception as e:
+                        self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+                        self.log.debug("Error was:" + str(e))
+
+                    self.ondaStarted = True
 
                 elif connectionType == "queryMetadata":
 
@@ -209,8 +229,9 @@ class dataTransfer():
     def __sendSignal(self, signal):
 
         # Send the signal that the communication infrastructure should be established
-        self.log.info("Sending Start Signal")
+        self.log.info("Sending Signal")
         sendMessage = str(signal) + "," + str(self.hostname) + "," + str(self.dataPort)
+        self.log.debug("Signal: " + sendMessage)
         try:
             self.signalSocket.send(sendMessage)
         except Exception as e:
@@ -245,6 +266,7 @@ class dataTransfer():
 
         return message
 
+
     ##
     #
     # Receives or queries for new files depending on the connection initialized
@@ -274,7 +296,7 @@ class dataTransfer():
                 self.log.debug("Error was: " + str(e))
                 return None
 
-        elif self.queryNewestStarted or self.queryMetadataStarted:
+        elif self.queryNewestStarted or self.ondaStarted or self.queryMetadataStarted:
 
             sendMessage = "NEXT_FILE"
             self.log.info("Asking for next file with message " + str(sendMessage))
@@ -287,7 +309,7 @@ class dataTransfer():
 
             try:
                 #  Get the reply.
-                if self.queryNewestStarted:
+                if self.queryNewestStarted or self.ondaStarted:
                     message = self.dataSocket.recv_multipart()
                 else:
                     message = self.dataSocket.recv()
@@ -296,6 +318,8 @@ class dataTransfer():
                 self.log.info("Could not receive answer to request")
                 self.log.info("Error was: " + str(e))
                 return None
+
+            self.log.info("Received file: " + str(message))
 
             return message
 
@@ -346,20 +370,14 @@ class dataTransfer():
             if self.streamStarted:
                 signal = "STOP_LIVE_VIEWER"
             elif self.queryNewestStarted:
+                signal = "STOP_QUERY_NEWEST"
+            elif self.ondaStarted:
                 signal = "STOP_REALTIME_ANALYSIS"
             elif self.queryMetadataStarted:
                 signal = "STOP_DISPLAYER"
 
-            self.log.info("Sending Stop Signal")
-            sendMessage = str(signal) + "," + str(self.hostname) + "," + str(self.dataPort)
-            try:
-                self.signalSocket.send (sendMessage)
-                #  Get the reply.
-                message = self.signalSocket.recv()
-                self.log.info("Recieved signal: " + message)
-            except Exception as e:
-                self.log.info("Could not communicate")
-                self.log.info("Error was: " + str(e))
+            message = self.__sendSignal(signal)
+            #TODO need to check correctness of signal?
 
         try:
             if self.signalSocket:

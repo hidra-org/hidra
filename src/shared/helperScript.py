@@ -199,36 +199,39 @@ def checkLogFileWritable(filepath, filename):
         sys.exit(1)
 
 
-def checkSignal(message, whiteList, socket, log):
-
+def extractSignal(message, log):
     try:
-        messageSplit    = message.split(',')
-        signal          = messageSplit[0]
-        signalHostname  = messageSplit[1]
-        if len(messageSplit) > 2:
-            liveViewerPort = messageSplit[2]
-        else:
-            liveViewerPort = None
+        messageSplit = message.split(',')
     except Exception as e:
-        log.info("Received live viewer signal from host " + str(signalHostname) + " is of the wrong format")
-        socket.send("NO_VALID_SIGNAL", zmq.NOBLOCK)
-        return None, None, liveViewerPort
+        log.info("Received signal is of the wrong format")
+        log.debug("Received signal: " + str(message))
+        return None, None, None
 
-    if signalHostname.endswith(".desy.de"):
-        signalHostnameModified = signalHostname[:-8]
-    else:
-        signalHostnameModified = signalHostname
+    if len(messageSplit) < 3:
+        log.info("Received signal is of the wrong format")
+        log.debug("Received signal is too short: " + str(message))
+        return None, None, None
 
-    log.debug("Check if signal sending host is in WhiteList...")
-    if signalHostname in whiteList or signalHostnameModified in whiteList:
-        log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is allowed to connect.")
-    else:
-        log.debug("Check if signal sending host is in WhiteList...Host " + str(signalHostname) + " is not allowed to connect.")
-        log.info("Signal from host " + str(signalHostname) + " is discarded.")
-        socket.send("NO_VALID_HOST", zmq.NOBLOCK)
-        return None, None
+    signal   = messageSplit[0]
+    hostname = messageSplit[1]
+    port     = messageSplit[2]
 
-    return signal, signalHostname, liveViewerPort
+    return signal, hostname, port
+
+
+def checkSignal(hostname, whiteList ):
+
+    if hostname and whiteList:
+
+        if hostname.endswith(".desy.de"):
+            hostnameModified = hostname[:-8]
+        else:
+            hostnameModified = hostname
+
+        if hostname in whiteList or hostnameModified in whiteList:
+            return True
+
+    return False
 
 
 
@@ -257,13 +260,14 @@ def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
 
     #log info to stdout, display messages with different format than the file output
     if onScreenLogLevel:
-        if onScreenLogLevel in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+        onScreenLogLevelLower = onScreenLogLevel.lower()
+        if onScreenLogLevelLower in ["debug", "info", "warning", "error", "critical"]:
 
             console = logging.StreamHandler()
             screenHandlerFormat = logging.Formatter(datefmt = "%Y-%m-%d_%H:%M:%S",
                                                     fmt     = "[%(asctime)s] > %(message)s")
 
-            if onScreenLogLevel == "DEBUG":
+            if onScreenLogLevelLower == "debug":
                 screenLoggingLevel = logging.DEBUG
                 console.setLevel(screenLoggingLevel)
 
@@ -272,16 +276,16 @@ def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
 
                 if not verbose:
                     logging.error("Logging on Screen: Option DEBUG in only active when using verbose option as well (Fallback to INFO).")
-            elif onScreenLogLevel == "INFO":
+            elif onScreenLogLevelLower == "info":
                 screenLoggingLevel = logging.INFO
                 console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevel == "WARNING":
+            elif onScreenLogLevelLower == "warning":
                 screenLoggingLevel = logging.WARNING
                 console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevel == "ERROR":
+            elif onScreenLogLevelLower == "error":
                 screenLoggingLevel = logging.ERROR
                 console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevel == "CRITICAL":
+            elif onScreenLogLevelLower == "critical":
                 screenLoggingLevel = logging.CRITICAL
                 console.setLevel(screenLoggingLevel)
 

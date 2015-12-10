@@ -28,18 +28,17 @@ from dataTransferAPI import dataTransfer
 
 signalIp   = "zitpcx19282.desy.de"
 #signalIp   = "zitpcx22614.desy.de"
-dataPort   = "50201"
+dataPort   = "50200"
 
 print
-print "==== TEST: Query for the newest filename ===="
+print "==== TEST: OnDA ===="
 print
 
 query = dataTransfer( signalIp, dataPort )
 
-query.start("queryNewest")
+query.start("OnDA")
 
 while True:
-#for i in range(5):
     try:
         [metadata, data] = query.getData()
     except:
@@ -55,7 +54,7 @@ while True:
 query.stop()
 
 print
-print "==== TEST END: Query for the newest filename ===="
+print "==== TEST END: OnDA ===="
 print
 
 
