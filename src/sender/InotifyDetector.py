@@ -193,6 +193,21 @@ class InotifyDetector():
                     wd = binding.add_watch(self.fd, dirname)
                     self.wd_to_path[wd] = dirname
                     self.log.info("Added new directory to watch:" + str(dirname))
+
+                    # because inotify misses subdirectory creations if they happen to fast,
+                    # the newly created directory has to be walked to get catch this misses
+                    # http://stackoverflow.com/questions/15806488/inotify-missing-events
+                    traversedPath = dirname
+                    for root, directories, files in os.walk(dirname):
+                        # Add the found dirs to the list for the inotify-watch
+                        for dname in directories:
+                            traversedPath = os.path.join(traversedPath, dname)
+                            wd = binding.add_watch(self.fd, traversedPath)
+                            self.wd_to_path[wd] = traversedPath
+                            self.log.info("Added new subdirectory to watch:" + str(traversedPath))
+                        for filename in files:
+                            eventMessage = self.getEventMessage(path, filename)
+                            eventMessageList.append(eventMessage)
                 continue
 
             # if a directory is renamed the old watch has to be removed
@@ -223,40 +238,47 @@ class InotifyDetector():
                     self.log.debug("detected events were: " + str(parts))
                     continue
 
-                parentDir    = path
-                relativePath = ""
-                eventMessage = {}
 
-                # traverse the relative path till the original path is reached
-                # e.g. created file: /source/dir1/dir2/test.tif
-                splitPath = True
-                while splitPath:
-                    if parentDir not in self.paths:
-                        (parentDir,relDir) = os.path.split(parentDir)
-                        # the os.sep is needed at the beginning because the relative path is built up from the right
-                        # e.g.
-                        # self.paths = ["/tmp/test/source"]
-                        # path = /tmp/test/source/local/testdir
-                        # first iteration: self.monitoredEventType parentDir = /tmp/test/source/local, relDir = /testdir
-                        # second iteration: parentDir = /tmp/test/source,       relDir = /local/testdir
-                        relativePath = os.sep + relDir + relativePath
-                    else:
-                        # the event for a file /tmp/test/source/local/file1.tif is of the form:
-                        # {
-                        #   "sourcePath" : "/tmp/test/source"
-                        #   "relativePath": "/local"
-                        #   "filename"   : "file1.tif"
-                        # }
-                        eventMessage = {
-                                "sourcePath"  : parentDir,
-                                "relativePath": relativePath,
-                                "filename"    : event.name
-                                }
-                        eventMessageList.append(eventMessage)
-
-                        splitPath = False
+                eventMessage = self.getEventMessage(path, event.name)
+                eventMessageList.append(eventMessage)
 
         return eventMessageList
+
+
+
+    def getEventMessage(self, path, filename):
+
+        parentDir    = path
+        relativePath = ""
+        eventMessage = {}
+
+        # traverse the relative path till the original path is reached
+        # e.g. created file: /source/dir1/dir2/test.tif
+        splitPath = True
+        while splitPath:
+            if parentDir not in self.paths:
+                (parentDir,relDir) = os.path.split(parentDir)
+                # the os.sep is needed at the beginning because the relative path is built up from the right
+                # e.g.
+                # self.paths = ["/tmp/test/source"]
+                # path = /tmp/test/source/local/testdir
+                # first iteration: self.monitoredEventType parentDir = /tmp/test/source/local, relDir = /testdir
+                # second iteration: parentDir = /tmp/test/source,       relDir = /local/testdir
+                relativePath = os.sep + relDir + relativePath
+            else:
+                # the event for a file /tmp/test/source/local/file1.tif is of the form:
+                # {
+                #   "sourcePath" : "/tmp/test/source"
+                #   "relativePath": "/local"
+                #   "filename"   : "file1.tif"
+                # }
+                eventMessage = {
+                        "sourcePath"  : parentDir,
+                        "relativePath": relativePath,
+                        "filename"    : filename
+                        }
+
+                return eventMessage
 
 
 
