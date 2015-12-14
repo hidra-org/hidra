@@ -23,14 +23,14 @@ class dataTransfer():
 
     log             = None
 
-    supportedConnections = ["priorityStream", "stream", "queryNewest", "OnDA", "queryMetadata"]
+    supportedConnections = ["priorityStream", "stream", "queryNext", "OnDA", "queryMetadata"]
 
     signalPort_MetadataOnly = "50021"
     signalPort_data         = "50000"
 
     prioStreamStarted    = False
     streamStarted        = False
-    queryNewestStarted   = False
+    queryNextStarted     = False
     ondaStarted          = False
     queryMetadataStarted = False
 
@@ -93,11 +93,10 @@ class dataTransfer():
         if connectionType not in self.supportedConnections:
             raise Exception("Chosen type of connection is not supported.")
 
-        alreadyConnected = self.streamStarted or self.queryNewestStarted or self.ondaStarted or self.queryMetadataStarted or self.prioStreamStarted
+        alreadyConnected = self.streamStarted or self.queryNextStarted or self.ondaStarted or self.queryMetadataStarted or self.prioStreamStarted
 
         signal = None
         if connectionType == "priorityStream" and not alreadyConnected:
-            print("priorityStream")
 
             self.dataSocket = self.context.socket(zmq.PULL)
             # An additional socket is needed to establish the data retriving mechanism
@@ -116,7 +115,7 @@ class dataTransfer():
             if connectionType == "stream" and not alreadyConnected:
                 signalPort = self.signalPort_data
                 signal     = "START_LIVE_VIEWER"
-            elif connectionType == "queryNewest" and not alreadyConnected:
+            elif connectionType == "queryNext" and not alreadyConnected:
                 signalPort = self.signalPort_data
                 signal     = "START_QUERY_NEWEST"
             elif connectionType == "OnDA" and not alreadyConnected:
@@ -155,7 +154,7 @@ class dataTransfer():
 
                     self.streamStarted = True
 
-                elif connectionType == "queryNewest":
+                elif connectionType == "queryNext":
 
                     self.dataSocket = self.context.socket(zmq.REQ)
                     # An additional socket is needed to establish the data retriving mechanism
@@ -167,7 +166,7 @@ class dataTransfer():
                         self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
                         self.log.debug("Error was:" + str(e))
 
-                    self.queryNewestStarted = True
+                    self.queryNextStarted = True
 
                 elif connectionType == "OnDA":
 
@@ -297,7 +296,7 @@ class dataTransfer():
                 self.log.debug("Error was: " + str(e))
                 return None
 
-        elif self.queryNewestStarted or self.ondaStarted or self.queryMetadataStarted:
+        elif self.queryNextStarted or self.ondaStarted or self.queryMetadataStarted:
 
             sendMessage = "NEXT_FILE"
             self.log.info("Asking for next file with message " + str(sendMessage))
@@ -310,7 +309,7 @@ class dataTransfer():
 
             try:
                 #  Get the reply.
-                if self.queryNewestStarted or self.ondaStarted:
+                if self.queryNextStarted or self.ondaStarted:
                     message = self.dataSocket.recv_multipart()
                 else:
                     message = self.dataSocket.recv()
@@ -319,8 +318,6 @@ class dataTransfer():
                 self.log.info("Could not receive answer to request")
                 self.log.info("Error was: " + str(e))
                 return None
-
-            self.log.info("Received file: " + str(message))
 
             return message
 
@@ -370,7 +367,7 @@ class dataTransfer():
         if self.dataSocket and not self.prioStreamStarted:
             if self.streamStarted:
                 signal = "STOP_LIVE_VIEWER"
-            elif self.queryNewestStarted:
+            elif self.queryNextStarted:
                 signal = "STOP_QUERY_NEWEST"
             elif self.ondaStarted:
                 signal = "STOP_REALTIME_ANALYSIS"

@@ -39,7 +39,7 @@ class LiveViewCommunicator:
     # sockets
     receiverExchangeSocket   = None         # socket to communicate with FileReceiver class
     liveViewerComSocket      = None         # socket to communicate with live viewer
-    liveViewerDataSocket     = None         # socket to communicate with live viewer
+    liveViewerDataSocket     = None         # socket to send data to live viewer
 
 
     def __init__(self, receiverExchangePort,

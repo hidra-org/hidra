@@ -78,7 +78,7 @@ class FileMover():
         self.ondaPorts           = ondaPorts
 
         self.useDataStream       = useDataStream
-        self.openConnections     = { "streams" : [], "queryNewest" : [] }
+        self.openConnections     = { "streams" : [], "queryNext" : [] }
 
         #remove .desy.de from hostnames
         self.receiverWhiteList = []
@@ -254,8 +254,8 @@ class FileMover():
 
                     elif signal == "START_QUERY_NEWEST" or signal == "START_REALTIME_ANALYSIS":
                         self.log.info("Received signal from host " + str(signalHostname) + " to enable querying for data")
-                        if [signalHostname, port] not in self.openConnections["queryNewest"]:
-                            self.openConnections["queryNewest"].append([signalHostname, port])
+                        if [signalHostname, port] not in self.openConnections["queryNext"]:
+                            self.openConnections["queryNext"].append([signalHostname, port])
                             # send signal to workerProcesses and back to receiver
                             self.sendSignalToWorker(incomingMessage)
                             self.sendResponse(signal)
@@ -268,8 +268,8 @@ class FileMover():
 
                     elif signal == "STOP_QUERY_NEWEST" or signal == "STOP_REALTIME_ANALYSIS":
                         self.log.info("Received signal from host " + str(signalHostname) + " to disable querying for data")
-                        if [signalHostname, port] in self.openConnections["queryNewest"]:
-                            self.openConnections["queryNewest"].remove([signalHostname, port])
+                        if [signalHostname, port] in self.openConnections["queryNext"]:
+                            self.openConnections["queryNext"].remove([signalHostname, port])
                             # send signal to workerProcesses and back to receiver
                             self.sendSignalToWorker(incomingMessage)
                             self.log.debug("Send signal to worker: " + str(signal))
