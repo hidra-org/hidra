@@ -48,6 +48,7 @@ class FileMover():
     useDataStream       = False     # boolian to inform if the data should be send to the data stream pipe (to the storage system)
     openConnections     = dict()    # list of all open hosts and ports to which a data stream is opened
 
+
     # to get the logging only handling this class
     log                 = None
 
@@ -101,7 +102,6 @@ class FileMover():
     def getLogger(self):
         logger = logging.getLogger("fileMover")
         return logger
-
 
     def createSockets(self):
         # create zmq socket for incoming file events
@@ -212,9 +212,17 @@ class FileMover():
 
 #                    signal, signalHostname, port = helperScript.checkSignal(incomingMessage, self.receiverWhiteList)
 
-                    signal, signalHostname, port = helperScript.extractSignal(incomingMessage, self.log)
+                    signal, signalHostname, port, version = helperScript.extractSignal(incomingMessage, self.log)
 
-                    if signal and signalHostname and port:
+                    if version:
+                        if helperScript.checkVersion(version, self.log):
+                            self.log.debug("Versions are compatible: " + str(version))
+                        else:
+                            self.log.debug("Version are not compatible")
+                            self.sendResponse("VERSION_CONFLICT")
+                            continue
+
+                    if signal and signalHostname and port :
 
                         # Checking signal sending host
                         self.log.debug("Check if signal sending host is in WhiteList...")

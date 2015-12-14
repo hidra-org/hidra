@@ -259,7 +259,7 @@ class WorkerProcess():
 
     def checkForSignals(self, workload):
 
-        signal, host, port = helperScript.extractSignal(workload, self.log)
+        signal, host, port, version = helperScript.extractSignal(workload, self.log)
 
         # a data stream is turned on
         if signal == "START_LIVE_VIEWER":

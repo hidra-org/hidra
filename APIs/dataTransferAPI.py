@@ -230,7 +230,7 @@ class dataTransfer():
 
         # Send the signal that the communication infrastructure should be established
         self.log.info("Sending Signal")
-        sendMessage = str(signal) + "," + str(self.hostname) + "," + str(self.dataPort)
+        sendMessage = str(signal) + "," + str(self.hostname) + "," + str(self.dataPort) + "," + str(__version__)
         self.log.debug("Signal: " + sendMessage)
         try:
             self.signalSocket.send(sendMessage)
