@@ -1,7 +1,6 @@
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-import time
 import logging
 import os
 from stat import S_ISREG, ST_MTIME, ST_MODE
@@ -179,6 +178,7 @@ class RingBuffer:
 
 if __name__ == "__main__":
     import sys
+    import time
 
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname (  os.path.realpath ( __file__ ) )))
     SRC_PATH  = BASE_PATH + os.sep + "src"

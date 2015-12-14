@@ -6,14 +6,8 @@ import sys
 import zmq
 import logging
 import traceback
+
 from RingBuffer import RingBuffer
-
-SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
-
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
-del SHARED_PATH
-
 import helperScript
 #
 #  --------------------------  class: LiveViewCommunicator  --------------------------------------

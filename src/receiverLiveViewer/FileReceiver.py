@@ -1,20 +1,14 @@
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Marco Strutz <marco.strutz@desy.de>'
 
 
-import time
 import zmq
 import sys
-import json
 import logging
 import errno
 import os
-import traceback
-import socket       # needed to get hostname
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-print "BASE_PATH", BASE_PATH
 API_PATH    = BASE_PATH + os.sep + "APIs"
-print "API_PATH", API_PATH
 
 if not API_PATH in sys.path:
     sys.path.append ( API_PATH )
@@ -42,9 +36,6 @@ class FileReceiver:
     dataStreamSocket      = None         # socket to receive the data from
     lvCommunicatorSocket  = None         # socket to communicate with LiveViewCommunicator class
     signalSocket          = None         # socket to communicate with sender
-
-    hostname              = socket.gethostname()
-#    print socket.gethostbyname(socket.gethostname())
 
 
     def __init__(self, outputDir,
@@ -114,7 +105,6 @@ class FileReceiver:
                 break
             except:
                 self.log.error("receive message...failed.")
-                self.log.error(sys.exc_info())
                 continueReceiving = False
                 break
 
@@ -260,12 +250,10 @@ class FileReceiver:
                 self.log.error("Sending exit signal to LiveViewCommunicator...failed")
                 self.log.debug("Error was: " + str(e))
 
-            # give signal time to arrive
-            time.sleep(0.2)
-
             try:
                 self.log.debug("Closing communication socket...")
-                self.lvCommunicatorSocket.close(0)
+                # give signal time to arrive
+                self.lvCommunicatorSocket.close(0.2)
                 self.lvCommunicatorSocket = None
                 self.log.debug("Closing communication socket...done")
             except Exception as e:
@@ -285,7 +273,6 @@ class FileReceiver:
             except:
                 self.log.error("Destroying ZMQ context...failed.")
                 self.log.debug("Error was: " + str(e))
-                self.log.debug(sys.exc_info())
 
 
     def __exit__(self):
