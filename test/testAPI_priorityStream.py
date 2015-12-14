@@ -26,7 +26,6 @@ query = dataTransfer( signalIp, dataPort )
 query.start("priorityStream")
 
 while True:
-#for i in range(5):
     try:
         [metadata, data] = query.get()
     except:

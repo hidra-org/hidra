@@ -132,7 +132,12 @@ class dataTransfer():
 
             message = self.__sendSignal(signal)
 
-            if message and message == "NO_VALID_SIGNAL":
+            if message and message == "NO_VALID_HOST":
+                self.stop()
+                raise Exception("Host is not allowed to connect.")
+
+            elif message and message == "NO_VALID_SIGNAL":
+                self.stop()
                 raise Exception("Connection type is not supported for this kind of sender.")
 
             # if the response was correct
@@ -147,9 +152,9 @@ class dataTransfer():
                     connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
                     try:
                         self.dataSocket.bind(connectionStr)
-                        self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
+                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
                     except Exception as e:
-                        self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
                         self.log.debug("Error was:" + str(e))
 
                     self.streamStarted = True
@@ -161,9 +166,9 @@ class dataTransfer():
                     connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
                     try:
                         self.dataSocket.bind(connectionStr)
-                        self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
+                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
                     except Exception as e:
-                        self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
                         self.log.debug("Error was:" + str(e))
 
                     self.queryNextStarted = True
@@ -175,9 +180,9 @@ class dataTransfer():
                     connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
                     try:
                         self.dataSocket.connect(connectionStr)
-                        self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
+                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
                     except Exception as e:
-                        self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
                         self.log.debug("Error was:" + str(e))
 
                     self.ondaStarted = True
@@ -189,9 +194,9 @@ class dataTransfer():
                     connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
                     try:
                         self.dataSocket.bind(connectionStr)
-                        self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
+                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
                     except Exception as e:
-                        self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
                         self.log.debug("Error was:" + str(e))
 
                     self.queryMetadataStarted = True
@@ -355,7 +360,7 @@ class dataTransfer():
             self.log.debug("Error was:" + str(e))
             payload = None
 
-        return [metadata, payload]
+        return [metadataDict, payload]
 
 
     ##
@@ -387,19 +392,20 @@ class dataTransfer():
                 self.dataSocket.close(linger=0)
                 self.dataSocket = None
         except Exception as e:
-            self.log.info("closing ZMQ Sockets...failed.")
+            self.log.error("closing ZMQ Sockets...failed.")
             self.log.info("Error was: " + str(e))
 
         if not self.externalContext:
             try:
                 if self.context:
-                    self.log.info("closing zmqContext...")
+                    self.log.info("closing ZMQ context...")
                     self.context.destroy()
                     self.context = None
-                    self.log.info("closing zmqContext...done.")
+                    self.log.info("closing ZMQ context...done.")
             except Exception as e:
-                self.log.info("closing zmqContext...failed.")
-                self.log.info("Error was: " + str(e))
+                self.log.error("closing ZMQ context...failed.")
+                self.log.debug("Error was: " + str(e))
+                self.log.debug(sys.exc_info())
 
 
     def __exit__(self):
