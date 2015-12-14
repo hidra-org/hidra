@@ -2,7 +2,6 @@
 
 __version__ = '0.0.1'
 
-from __future__ import print_function
 import zmq
 import socket
 import logging
@@ -43,12 +42,14 @@ class dataTransfer():
             self.log = logging.getLogger("dataTransferAPI")
         else:
             class loggingFunction:
+                def out(self, x):
+                    print x
                 def __init__(self):
-                    self.debug    = lambda x: print(x)
-                    self.info     = lambda x: print(x)
-                    self.warning  = lambda x: print(x)
-                    self.error    = lambda x: print(x)
-                    self.critical = lambda x: print(x)
+                    self.debug    = lambda x: self.out(x)
+                    self.info     = lambda x: self.out(x)
+                    self.warning  = lambda x: self.out(x)
+                    self.error    = lambda x: self.out(x)
+                    self.critical = lambda x: self.out(x)
 
             self.log = loggingFunction()
 
