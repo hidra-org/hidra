@@ -85,7 +85,11 @@ class LiveView(QThread):
                 self.mutex.lock()
 
                 # get latest file from reveiver
-                receivedFile = self.zmqQuery.getData()
+                receivedFile = self.zmqQuery.get()
+
+                if receivedFile =="None":
+                    self.mutex.unlock()
+                    continue
 
                 # display image
 #                try:

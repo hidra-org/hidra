@@ -39,7 +39,7 @@ class LiveViewCommunicator:
     # sockets
     receiverExchangeSocket   = None         # socket to communicate with FileReceiver class
     liveViewerComSocket      = None         # socket to communicate with live viewer
-    liveViewerDataSocket     = None         # socket to communicate with live viewer
+    liveViewerDataSocket     = None         # socket to send data to live viewer
 
 
     def __init__(self, receiverExchangePort,
@@ -157,7 +157,7 @@ class LiveViewCommunicator:
             if self.liveViewerComSocket in socks and socks[self.liveViewerComSocket] == zmq.POLLIN:
                 message = self.liveViewerComSocket.recv()
 
-                signal, signalHostname, port = helperScript.extractSignal(message, self.log)
+                signal, signalHostname, port, version = helperScript.extractSignal(message, self.log)
 
                 # Checking signal sending host
                 self.log.debug("Check if signal sending host is in WhiteList...")

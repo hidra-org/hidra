@@ -57,9 +57,9 @@ class WorkerProcess():
         self.useDataStream        = useDataStream
 
         self.openConnections = {
-                "streams"     : [],
-                "queryNewest" : [],
-                "OnDA"        : {}
+                "streams"   : [],
+                "queryNext" : [],
+                "OnDA"      : {}
                 }
 
         if context:
@@ -183,7 +183,7 @@ class WorkerProcess():
 
 
             # get metadata of the file
-            if self.useDataStream or self.openConnections["streams"] or self.openConnections["queryNewest"] or self.openConnections["OnDA"]:
+            if self.useDataStream or self.openConnections["streams"] or self.openConnections["queryNext"] or self.openConnections["OnDA"]:
                 try:
                     self.log.debug("building MetadataDict")
                     sourcePathFull, metadataDict = self.buildMetadataDict(workload)
@@ -203,11 +203,11 @@ class WorkerProcess():
                     continue
 
 
-            if self.openConnections["OnDA"] or self.openConnections["queryNewest"]:
+            if self.openConnections["OnDA"] or self.openConnections["queryNext"]:
                 socks = dict(self.poller.poll(0))
 
-                if self.openConnections["queryNewest"]:
-                    for connection in self.openConnections["queryNewest"]:
+                if self.openConnections["queryNext"]:
+                    for connection in self.openConnections["queryNext"]:
 
                         if connection["socket"] in socks and socks[connection["socket"]] == zmq.POLLIN:
 
@@ -233,7 +233,7 @@ class WorkerProcess():
                             self.log.debug("worker-" + str(self.id) + ": mark ondaSocket as requested...")
 
 
-            if self.useDataStream or self.openConnections["streams"] or self.openConnections["queryNewest"] or self.openConnections["OnDA"]:
+            if self.useDataStream or self.openConnections["streams"] or self.openConnections["queryNext"] or self.openConnections["OnDA"]:
                 self.log.debug("passing file to dataStream")
                 try:
                     self.passFileToDataStream(sourcePathFull, metadataDict)
@@ -259,7 +259,7 @@ class WorkerProcess():
 
     def checkForSignals(self, workload):
 
-        signal, host, port = helperScript.extractSignal(workload, self.log)
+        signal, host, port, version = helperScript.extractSignal(workload, self.log)
 
         # a data stream is turned on
         if signal == "START_LIVE_VIEWER":
@@ -309,18 +309,18 @@ class WorkerProcess():
             connectionStr = "tcp://" + str(host) + ":" + str(port)
             try:
                 socket.connect(connectionStr)
-                self.log.info("queryNewestSocket started (connect) for '" + connectionStr + "'")
+                self.log.info("queryNextSocket started (connect) for '" + connectionStr + "'")
 
                 self.poller.register(socket, zmq.POLLIN)
 
-                self.openConnections["queryNewest"].append({
+                self.openConnections["queryNext"].append({
                             "host"    : host,
                             "port"    : port,
                             "socket"  : socket,
                             "request" : False
                             })
             except:
-                self.log.info("queryNewestSocket could not be started for '" + connectionStr + "'")
+                self.log.info("queryNextSocket could not be started for '" + connectionStr + "'")
 
             return True
 
@@ -331,17 +331,17 @@ class WorkerProcess():
             # parent process has already checked for streams on this host and port: there is one running
             # close the socket to send data as response of a query
             connectionToRemove = -1
-            for i in range(len(self.openConnections["queryNewest"])):
-                connection = self.openConnections["queryNewest"][i]
+            for i in range(len(self.openConnections["queryNext"])):
+                connection = self.openConnections["queryNext"][i]
 
                 if connection["host"] == host and connection["port"] == port:
                     connection["socket"].close(0)
                     connectionToRemove = i
-                    self.log.info("queryNewestSocket closed")
+                    self.log.info("queryNextSocket closed")
                     break
 
-            if self.openConnections["queryNewest"]:
-                self.openConnections["queryNewest"].pop(connectionToRemove)
+            if self.openConnections["queryNext"]:
+                self.openConnections["queryNext"].pop(connectionToRemove)
 
             return True
 
@@ -503,7 +503,7 @@ class WorkerProcess():
             raise Exception(e)
 
         request = False
-        for connection in self.openConnections["queryNewest"]:
+        for connection in self.openConnections["queryNext"]:
             if connection["request"]:
                 request = True
 
@@ -559,7 +559,7 @@ class WorkerProcess():
 
 
             # answer to query
-            for connection in self.openConnections["queryNewest"]:
+            for connection in self.openConnections["queryNext"]:
                 if connection["request"]:
                     connection["socket"].send_multipart(payloadAll, zmq.NOBLOCK)
                     self.log.info("Sending file " + str(sourceFilePathFull) + " to querying host")
@@ -633,7 +633,7 @@ class WorkerProcess():
             self.dataStreamSocket.close(0)
         for connection in self.openConnections["streams"]:
             connection["socket"].close(0)
-        for connection in self.openConnections["queryNewest"]:
+        for connection in self.openConnections["queryNext"]:
             connection["socket"].close(0)
         if self.openConnections["OnDA"]:
             self.openConnections["OnDA"]["socket"].close(0)

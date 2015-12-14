@@ -48,6 +48,7 @@ class FileMover():
     useDataStream       = False     # boolian to inform if the data should be send to the data stream pipe (to the storage system)
     openConnections     = dict()    # list of all open hosts and ports to which a data stream is opened
 
+
     # to get the logging only handling this class
     log                 = None
 
@@ -78,7 +79,7 @@ class FileMover():
         self.ondaPorts           = ondaPorts
 
         self.useDataStream       = useDataStream
-        self.openConnections     = { "streams" : [], "queryNewest" : [] }
+        self.openConnections     = { "streams" : [], "queryNext" : [] }
 
         #remove .desy.de from hostnames
         self.receiverWhiteList = []
@@ -101,7 +102,6 @@ class FileMover():
     def getLogger(self):
         logger = logging.getLogger("fileMover")
         return logger
-
 
     def createSockets(self):
         # create zmq socket for incoming file events
@@ -212,9 +212,17 @@ class FileMover():
 
 #                    signal, signalHostname, port = helperScript.checkSignal(incomingMessage, self.receiverWhiteList)
 
-                    signal, signalHostname, port = helperScript.extractSignal(incomingMessage, self.log)
+                    signal, signalHostname, port, version = helperScript.extractSignal(incomingMessage, self.log)
 
-                    if signal and signalHostname and port:
+                    if version:
+                        if helperScript.checkVersion(version, self.log):
+                            self.log.debug("Versions are compatible: " + str(version))
+                        else:
+                            self.log.debug("Version are not compatible")
+                            self.sendResponse("VERSION_CONFLICT")
+                            continue
+
+                    if signal and signalHostname and port :
 
                         # Checking signal sending host
                         self.log.debug("Check if signal sending host is in WhiteList...")
@@ -254,8 +262,8 @@ class FileMover():
 
                     elif signal == "START_QUERY_NEWEST" or signal == "START_REALTIME_ANALYSIS":
                         self.log.info("Received signal from host " + str(signalHostname) + " to enable querying for data")
-                        if [signalHostname, port] not in self.openConnections["queryNewest"]:
-                            self.openConnections["queryNewest"].append([signalHostname, port])
+                        if [signalHostname, port] not in self.openConnections["queryNext"]:
+                            self.openConnections["queryNext"].append([signalHostname, port])
                             # send signal to workerProcesses and back to receiver
                             self.sendSignalToWorker(incomingMessage)
                             self.sendResponse(signal)
@@ -268,8 +276,8 @@ class FileMover():
 
                     elif signal == "STOP_QUERY_NEWEST" or signal == "STOP_REALTIME_ANALYSIS":
                         self.log.info("Received signal from host " + str(signalHostname) + " to disable querying for data")
-                        if [signalHostname, port] in self.openConnections["queryNewest"]:
-                            self.openConnections["queryNewest"].remove([signalHostname, port])
+                        if [signalHostname, port] in self.openConnections["queryNext"]:
+                            self.openConnections["queryNext"].remove([signalHostname, port])
                             # send signal to workerProcesses and back to receiver
                             self.sendSignalToWorker(incomingMessage)
                             self.log.debug("Send signal to worker: " + str(signal))

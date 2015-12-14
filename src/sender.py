@@ -22,6 +22,8 @@ from sender.DirectoryWatcher import DirectoryWatcher
 from sender.FileMover import FileMover
 from sender.Cleaner import Cleaner
 
+from version import __version__
+
 
 def argumentParsing():
     configFile = CONFIG_PATH + os.sep + "sender.conf"
@@ -197,6 +199,7 @@ class Sender():
 
     zmqContext          = None
 
+
     def __init__(self):
         arguments = argumentParsing()
 
@@ -230,6 +233,8 @@ class Sender():
         self.liveViewerWhiteList = arguments.liveViewerWhiteList
         self.maxRingBufferSize   = arguments.maxRingBufferSize
         self.maxQueueSize        = arguments.maxQueueSize
+
+        logging.info("Version: " + str(__version__))
 
         #create zmq context
         # there should be only one context in one process
