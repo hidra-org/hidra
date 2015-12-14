@@ -199,6 +199,7 @@ class Sender():
 
     zmqContext          = None
 
+
     def __init__(self):
         arguments = argumentParsing()
 

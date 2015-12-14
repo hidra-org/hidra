@@ -275,12 +275,12 @@ class dataTransfer():
     #   the next file
     #       (if connection type "stream" was choosen)
     #   the newest file
-    #       (if connection type "queryNewest" was choosen)
+    #       (if connection type "queryNext" was choosen)
     #   the path of the newest file
     #       (if connection type "queryMetadata" was choosen)
     #
     ##
-    def getData(self):
+    def get(self):
 
         if self.prioStreamStarted or self.streamStarted:
 
