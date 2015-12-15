@@ -78,19 +78,29 @@ class FileReceiver:
         #run loop, and wait for incoming messages
         while continueReceiving:
             try:
-                self.dataTransferObject.storeFile(self.outputDir)
+                self.combineMessage()
             except KeyboardInterrupt:
                 self.log.debug("Keyboard interrupt detected. Stop receiving.")
-                continueReceiving = False
                 break
-            except:
+            except Exception as e:
                 self.log.error("receive message...failed.")
-                self.log.error(sys.exc_info())
-                continueReceiving = False
+                self.log.error("Error was: " + str(e))
                 break
 
         self.log.info("shutting down receiver...")
         self.stop()
+
+
+    def combineMessage(self):
+
+        try:
+            [payloadMetadata, payload] = self.dataTransferObject.get()
+        except Exception as e:
+            self.log.error("Getting data failes.")
+            self.log.debug("Error was: " + str(e))
+            break
+
+        self.store(self.outputDir, [payloadMetadata, payload] )
 
 
     def stop(self):

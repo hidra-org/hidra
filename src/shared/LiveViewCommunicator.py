@@ -55,9 +55,6 @@ class LiveViewCommunicator:
         self.log = self.getLogger()
         self.log.debug("Init")
 
-#        if context:
-#            assert isinstance(context, zmq.sugar.context.Context)
-
         #self.context = context or zmq.Context()
         if context:
             self.context      = context

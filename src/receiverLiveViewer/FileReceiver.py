@@ -83,6 +83,7 @@ class FileReceiver:
             self.log.error("Failed to start lvCommunicatorSocket (connect): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))
 
+
     def process(self):
 
         try:
@@ -97,15 +98,15 @@ class FileReceiver:
 
         #run loop, and wait for incoming messages
         while continueReceiving:
+
             try:
                 self.combineMessage()
             except KeyboardInterrupt:
                 self.log.debug("Keyboard interrupt detected. Stop receiving.")
-                continueReceiving = False
                 break
-            except:
+            except Exception as e:
                 self.log.error("receive message...failed.")
-                continueReceiving = False
+                self.log.error("Error was: " + str(e))
                 break
 
         self.log.info("shutting down receiver...")
@@ -113,130 +114,23 @@ class FileReceiver:
 
 
     def combineMessage(self):
-        receivingMessages = True
-        #save all chunks to file
-        while receivingMessages:
 
-            try:
-                [payloadMetadataDict, payload] = self.dataTransferObject.get()
-            except Exception as e:
-                self.log.error("Getting data failes.")
-                self.log.debug("Error was: " + str(e))
-                break
+        try:
+            [payloadMetadata, payload] = self.dataTransferObject.get()
+        except Exception as e:
+            self.log.error("Getting data failed.")
+            self.log.debug("Error was: " + str(e))
+            raise
 
-            #append to file
-            try:
-                self.log.debug("append to file based on multipart-message...")
-                #TODO: save message to file using a thread (avoids blocking)
-                #TODO: instead of open/close file for each chunk recyle the file-descriptor for all chunks opened
-                self.appendChunksToFileFromMultipartMessage(payloadMetadataDict, payload)
-                self.log.debug("append to file based on multipart-message...success.")
-            except KeyboardInterrupt:
-                errorMessage = "KeyboardInterrupt detected. Unable to append multipart-content to file."
-                self.log.info(errorMessage)
-                break
-            except Exception, e:
-                errorMessage = "Unable to append multipart-content to file."
-                self.log.error(errorMessage)
-                self.log.debug("Error was: " + str(e))
-                self.log.debug("append to file based on multipart-message...failed.")
+        self.dataTransferObject.store(self.outputDir, [payloadMetadata, payload] )
 
-            if len(payload) < payloadMetadataDict["chunkSize"] :
-                #indicated end of file. closing file and leave loop
-                self.log.debug("last file-chunk received. stop appending.")
-                break
-
-        filename            = self.generateTargetFilepath(payloadMetadataDict)
-        fileModTime         = payloadMetadataDict["fileModificationTime"]
-        self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
+        filename            = self.dataTransferObject.generateTargetFilepath(self.outputDir, payloadMetadata)
+        fileModTime         = payloadMetadata["fileModificationTime"]
 
         # send the file to the LiveViewCommunicator to add it to the ring buffer
         message = "AddFile" + str(filename) + ", " + str(fileModTime)
         self.log.debug("Send file to LiveViewCommunicator: " + message )
         self.lvCommunicatorSocket.send(message)
-
-
-    def generateTargetFilepath(self,configDict):
-        """
-        generates full path where target file will saved to.
-
-        """
-        targetFilename     = configDict["filename"]
-        targetRelativePath = configDict["relativePath"]
-
-        if targetRelativePath is '' or targetRelativePath is None:
-            targetPath = self.outputDir
-        else:
-            targetPath = os.path.normpath(self.outputDir + os.sep + targetRelativePath)
-
-        targetFilepath =  os.path.join(targetPath, targetFilename)
-
-        return targetFilepath
-
-
-    def generateTargetPath(self,configDict):
-        """
-        generates path where target file will saved to.
-
-        """
-        targetRelativePath = configDict["relativePath"]
-        # if the relative path starts with a slash path.join will consider it as absolute path
-        if targetRelativePath.startswith("/"):
-            targetRelativePath = targetRelativePath[1:]
-
-        targetPath = os.path.join(self.outputDir, targetRelativePath)
-
-        return targetPath
-
-
-    def appendChunksToFileFromMultipartMessage(self, configDict, payload):
-
-        chunkCount = len(payload)
-
-        #generate target filepath
-        targetFilepath = self.generateTargetFilepath(configDict)
-        self.log.debug("new file is going to be created at: " + targetFilepath)
-
-
-        #append payload to file
-        try:
-            newFile = open(targetFilepath, "a")
-        except IOError, e:
-            # errno.ENOENT == "No such file or directory"
-            if e.errno == errno.ENOENT:
-                #TODO create subdirectory first, then try to open the file again
-                try:
-                    targetPath = self.generateTargetPath(configDict)
-                    os.makedirs(targetPath)
-                    newFile = open(targetFilepath, "w")
-                    self.log.info("New target directory created: " + str(targetPath))
-                except Exception, f:
-                    errorMessage = "unable to save payload to file: '" + targetFilepath + "'"
-                    self.log.error(errorMessage)
-                    self.log.debug("Error was: " + str(f))
-                    self.log.debug("targetPath="+str(targetPath))
-                    raise Exception(errorMessage)
-            else:
-                self.log.error("failed to append payload to file: '" + targetFilepath + "'")
-                self.log.debug("Error was: " + str(e))
-        except Exception, e:
-            self.log.error("failed to append payload to file: '" + targetFilepath + "'")
-            self.log.debug("Error was: " + str(e))
-            self.log.debug("ErrorTyp: " + str(type(e)))
-            self.log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
-
-        #only write data if a payload exist
-        try:
-            if payload != None:
-                for chunk in payload:
-                    newFile.write(chunk)
-            newFile.close()
-            self.log.info("received file: " + str(targetFilepath))
-        except Exception, e:
-            errorMessage = "unable to append data to file."
-            self.log.error(errorMessage)
-            self.log.debug("Error was: " + str(e))
-            raise Exception(errorMessage)
 
 
     def stop(self):
