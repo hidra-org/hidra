@@ -306,7 +306,7 @@ class dataTransfer():
         elif self.queryNextStarted or self.ondaStarted or self.queryMetadataStarted:
 
             sendMessage = "NEXT_FILE"
-            self.log.info("Asking for next file with message " + str(sendMessage))
+#            self.log.debug("Asking for next file with message " + str(sendMessage))
             try:
                 self.dataSocket.send(sendMessage)
             except Exception as e:
@@ -364,21 +364,20 @@ class dataTransfer():
         return [metadataDict, payload]
 
 
-    def storeFile(self, targetBasePath):
+    def store(self, targetBasePath, dataObject):
 
-        payloadMetadata   = None
-        payload           = None
+        if type(dataObject) is not list and len(dataObject) != 2:
+            raise Exception("Wrong input type for 'store'")
 
-        receivingMessages = True
+        payloadMetadata   = dataObject[0]
+        payload           = dataObject[1]
+
+
+        if type(payloadMetadata) is not dict or type(payload) is not list:
+            raise Exception("payload: Wrong input format in 'store'")
+
         #save all chunks to file
-        while receivingMessages:
-
-            try:
-                [payloadMetadata, payload] = self.get()
-            except Exception as e:
-                self.log.error("Getting data failed.")
-                self.log.debug("Error was: " + str(e))
-                break
+        while True:
 
             if payloadMetadata and payload:
                 #append to file
@@ -400,12 +399,18 @@ class dataTransfer():
 
                 if len(payload) < payloadMetadata["chunkSize"] :
                     #indicated end of file. Leave loop
-                    filename    = self.__generateTargetFilepath(targetBasePath, payloadMetadata)
+                    filename    = self.generateTargetFilepath(targetBasePath, payloadMetadata)
                     fileModTime = payloadMetadata["fileModificationTime"]
 
                     self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
                     break
 
+            try:
+                [payloadMetadata, payload] = self.get()
+            except Exception as e:
+                self.log.error("Getting data failed.")
+                self.log.debug("Error was: " + str(e))
+                break
 
 
     def __appendChunksToFile(self, targetBasePath, configDict, payload):
@@ -413,7 +418,7 @@ class dataTransfer():
         chunkCount         = len(payload)
 
         #generate target filepath
-        targetFilepath = self.__generateTargetFilepath(targetBasePath, configDict)
+        targetFilepath = self.generateTargetFilepath(targetBasePath, configDict)
         self.log.debug("new file is going to be created at: " + targetFilepath)
 
 
@@ -457,7 +462,7 @@ class dataTransfer():
             raise Exception(errorMessage)
 
 
-    def __generateTargetFilepath(self, basePath, configDict):
+    def generateTargetFilepath(self, basePath, configDict):
         """
         generates full path where target file will saved to.
 

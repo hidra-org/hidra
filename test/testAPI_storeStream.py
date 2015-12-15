@@ -43,10 +43,17 @@ query.start("stream")
 
 
 while True:
+    try:
+        result = query.get()
+    except Exception as e:
+        print "Getting data failed."
+        print "Error was: " + str(e)
+        break
 
     try:
-        query.storeFile("/space/projects/live-viewer/data/target/testStore")
-    except:
+        query.store("/space/projects/live-viewer/data/target/testStore", result)
+    except Exception as e:
+        print e
         break
 
 
