@@ -3,9 +3,11 @@ import sys
 import time
 
 
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
+BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
 API_PATH    = BASE_PATH + os.sep + "APIs"
 SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+
+print BASE_PATH
 
 if not API_PATH in sys.path:
     sys.path.append ( API_PATH )
@@ -33,7 +35,7 @@ signalIp   = "zitpcx19282.desy.de"
 dataPort   = "50100"
 
 print
-print "==== TEST: Stream all files ===="
+print "==== TEST: Stream all files and store them ===="
 print
 
 
@@ -45,6 +47,8 @@ query.start("stream")
 while True:
     try:
         result = query.get()
+    except KeyboardInterrupt:
+        break
     except Exception as e:
         print "Getting data failed."
         print "Error was: " + str(e)
