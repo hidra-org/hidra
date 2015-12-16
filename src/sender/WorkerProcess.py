@@ -152,10 +152,7 @@ class WorkerProcess():
           will be removed.
         """
 
-        processingJobs = True
-        jobCount = 0
-
-        while processingJobs:
+        while True:
             #sending a "ready"-signal to the router.
             #the reply will contain the actual job/task.
             self.log.debug("worker-"+str(self.id)+": sending ready signal")
@@ -164,22 +161,19 @@ class WorkerProcess():
 
 
             # Get workload from router, until finished
-            self.log.debug("worker-"+str(self.id)+": waiting for new job")
+            self.log.debug("worker-" + str(self.id) + ": waiting for new job")
             workload = self.routerSocket.recv()
-            self.log.debug("worker-"+str(self.id)+": new job received")
+            self.log.debug("worker-" + str(self.id) + ": new job received")
 
-            finished = workload == b"END"
+            finished = workload == b"EXIT"
             if finished:
-                processingJobs = False
-                self.log.debug("router requested to shutdown worker-process. Worker processed: %d files" % jobCount)
+                self.log.debug("Router requested to shutdown worker-"+ str(self.id) + ".")
                 break
-            jobCount += 1
 
 
             # after the signal processing
             if self.checkForSignals(workload):
                 continue
-
 
 
             # get metadata of the file

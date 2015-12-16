@@ -344,6 +344,7 @@ class FileMover():
         self.log.debug("Closing sockets")
         self.fileEventSocket.close(0)
         self.receiverComSocket.close(0)
+        self.sendSignalToWorker("EXIT")
         self.routerSocket.close(0)
 
 
