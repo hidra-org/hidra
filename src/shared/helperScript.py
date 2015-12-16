@@ -200,6 +200,18 @@ def checkLogFileWritable(filepath, filename):
         sys.exit(1)
 
 
+def checkStreamConfig(ips, ports, numberToBe):
+    if len(ips) < numberToBe:
+        logging.error("Not enough IPs specified for OnDA, please check your configuration.")
+        sys.exit(1)
+
+    if len(ports) < numberToBe:
+        logging.error("Not enough ports specified for OnDA, please check your configuration.")
+        sys.exit(1)
+
+
+
+
 def extractSignal(message, log):
     try:
         messageSplit = message.split(',')

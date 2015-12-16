@@ -136,18 +136,22 @@ def argumentParsing():
     parser.add_argument("--maxQueueSize"       , type=int, default=maxQueueSize,
                                                  help="Size of the queue for the live viewer (default=" + str(maxQueueSize) + ")")
 
-    arguments         = parser.parse_args()
+    arguments           = parser.parse_args()
 
-    logfilePath       = str(arguments.logfilePath)
-    logfileName       = str(arguments.logfileName)
-    logfileFullPath   = os.path.join(logfilePath, logfileName)
-    verbose           = arguments.verbose
-    onScreen          = arguments.onScreen
+    logfilePath         = str(arguments.logfilePath)
+    logfileName         = str(arguments.logfileName)
+    logfileFullPath     = os.path.join(logfilePath, logfileName)
+    verbose             = arguments.verbose
+    onScreen            = arguments.onScreen
 
-    watchDir          = str(arguments.watchDir)
+    watchDir            = str(arguments.watchDir)
 
-    monitoredSubdirs  = arguments.monitoredSubdirs
-    cleanerTargetPath = str(arguments.cleanerTargetPath)
+    monitoredSubdirs    = arguments.monitoredSubdirs
+    cleanerTargetPath   = str(arguments.cleanerTargetPath)
+
+    ondaIps             = arguments.ondaIps
+    ondaPorts           = arguments.ondaPorts
+    parallelDataStreams = arguments.parallelDataStreams
 
     #enable logging
     helperScript.initLogging(logfileFullPath, verbose, onScreen)
@@ -160,6 +164,9 @@ def argumentParsing():
 
     # check if logfile is writable
     helperScript.checkLogFileWritable(logfilePath, logfileName)
+
+    # check if there are enough ports specified (OnDA), corresponding to the number of streams
+    helperScript.checkStreamConfig(ondaIps, ondaPorts, parallelDataStreams)
 
     return arguments
 
