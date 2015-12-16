@@ -29,14 +29,12 @@ def argumentParsing():
     logfilePath           = config.get('asection', 'logfilePath')
     logfileName           = config.get('asection', 'logfileName')
     targetDir             = config.get('asection', 'targetDir')
-    dataStreamIp          = config.get('asection', 'dataStreamIp')
     dataStreamPort        = config.get('asection', 'dataStreamPort')
     liveViewerComIp       = config.get('asection', 'liveViewerComIp')
     liveViewerComPort     = config.get('asection', 'liveViewerComPort')
     liveViewerWhiteList   = json.loads(config.get('asection', 'liveViewerWhiteList'))
     lvCommunicatorPort    = config.get('asection', 'lvCommunicatorPort')
-    senderComIp           = config.get('asection', 'senderComIp')
-    senderComPort         = config.get('asection', 'senderComPort')
+    signalIp              = config.get('asection', 'signalIp')
     maxRingBufferSize     = config.get('asection', 'maxRingBufferSize')
     maxQueueSize          = config.get('asection', 'maxQueueSize')
     senderResponseTimeout = config.get('asection', 'senderResponseTimeout')
@@ -51,8 +49,6 @@ def argumentParsing():
     parser.add_argument("--targetDir"             , type=str, default=targetDir,
                                                     help="Where incoming data will be stored to (default=" + str(targetDir) + ")")
 
-    parser.add_argument("--dataStreamIp"          , type=str, default=dataStreamIp,
-                                                    help="IP of dataStream-socket to pull new files from (default=" + str(dataStreamIp) + ")")
     parser.add_argument("--dataStreamPort"        , type=str, default=dataStreamPort,
                                                     help="Port number of dataStream-socket to pull new files from; there needs to be one entry for each streams (default=" + str(dataStreamPort) + ")")
 
@@ -66,10 +62,8 @@ def argumentParsing():
     parser.add_argument("--lvCommunicatorPort"    , type=str, default=lvCommunicatorPort,
                                                     help="Port to exchange data and signals between receiver and lvcommunicator (default=" + str(lvCommunicatorPort) + ")")
 
-    parser.add_argument("--senderComIp"           , type=str, default=senderComIp,
-                                                    help="Port number of dataStream-socket to send signals back to the sender (default=" + str(senderComIp) + ")")
-    parser.add_argument("--senderComPort"         , type=str, default=senderComPort,
-                                                    help="Port number of dataStream-socket to send signals back to the sender (default=" + str(senderComPort) + ")")
+    parser.add_argument("--signalIp"              , type=str, default=signalIp,
+                                                    help="Port number of dataStream-socket to send signals back to the sender (default=" + str(signalIp) + ")")
 
     parser.add_argument("--maxRingBufferSize"     , type=int, default=maxRingBufferSize,
                                                     help="Size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")")
@@ -108,15 +102,13 @@ def argumentParsing():
 
 class ReceiverLiveViewer():
     targetDir             = None
-    dataStreamIp          = None
     dataStreamPort        = None
 
     liveViewerComIp       = None
     liveViewerComPort     = None
     liveViewerWhiteList   = None
     lvCommunicatorPort    = None
-    senderComIp           = None
-    senderComPort         = None
+    signalIp              = None
     maxRingBufferSize     = None
     maxQueueSize          = None
     senderResponseTimeout = None
@@ -125,21 +117,19 @@ class ReceiverLiveViewer():
         arguments = argumentParsing()
 
         self.targetDir             = arguments.targetDir
-        self.dataStreamIp          = arguments.dataStreamIp
         self.dataStreamPort        = arguments.dataStreamPort
 
         self.liveViewerComIp       = arguments.liveViewerComIp
         self.liveViewerComPort     = arguments.liveViewerComPort
         self.liveViewerWhiteList   = arguments.liveViewerWhiteList
         self.lvCommunicatorPort    = arguments.lvCommunicatorPort
-        self.senderComIp           = arguments.senderComIp
-        self.senderComPort         = arguments.senderComPort
+        self.signalIp              = arguments.signalIp
         self.maxRingBufferSize     = arguments.maxRingBufferSize
         self.maxQueueSize          = arguments.maxQueueSize
         self.senderResponseTimeout = arguments.senderResponseTimeout
 
-        self.context = zmq.Context.instance()
-        logging.debug("registering zmq global context")
+#        self.context = zmq.Context.instance()
+#        logging.debug("registering zmq global context")
 
         self.run()
 
@@ -150,14 +140,12 @@ class ReceiverLiveViewer():
         logging.info("start lvCommunicator process...")
         lvCommunicatorProcess = Process(target=LiveViewCommunicator, args=(self.lvCommunicatorPort,
                                                                self.liveViewerComPort, self.liveViewerComIp, self.liveViewerWhiteList,
-                                                               self.maxRingBufferSize, self.maxQueueSize,
-                                                               self.context))
+                                                               self.maxRingBufferSize, self.maxQueueSize))
         lvCommunicatorProcess.start()
 
         #start file receiver
         fileReceiver = FileReceiver(self.targetDir,
-                self.senderComIp, self.senderComPort,
-                self.dataStreamIp, self.dataStreamPort,
+                self.signalIp, self.dataStreamPort,
                 self.lvCommunicatorPort, self.senderResponseTimeout)
 
         try:
@@ -166,14 +154,14 @@ class ReceiverLiveViewer():
             logging.debug("Keyboard interruption detected. Shutting down")
         # except Exception, e:
         #     print "unknown exception detected."
-        finally:
-            try:
-                logging.debug("closing ZMQ context...")
-                self.context.destroy()
-                logging.debug("closing ZMQ context...done.")
-            except:
-                logging.debug("closing ZMQ context...failed.")
-                logging.error(sys.exc_info())
+#        finally:
+#            try:
+#                logging.debug("Destroying ZMQ context...")
+#                self.context.destroy()
+#                logging.debug("Destroying ZMQ context...done.")
+#            except:
+#                logging.debug("Destroying ZMQ context...failed.")
+#                logging.error(sys.exc_info())
 
 
 if __name__ == "__main__":

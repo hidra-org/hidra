@@ -6,20 +6,14 @@ import sys
 import zmq
 import logging
 import traceback
+
 from RingBuffer import RingBuffer
-
-SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
-
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
-del SHARED_PATH
-
 import helperScript
 #
 #  --------------------------  class: LiveViewCommunicator  --------------------------------------
 #
 class LiveViewCommunicator:
-    zmqContext               = None
+    context                  = None
     liveViewerComIp          = None
     liveViewerComPort        = None
     liveViewerWhiteList      = None
@@ -61,15 +55,12 @@ class LiveViewCommunicator:
         self.log = self.getLogger()
         self.log.debug("Init")
 
-#        if context:
-#            assert isinstance(context, zmq.sugar.context.Context)
-
-        #self.zmqContext = context or zmq.Context()
+        #self.context = context or zmq.Context()
         if context:
-            self.zmqContext      = context
+            self.context      = context
             self.externalContext = True
         else:
-            self.zmqContext      = zmq.Context()
+            self.context      = zmq.Context()
             self.externalContext = False
 
         #create sockets
@@ -87,7 +78,6 @@ class LiveViewCommunicator:
             self.stop()
 
 
-        self.log.info("Quitting LiveViewCommunicator.")
 
 
     def getLogger(self):
@@ -97,7 +87,7 @@ class LiveViewCommunicator:
 
     def createSockets(self):
         # create socket to exchange informations with FileReceiver
-        self.receiverExchangeSocket = self.zmqContext.socket(zmq.PAIR)
+        self.receiverExchangeSocket = self.context.socket(zmq.PAIR)
         connectionStr               = "tcp://" + self.receiverExchangeIp + ":%s" % self.receiverExchangePort
         try:
             self.receiverExchangeSocket.bind(connectionStr)
@@ -107,7 +97,7 @@ class LiveViewCommunicator:
             self.log.debug("Error was:" + str(e))
 
         # create communication socket for live viewer
-        self.liveViewerComSocket = self.zmqContext.socket(zmq.REP)
+        self.liveViewerComSocket = self.context.socket(zmq.REP)
         connectionStr         = "tcp://" + self.liveViewerComIp + ":%s" % self.liveViewerComPort
         try:
             self.liveViewerComSocket.bind(connectionStr)
@@ -177,7 +167,7 @@ class LiveViewCommunicator:
                     # create data socket for live viewer
                     self.liveViewerDataIp   = signalHostname
                     self.liveViewerDataPort = port
-                    self.liveViewerDataSocket = self.zmqContext.socket(zmq.REP)
+                    self.liveViewerDataSocket = self.context.socket(zmq.REP)
                     connectionStr         = "tcp://" + self.liveViewerDataIp + ":%s" % self.liveViewerDataPort
                     try:
                         self.liveViewerDataSocket.connect(connectionStr)
@@ -233,24 +223,38 @@ class LiveViewCommunicator:
         self.stop()
 
     def stop(self):
-        self.log.debug("Closing socket")
-        self.receiverExchangeSocket.close(0)
-        self.liveViewerComSocket.close(0)
+        try:
+            if self.receiverExchangeSocket:
+                self.receiverExchangeSocket.close(0)
+                self.receiverExchangeSocket = None
 
-        if self.liveViewerDataSocket:
-            self.liveViewerDataSocket.close(0)
+            if self.liveViewerComSocket:
+                self.liveViewerComSocket.close(0)
+                self.liveViewerComSocket = None
+
+            if self.liveViewerDataSocket:
+                self.liveViewerDataSocket.close(0)
+                self.liveViewerDataSocket = None
+        except Exception as e:
+            self.log.debug("Closing sockets...failed")
+            self.log.info("Error was: " + str(e))
 
         if not self.externalContext:
-            self.log.debug("Destroying context")
             try:
-                self.zmqContext.destroy()
-                self.log.debug("closing ZMQ context...done.")
-            except:
-                self.log.error("closing ZMQ context...failed.")
-                self.log.error(sys.exc_info())
+                if self.context:
+                    self.log.info("Destroying ZMQ context...")
+                    self.context.destroy()
+                    self.context = None
+                    self.log.debug("Destroying ZMQ context...done.")
+            except Exception as e:
+                self.log.error("Destroying ZMQ context...failed.")
+                self.log.debug("Error was: " + str(e))
+                self.log.debug(sys.exc_info())
 
-        self.log.debug("Clearing Ringbuffer")
-        self.ringBuffer.removeAll()
+        if self.ringBuffer:
+            self.log.debug("Clearing Ringbuffer")
+            self.ringBuffer.removeAll()
+            self.ringBuffer = None
 
     def __exit__(self):
         self.stop()

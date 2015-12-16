@@ -39,18 +39,21 @@ def argumentParsing():
                                                    help="port number of dataStream-socket to pull new files from (default=" + str(dataStreamPort) + ")")
     parser.add_argument("--verbose"              , action="store_true",
                                                    help="more verbose output")
+    parser.add_argument("--onScreen"             , type=str, default=False,
+                                                   help="Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)")
 
     arguments = parser.parse_args()
+
+    targetDir   = str(arguments.targetDir)
 
     logfilePath     = str(arguments.logfilePath)
     logfileName     = str(arguments.logfileName)
     logfileFullPath = os.path.join(logfilePath, logfileName)
     verbose         = arguments.verbose
-
-    targetDir   = str(arguments.targetDir)
+    onScreen        = arguments.onScreen
 
     #enable logging
-    helperScript.initLogging(logfileFullPath, verbose)
+    helperScript.initLogging(logfileFullPath, verbose, onScreen)
 
     # check target directory for existance
     helperScript.checkDirExistance(targetDir)

@@ -87,10 +87,13 @@ class LiveView(QThread):
                 # get latest file from reveiver
                 receivedFile = self.zmqQuery.get()
 
+                print "Next file: ", receivedFile
+
                 if receivedFile =="None":
                     self.mutex.unlock()
                     continue
 
+                time.sleep(0.2)
                 # display image
 #                try:
 #                    self.subframe.loadFile(receivedFile)

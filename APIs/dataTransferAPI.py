@@ -6,6 +6,8 @@ import zmq
 import socket
 import logging
 import json
+import errno
+import os
 
 class dataTransfer():
 
@@ -132,7 +134,12 @@ class dataTransfer():
 
             message = self.__sendSignal(signal)
 
-            if message and message == "NO_VALID_SIGNAL":
+            if message and message == "NO_VALID_HOST":
+                self.stop()
+                raise Exception("Host is not allowed to connect.")
+
+            elif message and message == "NO_VALID_SIGNAL":
+                self.stop()
                 raise Exception("Connection type is not supported for this kind of sender.")
 
             # if the response was correct
@@ -147,9 +154,9 @@ class dataTransfer():
                     connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
                     try:
                         self.dataSocket.bind(connectionStr)
-                        self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
+                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
                     except Exception as e:
-                        self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
                         self.log.debug("Error was:" + str(e))
 
                     self.streamStarted = True
@@ -161,9 +168,9 @@ class dataTransfer():
                     connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
                     try:
                         self.dataSocket.bind(connectionStr)
-                        self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
+                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
                     except Exception as e:
-                        self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
                         self.log.debug("Error was:" + str(e))
 
                     self.queryNextStarted = True
@@ -175,9 +182,9 @@ class dataTransfer():
                     connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
                     try:
                         self.dataSocket.connect(connectionStr)
-                        self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
+                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
                     except Exception as e:
-                        self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
                         self.log.debug("Error was:" + str(e))
 
                     self.ondaStarted = True
@@ -189,9 +196,9 @@ class dataTransfer():
                     connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
                     try:
                         self.dataSocket.bind(connectionStr)
-                        self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
+                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
                     except Exception as e:
-                        self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
+                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
                         self.log.debug("Error was:" + str(e))
 
                     self.queryMetadataStarted = True
@@ -290,7 +297,7 @@ class dataTransfer():
                 return self.__getMultipartMessage()
             except KeyboardInterrupt:
                 self.log.debug("Keyboard interrupt detected. Stopping to receive.")
-                return None
+                raise
             except Exception, e:
                 self.log.error("Unknown error while receiving files. Need to abort.")
                 self.log.debug("Error was: " + str(e))
@@ -299,7 +306,7 @@ class dataTransfer():
         elif self.queryNextStarted or self.ondaStarted or self.queryMetadataStarted:
 
             sendMessage = "NEXT_FILE"
-            self.log.info("Asking for next file with message " + str(sendMessage))
+#            self.log.debug("Asking for next file with message " + str(sendMessage))
             try:
                 self.dataSocket.send(sendMessage)
             except Exception as e:
@@ -328,7 +335,6 @@ class dataTransfer():
 
     def __getMultipartMessage(self):
 
-        receivingMessages = True
         #save all chunks to file
         multipartMessage = self.dataSocket.recv_multipart()
 
@@ -355,7 +361,139 @@ class dataTransfer():
             self.log.debug("Error was:" + str(e))
             payload = None
 
-        return [metadata, payload]
+        return [metadataDict, payload]
+
+
+    def store(self, targetBasePath, dataObject):
+
+        if type(dataObject) is not list and len(dataObject) != 2:
+            raise Exception("Wrong input type for 'store'")
+
+        payloadMetadata   = dataObject[0]
+        payload           = dataObject[1]
+
+
+        if type(payloadMetadata) is not dict or type(payload) is not list:
+            raise Exception("payload: Wrong input format in 'store'")
+
+        #save all chunks to file
+        while True:
+
+            if payloadMetadata and payload:
+                #append to file
+                try:
+                    self.log.debug("append to file based on multipart-message...")
+                    #TODO: save message to file using a thread (avoids blocking)
+                    #TODO: instead of open/close file for each chunk recyle the file-descriptor for all chunks opened
+                    self.__appendChunksToFile(targetBasePath, payloadMetadata, payload)
+                    self.log.debug("append to file based on multipart-message...success.")
+                except KeyboardInterrupt:
+                    errorMessage = "KeyboardInterrupt detected. Unable to append multipart-content to file."
+                    self.log.info(errorMessage)
+                    break
+                except Exception, e:
+                    errorMessage = "Unable to append multipart-content to file."
+                    self.log.error(errorMessage)
+                    self.log.debug("Error was: " + str(e))
+                    self.log.debug("append to file based on multipart-message...failed.")
+
+                if len(payload) < payloadMetadata["chunkSize"] :
+                    #indicated end of file. Leave loop
+                    filename    = self.generateTargetFilepath(targetBasePath, payloadMetadata)
+                    fileModTime = payloadMetadata["fileModificationTime"]
+
+                    self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
+                    break
+
+            try:
+                [payloadMetadata, payload] = self.get()
+            except Exception as e:
+                self.log.error("Getting data failed.")
+                self.log.debug("Error was: " + str(e))
+                break
+
+
+    def __appendChunksToFile(self, targetBasePath, configDict, payload):
+
+        chunkCount         = len(payload)
+
+        #generate target filepath
+        targetFilepath = self.generateTargetFilepath(targetBasePath, configDict)
+        self.log.debug("new file is going to be created at: " + targetFilepath)
+
+
+        #append payload to file
+        try:
+            newFile = open(targetFilepath, "a")
+        except IOError, e:
+            # errno.ENOENT == "No such file or directory"
+            if e.errno == errno.ENOENT:
+                #TODO create subdirectory first, then try to open the file again
+                try:
+                    targetPath = self.__generateTargetPath(targetBasePath, configDict)
+                    os.makedirs(targetPath)
+                    newFile = open(targetFilepath, "w")
+                    self.log.info("New target directory created: " + str(targetPath))
+                except Exception, f:
+                    errorMessage = "Unable to save payload to file: '" + targetFilepath + "'"
+                    self.log.error(errorMessage)
+                    self.log.debug("Error was: " + str(f))
+                    self.log.debug("targetPath:" + str(targetPath))
+                    raise Exception(errorMessage)
+            else:
+                self.log.error("Failed to append payload to file: '" + targetFilepath + "'")
+                self.log.debug("Error was: " + str(e))
+        except Exception, e:
+            self.log.error("Failed to append payload to file: '" + targetFilepath + "'")
+            self.log.debug("Error was: " + str(e))
+            self.log.debug("ErrorTyp: " + str(type(e)))
+            self.log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
+
+        #only write data if a payload exist
+        try:
+            if payload != None:
+                for chunk in payload:
+                    newFile.write(chunk)
+            newFile.close()
+        except Exception, e:
+            errorMessage = "unable to append data to file."
+            self.log.error(errorMessage)
+            self.log.debug("Error was: " + str(e))
+            raise Exception(errorMessage)
+
+
+    def generateTargetFilepath(self, basePath, configDict):
+        """
+        generates full path where target file will saved to.
+
+        """
+        filename     = configDict["filename"]
+        relativePath = configDict["relativePath"]
+
+        if relativePath is '' or relativePath is None:
+            targetPath = basePath
+        else:
+            targetPath = os.path.normpath(basePath + os.sep + relativePath)
+
+        filepath =  os.path.join(targetPath, filename)
+
+        return filepath
+
+
+    def __generateTargetPath(self, basePath, configDict):
+        """
+        generates path where target file will saved to.
+
+        """
+        relativePath = configDict["relativePath"]
+
+        # if the relative path starts with a slash path.join will consider it as absolute path
+        if relativePath.startswith("/"):
+            relativePath = relativePath[1:]
+
+        targetPath = os.path.join(basePath, relativePath)
+
+        return targetPath
 
 
     ##
@@ -387,19 +525,20 @@ class dataTransfer():
                 self.dataSocket.close(linger=0)
                 self.dataSocket = None
         except Exception as e:
-            self.log.info("closing ZMQ Sockets...failed.")
+            self.log.error("closing ZMQ Sockets...failed.")
             self.log.info("Error was: " + str(e))
 
         if not self.externalContext:
             try:
                 if self.context:
-                    self.log.info("closing zmqContext...")
+                    self.log.info("closing ZMQ context...")
                     self.context.destroy()
                     self.context = None
-                    self.log.info("closing zmqContext...done.")
+                    self.log.info("closing ZMQ context...done.")
             except Exception as e:
-                self.log.info("closing zmqContext...failed.")
-                self.log.info("Error was: " + str(e))
+                self.log.error("closing ZMQ context...failed.")
+                self.log.debug("Error was: " + str(e))
+                self.log.debug(sys.exc_info())
 
 
     def __exit__(self):

@@ -3,7 +3,7 @@ import sys
 import time
 
 
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
+BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
 API_PATH    = BASE_PATH + os.sep + "APIs"
 
 if not API_PATH in sys.path:
@@ -16,15 +16,17 @@ from dataTransferAPI import dataTransfer
 
 signalIp   = "zitpcx19282.desy.de"
 #signalIp   = "zitpcx22614.desy.de"
-dataPort   = "50201"
+dataPort   = "50100"
 
 print
-print "==== TEST: Query for the newest filename ===="
+print "==== TEST: Stream all files ===="
 print
+
 
 query = dataTransfer( signalIp, dataPort )
 
-query.start("queryNext")
+query.start("stream")
+
 
 while True:
     try:
@@ -37,12 +39,13 @@ while True:
     print metadata
     print "data", str(data)[:10]
     print
-    time.sleep(0.1)
+
 
 query.stop()
 
 print
-print "==== TEST END: Query for the newest filename ===="
+print "==== TEST END: Stream for all files ===="
 print
+
 
 
