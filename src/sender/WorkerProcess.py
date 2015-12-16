@@ -262,7 +262,7 @@ class WorkerProcess():
         signal, host, port, version = helperScript.extractSignal(workload, self.log)
 
         # a data stream is turned on
-        if signal == "START_LIVE_VIEWER":
+        if signal == "START_STREAM":
             self.log.info("worker-"+str(self.id)+": Received signal to start data stream...")
 
             # parent process has already checked for streams on this host and port: there is none running
@@ -284,7 +284,7 @@ class WorkerProcess():
             return True
 
         # a data stream is turned off
-        elif signal == "STOP_LIVE_VIEWER":
+        elif signal == "STOP_STREAM":
             self.log.info("worker-"+str(self.id)+": Received signal to stop data stream...")
 
             # parent process has already checked for streams on this host and port: there is one running
@@ -301,7 +301,7 @@ class WorkerProcess():
             return True
 
         # the realtime-analysis is turned on
-        elif signal == "START_QUERY_NEWEST":
+        elif signal == "START_QUERY_NEXT":
             self.log.info("worker-"+str(self.id)+": Received signal to start a query for the newest file...")
 
             # create the socket to send data to the realtime analysis
@@ -325,7 +325,7 @@ class WorkerProcess():
             return True
 
         # the realtime-analysis is turned off
-        elif signal == "STOP_QUERY_NEWEST":
+        elif signal == "STOP_QUERY_NEXT":
             self.log.info("worker-"+str(self.id)+": Received signal to stop querying for newest file...")
 
             # parent process has already checked for streams on this host and port: there is one running

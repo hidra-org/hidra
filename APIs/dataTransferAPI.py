@@ -116,10 +116,10 @@ class dataTransfer():
 
             if connectionType == "stream" and not alreadyConnected:
                 signalPort = self.signalPort_data
-                signal     = "START_LIVE_VIEWER"
+                signal     = "START_STREAM"
             elif connectionType == "queryNext" and not alreadyConnected:
                 signalPort = self.signalPort_data
-                signal     = "START_QUERY_NEWEST"
+                signal     = "START_QUERY_NEXT"
             elif connectionType == "OnDA" and not alreadyConnected:
                 signalPort = self.signalPort_data
                 signal     = "START_REALTIME_ANALYSIS"
@@ -504,9 +504,9 @@ class dataTransfer():
     def stop(self):
         if self.dataSocket and not self.prioStreamStarted:
             if self.streamStarted:
-                signal = "STOP_LIVE_VIEWER"
+                signal = "STOP_STREAM"
             elif self.queryNextStarted:
-                signal = "STOP_QUERY_NEWEST"
+                signal = "STOP_QUERY_NEXT"
             elif self.ondaStarted:
                 signal = "STOP_REALTIME_ANALYSIS"
             elif self.queryMetadataStarted:

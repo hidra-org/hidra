@@ -234,7 +234,7 @@ class FileMover():
                             continue
 
                     # Checking signal
-                    if signal == "START_LIVE_VIEWER":
+                    if signal == "START_STREAM":
                         self.log.info("Received signal to start stream to host " + str(signalHostname) + " on port " + str(port))
                         if [signalHostname, port] not in self.openConnections["streams"]:
                             self.openConnections["streams"].append([signalHostname,port])
@@ -247,7 +247,7 @@ class FileMover():
                             self.sendResponse(responseSignal)
                         continue
 
-                    elif signal == "STOP_LIVE_VIEWER":
+                    elif signal == "STOP_STREAM":
                         self.log.info("Received signal to stop stream to host " + str(signalHostname) + " on port " + str(port))
                         if [signalHostname, port] in self.openConnections["streams"]:
                             self.openConnections["streams"].remove([signalHostname, port])
@@ -260,7 +260,7 @@ class FileMover():
                             self.sendResponse(responseSignal)
                         continue
 
-                    elif signal == "START_QUERY_NEWEST" or signal == "START_REALTIME_ANALYSIS":
+                    elif signal == "START_QUERY_NEXT" or signal == "START_REALTIME_ANALYSIS":
                         self.log.info("Received signal from host " + str(signalHostname) + " to enable querying for data")
                         if [signalHostname, port] not in self.openConnections["queryNext"]:
                             self.openConnections["queryNext"].append([signalHostname, port])
@@ -274,7 +274,7 @@ class FileMover():
                             self.sendResponse(responseSignal)
                         continue
 
-                    elif signal == "STOP_QUERY_NEWEST" or signal == "STOP_REALTIME_ANALYSIS":
+                    elif signal == "STOP_QUERY_NEXT" or signal == "STOP_REALTIME_ANALYSIS":
                         self.log.info("Received signal from host " + str(signalHostname) + " to disable querying for data")
                         if [signalHostname, port] in self.openConnections["queryNext"]:
                             self.openConnections["queryNext"].remove([signalHostname, port])
@@ -328,7 +328,7 @@ class FileMover():
 
             # address == "worker-0"
             # empty   == b''                   # as delimiter
-            # signal  == b'START_LIVE_VIEWER'
+            # signal  == b'START_STREAM'
             self.routerSocket.send_multipart([
                                          address,
                                          b'',
