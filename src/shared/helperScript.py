@@ -211,28 +211,6 @@ def checkStreamConfig(ips, ports, numberToBe):
 
 
 
-
-def extractSignal(message, log):
-    try:
-        messageSplit = message.split(',')
-    except Exception as e:
-        log.info("Received signal is of the wrong format")
-        log.debug("Received signal: " + str(message))
-        return None, None, None, None
-
-    if len(messageSplit) < 4:
-        log.info("Received signal is of the wrong format")
-        log.debug("Received signal is too short: " + str(message))
-        return None, None, None, None
-
-    signal   = messageSplit[0]
-    hostname = messageSplit[1]
-    port     = messageSplit[2]
-    version  = messageSplit[3]
-
-    return signal, hostname, port, version
-
-
 def checkVersion(version, log):
     if version < __version__:
         log.info("Version of receiver is lower. Please update receiver.")
@@ -243,7 +221,8 @@ def checkVersion(version, log):
     else:
         return True
 
-def checkSignal(hostname, whiteList ):
+
+def checkHost(hostname, whiteList ):
 
     if hostname and whiteList:
 
@@ -256,6 +235,26 @@ def checkSignal(hostname, whiteList ):
             return True
 
     return False
+
+
+def extractSignal(message, log):
+    try:
+        messageSplit = message.split(',')
+    except Exception as e:
+        log.info("Received signal is of the wrong format")
+        log.debug("Received signal: " + str(message))
+        return None, None, None, None
+
+    if len(messageSplit) < 3:
+        log.info("Received signal is of the wrong format")
+        log.debug("Received signal is too short: " + str(message))
+        return None, None, None, None
+
+    signal   = messageSplit[0]
+    hostname = messageSplit[1]
+    port     = messageSplit[2]
+
+    return signal, hostname, port
 
 
 

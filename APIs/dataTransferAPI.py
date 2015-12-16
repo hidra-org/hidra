@@ -134,6 +134,10 @@ class dataTransfer():
 
             message = self.__sendSignal(signal)
 
+            if message and message == "VERSION_CONFLICT":
+                self.stop()
+                raise Exception("Versions are conflicting.")
+
             if message and message == "NO_VALID_HOST":
                 self.stop()
                 raise Exception("Host is not allowed to connect.")
@@ -237,10 +241,12 @@ class dataTransfer():
 
         # Send the signal that the communication infrastructure should be established
         self.log.info("Sending Signal")
-        sendMessage = str(signal) + "," + str(self.hostname) + "," + str(self.dataPort) + "," + str(__version__)
-        self.log.debug("Signal: " + sendMessage)
+        sendMessage = [__version__, signal, self.hostname, self.dataPort]
+#        sendMessage = str(signal) + "," + str(__version__) + "," + str(self.hostname) + "," + str(self.dataPort)
+        self.log.debug("Signal: " + str(sendMessage))
         try:
-            self.signalSocket.send(sendMessage)
+            self.signalSocket.send_multipart(sendMessage)
+#            self.signalSocket.send(sendMessage)
         except Exception as e:
             self.log.error("Could not send signal")
             self.log.info("Error was: " + str(e))
