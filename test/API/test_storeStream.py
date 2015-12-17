@@ -30,8 +30,8 @@ helperScript.initLogging(logfileFullPath, True, "DEBUG")
 del BASE_PATH
 
 
-signalIp   = "zitpcx19282.desy.de"
-#signalIp   = "zitpcx22614.desy.de"
+signalHost = "zitpcx19282.desy.de"
+#signalHost = "zitpcx22614.desy.de"
 dataPort   = "50100"
 
 print
@@ -39,9 +39,10 @@ print "==== TEST: Stream all files and store them ===="
 print
 
 
-query = dataTransfer( signalIp, dataPort, useLog = True )
+query = dataTransfer(signalHost, useLog = True)
 
-query.start("stream")
+query.initiate("stream", dataPort)
+query.start()
 
 
 while True:

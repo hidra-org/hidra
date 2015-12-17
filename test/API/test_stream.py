@@ -14,8 +14,8 @@ del BASE_PATH
 from dataTransferAPI import dataTransfer
 
 
-signalIp   = "zitpcx19282.desy.de"
-#signalIp   = "zitpcx22614.desy.de"
+signalHost = "zitpcx19282.desy.de"
+#signalHost = "zitpcx22614.desy.de"
 dataPort   = "50100"
 
 print
@@ -23,9 +23,11 @@ print "==== TEST: Stream all files ===="
 print
 
 
-query = dataTransfer( signalIp, dataPort )
+query = dataTransfer(signalHost)
 
-query.start("stream")
+query.initiate("stream", dataPort)
+
+query.start()
 
 
 while True:
@@ -37,7 +39,7 @@ while True:
     print
     print "metadata"
     print metadata
-    print "data", str(data)[:10]
+#    print "data", str(data)[:10]
     print
 
 
