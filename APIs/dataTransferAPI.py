@@ -221,10 +221,10 @@ class dataTransfer():
             port = str(dataPort)
         elif type(self.dataPort) != list:
             port = self.dataPort
-            ip   = "0.0.0.0"           #TODO use IP of hostname?
         else:
             raise Exception("Multipe possible ports. Please choose which one to use.")
 
+        ip   = "0.0.0.0"           #TODO use IP of hostname?
 
         signal = None
         if self.connectionType in ["priorityStream", "stream"]:

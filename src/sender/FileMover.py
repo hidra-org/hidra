@@ -257,8 +257,17 @@ class FileMover():
         else:
 
             version, signal, host, port = incomingMessage
-            host = host.split(',')
-            port = port.split(',')
+
+            if host.startswith("["):
+                # remove "['" and "']" at the beginning and the end
+                host = host[2:-2].split("', '")
+            else:
+                host = [host]
+
+            if port.startswith("["):
+                port = port[2:-2].split("', '")
+            else:
+                port = [port]
 
             if version:
                 if helperScript.checkVersion(version, self.log):
@@ -273,7 +282,7 @@ class FileMover():
                 # Checking signal sending host
                 self.log.debug("Check if signal sending host is in WhiteList...")
                 if helperScript.checkHost(host, self.receiverWhiteList, self.log):
-                    self.log.debug("One of the hosts is allowed to connect.")
+                    self.log.debug("Hosts are allowed to connect.")
                     self.log.debug("hosts: " + str(host))
                 else:
                     self.log.debug("One of the hosts is not allowed to connect.")
@@ -282,12 +291,13 @@ class FileMover():
                     return False, None, None, None
 
             if signal in ["START_QUERY_NEXT", "STOP_QUERY_NEXT"]:
-                if len(host) != self.parallelDataStreams:
+
+                if type(host) == list and len(host) != self.parallelDataStreams:
                     self.log.debug("Not enough hosts specified.")
                     self.sendResponse("INCORRECT_NUMBER_OF_HOSTS")
                     return False, None, None, None
 
-                if len(port) != self.parallelDataStreams:
+                if type(port) == list and len(port) != self.parallelDataStreams:
                     self.log.debug("Not enough ports specified.")
                     self.sendResponse("INCORRECT_NUMBER_OF_PORTS")
                     return False, None, None, None
@@ -348,7 +358,6 @@ class FileMover():
 
         elif signal == "STOP_QUERY_NEXT" or signal == "STOP_REALTIME_ANALYSIS":
             self.log.info("Received signal from host " + str(host) + " to disable querying for data")
-            print self.openConnections["queryNext"]
             if [host, port] in self.openConnections["queryNext"]:
                 self.openConnections["queryNext"].remove([host, port])
                 # send signal to workerProcesses and back to receiver

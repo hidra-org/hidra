@@ -228,8 +228,8 @@ class LiveViewCommunicator:
         else:
 
             version, signal, host, port = message
-            host = host.split(',')
-            port = port.split(',')
+            host = host[2:-2].split("', '")
+            port = port[2:-2].split("', '")
 
             if version:
                 if helperScript.checkVersion(version, self.log):
@@ -244,7 +244,7 @@ class LiveViewCommunicator:
                 # Checking signal sending host
                 self.log.debug("Check if hosts is in WhiteList...")
                 if helperScript.checkHost(host, self.receiverWhiteList, self.log):
-                    self.log.debug("One of the hosts is allowed to connect.")
+                    self.log.debug("Hosts are allowed to connect.")
                     self.log.debug("hosts: " + str(host))
                 else:
                     self.log.debug("One of the hosts is not allowed to connect.")
