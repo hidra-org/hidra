@@ -222,17 +222,33 @@ def checkVersion(version, log):
         return True
 
 
-def checkHost(hostname, whiteList ):
+def checkHost(hostname, whiteList, log):
 
     if hostname and whiteList:
 
-        if hostname.endswith(".desy.de"):
-            hostnameModified = hostname[:-8]
-        else:
-            hostnameModified = hostname
+        if type(hostname) == list:
+            temp = True
+            for host in hostname:
+                if host.endswith(".desy.de"):
+                    hostModified = host[:-8]
+                else:
+                    hostModified = host
 
-        if hostname in whiteList or hostnameModified in whiteList:
-            return True
+                if host not in whiteList and hostModified not in whiteList:
+                    log.info("Host " + str(host) + " is not allowed to connect")
+                    temp = False
+
+            return temp
+
+
+        else:
+            if hostname.endswith(".desy.de"):
+                hostnameModified = hostname[:-8]
+            else:
+                hostnameModified = hostname
+
+            if hostname in whiteList or hostnameModified in whiteList:
+                return True
 
     return False
 
