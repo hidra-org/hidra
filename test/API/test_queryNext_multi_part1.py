@@ -35,9 +35,9 @@ print
 print "==== TEST: Query for the newest filename ===="
 print
 
-query = dataTransfer(signalHost, useLog = True)
+query = dataTransfer("queryNext", signalHost, useLog = True)
 
-query.initiate("queryNext", dataPort)
+query.initiate(dataPort)
 query.start(50205)
 
 while True:

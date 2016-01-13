@@ -22,9 +22,10 @@ print
 print "==== TEST: Query for the newest filename ===="
 print
 
-query = dataTransfer(signalHost)
+query = dataTransfer("queryNext", signalHost)
 
-query.initiate("queryNext", dataPort)
+query.initiate(dataPort)
+
 query.start()
 
 while True:

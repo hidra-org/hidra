@@ -40,7 +40,7 @@ class dataTransfer():
     socketResponseTimeout = None
 
 
-    def __init__(self, signalHost, useLog = False, context = None):
+    def __init__(self, connectionType, signalHost, useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("dataTransferAPI")
@@ -67,17 +67,17 @@ class dataTransfer():
             self.context         = zmq.Context()
             self.externalContext = False
 
+        if connectionType in self.supportedConnections:
+            self.connectionType = connectionType
+        else:
+            raise Exception("Chosen type of connection is not supported.")
+
         self.signalHost            = signalHost
         self.socketResponseTimeout = 1000
 
 
 
-    def initiate(self, connectionType, dataPort, dataHost = False):
-
-        if connectionType in self.supportedConnections:
-            self.connectionType = connectionType
-        else:
-            raise Exception("Chosen type of connection is not supported.")
+    def initiate(self, dataPort, dataHost = False):
 
         if dataHost:
             self.dataHost = dataHost

@@ -39,9 +39,10 @@ print "==== TEST: Stream all files and store them ===="
 print
 
 
-query = dataTransfer(signalHost, useLog = True)
+query = dataTransfer("stream", signalHost, useLog = True)
 
-query.initiate("stream", dataPort)
+query.initiate(dataPort)
+
 query.start()
 
 

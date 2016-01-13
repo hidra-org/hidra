@@ -23,9 +23,9 @@ print "==== TEST: Stream all files ===="
 print
 
 
-query = dataTransfer(signalHost)
+query = dataTransfer("stream", signalHost)
 
-query.initiate("stream", dataPort)
+query.initiate(dataPort)
 
 query.start()
 
