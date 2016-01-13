@@ -7,14 +7,11 @@ BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.real
 API_PATH    = BASE_PATH + os.sep + "APIs"
 SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
 
-print BASE_PATH
-
 if not API_PATH in sys.path:
     sys.path.append ( API_PATH )
 del API_PATH
 
 from dataTransferAPI import dataTransfer
-
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -30,43 +27,36 @@ helperScript.initLogging(logfileFullPath, True, "DEBUG")
 del BASE_PATH
 
 
-signalHost = "zitpcx19282.desy.de"
-#signalHost = "zitpcx22614.desy.de"
-dataPort   = "50100"
+signalHost   = "zitpcx19282.desy.de"
+#isignalHost   = "zitpcx22614.desy.de"
+dataPort   = ["50205", "50206"]
 
 print
-print "==== TEST: Stream all files and store them ===="
+print "==== TEST: Query for the newest filename ===="
 print
-
 
 query = dataTransfer(signalHost, useLog = True)
 
-query.initiate("stream", dataPort)
-query.start()
-
+query.initiate("queryNext", dataPort)
+query.start(50205)
 
 while True:
     try:
-        result = query.get()
-    except KeyboardInterrupt:
-        break
-    except Exception as e:
-        print "Getting data failed."
-        print "Error was: " + str(e)
+        [metadata, data] = query.get()
+    except:
         break
 
-    try:
-        query.store("/space/projects/live-viewer/data/target/testStore", result)
-    except Exception as e:
-        print e
-        break
-
+    print
+    print "metadata"
+    print metadata
+    print "data", str(data)[:10]
+    print
+    time.sleep(0.1)
 
 query.stop()
 
 print
-print "==== TEST END: Stream for all files ===="
+print "==== TEST END: Query for the newest filename ===="
 print
-
 
 

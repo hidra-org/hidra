@@ -14,10 +14,10 @@ class dataTransfer():
     context         = None
     externalContext = True
 
-    signalIp        = None
+    signalHost      = None
     signalPort      = None
     dataIp          = None
-    hostname        = None
+    dataHost        = None
     dataPort        = None
 
     signalSocket    = None
@@ -25,6 +25,7 @@ class dataTransfer():
 
     log             = None
 
+    connectionType       = None
     supportedConnections = ["priorityStream", "stream", "queryNext", "OnDA", "queryMetadata"]
 
     signalPort_MetadataOnly = "50021"
@@ -38,7 +39,8 @@ class dataTransfer():
 
     socketResponseTimeout = None
 
-    def __init__(self, signalIp, dataPort, dataIp = "0.0.0.0", useLog = False, context = None):
+
+    def __init__(self, signalHost, useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("dataTransferAPI")
@@ -65,153 +67,81 @@ class dataTransfer():
             self.context         = zmq.Context()
             self.externalContext = False
 
-
-        self.signalIp   = signalIp
-        self.dataIp     = dataIp
-        self.hostname   = socket.gethostname()
-        self.dataPort   = dataPort
-
+        self.signalHost            = signalHost
         self.socketResponseTimeout = 1000
 
 
 
-    ##
-    #
-    # Initailizes the signal and data transfer sockets and
-    # send a signal which the kind of connection to be established
-    #
-    # Returns 0 if the connection could be initializes without errors
-    # Error Codes are:
-    # 10    if the connection type is not supported
-    # 11    if there is already one connection running
-    # 12    Could not send signal
-    # 13    Could not poll new for new message
-    # 14    Could not receive answer to signal
-    # 15    if the response was not correct
-    #
-    ##
-    def start(self, connectionType):
+    def initiate(self, connectionType, dataPort, dataHost = False):
 
-        if connectionType not in self.supportedConnections:
+        if connectionType in self.supportedConnections:
+            self.connectionType = connectionType
+        else:
             raise Exception("Chosen type of connection is not supported.")
 
-        alreadyConnected = self.streamStarted or self.queryNextStarted or self.ondaStarted or self.queryMetadataStarted or self.prioStreamStarted
+        if dataHost:
+            self.dataHost = dataHost
+        elif type(dataPort) == list:
+            self.dataHost = str([socket.gethostname() for i in dataPort])
+        else:
+            self.dataHost = socket.gethostname()
+
+        self.dataPort = str(dataPort)
+
 
         signal = None
-        if connectionType == "priorityStream" and not alreadyConnected:
+        # Signal exchange
+        if self.connectionType == "priorityStream":
+            # for a priority stream not signal has to be exchanged,
+            # this has to be configured at the sender
+            return
+        if self.connectionType == "stream":
+            signalPort = self.signalPort_data
+            signal     = "START_STREAM"
+        elif self.connectionType == "queryNext":
+            signalPort = self.signalPort_data
+            signal     = "START_QUERY_NEXT"
+        elif self.connectionType == "OnDA":
+            signalPort = self.signalPort_data
+            signal     = "START_REALTIME_ANALYSIS"
+        elif self.connectionType == "queryMetadata":
+            signalPort = self.signalPort_MetadataOnly
+            signal     = "START_DISPLAYER"
 
-            self.dataSocket = self.context.socket(zmq.PULL)
-            # An additional socket is needed to establish the data retriving mechanism
-            connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
-            try:
-                self.dataSocket.bind(connectionStr)
-                self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
-            except Exception as e:
-                self.log.error("Failed to start dataStreamSocket (bind): '" + connectionStr + "'")
-                self.log.debug("Error was:" + str(e))
+        self.log.debug("create socket for signal exchange...")
+        self.__createSignalSocket(signalPort)
 
-            self.prioStreamStarted = True
+        message = self.__sendSignal(signal)
+
+        if message and message == "VERSION_CONFLICT":
+            self.stop()
+            raise Exception("Versions are conflicting.")
+
+        elif message and message == "NO_VALID_HOST":
+            self.stop()
+            raise Exception("Host is not allowed to connect.")
+
+        elif message and message == "INCORRECT_NUMBER_OF_HOSTS":
+            self.stop()
+            raise Exception("Specified number of hosts not working with the number of streams configured in the sender.")
+
+        elif message and message == "INCORRECT_NUMBER_OF_PORTS":
+            self.stop()
+            raise Exception("Specified number of ports not working with the number of streams configured in the sender.")
+
+        elif message and message == "NO_VALID_SIGNAL":
+            self.stop()
+            raise Exception("Connection type is not supported for this kind of sender.")
+
+        # if there was no response or the response was of the wrong format, the receiver should be shut down
+        elif message and message.startswith(signal):
+            self.log.info("Received confirmation ...")
 
         else:
-
-            if connectionType == "stream" and not alreadyConnected:
-                signalPort = self.signalPort_data
-                signal     = "START_LIVE_VIEWER"
-            elif connectionType == "queryNext" and not alreadyConnected:
-                signalPort = self.signalPort_data
-                signal     = "START_QUERY_NEWEST"
-            elif connectionType == "OnDA" and not alreadyConnected:
-                signalPort = self.signalPort_data
-                signal     = "START_REALTIME_ANALYSIS"
-            elif connectionType == "queryMetadata" and not alreadyConnected:
-                signalPort = self.signalPort_MetadataOnly
-                signal     = "START_DISPLAYER"
-            else:
-                raise Exception("Other connection type already running.\
-                        More than one connection type is currently not supported.")
-
-            self.__creatSignalSocket(signalPort)
-
-            message = self.__sendSignal(signal)
-
-            if message and message == "NO_VALID_HOST":
-                self.stop()
-                raise Exception("Host is not allowed to connect.")
-
-            elif message and message == "NO_VALID_SIGNAL":
-                self.stop()
-                raise Exception("Connection type is not supported for this kind of sender.")
-
-            # if the response was correct
-            elif message and message.startswith(signal):
-
-                self.log.info("Received confirmation ...start receiving files")
-
-                if connectionType == "stream":
-
-                    self.dataSocket = self.context.socket(zmq.PULL)
-                    # An additional socket is needed to establish the data retriving mechanism
-                    connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
-                    try:
-                        self.dataSocket.bind(connectionStr)
-                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
-                    except Exception as e:
-                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
-                        self.log.debug("Error was:" + str(e))
-
-                    self.streamStarted = True
-
-                elif connectionType == "queryNext":
-
-                    self.dataSocket = self.context.socket(zmq.REQ)
-                    # An additional socket is needed to establish the data retriving mechanism
-                    connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
-                    try:
-                        self.dataSocket.bind(connectionStr)
-                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
-                    except Exception as e:
-                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
-                        self.log.debug("Error was:" + str(e))
-
-                    self.queryNextStarted = True
-
-                elif connectionType == "OnDA":
-
-                    self.dataSocket = self.context.socket(zmq.REQ)
-                    # An additional socket is needed to establish the data retriving mechanism
-                    connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
-                    try:
-                        self.dataSocket.connect(connectionStr)
-                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
-                    except Exception as e:
-                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
-                        self.log.debug("Error was:" + str(e))
-
-                    self.ondaStarted = True
-
-                elif connectionType == "queryMetadata":
-
-                    self.dataSocket = self.context.socket(zmq.REQ)
-                    # An additional socket is needed to establish the data retriving mechanism
-                    connectionStr = "tcp://" + str(self.dataIp) + ":" + str(self.dataPort)
-                    try:
-                        self.dataSocket.bind(connectionStr)
-                        self.log.info("Socket of type " + connectionType + " started (bind) for '" + connectionStr + "'")
-                    except Exception as e:
-                        self.log.error("Failed to start Socket of type " + connectionType + " (bind): '" + connectionStr + "'")
-                        self.log.debug("Error was:" + str(e))
-
-                    self.queryMetadataStarted = True
-
-            # if there was no response or the response was of the wrong format, the receiver should be shut down
-            else:
-                raise Exception("Sending start signal ...failed.")
+            raise Exception("Sending start signal ...failed.")
 
 
-        return 0
-
-
-    def __creatSignalSocket(self, signalPort):
+    def __createSignalSocket(self, signalPort):
 
         # To send a notification that a Displayer is up and running, a communication socket is needed
         # create socket to exchange signals with Sender
@@ -219,7 +149,7 @@ class dataTransfer():
 
         # time to wait for the sender to give a confirmation of the signal
 #        self.signalSocket.RCVTIMEO = self.socketResponseTimeout
-        connectionStr = "tcp://" + str(self.signalIp) + ":" + str(signalPort)
+        connectionStr = "tcp://" + str(self.signalHost) + ":" + str(signalPort)
         try:
             self.signalSocket.connect(connectionStr)
             self.log.info("signalSocket started (connect) for '" + connectionStr + "'")
@@ -237,10 +167,12 @@ class dataTransfer():
 
         # Send the signal that the communication infrastructure should be established
         self.log.info("Sending Signal")
-        sendMessage = str(signal) + "," + str(self.hostname) + "," + str(self.dataPort) + "," + str(__version__)
-        self.log.debug("Signal: " + sendMessage)
+        sendMessage = [__version__, signal, self.dataHost, self.dataPort]
+#        sendMessage = str(signal) + "," + str(__version__) + "," + str(self.dataHost) + "," + str(self.dataPort)
+        self.log.debug("Signal: " + str(sendMessage))
         try:
-            self.signalSocket.send(sendMessage)
+            self.signalSocket.send_multipart(sendMessage)
+#            self.signalSocket.send(sendMessage)
         except Exception as e:
             self.log.error("Could not send signal")
             self.log.info("Error was: " + str(e))
@@ -272,6 +204,76 @@ class dataTransfer():
                 raise
 
         return message
+
+
+    def start(self, dataPort = False):
+
+#        if not self.connectionType:
+#            raise Exception("No connection specified. Please initiate a connection first.")
+
+
+        alreadyConnected = self.streamStarted or self.queryNextStarted or self.ondaStarted or self.queryMetadataStarted or self.prioStreamStarted
+
+        if alreadyConnected:
+            raise Exception("Connection already started.")
+
+        if dataPort:
+            port = str(dataPort)
+        elif type(self.dataPort) != list:
+            port = self.dataPort
+        else:
+            raise Exception("Multipe possible ports. Please choose which one to use.")
+
+        ip   = "0.0.0.0"           #TODO use IP of hostname?
+
+        signal = None
+        if self.connectionType in ["priorityStream", "stream"]:
+
+            self.dataSocket = self.context.socket(zmq.PULL)
+            # An additional socket is needed to establish the data retriving mechanism
+            connectionStr = "tcp://" + ip + ":" + port
+            try:
+                self.dataSocket.bind(connectionStr)
+                self.log.info("Socket started (bind) for '" + connectionStr + "'")
+            except Exception as e:
+                self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'")
+                self.log.debug("Error was:" + str(e))
+
+            if self.connectionType == "priorityStream":
+                self.prioStreamStarted = True
+            else:
+                self.streamStarted = True
+
+        elif self.connectionType in ["queryNext", "queryMetadata"]:
+
+            self.dataSocket = self.context.socket(zmq.REQ)
+            # An additional socket is needed to establish the data retriving mechanism
+            connectionStr = "tcp://" + ip + ":" + port
+            try:
+                self.dataSocket.bind(connectionStr)
+                self.log.info("Socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
+            except Exception as e:
+                self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'")
+                self.log.debug("Error was:" + str(e))
+
+            if self.connectionType == "queryNext":
+                self.queryNextStarted = True
+            else:
+                self.queryMetadataStarted = True
+
+        elif self.connectionType == "OnDA":
+
+            self.dataSocket = self.context.socket(zmq.REQ)
+            # An additional socket is needed to establish the data retriving mechanism
+            connectionStr = "tcp://" + ip + ":" + port
+            try:
+                self.dataSocket.connect(connectionStr)
+                self.log.info("Socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
+            except Exception as e:
+                self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'")
+                self.log.debug("Error was:" + str(e))
+
+            self.ondaStarted = True
 
 
     ##
@@ -504,9 +506,9 @@ class dataTransfer():
     def stop(self):
         if self.dataSocket and not self.prioStreamStarted:
             if self.streamStarted:
-                signal = "STOP_LIVE_VIEWER"
+                signal = "STOP_STREAM"
             elif self.queryNextStarted:
-                signal = "STOP_QUERY_NEWEST"
+                signal = "STOP_QUERY_NEXT"
             elif self.ondaStarted:
                 signal = "STOP_REALTIME_ANALYSIS"
             elif self.queryMetadataStarted:

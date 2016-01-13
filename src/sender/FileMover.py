@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import traceback
+import copy
 from multiprocessing import Process
 from WorkerProcess import WorkerProcess
 
@@ -89,8 +90,10 @@ class FileMover():
             else:
                 self.receiverWhiteList.append(host)
 
-        self.parallelDataStreams = parallelDataStreams
+        self.parallelDataStreams = int(parallelDataStreams)
         self.chunkSize           = chunkSize
+
+        self.freeWorker          = []                       # list of workers which sent a ready signal (again) during signal distributing process
 
 
         self.log = self.getLogger()
@@ -161,8 +164,7 @@ class FileMover():
         incomingMessageCounter = 0
 
         #start worker-processes. each will have its own PushSocket.
-        workerProcessList      = list()
-        numberOfWorkerProcesses = int(self.parallelDataStreams)
+        numberOfWorkerProcesses = self.parallelDataStreams
         for processNumber in range(numberOfWorkerProcesses):
             self.log.debug("instantiate new workerProcess (nr " + str(processNumber) + " )")
             newWorkerProcess = Process(target=WorkerProcess, args=(processNumber,
@@ -175,7 +177,6 @@ class FileMover():
                                                                   self.ondaPorts[processNumber],
                                                                   self.useDataStream
                                                                   ))
-            workerProcessList.append(newWorkerProcess)
 
             self.log.debug("start worker process nr " + str(processNumber))
             newWorkerProcess.start()
@@ -188,6 +189,7 @@ class FileMover():
                 socks = dict(self.poller.poll())
 
                 if self.fileEventSocket in socks and socks[self.fileEventSocket] == zmq.POLLIN:
+
                     try:
                         incomingMessage = self.fileEventSocket.recv()
                         self.log.debug("new fileEvent-message received.")
@@ -206,144 +208,213 @@ class FileMover():
                     continue
 
                 if self.receiverComSocket in socks and socks[self.receiverComSocket] == zmq.POLLIN:
-                    # signals are of the form [signal, hostname]
-                    incomingMessage = self.receiverComSocket.recv()
-                    self.log.debug("Recieved control command: %s" % incomingMessage )
 
-#                    signal, signalHostname, port = helperScript.checkSignal(incomingMessage, self.receiverWhiteList)
+                    incomingMessage = self.receiverComSocket.recv_multipart()
+                    self.log.debug("Recieved signal: %s" % incomingMessage )
 
-                    signal, signalHostname, port, version = helperScript.extractSignal(incomingMessage, self.log)
-
-                    if version:
-                        if helperScript.checkVersion(version, self.log):
-                            self.log.debug("Versions are compatible: " + str(version))
-                        else:
-                            self.log.debug("Version are not compatible")
-                            self.sendResponse("VERSION_CONFLICT")
-                            continue
-
-                    if signal and signalHostname and port :
-
-                        # Checking signal sending host
-                        self.log.debug("Check if signal sending host is in WhiteList...")
-                        if helperScript.checkSignal(signalHostname, self.receiverWhiteList):
-                            self.log.debug("Host " + str(signalHostname) + " is allowed to connect.")
-                        else:
-                            self.log.debug("Host " + str(signalHostname) + " is not allowed to connect.")
-                            self.sendResponse("NO_VALID_HOST")
-                            continue
-
-                    # Checking signal
-                    if signal == "START_LIVE_VIEWER":
-                        self.log.info("Received signal to start stream to host " + str(signalHostname) + " on port " + str(port))
-                        if [signalHostname, port] not in self.openConnections["streams"]:
-                            self.openConnections["streams"].append([signalHostname,port])
-                            # send signal to workerProcesses and back to receiver
-                            self.sendSignalToWorker(incomingMessage)
-                            self.sendResponse(incomingMessage)
-                        else:
-                            responseSignal = "CONNECTION_ALREADY_OPEN"
-                            self.log.info("Stream to host " + str(signalHostname) + " on port " + str(port) + " is already started")
-                            self.sendResponse(responseSignal)
+                    checkStatus, signal, host, port = self.checkSignal(incomingMessage)
+                    if not checkStatus:
                         continue
 
-                    elif signal == "STOP_LIVE_VIEWER":
-                        self.log.info("Received signal to stop stream to host " + str(signalHostname) + " on port " + str(port))
-                        if [signalHostname, port] in self.openConnections["streams"]:
-                            self.openConnections["streams"].remove([signalHostname, port])
-                            # send signal to workerProcesses and back to receiver
-                            self.sendSignalToWorker(incomingMessage)
-                            self.sendResponse(signal)
-                        else:
-                            responseSignal = "NO_OPEN_CONNECTION_FOUND"
-                            self.log.info("No stream to close was found for host " + str(signalHostname) + " on port " + str(port))
-                            self.sendResponse(responseSignal)
-                        continue
-
-                    elif signal == "START_QUERY_NEWEST" or signal == "START_REALTIME_ANALYSIS":
-                        self.log.info("Received signal from host " + str(signalHostname) + " to enable querying for data")
-                        if [signalHostname, port] not in self.openConnections["queryNext"]:
-                            self.openConnections["queryNext"].append([signalHostname, port])
-                            # send signal to workerProcesses and back to receiver
-                            self.sendSignalToWorker(incomingMessage)
-                            self.sendResponse(signal)
-                        else:
-                            responseSignal = "CONNECTION_ALREADY_OPEN"
-                            self.log.info("Query connection to host " + str(signalHostname) + " on port " + str(port) + " is already started")
-                            # send signal back to receiver
-                            self.sendResponse(responseSignal)
-                        continue
-
-                    elif signal == "STOP_QUERY_NEWEST" or signal == "STOP_REALTIME_ANALYSIS":
-                        self.log.info("Received signal from host " + str(signalHostname) + " to disable querying for data")
-                        if [signalHostname, port] in self.openConnections["queryNext"]:
-                            self.openConnections["queryNext"].remove([signalHostname, port])
-                            # send signal to workerProcesses and back to receiver
-                            self.sendSignalToWorker(incomingMessage)
-                            self.log.debug("Send signal to worker: " + str(signal))
-                            self.sendResponse(signal)
-                            self.log.debug("Send response back: " + str(signal))
-                        else:
-                            responseSignal = "NO_OPEN_CONNECTION_FOUND"
-                            self.log.info("No query connection to close was found for host " + str(signalHostname) + " on port " + str(port))
-                            # send signal back to receiver
-                            self.sendResponse(responseSignal)
-                        continue
-
-                    else:
-                        self.log.info("Received signal from host " + str(signalHostname) + " unkown: " + str(signal))
-                        self.sendResponse("NO_VALID_SIGNAL")
+                    self.reactToSignal(signal, host, port)
 
         except KeyboardInterrupt:
             self.log.debug("Keyboard interuption detected. Stop receiving")
 
 
-
     def processFileEvent(self, fileEventMessage):
         self.log.debug("waiting for available workerProcess.")
 
-        # address == "worker-0"
-        # empty   == b''                   # as delimiter
-        # ready   == b'READY'
-        address, empty, ready = self.routerSocket.recv_multipart()
-        self.log.debug("available workerProcess detected.")
+        if self.freeWorker:
+            address = freeWorker.pop()
+            self.log.debug("Available waiting workerProcess detected.")
+        else:
 
-        self.log.debug("passing job to workerProcess...")
+            # address == "worker-0"
+            # empty   == b''                   # as delimiter
+            # ready   == b'READY'
+            address, empty, ready = self.routerSocket.recv_multipart()
+            self.log.debug("Available workerProcess detected.")
+
+        self.log.debug("Passing job to workerProcess (" + address + ")...")
         self.routerSocket.send_multipart([
                                      address,
                                      b'',
                                      fileEventMessage,
                                     ])
 
-        self.log.debug("passing job to workerProcess...done.")
+        self.log.debug("Passing job to workerProcess...done.")
 
 
-    def sendSignalToWorker(self, signal):
-        numberOfWorkerProcesses = int(self.parallelDataStreams)
-        for processNumber in range(numberOfWorkerProcesses):
-            self.log.debug("send signal " + str(signal) + " to workerProcess (nr " + str(processNumber) + " )")
+    def checkSignal(self, incomingMessage):
 
-            address, empty, ready = self.routerSocket.recv_multipart()
-            self.log.debug("available workerProcess detected.")
+        if len(incomingMessage) != 4:
 
-            # address == "worker-0"
-            # empty   == b''                   # as delimiter
-            # signal  == b'START_LIVE_VIEWER'
-            self.routerSocket.send_multipart([
-                                         address,
-                                         b'',
-                                         signal,
-                                        ])
+            log.info("Received signal is of the wrong format")
+            log.debug("Received signal is too short or too long: " + str(incomingMessage))
+            return False, None, None, None
+
+        else:
+
+            version, signal, host, port = incomingMessage
+
+            if host.startswith("["):
+                # remove "['" and "']" at the beginning and the end
+                host = host[2:-2].split("', '")
+            else:
+                host = [host]
+
+            if port.startswith("["):
+                port = port[2:-2].split("', '")
+            else:
+                port = [port]
+
+            if version:
+                if helperScript.checkVersion(version, self.log):
+                    self.log.debug("Versions are compatible: " + str(version))
+                else:
+                    self.log.debug("Version are not compatible")
+                    self.sendResponse("VERSION_CONFLICT")
+                    return False, None, None, None
+
+            if signal and host and port :
+
+                # Checking signal sending host
+                self.log.debug("Check if signal sending host is in WhiteList...")
+                if helperScript.checkHost(host, self.receiverWhiteList, self.log):
+                    self.log.debug("Hosts are allowed to connect.")
+                    self.log.debug("hosts: " + str(host))
+                else:
+                    self.log.debug("One of the hosts is not allowed to connect.")
+                    self.log.debug("hosts: " + str(host))
+                    self.sendResponse("NO_VALID_HOST")
+                    return False, None, None, None
+
+            if signal in ["START_QUERY_NEXT", "STOP_QUERY_NEXT"]:
+
+                if type(host) == list and len(host) != self.parallelDataStreams:
+                    self.log.debug("Not enough hosts specified.")
+                    self.sendResponse("INCORRECT_NUMBER_OF_HOSTS")
+                    return False, None, None, None
+
+                if type(port) == list and len(port) != self.parallelDataStreams:
+                    self.log.debug("Not enough ports specified.")
+                    self.sendResponse("INCORRECT_NUMBER_OF_PORTS")
+                    return False, None, None, None
+
+        return True, signal, host, port
+
 
     def sendResponse(self, signal):
             self.log.debug("send confirmation back to receiver: " + str(signal) )
             self.receiverComSocket.send(signal, zmq.NOBLOCK)
 
 
+    def reactToSignal(self, signal, host, port):
+
+        # React to signal
+        if signal == "START_STREAM":
+            #FIXME
+            host = host[0]
+            port = port[0]
+            self.log.info("Received signal to start stream to host " + str(host) + " on port " + str(port))
+            if [host, port] not in self.openConnections["streams"]:
+                self.openConnections["streams"].append([host, port])
+                # send signal to workerProcesses and back to receiver
+                message = signal + "," + host + "," + port
+                self.sendSignalToWorker(message)
+                self.sendResponse(signal)
+            else:
+                self.log.info("Stream to host " + str(host) + " on port " + str(port) + " is already started")
+                self.sendResponse("CONNECTION_ALREADY_OPEN")
+            return
+
+        elif signal == "STOP_STREAM":
+            host = host[0]
+            port = port[0]
+            self.log.info("Received signal to stop stream to host " + str(host) + " on port " + str(port))
+            if [host, port] in self.openConnections["streams"]:
+                self.openConnections["streams"].remove([host, port])
+                # send signal to workerProcesses and back to receiver
+                message = signal + "," + host + "," + port
+                self.sendSignalToWorker(message)
+                self.sendResponse(signal)
+            else:
+                self.log.info("No stream to close was found for host " + str(host) + " on port " + str(port))
+                self.sendResponse("NO_OPEN_CONNECTION_FOUND")
+            return
+
+        elif signal == "START_QUERY_NEXT" or signal == "START_REALTIME_ANALYSIS":
+            self.log.info("Received signal from host " + str(host) + " to enable querying for data")
+            if [host, port] not in self.openConnections["queryNext"]:
+                self.openConnections["queryNext"].append([copy.deepcopy(host), copy.deepcopy(port)])
+                # send signal to workerProcesses and back to receiver
+                self.sendSignalToWorker(signal, host, port)
+                self.sendResponse(signal)
+            else:
+                self.log.info("Query connection to host " + str(host) + " on port " + str(port) + " is already started")
+                self.sendResponse("CONNECTION_ALREADY_OPEN")
+            return
+
+        elif signal == "STOP_QUERY_NEXT" or signal == "STOP_REALTIME_ANALYSIS":
+            self.log.info("Received signal from host " + str(host) + " to disable querying for data")
+            if [host, port] in self.openConnections["queryNext"]:
+                self.openConnections["queryNext"].remove([host, port])
+                # send signal to workerProcesses and back to receiver
+                self.sendSignalToWorker(signal, host, port)
+                self.log.debug("Send signal to worker: " + str(signal))
+                self.sendResponse(signal)
+                self.log.debug("Setime.sleep(0.1)nd response back: " + str(signal))
+            else:
+                self.log.info("No query connection to close was found for host " + str(host) + " on port " + str(port))
+                self.sendResponse("NO_OPEN_CONNECTION_FOUND")
+            return
+
+        else:
+            self.log.info("Received signal from host " + str(host) + " unkown: " + str(signal))
+            self.sendResponse("NO_VALID_SIGNAL")
+
+
+    def sendSignalToWorker(self, signal, individualHost = False, individualPort = False):
+
+        numberOfWorkerProcesses = self.parallelDataStreams
+        alreadySignalled = []
+
+#        for processNumber in range(numberOfWorkerProcesses):
+        while len(alreadySignalled) != numberOfWorkerProcesses:
+
+            address, empty, ready = self.routerSocket.recv_multipart()
+            self.log.debug("Available workerProcess detected.")
+
+            if address not in alreadySignalled:
+
+                if individualHost and individualPort:
+                    signalToSend = signal + "," + individualHost.pop() + "," + individualPort.pop()
+                else:
+                    signalToSend = signal
+
+                self.log.debug("Send signal " + str(signalToSend) + " to " + str(address))
+                # address == "worker-0"
+                # empty   == b''                   # as delimiter
+                # signal  == b'START_STREAM'
+                self.routerSocket.send_multipart([
+                                             address,
+                                             b'',
+                                             signalToSend,
+                                            ])
+
+                alreadySignalled.append(address)
+
+            else:
+                self.log.debug("Signal " + str(signalToSend) + " already sent to " + str(address) + ". Mark this worker as ready/.")
+                self.freeWorker.append(address)
+
+
     def stop(self):
         self.log.debug("Closing sockets")
         self.fileEventSocket.close(0)
         self.receiverComSocket.close(0)
+        self.sendSignalToWorker("EXIT")
         self.routerSocket.close(0)
 
 

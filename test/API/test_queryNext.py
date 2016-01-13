@@ -14,17 +14,18 @@ del BASE_PATH
 from dataTransferAPI import dataTransfer
 
 
-signalIp   = "zitpcx19282.desy.de"
-#signalIp   = "zitpcx22614.desy.de"
+signalHost   = "zitpcx19282.desy.de"
+#isignalHost   = "zitpcx22614.desy.de"
 dataPort   = "50201"
 
 print
 print "==== TEST: Query for the newest filename ===="
 print
 
-query = dataTransfer( signalIp, dataPort )
+query = dataTransfer(signalHost)
 
-query.start("queryNext")
+query.initiate("queryNext", dataPort)
+query.start()
 
 while True:
     try:

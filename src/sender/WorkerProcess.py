@@ -152,10 +152,7 @@ class WorkerProcess():
           will be removed.
         """
 
-        processingJobs = True
-        jobCount = 0
-
-        while processingJobs:
+        while True:
             #sending a "ready"-signal to the router.
             #the reply will contain the actual job/task.
             self.log.debug("worker-"+str(self.id)+": sending ready signal")
@@ -164,22 +161,19 @@ class WorkerProcess():
 
 
             # Get workload from router, until finished
-            self.log.debug("worker-"+str(self.id)+": waiting for new job")
+            self.log.debug("worker-" + str(self.id) + ": waiting for new job")
             workload = self.routerSocket.recv()
-            self.log.debug("worker-"+str(self.id)+": new job received")
+            self.log.debug("worker-" + str(self.id) + ": new job received")
 
-            finished = workload == b"END"
+            finished = workload == b"EXIT"
             if finished:
-                processingJobs = False
-                self.log.debug("router requested to shutdown worker-process. Worker processed: %d files" % jobCount)
+                self.log.debug("Router requested to shutdown worker-"+ str(self.id) + ".")
                 break
-            jobCount += 1
 
 
             # after the signal processing
             if self.checkForSignals(workload):
                 continue
-
 
 
             # get metadata of the file
@@ -259,10 +253,10 @@ class WorkerProcess():
 
     def checkForSignals(self, workload):
 
-        signal, host, port, version = helperScript.extractSignal(workload, self.log)
+        signal, host, port = helperScript.extractSignal(workload, self.log)
 
         # a data stream is turned on
-        if signal == "START_LIVE_VIEWER":
+        if signal == "START_STREAM":
             self.log.info("worker-"+str(self.id)+": Received signal to start data stream...")
 
             # parent process has already checked for streams on this host and port: there is none running
@@ -284,7 +278,7 @@ class WorkerProcess():
             return True
 
         # a data stream is turned off
-        elif signal == "STOP_LIVE_VIEWER":
+        elif signal == "STOP_STREAM":
             self.log.info("worker-"+str(self.id)+": Received signal to stop data stream...")
 
             # parent process has already checked for streams on this host and port: there is one running
@@ -301,7 +295,7 @@ class WorkerProcess():
             return True
 
         # the realtime-analysis is turned on
-        elif signal == "START_QUERY_NEWEST":
+        elif signal == "START_QUERY_NEXT":
             self.log.info("worker-"+str(self.id)+": Received signal to start a query for the newest file...")
 
             # create the socket to send data to the realtime analysis
@@ -325,7 +319,7 @@ class WorkerProcess():
             return True
 
         # the realtime-analysis is turned off
-        elif signal == "STOP_QUERY_NEWEST":
+        elif signal == "STOP_QUERY_NEXT":
             self.log.info("worker-"+str(self.id)+": Received signal to stop querying for newest file...")
 
             # parent process has already checked for streams on this host and port: there is one running

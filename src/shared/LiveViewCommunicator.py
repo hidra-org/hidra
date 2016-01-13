@@ -145,17 +145,11 @@ class LiveViewCommunicator:
                     self.ringBuffer.add(filename, fileModTime)
 
             if self.liveViewerComSocket in socks and socks[self.liveViewerComSocket] == zmq.POLLIN:
-                message = self.liveViewerComSocket.recv()
+                message = self.liveViewerComSocket.recv_multipart()
+                self.log.debug("Recieved signal: %s" % message )
 
-                signal, signalHostname, port, version = helperScript.extractSignal(message, self.log)
-
-                # Checking signal sending host
-                self.log.debug("Check if signal sending host is in WhiteList...")
-                if helperScript.checkSignal(signalHostname, self.liveViewerWhiteList):
-                    self.log.debug("Host " + str(signalHostname) + " is allowed to connect.")
-                else:
-                    self.log.debug("Host " + str(signalHostname) + " is not allowed to connect.")
-                    self.sendResponse("NO_VALID_HOST")
+                checkStatus, signal, host, port = self.checkSignal(message)
+                if not checkStatus:
                     continue
 
                 if signal == "START_DISPLAYER":
@@ -221,6 +215,46 @@ class LiveViewCommunicator:
                     self.log.debug("liveViewer signal not supported: " + str(signal) )
 
         self.stop()
+
+
+    def checkSignal(self, message):
+
+        if len(message) != 4:
+
+            log.info("Received signal is of the wrong format")
+            log.debug("Received signal is too short or too long: " + str(message))
+            return False, None, None, None
+
+        else:
+
+            version, signal, host, port = message
+            host = host[2:-2].split("', '")
+            port = port[2:-2].split("', '")
+
+            if version:
+                if helperScript.checkVersion(version, self.log):
+                    self.log.debug("Versions are compatible: " + str(version))
+                else:
+                    self.log.debug("Version are not compatible")
+                    self.sendResponse("VERSION_CONFLICT")
+                    return False, None, None, None
+
+            if signal and host and port :
+
+                # Checking signal sending host
+                self.log.debug("Check if hosts is in WhiteList...")
+                if helperScript.checkHost(host, self.receiverWhiteList, self.log):
+                    self.log.debug("Hosts are allowed to connect.")
+                    self.log.debug("hosts: " + str(host))
+                else:
+                    self.log.debug("One of the hosts is not allowed to connect.")
+                    self.log.debug("hosts: " + str(host))
+                    self.sendResponse("NO_VALID_HOST")
+                    return False, None, None, None
+
+        return True, signal, host, port
+
+
 
     def stop(self):
         try:

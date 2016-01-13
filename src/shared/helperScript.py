@@ -200,25 +200,15 @@ def checkLogFileWritable(filepath, filename):
         sys.exit(1)
 
 
-def extractSignal(message, log):
-    try:
-        messageSplit = message.split(',')
-    except Exception as e:
-        log.info("Received signal is of the wrong format")
-        log.debug("Received signal: " + str(message))
-        return None, None, None, None
+def checkStreamConfig(ips, ports, numberToBe):
+    if len(ips) < numberToBe:
+        logging.error("Not enough IPs specified for OnDA, please check your configuration.")
+        sys.exit(1)
 
-    if len(messageSplit) < 4:
-        log.info("Received signal is of the wrong format")
-        log.debug("Received signal is too short: " + str(message))
-        return None, None, None, None
+    if len(ports) < numberToBe:
+        logging.error("Not enough ports specified for OnDA, please check your configuration.")
+        sys.exit(1)
 
-    signal   = messageSplit[0]
-    hostname = messageSplit[1]
-    port     = messageSplit[2]
-    version  = messageSplit[3]
-
-    return signal, hostname, port, version
 
 
 def checkVersion(version, log):
@@ -231,19 +221,56 @@ def checkVersion(version, log):
     else:
         return True
 
-def checkSignal(hostname, whiteList ):
+
+def checkHost(hostname, whiteList, log):
 
     if hostname and whiteList:
 
-        if hostname.endswith(".desy.de"):
-            hostnameModified = hostname[:-8]
-        else:
-            hostnameModified = hostname
+        if type(hostname) == list:
+            temp = True
+            for host in hostname:
+                if host.endswith(".desy.de"):
+                    hostModified = host[:-8]
+                else:
+                    hostModified = host
 
-        if hostname in whiteList or hostnameModified in whiteList:
-            return True
+                if host not in whiteList and hostModified not in whiteList:
+                    log.info("Host " + str(host) + " is not allowed to connect")
+                    temp = False
+
+            return temp
+
+
+        else:
+            if hostname.endswith(".desy.de"):
+                hostnameModified = hostname[:-8]
+            else:
+                hostnameModified = hostname
+
+            if hostname in whiteList or hostnameModified in whiteList:
+                return True
 
     return False
+
+
+def extractSignal(message, log):
+    try:
+        messageSplit = message.split(',')
+    except Exception as e:
+        log.info("Received signal is of the wrong format")
+        log.debug("Received signal: " + str(message))
+        return None, None, None, None
+
+    if len(messageSplit) < 3:
+        log.info("Received signal is of the wrong format")
+        log.debug("Received signal is too short: " + str(message))
+        return None, None, None, None
+
+    signal   = messageSplit[0]
+    hostname = messageSplit[1]
+    port     = messageSplit[2]
+
+    return signal, hostname, port
 
 
 
