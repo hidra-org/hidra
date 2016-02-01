@@ -530,6 +530,8 @@ class dataTransfer():
             self.log.error("closing ZMQ Sockets...failed.")
             self.log.info("Error was: " + str(e))
 
+        # if the context was created inside this class,
+        # it has to be destroyed also within the class
         if not self.externalContext:
             try:
                 if self.context:
