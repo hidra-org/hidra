@@ -67,74 +67,122 @@ def argumentParsing():
     maxRingBufferSize   = config.get('asection', 'maxRingBufferSize')
     maxQueueSize        = config.get('asection', 'maxQueueSize')
 
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--logfilePath"        , type=str, default=logfilePath,
-                                                 help="Path where the logfile will be created (default=" + str(logfilePath) + ")")
-    parser.add_argument("--logfileName"        , type=str, default=logfileName,
-                                                 help="Filename used for logging (default=" + str(logfileName) + ")")
-    parser.add_argument("--verbose"            , action="store_true",
-                                                 help="More verbose output")
-    parser.add_argument("--onScreen"           , type=str, default=False,
-                                                 help="Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)")
+    parser.add_argument("--logfilePath"        , type    = str,
+                                                 help    = "Path where the logfile will be created (default=" + str(logfilePath) + ")",
+                                                 default = logfilePath )
+    parser.add_argument("--logfileName"        , type    = str,
+                                                 help    = "Filename used for logging (default=" + str(logfileName) + ")",
+                                                 default = logfileName )
+    parser.add_argument("--verbose"            , help    = "More verbose output",
+                                                 action  = "store_true")
+    parser.add_argument("--onScreen"           , type    = str,
+                                                 help    = "Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)",
+                                                 default = False )
 
-    parser.add_argument("--watchDir"           , type=str, default=watchDir,
-                                                 help="Dir you want to monitor for changes; inside this directory only the specified subdirectories are monitred (default=" + str(watchDir) + ")")
-    parser.add_argument("--monitoredEventType" , type=str, default=monitoredEventType,
-                                                 help="Event type of files to be monitored (default=" + str(monitoredEventType) + ")")
-    parser.add_argument("--monitoredSubdirs"   , type=str, default=monitoredSubdirs,
-                                                 help="Subdirectories of watchDirs to be monitored (default=" + str(monitoredSubdirs) + ")")
-    parser.add_argument("--monitoredFormats"   , type=str, default=monitoredFormats,
-                                                 help="The formats to be monitored, files in an other format will be be neglected (default=" + str(monitoredFormats) + ")")
-    parser.add_argument("--fileEventIp"        , type=str, default=fileEventIp,
-                                                 help="ZMQ endpoint (IP-address) to send file events to for the live viewer (default=" + str(fileEventIp) + ")")
-    parser.add_argument("--fileEventPort"      , type=str, default=fileEventPort,
-                                                 help="ZMQ endpoint (port) to send file events to for the live viewer (default=" + str(fileEventPort) + ")")
+    parser.add_argument("--watchDir"           , type    = str,
+                                                 help    = "Dir you want to monitor for changes; inside this directory only the specified \
+                                                            subdirectories are monitred (default=" + str(watchDir) + ")",
+                                                 default = watchDir )
+    parser.add_argument("--monitoredEventType" , type    = str,
+                                                 help    = "Event type of files to be monitored (default=" + str(monitoredEventType) + ")",
+                                                 default = monitoredEventType )
+    parser.add_argument("--monitoredSubdirs"   , type    = str,
+                                                 help    = "Subdirectories of watchDirs to be monitored (default=" + str(monitoredSubdirs) + ")",
+                                                 default = monitoredSubdirs )
+    parser.add_argument("--monitoredFormats"   , type    = str,
+                                                 help    = "The formats to be monitored, files in an other format will be be neglected \
+                                                            (default=" + str(monitoredFormats) + ")",
+                                                 default = monitoredFormats )
+    parser.add_argument("--fileEventIp"        , type    = str,
+                                                 help    = "ZMQ endpoint (IP-address) to send file events to for the live viewer \
+                                                            (default=" + str(fileEventIp) + ")",
+                                                 default = fileEventIp )
+    parser.add_argument("--fileEventPort"      , type    = str,
+                                                 help    = "ZMQ endpoint (port) to send file events to for the live viewer \
+                                                            (default=" + str(fileEventPort) + ")",
+                                                 default = fileEventPort )
 
-    parser.add_argument("--useDataStream"      , type=str, default=useDataStream,
-                                                 help="Enable ZMQ pipe into storage system (if set to false: the file is moved into the cleanerTargetPath) (default=" + str(useDataStream) + ")")
-    parser.add_argument("--dataStreamIp"       , type=str, default=dataStreamIp,
-                                                 help="IP of dataStream-socket to push new files to (default=" + str(dataStreamIp) + ")")
-    parser.add_argument("--dataStreamPort"     , type=str, default=dataStreamPort,
-                                                 help="Port number of dataStream-socket to push new files to (default=" + str(dataStreamPort) + ")")
-    parser.add_argument("--cleanerTargetPath"  , type=str, default=cleanerTargetPath,
-                                                 help="Target to move the files into (default=" + str(cleanerTargetPath) + ")")
-    parser.add_argument("--cleanerIp"          , type=str, default=cleanerIp,
-                                                 help="ZMQ-pull-socket IP which deletes/moves given files (default=" + str(cleanerIp) + ")")
-    parser.add_argument("--cleanerPort"        , type=str, default=cleanerPort,
-                                                 help="ZMQ-pull-socket port which deletes/moves given file (default=" + str(cleanerPort) + ")")
-    parser.add_argument("--routerPort"         , type=str, default=routerPort,
-                                                 help="ZMQ-router port which coordinates the load-balancing to the worker-processes (default=" + str(routerPort) + ")")
+    parser.add_argument("--useDataStream"      , type    = str,
+                                                 help    = "Enable ZMQ pipe into storage system (if set to false: the file is moved \
+                                                            into the cleanerTargetPath) (default=" + str(useDataStream) + ")",
+                                                 default = useDataStream )
+    parser.add_argument("--dataStreamIp"       , type    = str,
+                                                 help    = "IP of dataStream-socket to push new files to \
+                                                            (default=" + str(dataStreamIp) + ")",
+                                                 default = dataStreamIp )
+    parser.add_argument("--dataStreamPort"     , type    = str,
+                                                 help    = "Port number of dataStream-socket to push new \
+                                                            files to (default=" + str(dataStreamPort) + ")",
+                                                 default = dataStreamPort )
+    parser.add_argument("--cleanerTargetPath"  , type    = str,
+                                                 help    = "Target to move the files into (default=" + str(cleanerTargetPath) + ")",
+                                                 default = cleanerTargetPath )
+    parser.add_argument("--cleanerIp"          , type    = str,
+                                                 help    = "ZMQ-pull-socket IP which deletes/moves given files \
+                                                            (default=" + str(cleanerIp) + ")",
+                                                 default = cleanerIp )
+    parser.add_argument("--cleanerPort"        , type    = str,
+                                                 help    = "ZMQ-pull-socket port which deletes/moves given file \
+                                                            (default=" + str(cleanerPort) + ")",
+                                                 default = cleanerPort )
+    parser.add_argument("--routerPort"         , type    = str,
+                                                 help    = "ZMQ-router port which coordinates the load-balancing \
+                                                            to the worker-processes (default=" + str(routerPort) + ")",
+                                                 default = routerPort )
 
-    parser.add_argument("--receiverComIp"      , type=str, default=receiverComIp,
-                                                 help="IP receive signals from the receiver (default=" + str(receiverComIp) + ")")
-    parser.add_argument("--receiverComPort"    , type=str, default=receiverComPort,
-                                                 help="Port number to receive signals from the receiver (default=" + str(receiverComPort) + ")")
-    parser.add_argument("--ondaIps"            , type=str, default=ondaIps,
-                                                 help="IPs to communicate with onda/realtime analysis; there needs to be one entry for each streams (default=" + str(ondaIps) + ")")
-    parser.add_argument("--ondaPorts"          , type=str, default=ondaPorts,
-                                                 help="Ports to communicate with onda/realtime analysis; there needs to be one entry for each streams (default=" + str(ondaPorts) + ")")
-    parser.add_argument("--receiverWhiteList"  , type=str, default=receiverWhiteList,
-                                                 help="List of hosts allowed to connect to the sender (default=" + str(receiverWhiteList) + ")")
+    parser.add_argument("--receiverComIp"      , type    = str,
+                                                 help    = "IP receive signals from the receiver (default=" + str(receiverComIp) + ")",
+                                                 default = receiverComIp )
+    parser.add_argument("--receiverComPort"    , type    = str,
+                                                 help    = "Port number to receive signals from the receiver \
+                                                            (default=" + str(receiverComPort) + ")",
+                                                 default = receiverComPort )
+    parser.add_argument("--ondaIps"            , type    = str,
+                                                 help    = "IPs to communicate with onda/realtime analysis; there needs to be one entry \
+                                                            for each streams (default=" + str(ondaIps) + ")",
+                                                 default = ondaIps )
+    parser.add_argument("--ondaPorts"          , type    = str,
+                                                 help    = "Ports to communicate with onda/realtime analysis; there needs to be one entry \
+                                                            for each streams (default=" + str(ondaPorts) + ")",
+                                                 default = ondaPorts )
+    parser.add_argument("--receiverWhiteList"  , type    = str,
+                                                 help    = "List of hosts allowed to connect to the sender \
+                                                            (default=" + str(receiverWhiteList) + ")",
+                                                 default = receiverWhiteList )
 
-    parser.add_argument("--parallelDataStreams", type=int, default=parallelDataStreams,
-                                                 help="Number of parallel data streams (default=" + str(parallelDataStreams) + ")")
-    parser.add_argument("--chunkSize"          , type=int, default=chunkSize,
-                                                 help="Chunk size of file-parts getting send via ZMQ (default=" + str(chunkSize) + ")")
+    parser.add_argument("--parallelDataStreams", type    = int,
+                                                 help    = "Number of parallel data streams (default=" + str(parallelDataStreams) + ")",
+                                                 default = parallelDataStreams )
+    parser.add_argument("--chunkSize"          , type    = int,
+                                                 help    = "Chunk size of file-parts getting send via ZMQ (default=" + str(chunkSize) + ")",
+                                                 default = chunkSize )
 
-    parser.add_argument("--useRingbuffer"      , type=str, default=useRingbuffer,
-                                                 help="Put the data into a ringbuffer followed by a queue to delay the removal of the files(default=" + str(useRingbuffer) + ")")
-    parser.add_argument("--cleanerExchangePort", type=str, default=cleanerExchangePort,
-                                                 help="Port number to exchange data and signals between Cleaner and LiveViewCommunicator (default=" + str(cleanerExchangePort) + ")")
-    parser.add_argument("--liveViewerComIp"    , type=str, default=liveViewerComIp,
-                                                 help="IP to bind communication to LiveViewer to (default=" + str(liveViewerComIp) + ")")
-    parser.add_argument("--liveViewerComPort"  , type=str, default=liveViewerComPort,
-                                                 help="Port number to communicate with live viewer (default=" + str(liveViewerComPort) + ")")
-    parser.add_argument("--liveViewerWhiteList", type=str, default=liveViewerWhiteList,
-                                                 help="List of hosts allowed to connect to the receiver (default=" + str(liveViewerWhiteList) + ")")
-    parser.add_argument("--maxRingBufferSize"  , type=int, default=maxRingBufferSize,
-                                                 help="Size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")")
-    parser.add_argument("--maxQueueSize"       , type=int, default=maxQueueSize,
-                                                 help="Size of the queue for the live viewer (default=" + str(maxQueueSize) + ")")
+    parser.add_argument("--useRingbuffer"      , type    = str,
+                                                 help    = "Put the data into a ringbuffer followed by a queue to delay the \
+                                                            removal of the files(default=" + str(useRingbuffer) + ")",
+                                                 default = useRingbuffer )
+    parser.add_argument("--cleanerExchangePort", type    = str,
+                                                 help    = "Port number to exchange data and signals between Cleaner and \
+                                                            LiveViewCommunicator (default=" + str(cleanerExchangePort) + ")",
+                                                 default = cleanerExchangePort )
+    parser.add_argument("--liveViewerComIp"    , type    = str,
+                                                 help    = "IP to bind communication to LiveViewer to (default=" + str(liveViewerComIp) + ")",
+                                                 default = liveViewerComIp )
+    parser.add_argument("--liveViewerComPort"  , type    = str,
+                                                 help    = "Port number to communicate with live viewer (default=" + str(liveViewerComPort) + ")",
+                                                 default = liveViewerComPort )
+    parser.add_argument("--liveViewerWhiteList", type    = str,
+                                                 help    = "List of hosts allowed to connect to the receiver \
+                                                            (default=" + str(liveViewerWhiteList) + ")",
+                                                 default = liveViewerWhiteList )
+    parser.add_argument("--maxRingBufferSize"  , type    = int,
+                                                 help    = "Size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")",
+                                                 default = maxRingBufferSize )
+    parser.add_argument("--maxQueueSize"       , type    = int,
+                                                 help    = "Size of the queue for the live viewer (default=" + str(maxQueueSize) + ")",
+                                                 default = maxQueueSize )
 
     arguments           = parser.parse_args()
 
@@ -218,6 +266,7 @@ class Sender():
         self.fileEventPort       = arguments.fileEventPort
 
         self.useDataStream       = arguments.useDataStream
+
         self.dataStreamIp        = arguments.dataStreamIp
         self.dataStreamPort      = arguments.dataStreamPort
         self.cleanerTargetPath   = arguments.cleanerTargetPath
