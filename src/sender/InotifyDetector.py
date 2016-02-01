@@ -128,7 +128,7 @@ class InotifyDetector():
         except Exception as e:
             self.log.error("Could not register watch for path: " + str(path) )
             self.log.debug("Error was " + str(e))
-            self.stop()
+#            self.stop()
 
 
     def getDirectoryStructure(self):
@@ -282,30 +282,23 @@ class InotifyDetector():
 
 
 
-    def process(self):
-        try:
-            try:
-                while True:
-                    self.getNewEvent()
-            except KeyboardInterrupt:
-                pass
-        finally:
-            self.stop()
-
-
     def stop(self):
-
         try:
-            try:
-                for wd in self.wd_to_path:
+            for wd in self.wd_to_path:
+                try:
                     binding.rm_watch(self.fd, wd)
-            except Exception as e:
-                    self.log.error("Unable to remove watch.")
+                except Exception as e:
+                    self.log.error("Unable to remove watch: " + wd)
                     self.log.debug("Error was: " + str(e))
         finally:
             os.close(self.fd)
 
+    def __exit__(self):
+        self.stop()
 
+
+    def __del__(self):
+        self.stop()
 
 
 if __name__ == '__main__':

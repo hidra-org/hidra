@@ -65,7 +65,7 @@ def isSupported():
 
 
 def getTransportProtocol():
-    is platform.system() == "Linux":
+    if platform.system() == "Linux":
         return "ipc"
     else:
         return "tcp"
