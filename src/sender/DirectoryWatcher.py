@@ -48,18 +48,14 @@ class DirectoryWatcher():
         self.fileEventPort       = fileEventPort
 
         self.monitoredEventType  = monitoredEventType or None
-
         self.log.info ("Monitored event type is: " + str( monitoredEventType ))
 
         self.monitoredDefaultSubdirs = monitoredDefaultSubdirs or None
         self.monitoredSuffixes   = monitoredSuffixes or None
-
         self.log.info ("Monitored suffixes are: " + str( monitoredSuffixes ))
 
         monitoredDirs            = [self.watchDir]
         self.eventDetector       = EventDetector(monitoredDirs, self.monitoredEventType, self.monitoredDefaultSubdirs, self.monitoredSuffixes)
-
-#        assert isinstance(self.zmqContext, zmq.sugar.context.Context)
 
         self.createSockets()
 
@@ -67,9 +63,6 @@ class DirectoryWatcher():
             self.process()
         except KeyboardInterrupt:
             self.log.debug("Keyboard interruption detected. Shuting down")
-#        finally:
-#            self.eventDetector.stop()
-#            self.stop()
 
 
     def getLogger(self):
@@ -149,60 +142,61 @@ class DirectoryWatcher():
 
 
 
-def argumentParsing():
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--watchDir"  , type=str, help="directory you want to monitor for changes")
-    parser.add_argument("--staticNotification",
-                        help="disables new file-events. just sends a list of currently available files within the defined 'watchDir'.",
-                        action="store_true")
-    parser.add_argument("--logfilePath"  , type=str, help="path where logfile will be created"              , default="/tmp/log/")
-    parser.add_argument("--logfileName"  , type=str, help="filename used for logging"                       , default="watchDir.log")
-    parser.add_argument("--fileEventIp"  , type=str, help="zqm endpoint (IP-address) to send file events to", default="127.0.0.1")
-    parser.add_argument("--fileEventPort", type=str, help="zqm endpoint (port) to send file events to"      , default="6060")
-    parser.add_argument("--verbose"      ,           help="more verbose output", action="store_true")
-
-    arguments = parser.parse_args()
-
-    # TODO: check watchDir-directory for existance
-
-    watchDir = str(arguments.watchDir)
-    assert isinstance(type(watchDir), type(str))
-
-    #exit with error if no watchDir path was provided
-    if (watchDir == None) or (watchDir == "") or (watchDir == "None"):
-        print """You need to set the following option:
---watchDir {DIRECTORY}
-"""
-        sys.exit(1)
-
-
-    #abort if watchDir does not exist
-    helperScript.checkDirExistance(watchDir)
-
-
-    #error if logfile cannot be written
-    try:
-        fullPath = os.path.join(arguments.logfilePath, arguments.logfileName)
-        logFile = open(fullPath, "a")
-    except:
-        print "Unable to create the logfile """ + str(fullPath)
-        print """Please specify a new target by setting the following arguments:
---logfileName
---logfilePath
-"""
-        sys.exit(1)
-
-    #check logfile-path for existance
-    helperScript.checkDirExistance(arguments.logfilePath)
-
-
-    return arguments
-
-
-
-
 if __name__ == '__main__':
+
+    def argumentParsing():
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--watchDir"  , type=str, help="directory you want to monitor for changes")
+        parser.add_argument("--staticNotification",
+                            help="disables new file-events. just sends a list of currently available files within the defined 'watchDir'.",
+                            action="store_true")
+        parser.add_argument("--logfilePath"  , type=str, help="path where logfile will be created"              , default="/tmp/log/")
+        parser.add_argument("--logfileName"  , type=str, help="filename used for logging"                       , default="watchDir.log")
+        parser.add_argument("--fileEventIp"  , type=str, help="zqm endpoint (IP-address) to send file events to", default="127.0.0.1")
+        parser.add_argument("--fileEventPort", type=str, help="zqm endpoint (port) to send file events to"      , default="6060")
+        parser.add_argument("--verbose"      ,           help="more verbose output", action="store_true")
+
+        arguments = parser.parse_args()
+
+        # TODO: check watchDir-directory for existance
+
+        watchDir = str(arguments.watchDir)
+        assert isinstance(type(watchDir), type(str))
+
+        #exit with error if no watchDir path was provided
+        if watchDir in [ None, "", "None" ]:
+            print """You need to set the following option:
+    --watchDir {DIRECTORY}
+    """
+            sys.exit(1)
+
+
+        #abort if watchDir does not exist
+        helperScript.checkDirExistance(watchDir)
+
+
+        #error if logfile cannot be written
+        try:
+            fullPath = os.path.join(arguments.logfilePath, arguments.logfileName)
+            logFile = open(fullPath, "a")
+        except:
+            print "Unable to create the logfile """ + str(fullPath)
+            print """Please specify a new target by setting the following arguments:
+    --logfileName
+    --logfilePath
+    """
+            sys.exit(1)
+
+        #check logfile-path for existance
+        helperScript.checkDirExistance(arguments.logfilePath)
+
+
+        return arguments
+
+
+
+
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
     SRC_PATH  = BASE_PATH + os.sep + "src"
 
