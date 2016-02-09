@@ -28,11 +28,14 @@ def f2(q):
 
 def f3(q):
     i = 1
+    t1 = time.time()
     while i<=20:
         res = q.get()
 #        print res[:10]
         time.sleep(0.01)
         i += 1
+    t2 = time.time()
+    print "time needed", t2-t1
 
 if __name__ == '__main__':
     manager = Manager()

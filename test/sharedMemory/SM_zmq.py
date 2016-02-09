@@ -51,6 +51,7 @@ def f3():
 
     i = 1
     try:
+        t1 = time.time()
         while i<=20:
 
 #            print "main: receive"
@@ -59,6 +60,8 @@ def f3():
 
             time.sleep(0.01)
             i += 1
+        t2 = time.time()
+        print "time needed", t2-t1
     finally:
         socket.close(1)
         context.destroy()
