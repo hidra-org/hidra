@@ -1,4 +1,4 @@
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Marco Strutz <marco.strutz@desy.de>'
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import time
 import zmq
@@ -130,11 +130,16 @@ class SignalHandler():
                     incomingMessage = self.signalFwSocket.recv()
                     if incomingMessage == "STOP":
                         self.signalFwSocket.send(incomingMessage)
+                        time.sleep(0.1)
                         break
                     self.log.debug("New request for signals received.")
 
-                    openRequests = self.openRequPerm + self.openRequVari
-                    self.openRequVari = []
+                    openRequests = copy.deepcopy(self.openRequPerm)
+                    for requestSet in self.openRequVari:
+                        if requestSet:
+                            tmp = requestSet.pop(0)
+                            openRequests.append(tmp)
+
                     if openRequests:
                         self.signalFwSocket.send_multipart(openRequests)
                         self.log.debug("Answered to request: " + str(openRequests))
@@ -146,51 +151,55 @@ class SignalHandler():
                     self.log.error("Failed to receive/answer new signal requests.")
                     trace = traceback.format_exc()
                     self.log.debug("Error was: " + str(trace))
-                continue
+#                continue
 
             if self.comSocket in socks and socks[self.comSocket] == zmq.POLLIN:
+                self.log.debug("")
+                self.log.debug("comSocket")
+                self.log.debug("")
 
                 incomingMessage = self.comSocket.recv_multipart()
                 self.log.debug("Received signal: " + str(incomingMessage) )
 
-                checkStatus, signal, host, port = self.checkSignal(incomingMessage)
-                if not checkStatus:
-                    continue
-
-                self.reactToSignal(signal, host, port)
+                checkStatus, signal, target = self.checkSignal(incomingMessage)
+                if checkStatus:
+                    self.reactToSignal(signal, target)
 
             if self.requestSocket in socks and socks[self.requestSocket] == zmq.POLLIN:
+                self.log.debug("")
+                self.log.debug("!!!! requestSocket !!!!")
+                self.log.debug("")
+
 
                 incomingMessage = self.requestSocket.recv_multipart()
                 self.log.debug("Received request: " + str(incomingMessage) )
 
-                if incomingMessage[1] in self.allowedQueries:
-                    self.openRequVari.append(incomingMessage[1])
-                    self.log.debug("Add to openRequVari: " + incomingMessage[1] )
+                for index in range(len(self.allowedQueries)):
+                    if incomingMessage[1] in self.allowedQueries[index]:
+                        self.openRequVari[index].append(incomingMessage[1])
+                        self.log.debug("Add to openRequVari: " + incomingMessage[1] )
+
 
 
     def checkSignal(self, incomingMessage):
 
-        if len(incomingMessage) != 4:
+        if len(incomingMessage) != 3:
 
-            log.info("Received signal is of the wrong format")
-            log.debug("Received signal is too short or too long: " + str(incomingMessage))
+            self.log.info("Received signal is of the wrong format")
+            self.log.debug("Received signal is too short or too long: " + str(incomingMessage))
             return False, None, None, None
 
         else:
 
-            version, signal, host, port = incomingMessage
+            version, signal, target = incomingMessage
 
-            if host.startswith("["):
+            if target.startswith("["):
                 # remove "['" and "']" at the beginning and the end
-                host = host[2:-2].split("', '")
+                target = target[2:-2].split("', '")
             else:
-                host = [host]
+                target = [target]
 
-            if port.startswith("["):
-                port = port[2:-2].split("', '")
-            else:
-                port = [port]
+            host = [t.split(":")[0] for t in target]
 
             if version:
                 if helperScript.checkVersion(version, self.log):
@@ -200,10 +209,10 @@ class SignalHandler():
                     self.sendResponse("VERSION_CONFLICT")
                     return False, None, None, None
 
-            if signal and host and port :
+            if signal and host:
 
                 # Checking signal sending host
-                self.log.debug("Check if signal sending host is in WhiteList...")
+                self.log.debug("Check if host to send data to are in WhiteList...")
                 if helperScript.checkHost(host, self.whiteList, self.log):
                     self.log.debug("Hosts are allowed to connect.")
                     self.log.debug("hosts: " + str(host))
@@ -213,7 +222,7 @@ class SignalHandler():
                     self.sendResponse("NO_VALID_HOST")
                     return False, None, None, None
 
-        return True, signal, host, port
+        return True, signal, target
 
 
     def sendResponse(self, signal):
@@ -221,14 +230,12 @@ class SignalHandler():
             self.comSocket.send(signal, zmq.NOBLOCK)
 
 
-    def reactToSignal(self, signal, host, port):
+    def reactToSignal(self, signal, socketIds):
 
         # React to signal
         if signal == "START_STREAM":
             #FIXME
-            host = host[0]
-            port = port[0]
-            socketId = host + ":" + port
+            socketId = socketIds[0]
             self.log.info("Received signal: " + signal + " to host " + str(socketId))
 
             if socketId in self.openRequPerm:
@@ -244,9 +251,7 @@ class SignalHandler():
 
         elif signal == "STOP_STREAM":
             #FIXME
-            host = host[0]
-            port = port[0]
-            socketId = host + ":" + port
+            socketId = socketIds[0]
             self.log.info("Received signal: " + signal + " to host " + str(socketId))
 
             if socketId in self.openRequPerm:
@@ -261,40 +266,38 @@ class SignalHandler():
             return
 
         elif signal == "START_QUERY_NEXT":
-            self.log.info("Received signal to enable querying for data for hosts: " + str(host))
+            self.log.info("Received signal to enable querying for data for hosts: " + str(socketIds))
             connectionFound = False
             tmpAllowed = []
-            for h in host:
-                for p in port:
-                    socketId = h + ":" + p
-                    if socketId in self.allowedQueries:
-                        connectionFound = True
-                        self.log.info("Connection to " + str(socketId) + " is already open")
-                        self.sendResponse("CONNECTION_ALREADY_OPEN")
-                    elif socketId not in tmpAllowed:
-                        tmpAllowed.append(socketId)
-                    else:
-                        #TODO send notification (double entries in START_QUERY_NEXT) back?
-                        pass
+            for socketId in socketIds:
+                if socketId in self.allowedQueries:
+                    connectionFound = True
+                    self.log.info("Connection to " + str(socketId) + " is already open")
+                    self.sendResponse("CONNECTION_ALREADY_OPEN")
+                elif socketId not in tmpAllowed:
+                    tmpAllowed.append(socketId)
+                else:
+                    #TODO send notification (double entries in START_QUERY_NEXT) back?
+                    pass
 
             if not connectionFound:
                 # send signal back to receiver
                 self.sendResponse(signal)
-                self.allowedQueries += tmpAllowed
+                self.allowedQueries.append(sorted(tmpAllowed))
+                self.openRequVari.append([])
                 self.log.debug("Send response back: " + str(signal))
 
             return
 
         elif signal == "STOP_QUERY_NEXT":
-            self.log.info("Received signal to disable querying for data for hosts: " + str(host))
+            self.log.info("Received signal to disable querying for data for hosts: " + str(socketIds))
             connectionNotFound = False
-            for h in host:
-                for p in port:
-                    socketId = h + ":" + p
-                    if socketId in self.allowedQueries:
-                        self.allowedQueries.remove(socketId)
-                    else:
-                        connectionNotFound = True
+            tmpRemove = []
+            for socketId in socketIds:
+                if socketId in self.allowedQueries:
+                    tmpRemove.append(socketId)
+                else:
+                    connectionNotFound = True
 
             if connectionNotFound:
                 self.log.info("No connection to close was found for " + str(socketId))
@@ -302,6 +305,9 @@ class SignalHandler():
             else:
                 # send signal back to receiver
                 self.sendResponse(signal)
+                indexToRemove = self.allowedQueries.index(sorted(tmpRemove))
+                self.allowedQueries.pop(i)
+                self.openRequVari.pop(i)
                 self.log.debug("Send response back: " + str(signal))
 
             return
@@ -327,8 +333,38 @@ class SignalHandler():
 
 
 if __name__ == '__main__':
+
     from multiprocessing import Process
     import time
+
+    class requestPuller():
+        def __init__ (self, requestFwPort, context = None):
+            self.context         = context or zmq.Context.instance()
+            self.requestFwSocket = self.context.socket(zmq.REQ)
+            connectionStr   = "tcp://localhost:" + requestFwPort
+            self.requestFwSocket.connect(connectionStr)
+            logging.info("[getRequests] requestFwSocket started (connect) for '" + connectionStr + "'")
+
+            self.run()
+
+
+        def run (self):
+            logging.info("[getRequests] Start run")
+            while True:
+                self.requestFwSocket.send("")
+                logging.info("[getRequests] send")
+                requests = self.requestFwSocket.recv_multipart()
+                logging.info("[getRequests] Requests: " + str(requests))
+                time.sleep(0.25)
+
+        def __exit__(self):
+            self.requestFwSocket.close(0)
+            #self.context.destroy()
+
+#        def __del__(self):
+#            self.requestFwSocket.close(0)
+#            self.context.destroy()
+
 
     helperScript.initLogging("/space/projects/live-viewer/logs/signalHandler.log", verbose=True, onScreenLogLevel="debug")
 
@@ -338,29 +374,41 @@ if __name__ == '__main__':
     requestFwPort = "6001"
     requestPort   = "6002"
     signalHandlerProcess = Process ( target = SignalHandler, args = (whiteList, comPort, requestFwPort, requestPort) )
-
     signalHandlerProcess.start()
 
+    requestPullerProcess = Process ( target = requestPuller, args = (requestFwPort, ) )
+    requestPullerProcess.start()
 
-    def sendSignal(socket, signal, port):
-        sendMessage = ["0.0.1",  signal, "zitpcx19282", port]
+
+    def sendSignal(socket, signal, ports):
+        logging.info("=== sendSignal : " + signal + ", " + str(ports))
+        sendMessage = ["0.0.1",  signal]
+        targets = []
+        if type(ports) == list:
+            for port in ports:
+                targets += ["zitpcx19282:" + port]
+        else:
+            targets += ["zitpcx19282:" + ports]
+        sendMessage.append(str(targets))
         socket.send_multipart(sendMessage)
         receivedMessage = socket.recv()
         logging.info("=== Responce : " + receivedMessage )
 
     def sendRequest(socket, socketId):
         sendMessage = ["NEXT", socketId]
+        logging.info("=== sendRequest: " + str(sendMessage))
         socket.send_multipart(sendMessage)
         logging.info("=== request sent: " + str(sendMessage))
 
 
     def getRequests(socket):
+        logging.info("=== getRequests")
         socket.send("")
         requests = socket.recv_multipart()
         logging.info("=== Requests: " + str(requests))
 
-
     context         = zmq.Context.instance()
+
     comSocket       = context.socket(zmq.REQ)
     connectionStr   = "tcp://zitpcx19282:" + comPort
     comSocket.connect(connectionStr)
@@ -376,37 +424,33 @@ if __name__ == '__main__':
     requestFwSocket.connect(connectionStr)
     logging.info("=== requestFwSocket connected to " + connectionStr)
 
-
+    time.sleep(3)
 
     sendSignal(comSocket, "START_STREAM", "6003")
-    getRequests(requestFwSocket)
 
     sendSignal(comSocket, "START_STREAM", "6004")
-    getRequests(requestFwSocket)
 
     sendSignal(comSocket, "STOP_STREAM", "6003")
-    getRequests(requestFwSocket)
 
     sendRequest(requestSocket, "zitpcx19282:6006")
-    getRequests(requestFwSocket)
 
-    sendSignal(comSocket, "START_QUERY_NEXT", "6005")
-    getRequests(requestFwSocket)
+    sendSignal(comSocket, "START_QUERY_NEXT", ["6005", "6006"])
 
     sendRequest(requestSocket, "zitpcx19282:6005")
-    getRequests(requestFwSocket)
-    getRequests(requestFwSocket)
+    sendRequest(requestSocket, "zitpcx19282:6005")
+
+    time.sleep(1)
 
 
     requestFwSocket.send("STOP")
     requests = requestFwSocket.recv()
-    logging.debug("=== Requests: " + requests)
+    logging.debug("=== Stop: " + requests)
 
     signalHandlerProcess.join()
+    requestPullerProcess.terminate()
 
     comSocket.close(0)
     requestSocket.close(0)
     requestFwSocket.close(0)
     context.destroy()
-
 
