@@ -23,8 +23,7 @@ import helperScript
 #  --------------------------  class: SignalHandler  --------------------------------------
 #
 class SignalHandler():
-    def __init__(self,
-                 whiteList,
+    def __init__ (self, whiteList,
                  comPort, signalFwPort, requestPort,
                  context = None):
 
@@ -73,12 +72,12 @@ class SignalHandler():
             self.log.debug("Error was: " + str(trace))
 
 
-    def getLogger(self):
+    def getLogger (self):
         logger = logging.getLogger("SignalHandler")
         return logger
 
 
-    def createSockets(self):
+    def createSockets (self):
 
         # create zmq socket for signal communication with receiver
         self.comSocket = self.context.socket(zmq.REP)
@@ -118,7 +117,7 @@ class SignalHandler():
         self.poller.register(self.requestSocket, zmq.POLLIN)
 
 
-    def run(self):
+    def run (self):
         #run loop, and wait for incoming messages
         self.log.debug("Waiting for new signals or requests.")
         while True:
@@ -141,11 +140,11 @@ class SignalHandler():
                             openRequests.append(tmp)
 
                     if openRequests:
-                        self.signalFwSocket.send_multipart(openRequests)
+                        self.signalFwSocket.send(str(openRequests))
                         self.log.debug("Answered to request: " + str(openRequests))
                     else:
                         openRequests = ["None"]
-                        self.signalFwSocket.send_multipart(openRequests)
+                        self.signalFwSocket.send(str(openRequests))
                         self.log.debug("Answered to request: " + str(openRequests))
                 except Exception, e:
                     self.log.error("Failed to receive/answer new signal requests.")
@@ -181,7 +180,7 @@ class SignalHandler():
 
 
 
-    def checkSignal(self, incomingMessage):
+    def checkSignal (self, incomingMessage):
 
         if len(incomingMessage) != 3:
 
@@ -225,12 +224,12 @@ class SignalHandler():
         return True, signal, target
 
 
-    def sendResponse(self, signal):
+    def sendResponse (self, signal):
             self.log.debug("send confirmation back to receiver: " + str(signal) )
             self.comSocket.send(signal, zmq.NOBLOCK)
 
 
-    def reactToSignal(self, signal, socketIds):
+    def reactToSignal (self, signal, socketIds):
 
         # React to signal
         if signal == "START_STREAM":
@@ -317,18 +316,18 @@ class SignalHandler():
             self.sendResponse("NO_VALID_SIGNAL")
 
 
-    def stop(self):
+    def stop (self):
         self.log.debug("Closing sockets")
         self.comSocket.close(0)
         self.signalFwSocket.close(0)
         self.requestSocket.close(0)
 
 
-    def __exit__(self):
+    def __exit__ (self):
         self.stop()
 
 
-    def __del__(self):
+    def __del__ (self):
         self.stop()
 
 
@@ -353,7 +352,7 @@ if __name__ == '__main__':
             while True:
                 self.requestFwSocket.send("")
                 logging.info("[getRequests] send")
-                requests = self.requestFwSocket.recv_multipart()
+                requests = self.requestFwSocket.recv()
                 logging.info("[getRequests] Requests: " + str(requests))
                 time.sleep(0.25)
 
