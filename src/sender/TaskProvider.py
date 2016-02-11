@@ -11,27 +11,23 @@ import trace
 
 
 #
-#  --------------------------  class: TaskHandler  --------------------------------------
+#  --------------------------  class: TaskProvider  --------------------------------------
 #
 
-class TaskHandler():
+class TaskProvider():
     def __init__ (self, eventDetectorConfig, requestFwPort, distrPort, context = None):
         #eventDetectorConfig = {
-        #        configType: ... ,
-        #        watchDir : ... ,
+        #        configType   : ... ,
+        #        monDir       : ... ,
         #        monEventType : ... ,
-        #        monDefaultSubdirs : ... ,
-        #        monSuffixes : ... ,
+        #        monSubdirs   : ... ,
+        #        monSuffixes  : ... ,
         #}
 
         self.log               = self.getLogger()
-        self.log.debug("TaskHandler: __init__()")
+        self.log.debug("TaskProvider: __init__()")
 
         self.eventDetector     = None
-        self.watchDir          = None
-        self.monEventType      = "IN_CLOSE_WRITE"
-        self.monDefaultSubdirs = ["commissioning", "current", "local"]
-        self.monSuffixes       = [".tif", ".cbf"]
 
         self.config = eventDetectorConfig
 
@@ -52,22 +48,19 @@ class TaskHandler():
             self.extContext = False
 
 
-        if self.config["configType"] == "inotify":
+        if self.config.has_key("configType") and self.config["configType"] == "inotifyx":
 
-            from InotifyDetector import InotifyDetector as EventDetector
+            from InotifyxDetector import InotifyxDetector as EventDetector
 
-            self.watchDir          = os.path.normpath(watchDir)
+            # check format of config
+            if ( not self.config.has_key("monDir") or
+                    not self.config.has_key("monEventType") or
+                    not self.config.has_key("monSubdirs") or
+                    not self.config.has_key("monSuffixes") ):
+                self.log.error ("Configuration of wrong format")
 
-            self.monEventType      = self.config["monEventType"] or None
-            self.log.info ("Monitored event type is: " + str(self.monEventType))
-
-            self.monDefaultSubdirs = self.config["monDefaultSubdirs"] or None
-            self.monSuffixes       = self.config["monSuffixes"] or None
-            self.log.info ("Monitored suffixes are: " + str(self.monSuffixes))
-
-            monDirs                = [self.config["self.watchDir"]]
             #TODO forward self.config instead of seperate variables
-            self.eventDetector     = EventDetector(monDirs, self.monEventType, self.monDefaultSubdirs, self.monSuffixes)
+            self.eventDetector     = EventDetector(self.config)
         else:
             self.log.error("Type of event detector is not supported: " + str( self.config["configType"] ))
             return -1
@@ -80,12 +73,12 @@ class TaskHandler():
             self.log.debug("Keyboard interruption detected. Shuting down")
         except:
             trace = traceback.format_exc()
-            self.log.info("Stopping TaskHandler due to unknown error condition.")
+            self.log.info("Stopping TaskProvider due to unknown error condition.")
             self.log.debug("Error was: " + str(trace))
 
 
     def getLogger (self):
-        logger = logging.getLogger("TaskHandler")
+        logger = logging.getLogger("TaskProvider")
         return logger
 
 
@@ -171,7 +164,7 @@ class TaskHandler():
         if self.requestFwSocket:
             self.requestFwSocket.close(0)
             self.requestFwSocket = None
-        if not self.extContext and if self.context:
+        if not self.extContext and self.context:
             self.context.destroy()
             self.context = None
 
@@ -186,59 +179,7 @@ class TaskHandler():
 
 
 if __name__ == '__main__':
-
-    def argumentParsing():
-
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--watchDir"  , type=str, help="directory you want to monitor for changes")
-        parser.add_argument("--staticNotification",
-                            help="disables new file-events. just sends a list of currently available files within the defined 'watchDir'.",
-                            action="store_true")
-        parser.add_argument("--logfilePath"  , type=str, help="path where logfile will be created"              , default="/tmp/log/")
-        parser.add_argument("--logfileName"  , type=str, help="filename used for logging"                       , default="watchDir.log")
-        parser.add_argument("--fileEventIp"  , type=str, help="zqm endpoint (IP-address) to send file events to", default="127.0.0.1")
-        parser.add_argument("--fileEventPort", type=str, help="zqm endpoint (port) to send file events to"      , default="6060")
-        parser.add_argument("--verbose"      ,           help="more verbose output", action="store_true")
-
-        arguments = parser.parse_args()
-
-        # TODO: check watchDir-directory for existance
-
-        watchDir = str(arguments.watchDir)
-        assert isinstance(type(watchDir), type(str))
-
-        #exit with error if no watchDir path was provided
-        if watchDir in [ None, "", "None" ]:
-            print """You need to set the following option:
-    --watchDir {DIRECTORY}
-    """
-            sys.exit(1)
-
-
-        #abort if watchDir does not exist
-        helperScript.checkDirExistance(watchDir)
-
-
-        #error if logfile cannot be written
-        try:
-            fullPath = os.path.join(arguments.logfilePath, arguments.logfileName)
-            logFile = open(fullPath, "a")
-        except:
-            print "Unable to create the logfile """ + str(fullPath)
-            print """Please specify a new target by setting the following arguments:
-    --logfileName
-    --logfilePath
-    """
-            sys.exit(1)
-
-        #check logfile-path for existance
-        helperScript.checkDirExistance(arguments.logfilePath)
-
-
-        return arguments
-
-
-
+    from multiprocessing import Process
 
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
     SRC_PATH  = BASE_PATH + os.sep + "src"
@@ -247,20 +188,21 @@ if __name__ == '__main__':
 
     import shared.helperScript as helperScript
 
-    arguments       = argumentParsing()
-    watchDir        = arguments.watchDir
-    verbose         = arguments.verbose
-    logfileFilePath = os.path.join(arguments.logfilePath, arguments.logfileName)
-
-    fileEventIp     = str(arguments.fileEventIp)
-    fileEventPort   = str(arguments.fileEventPort)
-
-
     #enable logging
-    helperScript.initLogging(logfileFilePath, verbose)
+    helperScript.initLogging("/space/projects/live-viewer/logs/signalHandler.log", verbose=True, onScreenLogLevel="debug")
 
+    eventDetectorConfig = {
+            "configType"   : "inotifyx",
+            "monDir"       : "/space/projects/live-viewer/data/src",
+            "monEventType" : "IN_CLOSE_WRITE",
+            "monSubdirs"   : ["commissioning", "current", "local"],
+            "monSuffixes"  : [".tif", ".cbf"]
+            }
 
-    #run only once, skipping file events
-    #just get a list of all files in watchDir and pass to zeromq
-    directoryWatcher = DirectoryWatcher(fileEventIp, watchDir, fileEventPort)
+    requestFwPort = "6001"
+    distrPort     = "7000"
 
+    taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, requestFwPort, distrPort) )
+    taskProviderPr.start()
+
+    taskProviderPr.join()
