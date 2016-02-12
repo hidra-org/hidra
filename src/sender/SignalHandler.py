@@ -53,9 +53,9 @@ class SignalHandler():
                 self.whiteList.append(host)
 
         # sockets
-        self.comSocket      = None
-        self.signalFwSocket = None
-        self.requestSocket  = None
+        self.comSocket       = None
+        self.requestFwSocket = None
+        self.requestSocket   = None
 
         self.log = self.getLogger()
         self.log.debug("Init")
@@ -91,13 +91,13 @@ class SignalHandler():
 
         # setting up router for load-balancing worker-processes.
         # each worker-process will handle a file event
-        self.signalFwSocket = self.context.socket(zmq.REP)
+        self.requestFwSocket = self.context.socket(zmq.REP)
         connectionStr       = "tcp://{ip}:{port}".format(ip=self.localhost, port=self.signalFwPort)
         try:
-            self.signalFwSocket.bind(connectionStr)
-            self.log.debug("signalFwSocket started (bind) for '" + connectionStr + "'")
+            self.requestFwSocket.bind(connectionStr)
+            self.log.debug("requestFwSocket started (bind) for '" + connectionStr + "'")
         except Exception as e:
-            self.log.error("Failed to start signalFwSocket (bind): '" + connectionStr + "'")
+            self.log.error("Failed to start requestFwSocket (bind): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))
 
         # create socket to receive requests
@@ -113,7 +113,7 @@ class SignalHandler():
         # Poller to distinguish between start/stop signals and queries for the next set of signals
         self.poller = zmq.Poller()
         self.poller.register(self.comSocket, zmq.POLLIN)
-        self.poller.register(self.signalFwSocket, zmq.POLLIN)
+        self.poller.register(self.requestFwSocket, zmq.POLLIN)
         self.poller.register(self.requestSocket, zmq.POLLIN)
 
 
@@ -123,12 +123,12 @@ class SignalHandler():
         while True:
             socks = dict(self.poller.poll())
 
-            if self.signalFwSocket in socks and socks[self.signalFwSocket] == zmq.POLLIN:
+            if self.requestFwSocket in socks and socks[self.requestFwSocket] == zmq.POLLIN:
 
                 try:
-                    incomingMessage = self.signalFwSocket.recv()
+                    incomingMessage = self.requestFwSocket.recv()
                     if incomingMessage == "STOP":
-                        self.signalFwSocket.send(incomingMessage)
+                        self.requestFwSocket.send(incomingMessage)
                         time.sleep(0.1)
                         break
                     self.log.debug("New request for signals received.")
@@ -140,11 +140,11 @@ class SignalHandler():
                             openRequests.append(tmp)
 
                     if openRequests:
-                        self.signalFwSocket.send(str(openRequests))
+                        self.requestFwSocket.send(str(openRequests))
                         self.log.debug("Answered to request: " + str(openRequests))
                     else:
                         openRequests = ["None"]
-                        self.signalFwSocket.send(str(openRequests))
+                        self.requestFwSocket.send(str(openRequests))
                         self.log.debug("Answered to request: " + str(openRequests))
                 except Exception, e:
                     self.log.error("Failed to receive/answer new signal requests.")
@@ -319,7 +319,7 @@ class SignalHandler():
     def stop (self):
         self.log.debug("Closing sockets")
         self.comSocket.close(0)
-        self.signalFwSocket.close(0)
+        self.requestFwSocket.close(0)
         self.requestSocket.close(0)
 
 
@@ -358,7 +358,7 @@ if __name__ == '__main__':
 
         def __exit__(self):
             self.requestFwSocket.close(0)
-            #self.context.destroy()
+            self.context.destroy()
 
 #        def __del__(self):
 #            self.requestFwSocket.close(0)

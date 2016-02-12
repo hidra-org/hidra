@@ -24,6 +24,9 @@ class TaskProvider():
         #        monSuffixes  : ... ,
         #}
 
+        print "eventDetectorConfig", eventDetectorConfig
+
+
         self.log               = self.getLogger()
         self.log.debug("TaskProvider: __init__()")
 
@@ -95,7 +98,7 @@ class TaskProvider():
 
         # socket to disribute the events to the worker
         self.distrSocket = self.context.socket(zmq.PUSH)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.requestFwPort )
+        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.distrPort )
         try:
             self.distrSocket.bind(connectionStr)
             self.log.debug("Connecting to distributing socket (bind): " + str(connectionStr))
@@ -148,8 +151,9 @@ class TaskProvider():
                 # send the file to the fileMover
                 try:
                     self.log.debug("Sending message...")
-                    self.log.debug(str(messageDict))
-                    self.distrSocket.send_multipart([messageDict, requests])
+                    message = [messageDict] + requests
+                    self.log.debug(str(message))
+                    self.distrSocket.send_multipart(message)
                     self.log.debug("Sending message...done.")
                 except Exception, e:
                     self.log.error("Sending message...failed.")
@@ -187,13 +191,40 @@ if __name__ == '__main__':
     sys.path.append ( SRC_PATH )
 
     import shared.helperScript as helperScript
+    import time
+
+    class requestResponder():
+        def __init__ (self, requestFwPort, context = None):
+            self.context         = context or zmq.Context.instance()
+            self.requestFwSocket = self.context.socket(zmq.REP)
+            connectionStr   = "tcp://127.0.0.1:" + requestFwPort
+            self.requestFwSocket.bind(connectionStr)
+            logging.info("[requestResponder] requestFwSocket started (bind) for '" + connectionStr + "'")
+
+            self.run()
+
+
+        def run (self):
+            logging.info("[requestResponder] Start run")
+            openRequests = ['zitpcx19282:6004', 'zitpcx19282:6005']
+            while True:
+                request = self.requestFwSocket.recv()
+                logging.debug("[requestResponder] Received request: " + str(request) )
+
+                self.requestFwSocket.send_multipart(openRequests)
+                logging.debug("[requestResponder] Answer: " + str(openRequests) )
+
+
+        def __exit__(self):
+            self.requestFwSocket.close(0)
+            self.context.destroy()
 
     #enable logging
     helperScript.initLogging("/space/projects/live-viewer/logs/signalHandler.log", verbose=True, onScreenLogLevel="debug")
 
     eventDetectorConfig = {
             "configType"   : "inotifyx",
-            "monDir"       : "/space/projects/live-viewer/data/src",
+            "monDir"       : "/space/projects/live-viewer/data/source",
             "monEventType" : "IN_CLOSE_WRITE",
             "monSubdirs"   : ["commissioning", "current", "local"],
             "monSuffixes"  : [".tif", ".cbf"]
@@ -205,4 +236,26 @@ if __name__ == '__main__':
     taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, requestFwPort, distrPort) )
     taskProviderPr.start()
 
-    taskProviderPr.join()
+    requestResponderPr = Process ( target = requestResponder, args = ( requestFwPort, ) )
+    requestResponderPr.start()
+
+    context         = zmq.Context.instance()
+
+    distrSocket = context.socket(zmq.PULL)
+    connectionStr   = "tcp://localhost:" + distrPort
+    distrSocket.connect(connectionStr)
+    logging.info("=== distrSocket connected to " + connectionStr)
+
+    try:
+        while True:
+            workload = distrSocket.recv_multipart()
+            logging.info("=== next workload " + str(workload))
+    except KeyboardInterrupt:
+        pass
+    finally:
+
+        requestResponderPr.terminate()
+        taskProviderPr.terminate()
+
+        distrSocket.close(0)
+        context.destroy()
