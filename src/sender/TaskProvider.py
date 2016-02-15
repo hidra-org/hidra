@@ -15,7 +15,8 @@ import trace
 #
 
 class TaskProvider():
-    def __init__ (self, eventDetectorConfig, requestFwPort, distrPort, context = None):
+
+    def __init__ (self, eventDetectorConfig, requestFwPort, routerPort, context = None):
         #eventDetectorConfig = {
         #        configType   : ... ,
         #        monDir       : ... ,
@@ -37,9 +38,9 @@ class TaskProvider():
         self.localhost         = "127.0.0.1"
         self.extIp             = "0.0.0.0"
         self.requestFwPort     = requestFwPort
-        self.distrPort         = distrPort
+        self.routerPort        = routerPort
         self.requestFwSocket   = None
-        self.distrSocket       = None
+        self.routerSocket      = None
 
         self.log.debug("Registering ZMQ context")
         # remember if the context was created outside this class or not
@@ -91,19 +92,19 @@ class TaskProvider():
         connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.requestFwPort )
         try:
             self.requestFwSocket.connect(connectionStr)
-            self.log.debug("Connecting to requestFwSocket (connect): " + str(connectionStr))
+            self.log.info("Start requestFwSocket (connect): '" + str(connectionStr) + "'")
         except Exception as e:
             self.log.error("Failed to start requestFwSocket (connect): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))
 
         # socket to disribute the events to the worker
-        self.distrSocket = self.context.socket(zmq.PUSH)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.distrPort )
+        self.routerSocket = self.context.socket(zmq.PUSH)
+        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.routerPort )
         try:
-            self.distrSocket.bind(connectionStr)
-            self.log.debug("Connecting to distributing socket (bind): " + str(connectionStr))
+            self.routerSocket.bind(connectionStr)
+            self.log.info("Start to routeributing socket (bind): '" + str(connectionStr) + "'")
         except Exception as e:
-            self.log.error("Failed to start distributing Socket (bind): '" + connectionStr + "'")
+            self.log.error("Failed to start routeributing Socket (bind): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))
 
 
@@ -153,7 +154,7 @@ class TaskProvider():
                     self.log.debug("Sending message...")
                     message = [messageDict] + requests
                     self.log.debug(str(message))
-                    self.distrSocket.send_multipart(message)
+                    self.routerSocket.send_multipart(message)
                     self.log.debug("Sending message...done.")
                 except Exception, e:
                     self.log.error("Sending message...failed.")
@@ -162,9 +163,9 @@ class TaskProvider():
 
 
     def stop(self):
-        if self.distrSocket:
-            self.distrSocket.close(0)
-            self.distrSocket = None
+        if self.routerSocket:
+            self.routerSocket.close(0)
+            self.routerSocket = None
         if self.requestFwSocket:
             self.requestFwSocket.close(0)
             self.requestFwSocket = None
@@ -231,9 +232,9 @@ if __name__ == '__main__':
             }
 
     requestFwPort = "6001"
-    distrPort     = "7000"
+    routerPort    = "7000"
 
-    taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, requestFwPort, distrPort) )
+    taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, requestFwPort, routerPort) )
     taskProviderPr.start()
 
     requestResponderPr = Process ( target = requestResponder, args = ( requestFwPort, ) )
@@ -241,14 +242,14 @@ if __name__ == '__main__':
 
     context         = zmq.Context.instance()
 
-    distrSocket = context.socket(zmq.PULL)
-    connectionStr   = "tcp://localhost:" + distrPort
-    distrSocket.connect(connectionStr)
-    logging.info("=== distrSocket connected to " + connectionStr)
+    routerSocket = context.socket(zmq.PULL)
+    connectionStr   = "tcp://localhost:" + routerPort
+    routerSocket.connect(connectionStr)
+    logging.info("=== routerSocket connected to " + connectionStr)
 
     try:
         while True:
-            workload = distrSocket.recv_multipart()
+            workload = routerSocket.recv_multipart()
             logging.info("=== next workload " + str(workload))
     except KeyboardInterrupt:
         pass
@@ -257,5 +258,5 @@ if __name__ == '__main__':
         requestResponderPr.terminate()
         taskProviderPr.terminate()
 
-        distrSocket.close(0)
+        routerSocket.close(0)
         context.destroy()

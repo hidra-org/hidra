@@ -23,6 +23,7 @@ import helperScript
 #  --------------------------  class: SignalHandler  --------------------------------------
 #
 class SignalHandler():
+
     def __init__ (self, whiteList,
                  comPort, signalFwPort, requestPort,
                  context = None):
@@ -84,7 +85,7 @@ class SignalHandler():
         connectionStr  = "tcp://{ip}:{port}".format(ip=self.extIp, port=self.comPort)
         try:
             self.comSocket.bind(connectionStr)
-            self.log.info("comSocket started (bind) for '" + connectionStr + "'")
+            self.log.info("Start comSocket (bind): '" + connectionStr + "'")
         except Exception as e:
             self.log.error("Failed to start comSocket (bind): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))
@@ -95,7 +96,7 @@ class SignalHandler():
         connectionStr       = "tcp://{ip}:{port}".format(ip=self.localhost, port=self.signalFwPort)
         try:
             self.requestFwSocket.bind(connectionStr)
-            self.log.debug("requestFwSocket started (bind) for '" + connectionStr + "'")
+            self.log.info("Start requestFwSocket (bind): '" + connectionStr + "'")
         except Exception as e:
             self.log.error("Failed to start requestFwSocket (bind): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))

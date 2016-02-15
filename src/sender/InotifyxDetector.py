@@ -29,14 +29,17 @@ class InotifyEvent(object):
     cookie = None
     name = None
 
+
     def __init__(self, wd, mask, cookie, name):
         self.wd = wd
         self.mask = mask
         self.cookie = cookie
         self.name = name
 
+
     def __str__(self):
         return '%s: %s' % (self.wd, self.get_mask_description())
+
 
     def __repr__(self):
         return '%s(%s, %s, %s, %s)' % (
@@ -46,6 +49,7 @@ class InotifyEvent(object):
           repr(self.cookie),
           repr(self.name),
         )
+
 
     def get_mask_description(self):
         '''
@@ -71,6 +75,7 @@ class InotifyEvent(object):
 # Copyright (c) 2005 Manuel Amador
 # Copyright (c) 2009-2011 Forest Bond
 class InotifyxDetector():
+
     def __init__(self, config):
 
         self.log                = self.getLogger()
@@ -124,7 +129,6 @@ class InotifyxDetector():
     def add_watch(self):
         dirsToRegister=self.getDirectoryStructure()
         try:
-#            for path in self.paths:
             for path in dirsToRegister:
                 wd = binding.add_watch(self.fd, path)
                 self.wd_to_path[wd] = path
@@ -132,7 +136,6 @@ class InotifyxDetector():
         except Exception as e:
             self.log.error("Could not register watch for path: " + str(path) )
             self.log.debug("Error was " + str(e))
-#            self.stop()
 
 
     def getDirectoryStructure(self):
@@ -155,13 +158,12 @@ class InotifyxDetector():
 
         return monitoredDirs
 
+
     def getNewEvent(self):
 
         eventMessageList = []
         eventMessage = {}
 
-#        print "wd_to_path: ", self.wd_to_path
-#        print "fd:", self.fd
         events = self.get_events(self.fd)
         removedWd = None
         for event in events:
