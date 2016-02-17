@@ -7,6 +7,7 @@ import os
 import sys
 import traceback
 import copy
+import pickle
 from multiprocessing import Process
 from WorkerProcess import WorkerProcess
 
@@ -162,6 +163,8 @@ class SignalHandler():
                 self.log.debug("Received signal: " + str(incomingMessage) )
 
                 checkStatus, signal, target = self.checkSignal(incomingMessage)
+                print "signal", signal
+                print "target", target
                 if checkStatus:
                     self.reactToSignal(signal, target)
 
@@ -174,8 +177,12 @@ class SignalHandler():
                 incomingMessage = self.requestSocket.recv_multipart()
                 self.log.debug("Received request: " + str(incomingMessage) )
 
+                print "allowedQueries", self.allowedQueries
+                print " self.openRequVari",  self.openRequVari
                 for index in range(len(self.allowedQueries)):
                     if incomingMessage[1] in self.allowedQueries[index]:
+                        print "allowedQueries[index]", self.allowedQueries[index]
+                        tmp = [incomingMessage[1], self.allowedQueries[index][1]]
                         self.openRequVari[index].append(incomingMessage[1])
                         self.log.debug("Add to openRequVari: " + incomingMessage[1] )
 
@@ -192,14 +199,9 @@ class SignalHandler():
         else:
 
             version, signal, target = incomingMessage
+            target = pickle.loads(target)
 
-            if target.startswith("["):
-                # remove "['" and "']" at the beginning and the end
-                target = target[2:-2].split("', '")
-            else:
-                target = [target]
-
-            host = [t.split(":")[0] for t in target]
+            host = [t[0].split(":")[0] for t in target]
 
             if version:
                 if helperScript.checkVersion(version, self.log):
@@ -236,9 +238,10 @@ class SignalHandler():
         if signal == "START_STREAM":
             #FIXME
             socketId = socketIds[0]
-            self.log.info("Received signal: " + signal + " to host " + str(socketId))
+            self.log.info("Received signal: " + signal + " to host " + str(socketId) +
+                          " with priority " + str(socketId[1]))
 
-            if socketId in self.openRequPerm:
+            if socketId in [i[0] for i in self.openRequPerm]:
                 self.log.info("Connection to " + str(socketId) + " is already open")
                 self.sendResponse("CONNECTION_ALREADY_OPEN")
             else:
@@ -252,9 +255,9 @@ class SignalHandler():
         elif signal == "STOP_STREAM":
             #FIXME
             socketId = socketIds[0]
-            self.log.info("Received signal: " + signal + " to host " + str(socketId))
+            self.log.info("Received signal: " + signal + " to host " + str(socketId[0]))
 
-            if socketId in self.openRequPerm:
+            if socketId in [i[0] for i in self.openRequPerm]:
                 # send signal back to receiver
                 self.sendResponse(signal)
                 self.log.debug("Send response back: " + str(signal))
@@ -269,13 +272,14 @@ class SignalHandler():
             self.log.info("Received signal to enable querying for data for hosts: " + str(socketIds))
             connectionFound = False
             tmpAllowed = []
-            for socketId in socketIds:
-                if socketId in self.allowedQueries:
+            for socketConf in socketIds:
+                socketId = socketConf[0]
+                if socketId in [ i[0] for i in self.allowedQueries]:
                     connectionFound = True
                     self.log.info("Connection to " + str(socketId) + " is already open")
                     self.sendResponse("CONNECTION_ALREADY_OPEN")
-                elif socketId not in tmpAllowed:
-                    tmpAllowed.append(socketId)
+                elif socketId not in [ i[0] for i in tmpAllowed]:
+                    tmpAllowed.append(socketConf)
                 else:
                     #TODO send notification (double entries in START_QUERY_NEXT) back?
                     pass
@@ -283,8 +287,9 @@ class SignalHandler():
             if not connectionFound:
                 # send signal back to receiver
                 self.sendResponse(signal)
-                self.allowedQueries.append(sorted(tmpAllowed))
-                self.openRequVari.append([])
+                self.allowedQueries += sorted(tmpAllowed)
+
+                self.openRequVari += [[] for i in tmpAllowed]
                 self.log.debug("Send response back: " + str(signal))
 
             return
@@ -293,9 +298,10 @@ class SignalHandler():
             self.log.info("Received signal to disable querying for data for hosts: " + str(socketIds))
             connectionNotFound = False
             tmpRemove = []
-            for socketId in socketIds:
-                if socketId in self.allowedQueries:
-                    tmpRemove.append(socketId)
+            for socketConf in socketIds:
+                socketId = socketConf[0]
+                if socketId in [ i[0] for i in self.allowedQueries]:
+                    tmpRemove.append(socketConf)
                 else:
                     connectionNotFound = True
 
@@ -305,10 +311,12 @@ class SignalHandler():
             else:
                 # send signal back to receiver
                 self.sendResponse(signal)
-                indexToRemove = self.allowedQueries.index(sorted(tmpRemove))
-                self.allowedQueries.pop(i)
-                self.openRequVari.pop(i)
                 self.log.debug("Send response back: " + str(signal))
+                for socketToRemove in tmpRemove:
+                    indexToRemove = self.allowedQueries.index(socketToRemove)
+                    self.allowedQueries.pop(indexToRemove)
+                    self.openRequVari.pop(indexToRemove)
+                    self.log.debug("Removed " + str(socketToRemove) + " from allowedQueries.")
 
             return
 
@@ -380,16 +388,17 @@ if __name__ == '__main__':
     requestPullerProcess.start()
 
 
-    def sendSignal(socket, signal, ports):
+    def sendSignal(socket, signal, ports, prio = None):
         logging.info("=== sendSignal : " + signal + ", " + str(ports))
         sendMessage = ["0.0.1",  signal]
         targets = []
         if type(ports) == list:
             for port in ports:
-                targets += ["zitpcx19282:" + port]
+                targets.append(["zitpcx19282:" + port, prio])
         else:
-            targets += ["zitpcx19282:" + ports]
-        sendMessage.append(str(targets))
+            targets.append(["zitpcx19282:" + ports, prio])
+        targets = pickle.dumps(targets)
+        sendMessage.append(targets)
         socket.send_multipart(sendMessage)
         receivedMessage = socket.recv()
         logging.info("=== Responce : " + receivedMessage )
@@ -424,20 +433,22 @@ if __name__ == '__main__':
     requestFwSocket.connect(connectionStr)
     logging.info("=== requestFwSocket connected to " + connectionStr)
 
-    time.sleep(3)
+    time.sleep(1)
 
-    sendSignal(comSocket, "START_STREAM", "6003")
+    sendSignal(comSocket, "START_STREAM", "6003", 1)
 
-    sendSignal(comSocket, "START_STREAM", "6004")
+    sendSignal(comSocket, "START_STREAM", "6004", 0)
 
     sendSignal(comSocket, "STOP_STREAM", "6003")
 
     sendRequest(requestSocket, "zitpcx19282:6006")
 
-    sendSignal(comSocket, "START_QUERY_NEXT", ["6005", "6006"])
+    sendSignal(comSocket, "START_QUERY_NEXT", ["6005", "6006"], 2)
 
     sendRequest(requestSocket, "zitpcx19282:6005")
     sendRequest(requestSocket, "zitpcx19282:6005")
+
+    sendSignal(comSocket, "STOP_QUERY_NEXT", "6005", 2)
 
     time.sleep(1)
 
