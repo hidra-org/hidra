@@ -152,7 +152,9 @@ class TaskProvider():
                 # send the file to the fileMover
                 try:
                     self.log.debug("Sending message...")
-                    message = [messageDict] + requests
+                    message = [messageDict]
+                    if requests != ["None"]:
+                        message += requests
                     self.log.debug(str(message))
                     self.routerSocket.send_multipart(message)
                     self.log.debug("Sending message...done.")
