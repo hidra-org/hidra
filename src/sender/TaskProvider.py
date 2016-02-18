@@ -224,7 +224,7 @@ if __name__ == '__main__':
             self.context.destroy()
 
     #enable logging
-    helperScript.initLogging("/space/projects/live-viewer/logs/signalHandler.log", verbose=True, onScreenLogLevel="debug")
+    helperScript.initLogging("/space/projects/live-viewer/logs/taskProvider.log", verbose=True, onScreenLogLevel="debug")
 
     eventDetectorConfig = {
             "configType"   : "inotifyx",
@@ -243,10 +243,10 @@ if __name__ == '__main__':
     requestResponderPr = Process ( target = requestResponder, args = ( requestFwPort, ) )
     requestResponderPr.start()
 
-    context         = zmq.Context.instance()
+    context       = zmq.Context.instance()
 
-    routerSocket = context.socket(zmq.PULL)
-    connectionStr   = "tcp://localhost:" + routerPort
+    routerSocket  = context.socket(zmq.PULL)
+    connectionStr = "tcp://localhost:" + routerPort
     routerSocket.connect(connectionStr)
     logging.info("=== routerSocket connected to " + connectionStr)
 
