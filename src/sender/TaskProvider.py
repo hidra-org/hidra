@@ -8,6 +8,7 @@ import logging
 import sys
 import json
 import trace
+import pickle
 
 
 #
@@ -130,7 +131,7 @@ class TaskProvider():
                 try:
                     self.log.debug("Get requests...")
                     self.requestFwSocket.send("")
-                    requests = self.requestFwSocket.recv_multipart()
+                    requests = pickle.loads(self.requestFwSocket.recv())
                     self.log.debug("Get requests... done.")
                     self.log.debug("Requests: " + str(requests))
                 except:
@@ -154,7 +155,7 @@ class TaskProvider():
                     self.log.debug("Sending message...")
                     message = [messageDict]
                     if requests != ["None"]:
-                        message += requests
+                        message.append(pickle.dumps(requests))
                     self.log.debug(str(message))
                     self.routerSocket.send_multipart(message)
                     self.log.debug("Sending message...done.")
@@ -209,12 +210,12 @@ if __name__ == '__main__':
 
         def run (self):
             logging.info("[requestResponder] Start run")
-            openRequests = ['zitpcx19282:6004', 'zitpcx19282:6005']
+            openRequests = [['zitpcx19282:6003', 1], ['zitpcx19282:6004', 0]]
             while True:
                 request = self.requestFwSocket.recv()
                 logging.debug("[requestResponder] Received request: " + str(request) )
 
-                self.requestFwSocket.send_multipart(openRequests)
+                self.requestFwSocket.send(pickle.dumps(openRequests))
                 logging.debug("[requestResponder] Answer: " + str(openRequests) )
 
 
