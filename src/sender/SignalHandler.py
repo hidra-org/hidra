@@ -24,8 +24,7 @@ import helperScript
 #
 class SignalHandler():
 
-    def __init__ (self, whiteList,
-                 comPort, signalFwPort, requestPort,
+    def __init__ (self, whiteList, comPort, signalFwPort, requestPort,
                  context = None):
 
         # to get the logging only handling this class
@@ -174,19 +173,11 @@ class SignalHandler():
                 incomingMessage = self.requestSocket.recv_multipart()
                 self.log.debug("Received request: " + str(incomingMessage) )
 
-#                print "allowedQueries", self.allowedQueries
                 for index in range(len(self.allowedQueries)):
-                    # no double requests from the same socket TODO do we want that?
-#                    print "allowedQueries[", index, "]", self.allowedQueries[index]
-#                    print "openRequVari", self.openRequVari
-#                    print "incomingMessage", incomingMessage[1]
                     for i in range(len(self.allowedQueries[index])):
                         if incomingMessage[1] == self.allowedQueries[index][i][0]:
                             self.openRequVari[index].append(self.allowedQueries[index][i])
                             self.log.debug("Add to openRequVari: " + str(self.allowedQueries[index][i]) )
-
-#                print "openRequVari", self.openRequVari
-
 
 
     def checkSignal (self, incomingMessage):
@@ -378,10 +369,6 @@ if __name__ == '__main__':
         def __exit__(self):
             self.requestFwSocket.close(0)
             self.context.destroy()
-
-#        def __del__(self):
-#            self.requestFwSocket.close(0)
-#            self.context.destroy()
 
 
     helperScript.initLogging("/space/projects/live-viewer/logs/signalHandler.log", verbose=True, onScreenLogLevel="debug")

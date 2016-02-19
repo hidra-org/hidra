@@ -97,9 +97,9 @@ class TaskProvider():
         connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.routerPort )
         try:
             self.routerSocket.bind(connectionStr)
-            self.log.info("Start to routeributing socket (bind): '" + str(connectionStr) + "'")
+            self.log.info("Start to router socket (bind): '" + str(connectionStr) + "'")
         except Exception as e:
-            self.log.error("Failed to start routeributing Socket (bind): '" + connectionStr + "'")
+            self.log.error("Failed to start router Socket (bind): '" + connectionStr + "'")
             self.log.debug("Error was:" + str(e))
 
 

@@ -1,9 +1,6 @@
-from __builtin__ import open, type
-
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-import time
 import argparse
 import zmq
 import os
@@ -27,7 +24,7 @@ from version import __version__
 
 
 def argumentParsing():
-    configFile = CONFIG_PATH + os.sep + "sender.conf"
+    configFile = CONFIG_PATH + os.sep + "dataManager.conf"
 
     config = ConfigParser.RawConfigParser()
     config.readfp(helperScript.FakeSecHead(open(configFile)))
@@ -35,38 +32,28 @@ def argumentParsing():
     logfilePath         = config.get('asection', 'logfilePath')
     logfileName         = config.get('asection', 'logfileName')
 
-    watchDir            = config.get('asection', 'watchDir')
+    comPort             = config.get('asection', 'comPort')
+    whitelist           = json.loads(config.get('asection', 'whitelist'))
+
+    requestPort         = config.get('asection', 'requestPort')
+    requestFwPort       = config.get('asection', 'requestFwPort')
+
+    monitoredDir        = config.get('asection', 'monitoredDir')
     monitoredEventType  = config.get('asection', 'monitoredEventType')
     monitoredSubdirs    = json.loads(config.get('asection', 'monitoredSubdirs'))
     monitoredFormats    = json.loads(config.get('asection', 'monitoredFormats'))
-    fileEventIp         = config.get('asection', 'fileEventIp')
-    fileEventPort       = config.get('asection', 'fileEventPort')
 
     useDataStream       = config.getboolean('asection', 'useDataStream')
-    dataStreamIp        = config.get('asection', 'dataStreamIp')
-    dataStreamPort      = config.get('asection', 'dataStreamPort')
-    cleanerTargetPath   = config.get('asection', 'cleanerTargetPath')
-    cleanerIp           = config.get('asection', 'cleanerIp')
-    cleanerPort         = config.get('asection', 'cleanerPort')
-    routerPort          = config.get('asection', 'routerPort')
-
-    receiverComIp       = config.get('asection', 'receiverComIp')
-    receiverComPort     = config.get('asection', 'receiverComPort')
-    ondaIps             = json.loads(config.get('asection', 'ondaIps'))
-    ondaPorts           = json.loads(config.get('asection', 'ondaPorts'))
-    receiverWhiteList   = json.loads(config.get('asection', 'receiverWhiteList'))
+    fixedStreamHost      = config.get('asection', 'fixedStreamHost')
+    fixedStreamPort      = config.get('asection', 'fixedStreamPort')
 
     parallelDataStreams = config.get('asection', 'parallelDataStreams')
     chunkSize           = int(config.get('asection', 'chunkSize'))
 
-    useRingbuffer       = config.getboolean('asection', 'useRingbuffer')
-    cleanerExchangePort = config.get('asection', 'cleanerExchangePort')
+    routerPort          = config.get('asection', 'routerPort')
 
-    liveViewerComPort   = config.get('asection', 'liveViewerComPort')
-    liveViewerComIp     = config.get('asection', 'liveViewerComIp')
-    liveViewerWhiteList   = json.loads(config.get('asection', 'liveViewerWhiteList'))
-    maxRingBufferSize   = config.get('asection', 'maxRingBufferSize')
-    maxQueueSize        = config.get('asection', 'maxQueueSize')
+    localTarget         = config.get('asection', 'localTarget')
+    cleanerPort         = config.get('asection', 'cleanerPort')
 
 
     parser = argparse.ArgumentParser()
@@ -82,77 +69,47 @@ def argumentParsing():
                                                  help    = "Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)",
                                                  default = False )
 
-    parser.add_argument("--watchDir"           , type    = str,
-                                                 help    = "Dir you want to monitor for changes; inside this directory only the specified \
-                                                            subdirectories are monitred (default=" + str(watchDir) + ")",
-                                                 default = watchDir )
+    parser.add_argument("--comPort"            , type    = str,
+                                                 help    = "Port number to receive signals (default=" + str(comPort) + ")",
+                                                 default = comPort )
+    parser.add_argument("--whitelist"          , type    = str,
+                                                 help    = "List of hosts allowed to connect (default=" + str(whitelist) + ")",
+                                                 default = whitelist )
+
+    parser.add_argument("--requestPort"        , type    = str,
+                                                 help    = "ZMQ port to get new requests (default=" + str(requestPort) + ")",
+                                                 default = requestPort )
+    parser.add_argument("--requestFwPort"      , type    = str,
+                                                 help    = "ZMQ port to forward requests (default=" + str(requestFwPort) + ")",
+                                                 default = requestFwPort )
+
+    parser.add_argument("--monitoredDir"       , type    = str,
+                                                 help    = "Dirextory you want to monitor for changes; inside this directory only the specified \
+                                                            subdirectories are monitred (default=" + str(monitoredDir) + ")",
+                                                 default = monitoredDir )
     parser.add_argument("--monitoredEventType" , type    = str,
                                                  help    = "Event type of files to be monitored (default=" + str(monitoredEventType) + ")",
                                                  default = monitoredEventType )
     parser.add_argument("--monitoredSubdirs"   , type    = str,
-                                                 help    = "Subdirectories of watchDirs to be monitored (default=" + str(monitoredSubdirs) + ")",
+                                                 help    = "Subdirectories of 'monitoredDirs' to be monitored (default=" + str(monitoredSubdirs) + ")",
                                                  default = monitoredSubdirs )
     parser.add_argument("--monitoredFormats"   , type    = str,
                                                  help    = "The formats to be monitored, files in an other format will be be neglected \
                                                             (default=" + str(monitoredFormats) + ")",
                                                  default = monitoredFormats )
-    parser.add_argument("--fileEventIp"        , type    = str,
-                                                 help    = "ZMQ endpoint (IP-address) to send file events to for the live viewer \
-                                                            (default=" + str(fileEventIp) + ")",
-                                                 default = fileEventIp )
-    parser.add_argument("--fileEventPort"      , type    = str,
-                                                 help    = "ZMQ endpoint (port) to send file events to for the live viewer \
-                                                            (default=" + str(fileEventPort) + ")",
-                                                 default = fileEventPort )
 
     parser.add_argument("--useDataStream"      , type    = str,
                                                  help    = "Enable ZMQ pipe into storage system (if set to false: the file is moved \
-                                                            into the cleanerTargetPath) (default=" + str(useDataStream) + ")",
+                                                            into the localTarget) (default=" + str(useDataStream) + ")",
                                                  default = useDataStream )
-    parser.add_argument("--dataStreamIp"       , type    = str,
-                                                 help    = "IP of dataStream-socket to push new files to \
-                                                            (default=" + str(dataStreamIp) + ")",
-                                                 default = dataStreamIp )
-    parser.add_argument("--dataStreamPort"     , type    = str,
-                                                 help    = "Port number of dataStream-socket to push new \
-                                                            files to (default=" + str(dataStreamPort) + ")",
-                                                 default = dataStreamPort )
-    parser.add_argument("--cleanerTargetPath"  , type    = str,
-                                                 help    = "Target to move the files into (default=" + str(cleanerTargetPath) + ")",
-                                                 default = cleanerTargetPath )
-    parser.add_argument("--cleanerIp"          , type    = str,
-                                                 help    = "ZMQ-pull-socket IP which deletes/moves given files \
-                                                            (default=" + str(cleanerIp) + ")",
-                                                 default = cleanerIp )
-    parser.add_argument("--cleanerPort"        , type    = str,
-                                                 help    = "ZMQ-pull-socket port which deletes/moves given file \
-                                                            (default=" + str(cleanerPort) + ")",
-                                                 default = cleanerPort )
-    parser.add_argument("--routerPort"         , type    = str,
-                                                 help    = "ZMQ-router port which coordinates the load-balancing \
-                                                            to the worker-processes (default=" + str(routerPort) + ")",
-                                                 default = routerPort )
-
-    parser.add_argument("--receiverComIp"      , type    = str,
-                                                 help    = "IP receive signals from the receiver (default=" + str(receiverComIp) + ")",
-                                                 default = receiverComIp )
-    parser.add_argument("--receiverComPort"    , type    = str,
-                                                 help    = "Port number to receive signals from the receiver \
-                                                            (default=" + str(receiverComPort) + ")",
-                                                 default = receiverComPort )
-    parser.add_argument("--ondaIps"            , type    = str,
-                                                 help    = "IPs to communicate with onda/realtime analysis; there needs to be one entry \
-                                                            for each streams (default=" + str(ondaIps) + ")",
-                                                 default = ondaIps )
-    parser.add_argument("--ondaPorts"          , type    = str,
-                                                 help    = "Ports to communicate with onda/realtime analysis; there needs to be one entry \
-                                                            for each streams (default=" + str(ondaPorts) + ")",
-                                                 default = ondaPorts )
-    parser.add_argument("--receiverWhiteList"  , type    = str,
-                                                 help    = "List of hosts allowed to connect to the sender \
-                                                            (default=" + str(receiverWhiteList) + ")",
-                                                 default = receiverWhiteList )
-
+    parser.add_argument("--fixedStreamHost"    , type    = str,
+                                                 help    = "Fixed host to send the data to with highest priority \
+                                                         (only active is useDataStream is set; default=" + str(fixedStreamHost) + ")",
+                                                 default = fixedStreamHost )
+    parser.add_argument("--fixedStreamPort"    , type    = str,
+                                                 help    = "Fixed port to send the data to with highest priority \
+                                                         (only active is useDataStream is set; default=" + str(fixedStreamPort) + ")",
+                                                 default = fixedStreamPort )
     parser.add_argument("--parallelDataStreams", type    = int,
                                                  help    = "Number of parallel data streams (default=" + str(parallelDataStreams) + ")",
                                                  default = parallelDataStreams )
@@ -160,30 +117,18 @@ def argumentParsing():
                                                  help    = "Chunk size of file-parts getting send via ZMQ (default=" + str(chunkSize) + ")",
                                                  default = chunkSize )
 
-    parser.add_argument("--useRingbuffer"      , type    = str,
-                                                 help    = "Put the data into a ringbuffer followed by a queue to delay the \
-                                                            removal of the files(default=" + str(useRingbuffer) + ")",
-                                                 default = useRingbuffer )
-    parser.add_argument("--cleanerExchangePort", type    = str,
-                                                 help    = "Port number to exchange data and signals between Cleaner and \
-                                                            LiveViewCommunicator (default=" + str(cleanerExchangePort) + ")",
-                                                 default = cleanerExchangePort )
-    parser.add_argument("--liveViewerComIp"    , type    = str,
-                                                 help    = "IP to bind communication to LiveViewer to (default=" + str(liveViewerComIp) + ")",
-                                                 default = liveViewerComIp )
-    parser.add_argument("--liveViewerComPort"  , type    = str,
-                                                 help    = "Port number to communicate with live viewer (default=" + str(liveViewerComPort) + ")",
-                                                 default = liveViewerComPort )
-    parser.add_argument("--liveViewerWhiteList", type    = str,
-                                                 help    = "List of hosts allowed to connect to the receiver \
-                                                            (default=" + str(liveViewerWhiteList) + ")",
-                                                 default = liveViewerWhiteList )
-    parser.add_argument("--maxRingBufferSize"  , type    = int,
-                                                 help    = "Size of the ring buffer for the live viewer (default=" + str(maxRingBufferSize) + ")",
-                                                 default = maxRingBufferSize )
-    parser.add_argument("--maxQueueSize"       , type    = int,
-                                                 help    = "Size of the queue for the live viewer (default=" + str(maxQueueSize) + ")",
-                                                 default = maxQueueSize )
+    parser.add_argument("--routerPort"         , type    = str,
+                                                 help    = "ZMQ-router port which coordinates the load-balancing \
+                                                            to the worker-processes (default=" + str(routerPort) + ")",
+                                                 default = routerPort )
+
+    parser.add_argument("--localTarget"        , type    = str,
+                                                 help    = "Target to move the files into (default=" + str(localTarget) + ")",
+                                                 default = localTarget )
+    parser.add_argument("--cleanerPort"        , type    = str,
+                                                 help    = "ZMQ-pull-socket port which deletes/moves given file \
+                                                            (default=" + str(cleanerPort) + ")",
+                                                 default = cleanerPort )
 
     arguments           = parser.parse_args()
 
@@ -193,13 +138,10 @@ def argumentParsing():
     verbose             = arguments.verbose
     onScreen            = arguments.onScreen
 
-    watchDir            = str(arguments.watchDir)
-
+    monitoredDir        = str(arguments.monitoredDir)
     monitoredSubdirs    = arguments.monitoredSubdirs
-    cleanerTargetPath   = str(arguments.cleanerTargetPath)
+    localTarget   = str(arguments.localTarget)
 
-    ondaIps             = arguments.ondaIps
-    ondaPorts           = arguments.ondaPorts
     parallelDataStreams = arguments.parallelDataStreams
 
     #enable logging
@@ -207,15 +149,12 @@ def argumentParsing():
 
     # check if directories exists
     helperScript.checkDirExistance(logfilePath)
-    helperScript.checkDirExistance(watchDir)
-    helperScript.checkSubDirExistance(watchDir, monitoredSubdirs)
-    helperScript.checkDirExistance(cleanerTargetPath)
+    helperScript.checkDirExistance(monitoredDir)
+    helperScript.checkSubDirExistance(monitoredDir, monitoredSubdirs)
+    helperScript.checkDirExistance(localTarget)
 
     # check if logfile is writable
     helperScript.checkLogFileWritable(logfilePath, logfileName)
-
-    # check if there are enough ports specified (OnDA), corresponding to the number of streams
-    helperScript.checkStreamConfig(ondaIps, ondaPorts, parallelDataStreams)
 
     return arguments
 
@@ -224,37 +163,36 @@ class Sender():
     def __init__(self):
         arguments = argumentParsing()
 
-        self.watchDir            = arguments.watchDir
-        self.monitoredEventType  = arguments.monitoredEventType
-        self.monitoredSubdirs    = arguments.monitoredSubdirs
-        self.monitoredFormats    = arguments.monitoredFormats
-        self.fileEventIp         = arguments.fileEventIp
-        self.fileEventPort       = arguments.fileEventPort
+        self.comPort             = arguments.comPort
+        self.whitelist           = arguments.whitelist
 
-        self.useDataStream       = arguments.useDataStream
+        self.requestPort         = arguments.requestPort
+        self.requestFwPort       = arguments.requestFwPort
 
-        self.dataStreamIp        = arguments.dataStreamIp
-        self.dataStreamPort      = arguments.dataStreamPort
-        self.cleanerTargetPath   = arguments.cleanerTargetPath
-        self.cleanerIp           = arguments.cleanerIp
-        self.cleanerPort         = arguments.cleanerPort
-        self.routerPort          = arguments.routerPort
-        self.receiverComIp       = arguments.receiverComIp
-        self.receiverComPort     = arguments.receiverComPort
-        self.ondaIps             = arguments.ondaIps
-        self.ondaPorts           = arguments.ondaPorts
-        self.receiverWhiteList   = arguments.receiverWhiteList
+        self.eventDetectorConfig = {
+                "configType"   : "inotifyx",
+                "monDir"       : arguments.monitoredDir,
+                "monEventType" : arguments.monitoredEventType,
+                "monSubdirs"   : arguments.monitoredSubdirs,
+                "monSuffixes"  : arguments.monitoredFormats
+                }
+
+        if arguments.useDataStream:
+            self.fixedStreamId    = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )
+        else:
+            self.fixedStreamId    = None
 
         self.parallelDataStreams = arguments.parallelDataStreams
         self.chunkSize           = arguments.chunkSize
 
-        self.useRingbuffer       = arguments.useRingbuffer
-        self.cleanerExchangePort = arguments.cleanerExchangePort
-        self.liveViewerComPort   = arguments.liveViewerComPort
-        self.liveViewerComIp     = arguments.liveViewerComIp
-        self.liveViewerWhiteList = arguments.liveViewerWhiteList
-        self.maxRingBufferSize   = arguments.maxRingBufferSize
-        self.maxQueueSize        = arguments.maxQueueSize
+        self.routerPort          = arguments.routerPort
+
+        self.localTarget         = arguments.localTarget
+        self.cleanerPort         = arguments.cleanerPort
+
+        self.signalHandlerPr  = None
+        self.taskProviderPr   = None
+        self.dataDispatcherPr = None
 
         logging.info("Version: " + str(__version__))
 
@@ -274,7 +212,6 @@ class Sender():
         requestPort   = "6002"
         routerPort    = "7000"
         chunkSize     = 10485760 ; # = 1024*1024*10 = 10 MiB
-        useDataStream = False
         eventDetectorConfig = {
                 "configType"   : "inotifyx",
                 "monDir"       : BASE_PATH + "/data/source",
@@ -282,10 +219,7 @@ class Sender():
                 "monSubdirs"   : ["commissioning", "current", "local"],
                 "monSuffixes"  : [".tif", ".cbf"]
                 }
-
-        self.signalHandlerPr  = None
-        self.taskProviderPr   = None
-        self.dataDispatcherPr = None
+        localTarget   = BASE_PATH + "/data/target"
 
 
         logging.info("Start SignalHandler...")
@@ -293,13 +227,16 @@ class Sender():
         self.signalHandlerPr.start()
         logging.debug("Start SignalHandler...done")
 
+        # needed, because otherwise the requests for the first files are not forwarded properly
+        time.sleep(0.5)
+
         logging.info("Start TaskProvider...")
         self.taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, requestFwPort, routerPort) )
         self.taskProviderPr.start()
         logging.info("Start TaskProvider...done")
 
         logging.info("Start DataDispatcher...")
-        self.dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, useDataStream) )
+        self.dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, self.fixedStreamId, localTarget) )
         self.dataDispatcherPr.start()
         logging.info("Start DataDispatcher...done")
 
@@ -320,81 +257,92 @@ class Sender():
 if __name__ == '__main__':
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
 
-    import cPickle
-    BASE_PATH = "/space/projects/live-viewer"
+    test = True
 
-    #enable logging
-    helperScript.initLogging(BASE_PATH + "/logs/dataManager.log", verbose=True, onScreenLogLevel="debug")
+    if test:
+        import time
+        import cPickle
+        from shutil import copyfile
 
-    class Test_Receiver_Stream():
-        def __init__(self, comPort, receivingPort, receivingPort2):
-            context       = zmq.Context.instance()
+        #enable logging
+        helperScript.initLogging(BASE_PATH + "/logs/dataManager.log", verbose=True, onScreenLogLevel="debug")
 
-            self.comSocket       = context.socket(zmq.REQ)
-            connectionStr   = "tcp://zitpcx19282:" + comPort
-            self.comSocket.connect(connectionStr)
-            logging.info("=== comSocket connected to " + connectionStr)
+        class Test_Receiver_Stream():
+            def __init__(self, comPort, receivingPort, receivingPort2):
+                context       = zmq.Context.instance()
 
-            self.receivingSocket = context.socket(zmq.PULL)
-            connectionStr   = "tcp://0.0.0.0:" + receivingPort
-            self.receivingSocket.bind(connectionStr)
-            logging.info("=== receivingSocket connected to " + connectionStr)
+                self.comSocket       = context.socket(zmq.REQ)
+                connectionStr   = "tcp://zitpcx19282:" + comPort
+                self.comSocket.connect(connectionStr)
+                logging.info("=== comSocket connected to " + connectionStr)
 
-            self.receivingSocket2 = context.socket(zmq.PULL)
-            connectionStr   = "tcp://0.0.0.0:" + receivingPort2
-            self.receivingSocket2.bind(connectionStr)
-            logging.info("=== receivingSocket2 connected to " + connectionStr)
+                self.receivingSocket = context.socket(zmq.PULL)
+                connectionStr   = "tcp://0.0.0.0:" + receivingPort
+                self.receivingSocket.bind(connectionStr)
+                logging.info("=== receivingSocket connected to " + connectionStr)
 
-            self.sendSignal("START_STREAM", receivingPort, 1)
-            self.sendSignal("START_STREAM", receivingPort2, 0)
+                self.receivingSocket2 = context.socket(zmq.PULL)
+                connectionStr   = "tcp://0.0.0.0:" + receivingPort2
+                self.receivingSocket2.bind(connectionStr)
+                logging.info("=== receivingSocket2 connected to " + connectionStr)
 
-            self.run()
+                self.sendSignal("START_STREAM", receivingPort, 1)
+                self.sendSignal("START_STREAM", receivingPort2, 0)
 
-        def sendSignal(self, signal, ports, prio = None):
-            logging.info("=== sendSignal : " + signal + ", " + str(ports))
-            sendMessage = ["0.0.1",  signal]
-            targets = []
-            if type(ports) == list:
-                for port in ports:
-                    targets.append(["zitpcx19282:" + port, prio])
-            else:
-                targets.append(["zitpcx19282:" + ports, prio])
-            targets = cPickle.dumps(targets)
-            sendMessage.append(targets)
-            self.comSocket.send_multipart(sendMessage)
-            receivedMessage = self.comSocket.recv()
-            logging.info("=== Responce : " + receivedMessage )
+                self.run()
 
-        def run(self):
-            try:
-                while True:
-                    recv_message = self.receivingSocket.recv_multipart()
-                    logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
-                    recv_message = self.receivingSocket2.recv_multipart()
-                    logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
-            except KeyboardInterrupt:
-                pass
+            def sendSignal(self, signal, ports, prio = None):
+                logging.info("=== sendSignal : " + signal + ", " + str(ports))
+                sendMessage = ["0.0.1",  signal]
+                targets = []
+                if type(ports) == list:
+                    for port in ports:
+                        targets.append(["zitpcx19282:" + port, prio])
+                else:
+                    targets.append(["zitpcx19282:" + ports, prio])
+                targets = cPickle.dumps(targets)
+                sendMessage.append(targets)
+                self.comSocket.send_multipart(sendMessage)
+                receivedMessage = self.comSocket.recv()
+                logging.info("=== Responce : " + receivedMessage )
 
-        def __exit__(self):
-            self.receivingSocket.close(0)
-            self.receivingSocket2.close(0)
-            context.destroy()
+            def run(self):
+                try:
+                    while True:
+                        recv_message = self.receivingSocket.recv_multipart()
+                        logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
+                        recv_message = self.receivingSocket2.recv_multipart()
+                        logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
+                except KeyboardInterrupt:
+                    pass
+
+            def __exit__(self):
+                self.receivingSocket.close(0)
+                self.receivingSocket2.close(0)
+                context.destroy()
 
 
-    comPort        = "6000"
-    receivingPort  = "6005"
-    receivingPort2 = "6006"
+        comPort        = "6000"
+        receivingPort  = "6005"
+        receivingPort2 = "6006"
 
-    testPr = Process ( target = Test_Receiver_Stream, args = (comPort, receivingPort, receivingPort2))
-    testPr.start()
+        testPr = Process ( target = Test_Receiver_Stream, args = (comPort, receivingPort, receivingPort2))
+        testPr.start()
+
 
     sender = Sender()
 
     try:
         while True:
-            pass
+            if test:
+                copyfile(BASE_PATH + "/test_file.cbf", BASE_PATH + "/data/source/local/raw/100.cbf")
+                time.sleep(1)
+                break
+            else:
+                pass
     finally:
-        testPr.terminate()
+        if test:
+            testPr.terminate()
         sender.stop()
 
 

@@ -8,6 +8,7 @@ import sys
 import logging
 import traceback
 import cPickle
+import shutil
 
 #path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
@@ -24,7 +25,7 @@ import helperScript
 #
 class DataDispatcher():
 
-    def __init__(self, id, routerPort, chunkSize, useDataStream, context = None):
+    def __init__(self, id, routerPort, chunkSize, fixedStreamId, localTarget = None, context = None):
 
         self.log          = self.getLogger()
         self.id           = id
@@ -37,6 +38,9 @@ class DataDispatcher():
         self.chunkSize    = chunkSize
 
         self.routerSocket = None
+
+        self.fixedStreamId = fixedStreamId
+        self.localTarget = localTarget
 
         # dict with informations of all open sockets to which a data stream is opened (host, port,...)
         self.openConnections = dict()
@@ -99,26 +103,32 @@ class DataDispatcher():
             self.log.debug("DataDispatcher-" + str(self.id) + ": waiting for new job")
             message = self.routerSocket.recv_multipart()
             self.log.debug("DataDispatcher-" + str(self.id) + ": new job received")
+            self.log.debug("message = " + str(message))
 
 
             if len(message) >= 2:
                 workload = cPickle.loads(message[0])
                 targets  = cPickle.loads(message[1])
-                # sort the target list by thge priority
+                if self.fixedStreamId:
+                    targets.insert(0,[self.fixedStreamId, 0])
+                # sort the target list by the priority
                 targets = sorted(targets, key=lambda target: target[1])
             else:
-                workload = cPickle.loads(message)
-                targets  = None
-
-                finished = workload == b"EXIT"
+                finished = message[0] == b"EXIT"
                 if finished:
                     self.log.debug("Router requested to shutdown DataDispatcher-"+ str(self.id) + ".")
                     break
 
+                workload = cPickle.loads(message[0])
+                if self.fixedStreamId:
+                    targets = [[self.fixedStreamId, 0]]
+                else:
+                    targets = None
+
             # get metadata of the file
             try:
                 self.log.debug("Getting file metadata")
-                sourceFile, metadata = self.getMetadata(workload)
+                sourceFile, targetFile, metadata = self.getMetadata(workload)
             except Exception as e:
                 self.log.error("Building of metadata dictionary failed for workload: " + str(workload) + ".")
                 self.log.debug("Error was: " + str(e))
@@ -193,6 +203,13 @@ class DataDispatcher():
         sourceFilePath     = os.path.normpath(sourcePath + os.sep + relativePath)
         sourceFilePathFull = os.path.join(sourceFilePath, filename)
 
+        #TODO combine better with sourceFile... (for efficiency)
+        if self.localTarget:
+            targetFilePath     = os.path.normpath(self.localTarget + os.sep + relativePath)
+            targetFilePathFull = os.path.join(targetFilePath, filename)
+        else:
+            targetFilePathFull = None
+
         try:
             #for quick testing set filesize of file as chunksize
             self.log.debug("get filesize for '" + str(sourceFilePathFull) + "'...")
@@ -228,7 +245,7 @@ class DataDispatcher():
             self.log.debug("Error was: " + str(e))
             raise Exception(e)
 
-        return sourceFilePathFull, metadata
+        return sourceFilePathFull, targetFilePathFull, metadata
 
 
     def sendData(self, targets, sourceFilepath, metadata):
@@ -388,9 +405,12 @@ if __name__ == '__main__':
     receivingPort = "6005"
     receivingPort2 = "6006"
     chunkSize     = 10485760 ; # = 1024*1024*10 = 10 MiB
-    useDataStream = False
 
-    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, useDataStream) )
+    localTarget   = BASE_PATH + "/data/target"
+    fixedStreamId = False
+    fixedStreamId = "zitpcx19282:6006"
+
+    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, fixedStreamId, localTarget) )
     dataDispatcherPr.start()
 
     context       = zmq.Context.instance()
@@ -419,6 +439,7 @@ if __name__ == '__main__':
     targets = [['zitpcx19282:6005', 1], ['zitpcx19282:6006', 0]]
 
     message = [ cPickle.dumps(metadata), cPickle.dumps(targets) ]
+#    message = [ cPickle.dumps(metadata)]
 
     time.sleep(1)
 
