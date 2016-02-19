@@ -420,12 +420,6 @@ if __name__ == '__main__':
         logging.info("=== request sent: " + str(sendMessage))
 
 
-    def getRequests(socket):
-        logging.info("=== getRequests")
-        socket.send("")
-        requests = socket.recv_multipart()
-        logging.info("=== Requests: " + str(requests))
-
     context         = zmq.Context.instance()
 
     comSocket       = context.socket(zmq.REQ)

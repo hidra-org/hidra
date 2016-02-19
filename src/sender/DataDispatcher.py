@@ -107,7 +107,7 @@ class DataDispatcher():
                 # sort the target list by thge priority
                 targets = sorted(targets, key=lambda target: target[1])
             else:
-                workload = message
+                workload = cPickle.loads(message)
                 targets  = None
 
                 finished = workload == b"EXIT"
@@ -180,7 +180,8 @@ class DataDispatcher():
             relativePath = metadata["relativePath"]
         except Exception as e:
             self.log.info("Invalid fileEvent message received.")
-            self.log.debug("Error was: " + str(e))
+            trace = traceback.format_exc()
+            self.log.debug("Error was: " + str(trace))
             self.log.debug("metadata=" + str(metadata))
             #skip all further instructions and continue with next iteration
             raise Exception(e)
@@ -283,6 +284,7 @@ class DataDispatcher():
                             socket        = self.context.socket(zmq.PUSH)
                             connectionStr = "tcp://" + str(target)
 
+                            print "connectionStr", connectionStr
                             socket.connect(connectionStr)
                             self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
 
@@ -355,9 +357,9 @@ class DataDispatcher():
                 self.openConnections[connection] = None
         self.routerSocket.close(0)
         self.routerSocket = None
-        if not self.externalContext:
+        if not self.extContext:
             self.log.debug("Destroying context")
-            self.zmqContextForWorker.destroy()
+            self.context.destroy()
 
 
     def __exit__(self):
