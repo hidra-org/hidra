@@ -1,15 +1,11 @@
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-
-import argparse
 import zmq
 import os
 import logging
 import sys
-import json
 import trace
-import pickle
-
+import cPickle
 
 #
 #  --------------------------  class: TaskProvider  --------------------------------------
@@ -26,15 +22,13 @@ class TaskProvider():
         #        monSuffixes  : ... ,
         #}
 
-        print "eventDetectorConfig", eventDetectorConfig
-
-
         self.log               = self.getLogger()
         self.log.debug("TaskProvider: __init__()")
 
         self.eventDetector     = None
 
         self.config = eventDetectorConfig
+        self.log.debug("Configuration for Event detector: " + str(self.config))
 
         self.localhost         = "127.0.0.1"
         self.extIp             = "0.0.0.0"
@@ -131,7 +125,7 @@ class TaskProvider():
                 try:
                     self.log.debug("Get requests...")
                     self.requestFwSocket.send("")
-                    requests = pickle.loads(self.requestFwSocket.recv())
+                    requests = cPickle.loads(self.requestFwSocket.recv())
                     self.log.debug("Get requests... done.")
                     self.log.debug("Requests: " + str(requests))
                 except:
@@ -143,7 +137,7 @@ class TaskProvider():
                 # build message dict
                 try:
                     self.log.debug("Building message dict...")
-                    messageDict = json.dumps(workload)  #sets correct escape characters
+                    messageDict = cPickle.dumps(workload)  #sets correct escape characters
                     self.log.debug("Building message dict...done.")
                 except Exception, e:
                     self.log.error("Unable to assemble message dict.")
@@ -155,7 +149,7 @@ class TaskProvider():
                     self.log.debug("Sending message...")
                     message = [messageDict]
                     if requests != ["None"]:
-                        message.append(pickle.dumps(requests))
+                        message.append(cPickle.dumps(requests))
                     self.log.debug(str(message))
                     self.routerSocket.send_multipart(message)
                     self.log.debug("Sending message...done.")
@@ -196,6 +190,9 @@ if __name__ == '__main__':
 
     import shared.helperScript as helperScript
     import time
+    from shutil import copyfile
+
+    BASE_PATH = "/space/projects/live-viewer"
 
     class requestResponder():
         def __init__ (self, requestFwPort, context = None):
@@ -215,7 +212,7 @@ if __name__ == '__main__':
                 request = self.requestFwSocket.recv()
                 logging.debug("[requestResponder] Received request: " + str(request) )
 
-                self.requestFwSocket.send(pickle.dumps(openRequests))
+                self.requestFwSocket.send(cPickle.dumps(openRequests))
                 logging.debug("[requestResponder] Answer: " + str(openRequests) )
 
 
@@ -224,11 +221,11 @@ if __name__ == '__main__':
             self.context.destroy()
 
     #enable logging
-    helperScript.initLogging("/space/projects/live-viewer/logs/taskProvider.log", verbose=True, onScreenLogLevel="debug")
+    helperScript.initLogging(BASE_PATH + "/logs/taskProvider.log", verbose=True, onScreenLogLevel="debug")
 
     eventDetectorConfig = {
             "configType"   : "inotifyx",
-            "monDir"       : "/space/projects/live-viewer/data/source",
+            "monDir"       : BASE_PATH + "/data/source",
             "monEventType" : "IN_CLOSE_WRITE",
             "monSubdirs"   : ["commissioning", "current", "local"],
             "monSuffixes"  : [".tif", ".cbf"]
@@ -252,8 +249,10 @@ if __name__ == '__main__':
 
     try:
         while True:
+            copyfile(BASE_PATH + "/test_file.cbf", BASE_PATH + "/data/source/local/raw/100.cbf")
             workload = routerSocket.recv_multipart()
             logging.info("=== next workload " + str(workload))
+            time.sleep(1)
     except KeyboardInterrupt:
         pass
     finally:

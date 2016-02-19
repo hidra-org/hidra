@@ -7,8 +7,7 @@ import os
 import sys
 import logging
 import traceback
-import json
-import pickle
+import cPickle
 
 #path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
@@ -103,8 +102,10 @@ class DataDispatcher():
 
 
             if len(message) >= 2:
-                workload = message[0]
-                targets  = pickle.loads(message[1])
+                workload = cPickle.loads(message[0])
+                targets  = cPickle.loads(message[1])
+                # sort the target list by thge priority
+                targets = sorted(targets, key=lambda target: target[1])
             else:
                 workload = message
                 targets  = None
@@ -160,7 +161,7 @@ class DataDispatcher():
 #                #sending to pipe
 #                self.log.debug("send file-event for file to cleaner-pipe...")
 #                self.log.debug("metadata = " + str(metadata))
-#                self.cleanerSocket.send(json.dumps(metadata))
+#                self.cleanerSocket.send(cPickle.dumps(metadata))
 #                self.log.debug("send file-event for file to cleaner-pipe...success.")
 #
 #                #TODO: remember workload. append to list?
@@ -169,18 +170,7 @@ class DataDispatcher():
 #                self.log.error("Unable to notify Cleaner-pipe to handle file: " + str(workload))
 #
 
-    def getMetadata(self, workload):
-
-        #convert fileEventMessage back to a dictionary
-        metadata = None
-        try:
-            metadata = json.loads(str(workload))
-            self.log.debug("str(metadata) = " + str(metadata) + "  type(metadata) = " + str(type(metadata)))
-        except Exception as e:
-            self.log.info("Unable to convert message into a dictionary.")
-            self.log.debug("Error was: " + str(e))
-            raise Exception(e)
-
+    def getMetadata(self, metadata):
 
         #extract fileEvent metadata
         try:
@@ -255,7 +245,6 @@ class DataDispatcher():
             self.log.debug("Passing multipart-message for file " + str(sourceFilepath) + "...")
             chunkNumber = 0
             stillChunksToRead = True
-            payloadAll = [json.dumps(metadata.copy())]
             while stillChunksToRead:
                 chunkNumber += 1
 
@@ -273,44 +262,64 @@ class DataDispatcher():
                 #assemble metadata for zmq-message
                 chunkPayloadMetadata = metadata.copy()
                 chunkPayloadMetadata["chunkNumber"] = chunkNumber
-                chunkPayloadMetadataJson = json.dumps(chunkPayloadMetadata)
+                chunkPayloadMetadataJson = cPickle.dumps(chunkPayloadMetadata)
                 chunkPayload = []
                 chunkPayload.append(chunkPayloadMetadataJson)
                 chunkPayload.append(fileContent)
 
-                # send data to the data stream to store it in the storage system
-#                if self.useDataStream:
-#
-#                    tracker = self.dataStreamSocket.send_multipart(chunkPayload, copy=False, track=True)
-#
-#                    if not tracker.done:
-#                        self.log.info("Message part from file " + str(sourceFilepath) + " has not been sent yet, waiting...")
-#                        tracker.wait()
-#                        self.log.info("Message part from file " + str(sourceFilepath) + " has not been sent yet, waiting...done")
-
                 # streaming data
+
                 #TODO priority
                 for target, prio in targets:
-                    # socket already known
-                    if target in self.openConnections:
-                        # send data
-                        self.openConnections[target].send_multipart(chunkPayload, zmq.NOBLOCK)
-                        self.log.info("Sending message part from file " + str(sourceFilepath) + " to " + target)
-                    # socket not known
+
+                    # send data to the data stream to store it in the storage system
+                    if prio == 0:
+                        # socket already known
+                        if target in self.openConnections:
+                            tracker = self.openConnections[target].send_multipart(chunkPayload, copy=False, track=True)
+                            self.log.info("Sending message part from file " + str(sourceFilepath) + " to '" + target + "' with priority " + str(prio) )
+                        else:
+                            # open socket
+                            socket        = self.context.socket(zmq.PUSH)
+                            connectionStr = "tcp://" + str(target)
+
+                            socket.connect(connectionStr)
+                            self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
+
+                            # register socket
+                            self.openConnections[target] = socket
+
+                            # send data
+                            tracker = self.openConnections[target].send_multipart(chunkPayload, copy=False, track=True)
+                            self.log.info("Sending message part from file " + str(sourceFilepath) + " to '" + target + "' with priority " + str(prio) )
+
+                        # socket not known
+                        if not tracker.done:
+                            self.log.info("Message part from file " + str(sourceFilepath) + " has not been sent yet, waiting...")
+                            tracker.wait()
+                            self.log.info("Message part from file " + str(sourceFilepath) + " has not been sent yet, waiting...done")
+
                     else:
-                        # open socket
-                        socket        = self.context.socket(zmq.PUSH)
-                        connectionStr = "tcp://" + str(target)
+                        # socket already known
+                        if target in self.openConnections:
+                            # send data
+                            self.openConnections[target].send_multipart(chunkPayload, zmq.NOBLOCK)
+                            self.log.info("Sending message part from file " + str(sourceFilepath) + " to " + target)
+                        # socket not known
+                        else:
+                            # open socket
+                            socket        = self.context.socket(zmq.PUSH)
+                            connectionStr = "tcp://" + str(target)
 
-                        socket.connect(connectionStr)
-                        self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
+                            socket.connect(connectionStr)
+                            self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
 
-                        # register socket
-                        self.openConnections[target] = socket
+                            # register socket
+                            self.openConnections[target] = socket
 
-                        # send data
-                        self.openConnections[target].send_multipart(chunkPayload, zmq.NOBLOCK)
-                        self.log.info("Sending message part from file " + str(sourceFilepath) + " to " + target)
+                            # send data
+                            self.openConnections[target].send_multipart(chunkPayload, zmq.NOBLOCK)
+                            self.log.info("Sending message part from file " + str(sourceFilepath) + " to " + target)
 
             #close file
             fileDescriptor.close()
@@ -325,7 +334,6 @@ class DataDispatcher():
 
     def appendFileChunksToPayload(self, payload, sourceFilePathFull, fileDescriptor, chunkSize):
         try:
-            # chunksize = 16777216 #16MB
             self.log.debug("reading file '" + str(sourceFilePathFull)+ "' to memory")
 
             # FIXME: chunk is read-out as str. why not as bin? will probably add to much overhead to zmq-message
@@ -364,16 +372,19 @@ if __name__ == '__main__':
     import time
     from shutil import copyfile
 
+    BASE_PATH = "/space/projects/live-viewer"
+
     #enable logging
-    helperScript.initLogging("/space/projects/live-viewer/logs/dataDispatcher.log", verbose=True, onScreenLogLevel="debug")
+    helperScript.initLogging(BASE_PATH + "/logs/dataDispatcher.log", verbose=True, onScreenLogLevel="debug")
 
 
-    copyfile("/space/projects/live-viewer/data/source/local/raw/1.cbf", "/space/projects/live-viewer/data/source/local/raw/100.cbf")
+    copyfile(BASE_PATH + "/test_file.cbf", BASE_PATH + "/data/source/local/raw/100.cbf")
     time.sleep(0.5)
 
 
     routerPort    = "7000"
     receivingPort = "6005"
+    receivingPort2 = "6006"
     chunkSize     = 10485760 ; # = 1024*1024*10 = 10 MiB
     useDataStream = False
 
@@ -392,7 +403,20 @@ if __name__ == '__main__':
     receivingSocket.bind(connectionStr)
     logging.info("=== receivingSocket connected to " + connectionStr)
 
-    message = ['{"sourcePath": "/space/projects/live-viewer/data/source", "relativePath": "/local/raw", "filename": "100.cbf"}', "(lp0\n(lp1\nS'zitpcx19282:6005'\np2\naI2\naa."]
+    receivingSocket2 = context.socket(zmq.PULL)
+    connectionStr   = "tcp://0.0.0.0:" + receivingPort2
+    receivingSocket2.bind(connectionStr)
+    logging.info("=== receivingSocket2 connected to " + connectionStr)
+
+
+    metadata = {
+            "sourcePath"  : BASE_PATH + "/data/source",
+            "relativePath": "/local/raw",
+            "filename"    : "100.cbf"
+            }
+    targets = [['zitpcx19282:6005', 1], ['zitpcx19282:6006', 0]]
+
+    message = [ cPickle.dumps(metadata), cPickle.dumps(targets) ]
 
     time.sleep(1)
 
@@ -401,14 +425,15 @@ if __name__ == '__main__':
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: " + str(recv_message[0]))
+        logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
+        recv_message = receivingSocket2.recv_multipart()
+        logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
     except KeyboardInterrupt:
-        dataDispatcherPr.terminate()
-
-        routerSocket.close(0)
-        context.destroy()
+        pass
     finally:
         dataDispatcherPr.terminate()
 
         routerSocket.close(0)
+        receivingSocket.close(0)
+        receivingSocket2.close(0)
         context.destroy()

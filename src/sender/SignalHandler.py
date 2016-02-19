@@ -7,9 +7,8 @@ import os
 import sys
 import traceback
 import copy
-import pickle
+import cPickle
 from multiprocessing import Process
-from WorkerProcess import WorkerProcess
 
 #path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
@@ -142,11 +141,11 @@ class SignalHandler():
                             openRequests.append(tmp)
 
                     if openRequests:
-                        self.requestFwSocket.send(pickle.dumps(openRequests))
+                        self.requestFwSocket.send(cPickle.dumps(openRequests))
                         self.log.debug("Answered to request: " + str(openRequests))
                     else:
                         openRequests = ["None"]
-                        self.requestFwSocket.send(pickle.dumps(openRequests))
+                        self.requestFwSocket.send(cPickle.dumps(openRequests))
                         self.log.debug("Answered to request: " + str(openRequests))
                 except Exception, e:
                     self.log.error("Failed to receive/answer new signal requests.")
@@ -201,7 +200,7 @@ class SignalHandler():
         else:
 
             version, signal, target = incomingMessage
-            target = pickle.loads(target)
+            target = cPickle.loads(target)
 
             host = [t[0].split(":")[0] for t in target]
 
@@ -372,7 +371,7 @@ if __name__ == '__main__':
             while True:
                 self.requestFwSocket.send("")
                 logging.info("[getRequests] send")
-                requests = pickle.loads(self.requestFwSocket.recv())
+                requests = cPickle.loads(self.requestFwSocket.recv())
                 logging.info("[getRequests] Requests: " + str(requests))
                 time.sleep(0.25)
 
@@ -408,7 +407,7 @@ if __name__ == '__main__':
                 targets.append(["zitpcx19282:" + port, prio])
         else:
             targets.append(["zitpcx19282:" + ports, prio])
-        targets = pickle.dumps(targets)
+        targets = cPickle.dumps(targets)
         sendMessage.append(targets)
         socket.send_multipart(sendMessage)
         receivedMessage = socket.recv()
