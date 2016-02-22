@@ -260,8 +260,7 @@ class InotifyxDetector():
 
         # traverse the relative path till the original path is reached
         # e.g. created file: /source/dir1/dir2/test.tif
-        splitPath = True
-        while splitPath:
+        while True:
             if parentDir not in self.paths:
                 (parentDir,relDir) = os.path.split(parentDir)
                 # the os.sep is needed at the beginning because the relative path is built up from the right
