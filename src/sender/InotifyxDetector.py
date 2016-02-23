@@ -86,8 +86,8 @@ class InotifyxDetector():
                 not config.has_key("monEventType") or
                 not config.has_key("monSubdirs") or
                 not config.has_key("monSuffixes") ):
-            print "config", config
             self.log.error ("Configuration of wrong format")
+            self.log.debug ("config="+ str(config))
             checkPassed = False
 
         self.wd_to_path   = {}
