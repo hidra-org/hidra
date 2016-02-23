@@ -38,6 +38,7 @@ def argumentParsing():
     requestPort         = config.get('asection', 'requestPort')
     requestFwPort       = config.get('asection', 'requestFwPort')
 
+    eventDetectorType   = config.get('asection', 'eventDetectorType')
     monitoredDir        = config.get('asection', 'monitoredDir')
     monitoredEventType  = config.get('asection', 'monitoredEventType')
     monitoredSubdirs    = json.loads(config.get('asection', 'monitoredSubdirs'))
@@ -83,8 +84,11 @@ def argumentParsing():
                                                  help    = "ZMQ port to forward requests (default=" + str(requestFwPort) + ")",
                                                  default = requestFwPort )
 
+    parser.add_argument("--eventDetectorType"  , type    = str,
+                                                 help    = "Type of event detector to use (default=" + str(eventDetectorType) + ")",
+                                                 default = eventDetectorType )
     parser.add_argument("--monitoredDir"       , type    = str,
-                                                 help    = "Dirextory you want to monitor for changes; inside this directory only the specified \
+                                                 help    = "Directory to be monitor for changes; inside this directory only the specified \
                                                             subdirectories are monitred (default=" + str(monitoredDir) + ")",
                                                  default = monitoredDir )
     parser.add_argument("--monitoredEventType" , type    = str,
@@ -138,9 +142,11 @@ def argumentParsing():
     verbose             = arguments.verbose
     onScreen            = arguments.onScreen
 
+    eventDetectorType   = arguments.eventDetectorType
+    supportedEDTypes    = ["inotifyx"]
     monitoredDir        = str(arguments.monitoredDir)
     monitoredSubdirs    = arguments.monitoredSubdirs
-    localTarget   = str(arguments.localTarget)
+    localTarget         = str(arguments.localTarget)
 
     parallelDataStreams = arguments.parallelDataStreams
 
@@ -152,6 +158,8 @@ def argumentParsing():
     helperScript.checkDirExistance(monitoredDir)
     helperScript.checkSubDirExistance(monitoredDir, monitoredSubdirs)
     helperScript.checkDirExistance(localTarget)
+
+    helperScript.checkEventDetectorType(eventDetectorType, supportedEDTypes)
 
     # check if logfile is writable
     helperScript.checkLogFileWritable(logfilePath, logfileName)
@@ -170,11 +178,11 @@ class Sender():
         self.requestFwPort       = arguments.requestFwPort
 
         self.eventDetectorConfig = {
-                "configType"   : "inotifyx",
-                "monDir"       : arguments.monitoredDir,
-                "monEventType" : arguments.monitoredEventType,
-                "monSubdirs"   : arguments.monitoredSubdirs,
-                "monSuffixes"  : arguments.monitoredFormats
+                "eventDetectorType"   : arguments.eventDetectorType,
+                "monDir"              : arguments.monitoredDir,
+                "monEventType"        : arguments.monitoredEventType,
+                "monSubdirs"          : arguments.monitoredSubdirs,
+                "monSuffixes"         : arguments.monitoredFormats
                 }
 
         if arguments.useDataStream:
@@ -205,25 +213,8 @@ class Sender():
 
 
     def run(self):
-
-        whiteList     = ["localhost", "zitpcx19282"]
-        comPort       = "6000"
-        requestFwPort = "6001"
-        requestPort   = "6002"
-        routerPort    = "7000"
-        chunkSize     = 10485760 ; # = 1024*1024*10 = 10 MiB
-        eventDetectorConfig = {
-                "configType"   : "inotifyx",
-                "monDir"       : BASE_PATH + "/data/source",
-                "monEventType" : "IN_CLOSE_WRITE",
-                "monSubdirs"   : ["commissioning", "current", "local"],
-                "monSuffixes"  : [".tif", ".cbf"]
-                }
-        localTarget   = BASE_PATH + "/data/target"
-
-
         logging.info("Start SignalHandler...")
-        self.signalHandlerPr = Process ( target = SignalHandler, args = (whiteList, comPort, requestFwPort, requestPort) )
+        self.signalHandlerPr = Process ( target = SignalHandler, args = (self.whitelist, self.comPort, self.requestFwPort, self.requestPort) )
         self.signalHandlerPr.start()
         logging.debug("Start SignalHandler...done")
 
@@ -231,12 +222,12 @@ class Sender():
         time.sleep(0.5)
 
         logging.info("Start TaskProvider...")
-        self.taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, requestFwPort, routerPort) )
+        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.requestFwPort, self.routerPort) )
         self.taskProviderPr.start()
         logging.info("Start TaskProvider...done")
 
         logging.info("Start DataDispatcher...")
-        self.dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, self.fixedStreamId, localTarget) )
+        self.dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, self.routerPort, self.chunkSize, self.fixedStreamId, self.localTarget) )
         self.dataDispatcherPr.start()
         logging.info("Start DataDispatcher...done")
 
@@ -268,13 +259,18 @@ if __name__ == '__main__':
         helperScript.initLogging(BASE_PATH + "/logs/dataManager.log", verbose=True, onScreenLogLevel="debug")
 
         class Test_Receiver_Stream():
-            def __init__(self, comPort, receivingPort, receivingPort2):
+            def __init__(self, comPort, fixedRecvPort, receivingPort, receivingPort2):
                 context       = zmq.Context.instance()
 
                 self.comSocket       = context.socket(zmq.REQ)
                 connectionStr   = "tcp://zitpcx19282:" + comPort
                 self.comSocket.connect(connectionStr)
                 logging.info("=== comSocket connected to " + connectionStr)
+
+                self.fixedRecvSocket = context.socket(zmq.PULL)
+                connectionStr   = "tcp://0.0.0.0:" + fixedRecvPort
+                self.fixedRecvSocket.bind(connectionStr)
+                logging.info("=== fixedRecvSocket connected to " + connectionStr)
 
                 self.receivingSocket = context.socket(zmq.PULL)
                 connectionStr   = "tcp://0.0.0.0:" + receivingPort
@@ -309,6 +305,8 @@ if __name__ == '__main__':
             def run(self):
                 try:
                     while True:
+                        recv_message = self.fixedRecvSocket.recv_multipart()
+                        logging.info("=== received fixed: " + str(cPickle.loads(recv_message[0])))
                         recv_message = self.receivingSocket.recv_multipart()
                         logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
                         recv_message = self.receivingSocket2.recv_multipart()
@@ -322,11 +320,12 @@ if __name__ == '__main__':
                 context.destroy()
 
 
-        comPort        = "6000"
-        receivingPort  = "6005"
-        receivingPort2 = "6006"
+        comPort        = "50000"
+        fixedRecvPort  = "50100"
+        receivingPort  = "50101"
+        receivingPort2 = "50102"
 
-        testPr = Process ( target = Test_Receiver_Stream, args = (comPort, receivingPort, receivingPort2))
+        testPr = Process ( target = Test_Receiver_Stream, args = (comPort, fixedRecvPort, receivingPort, receivingPort2))
         testPr.start()
 
 

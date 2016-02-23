@@ -138,6 +138,17 @@ def confirm(prompt=None, resp=False):
             return False
 
 
+def checkEventDetectorType(eDType, supportedTypes):
+
+    #check if directory is empty
+    if eDType in supportedTypes:
+        logging.debug("Event detector '" + eDType + "' is ok.")
+    else:
+        logging.error("Event detector '" + eDType + "' is not supported.")
+        sys.exit(1)
+
+
+
 def checkDirEmpty(dirPath):
 
     #check if directory is empty

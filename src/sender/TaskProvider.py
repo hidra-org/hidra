@@ -15,7 +15,7 @@ class TaskProvider():
 
     def __init__ (self, eventDetectorConfig, requestFwPort, routerPort, context = None):
         #eventDetectorConfig = {
-        #        configType   : ... ,
+        #        eventDetectorType   : ... ,
         #        monDir       : ... ,
         #        monEventType : ... ,
         #        monSubdirs   : ... ,
@@ -47,7 +47,7 @@ class TaskProvider():
             self.extContext = False
 
 
-        if self.config.has_key("configType") and self.config["configType"] == "inotifyx":
+        if self.config.has_key("eventDetectorType") and self.config["eventDetectorType"] == "inotifyx":
 
             from InotifyxDetector import InotifyxDetector as EventDetector
 
@@ -61,7 +61,7 @@ class TaskProvider():
             #TODO forward self.config instead of seperate variables
             self.eventDetector     = EventDetector(self.config)
         else:
-            self.log.error("Type of event detector is not supported: " + str( self.config["configType"] ))
+            self.log.error("Type of event detector is not supported: " + str( self.config["eventDetectorType"] ))
             return -1
 
         self.createSockets()
@@ -224,11 +224,11 @@ if __name__ == '__main__':
     helperScript.initLogging(BASE_PATH + "/logs/taskProvider.log", verbose=True, onScreenLogLevel="debug")
 
     eventDetectorConfig = {
-            "configType"   : "inotifyx",
-            "monDir"       : BASE_PATH + "/data/source",
-            "monEventType" : "IN_CLOSE_WRITE",
-            "monSubdirs"   : ["commissioning", "current", "local"],
-            "monSuffixes"  : [".tif", ".cbf"]
+            "eventDetectorType"   : "inotifyx",
+            "monDir"              : BASE_PATH + "/data/source",
+            "monEventType"        : "IN_CLOSE_WRITE",
+            "monSubdirs"          : ["commissioning", "current", "local"],
+            "monSuffixes"         : [".tif", ".cbf"]
             }
 
     requestFwPort = "6001"

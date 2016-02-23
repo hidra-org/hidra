@@ -287,7 +287,7 @@ class DataDispatcher():
 
                 # streaming data
 
-                #TODO priority
+                print "targets", targets
                 for target, prio in targets:
 
                     # send data to the data stream to store it in the storage system
@@ -301,7 +301,6 @@ class DataDispatcher():
                             socket        = self.context.socket(zmq.PUSH)
                             connectionStr = "tcp://" + str(target)
 
-                            print "connectionStr", connectionStr
                             socket.connect(connectionStr)
                             self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
 
