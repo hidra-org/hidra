@@ -74,16 +74,17 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
         if not event.is_directory:
 
             filepath = event.src_path
-            print "event.src_path", event.src_path
 
-            (parentDir,filename) = os.path.split(event.src_path)
+            (parentDir,filename) = os.path.split(filepath)
             relativePath = ""
             eventMessage = {}
 
 
             #extract relative pathname and filename for the file.
             while True:
-                if parentDir not in self.paths:
+                if parentDir in self.paths:
+                    break
+                else:
                     (parentDir,relDir) = os.path.split(parentDir)
                     # the os.sep is needed at the beginning because the relative path is built up from the right
                     # e.g.
@@ -92,12 +93,11 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
                     # first iteration: self.monEventType parentDir = /tmp/test/source/local, relDir = /testdir
                     # second iteration: parentDir = /tmp/test/source,       relDir = /local/testdir
                     relativePath = os.sep + relDir + relativePath
-                    print "relativePath", relativePath
-                    print "parentDir", parentDir
-                    print "self.paths", self.paths
-                    time.sleep(1)
-                else:
-                    break
+
+
+#            commonPrefix         = os.path.commonprefix([self.monDir,filepath]) # corresponds to sourcePath
+#            relativeBasepath     = os.path.relpath(filepath, commonPrefix)      # corresponds to relativePath + filename
+#            (relativeParent, filename_tmp) = os.path.split(relativeBasepath)    # corresponds to relativePath
 
             # the event for a file /tmp/test/source/local/file1.tif is of the form:
             # {
@@ -111,16 +111,6 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
                     "filename"    : filename
                     }
             print "eventMessage", eventMessage
-
-            filepathNormalised   = os.path.normpath(filepath)
-            (parentDir,filename) = os.path.split(filepathNormalised)
-            commonPrefix         = os.path.commonprefix([self.monDir,filepathNormalised])
-            relativeBasepath     = os.path.relpath(filepathNormalised, commonPrefix)
-            (relativeParent, blub) = os.path.split(relativeBasepath)
-            self.log.debug("Common prefix     : " + str(commonPrefix))
-            self.log.debug("Relative basepath : " + str(relativeBasepath))
-            self.log.debug("Relative parent   : " + str(relativeParent))
-            self.log.debug("Building relative path names...done.")
 
 
             eventMessageList.append(eventMessage)
@@ -186,10 +176,9 @@ class WatchdogDetector():
     def getNewEvent(self):
         global eventMessageList
 
-        print "eventMessageList", eventMessageList
         eventMessageListlocal = copy.deepcopy(eventMessageList)
         # reset global list
-        eventMessagList = []
+        eventMessageList = []
         return eventMessageListlocal
 
 
@@ -209,6 +198,7 @@ class WatchdogDetector():
 if __name__ == '__main__':
     import sys
     from shutil import copyfile
+    from subprocess import call
 
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
     SRC_PATH  = BASE_PATH + os.sep + "src"
@@ -237,16 +227,22 @@ if __name__ == '__main__':
 
     eventDetector = WatchdogDetector(config)
 
+    copyFlag = False
+
     while True:
         try:
-#            logging.debug("copy")
-#            copyfile(sourceFile, targetFile)
-#            logging.debug("remove")
-#            os.remove(targetFile)
-            print "main: eventMessageList", eventMessageList
             eventList = eventDetector.getNewEvent()
             if eventList:
                 print eventList
+            if copyFlag:
+                logging.debug("copy")
+                call(["cp", sourceFile, targetFile])
+#                copyfile(sourceFile, targetFile)
+                logging.debug("remove")
+                os.remove(targetFile)
+                copyFlag = False
+            else:
+                copyFlag = True
 
             time.sleep(2)
         except KeyboardInterrupt:
