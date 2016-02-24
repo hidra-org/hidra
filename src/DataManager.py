@@ -272,7 +272,7 @@ if __name__ == '__main__':
         from subprocess import call
 
         #enable logging
-        helpers.initLogging(BASE_PATH + "/logs/dataManager.log", verbose=True, onScreenLogLevel="debug")
+        helpers.initLogging(BASE_PATH + "/logs/dataManager_test.log", verbose=True, onScreenLogLevel="debug")
 
         class Test_Receiver_Stream():
             def __init__(self, comPort, fixedRecvPort, receivingPort, receivingPort2):
