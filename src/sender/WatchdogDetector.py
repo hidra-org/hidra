@@ -19,8 +19,6 @@ eventListToObserve = []
 
 
 class WatchdogEventHandler(PatternMatchingEventHandler):
-    patterns = ['*.tif', '*.cbf']
-
     def __init__(self, id, config):
         self.id = id
         self.log = self.getLogger()
@@ -33,10 +31,6 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
         for suffix in config["monSuffixes"]:
             #TODO check format
             patterns.append("*" + suffix)
-
-        print "patterns", patterns
-
-#        self.patterns = patterns
 
         WatchdogEventHandler.patterns = patterns
 
@@ -174,7 +168,7 @@ def splitFilePath(filepath, paths):
 
 
 class checkModTime(threading.Thread):
-    def __init__(self, NumberOfThreads, timeTillClosed, monDir):
+    def __init__(self, NumberOfThreads, timeTillClosed, monDir, lock):
         self.log = self.getLogger()
 
         self.log.debug("init")
@@ -182,6 +176,7 @@ class checkModTime(threading.Thread):
         self.pool           = ThreadPool(NumberOfThreads)
         self.monDir         = monDir
         self.timeTillClosed = timeTillClosed # s
+        self.lock           = lock
         self._stop          = threading.Event()
 
         self.log.debug("threading.Thread init")
@@ -200,9 +195,9 @@ class checkModTime(threading.Thread):
             try:
                 # Open the urls in their own threads
                 self.log.debug("List to observe: " + str(eventListToObserve))
-#                self.log.debug("eventMessageList: " + str(eventMessageList))
+                self.log.debug("eventMessageList: " + str(eventMessageList))
                 self.pool.map(self.checkLastModified, eventListToObserve)
-#                self.log.debug("eventMessageList: " + str(eventMessageList))
+                self.log.debug("eventMessageList: " + str(eventMessageList))
                 time.sleep(2)
             except:
                 break
@@ -211,6 +206,8 @@ class checkModTime(threading.Thread):
     def checkLastModified(self, filepath):
         global eventMessageList
         global eventListToObserve
+
+        threadName = threading.current_thread().name
 
         try:
             # check modification time
@@ -235,8 +232,12 @@ class checkModTime(threading.Thread):
             self.log.debug("eventMessage: " + str(eventMessage))
 
             # add to result list
+            self.lock.acquire()
+            self.log.debug("checkLastModified-" + str(threadName) + " eventMessageList" + str(eventMessageList))
             eventMessageList.append(eventMessage)
             eventListToObserve.remove(filepath)
+            self.log.debug("checkLastModified-" + str(threadName) + " eventMessageList" + str(eventMessageList))
+            self.lock.release()
         else:
             self.log.debug("File was last modified " + str(timeCurrent - timeLastModified) + \
                            " sec ago: " + str(filepath))
@@ -264,14 +265,17 @@ class WatchdogDetector():
 
         self.log.debug("init")
 
-        self.config         = config
-        self.monDir         = self.config["monDir"]
-        self.monSubdirs     = self.config["monSubdirs"]
+        self.config          = config
+        self.monDir          = self.config["monDir"]
+        self.monSubdirs      = self.config["monSubdirs"]
         self.log.info("monDir: " + str(self.monDir))
-        self.paths          = [os.path.normpath(self.monDir + os.sep + directory) for directory in self.config["monSubdirs"]]
+
+        self.paths           = [os.path.normpath(self.monDir + os.sep + directory) for directory in self.config["monSubdirs"]]
         self.log.info("paths: " + str(self.paths))
-        self.timeTillClosed = self.config["timeTillClosed"]
+
+        self.timeTillClosed  = self.config["timeTillClosed"]
         self.observerThreads = []
+        self.lock            = threading.Lock()
 
 
         observerId = 0
@@ -284,7 +288,7 @@ class WatchdogDetector():
             self.observerThreads.append(observer)
             observerId += 1
 
-        self.checkingThread = checkModTime(4, self.timeTillClosed, self.monDir)
+        self.checkingThread = checkModTime(4, self.timeTillClosed, self.monDir, self.lock)
         self.checkingThread.start()
 
 
@@ -296,9 +300,11 @@ class WatchdogDetector():
     def getNewEvent(self):
         global eventMessageList
 
+        self.lock.acquire()
         eventMessageListlocal = copy.deepcopy(eventMessageList)
         # reset global list
         eventMessageList = []
+        self.lock.release()
         return eventMessageListlocal
 
 
@@ -371,7 +377,7 @@ if __name__ == '__main__':
             else:
                 copyFlag = True
 
-            time.sleep(1)
+#            time.sleep(0.5)
         except KeyboardInterrupt:
             break
 
