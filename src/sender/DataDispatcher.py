@@ -11,14 +11,14 @@ import cPickle
 import shutil
 
 #path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
-print SHARED_PATH
+BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
 del SHARED_PATH
 
-import helperScript
+import helpers
 
 #
 #  --------------------------  class: DataDispatcher  --------------------------------------
@@ -390,10 +390,8 @@ if __name__ == '__main__':
     import time
     from shutil import copyfile
 
-    BASE_PATH = "/space/projects/live-viewer"
-
     #enable logging
-    helperScript.initLogging(BASE_PATH + "/logs/dataDispatcher.log", verbose=True, onScreenLogLevel="debug")
+    helpers.initLogging(BASE_PATH + "/logs/dataDispatcher.log", verbose=True, onScreenLogLevel="debug")
 
 
     copyfile(BASE_PATH + "/test_file.cbf", BASE_PATH + "/data/source/local/raw/100.cbf")

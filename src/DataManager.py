@@ -13,7 +13,7 @@ import ConfigParser
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
-import shared.helperScript as helperScript
+import shared.helpers as helpers
 from shared.LiveViewCommunicator import LiveViewCommunicator
 from sender.SignalHandler import SignalHandler
 from sender.TaskProvider import TaskProvider
@@ -27,7 +27,7 @@ def argumentParsing():
     configFile = CONFIG_PATH + os.sep + "dataManager.conf"
 
     config = ConfigParser.RawConfigParser()
-    config.readfp(helperScript.FakeSecHead(open(configFile)))
+    config.readfp(helpers.FakeSecHead(open(configFile)))
 
     logfilePath         = config.get('asection', 'logfilePath')
     logfileName         = config.get('asection', 'logfileName')
@@ -156,20 +156,20 @@ def argumentParsing():
     parallelDataStreams = arguments.parallelDataStreams
 
     # check if logfile is writable
-    helperScript.checkLogFileWritable(logfilePath, logfileName)
+    helpers.checkLogFileWritable(logfilePath, logfileName)
 
     #enable logging
-    helperScript.initLogging(logfileFullPath, verbose, onScreen)
+    helpers.initLogging(logfileFullPath, verbose, onScreen)
 
     # check if the eventDetectorType is supported
-    helperScript.checkEventDetectorType(eventDetectorType, supportedEDTypes)
+    helpers.checkEventDetectorType(eventDetectorType, supportedEDTypes)
 
 
     # check if directories exists
-    helperScript.checkDirExistance(logfilePath)
-    helperScript.checkDirExistance(monitoredDir)
-    helperScript.checkSubDirExistance(monitoredDir, monitoredSubdirs)
-    helperScript.checkDirExistance(localTarget)
+    helpers.checkDirExistance(logfilePath)
+    helpers.checkDirExistance(monitoredDir)
+    helpers.checkSubDirExistance(monitoredDir, monitoredSubdirs)
+    helpers.checkDirExistance(localTarget)
 
     return arguments
 
@@ -273,7 +273,7 @@ if __name__ == '__main__':
         from shutil import copyfile
 
         #enable logging
-        helperScript.initLogging(BASE_PATH + "/logs/dataManager.log", verbose=True, onScreenLogLevel="debug")
+        helpers.initLogging(BASE_PATH + "/logs/dataManager.log", verbose=True, onScreenLogLevel="debug")
 
         class Test_Receiver_Stream():
             def __init__(self, comPort, fixedRecvPort, receivingPort, receivingPort2):

@@ -17,7 +17,7 @@ if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
 del SHARED_PATH
 
-import helperScript
+import helpers
 
 #
 #  --------------------------  class: SignalHandler  --------------------------------------
@@ -196,7 +196,7 @@ class SignalHandler():
             host = [t[0].split(":")[0] for t in target]
 
             if version:
-                if helperScript.checkVersion(version, self.log):
+                if helpers.checkVersion(version, self.log):
                     self.log.debug("Versions are compatible: " + str(version))
                 else:
                     self.log.debug("Version are not compatible")
@@ -207,7 +207,7 @@ class SignalHandler():
 
                 # Checking signal sending host
                 self.log.debug("Check if host to send data to are in WhiteList...")
-                if helperScript.checkHost(host, self.whiteList, self.log):
+                if helpers.checkHost(host, self.whiteList, self.log):
                     self.log.debug("Hosts are allowed to connect.")
                     self.log.debug("hosts: " + str(host))
                 else:
@@ -371,7 +371,7 @@ if __name__ == '__main__':
             self.context.destroy()
 
 
-    helperScript.initLogging("/space/projects/live-viewer/logs/signalHandler.log", verbose=True, onScreenLogLevel="debug")
+    helpers.initLogging("/space/projects/live-viewer/logs/signalHandler.log", verbose=True, onScreenLogLevel="debug")
 
 
     whiteList     = ["localhost", "zitpcx19282"]

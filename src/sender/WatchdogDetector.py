@@ -311,14 +311,15 @@ if __name__ == '__main__':
         sys.path.append ( SHARED_PATH )
     del SHARED_PATH
 
-    import helperScript
+    import helpers
+
 
     logfilePath = BASE_PATH + "/logs/watchdogDetector.log"
     verbose     = True
     onScreen    = "debug"
 
     #enable logging
-    helperScript.initLogging(logfilePath, verbose, onScreen)
+    helpers.initLogging(logfilePath, verbose, onScreen)
 
     config = {
             #TODO normpath to make insensitive to "/" at the end

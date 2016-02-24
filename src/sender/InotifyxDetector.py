@@ -316,7 +316,7 @@ if __name__ == '__main__':
         sys.path.append ( SHARED_PATH )
     del SHARED_PATH
 
-    import helperScript
+    import helpers
 
 
     logfilePath = BASE_PATH + "/logs/inotifyDetector.log"
@@ -324,7 +324,7 @@ if __name__ == '__main__':
     onScreen    = "debug"
 
     #enable logging
-    helperScript.initLogging(logfilePath, verbose, onScreen)
+    helpers.initLogging(logfilePath, verbose, onScreen)
 
     config = {
             "eventDetectorType"   : "inotifyx",

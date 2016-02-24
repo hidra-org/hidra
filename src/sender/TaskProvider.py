@@ -182,17 +182,18 @@ class TaskProvider():
 
 if __name__ == '__main__':
     from multiprocessing import Process
-
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
-    SRC_PATH  = BASE_PATH + os.sep + "src"
-
-    sys.path.append ( SRC_PATH )
-
-    import shared.helperScript as helperScript
     import time
     from shutil import copyfile
 
-    BASE_PATH = "/space/projects/live-viewer"
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+    SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+
+    if not SHARED_PATH in sys.path:
+        sys.path.append ( SHARED_PATH )
+    del SHARED_PATH
+
+    import helpers
+
 
     class requestResponder():
         def __init__ (self, requestFwPort, context = None):
@@ -221,7 +222,7 @@ if __name__ == '__main__':
             self.context.destroy()
 
     #enable logging
-    helperScript.initLogging(BASE_PATH + "/logs/taskProvider.log", verbose=True, onScreenLogLevel="debug")
+    helpers.initLogging(BASE_PATH + "/logs/taskProvider.log", verbose=True, onScreenLogLevel="debug")
 
     eventDetectorConfig = {
             "eventDetectorType"   : "inotifyx",
