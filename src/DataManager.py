@@ -271,8 +271,10 @@ if __name__ == '__main__':
         from shutil import copyfile
         from subprocess import call
 
+
+        logfile = BASE_PATH + os.sep "logs" + os.sep + "dataManager_test.log"
         #enable logging
-        helpers.initLogging(BASE_PATH + "/logs/dataManager_test.log", verbose=True, onScreenLogLevel="debug")
+        helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
 
         class Test_Receiver_Stream():
             def __init__(self, comPort, fixedRecvPort, receivingPort, receivingPort2):
@@ -344,8 +346,8 @@ if __name__ == '__main__':
         testPr = Process ( target = Test_Receiver_Stream, args = (comPort, fixedRecvPort, receivingPort, receivingPort2))
         testPr.start()
 
-        sourceFile = BASE_PATH + "/test_file.cbf"
-        targetFileBase = BASE_PATH + "/data/source/local/raw/"
+        sourceFile = BASE_PATH + os.sep + "test_file.cbf"
+        targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
         i = 100
 
 
@@ -371,7 +373,7 @@ if __name__ == '__main__':
                 else:
                     pass
     except Exception as e:
-        self.log.error("Exception detected: " + str(e))
+        logging.error("Exception detected: " + str(e))
     finally:
         if test:
             testPr.terminate()

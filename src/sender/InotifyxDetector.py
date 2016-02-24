@@ -319,7 +319,7 @@ if __name__ == '__main__':
     import helpers
 
 
-    logfilePath = BASE_PATH + "/logs/inotifyDetector.log"
+    logfilePath = BASE_PATH + os.sep + "logs" + os.sep + "inotifyDetector.log"
     verbose     = True
     onScreen    = "debug"
 
@@ -328,7 +328,7 @@ if __name__ == '__main__':
 
     config = {
             "eventDetectorType" : "inotifyx",
-            "monDir"            : BASE_PATH + "/data/source",
+            "monDir"            : BASE_PATH + os.sep + "data" + os.sep + "source",
             "monEventType"      : "IN_CLOSE_WRITE",
             "monSubdirs"        : ["commissioning", "current", "local"],
             "monSuffixes"       : [".tif", ".cbf"]
@@ -336,8 +336,8 @@ if __name__ == '__main__':
 
     eventDetector = InotifyxDetector(config)
 
-    sourceFile = BASE_PATH + "/test_file.cbf"
-    targetFileBase = BASE_PATH + "/data/source/local/raw/"
+    sourceFile = BASE_PATH + os.sep + "test_file.cbf"
+    targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
 
     i = 100
     while True:

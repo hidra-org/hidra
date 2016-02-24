@@ -337,7 +337,7 @@ if __name__ == '__main__':
     import helpers
 
 
-    logfilePath = BASE_PATH + "/logs/watchdogDetector.log"
+    logfilePath = BASE_PATH + os.sep + "logs" + os.sep + "watchdogDetector.log"
     verbose     = True
     onScreen    = "debug"
 
@@ -346,7 +346,7 @@ if __name__ == '__main__':
 
     config = {
             #TODO normpath to make insensitive to "/" at the end
-            "monDir"         : BASE_PATH + "/data/source",
+            "monDir"         : BASE_PATH + os.sep + "data" + os.sep + "source",
             "monEventType"   : "ON_CLOSE",
 #            "monEventType"   : "IN_CREATE",
             "monSubdirs"     : ["commissioning", "current", "local"],
@@ -355,7 +355,7 @@ if __name__ == '__main__':
             }
 
     sourceFile = BASE_PATH + "/test_file.cbf"
-    targetFileBase = BASE_PATH + "/data/source/local/raw/"
+    targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
 
     eventDetector = WatchdogDetector(config)
 

@@ -390,11 +390,16 @@ if __name__ == '__main__':
     import time
     from shutil import copyfile
 
+    logfile = BASE_PATH + os.sep + "logs" + os.sep + "dataDispatcher.log"
+
     #enable logging
-    helpers.initLogging(BASE_PATH + "/logs/dataDispatcher.log", verbose=True, onScreenLogLevel="debug")
+    helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
+
+    sourceFile = BASE_PATH + os.sep + "test_file.cbf"
+    targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep "100.cbf"
 
 
-    copyfile(BASE_PATH + "/test_file.cbf", BASE_PATH + "/data/source/local/raw/100.cbf")
+    copyfile(sourceFile, targetFile)
     time.sleep(0.5)
 
 
@@ -403,7 +408,7 @@ if __name__ == '__main__':
     receivingPort2 = "6006"
     chunkSize     = 10485760 ; # = 1024*1024*10 = 10 MiB
 
-    localTarget   = BASE_PATH + "/data/target"
+    localTarget   = BASE_PATH + os.sep + "data" + os.sep + "target"
     fixedStreamId = False
     fixedStreamId = "zitpcx19282:6006"
 
@@ -429,8 +434,8 @@ if __name__ == '__main__':
 
 
     metadata = {
-            "sourcePath"  : BASE_PATH + "/data/source",
-            "relativePath": "/local/raw",
+            "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
+            "relativePath": os.sep + "local" + os.sep + "raw",
             "filename"    : "100.cbf"
             }
     targets = [['zitpcx19282:6005', 1], ['zitpcx19282:6006', 0]]

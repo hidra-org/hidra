@@ -234,12 +234,14 @@ if __name__ == '__main__':
             self.requestFwSocket.close(0)
             self.context.destroy()
 
+    logfile = BASE_PATH + os.sep + "logs" + os.sep + "taskProvider.log"
+
     #enable logging
-    helpers.initLogging(BASE_PATH + "/logs/taskProvider.log", verbose=True, onScreenLogLevel="debug")
+    helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
 
 #    eventDetectorConfig = {
 #            "eventDetectorType"   : "inotifyx",
-#            "monDir"              : BASE_PATH + "/data/source",
+#            "monDir"              : BASE_PATH + os.sep + "data" + os.sep + "source",
 #            "monEventType"        : "IN_CLOSE_WRITE",
 #            "monSubdirs"          : ["commissioning", "current", "local"],
 #            "monSuffixes"         : [".tif", ".cbf"]
@@ -247,7 +249,7 @@ if __name__ == '__main__':
 
     eventDetectorConfig = {
             "eventDetectorType" : "watchdog",
-            "monDir"            : BASE_PATH + "/data/source",
+            "monDir"            : BASE_PATH + os.sep + "data" + os.sep + "source",
             "monEventType"      : "IN_CLOSE_WRITE",
             "monSubdirs"        : ["commissioning", "current", "local"],
             "monSuffixes"       : [".tif", ".cbf"],
@@ -270,8 +272,8 @@ if __name__ == '__main__':
     routerSocket.connect(connectionStr)
     logging.info("=== routerSocket connected to " + connectionStr)
 
-    sourceFile = BASE_PATH + "/test_file.cbf"
-    targetFileBase = BASE_PATH + "/data/source/local/raw/"
+    sourceFile = BASE_PATH + os.sep + "test_file.cbf"
+    targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
 
     i = 100
     try:

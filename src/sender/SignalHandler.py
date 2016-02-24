@@ -370,8 +370,10 @@ if __name__ == '__main__':
             self.requestFwSocket.close(0)
             self.context.destroy()
 
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
 
-    helpers.initLogging("/space/projects/live-viewer/logs/signalHandler.log", verbose=True, onScreenLogLevel="debug")
+    logfile = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler.log"
+    helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
 
 
     whiteList     = ["localhost", "zitpcx19282"]
