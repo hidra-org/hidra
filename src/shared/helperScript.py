@@ -88,6 +88,7 @@ class FakeSecHead(object):
         else:
             return self.fp.readline()
 
+
 # http://code.activestate.com/recipes/541096-prompt-the-user-for-confirmation/
 def confirm(prompt=None, resp=False):
     """prompts for yes or no response from the user. Returns True for yes and
@@ -140,7 +141,6 @@ def confirm(prompt=None, resp=False):
 
 def checkEventDetectorType(eDType, supportedTypes):
 
-    #check if directory is empty
     if eDType in supportedTypes:
         logging.debug("Event detector '" + eDType + "' is ok.")
     else:
@@ -168,14 +168,8 @@ def checkDirEmpty(dirPath):
             logging.info("All elements of directory " + str(dirPath) + " were removed.")
 
 
-
-
 def checkSubDirExistance(dirPath, subDirs):
-    """
-    abort if dir does not exist
 
-    :return:
-    """
     dirPath = os.path.normpath(dirPath)
     dirsToCheck = [dirPath + os.sep + directory for directory in subDirs]
     noSubdir = True
@@ -192,29 +186,22 @@ def checkSubDirExistance(dirPath, subDirs):
 
 
 def checkDirExistance(dirPath):
-    """
-    abort if dir does not exist
+    # Check directory path for existance.
+    # Exits if it does not exist
 
-    :return:
-    """
-
-    #check directory path for existance. exits if it does not exist
     if not os.path.exists(dirPath):
         logging.error("Dir '%s' does not exist. Abort." % str(dirPath))
         sys.exit(1)
 
 
 def checkLogFileWritable(filepath, filename):
-    #error if logfile cannot be written
+    # Exits if logfile cannot be written
     try:
-        fullPath = os.path.join(filepath, filename)
-        logFile = open(fullPath, "a")
+        logfullPath = os.path.join(filepath, filename)
+        logFile = open(logfullPath, "a")
     except:
-        print "Unable to create the logfile """ + str(fullPath)
-        print """Please specify a new target by setting the following arguments:
---logfileName
---logfilePath
-"""
+        print "Unable to create the logfile " + str(logfullPath)
+        print "Please specify a new target by setting the following arguments:\n--logfileName\n--logfilePath"
         sys.exit(1)
 
 
