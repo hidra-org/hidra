@@ -327,11 +327,11 @@ if __name__ == '__main__':
     helpers.initLogging(logfilePath, verbose, onScreen)
 
     config = {
-            "eventDetectorType"   : "inotifyx",
-            "monDir"              : BASE_PATH + "/data/source",
-            "monEventType"        : "IN_CLOSE_WRITE",
-            "monSubdirs"          : ["commissioning", "current", "local"],
-            "monSuffixes"         : [".tif", ".cbf"]
+            "eventDetectorType" : "inotifyx",
+            "monDir"            : BASE_PATH + "/data/source",
+            "monEventType"      : "IN_CLOSE_WRITE",
+            "monSubdirs"        : ["commissioning", "current", "local"],
+            "monSuffixes"       : [".tif", ".cbf"]
             }
 
     eventDetector = InotifyxDetector(config)

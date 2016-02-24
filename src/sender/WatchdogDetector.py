@@ -21,11 +21,14 @@ eventListToObserve = []
 class WatchdogEventHandler(PatternMatchingEventHandler):
     patterns = ['*.tif', '*.cbf']
 
-    def __init__(self, config):
+    def __init__(self, id, config):
+        self.id = id
         self.log = self.getLogger()
+
         self.log.debug("init")
+
         self.paths        = [ config["monDir"] ]
-        self.monSubdirs   = config["monSubdirs"]
+
         patterns = []
         for suffix in config["monSuffixes"]:
             #TODO check format
@@ -34,6 +37,8 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
         print "patterns", patterns
 
 #        self.patterns = patterns
+
+        WatchdogEventHandler.patterns = patterns
 
         self.log.debug("init: super")
         super(WatchdogEventHandler, self,).__init__()
@@ -67,7 +72,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
 
 
     def getLogger(self):
-        logger = logging.getLogger("WatchdogEventHandler")
+        logger = logging.getLogger("WatchdogEventHandler-" + str(self.id))
         return logger
 
 
@@ -169,15 +174,15 @@ def splitFilePath(filepath, paths):
 
 
 class checkModTime(threading.Thread):
-    def __init__(self, NumberOfThreads, timeTillClosed, paths):
+    def __init__(self, NumberOfThreads, timeTillClosed, monDir):
         self.log = self.getLogger()
 
         self.log.debug("init")
         #Make the Pool of workers
-        self.pool  = ThreadPool(NumberOfThreads)
-        self.paths = paths
+        self.pool           = ThreadPool(NumberOfThreads)
+        self.monDir         = monDir
         self.timeTillClosed = timeTillClosed # s
-        self._stop = threading.Event()
+        self._stop          = threading.Event()
 
         self.log.debug("threading.Thread init")
         threading.Thread.__init__(self)
@@ -226,7 +231,7 @@ class checkModTime(threading.Thread):
         if timeCurrent - timeLastModified >= self.timeTillClosed:
             self.log.debug("New closed file detected: " + str(filepath))
 
-            eventMessage = splitFilePath(filepath, self.paths)
+            eventMessage = splitFilePath(filepath, self.monDir)
             self.log.debug("eventMessage: " + str(eventMessage))
 
             # add to result list
@@ -260,15 +265,26 @@ class WatchdogDetector():
         self.log.debug("init")
 
         self.config         = config
-        self.paths          = self.config["monDir"]
         self.monDir         = self.config["monDir"]
+        self.monSubdirs     = self.config["monSubdirs"]
+        self.log.info("monDir: " + str(self.monDir))
+        self.paths          = [os.path.normpath(self.monDir + os.sep + directory) for directory in self.config["monSubdirs"]]
+        self.log.info("paths: " + str(self.paths))
         self.timeTillClosed = self.config["timeTillClosed"]
+        self.observerThreads = []
 
-        self.observer = Observer()
-        self.observer.schedule(WatchdogEventHandler(self.config), path=self.monDir, recursive=True)
-        self.observer.start()
 
-        self.checkingThread = checkModTime(4, self.timeTillClosed, self.paths)
+        observerId = 0
+        for path in self.paths:
+            observer = Observer()
+            observer.schedule(WatchdogEventHandler(observerId, self.config), path, recursive=True)
+            observer.start()
+            self.log.info("Started observer for directory: " + path)
+
+            self.observerThreads.append(observer)
+            observerId += 1
+
+        self.checkingThread = checkModTime(4, self.timeTillClosed, self.monDir)
         self.checkingThread.start()
 
 
@@ -287,8 +303,9 @@ class WatchdogDetector():
 
 
     def stop(self):
-        self.observer.stop()
-        self.observer.join()
+        for observer in  self.observerThreads:
+            observer.stop()
+            observer.join()
 
         #close the pool and wait for the work to finish
         self.checkingThread.stop()
@@ -326,7 +343,7 @@ if __name__ == '__main__':
             "monDir"         : BASE_PATH + "/data/source",
             "monEventType"   : "ON_CLOSE",
 #            "monEventType"   : "IN_CREATE",
-            "monSubdirs"     : ["local"],
+            "monSubdirs"     : ["commissioning", "current", "local"],
             "monSuffixes"    : [".tif", ".cbf"],
             "timeTillClosed" : 1 #s
             }
@@ -345,8 +362,8 @@ if __name__ == '__main__':
             if eventList:
                 print "eventList:", eventList
             if copyFlag:
-                logging.debug("copy to " + targetFile)
                 targetFile = targetFileBase + str(i) + ".cbf"
+                logging.debug("copy to " + targetFile)
                 call(["cp", sourceFile, targetFile])
                 i += 1
 #                copyfile(sourceFile, targetFile)

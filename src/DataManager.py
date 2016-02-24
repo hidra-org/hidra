@@ -370,6 +370,8 @@ if __name__ == '__main__':
                     time.sleep(1)
                 else:
                     pass
+    except Exception as e:
+        self.log.error("Exception detected: " + str(e))
     finally:
         if test:
             testPr.terminate()

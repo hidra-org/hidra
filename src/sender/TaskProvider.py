@@ -246,12 +246,12 @@ if __name__ == '__main__':
 #            }
 
     eventDetectorConfig = {
-            "eventDetectorType"   : "watchdog",
-            "monDir"              : BASE_PATH + "/data/source",
-            "monEventType"        : "IN_CLOSE_WRITE",
-            "monSubdirs"          : ["commissioning", "current", "local"],
-            "monSuffixes"         : [".tif", ".cbf"],
-            "timeTillClosed"      : 1 #s
+            "eventDetectorType" : "watchdog",
+            "monDir"            : BASE_PATH + "/data/source",
+            "monEventType"      : "IN_CLOSE_WRITE",
+            "monSubdirs"        : ["commissioning", "current", "local"],
+            "monSuffixes"       : [".tif", ".cbf"],
+            "timeTillClosed"    : 1 #s
             }
 
     requestFwPort = "6001"
