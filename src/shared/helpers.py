@@ -205,17 +205,6 @@ def checkLogFileWritable(filepath, filename):
         sys.exit(1)
 
 
-def checkStreamConfig(ips, ports, numberToBe):
-    if len(ips) < numberToBe:
-        logging.error("Not enough IPs specified for OnDA, please check your configuration.")
-        sys.exit(1)
-
-    if len(ports) < numberToBe:
-        logging.error("Not enough ports specified for OnDA, please check your configuration.")
-        sys.exit(1)
-
-
-
 def checkVersion(version, log):
     if version < __version__:
         log.info("Version of receiver is lower. Please update receiver.")
@@ -256,27 +245,6 @@ def checkHost(hostname, whiteList, log):
                 return True
 
     return False
-
-
-def extractSignal(message, log):
-    try:
-        messageSplit = message.split(',')
-    except Exception as e:
-        log.info("Received signal is of the wrong format")
-        log.debug("Received signal: " + str(message))
-        return None, None, None, None
-
-    if len(messageSplit) < 3:
-        log.info("Received signal is of the wrong format")
-        log.debug("Received signal is too short: " + str(message))
-        return None, None, None, None
-
-    signal   = messageSplit[0]
-    hostname = messageSplit[1]
-    port     = messageSplit[2]
-
-    return signal, hostname, port
-
 
 
 def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
