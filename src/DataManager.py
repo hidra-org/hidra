@@ -272,7 +272,7 @@ if __name__ == '__main__':
         from subprocess import call
 
 
-        logfile = BASE_PATH + os.sep "logs" + os.sep + "dataManager_test.log"
+        logfile = BASE_PATH + os.sep + "logs" + os.sep + "dataManager_test.log"
         #enable logging
         helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
 
@@ -348,8 +348,6 @@ if __name__ == '__main__':
 
         sourceFile = BASE_PATH + os.sep + "test_file.cbf"
         targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
-        i = 100
-
 
 
     try:
@@ -357,16 +355,16 @@ if __name__ == '__main__':
     except:
         sender = None
 
+    i = 100
     try:
         if sender:
-
-            while True:
+            while i <= 110:
                 if test:
                     time.sleep(0.5)
                     targetFile = targetFileBase + str(i) + ".cbf"
                     logging.debug("copy to " + targetFile)
-                    call(["cp", sourceFile, targetFile])
-#                    copyfile(sourceFile, targetFile)
+#                    call(["cp", sourceFile, targetFile])
+                    copyfile(sourceFile, targetFile)
                     i += 1
 
                     time.sleep(1)

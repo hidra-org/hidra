@@ -354,7 +354,7 @@ if __name__ == '__main__':
             "timeTillClosed" : 1 #s
             }
 
-    sourceFile = BASE_PATH + "/test_file.cbf"
+    sourceFile = BASE_PATH + os.sep + "test_file.cbf"
     targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
 
     eventDetector = WatchdogDetector(config)
@@ -362,7 +362,7 @@ if __name__ == '__main__':
     copyFlag = False
 
     i = 100
-    while True:
+    while i <= 110:
         try:
             eventList = eventDetector.getNewEvent()
             if eventList:
@@ -370,9 +370,9 @@ if __name__ == '__main__':
             if copyFlag:
                 targetFile = targetFileBase + str(i) + ".cbf"
                 logging.debug("copy to " + targetFile)
-                call(["cp", sourceFile, targetFile])
+#                call(["cp", sourceFile, targetFile])
+                copyfile(sourceFile, targetFile)
                 i += 1
-#                copyfile(sourceFile, targetFile)
                 copyFlag = False
             else:
                 copyFlag = True

@@ -396,7 +396,7 @@ if __name__ == '__main__':
     helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep "100.cbf"
+    targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep + "100.cbf"
 
 
     copyfile(sourceFile, targetFile)

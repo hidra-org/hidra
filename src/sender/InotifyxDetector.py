@@ -340,11 +340,12 @@ if __name__ == '__main__':
     targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
 
     i = 100
-    while True:
+    while i <= 110:
         try:
             logging.debug("copy")
             targetFile = targetFileBase + str(i) + ".cbf"
             call(["cp", sourceFile, targetFile])
+#            copyfile(sourceFile, targetFile)
             i += 1
 
             eventList = eventDetector.getNewEvent()

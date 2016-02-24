@@ -277,12 +277,12 @@ if __name__ == '__main__':
 
     i = 100
     try:
-        while True:
+        while i <= 110:
             time.sleep(0.5)
             targetFile = targetFileBase + str(i) + ".cbf"
             logging.debug("copy to " + targetFile)
-#            copyfile(sourceFile, targetFile)
-            call(["cp", sourceFile, targetFile])
+            copyfile(sourceFile, targetFile)
+#            call(["cp", sourceFile, targetFile])
             i += 1
 
             workload = routerSocket.recv_multipart()
