@@ -43,10 +43,11 @@ def argumentParsing():
     monitoredEventType  = config.get('asection', 'monitoredEventType')
     monitoredSubdirs    = json.loads(config.get('asection', 'monitoredSubdirs'))
     monitoredFormats    = json.loads(config.get('asection', 'monitoredFormats'))
+    timeTillClosed      = int(config.get('asection', 'timeTillClosed'))
 
     useDataStream       = config.getboolean('asection', 'useDataStream')
-    fixedStreamHost      = config.get('asection', 'fixedStreamHost')
-    fixedStreamPort      = config.get('asection', 'fixedStreamPort')
+    fixedStreamHost     = config.get('asection', 'fixedStreamHost')
+    fixedStreamPort     = config.get('asection', 'fixedStreamPort')
 
     parallelDataStreams = config.get('asection', 'parallelDataStreams')
     chunkSize           = int(config.get('asection', 'chunkSize'))
@@ -101,6 +102,10 @@ def argumentParsing():
                                                  help    = "The formats to be monitored, files in an other format will be be neglected \
                                                             (default=" + str(monitoredFormats) + ")",
                                                  default = monitoredFormats )
+    parser.add_argument("--timeTillClosed"     , type    = str,
+                                                 help    = "Time (in seconds) since last modification after which a file will be seen as closed \
+                                                            (default=" + str(timeTillClosed) + ")",
+                                                 default = timeTillClosed )
 
     parser.add_argument("--useDataStream"      , type    = str,
                                                  help    = "Enable ZMQ pipe into storage system (if set to false: the file is moved \
@@ -142,7 +147,7 @@ def argumentParsing():
     verbose             = arguments.verbose
     onScreen            = arguments.onScreen
 
-    eventDetectorType   = arguments.eventDetectorType
+    eventDetectorType   = arguments.eventDetectorType.lower()
     supportedEDTypes    = ["inotifyx"]
     monitoredDir        = str(arguments.monitoredDir)
     monitoredSubdirs    = arguments.monitoredSubdirs
@@ -150,19 +155,21 @@ def argumentParsing():
 
     parallelDataStreams = arguments.parallelDataStreams
 
+    # check if logfile is writable
+    helperScript.checkLogFileWritable(logfilePath, logfileName)
+
     #enable logging
     helperScript.initLogging(logfileFullPath, verbose, onScreen)
+
+    # check if the eventDetectorType is supported
+    helperScript.checkEventDetectorType(eventDetectorType, supportedEDTypes)
+
 
     # check if directories exists
     helperScript.checkDirExistance(logfilePath)
     helperScript.checkDirExistance(monitoredDir)
     helperScript.checkSubDirExistance(monitoredDir, monitoredSubdirs)
     helperScript.checkDirExistance(localTarget)
-
-    helperScript.checkEventDetectorType(eventDetectorType, supportedEDTypes)
-
-    # check if logfile is writable
-    helperScript.checkLogFileWritable(logfilePath, logfileName)
 
     return arguments
 
@@ -177,13 +184,23 @@ class Sender():
         self.requestPort         = arguments.requestPort
         self.requestFwPort       = arguments.requestFwPort
 
-        self.eventDetectorConfig = {
-                "eventDetectorType"   : arguments.eventDetectorType,
-                "monDir"              : arguments.monitoredDir,
-                "monEventType"        : arguments.monitoredEventType,
-                "monSubdirs"          : arguments.monitoredSubdirs,
-                "monSuffixes"         : arguments.monitoredFormats
-                }
+        if arguments.eventDetectorType == "inotifyx":
+            self.eventDetectorConfig = {
+                    "eventDetectorType" : arguments.eventDetectorType,
+                    "monDir"            : arguments.monitoredDir,
+                    "monEventType"      : arguments.monitoredEventType,
+                    "monSubdirs"        : arguments.monitoredSubdirs,
+                    "monSuffixes"       : arguments.monitoredFormats
+                    }
+        elif arguments.eventDetectorType == "watchdog":
+            self.eventDetectorConfig = {
+                    "eventDetectorType" : arguments.eventDetectorType,
+                    "monDir"            : arguments.monitoredDir,
+                    "monEventType"      : arguments.monitoredEventType,
+                    "monSubdirs"        : arguments.monitoredSubdirs,
+                    "monSuffixes"       : arguments.monitoredFormats,
+                    "timeTillClosed"    : arguments.timeTillClosed
+                    }
 
         if arguments.useDataStream:
             self.fixedStreamId    = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )

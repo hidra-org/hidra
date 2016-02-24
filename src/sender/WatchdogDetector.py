@@ -164,19 +164,19 @@ def splitFilePath(filepath, paths):
             "relativePath": relativePath,
             "filename"    : filename
             }
-    print "eventMessage", eventMessage
 
     return eventMessage
 
 
 class checkModTime(threading.Thread):
-    def __init__(self, NumberOfThreads, paths):
+    def __init__(self, NumberOfThreads, timeTillClosed, paths):
         self.log = self.getLogger()
 
         self.log.debug("init")
         #Make the Pool of workers
         self.pool  = ThreadPool(NumberOfThreads)
         self.paths = paths
+        self.timeTillClosed = timeTillClosed # s
         self._stop = threading.Event()
 
         self.log.debug("threading.Thread init")
@@ -194,10 +194,10 @@ class checkModTime(threading.Thread):
         while True:
             try:
                 # Open the urls in their own threads
-                self.log.debug("loop: " + str(eventListToObserve))
-                self.log.debug("eventMessageList: " + str(eventMessageList))
+                self.log.debug("List to observe: " + str(eventListToObserve))
+#                self.log.debug("eventMessageList: " + str(eventMessageList))
                 self.pool.map(self.checkLastModified, eventListToObserve)
-                self.log.debug("eventMessageList: " + str(eventMessageList))
+#                self.log.debug("eventMessageList: " + str(eventMessageList))
                 time.sleep(2)
             except:
                 break
@@ -205,6 +205,7 @@ class checkModTime(threading.Thread):
 
     def checkLastModified(self, filepath):
         global eventMessageList
+        global eventListToObserve
 
         try:
             # check modification time
@@ -214,8 +215,6 @@ class checkModTime(threading.Thread):
             self.log.error("Error was: " + str(e))
             return
 
-        self.log.debug("modification Time: " + str(timeLastModified))
-
         try:
             # get current time
             timeCurrent = time.time()
@@ -223,14 +222,19 @@ class checkModTime(threading.Thread):
             self.log.error("Unable to get current time for file: " + filepath)
             self.log.error("Error was: " + str(e))
 
-        self.log("current Time: " + str(timeCurrent))
         # compare ( >= limit)
-        if timeCurrent - timeLastModified >= timeToWait:
+        if timeCurrent - timeLastModified >= self.timeTillClosed:
+            self.log.debug("New closed file detected: " + str(filepath))
 
             eventMessage = splitFilePath(filepath, self.paths)
+            self.log.debug("eventMessage: " + str(eventMessage))
 
             # add to result list
             eventMessageList.append(eventMessage)
+            eventListToObserve.remove(filepath)
+        else:
+            self.log.debug("File was last modified " + str(timeCurrent - timeLastModified) + \
+                           " sec ago: " + str(filepath))
 
 
     def stop(self):
@@ -255,15 +259,16 @@ class WatchdogDetector():
 
         self.log.debug("init")
 
-        self.config = config
-        self.paths  = self.config["monDir"]
-        self.monDir = self.config["monDir"][0]
+        self.config         = config
+        self.paths          = self.config["monDir"]
+        self.monDir         = self.config["monDir"][0]
+        self.timeTillClosed = self.config["timeTillClosed"]
 
         self.observer = Observer()
         self.observer.schedule(WatchdogEventHandler(self.config), path=self.monDir, recursive=True)
         self.observer.start()
 
-        self.checkingThread = checkModTime(4, self.paths)
+        self.checkingThread = checkModTime(4, self.timeTillClosed, self.paths)
         self.checkingThread.start()
 
 
@@ -300,11 +305,13 @@ if __name__ == '__main__':
     from subprocess import call
 
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
-    SRC_PATH  = BASE_PATH + os.sep + "src"
+    SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
 
-    sys.path.append ( SRC_PATH )
+    if not SHARED_PATH in sys.path:
+        sys.path.append ( SHARED_PATH )
+    del SHARED_PATH
 
-    import shared.helperScript as helperScript
+    import helperScript
 
     logfilePath = BASE_PATH + "/logs/watchdogDetector.log"
     verbose     = True
@@ -315,11 +322,12 @@ if __name__ == '__main__':
 
     config = {
             #TODO normpath to make insensitive to "/" at the end
-            "monDir"       : [ BASE_PATH + "/data/source" ],
-            "monEventType" : "ON_CLOSE",
-#            "monEventType" : "IN_CREATE",
-            "monSubdirs"   : ["local"],
-            "monSuffixes"  : [".tif", ".cbf"]
+            "monDir"         : [ BASE_PATH + "/data/source" ],
+            "monEventType"   : "ON_CLOSE",
+#            "monEventType"   : "IN_CREATE",
+            "monSubdirs"     : ["local"],
+            "monSuffixes"    : [".tif", ".cbf"],
+            "timeTillClosed" : 2 #s
             }
 
     sourceFile = BASE_PATH + "/test_file.cbf"
