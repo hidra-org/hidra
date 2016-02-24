@@ -14,7 +14,6 @@ BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) 
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
 import shared.helpers as helpers
-from shared.LiveViewCommunicator import LiveViewCommunicator
 from sender.SignalHandler import SignalHandler
 from sender.TaskProvider import TaskProvider
 from sender.DataDispatcher import DataDispatcher
@@ -148,7 +147,7 @@ def argumentParsing():
     onScreen            = arguments.onScreen
 
     eventDetectorType   = arguments.eventDetectorType.lower()
-    supportedEDTypes    = ["inotifyx"]
+    supportedEDTypes    = ["inotifyx", "watchdog"]
     monitoredDir        = str(arguments.monitoredDir)
     monitoredSubdirs    = arguments.monitoredSubdirs
     localTarget         = str(arguments.localTarget)
@@ -163,7 +162,6 @@ def argumentParsing():
 
     # check if the eventDetectorType is supported
     helpers.checkEventDetectorType(eventDetectorType, supportedEDTypes)
-
 
     # check if directories exists
     helpers.checkDirExistance(logfilePath)
@@ -257,8 +255,8 @@ class Sender():
     def __exit__(self):
         self.stop()
 
-    def __del__(self):
-        self.stop()
+#    def __del__(self):
+#        self.stop()
 
 
 
@@ -271,6 +269,7 @@ if __name__ == '__main__':
         import time
         import cPickle
         from shutil import copyfile
+        from subprocess import call
 
         #enable logging
         helpers.initLogging(BASE_PATH + "/logs/dataManager.log", verbose=True, onScreenLogLevel="debug")
@@ -345,21 +344,45 @@ if __name__ == '__main__':
         testPr = Process ( target = Test_Receiver_Stream, args = (comPort, fixedRecvPort, receivingPort, receivingPort2))
         testPr.start()
 
+        sourceFile = BASE_PATH + "/test_file.cbf"
+        targetFileBase = BASE_PATH + "/data/source/local/raw/"
+        i = 100
 
-    sender = Sender()
+
 
     try:
-        while True:
-            if test:
-                copyfile(BASE_PATH + "/test_file.cbf", BASE_PATH + "/data/source/local/raw/100.cbf")
-                time.sleep(1)
-                break
-            else:
-                pass
+        sender = Sender()
+    except:
+        sender = None
+
+    try:
+        if sender:
+
+            while True:
+                if test:
+                    time.sleep(0.5)
+                    targetFile = targetFileBase + str(i) + ".cbf"
+                    logging.debug("copy to " + targetFile)
+                    call(["cp", sourceFile, targetFile])
+#                    copyfile(sourceFile, targetFile)
+                    i += 1
+
+                    time.sleep(1)
+                else:
+                    pass
     finally:
         if test:
             testPr.terminate()
-        sender.stop()
+
+            for number in range(100, i):
+                targetFile = targetFileBase + str(number) + ".cbf"
+                logging.debug("remove " + targetFile)
+                try:
+                    os.remove(targetFile)
+                except:
+                    pass
+        if sender:
+            sender.stop()
 
 
 

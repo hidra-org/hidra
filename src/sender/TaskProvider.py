@@ -58,11 +58,23 @@ class TaskProvider():
                     not self.config.has_key("monSuffixes") ):
                 self.log.error ("Configuration of wrong format")
 
-            #TODO forward self.config instead of seperate variables
-            self.eventDetector     = EventDetector(self.config)
+        elif self.config.has_key("eventDetectorType") and self.config["eventDetectorType"] == "watchdog":
+
+            from WatchdogDetector import WatchdogDetector as EventDetector
+
+            # check format of config
+            if ( not self.config.has_key("monDir") or
+                    not self.config.has_key("monEventType") or
+                    not self.config.has_key("monSubdirs") or
+                    not self.config.has_key("monSuffixes") or
+                    not self.config.has_key("timeTillClosed") ):
+                self.log.error ("Configuration of wrong format")
+
         else:
             self.log.error("Type of event detector is not supported: " + str( self.config["eventDetectorType"] ))
             return -1
+
+        self.eventDetector     = EventDetector(self.config)
 
         self.createSockets()
 
@@ -184,6 +196,7 @@ if __name__ == '__main__':
     from multiprocessing import Process
     import time
     from shutil import copyfile
+    from subprocess import call
 
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
     SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
@@ -224,12 +237,21 @@ if __name__ == '__main__':
     #enable logging
     helpers.initLogging(BASE_PATH + "/logs/taskProvider.log", verbose=True, onScreenLogLevel="debug")
 
+#    eventDetectorConfig = {
+#            "eventDetectorType"   : "inotifyx",
+#            "monDir"              : BASE_PATH + "/data/source",
+#            "monEventType"        : "IN_CLOSE_WRITE",
+#            "monSubdirs"          : ["commissioning", "current", "local"],
+#            "monSuffixes"         : [".tif", ".cbf"]
+#            }
+
     eventDetectorConfig = {
-            "eventDetectorType"   : "inotifyx",
+            "eventDetectorType"   : "watchdog",
             "monDir"              : BASE_PATH + "/data/source",
             "monEventType"        : "IN_CLOSE_WRITE",
             "monSubdirs"          : ["commissioning", "current", "local"],
-            "monSuffixes"         : [".tif", ".cbf"]
+            "monSuffixes"         : [".tif", ".cbf"],
+            "timeTillClosed"      : 1 #s
             }
 
     requestFwPort = "6001"
@@ -248,9 +270,19 @@ if __name__ == '__main__':
     routerSocket.connect(connectionStr)
     logging.info("=== routerSocket connected to " + connectionStr)
 
+    sourceFile = BASE_PATH + "/test_file.cbf"
+    targetFileBase = BASE_PATH + "/data/source/local/raw/"
+
+    i = 100
     try:
         while True:
-            copyfile(BASE_PATH + "/test_file.cbf", BASE_PATH + "/data/source/local/raw/100.cbf")
+            time.sleep(0.5)
+            targetFile = targetFileBase + str(i) + ".cbf"
+            logging.debug("copy to " + targetFile)
+#            copyfile(sourceFile, targetFile)
+            call(["cp", sourceFile, targetFile])
+            i += 1
+
             workload = routerSocket.recv_multipart()
             logging.info("=== next workload " + str(workload))
             time.sleep(1)
@@ -263,3 +295,9 @@ if __name__ == '__main__':
 
         routerSocket.close(0)
         context.destroy()
+
+        for number in range(100, i):
+            targetFile = targetFileBase + str(number) + ".cbf"
+            logging.debug("remove " + targetFile)
+            os.remove(targetFile)
+

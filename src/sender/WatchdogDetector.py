@@ -24,7 +24,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
     def __init__(self, config):
         self.log = self.getLogger()
         self.log.debug("init")
-        self.paths        = config["monDir"]
+        self.paths        = [ config["monDir"] ]
         self.monSubdirs   = config["monSubdirs"]
         patterns = []
         for suffix in config["monSuffixes"]:
@@ -63,7 +63,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
             self.detect_move   = True
         elif "close" in config["monEventType"].lower():
             self.log.debug("Activate on close event types")
-            self.detect_close   = True
+            self.detect_close  = True
 
 
     def getLogger(self):
@@ -261,7 +261,7 @@ class WatchdogDetector():
 
         self.config         = config
         self.paths          = self.config["monDir"]
-        self.monDir         = self.config["monDir"][0]
+        self.monDir         = self.config["monDir"]
         self.timeTillClosed = self.config["timeTillClosed"]
 
         self.observer = Observer()
@@ -323,12 +323,12 @@ if __name__ == '__main__':
 
     config = {
             #TODO normpath to make insensitive to "/" at the end
-            "monDir"         : [ BASE_PATH + "/data/source" ],
+            "monDir"         : BASE_PATH + "/data/source",
             "monEventType"   : "ON_CLOSE",
 #            "monEventType"   : "IN_CREATE",
             "monSubdirs"     : ["local"],
             "monSuffixes"    : [".tif", ".cbf"],
-            "timeTillClosed" : 2 #s
+            "timeTillClosed" : 1 #s
             }
 
     sourceFile = BASE_PATH + "/test_file.cbf"
@@ -343,9 +343,9 @@ if __name__ == '__main__':
         try:
             eventList = eventDetector.getNewEvent()
             if eventList:
-                print eventList
+                print "eventList:", eventList
             if copyFlag:
-                logging.debug("copy")
+                logging.debug("copy to " + targetFile)
                 targetFile = targetFileBase + str(i) + ".cbf"
                 call(["cp", sourceFile, targetFile])
                 i += 1
@@ -354,7 +354,7 @@ if __name__ == '__main__':
             else:
                 copyFlag = True
 
-            time.sleep(2)
+            time.sleep(1)
         except KeyboardInterrupt:
             break
 
