@@ -246,6 +246,7 @@ class InotifyxDetector():
 
 
                 eventMessage = self.getEventMessage(path, event.name)
+                self.log.debug("eventMessage" + str(eventMessage))
                 eventMessageList.append(eventMessage)
 
         return eventMessageList
@@ -302,39 +303,59 @@ class InotifyxDetector():
         self.stop()
 
 
-    def __del__(self):
-        self.stop()
-
-
 if __name__ == '__main__':
     import sys
+    import time
+    from subprocess import call
 
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
-    SRC_PATH  = BASE_PATH + os.sep + "src"
+    SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+    print "SHARED", SHARED_PATH
 
-    sys.path.append ( SRC_PATH )
+    if not SHARED_PATH in sys.path:
+        sys.path.append ( SHARED_PATH )
+    del SHARED_PATH
 
-    import shared.helperScript as helperScript
+    import helperScript
+
 
     logfilePath = BASE_PATH + "/logs/inotifyDetector.log"
-    verbose=True
+    verbose     = True
+    onScreen    = "debug"
 
     #enable logging
-    helperScript.initLogging(logfilePath, verbose)
+    helperScript.initLogging(logfilePath, verbose, onScreen)
 
     config = {
-            "monDir"       : [ BASE_PATH + "/data/source" ],
-            "monEventType" : "IN_MOVED_TO",
-            "monSubdirs"   : ["local"],
-            "monSuffixes"  : [".tif", ".cbf"]
+            "eventDetectorType"   : "inotifyx",
+            "monDir"              : BASE_PATH + "/data/source",
+            "monEventType"        : "IN_CLOSE_WRITE",
+            "monSubdirs"          : ["commissioning", "current", "local"],
+            "monSuffixes"         : [".tif", ".cbf"]
             }
 
-    eventDetector = InotifyDetector(config)
+    eventDetector = InotifyxDetector(config)
 
+    sourceFile = BASE_PATH + "/test_file.cbf"
+    targetFileBase = BASE_PATH + "/data/source/local/raw/"
+
+    i = 100
     while True:
         try:
+            logging.debug("copy")
+            targetFile = targetFileBase + str(i) + ".cbf"
+            call(["cp", sourceFile, targetFile])
+            i += 1
+
             eventList = eventDetector.getNewEvent()
             if eventList:
                 print eventList
+
+            time.sleep(1)
         except KeyboardInterrupt:
             break
+
+    for number in range(100, i):
+        targetFile = targetFileBase + str(number) + ".cbf"
+        logging.debug("remove " + targetFile)
+        os.remove(targetFile)
