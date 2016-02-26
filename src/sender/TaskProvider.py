@@ -1,5 +1,6 @@
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+import socket
 import zmq
 import os
 import logging
@@ -7,13 +8,27 @@ import sys
 import trace
 import cPickle
 
+try:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+except:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
+SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+
+if not SHARED_PATH in sys.path:
+    sys.path.append ( SHARED_PATH )
+del SHARED_PATH
+
+import helpers
+
+
 #
 #  --------------------------  class: TaskProvider  --------------------------------------
 #
 
 class TaskProvider():
+    def __init__ (self, eventDetectorConfig, requestFwPort, routerPort, logConfig = None, context = None):
+        global BASE_PATH
 
-    def __init__ (self, eventDetectorConfig, requestFwPort, routerPort, context = None):
         #eventDetectorConfig = {
         #        eventDetectorType   : ... ,
         #        monDir       : ... ,
@@ -21,6 +36,10 @@ class TaskProvider():
         #        monSubdirs   : ... ,
         #        monSuffixes  : ... ,
         #}
+
+        if logConfig:
+            logfile = BASE_PATH + os.sep + "logs" + os.sep + "taskProvider_.log"
+            helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
 
         self.log               = self.getLogger()
         self.log.debug("TaskProvider: __init__()")
@@ -191,49 +210,48 @@ class TaskProvider():
         self.stop()
 
 
+# cannot be defined in "if __name__ == '__main__'" because then it is unbound
+# see https://docs.python.org/2/library/multiprocessing.html#windows
+class requestResponder():
+    def __init__ (self, requestFwPort, logConfig = None, context = None):
+        if logConfig:
+            logfile = BASE_PATH + os.sep + "logs" + os.sep + "taskProvider__.log"
+            helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
+
+        self.context         = context or zmq.Context.instance()
+        self.requestFwSocket = self.context.socket(zmq.REP)
+        connectionStr   = "tcp://127.0.0.1:" + requestFwPort
+        self.requestFwSocket.bind(connectionStr)
+        logging.info("[requestResponder] requestFwSocket started (bind) for '" + connectionStr + "'")
+
+        self.run()
+
+
+    def run (self):
+        hostname = socket.gethostname()
+        logging.info("[requestResponder] Start run")
+        openRequests = [[hostname + ':6003', 1], [hostname + ':6004', 0]]
+        while True:
+            request = self.requestFwSocket.recv()
+            logging.debug("[requestResponder] Received request: " + str(request) )
+
+            self.requestFwSocket.send(cPickle.dumps(openRequests))
+            logging.debug("[requestResponder] Answer: " + str(openRequests) )
+
+
+    def __exit__(self):
+        self.requestFwSocket.close(0)
+        self.context.destroy()
+
+
 
 if __name__ == '__main__':
-    from multiprocessing import Process
+    from multiprocessing import Process, freeze_support
     import time
     from shutil import copyfile
     from subprocess import call
 
-#    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-    SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
-
-    if not SHARED_PATH in sys.path:
-        sys.path.append ( SHARED_PATH )
-    del SHARED_PATH
-
-    import helpers
-
-
-    class requestResponder():
-        def __init__ (self, requestFwPort, context = None):
-            self.context         = context or zmq.Context.instance()
-            self.requestFwSocket = self.context.socket(zmq.REP)
-            connectionStr   = "tcp://127.0.0.1:" + requestFwPort
-            self.requestFwSocket.bind(connectionStr)
-            logging.info("[requestResponder] requestFwSocket started (bind) for '" + connectionStr + "'")
-
-            self.run()
-
-
-        def run (self):
-            logging.info("[requestResponder] Start run")
-            openRequests = [['zitpcx19282:6003', 1], ['zitpcx19282:6004', 0]]
-            while True:
-                request = self.requestFwSocket.recv()
-                logging.debug("[requestResponder] Received request: " + str(request) )
-
-                self.requestFwSocket.send(cPickle.dumps(openRequests))
-                logging.debug("[requestResponder] Answer: " + str(openRequests) )
-
-
-        def __exit__(self):
-            self.requestFwSocket.close(0)
-            self.context.destroy()
+    freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
 
     logfile = BASE_PATH + os.sep + "logs" + os.sep + "taskProvider.log"
 
@@ -260,10 +278,12 @@ if __name__ == '__main__':
     requestFwPort = "6001"
     routerPort    = "7000"
 
-    taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, requestFwPort, routerPort) )
+    logConfig = "test"
+
+    taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, requestFwPort, routerPort, logConfig) )
     taskProviderPr.start()
 
-    requestResponderPr = Process ( target = requestResponder, args = ( requestFwPort, ) )
+    requestResponderPr = Process ( target = requestResponder, args = ( requestFwPort, logConfig) )
     requestResponderPr.start()
 
     context       = zmq.Context.instance()
@@ -278,7 +298,7 @@ if __name__ == '__main__':
 
     i = 100
     try:
-        while i <= 110:
+        while i <= 105:
             time.sleep(0.5)
             targetFile = targetFileBase + str(i) + ".cbf"
             logging.debug("copy to " + targetFile)
