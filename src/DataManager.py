@@ -10,7 +10,8 @@ import json
 from multiprocessing import Process, freeze_support
 import ConfigParser
 
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
+#BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
+BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
 import shared.helpers as helpers

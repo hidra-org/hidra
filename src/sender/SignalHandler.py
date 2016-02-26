@@ -11,7 +11,11 @@ import cPickle
 from multiprocessing import Process
 
 #path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
+#SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
+SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ) ) + os.sep + "shared"
+
+print SHARED_PATH
+
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -370,7 +374,8 @@ if __name__ == '__main__':
             self.requestFwSocket.close(0)
             self.context.destroy()
 
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+#    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
 
     logfile = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler.log"
     helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
