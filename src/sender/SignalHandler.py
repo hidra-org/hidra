@@ -11,11 +11,14 @@ import cPickle
 from multiprocessing import Process
 
 #path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+try:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+except:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( '__file__' ) )))
+#    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
+print "Signal: BASE_PATH", BASE_PATH
 #SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
-SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ) ) + os.sep + "shared"
-
-print SHARED_PATH
-
+SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -29,7 +32,8 @@ import helpers
 class SignalHandler():
 
     def __init__ (self, whiteList, comPort, signalFwPort, requestPort,
-                 context = None):
+                  logConfig = None, context = None):
+        print "__init__"
 
         # to get the logging only handling this class
         log                 = None
@@ -61,8 +65,16 @@ class SignalHandler():
         self.requestFwSocket = None
         self.requestSocket   = None
 
-        self.log = self.getLogger()
+
+        # Recreate the logger in the child
+        if logConfig:
+            logfile = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler_.log"
+            helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
+#            logging.config.dictConfig(logConfig)
+
+        self.log             = self.getLogger()
         self.log.debug("Init")
+        print "init logger"
 
         self.createSockets()
 
@@ -345,37 +357,48 @@ class SignalHandler():
         self.stop()
 
 
-if __name__ == '__main__':
+# cannot be defined in "if __name__ == '__main__'" because then it is unbound
+# see https://docs.python.org/2/library/multiprocessing.html#windows
+class requestPuller():
+    def __init__ (self, requestFwPort, logConfig = None, context = None):
 
-    from multiprocessing import Process
-    import time
-
-    class requestPuller():
-        def __init__ (self, requestFwPort, context = None):
-            self.context         = context or zmq.Context.instance()
-            self.requestFwSocket = self.context.socket(zmq.REQ)
-            connectionStr   = "tcp://localhost:" + requestFwPort
-            self.requestFwSocket.connect(connectionStr)
-            logging.info("[getRequests] requestFwSocket started (connect) for '" + connectionStr + "'")
-
-            self.run()
+        if logConfig:
+            logfile = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler__.log"
+            helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
 
 
-        def run (self):
-            logging.info("[getRequests] Start run")
-            while True:
+        self.context         = context or zmq.Context.instance()
+        self.requestFwSocket = self.context.socket(zmq.REQ)
+        connectionStr   = "tcp://localhost:" + requestFwPort
+        self.requestFwSocket.connect(connectionStr)
+        logging.info("[getRequests] requestFwSocket started (connect) for '" + connectionStr + "'")
+
+        self.run()
+
+
+    def run (self):
+        logging.info("[getRequests] Start run")
+        while True:
+            try:
                 self.requestFwSocket.send("")
                 logging.info("[getRequests] send")
                 requests = cPickle.loads(self.requestFwSocket.recv())
                 logging.info("[getRequests] Requests: " + str(requests))
                 time.sleep(0.25)
+            except Exception as e:
+                logging.error(str(e))
+                break
 
-        def __exit__(self):
-            self.requestFwSocket.close(0)
-            self.context.destroy()
+    def __exit__(self):
+        self.requestFwSocket.close(0)
+        self.context.destroy()
 
-#    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
+
+if __name__ == '__main__':
+    from multiprocessing import Process, freeze_support
+    import time
+
+    freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
 
     logfile = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler.log"
     helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
@@ -385,10 +408,48 @@ if __name__ == '__main__':
     comPort       = "6000"
     requestFwPort = "6001"
     requestPort   = "6002"
-    signalHandlerProcess = Process ( target = SignalHandler, args = (whiteList, comPort, requestFwPort, requestPort) )
+
+
+    logConfig = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'standard': {
+                'format': '[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s'
+            },
+        },
+        'handlers': {
+            'default': {
+                'level': 'DEBUG',
+                'class': 'logging.StreamHandler',
+            },
+            'logging.handlers.RotatingFileHandler' : {
+                'level': 'DEBUG',
+                'format': 'brief',
+                'filename': logfile,
+                'maxBytes': 1024,
+                'backupCount': 3
+            },
+        },
+        'loggers': {
+            '': {
+                'handlers': ['default'],
+                'level': 'INFO',
+                'propagate': True
+            },
+        }
+    }
+
+#    logging.basicConfig(level=loggingLevel,
+#                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
+#                        datefmt='%Y-%m-%d_%H:%M:%S',
+#                        filename=filenameFullPath,
+#                        filemode="a")
+
+    signalHandlerProcess = Process ( target = SignalHandler, args = (whiteList, comPort, requestFwPort, requestPort, logConfig) )
     signalHandlerProcess.start()
 
-    requestPullerProcess = Process ( target = requestPuller, args = (requestFwPort, ) )
+    requestPullerProcess = Process ( target = requestPuller, args = (requestFwPort, logConfig) )
     requestPullerProcess.start()
 
 
@@ -417,12 +478,12 @@ if __name__ == '__main__':
     context         = zmq.Context.instance()
 
     comSocket       = context.socket(zmq.REQ)
-    connectionStr   = "tcp://zitpcx19282:" + comPort
+    connectionStr   = "tcp://localhost:" + comPort
     comSocket.connect(connectionStr)
     logging.info("=== comSocket connected to " + connectionStr)
 
     requestSocket   = context.socket(zmq.PUSH)
-    connectionStr   = "tcp://zitpcx19282:" + requestPort
+    connectionStr   = "tcp://localhost:" + requestPort
     requestSocket.connect(connectionStr)
     logging.info("=== requestSocket connected to " + connectionStr)
 
