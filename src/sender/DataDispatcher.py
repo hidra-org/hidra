@@ -10,9 +10,10 @@ import traceback
 import cPickle
 import shutil
 
-#path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-#BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
-BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
+try:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+except:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
 SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
 
 if not SHARED_PATH in sys.path:
@@ -26,7 +27,7 @@ import helpers
 #
 class DataDispatcher():
 
-    def __init__(self, id, routerPort, chunkSize, fixedStreamId, localTarget = None, context = None):
+    def __init__(self, id, routerPort, chunkSize, fixedStreamId, localTarget = None, logConfig = None, context = None):
 
         self.log          = self.getLogger()
         self.id           = id
@@ -387,9 +388,11 @@ class DataDispatcher():
         self.stop()
 
 if __name__ == '__main__':
-    from multiprocessing import Process
+    from multiprocessing import Process, freeze_support
     import time
     from shutil import copyfile
+
+    freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
 
     logfile = BASE_PATH + os.sep + "logs" + os.sep + "dataDispatcher.log"
 
@@ -411,9 +414,11 @@ if __name__ == '__main__':
 
     localTarget   = BASE_PATH + os.sep + "data" + os.sep + "target"
     fixedStreamId = False
-    fixedStreamId = "zitpcx19282:6006"
+    fixedStreamId = "localhost:6006"
 
-    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, fixedStreamId, localTarget) )
+    logConfig = "test"
+
+    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, fixedStreamId, localTarget, logConfig) )
     dataDispatcherPr.start()
 
     context       = zmq.Context.instance()
@@ -439,7 +444,7 @@ if __name__ == '__main__':
             "relativePath": os.sep + "local" + os.sep + "raw",
             "filename"    : "100.cbf"
             }
-    targets = [['zitpcx19282:6005', 1], ['zitpcx19282:6006', 0]]
+    targets = [['localhost:6005', 1], ['localhost:6006', 0]]
 
     message = [ cPickle.dumps(metadata), cPickle.dumps(targets) ]
 #    message = [ cPickle.dumps(metadata)]
