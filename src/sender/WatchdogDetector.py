@@ -1,9 +1,8 @@
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Marco Strutz <marco.strutz@desy.de>'
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 import os
 import logging
-#from inotifyx.distinfo import version as __version__
 
 import time
 from watchdog.observers import Observer
@@ -109,7 +108,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
         if self.detect_modify:
             self.log.debug("On modify event detected")
             self.process(event)
-        if self.detect_close and False:
+        if self.detect_close:
             self.log.debug("On close event detected")
             if ( not event.is_directory ) and ( event.src_path not in eventListToObserve ):
                 eventListToObserve.append(event.src_path)
@@ -378,7 +377,7 @@ if __name__ == '__main__':
             else:
                 copyFlag = True
 
-#            time.sleep(0.5)
+            time.sleep(0.5)
         except KeyboardInterrupt:
             break
 
