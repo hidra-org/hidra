@@ -7,8 +7,9 @@ import os
 import logging
 import sys
 import json
+import time
 import cPickle
-from multiprocessing import Process, freeze_support
+from multiprocessing import Process, freeze_support, Queue
 import ConfigParser
 from logutils.queue import QueueHandler
 
@@ -189,7 +190,7 @@ class DataManager():
             self.extLogQueue = True
         else:
             # Get queue
-            self.logQueue    = multiprocessing.Queue(-1)
+            self.logQueue    = Queue(-1)
 
             # Get the log Configuration for the lisener
             if onScreen:
@@ -391,13 +392,12 @@ class Test_Receiver_Stream():
 if __name__ == '__main__':
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
 
-    test = True
+    test = False
 
     if test:
         import time
         from shutil import copyfile
         from subprocess import call
-        from multiprocessing import Queue
 
 
         logfile = BASE_PATH + os.sep + "logs" + os.sep + "dataManager_test.log"
@@ -434,17 +434,11 @@ if __name__ == '__main__':
             sender = DataManager(logQueue)
         except:
             sender = None
-    else:
-        try:
-            sender = DataManager()
-        except:
-            sender = None
 
-    i = 100
-    try:
-        if sender:
-            while i <= 105:
-                if test:
+        i = 100
+        try:
+            if sender:
+                while i <= 105:
                     time.sleep(0.5)
                     targetFile = targetFileBase + str(i) + ".cbf"
                     logging.debug("copy to " + targetFile)
@@ -453,27 +447,32 @@ if __name__ == '__main__':
                     i += 1
 
                     time.sleep(1)
-                else:
-                    pass
-    except Exception as e:
-        logging.error("Exception detected: " + str(e))
-    finally:
-        if sender:
-            sender.stop()
-        if test:
-            time.sleep(3)
-            testPr.terminate()
+        except Exception as e:
+            logging.error("Exception detected: " + str(e))
+        finally:
+            if sender:
+                sender.stop()
+            if test:
+                time.sleep(3)
+                testPr.terminate()
 
-            for number in range(100, i):
-                targetFile = targetFileBase + str(number) + ".cbf"
-                logging.debug("remove " + targetFile)
-                try:
-                    os.remove(targetFile)
-                except:
-                    pass
+                for number in range(100, i):
+                    targetFile = targetFileBase + str(number) + ".cbf"
+                    logging.debug("remove " + targetFile)
+                    try:
+                        os.remove(targetFile)
+                    except:
+                        pass
 
-            logQueue.put_nowait(None)
-            logQueueListener.stop()
+                logQueue.put_nowait(None)
+                logQueueListener.stop()
 
+    else:
+        sender = DataManager()
 
+        while True:
+            try:
+                pass
+            except:
+                break
 
