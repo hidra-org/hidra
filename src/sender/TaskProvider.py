@@ -7,6 +7,7 @@ import logging
 import sys
 import trace
 import cPickle
+from logutils.queue import QueueHandler
 
 try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -26,7 +27,7 @@ import helpers
 #
 
 class TaskProvider():
-    def __init__ (self, eventDetectorConfig, requestFwPort, routerPort, logConfig = None, context = None):
+    def __init__ (self, eventDetectorConfig, requestFwPort, routerPort, logQueue, context = None):
         global BASE_PATH
 
         #eventDetectorConfig = {
@@ -37,11 +38,7 @@ class TaskProvider():
         #        monSuffixes  : ... ,
         #}
 
-        if logConfig:
-            logfile = BASE_PATH + os.sep + "logs" + os.sep + "taskProvider_.log"
-            helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
-
-        self.log               = self.getLogger()
+        self.log               = self.getLogger(logQueue)
         self.log.debug("TaskProvider: __init__()")
 
         self.eventDetector     = None
@@ -93,7 +90,7 @@ class TaskProvider():
             self.log.error("Type of event detector is not supported: " + str( self.config["eventDetectorType"] ))
             return -1
 
-        self.eventDetector     = EventDetector(self.config)
+        self.eventDetector     = EventDetector(self.config, logQueue)
 
         self.createSockets()
 
@@ -107,8 +104,17 @@ class TaskProvider():
             self.log.debug("Error was: " + str(trace))
 
 
-    def getLogger (self):
+    # Send all logs to the main process
+    # The worker configuration is done at the start of the worker process run.
+    # Note that on Windows you can't rely on fork semantics, so each process
+    # will run the logging configuration code when it starts.
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("TaskProvider")
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
         return logger
 
 
@@ -213,30 +219,41 @@ class TaskProvider():
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
 class requestResponder():
-    def __init__ (self, requestFwPort, logConfig = None, context = None):
-        if logConfig:
-            logfile = BASE_PATH + os.sep + "logs" + os.sep + "taskProvider__.log"
-            helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
+    def __init__ (self, requestFwPort, logQueue, context = None):
+        # Send all logs to the main process
+        self.log = self.getLogger(logQueue)
 
         self.context         = context or zmq.Context.instance()
         self.requestFwSocket = self.context.socket(zmq.REP)
         connectionStr   = "tcp://127.0.0.1:" + requestFwPort
         self.requestFwSocket.bind(connectionStr)
-        logging.info("[requestResponder] requestFwSocket started (bind) for '" + connectionStr + "'")
+        self.log.info("[requestResponder] requestFwSocket started (bind) for '" + connectionStr + "'")
 
         self.run()
 
+    # Send all logs to the main process
+    # The worker configuration is done at the start of the worker process run.
+    # Note that on Windows you can't rely on fork semantics, so each process
+    # will run the logging configuration code when it starts.
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
+        logger = logging.getLogger("requestResponder")
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
+        return logger
 
     def run (self):
         hostname = socket.gethostname()
-        logging.info("[requestResponder] Start run")
+        self.log.info("[requestResponder] Start run")
         openRequests = [[hostname + ':6003', 1], [hostname + ':6004', 0]]
         while True:
             request = self.requestFwSocket.recv()
-            logging.debug("[requestResponder] Received request: " + str(request) )
+            self.log.debug("[requestResponder] Received request: " + str(request) )
 
             self.requestFwSocket.send(cPickle.dumps(openRequests))
-            logging.debug("[requestResponder] Answer: " + str(openRequests) )
+            self.log.debug("[requestResponder] Answer: " + str(openRequests) )
 
 
     def __exit__(self):
@@ -246,7 +263,7 @@ class requestResponder():
 
 
 if __name__ == '__main__':
-    from multiprocessing import Process, freeze_support
+    from multiprocessing import Process, freeze_support, Queue
     import time
     from shutil import copyfile
     from subprocess import call
@@ -254,9 +271,6 @@ if __name__ == '__main__':
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
 
     logfile = BASE_PATH + os.sep + "logs" + os.sep + "taskProvider.log"
-
-    #enable logging
-    helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
 
 #    eventDetectorConfig = {
 #            "eventDetectorType"   : "inotifyx",
@@ -278,12 +292,26 @@ if __name__ == '__main__':
     requestFwPort = "6001"
     routerPort    = "7000"
 
-    logConfig = "test"
+    logQueue = Queue(-1)
 
-    taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, requestFwPort, routerPort, logConfig) )
+    # Get the log Configuration for the lisener
+    h1, h2 = helpers.getLogHandlers(logfile, verbose=True, onScreenLogLevel="debug")
+
+    # Start queue listener using the stream handler above
+    logQueueListener    = helpers.CustomQueueListener(logQueue, h1, h2)
+    logQueueListener.start()
+
+    # Create log and set handler to queue handle
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG) # Log level = DEBUG
+    qh = QueueHandler(logQueue)
+    root.addHandler(qh)
+
+
+    taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, requestFwPort, routerPort, logQueue) )
     taskProviderPr.start()
 
-    requestResponderPr = Process ( target = requestResponder, args = ( requestFwPort, logConfig) )
+    requestResponderPr = Process ( target = requestResponder, args = ( requestFwPort, logQueue) )
     requestResponderPr.start()
 
     context       = zmq.Context.instance()
@@ -323,4 +351,7 @@ if __name__ == '__main__':
             targetFile = targetFileBase + str(number) + ".cbf"
             logging.debug("remove " + targetFile)
             os.remove(targetFile)
+
+        logQueue.put_nowait(None)
+        logQueueListener.stop()
 

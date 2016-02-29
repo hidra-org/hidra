@@ -5,6 +5,7 @@ import os
 import logging
 from inotifyx import binding
 from inotifyx.distinfo import version as __version__
+from logutils.queue import QueueHandler
 
 constants = {}
 
@@ -76,9 +77,9 @@ class InotifyEvent(object):
 # Copyright (c) 2009-2011 Forest Bond
 class InotifyxDetector():
 
-    def __init__(self, config):
+    def __init__(self, config, logQueue):
 
-        self.log                = self.getLogger()
+        self.log = self.getLogger(logQueue)
 
         # check format of config
         checkPassed = True
@@ -121,8 +122,17 @@ class InotifyxDetector():
         ]
 
 
-    def getLogger(self):
+    # Send all logs to the main process
+    # The worker configuration is done at the start of the worker process run.
+    # Note that on Windows you can't rely on fork semantics, so each process
+    # will run the logging configuration code when it starts.
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("inotifyDetector")
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
         return logger
 
 
@@ -307,6 +317,7 @@ if __name__ == '__main__':
     import sys
     import time
     from subprocess import call
+    from multiprocessing import Queue
 
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
     SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
@@ -318,13 +329,23 @@ if __name__ == '__main__':
 
     import helpers
 
+    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "inotifyDetector.log"
 
-    logfilePath = BASE_PATH + os.sep + "logs" + os.sep + "inotifyDetector.log"
-    verbose     = True
-    onScreen    = "debug"
+    logQueue = Queue(-1)
 
-    #enable logging
-    helpers.initLogging(logfilePath, verbose, onScreen)
+    # Get the log Configuration for the lisener
+    h1, h2 = helpers.getLogHandlers(logfile, verbose=True, onScreenLogLevel="debug")
+
+    # Start queue listener using the stream handler above
+    logQueueListener = helpers.CustomQueueListener(logQueue, h1, h2)
+    logQueueListener.start()
+
+    # Create log and set handler to queue handle
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG) # Log level = DEBUG
+    qh = QueueHandler(logQueue)
+    root.addHandler(qh)
+
 
     config = {
             "eventDetectorType" : "inotifyx",
@@ -334,7 +355,7 @@ if __name__ == '__main__':
             "monSuffixes"       : [".tif", ".cbf"]
             }
 
-    eventDetector = InotifyxDetector(config)
+    eventDetector = InotifyxDetector(config, logQueue)
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
     targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
@@ -360,3 +381,6 @@ if __name__ == '__main__':
         targetFile = targetFileBase + str(number) + ".cbf"
         logging.debug("remove " + targetFile)
         os.remove(targetFile)
+
+    logQueue.put_nowait(None)
+    logQueueListener.stop()

@@ -9,6 +9,7 @@ import logging
 import traceback
 import cPickle
 import shutil
+from logutils.queue import QueueHandler
 
 try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -27,10 +28,10 @@ import helpers
 #
 class DataDispatcher():
 
-    def __init__(self, id, routerPort, chunkSize, fixedStreamId, localTarget = None, logConfig = None, context = None):
+    def __init__(self, id, routerPort, chunkSize, fixedStreamId, logQueue, localTarget = None, context = None):
 
-        self.log          = self.getLogger()
         self.id           = id
+        self.log          = self.getLogger(logQueue)
 
         self.log.debug("DataDispatcher Nr. " + str(self.id) + " started.")
 
@@ -73,8 +74,17 @@ class DataDispatcher():
         self.log.info("Start routerSocket (connect): '" + str(connectionStr) + "'")
 
 
-    def getLogger(self):
-        logger = logging.getLogger("DataDispatcher")
+    # Send all logs to the main process
+    # The worker configuration is done at the start of the worker process run.
+    # Note that on Windows you can't rely on fork semantics, so each process
+    # will run the logging configuration code when it starts.
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
+        logger = logging.getLogger("DataDispatcher-" + str(self.id))
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
         return logger
 
 
@@ -388,7 +398,7 @@ class DataDispatcher():
         self.stop()
 
 if __name__ == '__main__':
-    from multiprocessing import Process, freeze_support
+    from multiprocessing import Process, freeze_support, Queue
     import time
     from shutil import copyfile
 
@@ -396,12 +406,24 @@ if __name__ == '__main__':
 
     logfile = BASE_PATH + os.sep + "logs" + os.sep + "dataDispatcher.log"
 
-    #enable logging
-    helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
+    logQueue = Queue(-1)
+
+    # Get the log Configuration for the lisener
+    h1, h2 = helpers.getLogHandlers(logfile, verbose=True, onScreenLogLevel="debug")
+
+    # Start queue listener using the stream handler above
+    logQueueListener    = helpers.CustomQueueListener(logQueue, h1, h2)
+    logQueueListener.start()
+
+    # Create log and set handler to queue handle
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG) # Log level = DEBUG
+    qh = QueueHandler(logQueue)
+    root.addHandler(qh)
+
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
     targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep + "100.cbf"
-
 
     copyfile(sourceFile, targetFile)
     time.sleep(0.5)
@@ -418,7 +440,7 @@ if __name__ == '__main__':
 
     logConfig = "test"
 
-    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, fixedStreamId, localTarget, logConfig) )
+    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, fixedStreamId, logQueue, localTarget) )
     dataDispatcherPr.start()
 
     context       = zmq.Context.instance()
@@ -468,3 +490,7 @@ if __name__ == '__main__':
         receivingSocket.close(0)
         receivingSocket2.close(0)
         context.destroy()
+
+        logQueue.put_nowait(None)
+        logQueueListener.stop()
+

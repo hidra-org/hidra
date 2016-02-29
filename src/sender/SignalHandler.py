@@ -8,7 +8,8 @@ import sys
 import traceback
 import copy
 import cPickle
-from multiprocessing import Process
+from logutils.queue import QueueHandler
+
 
 #path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 try:
@@ -32,12 +33,10 @@ import helpers
 class SignalHandler():
 
     def __init__ (self, whiteList, comPort, signalFwPort, requestPort,
-                  logConfig = None, context = None):
-        print "__init__"
+                  logQueue, context = None):
 
         # to get the logging only handling this class
         log                 = None
-
 
         self.context         = context or zmq.Context()
         self.localhost       = "127.0.0.1"
@@ -65,16 +64,9 @@ class SignalHandler():
         self.requestFwSocket = None
         self.requestSocket   = None
 
-
-        # Recreate the logger in the child
-        if logConfig:
-            logfile = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler_.log"
-            helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
-#            logging.config.dictConfig(logConfig)
-
-        self.log             = self.getLogger()
+        # Send all logs to the main process
+        self.log = self.getLogger(logQueue)
         self.log.debug("Init")
-        print "init logger"
 
         self.createSockets()
 
@@ -88,8 +80,17 @@ class SignalHandler():
             self.log.debug("Error was: " + str(trace))
 
 
-    def getLogger (self):
+    # Send all logs to the main process
+    # The worker configuration is done at the start of the worker process run.
+    # Note that on Windows you can't rely on fork semantics, so each process
+    # will run the logging configuration code when it starts.
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("SignalHandler")
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
         return logger
 
 
@@ -360,12 +361,11 @@ class SignalHandler():
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
 class requestPuller():
-    def __init__ (self, requestFwPort, logConfig = None, context = None):
+    def __init__ (self, requestFwPort, logQueue = None, context = None):
 
-        if logConfig:
-            logfile = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler__.log"
-            helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
-
+        # Send all logs to the main process
+        if logQueue:
+            helpers.logConfigurer(logQueue)
 
         self.context         = context or zmq.Context.instance()
         self.requestFwSocket = self.context.socket(zmq.REQ)
@@ -395,61 +395,38 @@ class requestPuller():
 
 
 if __name__ == '__main__':
-    from multiprocessing import Process, freeze_support
+    from multiprocessing import Process, freeze_support, Queue
     import time
 
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
-
-    logfile = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler.log"
-    helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
-
 
     whiteList     = ["localhost", "zitpcx19282"]
     comPort       = "6000"
     requestFwPort = "6001"
     requestPort   = "6002"
 
+    logfile       = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler.log"
 
-    logConfig = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'standard': {
-                'format': '[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s'
-            },
-        },
-        'handlers': {
-            'default': {
-                'level': 'DEBUG',
-                'class': 'logging.StreamHandler',
-            },
-            'logging.handlers.RotatingFileHandler' : {
-                'level': 'DEBUG',
-                'format': 'brief',
-                'filename': logfile,
-                'maxBytes': 1024,
-                'backupCount': 3
-            },
-        },
-        'loggers': {
-            '': {
-                'handlers': ['default'],
-                'level': 'INFO',
-                'propagate': True
-            },
-        }
-    }
+    logQueue = Queue(-1)
 
-#    logging.basicConfig(level=loggingLevel,
-#                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
-#                        datefmt='%Y-%m-%d_%H:%M:%S',
-#                        filename=filenameFullPath,
-#                        filemode="a")
+    # Get the log Configuration for the lisener
+    h1, h2 = helpers.getLogHandlers(logfile, verbose=True, onScreenLogLevel="debug")
 
-    signalHandlerProcess = Process ( target = SignalHandler, args = (whiteList, comPort, requestFwPort, requestPort, logConfig) )
+    # Start queue listener using the stream handler above
+    logQueueListener    = helpers.CustomQueueListener(logQueue, h1, h2)
+    logQueueListener.start()
+
+    # Create log and set handler to queue handle
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG) # Log level = DEBUG
+    qh = QueueHandler(logQueue)
+    root.addHandler(qh)
+
+
+    signalHandlerProcess = Process ( target = SignalHandler, args = (whiteList, comPort, requestFwPort, requestPort, logQueue) )
     signalHandlerProcess.start()
 
-    requestPullerProcess = Process ( target = requestPuller, args = (requestFwPort, logConfig) )
+    requestPullerProcess = Process ( target = requestPuller, args = (requestFwPort, logQueue) )
     requestPullerProcess.start()
 
 
@@ -528,4 +505,8 @@ if __name__ == '__main__':
     requestSocket.close(0)
     requestFwSocket.close(0)
     context.destroy()
+
+    logQueue.put_nowait(None)
+    logQueueListener.stop()
+
 

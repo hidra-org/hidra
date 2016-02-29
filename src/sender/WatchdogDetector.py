@@ -11,6 +11,7 @@ import sys
 import copy
 from multiprocessing.dummy import Pool as ThreadPool
 import threading
+from logutils.queue import QueueHandler
 
 
 eventMessageList = []
@@ -18,9 +19,9 @@ eventListToObserve = []
 
 
 class WatchdogEventHandler(PatternMatchingEventHandler):
-    def __init__(self, id, config):
+    def __init__(self, id, config, logQueue):
         self.id = id
-        self.log = self.getLogger()
+        self.log = self.getLogger(logQueue)
 
         self.log.debug("init")
 
@@ -34,6 +35,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
         WatchdogEventHandler.patterns = patterns
 
         self.log.debug("init: super")
+#        PatternMatchingEventHandler.__init__()
         super(WatchdogEventHandler, self,).__init__()
 
         # learn what events to detect
@@ -64,8 +66,17 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
             self.detect_close  = True
 
 
-    def getLogger(self):
+    # Send all logs to the main process
+    # The worker configuration is done at the start of the worker process run.
+    # Note that on Windows you can't rely on fork semantics, so each process
+    # will run the logging configuration code when it starts.
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("WatchdogEventHandler-" + str(self.id))
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
         return logger
 
 
@@ -96,7 +107,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
             self.log.debug("On move event detected")
             self.process(event)
         if self.detect_close:
-            self.log.debug("On close event detected")
+            self.log.debug("On close event detected (from create)")
             if ( not event.is_directory ):
                 self.log.debug("Append event to eventListToObserve")
                 eventListToObserve.append(event.src_path)
@@ -109,8 +120,8 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
             self.log.debug("On modify event detected")
             self.process(event)
         if self.detect_close:
-            self.log.debug("On close event detected")
             if ( not event.is_directory ) and ( event.src_path not in eventListToObserve ):
+                self.log.debug("On close event detected (from modify)")
                 eventListToObserve.append(event.src_path)
 
 
@@ -167,8 +178,8 @@ def splitFilePath(filepath, paths):
 
 
 class checkModTime(threading.Thread):
-    def __init__(self, NumberOfThreads, timeTillClosed, monDir, lock):
-        self.log = self.getLogger()
+    def __init__(self, NumberOfThreads, timeTillClosed, monDir, lock, logQueue):
+        self.log = self.getLogger(logQueue)
 
         self.log.debug("init")
         #Make the Pool of workers
@@ -182,10 +193,18 @@ class checkModTime(threading.Thread):
         threading.Thread.__init__(self)
 
 
-    def getLogger(self):
+    # Send all logs to the main process
+    # The worker configuration is done at the start of the worker process run.
+    # Note that on Windows you can't rely on fork semantics, so each process
+    # will run the logging configuration code when it starts.
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("checkModTime")
-        return logger
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
 
+        return logger
 
     def run(self):
         global eventListToObserve
@@ -235,7 +254,7 @@ class checkModTime(threading.Thread):
             self.log.debug("checkLastModified-" + str(threadName) + " eventMessageList" + str(eventMessageList))
             eventMessageList.append(eventMessage)
             eventListToObserve.remove(filepath)
-            self.log.debug("checkLastModified-" + str(threadName) + " eventMessageList" + str(eventMessageList))
+            self.log.debug("checkLastModified-" + str(threadName) + " eventMessageLi (from modify)st" + str(eventMessageList))
             self.lock.release()
         else:
             self.log.debug("File was last modified " + str(timeCurrent - timeLastModified) + \
@@ -258,9 +277,8 @@ class checkModTime(threading.Thread):
 
 
 class WatchdogDetector():
-
-    def __init__(self, config):
-        self.log = self.getLogger()
+    def __init__(self, config, logQueue):
+        self.log = self.getLogger(logQueue)
 
         self.log.debug("init")
 
@@ -280,19 +298,28 @@ class WatchdogDetector():
         observerId = 0
         for path in self.paths:
             observer = Observer()
-            observer.schedule(WatchdogEventHandler(observerId, self.config), path, recursive=True)
+            observer.schedule(WatchdogEventHandler(observerId, self.config, logQueue), path, recursive=True)
             observer.start()
             self.log.info("Started observer for directory: " + path)
 
             self.observerThreads.append(observer)
             observerId += 1
 
-        self.checkingThread = checkModTime(4, self.timeTillClosed, self.monDir, self.lock)
+        self.checkingThread = checkModTime(4, self.timeTillClosed, self.monDir, self.lock, logQueue)
         self.checkingThread.start()
 
 
-    def getLogger(self):
+    # Send all logs to the main process
+    # The worker configuration is done at the start of the worker process run.
+    # Note that on Windows you can't rely on fork semantics, so each process
+    # will run the logging configuration code when it starts.
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("WatchdogDetector")
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
         return logger
 
 
@@ -325,6 +352,7 @@ if __name__ == '__main__':
     import sys
     from shutil import copyfile
     from subprocess import call
+    from multiprocessing import Queue
 
 #    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
@@ -336,13 +364,23 @@ if __name__ == '__main__':
 
     import helpers
 
+    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "watchdogDetector.log"
 
-    logfilePath = BASE_PATH + os.sep + "logs" + os.sep + "watchdogDetector.log"
-    verbose     = True
-    onScreen    = "debug"
+    logQueue = Queue(-1)
 
-    #enable logging
-    helpers.initLogging(logfilePath, verbose, onScreen)
+    # Get the log Configuration for the lisener
+    h1, h2 = helpers.getLogHandlers(logfile, verbose=True, onScreenLogLevel="debug")
+
+    # Start queue listener using the stream handler above
+    logQueueListener = helpers.CustomQueueListener(logQueue, h1, h2)
+    logQueueListener.start()
+
+    # Create log and set handler to queue handle
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG) # Log level = DEBUG
+    qh = QueueHandler(logQueue)
+    root.addHandler(qh)
+
 
     config = {
             #TODO normpath to make insensitive to "/" at the end
@@ -357,7 +395,7 @@ if __name__ == '__main__':
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
     targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
 
-    eventDetector = WatchdogDetector(config)
+    eventDetector = WatchdogDetector(config, logQueue)
 
     copyFlag = False
 
@@ -386,3 +424,6 @@ if __name__ == '__main__':
         targetFile = targetFileBase + str(number) + ".cbf"
         logging.debug("remove " + targetFile)
         os.remove(targetFile)
+
+    logQueue.put_nowait(None)
+    logQueueListener.stop()

@@ -1,9 +1,11 @@
 import os
 import platform
 import logging
+import logging.handlers
 import sys
 import shutil
 import zmq
+from logutils.queue import QueueHandler, QueueListener
 from version import __version__
 
 
@@ -247,6 +249,128 @@ def checkHost(hostname, whiteList, log):
     return False
 
 
+# http://stackoverflow.com/questions/25585518/python-logging-logutils-with-queuehandler-and-queuelistener#25594270
+class CustomQueueListener(QueueListener):
+    def __init__(self, queue, *handlers):
+        super(CustomQueueListener, self).__init__(queue, *handlers)
+        """
+        Initialise an instance with the specified queue and
+        handlers.
+        """
+        # Changing this to a list from tuple in the parent class
+        self.handlers = list(handlers)
+
+    def handle(self, record):
+        """
+        Override handle a record.
+
+        This just loops through the handlers offering them the record
+        to handle.
+
+        :param record: The record to handle.
+        """
+        record = self.prepare(record)
+        for handler in self.handlers:
+            if record.levelno >= handler.level: # This check is not in the parent class
+                handler.handle(record)
+
+    def addHandler(self, hdlr):
+        """
+        Add the specified handler to this logger.
+        """
+        if not (hdlr in self.handlers):
+            self.handlers.append(hdlr)
+
+    def removeHandler(self, hdlr):
+        """
+        Remove the specified handler from this logger.
+        """
+        if hdlr in self.handlers:
+            hdlr.close()
+            self.handlers.remove(hdlr)
+
+
+# Get the log Configuration for the lisener
+def getLogHandlers(logfile, verbose, onScreenLogLevel = False):
+    # Enable more detailed logging if verbose-option has been set
+    logLevel = logging.INFO
+    if verbose:
+        logLevel = logging.DEBUG
+
+    # Set format
+    datef='%Y-%m-%d %H:%M:%S'
+    f = '[%(asctime)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s'
+
+    # Setup file handler to output to file
+    h1 = logging.handlers.RotatingFileHandler(logfile, 'a', 3000000, 5)
+    f1 = logging.Formatter(datefmt=datef,fmt=f)
+    h1.setFormatter(f1)
+    h1.setLevel(logLevel)
+
+#    logConfig = {
+#        'version': 1,
+#        'disable_existing_loggers': False,
+#        'formatters': {
+#            'standard': {
+#                'format': '[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s'
+#            },
+#        },
+#        'handlers': {
+#            'default': {
+#                'level': 'DEBUG',
+#                'class': 'logging.StreamHandler',
+#            },
+#            'logging.handlers.RotatingFileHandler' : {
+#                'level': 'DEBUG',
+#                'format': 'brief',
+#                'filename': logfile,
+#                'maxBytes': 1024,
+#                'backupCount': 3
+#            },
+#        },
+#        'loggers': {
+#            '': {
+#                'handlers': ['default'],
+#                'level': 'INFO',
+#                'propagate': True
+#            },
+#        }
+#    }
+
+    # Setup stream handler to output to console
+    if onScreenLogLevel:
+        onScreenLogLevelLower = onScreenLogLevel.lower()
+        if onScreenLogLevelLower in ["debug", "info", "warning", "error", "critical"]:
+
+            f  = "[%(asctime)s] > %(message)s"
+
+            if onScreenLogLevelLower == "debug":
+                screenLogLevel = logging.DEBUG
+                f = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s"
+
+                if not verbose:
+                    logging.error("Logging on Screen: Option DEBUG in only active when using verbose option as well (Fallback to INFO).")
+            elif onScreenLogLevelLower == "info":
+                screenLogLevel = logging.INFO
+            elif onScreenLogLevelLower == "warning":
+                screenLogLevel = logging.WARNING
+            elif onScreenLogLevelLower == "error":
+                screenLogLevel = logging.ERROR
+            elif onScreenLogLevelLower == "critical":
+                screenLogLevel = logging.CRITICAL
+
+            h2 = logging.StreamHandler()
+            f2 = logging.Formatter(datefmt=datef, fmt=f)
+            h2.setFormatter(f2)
+            h2.setLevel(screenLogLevel)
+        else:
+            logging.error("Logging on Screen: Option " + str(onScreenLogLevel) + " is not supported.")
+
+        return h1, h2
+    else:
+        return h1
+
+
 def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
     #@see https://docs.python.org/2/howto/logging-cookbook.html
 
@@ -257,7 +381,8 @@ def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
 
     #log everything to file
     logging.basicConfig(level=loggingLevel,
-                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
+#                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
+                        format='%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s',
                         datefmt='%Y-%m-%d_%H:%M:%S',
                         filename=filenameFullPath,
                         filemode="a")

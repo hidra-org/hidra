@@ -10,6 +10,7 @@ import json
 import cPickle
 from multiprocessing import Process, freeze_support
 import ConfigParser
+from logutils.queue import QueueHandler
 
 try:
     BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
@@ -161,9 +162,6 @@ def argumentParsing():
     # check if logfile is writable
     helpers.checkLogFileWritable(logfilePath, logfileName)
 
-    #enable logging
-    helpers.initLogging(logfileFullPath, verbose, onScreen)
-
     # check if the eventDetectorType is supported
     helpers.checkEventDetectorType(eventDetectorType, supportedEDTypes)
 
@@ -176,9 +174,37 @@ def argumentParsing():
     return arguments
 
 
-class Sender():
-    def __init__(self):
+class DataManager():
+    def __init__(self, logQueue = None):
         arguments = argumentParsing()
+
+        logfilePath         = arguments.logfilePath
+        logfileName         = arguments.logfileName
+        logfile             = os.path.join(logfilePath, logfileName)
+        verbose             = arguments.verbose
+        onScreen            = arguments.onScreen
+
+        if logQueue:
+            self.logQueue    = logQueue
+            self.extLogQueue = True
+        else:
+            # Get queue
+            self.logQueue    = multiprocessing.Queue(-1)
+
+            # Get the log Configuration for the lisener
+            if onScreen:
+                h1, h2 = helpers.getLogHandlers(logfile, verbose, onScreen)
+
+                # Start queue listener using the stream handler above
+                self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1, h2)
+            else:
+                h1 = helpers.getLogHandlers(logfile, verbose, onScreen)
+
+                # Start queue listener using the stream handler above
+                self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1)
+
+            self.logQueueListener.start()
+
 
         self.comPort             = arguments.comPort
         self.whitelist           = arguments.whitelist
@@ -230,10 +256,24 @@ class Sender():
 
         self.run()
 
+    # Send all logs to the main process
+    # The worker configuration is done at the start of the worker process run.
+    # Note that on Windows you can't rely on fork semantics, so each process
+    # will run the logging configuration code when it starts.
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
+        logger = logging.getLogger("DataManager")
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
+        return logger
+
+
 
     def run(self):
         logging.info("Start SignalHandler...")
-        self.signalHandlerPr = Process ( target = SignalHandler, args = (self.whitelist, self.comPort, self.requestFwPort, self.requestPort) )
+        self.signalHandlerPr = Process ( target = SignalHandler, args = (self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue) )
         self.signalHandlerPr.start()
         logging.debug("Start SignalHandler...done")
 
@@ -241,19 +281,24 @@ class Sender():
         time.sleep(0.5)
 
         logging.info("Start TaskProvider...")
-        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.requestFwPort, self.routerPort) )
+        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.requestFwPort, self.routerPort, self.logQueue) )
         self.taskProviderPr.start()
         logging.info("Start TaskProvider...done")
 
         logging.info("Start DataDispatcher...")
-        self.dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, self.routerPort, self.chunkSize, self.fixedStreamId, self.localTarget) )
+        self.dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, self.routerPort, self.chunkSize, self.fixedStreamId, self.logQueue, self.localTarget) )
         self.dataDispatcherPr.start()
         logging.info("Start DataDispatcher...done")
+
 
     def stop(self):
         self.signalHandlerPr.terminate()
         self.taskProviderPr.terminate()
         self.dataDispatcherPr.terminate()
+
+        if not self.extLogQueue:
+            self.logQueue.put_nowait(None)
+            self.logQueueListener.stop()
 
 
     def __exit__(self):
@@ -263,41 +308,54 @@ class Sender():
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
 class Test_Receiver_Stream():
-    def __init__(self, comPort, fixedRecvPort, receivingPort, receivingPort2, logConfig):
+    def __init__(self, comPort, fixedRecvPort, receivingPort, receivingPort2, logQueue):
 
-        if logConfig:
-            logfile = BASE_PATH + os.sep + "logs" + os.sep + "dataManager_test_.log"
-            helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
+        self.log = self.getLogger(logQueue)
 
-        context       = zmq.Context.instance()
+        context = zmq.Context.instance()
 
         self.comSocket       = context.socket(zmq.REQ)
         connectionStr   = "tcp://localhost:" + comPort
         self.comSocket.connect(connectionStr)
-        logging.info("=== comSocket connected to " + connectionStr)
+        self.log.info("=== comSocket connected to " + connectionStr)
 
         self.fixedRecvSocket = context.socket(zmq.PULL)
         connectionStr   = "tcp://0.0.0.0:" + fixedRecvPort
         self.fixedRecvSocket.bind(connectionStr)
-        logging.info("=== fixedRecvSocket connected to " + connectionStr)
+        self.log.info("=== fixedRecvSocket connected to " + connectionStr)
 
         self.receivingSocket = context.socket(zmq.PULL)
         connectionStr   = "tcp://0.0.0.0:" + receivingPort
         self.receivingSocket.bind(connectionStr)
-        logging.info("=== receivingSocket connected to " + connectionStr)
+        self.log.info("=== receivingSocket connected to " + connectionStr)
 
         self.receivingSocket2 = context.socket(zmq.PULL)
         connectionStr   = "tcp://0.0.0.0:" + receivingPort2
         self.receivingSocket2.bind(connectionStr)
-        logging.info("=== receivingSocket2 connected to " + connectionStr)
+        self.log.info("=== receivingSocket2 connected to " + connectionStr)
 
         self.sendSignal("START_STREAM", receivingPort, 1)
         self.sendSignal("START_STREAM", receivingPort2, 0)
 
         self.run()
 
+
+    # Send all logs to the main process
+    # The worker configuration is done at the start of the worker process run.
+    # Note that on Windows you can't rely on fork semantics, so each process
+    # will run the logging configuration code when it starts.
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
+        logger = logging.getLogger("Test_Receiver_Stream")
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
+        return logger
+
+
     def sendSignal(self, signal, ports, prio = None):
-        logging.info("=== sendSignal : " + signal + ", " + str(ports))
+        self.log.info("=== sendSignal : " + signal + ", " + str(ports))
         sendMessage = ["0.0.1",  signal]
         targets = []
         if type(ports) == list:
@@ -310,17 +368,17 @@ class Test_Receiver_Stream():
         sendMessage.append(targets)
         self.comSocket.send_multipart(sendMessage)
         receivedMessage = self.comSocket.recv()
-        logging.info("=== Responce : " + receivedMessage )
+        self.log.info("=== Responce : " + receivedMessage )
 
     def run(self):
         try:
             while True:
                 recv_message = self.fixedRecvSocket.recv_multipart()
-                logging.info("=== received fixed: " + str(cPickle.loads(recv_message[0])))
+                self.log.info("=== received fixed: " + str(cPickle.loads(recv_message[0])))
                 recv_message = self.receivingSocket.recv_multipart()
-                logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
+                self.log.info("=== received: " + str(cPickle.loads(recv_message[0])))
                 recv_message = self.receivingSocket2.recv_multipart()
-                logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
+                self.log.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
         except KeyboardInterrupt:
             pass
 
@@ -339,31 +397,48 @@ if __name__ == '__main__':
         import time
         from shutil import copyfile
         from subprocess import call
+        from multiprocessing import Queue
 
 
         logfile = BASE_PATH + os.sep + "logs" + os.sep + "dataManager_test.log"
-        #enable logging
-        helpers.initLogging(logfile, verbose=True, onScreenLogLevel="debug")
+
+        logQueue = Queue(-1)
+
+        # Get the log Configuration for the lisener
+        h1, h2 = helpers.getLogHandlers(logfile, verbose=True, onScreenLogLevel="debug")
+
+        # Start queue listener using the stream handler above
+        logQueueListener = helpers.CustomQueueListener(logQueue, h1, h2)
+        logQueueListener.start()
+
+        # Create log and set handler to queue handle
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG) # Log level = DEBUG
+        qh = QueueHandler(logQueue)
+        root.addHandler(qh)
+
 
         comPort        = "50000"
         fixedRecvPort  = "50100"
         receivingPort  = "50101"
         receivingPort2 = "50102"
 
-        logConfig = "test"
-
-        testPr = Process ( target = Test_Receiver_Stream, args = (comPort, fixedRecvPort, receivingPort, receivingPort2, logConfig))
+        testPr = Process ( target = Test_Receiver_Stream, args = (comPort, fixedRecvPort, receivingPort, receivingPort2, logQueue))
         testPr.start()
         logging.debug("test receiver started")
 
         sourceFile = BASE_PATH + os.sep + "test_file.cbf"
         targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
 
-
-    try:
-        sender = Sender()
-    except:
-        sender = None
+        try:
+            sender = DataManager(logQueue)
+        except:
+            sender = None
+    else:
+        try:
+            sender = DataManager()
+        except:
+            sender = None
 
     i = 100
     try:
@@ -383,6 +458,8 @@ if __name__ == '__main__':
     except Exception as e:
         logging.error("Exception detected: " + str(e))
     finally:
+        if sender:
+            sender.stop()
         if test:
             time.sleep(3)
             testPr.terminate()
@@ -394,8 +471,9 @@ if __name__ == '__main__':
                     os.remove(targetFile)
                 except:
                     pass
-        if sender:
-            sender.stop()
+
+            logQueue.put_nowait(None)
+            logQueueListener.stop()
 
 
 
