@@ -361,32 +361,42 @@ class SignalHandler():
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
 class requestPuller():
-    def __init__ (self, requestFwPort, logQueue = None, context = None):
+    def __init__ (self, requestFwPort, logQueue, context = None):
 
-        # Send all logs to the main process
-        if logQueue:
-            helpers.logConfigurer(logQueue)
+        self.log = self.getLogger(logQueue)
 
         self.context         = context or zmq.Context.instance()
         self.requestFwSocket = self.context.socket(zmq.REQ)
         connectionStr   = "tcp://localhost:" + requestFwPort
         self.requestFwSocket.connect(connectionStr)
-        logging.info("[getRequests] requestFwSocket started (connect) for '" + connectionStr + "'")
+        self.log.info("[getRequests] requestFwSocket started (connect) for '" + connectionStr + "'")
 
         self.run()
 
+    # Send all logs to the main process
+    # The worker configuration is done at the start of the worker process run.
+    # Note that on Windows you can't rely on fork semantics, so each process
+    # will run the logging configuration code when it starts.
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
+        logger = logging.getLogger("requestPuller")
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
+        return logger
 
     def run (self):
-        logging.info("[getRequests] Start run")
+        self.log.info("[getRequests] Start run")
         while True:
             try:
                 self.requestFwSocket.send("")
-                logging.info("[getRequests] send")
+                self.log.info("[getRequests] send")
                 requests = cPickle.loads(self.requestFwSocket.recv())
-                logging.info("[getRequests] Requests: " + str(requests))
+                self.log.info("[getRequests] Requests: " + str(requests))
                 time.sleep(0.25)
             except Exception as e:
-                logging.error(str(e))
+                self.log.error(str(e))
                 break
 
     def __exit__(self):

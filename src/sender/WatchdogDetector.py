@@ -400,7 +400,7 @@ if __name__ == '__main__':
     copyFlag = False
 
     i = 100
-    while i <= 110:
+    while i <= 105:
         try:
             eventList = eventDetector.getNewEvent()
             if eventList:
