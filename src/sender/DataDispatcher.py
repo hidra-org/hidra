@@ -82,6 +82,7 @@ class DataDispatcher():
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("DataDispatcher-" + str(self.id))
+        logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 
@@ -299,7 +300,6 @@ class DataDispatcher():
 
                 # streaming data
 
-                print "targets", targets
                 for target, prio in targets:
 
                     # send data to the data stream to store it in the storage system

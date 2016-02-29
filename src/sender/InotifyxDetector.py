@@ -130,6 +130,7 @@ class InotifyxDetector():
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("inotifyDetector")
+        logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 

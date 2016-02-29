@@ -74,6 +74,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("WatchdogEventHandler-" + str(self.id))
+        logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 
@@ -201,6 +202,7 @@ class checkModTime(threading.Thread):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("checkModTime")
+        logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 
@@ -317,6 +319,7 @@ class WatchdogDetector():
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("WatchdogDetector")
+        logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 

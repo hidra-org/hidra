@@ -112,6 +112,7 @@ class TaskProvider():
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("TaskProvider")
+        logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 
@@ -239,6 +240,7 @@ class requestResponder():
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("requestResponder")
+        logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 

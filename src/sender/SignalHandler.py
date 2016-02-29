@@ -17,7 +17,6 @@ try:
 except:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( '__file__' ) )))
 #    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-print "Signal: BASE_PATH", BASE_PATH
 #SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
 SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
 
@@ -88,6 +87,7 @@ class SignalHandler():
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("SignalHandler")
+        logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 
@@ -381,6 +381,7 @@ class requestPuller():
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("requestPuller")
+        logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 

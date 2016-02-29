@@ -185,6 +185,8 @@ class DataManager():
         verbose             = arguments.verbose
         onScreen            = arguments.onScreen
 
+        self.extLogQueue    = False
+
         if logQueue:
             self.logQueue    = logQueue
             self.extLogQueue = True
@@ -206,6 +208,8 @@ class DataManager():
 
             self.logQueueListener.start()
 
+        # Create log and set handler to queue handle
+        self.log = self.getLogger(self.logQueue)
 
         self.comPort             = arguments.comPort
         self.whitelist           = arguments.whitelist
@@ -248,12 +252,12 @@ class DataManager():
         self.taskProviderPr   = None
         self.dataDispatcherPr = None
 
-        logging.info("Version: " + str(__version__))
+        self.log.info("Version: " + str(__version__))
 
         #create zmq context
         # there should be only one context in one process
         self.zmqContext = zmq.Context.instance()
-        logging.debug("Registering global ZMQ context")
+        self.log.debug("Registering global ZMQ context")
 
         self.run()
 
@@ -265,6 +269,7 @@ class DataManager():
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("DataManager")
+        logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 
@@ -273,33 +278,42 @@ class DataManager():
 
 
     def run(self):
-        logging.info("Start SignalHandler...")
+        self.log.info("Start SignalHandler...")
         self.signalHandlerPr = Process ( target = SignalHandler, args = (self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue) )
         self.signalHandlerPr.start()
-        logging.debug("Start SignalHandler...done")
+        self.log.debug("Start SignalHandler...done")
 
         # needed, because otherwise the requests for the first files are not forwarded properly
         time.sleep(0.5)
 
-        logging.info("Start TaskProvider...")
+        self.log.info("Start TaskProvider...")
         self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.requestFwPort, self.routerPort, self.logQueue) )
         self.taskProviderPr.start()
-        logging.info("Start TaskProvider...done")
+        self.log.info("Start TaskProvider...done")
 
-        logging.info("Start DataDispatcher...")
+        self.log.info("Start DataDispatcher...")
         self.dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, self.routerPort, self.chunkSize, self.fixedStreamId, self.logQueue, self.localTarget) )
         self.dataDispatcherPr.start()
-        logging.info("Start DataDispatcher...done")
+        self.log.info("Start DataDispatcher...done")
 
 
     def stop(self):
-        self.signalHandlerPr.terminate()
-        self.taskProviderPr.terminate()
-        self.dataDispatcherPr.terminate()
+        if self.signalHandlerPr:
+            self.signalHandlerPr.terminate()
+            self.signalHandlerPr = None
 
-        if not self.extLogQueue:
+        if self.taskProviderPr:
+            self.taskProviderPr.terminate()
+            self.taskProviderPr = None
+
+        if self.dataDispatcherPr:
+            self.dataDispatcherPr.terminate()
+            self.dataDispatcherPr = None
+
+        if not self.extLogQueue and self.logQueueListener:
             self.logQueue.put_nowait(None)
             self.logQueueListener.stop()
+            self.logQueueListener = None
 
 
     def __exit__(self):
@@ -349,6 +363,7 @@ class Test_Receiver_Stream():
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("Test_Receiver_Stream")
+        logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 
@@ -435,44 +450,43 @@ if __name__ == '__main__':
         except:
             sender = None
 
-        i = 100
-        try:
-            if sender:
+        if sender:
+            time.sleep(0.5)
+            i = 100
+            try:
                 while i <= 105:
-                    time.sleep(0.5)
                     targetFile = targetFileBase + str(i) + ".cbf"
                     logging.debug("copy to " + targetFile)
-#                    call(["cp", sourceFile, targetFile])
                     copyfile(sourceFile, targetFile)
                     i += 1
 
                     time.sleep(1)
-        except Exception as e:
-            logging.error("Exception detected: " + str(e))
-        finally:
-            if sender:
-                sender.stop()
-            if test:
+            except Exception as e:
+                logging.error("Exception detected: " + str(e))
+            finally:
                 time.sleep(3)
                 testPr.terminate()
 
                 for number in range(100, i):
                     targetFile = targetFileBase + str(number) + ".cbf"
-                    logging.debug("remove " + targetFile)
                     try:
                         os.remove(targetFile)
+                        logging.debug("remove " + targetFile)
                     except:
                         pass
 
+                sender.stop()
                 logQueue.put_nowait(None)
                 logQueueListener.stop()
 
     else:
         sender = DataManager()
 
-        while True:
-            try:
+        try:
+            while True:
                 pass
-            except:
-                break
+        except:
+            pass
+        finally:
+            sender.stop()
 
