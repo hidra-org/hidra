@@ -302,40 +302,12 @@ def getLogHandlers(logfile, verbose, onScreenLogLevel = False):
     f = '[%(asctime)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s'
 
     # Setup file handler to output to file
-    h1 = logging.handlers.RotatingFileHandler(logfile, 'a', 3000000, 5)
+    # argument for RotatingFileHandler: filename, mode, maxBytes, backupCount)
+    # 1048576 = 1MB
+    h1 = logging.handlers.RotatingFileHandler(logfile, 'a', 3*1048576 , 5)
     f1 = logging.Formatter(datefmt=datef,fmt=f)
     h1.setFormatter(f1)
     h1.setLevel(logLevel)
-
-#    logConfig = {
-#        'version': 1,
-#        'disable_existing_loggers': False,
-#        'formatters': {
-#            'standard': {
-#                'format': '[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s'
-#            },
-#        },
-#        'handlers': {
-#            'default': {
-#                'level': 'DEBUG',
-#                'class': 'logging.StreamHandler',
-#            },
-#            'logging.handlers.RotatingFileHandler' : {
-#                'level': 'DEBUG',
-#                'format': 'brief',
-#                'filename': logfile,
-#                'maxBytes': 1024,
-#                'backupCount': 3
-#            },
-#        },
-#        'loggers': {
-#            '': {
-#                'handlers': ['default'],
-#                'level': 'INFO',
-#                'propagate': True
-#            },
-#        }
-#    }
 
     # Setup stream handler to output to console
     if onScreenLogLevel:
