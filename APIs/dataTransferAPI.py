@@ -503,15 +503,14 @@ class dataTransfer():
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class
-        if not self.externalContext:
+        if not self.externalContext and self.context:
             try:
-                if self.context:
-                    self.log.info("closing ZMQ context...")
-                    self.context.destroy()
-                    self.context = None
-                    self.log.info("closing ZMQ context...done.")
+                self.log.info("Closing ZMQ context...")
+                self.context.destroy()
+                self.context = None
+                self.log.info("Closing ZMQ context...done.")
             except:
-                self.log.error("closing ZMQ context...failed.", exc_info=True)
+                self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
     def __exit__(self):
