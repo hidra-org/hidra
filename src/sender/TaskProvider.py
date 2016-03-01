@@ -65,7 +65,7 @@ class TaskProvider():
 
         if self.config.has_key("eventDetectorType") and self.config["eventDetectorType"] == "inotifyx":
 
-            from InotifyxDetector import InotifyxDetector as EventDetector
+            from eventDetectors.InotifyxDetector import InotifyxDetector as EventDetector
 
             # check format of config
             if ( not self.config.has_key("monDir") or
@@ -76,7 +76,7 @@ class TaskProvider():
 
         elif self.config.has_key("eventDetectorType") and self.config["eventDetectorType"] == "watchdog":
 
-            from WatchdogDetector import WatchdogDetector as EventDetector
+            from eventDetectors.WatchdogDetector import WatchdogDetector as EventDetector
 
             # check format of config
             if ( not self.config.has_key("monDir") or
