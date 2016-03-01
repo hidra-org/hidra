@@ -263,16 +263,21 @@ class SignalHandler():
 
         elif signal == "STOP_STREAM":
             #FIXME
-            socketId = socketIds[0]
+            socketId = socketIds[0][0]
+
             self.log.info("Received signal: " + signal + " to host " + str(socketId[0]))
 
             if socketId in [i[0] for i in self.openRequPerm]:
                 # send signal back to receiver
                 self.sendResponse(signal)
                 self.log.debug("Send response back: " + str(signal))
-                self.openRequPerm.remove(socketId)
+
+                for element in self.openRequPerm:
+                    if element[0] == socketId:
+                        self.openRequPerm.remove(element)
             else:
                 self.log.info("No connection to close was found for " + str(socketId))
+                self.log.debug("self.openReqPerm=" + str(self.openRequPerm))
                 self.sendResponse("NO_OPEN_CONNECTION_FOUND")
 
             return

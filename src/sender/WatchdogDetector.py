@@ -214,10 +214,10 @@ class checkModTime(threading.Thread):
         while True:
             try:
                 # Open the urls in their own threads
-                self.log.debug("List to observe: " + str(eventListToObserve))
-                self.log.debug("eventMessageList: " + str(eventMessageList))
+#                self.log.debug("List to observe: " + str(eventListToObserve))
+#                self.log.debug("eventMessageList: " + str(eventMessageList))
                 self.pool.map(self.checkLastModified, eventListToObserve)
-                self.log.debug("eventMessageList: " + str(eventMessageList))
+#                self.log.debug("eventMessageList: " + str(eventMessageList))
                 time.sleep(2)
             except:
                 break
