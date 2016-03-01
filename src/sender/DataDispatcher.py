@@ -62,9 +62,7 @@ class DataDispatcher():
         except KeyboardInterrupt:
             self.log.debug("KeyboardInterrupt detected. Shutting down DataDispatcher Nr. " + str(self.id) + ".")
         except:
-            trace = traceback.format_exc()
-            self.log.error("Stopping DataDispatcher Nr " + str(self.id) + " due to unknown error condition.")
-            self.log.debug("Error was: " + str(trace))
+            self.log.error("Stopping DataDispatcher Nr " + str(self.id) + " due to unknown error condition.", exc_info=True)
 
 
     def createSockets(self):
@@ -90,26 +88,6 @@ class DataDispatcher():
 
 
     def process(self):
-        """
-          sends a 'ready' to a broker and receives a 'job' to process.
-          The 'job' will be to pass the file of an fileEvent to the
-          dataPipe.
-
-          Why?
-          -> the simulated "onClosed" event waits for a file for being
-           not modified within a certain period of time.
-           Instead of processing file after file the work will be
-           spreaded to many workerProcesses. So each process can wait
-           individual periods of time for a file without blocking
-           new file events - as new file events will be handled by
-           another workerProcess.
-        """
-
-        """
-          takes the fileEventMessage, reading and passing the new file to
-          a separate data-messagePipe. Afterwards the original file
-          will be removed.
-        """
 
         while True:
             # Get workload from router, until finished
@@ -142,9 +120,8 @@ class DataDispatcher():
             try:
                 self.log.debug("Getting file metadata")
                 sourceFile, targetFile, metadata = self.getMetadata(workload)
-            except Exception as e:
-                self.log.error("Building of metadata dictionary failed for workload: " + str(workload) + ".")
-                self.log.debug("Error was: " + str(e))
+            except:
+                self.log.error("Building of metadata dictionary failed for workload: " + str(workload) + ".", exc_info=True)
                 #skip all further instructions and continue with next iteration
                 continue
 
@@ -152,31 +129,22 @@ class DataDispatcher():
             if targets:
                 try:
                     self.sendData(targets, sourceFile, metadata)
-                except Exception as e:
-                    self.log.debug("DataDispatcher-"+str(self.id) + ": Passing new file to data Stream...failed.")
-                    self.log.debug("Error was: " + str(e))
+                except:
+                    self.log.error("DataDispatcher-"+str(self.id) + ": Passing new file to data Stream...failed.", exc_info=True)
 
                 # remove file
                 try:
                     os.remove(sourceFile)
                     self.log.info("Removing file '" + str(sourceFile) + "' ...success.")
-                except IOError:
-                    self.log.debug ("IOError: " + str(sourceFile))
-                except Exception, e:
-                    trace = traceback.format_exc()
-                    self.log.debug("Unable to remove file {FILE}.".format(FILE=str(sourceFile)))
-                    self.log.debug("trace=" + str(trace))
+                except:
+                    self.log.error("Unable to remove file " + str(sourceFile), exc_info=True)
             else:
                 # move file
                 try:
                     shutil.move(sourceFile, targetFile)
                     self.log.info("Moving file '" + str(sourceFile) + "' ...success.")
-                except IOError:
-                    self.log.debug ("IOError: " + str(sourceFile))
-                except Exception, e:
-                    trace = traceback.format_exc()
-                    self.log.debug("Unable to move file {FILE}.".format(FILE=str(sourceFile)))
-                    self.log.debug("trace=" + str(trace))
+                except:
+                    self.log.error("Unable to move file " + str(sourceFile), exc_info=True)
 
 
             # send file to cleaner pipe
@@ -189,8 +157,8 @@ class DataDispatcher():
 #
 #                #TODO: remember workload. append to list?
 #                # can be used to verify files which have been processed twice or more
-#            except Exception, e:
-#                self.log.error("Unable to notify Cleaner-pipe to handle file: " + str(workload))
+#            except:
+#                self.log.error("Unable to notify Cleaner-pipe to handle file: " + str(workload), exc_info=True)
 #
 
     def getMetadata(self, metadata):
@@ -201,13 +169,11 @@ class DataDispatcher():
             filename     = metadata["filename"]
             sourcePath   = metadata["sourcePath"]
             relativePath = metadata["relativePath"]
-        except Exception as e:
-            self.log.info("Invalid fileEvent message received.")
-            trace = traceback.format_exc()
-            self.log.debug("Error was: " + str(trace))
+        except:
+            self.log.error("Invalid fileEvent message received.", exc_info=True)
             self.log.debug("metadata=" + str(metadata))
             #skip all further instructions and continue with next iteration
-            raise Exception(e)
+            raise
 
         # filename = "img.tiff"
         # filepath = "C:\dir"
@@ -232,10 +198,9 @@ class DataDispatcher():
             self.log.debug("filesize(%s) = %s" % (sourceFilePathFull, str(filesize)))
             self.log.debug("fileModificationTime(%s) = %s" % (sourceFilePathFull, str(fileModificationTime)))
 
-        except Exception as e:
-            self.log.info("Unable to create metadata dictionary.")
-            self.log.debug("Error was: " + str(e))
-            raise Exception(e)
+        except:
+            self.log.error("Unable to create metadata dictionary.", exc_info=True)
+            raise
 
         #build payload for message-pipe by putting source-file into a message
         try:
@@ -253,10 +218,9 @@ class DataDispatcher():
             metadata[ "chunkSize"            ] = self.chunkSize
 
             self.log.debug("metadata = " + str(metadata))
-        except Exception as e:
-            self.log.info("Unable to assemble multi-part message.")
-            self.log.debug("Error was: " + str(e))
-            raise Exception(e)
+        except:
+            self.log.error("Unable to assemble multi-part message.", exc_info=True)
+            raise
 
         return sourceFilePathFull, targetFilePathFull, metadata
 
@@ -266,10 +230,9 @@ class DataDispatcher():
         try:
             self.log.debug("Opening '" + str(sourceFilepath) + "'...")
             fileDescriptor = open(str(sourceFilepath), "rb")
-        except Exception as e:
-            self.log.error("Unable to read source file '" + str(sourceFilepath) + "'.")
-            self.log.debug("Error was: " + str(e))
-            raise Exception(e)
+        except:
+            self.log.error("Unable to read source file '" + str(sourceFilepath) + "'.", exc_info=True)
+            raise
 
         #send message
         try:
@@ -355,26 +318,8 @@ class DataDispatcher():
             fileDescriptor.close()
             self.log.debug("Passing multipart-message for file " + str(sourceFilepath) + "...done.")
 
-        except Exception, e:
-            self.log.error("Unable to send multipart-message for file " + str(sourceFilepath))
-            trace = traceback.format_exc()
-            self.log.debug("Error was: " + str(trace))
-            self.log.debug("Passing multipart-message...failed.")
-
-
-    def appendFileChunksToPayload(self, payload, sourceFilePathFull, fileDescriptor, chunkSize):
-        try:
-            self.log.debug("reading file '" + str(sourceFilePathFull)+ "' to memory")
-
-            # FIXME: chunk is read-out as str. why not as bin? will probably add to much overhead to zmq-message
-            fileContent = fileDescriptor.read(chunkSize)
-
-            while fileContent != "":
-                payload.append(fileContent)
-                fileContent = fileDescriptor.read(chunkSize)
-        except Exception, e:
-             self.log("Error was: " + str(e))
-
+        except:
+            self.log.error("Unable to send multipart-message for file " + str(sourceFilepath), exc_info=True)
 
 
     def stop(self):
