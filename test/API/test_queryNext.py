@@ -16,7 +16,7 @@ from dataTransferAPI import dataTransfer
 
 signalHost   = "zitpcx19282.desy.de"
 #isignalHost   = "zitpcx22614.desy.de"
-dataPort   = "50201"
+targets = ["zitpcx19282.desy.de", "50101", 0]
 
 print
 print "==== TEST: Query for the newest filename ===="
@@ -24,7 +24,7 @@ print
 
 query = dataTransfer("queryNext", signalHost)
 
-query.initiate(dataPort)
+query.initiate(targets)
 
 query.start()
 
@@ -35,11 +35,10 @@ while True:
         break
 
     print
-    print "metadata"
-    print metadata
+    print "metadata", metadata["filename"]
     print "data", str(data)[:10]
     print
-    time.sleep(0.1)
+#    time.sleep(0.1)
 
 query.stop()
 

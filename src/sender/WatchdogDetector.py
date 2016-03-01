@@ -256,7 +256,7 @@ class checkModTime(threading.Thread):
             self.log.debug("checkLastModified-" + str(threadName) + " eventMessageList" + str(eventMessageList))
             eventMessageList.append(eventMessage)
             eventListToObserve.remove(filepath)
-            self.log.debug("checkLastModified-" + str(threadName) + " eventMessageLi (from modify)st" + str(eventMessageList))
+            self.log.debug("checkLastModified-" + str(threadName) + " eventMessageList" + str(eventMessageList))
             self.lock.release()
         else:
             self.log.debug("File was last modified " + str(timeCurrent - timeLastModified) + \

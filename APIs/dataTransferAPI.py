@@ -225,7 +225,7 @@ class dataTransfer():
         return message
 
 
-    def start(self, dataPort = False, requestHost = None):
+    def start(self, dataSocket = False, requestHost = None):
 
 #        if not self.connectionType:
 #            raise Exception("No connection specified. Please initiate a connection first.")
@@ -239,11 +239,15 @@ class dataTransfer():
 
         ip   = "0.0.0.0"           #TODO use IP of hostname?
 
-        if dataPort:
-            if type(dataPort) == list:
-                socketId = dataPort[0] + ":" + dataPort[1]
+        host = ""
+        port = ""
+        if dataSocket:
+            if type(dataSocket) == list:
+                socketId = dataSocket[0] + ":" + dataSocket[1]
+                host = dataSocket[0]
             else:
-                socketId = ip + ":" + str(dataPort)
+                socketId = ip + ":" + str(dataSocket)
+                host = socket.gethostname()
         elif len(self.targets) == 1:
             host, port = self.targets[0][0].split(":")
 #            ipFromHost = socket.gethostbyaddr(host)[2]
@@ -268,14 +272,14 @@ class dataTransfer():
 
             self.requestSocket = self.context.socket(zmq.PUSH)
             # An additional socket is needed to establish the data retriving mechanism
-            connectionStr = "tcp://" + socketId
+            connectionStr = "tcp://" + self.signalHost + ":" + self.requestPort
             try:
                 self.requestSocket.connect(connectionStr)
                 self.log.info("Socket started (connect) for '" + connectionStr + "'")
             except:
                 self.log.error("Failed to start Socket of type " + self.connectionType + " (connect): '" + connectionStr + "'", exc_info=True)
 
-            self.queryNextStarted = socketId
+            self.queryNextStarted = host + ":" + port
         else:
             self.streamStarted    = socketId
 
@@ -336,6 +340,7 @@ class dataTransfer():
             metadata = cPickle.loads(multipartMessage[0])
         except:
             self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
+            metadata = None
 
         #TODO validate multipartMessage (like correct dict-values for metadata)
 
