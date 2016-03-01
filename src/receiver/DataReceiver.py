@@ -7,11 +7,17 @@ import logging
 import os
 import ConfigParser
 
-import shared.helpers as helpers
 
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) )
-CONFIG_PATH = BASE_PATH + os.sep + "conf"
+BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
 API_PATH    = BASE_PATH + os.sep + "APIs"
+CONFIG_PATH = BASE_PATH + os.sep + "conf"
+
+if not SHARED_PATH in sys.path:
+    sys.path.append ( SHARED_PATH )
+del SHARED_PATH
+
+import helpers
 
 if not API_PATH in sys.path:
     sys.path.append ( API_PATH )
@@ -91,7 +97,7 @@ def argumentParsing():
     return arguments
 
 
-class Receiver:
+class DataReceiver:
     def __init__(self, outputDir, dataIp, dataPort):
 
         self.outputDir = os.path.normpath(outputDir)
@@ -107,7 +113,7 @@ class Receiver:
 
 
     def getLogger(self):
-        logger = logging.getLogger("Receiver")
+        logger = logging.getLogger("DataReceiver")
         return logger
 
 
@@ -161,4 +167,4 @@ if __name__ == "__main__":
     dataStreamPort = arguments.dataStreamPort
 
     #start file receiver
-    receiver = Receiver(targetDir, dataStreamIp, dataStreamPort)
+    receiver = DataReceiver(targetDir, dataStreamIp, dataStreamPort)

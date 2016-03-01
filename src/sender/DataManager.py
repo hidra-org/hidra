@@ -13,18 +13,22 @@ from multiprocessing import Process, freeze_support, Queue
 import ConfigParser
 from logutils.queue import QueueHandler
 
+from SignalHandler import SignalHandler
+from TaskProvider import TaskProvider
+from DataDispatcher import DataDispatcher
+
 try:
-    BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
+    BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
 except:
-    BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))
+    BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
+SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
 CONFIG_PATH = BASE_PATH + os.sep + "conf"
 
-import shared.helpers as helpers
-from sender.SignalHandler import SignalHandler
-from sender.TaskProvider import TaskProvider
-from sender.DataDispatcher import DataDispatcher
+if not SHARED_PATH in sys.path:
+    sys.path.append ( SHARED_PATH )
+del SHARED_PATH
 
-
+import helpers
 from version import __version__
 
 
