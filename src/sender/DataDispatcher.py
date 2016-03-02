@@ -33,22 +33,37 @@ class DataDispatcher():
 
     def __init__(self, id, routerPort, chunkSize, fixedStreamId, logQueue, localTarget = None, context = None):
 
-        self.id           = id
-        self.log          = self.getLogger(logQueue)
-
         supportedDataFetchers = ["getFromFile"]
+        dataFetcherProp = {
+                "type"       : "getFromFile",
+                "removeFlag" : False
+                }
+
+#        dataFetcherProp = {
+#                "type"       : "getFromQueue",
+#                "context"    : context,
+#                "extIp"      : "0.0.0.0",
+#                "port"       : "6050"
+#                }
+
+
+        self.id            = id
+        self.log           = self.getLogger(logQueue)
 
         self.log.debug("DataDispatcher Nr. " + str(self.id) + " started.")
 
-        self.localhost    = "127.0.0.1"
-        self.extIp        = "0.0.0.0"
-        self.routerPort   = routerPort
-        self.chunkSize    = chunkSize
+        self.localhost       = "127.0.0.1"
+        self.extIp           = "0.0.0.0"
+        self.routerPort      = routerPort
+        self.chunkSize       = chunkSize
 
-        self.routerSocket = None
+        self.routerSocket    = None
 
-        self.fixedStreamId = fixedStreamId
-        self.localTarget = localTarget
+        self.fixedStreamId   = fixedStreamId
+        self.localTarget     = localTarget
+
+        self.dataFetcherProp = dataFetcherProp
+        dataFetcher          = self.dataFetcherProp["type"]
 
         # dict with informations of all open sockets to which a data stream is opened (host, port,...)
         self.openConnections = dict()
@@ -59,13 +74,17 @@ class DataDispatcher():
         else:
             self.context    = zmq.Context()
             self.extContext = False
+            if self.dataFetcherProp.has_key("context") and not self.dataFetcherProp["context"]:
+                self.dataFetcherProp["context"]    = self.context
+
 
         self.createSockets()
 
 
         if dataFetcher in supportedDataFetchers:
-            self.log.info("Loading data Fetcher: " + getFromFile)
-            self.dataFetcher = __import__(dataFetcher)
+            self.log.info("Loading data Fetcher: " + dataFetcher)
+            self.dataFetcher      = __import__(dataFetcher)
+            self.dataFetcher.setup(dataFetcherProp)
         else:
             raise Exception("DataFetcher type " + dataFetcher + " not supported")
 
@@ -139,40 +158,14 @@ class DataDispatcher():
                 continue
 
             # send data
-            if targets:
-                try:
-                    self.dataFetcher.sendData(self.log, targets, sourceFile, metadata, self.openConnections, self.context)
-                except:
-                    self.log.error("DataDispatcher-"+str(self.id) + ": Passing new file to data stream...failed.", exc_info=True)
+            try:
+                self.dataFetcher.sendData(self.log, targets, sourceFile, metadata, self.openConnections, self.context, self.dataFetcherProp)
+            except:
+                self.log.error("DataDispatcher-"+str(self.id) + ": Passing new file to data stream...failed.", exc_info=True)
 
-                # remove file
-                try:
-                    os.remove(sourceFile)
-                    self.log.info("Removing file '" + str(sourceFile) + "' ...success.")
-                except:
-                    self.log.error("Unable to remove file " + str(sourceFile), exc_info=True)
-            else:
-                # move file
-                try:
-                    shutil.move(sourceFile, targetFile)
-                    self.log.info("Moving file '" + str(sourceFile) + "' ...success.")
-                except:
-                    self.log.error("Unable to move file " + str(sourceFile), exc_info=True)
+            # finish data handling
+            self.dataFetcher.finishDataHandling(self.log, sourceFile, targetFile, self.dataFetcherProp)
 
-
-            # send file to cleaner pipe
-#            try:
-#                #sending to pipe
-#                self.log.debug("send file-event for file to cleaner-pipe...")
-#                self.log.debug("metadata = " + str(metadata))
-#                self.cleanerSocket.send(cPickle.dumps(metadata))
-#                self.log.debug("send file-event for file to cleaner-pipe...success.")
-#
-#                #TODO: remember workload. append to list?
-#                # can be used to verify files which have been processed twice or more
-#            except:
-#                self.log.error("Unable to notify Cleaner-pipe to handle file: " + str(workload), exc_info=True)
-#
 
     def stop(self):
         self.log.debug("Closing sockets for DataDispatcher-" + str(self.id))
@@ -183,6 +176,7 @@ class DataDispatcher():
         if self.routerSocket:
             self.routerSocket.close(0)
             self.routerSocket = None
+        self.dataFetcher.clean(self.dataFetcherProp)
         if not self.extContext and self.context:
             self.log.debug("Destroying context")
             self.context.destroy()

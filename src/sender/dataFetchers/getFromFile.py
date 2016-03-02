@@ -1,5 +1,3 @@
-from __builtin__ import open, type
-
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import zmq
@@ -9,6 +7,10 @@ import logging
 import traceback
 import cPickle
 import shutil
+
+
+def setup (dataFetcherProp):
+    return dict()
 
 
 def getMetadata (log, metadata, chunkSize, localTarget = None):
@@ -74,7 +76,12 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
     return sourceFile, targetFile, metadata
 
 
-def sendData (log, targets, sourceFile, metadata, openConnections, context):
+def sendData (log, targets, sourceFile, metadata, openConnections, context, properties):
+
+    if not targets:
+        properties["removeFlag"] = False
+        return
+
     #reading source file into memory
     try:
         log.debug("Opening '" + str(sourceFile) + "'...")
@@ -169,8 +176,47 @@ def sendData (log, targets, sourceFile, metadata, openConnections, context):
         fileDescriptor.close()
         log.debug("Passing multipart-message for file " + str(sourceFile) + "...done.")
 
+        properties["removeFlag"] = True
+
     except:
         log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
+
+
+def finishDataHandling (log, sourceFile, targetFile, prop):
+
+    if prop["removeFlag"]:
+        # remove file
+        try:
+            os.remove(sourceFile)
+            log.info("Removing file '" + str(sourceFile) + "' ...success.")
+        except:
+            log.error("Unable to remove file " + str(sourceFile), exc_info=True)
+
+        prop["removeFlag"] = False
+    else:
+        # move file
+        try:
+            shutil.move(sourceFile, targetFile)
+            log.info("Moving file '" + str(sourceFile) + "' ...success.")
+        except:
+            log.error("Unable to move file " + str(sourceFile), exc_info=True)
+
+#    # send file to cleaner pipe
+#    try:
+#        #sending to pipe
+#        self.log.debug("send file-event for file to cleaner-pipe...")
+#        self.log.debug("metadata = " + str(metadata))
+#        self.cleanerSocket.send(cPickle.dumps(metadata))
+#        self.log.debug("send file-event for file to cleaner-pipe...success.")
+#
+#        #TODO: remember workload. append to list?
+#        # can be used to verify files which have been processed twice or more
+#    except:
+#        self.log.error("Unable to notify Cleaner-pipe to handle file: " + str(workload), exc_info=True)
+
+
+def clean(properties):
+    pass
 
 
 if __name__ == '__main__':
@@ -201,18 +247,19 @@ if __name__ == '__main__':
     root.addHandler(h1)
     root.addHandler(h2)
 
-    receivingPort   = "6005"
-    receivingPort2  = "6006"
+    receivingPort    = "6005"
+    receivingPort2   = "6006"
+    extIp            = "0.0.0.0"
 
-    context         = zmq.Context.instance()
+    context          = zmq.Context.instance()
 
-    receivingSocket = context.socket(zmq.PULL)
-    connectionStr   = "tcp://0.0.0.0:" + receivingPort
+    receivingSocket  = context.socket(zmq.PULL)
+    connectionStr    = "tcp://{ip}:{port}".format( ip=extIp, port=receivingPort )
     receivingSocket.bind(connectionStr)
     logging.info("=== receivingSocket connected to " + connectionStr)
 
     receivingSocket2 = context.socket(zmq.PULL)
-    connectionStr   = "tcp://0.0.0.0:" + receivingPort2
+    connectionStr    = "tcp://{ip}:{port}".format( ip=extIp, port=receivingPort2 )
     receivingSocket2.bind(connectionStr)
     logging.info("=== receivingSocket2 connected to " + connectionStr)
 
@@ -234,11 +281,19 @@ if __name__ == '__main__':
     localTarget     = BASE_PATH + os.sep + "data" + os.sep + "target"
     openConnections = dict()
 
+    dataFetcherProp = {
+            "type"       : "getFromFile",
+            "removeFlag" : False
+            }
 
     logging.debug("openConnections before function call: " + str(openConnections))
 
+    setup(logging, dataFetcherProp)
+
     sourceFile, targetFile, metadata = getMetadata (logging, workload, chunkSize, localTarget = None)
-    sendData(logging, targets, sourceFile, metadata, openConnections, context)
+    sendData(logging, targets, sourceFile, metadata, openConnections, context, dataFetcherProp)
+
+    finishDataHandling(logging, sourceFile, targetFile, dataFetcherProp)
 
     logging.debug("openConnections after function call: " + str(openConnections))
 
@@ -253,5 +308,6 @@ if __name__ == '__main__':
     finally:
         receivingSocket.close(0)
         receivingSocket2.close(0)
+        clean(dataFetcherProp)
         context.destroy()
 
