@@ -34,7 +34,7 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
 
     #TODO combine better with sourceFile... (for efficiency)
     if localTarget:
-        targetFilePath = os.path.normpath(self.localTarget + os.sep + relativePath)
+        targetFilePath = os.path.normpath(localTarget + os.sep + relativePath)
         targetFile     = os.path.join(targetFilePath, filename)
     else:
         targetFile     = None
@@ -223,7 +223,7 @@ if __name__ == '__main__':
     copyfile(prework_sourceFile, prework_targetFile)
     time.sleep(0.5)
 
-    metadata = {
+    workload = {
             "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
             "relativePath": os.sep + "local" + os.sep + "raw",
             "filename"    : "100.cbf"
@@ -237,7 +237,7 @@ if __name__ == '__main__':
 
     logging.debug("openConnections before function call: " + str(openConnections))
 
-    sourceFile, targetFile, metadata = getMetadata (logging, metadata, chunkSize, localTarget = None)
+    sourceFile, targetFile, metadata = getMetadata (logging, workload, chunkSize, localTarget = None)
     sendData(logging, targets, sourceFile, metadata, openConnections, context)
 
     logging.debug("openConnections after function call: " + str(openConnections))

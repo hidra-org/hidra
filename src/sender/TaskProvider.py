@@ -90,7 +90,7 @@ class TaskProvider():
             self.log.error("Type of event detector is not supported: " + str( self.config["eventDetectorType"] ))
             return -1
 
-        self.eventDetector     = EventDetector(self.config, logQueue)
+        self.eventDetector = EventDetector(self.config, logQueue)
 
         self.createSockets()
 
