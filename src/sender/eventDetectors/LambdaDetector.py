@@ -4,6 +4,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 import os
 import zmq
 import logging
+import cPickle
 from logutils.queue import QueueHandler
 
 
@@ -16,16 +17,19 @@ class LambdaDetector():
         # check format of config
         checkPassed = True
         if ( not config.has_key("context") or
-                not config.has_key("eventPort") ):
+                not config.has_key("eventPort") or
+                not config.has_key("numberOfStreams") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
 
 
         if checkPassed:
-            self.eventPort   = config["eventPort"]
-            self.extIp       = "0.0.0.0"
-            self.eventSocket = None
+            self.eventPort       = config["eventPort"]
+            self.extIp           = "0.0.0.0"
+            self.eventSocket     = None
+
+            self.numberOfStreams = config["numberOfStreams"]
 
             self.log.debug("Registering ZMQ context")
             # remember if the context was created outside this class or not
@@ -67,11 +71,14 @@ class LambdaDetector():
 
     def getNewEvent(self):
 
-        eventMessageList = None
-        eventMessage = {}
-
         eventMessage = self.eventSocket.recv()
-        self.log.debug("eventMessage: " + str(eventMessage))
+
+        if eventMessage == b"CLOSE_FILE":
+            eventMessageList = [ eventMessage for i in range(self.numberOfStreams) ]
+        else:
+            eventMessageList = [ cPickle.loads(eventMessage) ]
+
+        self.log.debug("eventMessage: " + str(eventMessageList))
 
         return eventMessageList
 
@@ -105,7 +112,7 @@ if __name__ == '__main__':
     from subprocess import call
     from multiprocessing import Queue
 
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
     SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
     print "SHARED", SHARED_PATH
 
@@ -133,10 +140,12 @@ if __name__ == '__main__':
     root.addHandler(qh)
 
 
-    eventPort = "6001"
+    eventPort       = "6001"
+    numberOfStreams = 4
     config = {
             "eventDetectorType" : "lambda",
             "eventPort"         : eventPort,
+            "numberOfStreams"   : numberOfStreams,
             "context"           : None,
             }
 
@@ -157,11 +166,15 @@ if __name__ == '__main__':
 
 
     i = 100
-    while i <= 105:
+    while i <= 101:
         try:
             logging.debug("generate event")
             targetFile = targetFileBase + str(i) + ".cbf"
-            eventSocket.send(targetFile)
+            message = {
+                    "filename" : targetFile,
+                    "filePart" : 0
+                    }
+            eventSocket.send(cPickle.dumps(message))
             i += 1
 
             eventList = eventDetector.getNewEvent()
@@ -171,6 +184,11 @@ if __name__ == '__main__':
             time.sleep(1)
         except KeyboardInterrupt:
             break
+
+    eventSocket.send(b"CLOSE_FILE")
+
+    eventList = eventDetector.getNewEvent()
+    print "eventList:", eventList
 
     logQueue.put_nowait(None)
     logQueueListener.stop()

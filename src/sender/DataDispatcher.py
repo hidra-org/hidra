@@ -83,7 +83,7 @@ class DataDispatcher():
 
         if dataFetcher in supportedDataFetchers:
             self.log.info("Loading data Fetcher: " + dataFetcher)
-            self.dataFetcher      = __import__(dataFetcher)
+            self.dataFetcher = __import__(dataFetcher)
             self.dataFetcher.setup(dataFetcherProp)
         else:
             raise Exception("DataFetcher type " + dataFetcher + " not supported")
@@ -136,6 +136,13 @@ class DataDispatcher():
                 # sort the target list by the priority
                 targets = sorted(targets, key=lambda target: target[1])
             else:
+                closeFile = message[0] == b"CLOSE_FILE"
+                if closeFile:
+                    self.log.debug("Router requested to send signal that file was closed.")
+                    time.sleep(2)
+                    self.log.debug("Continue after sleeping.")
+                    continue
+
                 finished = message[0] == b"EXIT"
                 if finished:
                     self.log.debug("Router requested to shutdown DataDispatcher-"+ str(self.id) + ".")
