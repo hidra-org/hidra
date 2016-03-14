@@ -1,7 +1,8 @@
 #/bin/sh
 
-SOURCE=/space/projects/live-viewer
-#SOURCE=/home/kuhnm/Arbeit/live-viewer
+SOURCE=/space/projects/zeromq-data-transferr
+#SOURCE=/home/kuhnm/Arbeit/zeromq-data-transfer
+#SOURCE=/home/p11user/zeromq-data-transfer
 #SOURCE=/home/p11user/live-viewer
 
 TARGET=${SOURCE}/data/source/local

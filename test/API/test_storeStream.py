@@ -57,7 +57,7 @@ while True:
         break
 
     try:
-        query.store("/space/projects/live-viewer/data/target/testStore", result)
+        query.store("/space/projects/zeromq-data-transfer/data/target/testStore", result)
     except Exception as e:
         print "Storing data failed."
         print "Error was:", e

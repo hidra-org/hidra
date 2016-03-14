@@ -11,7 +11,7 @@ def f1():
 #    print "p1: sockets created"
     try:
         for i in range(1,11):
-            filename = "/space/projects/live-viewer/data/source/local/raw/" + str(i) + ".cbf"
+            filename = "/space/projects/zeromq-data-transfer/data/source/local/raw/" + str(i) + ".cbf"
             time.sleep(0.2)
             f = open(filename, "rb")
             fileObject = f.read()
@@ -35,7 +35,7 @@ def f2():
 #    print "p2: sockets created"
     try:
         for j in range(11,21):
-            filename = "/space/projects/live-viewer/data/source/local/raw/" + str(j) + ".cbf"
+            filename = "/space/projects/zeromq-data-transfer/data/source/local/raw/" + str(j) + ".cbf"
             time.sleep(0.1)
             f = open(filename, "rb")
             fileObject = f.read()

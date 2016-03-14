@@ -29,10 +29,10 @@ def initLogging(filenameFullPath, verbose):
 
 
 #enable logging
-initLogging("/space/projects/live-viewer/test/cbf_test.log", True)
+initLogging("/space/projects/zeromq-data-transfer/test/cbf_test.log", True)
 logging.info("Test")
 
-#path = "/space/projects/live-viewer/jan_015_00001.cbf"
+#path = "/space/projects/zeromq-data-transfer/jan_015_00001.cbf"
 #fileFormat           = path.rsplit(".", 2)[1]
 #print fileFormat
 
