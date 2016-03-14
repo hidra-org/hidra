@@ -449,6 +449,7 @@ class dataTransfer():
         #TODO This is due to Windows path names, check if there has do be done anything additionally to work
         # e.g. check sourcePath if it's a windows path
         relativePath = configDict["relativePath"].replace('\\', os.sep)
+        self.log.debug("relativePath=" + relativePath)
 
         if relativePath is '' or relativePath is None:
             targetPath = basePath
@@ -465,11 +466,14 @@ class dataTransfer():
         generates path where target file will saved to.
 
         """
-        relativePath = configDict["relativePath"]
+        #TODO This is due to Windows path names, check if there has do be done anything additionally to work
+        # e.g. check sourcePath if it's a windows path
+        relativePath = configDict["relativePath"].replace('\\', os.sep)
 
         # if the relative path starts with a slash path.join will consider it as absolute path
         if relativePath.startswith("/"):
             relativePath = relativePath[1:]
+            self.log.debug("relativePath=" + relativePath)
 
         targetPath = os.path.join(basePath, relativePath)
 
