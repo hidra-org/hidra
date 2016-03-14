@@ -162,6 +162,7 @@ def argumentParsing():
     monitoredSubdirs    = arguments.monitoredSubdirs
     localTarget         = str(arguments.localTarget)
 
+    useDataStream       = arguments.useDataStream
     parallelDataStreams = arguments.parallelDataStreams
 
     # check if logfile is writable
@@ -174,7 +175,8 @@ def argumentParsing():
     helpers.checkDirExistance(logfilePath)
     helpers.checkDirExistance(monitoredDir)
     helpers.checkSubDirExistance(monitoredDir, monitoredSubdirs)
-    helpers.checkDirExistance(localTarget)
+    if useDataStream:
+        helpers.checkDirExistance(localTarget)
 
     return arguments
 
