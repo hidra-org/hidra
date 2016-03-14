@@ -297,10 +297,11 @@ class DataManager():
         self.taskProviderPr.start()
         self.log.info("Start TaskProvider...done")
 
-        self.log.info("Start DataDispatcher...")
-        self.dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, self.routerPort, self.chunkSize, self.fixedStreamId, self.logQueue, self.localTarget) )
-        self.dataDispatcherPr.start()
-        self.log.info("Start DataDispatcher...done")
+        for id in range(self.parallelDataStreams):
+            self.log.info("Start DataDispatcher-...")
+            self.dataDispatcherPr = Process ( target = DataDispatcher, args = ( id, self.routerPort, self.chunkSize, self.fixedStreamId, self.logQueue, self.localTarget) )
+            self.dataDispatcherPr.start()
+            self.log.info("Start DataDispatcher...done")
 
 
     def stop(self):
