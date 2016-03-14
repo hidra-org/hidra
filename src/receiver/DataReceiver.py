@@ -28,7 +28,7 @@ from dataTransferAPI import dataTransfer
 
 
 def argumentParsing():
-    configFile = CONFIG_PATH + os.sep + "receiver.conf"
+    configFile = CONFIG_PATH + os.sep + "dataReceiver.conf"
 
     config = ConfigParser.RawConfigParser()
     config.readfp(helpers.FakeSecHead(open(configFile)))
