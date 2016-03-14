@@ -386,7 +386,7 @@ class dataTransfer():
                 if len(payload) < payloadMetadata["chunkSize"] :
                     #indicated end of file. Leave loop
                     filename    = self.generateTargetFilepath(targetBasePath, payloadMetadata)
-                    fileModTime = payloadMetadata["fileModificationTime"]
+                    fileModTime = payloadMetadata["fileModTime"]
 
                     self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
                     break
@@ -446,7 +446,9 @@ class dataTransfer():
 
         """
         filename     = configDict["filename"]
-        relativePath = configDict["relativePath"]
+        #TODO This is due to Windows path names, check if there has do be done anything additionally to work
+        # e.g. check sourcePath if it's a windows path
+        relativePath = configDict["relativePath"].replace('\\', os.sep)
 
         if relativePath is '' or relativePath is None:
             targetPath = basePath

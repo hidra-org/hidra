@@ -156,7 +156,12 @@ def splitFilePath(filepath, paths):
             # path = /tmp/test/source/local/testdir
             # first iteration:  parentDir = /tmp/test/source/local, relDir = /testdir
             # second iteration: parentDir = /tmp/test/source,       relDir = /local/testdir
-            relativePath = os.sep + relDir + relativePath
+            if relativePath:
+                relativePath = os.path.join(relDir, relativePath)
+                #relativePath = os.sep + relDir + relativePath
+            else:
+                relativePath = relDir
+
 
 
 #    commonPrefix         = os.path.commonprefix([self.monDir,filepath]) # corresponds to sourcePath
@@ -166,12 +171,12 @@ def splitFilePath(filepath, paths):
     # the event for a file /tmp/test/source/local/file1.tif is of the form:
     # {
     #   "sourcePath" : "/tmp/test/source"
-    #   "relativePath": "/local"
+    #   "relativePath": "local"
     #   "filename"   : "file1.tif"
     # }
     eventMessage = {
-            "sourcePath"  : parentDir,
-            "relativePath": relativePath,
+            "sourcePath"  : os.path.normpath(parentDir),
+            "relativePath": os.path.normpath(relativePath),
             "filename"    : filename
             }
 
@@ -358,8 +363,9 @@ if __name__ == '__main__':
     from multiprocessing import Queue
 
 #    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))))
     SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+    print SHARED_PATH
 
     if not SHARED_PATH in sys.path:
         sys.path.append ( SHARED_PATH )
