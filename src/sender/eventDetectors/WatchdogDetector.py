@@ -195,6 +195,7 @@ class checkModTime(threading.Thread):
         self.timeTillClosed = timeTillClosed # s
         self.lock           = lock
         self._stop          = threading.Event()
+        self._poolRunning   = True
 
         self.log.debug("threading.Thread init")
         threading.Thread.__init__(self)
@@ -227,7 +228,11 @@ class checkModTime(threading.Thread):
                 # Open the urls in their own threads
 #                self.log.debug("List to observe: " + str(eventListToObserve))
 #                self.log.debug("eventMessageList: " + str(eventMessageList))
-                self.pool.map(self.checkLastModified, eventListToObserveCopy)
+                if self._poolRunning:
+                    self.pool.map(self.checkLastModified, eventListToObserveCopy)
+                else:
+                    self.log.debug("Pool was already closed")
+                    break
 #                self.log.debug("eventMessageList: " + str(eventMessageList))
 
 #                self.log.debug("List to observe tmp: " + str(eventListToObserveTmp))
@@ -236,9 +241,9 @@ class checkModTime(threading.Thread):
                 for event in eventListToObserveTmp:
                     try:
                         eventListToObserve.remove(event)
-                        self.log.debug("removing event: " + event)
+                        self.log.debug("Removing event: " + event)
                     except:
-                        self.log.error("not able to remove event " + event, exc_info=True)
+                        self.log.error("Removing event failed: " + event, exc_info=True)
                         self.log.debug("eventListToObserveTmp=" +str(eventListToObserveTmp))
                         self.log.debug("eventListToObserve=" +str(eventListToObserve))
                 eventListToObserveTmp = []
@@ -247,7 +252,7 @@ class checkModTime(threading.Thread):
 #                self.log.debug("List to observe after map-function: " + str(eventListToObserve))
                 time.sleep(2)
             except:
-                self.error("Stopping loop due to error", exc_info=True)
+                self.log.error("Stopping loop due to error", exc_info=True)
                 break
 
 
@@ -295,6 +300,7 @@ class checkModTime(threading.Thread):
         self.pool.close()
         self.pool.join()
         self._stop.set()
+        self._poolRunning = False
 
 
     def stopped(self):
@@ -425,7 +431,7 @@ if __name__ == '__main__':
             }
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
+    targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep
 
     eventDetector = WatchdogDetector(config, logQueue)
 
@@ -451,6 +457,7 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             break
 
+    time.sleep(2)
     eventDetector.stop()
     for number in range(100, i):
         targetFile = targetFileBase + str(number) + ".cbf"
