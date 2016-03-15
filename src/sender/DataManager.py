@@ -40,6 +40,7 @@ def argumentParsing():
 
     logfilePath         = config.get('asection', 'logfilePath')
     logfileName         = config.get('asection', 'logfileName')
+    logfileSize         = config.get('asection', 'logfileSize') #100*1048576
 
     comPort             = config.get('asection', 'comPort')
     whitelist           = json.loads(config.get('asection', 'whitelist'))
@@ -74,6 +75,9 @@ def argumentParsing():
     parser.add_argument("--logfileName"        , type    = str,
                                                  help    = "Filename used for logging (default=" + str(logfileName) + ")",
                                                  default = logfileName )
+    parser.add_argument("--logfileSize"        , type    = int,
+                                                 help    = "File size before rollover in B (linux only; (default=" + str(logfileSize) + ")",
+                                                 default = logfileSize )
     parser.add_argument("--verbose"            , help    = "More verbose output",
                                                  action  = "store_true")
     parser.add_argument("--onScreen"           , type    = str,
@@ -188,6 +192,7 @@ class DataManager():
         logfilePath         = arguments.logfilePath
         logfileName         = arguments.logfileName
         logfile             = os.path.join(logfilePath, logfileName)
+        logsize             = arguments.logfileSize
         verbose             = arguments.verbose
         onScreen            = arguments.onScreen
 
@@ -202,12 +207,12 @@ class DataManager():
 
             # Get the log Configuration for the lisener
             if onScreen:
-                h1, h2 = helpers.getLogHandlers(logfile, verbose, onScreen)
+                h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
 
                 # Start queue listener using the stream handler above
                 self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1, h2)
             else:
-                h1 = helpers.getLogHandlers(logfile, verbose, onScreen)
+                h1 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
 
                 # Start queue listener using the stream handler above
                 self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1)
@@ -427,11 +432,12 @@ if __name__ == '__main__':
 
 
         logfile = BASE_PATH + os.sep + "logs" + os.sep + "dataManager_test.log"
+        logsize = 10485760
 
         logQueue = Queue(-1)
 
         # Get the log Configuration for the lisener
-        h1, h2 = helpers.getLogHandlers(logfile, verbose=True, onScreenLogLevel="debug")
+        h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
 
         # Start queue listener using the stream handler above
         logQueueListener = helpers.CustomQueueListener(logQueue, h1, h2)

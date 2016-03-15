@@ -204,12 +204,13 @@ if __name__ == '__main__':
 
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
 
-    logfile = BASE_PATH + os.sep + "logs" + os.sep + "dataDispatcher.log"
+    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "dataDispatcher.log"
+    logsize  = 10485760
 
     logQueue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.getLogHandlers(logfile, verbose=True, onScreenLogLevel="debug")
+    h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
 
     # Start queue listener using the stream handler above
     logQueueListener    = helpers.CustomQueueListener(logQueue, h1, h2)

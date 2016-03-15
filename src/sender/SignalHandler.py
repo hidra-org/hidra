@@ -35,7 +35,7 @@ class SignalHandler():
                   logQueue, context = None):
 
         # to get the logging only handling this class
-        log                 = None
+        log                  = None
 
         self.context         = context or zmq.Context()
         self.localhost       = "127.0.0.1"
@@ -421,12 +421,13 @@ if __name__ == '__main__':
     requestFwPort = "6001"
     requestPort   = "6002"
 
-    logfile       = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler.log"
+    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler.log"
+    logsize  = 10485760
 
     logQueue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.getLogHandlers(logfile, verbose=True, onScreenLogLevel="debug")
+    h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
 
     # Start queue listener using the stream handler above
     logQueueListener    = helpers.CustomQueueListener(logQueue, h1, h2)

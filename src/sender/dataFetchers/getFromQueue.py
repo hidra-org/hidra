@@ -184,9 +184,10 @@ if __name__ == '__main__':
     import helpers
 
     logfile = BASE_PATH + os.sep + "logs" + os.sep + "getFromFile.log"
+    logsize = 10485760
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.getLogHandlers(logfile, verbose=True, onScreenLogLevel="debug")
+    h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
 
     # Create log and set handler to queue handle
     root = logging.getLogger()

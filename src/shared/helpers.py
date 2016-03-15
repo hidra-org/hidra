@@ -201,6 +201,7 @@ def checkLogFileWritable(filepath, filename):
     try:
         logfullPath = os.path.join(filepath, filename)
         logFile = open(logfullPath, "a")
+        logFile.close()
     except:
         print "Unable to create the logfile " + str(logfullPath)
         print "Please specify a new target by setting the following arguments:\n--logfileName\n--logfilePath"
@@ -291,7 +292,7 @@ class CustomQueueListener(QueueListener):
 
 
 # Get the log Configuration for the lisener
-def getLogHandlers(logfile, verbose, onScreenLogLevel = False):
+def getLogHandlers(logfile, logsize, verbose, onScreenLogLevel = False):
     # Enable more detailed logging if verbose-option has been set
     logLevel = logging.INFO
     if verbose:
@@ -304,7 +305,7 @@ def getLogHandlers(logfile, verbose, onScreenLogLevel = False):
     # Setup file handler to output to file
     # argument for RotatingFileHandler: filename, mode, maxBytes, backupCount)
     # 1048576 = 1MB
-    h1 = logging.handlers.RotatingFileHandler(logfile, 'a', 3*1048576, 5)
+    h1 = logging.handlers.RotatingFileHandler(logfile, 'a', logsize, 5)
     f1 = logging.Formatter(datefmt=datef,fmt=f)
     h1.setFormatter(f1)
     h1.setLevel(logLevel)

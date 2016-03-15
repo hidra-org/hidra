@@ -35,6 +35,8 @@ def argumentParsing():
 
     logfilePath    = config.get('asection', 'logfilePath')
     logfileName    = config.get('asection', 'logfileName')
+    logfileSize    = config.get('asection', 'logfileSize')
+
 
     targetDir      = config.get('asection', 'targetDir')
 
@@ -49,6 +51,9 @@ def argumentParsing():
     parser.add_argument("--logfileName"          , type    = str,
                                                    help    = "Filename used for logging (default=" + str(logfileName) + ")",
                                                    default = logfileName )
+    parser.add_argument("--logfileSize"          , type    = int,
+                                                   help    = "File size in B before rollover (linux only; (default=" + str(logfileSize) + ")",
+                                                   default = logfileSize )
     parser.add_argument("--verbose"              , help    = "More verbose output",
                                                    action  = "store_true" )
     parser.add_argument("--onScreen"             , type    = str,
@@ -71,6 +76,7 @@ def argumentParsing():
     logfilePath = arguments.logfilePath
     logfileName = arguments.logfileName
     logfile     = os.path.join(logfilePath, logfileName)
+    logsize     = arguments.logfileSize
     verbose     = arguments.verbose
     onScreen    = arguments.onScreen
 
@@ -80,7 +86,7 @@ def argumentParsing():
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
 
-    handlers = helpers.getLogHandlers(logfile, verbose, onScreen)
+    handlers = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
 
     if type(handlers) == tuple:
         for h in handlers:
