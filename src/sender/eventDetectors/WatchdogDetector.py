@@ -16,6 +16,7 @@ from logutils.queue import QueueHandler
 
 eventMessageList = []
 eventListToObserve = []
+eventListToObserveTmp = []
 
 
 class WatchdogEventHandler(PatternMatchingEventHandler):
@@ -215,39 +216,59 @@ class checkModTime(threading.Thread):
 
     def run(self):
         global eventListToObserve
+        global eventListToObserveTmp
 
         while True:
             try:
+                self.lock.acquire()
+                eventListToObserveCopy = copy.deepcopy(eventListToObserve)
+                self.lock.release()
+
                 # Open the urls in their own threads
 #                self.log.debug("List to observe: " + str(eventListToObserve))
 #                self.log.debug("eventMessageList: " + str(eventMessageList))
-                self.pool.map(self.checkLastModified, eventListToObserve)
+                self.pool.map(self.checkLastModified, eventListToObserveCopy)
 #                self.log.debug("eventMessageList: " + str(eventMessageList))
+
+#                self.log.debug("List to observe tmp: " + str(eventListToObserveTmp))
+
+                self.lock.acquire()
+                for event in eventListToObserveTmp:
+                    try:
+                        eventListToObserve.remove(event)
+                        self.log.debug("removing event: " + event)
+                    except:
+                        self.log.error("not able to remove event " + event, exc_info=True)
+                        self.log.debug("eventListToObserveTmp=" +str(eventListToObserveTmp))
+                        self.log.debug("eventListToObserve=" +str(eventListToObserve))
+                eventListToObserveTmp = []
+                self.lock.release()
+
+#                self.log.debug("List to observe after map-function: " + str(eventListToObserve))
                 time.sleep(2)
             except:
+                self.error("Stopping loop due to error", exc_info=True)
                 break
 
 
     def checkLastModified(self, filepath):
         global eventMessageList
-        global eventListToObserve
+        global eventListToObserveTmp
 
         threadName = threading.current_thread().name
 
         try:
             # check modification time
             timeLastModified = os.stat(filepath).st_mtime
-        except Exception as e:
-            self.log.error("Unable to get modification time for file: " + filepath)
-            self.log.error("Error was: " + str(e))
+        except:
+            self.log.error("Unable to get modification time for file: " + filepath, exc_info=True)
             return
 
         try:
             # get current time
             timeCurrent = time.time()
-        except Exception as e:
-            self.log.error("Unable to get current time for file: " + filepath)
-            self.log.error("Error was: " + str(e))
+        except:
+            self.log.error("Unable to get current time for file: " + filepath, exc_info=True)
 
         # compare ( >= limit)
         if timeCurrent - timeLastModified >= self.timeTillClosed:
@@ -260,8 +281,9 @@ class checkModTime(threading.Thread):
             self.lock.acquire()
             self.log.debug("checkLastModified-" + str(threadName) + " eventMessageList" + str(eventMessageList))
             eventMessageList.append(eventMessage)
-            eventListToObserve.remove(filepath)
+            eventListToObserveTmp.append(filepath)
             self.log.debug("checkLastModified-" + str(threadName) + " eventMessageList" + str(eventMessageList))
+#            self.log.debug("checkLastModified-" + str(threadName) + " eventListToObserveTmp" + str(eventListToObserveTmp))
             self.lock.release()
         else:
             self.log.debug("File was last modified " + str(timeCurrent - timeLastModified) + \
