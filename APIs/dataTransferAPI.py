@@ -13,37 +13,6 @@ import traceback
 
 
 class dataTransfer():
-
-    context         = None
-    externalContext = True
-
-    signalHost      = None
-    signalPort      = "50000"
-    requestPort     = "50001"
-    dataIp          = None
-    dataHost        = None
-    dataPort        = None
-
-    signalSocket    = None
-    dataSocket      = None
-    requestSocket   = None
-
-    targets         = None
-
-    log             = None
-
-    connectionType       = None
-    supportedConnections = ["stream", "queryNext"]
-
-
-    signalExchanged  = False
-
-    streamStarted    = None
-    queryNextStarted = None
-
-    socketResponseTimeout = None
-
-
     def __init__(self, connectionType, signalHost = None, useLog = False, context = None):
 
         if useLog:
@@ -74,14 +43,33 @@ class dataTransfer():
             self.context         = zmq.Context()
             self.externalContext = False
 
+
+        self.signalHost            = signalHost
+        self.signalPort            = "50000"
+        self.requestPort           = "50001"
+        self.dataIp                = None
+        self.dataHost              = None
+        self.dataPort              = None
+
+        self.signalSocket          = None
+        self.dataSocket            = None
+        self.requestSocket         = None
+
+        self.targets               = None
+
+        self.supportedConnections = ["stream", "queryNext"]
+
+        self.signalExchanged       = False
+
+        self.streamStarted         = None
+        self.queryNextStarted      = None
+
+        self.socketResponseTimeout = 1000
+
         if connectionType in self.supportedConnections:
             self.connectionType = connectionType
         else:
             raise Exception("Chosen type of connection is not supported.")
-
-        self.signalHost            = signalHost
-        self.socketResponseTimeout = 1000
-
 
 
     # targets: [host, port, prio] or [[host, port, prio], ...]
