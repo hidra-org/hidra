@@ -289,39 +289,40 @@ class DataManager():
 
 
     def run(self):
-        self.log.info("Start SignalHandler...")
         self.signalHandlerPr = Process ( target = SignalHandler, args = (self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue) )
         self.signalHandlerPr.start()
-        self.log.debug("Start SignalHandler...done")
 
         # needed, because otherwise the requests for the first files are not forwarded properly
         time.sleep(0.5)
 
-        self.log.info("Start TaskProvider...")
         self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.requestFwPort, self.routerPort, self.logQueue) )
         self.taskProviderPr.start()
-        self.log.info("Start TaskProvider...done")
 
         for id in range(self.parallelDataStreams):
-            self.log.info("Start DataDispatcher-" + str(id) + "...")
             pr = Process ( target = DataDispatcher, args = ( id, self.routerPort, self.chunkSize, self.fixedStreamId, self.logQueue, self.localTarget) )
             pr.start()
             self.dataDispatcherPr.append(pr)
-            self.log.info("Start DataDispatcher-" + str(id) + "...done")
 
 
     def stop(self):
         if self.signalHandlerPr:
+            self.log.info("terminate SignalHandler...")
             self.signalHandlerPr.terminate()
             self.signalHandlerPr = None
+            self.log.info("terminate SignalHandler...done")
 
         if self.taskProviderPr:
+            self.log.info("terminate TaskProvider...")
             self.taskProviderPr.terminate()
             self.taskProviderPr = None
+            self.log.info("terminate TaskProvider...done")
 
         for pr in self.dataDispatcherPr:
+            id = self.dataDispatcherPr.index(pr)
+            self.log.info("terminate DataDispatcher-" + str(id) + "...")
             pr.terminate()
             pr = None
+            self.log.info("terminate DataDispatcher-" + str(id) + "...done")
 
         if self.dataDispatcherPr == [ None for i in self.dataDispatcherPr ]:
             self.dataDispatcher = []
@@ -479,7 +480,7 @@ if __name__ == '__main__':
 
                     time.sleep(1)
             except Exception as e:
-                logging.error("Exception detected: " + str(e))
+                logging.error("Exception detected: " + str(e), exc_info=True)
             finally:
                 time.sleep(3)
                 testPr.terminate()

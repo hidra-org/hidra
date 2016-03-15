@@ -50,7 +50,7 @@ class DataDispatcher():
         self.id            = id
         self.log           = self.getLogger(logQueue)
 
-        self.log.debug("DataDispatcher Nr. " + str(self.id) + " started.")
+        self.log.debug("DataDispatcher-" + str(self.id) + " started (PID " + str(os.getpid()) + ").")
 
         self.localhost       = "127.0.0.1"
         self.extIp           = "0.0.0.0"

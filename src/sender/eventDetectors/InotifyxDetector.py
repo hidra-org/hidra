@@ -144,9 +144,8 @@ class InotifyxDetector():
                 wd = binding.add_watch(self.fd, path)
                 self.wd_to_path[wd] = path
                 self.log.debug("Register watch for path:" + str(path) )
-        except Exception as e:
-            self.log.error("Could not register watch for path: " + str(path) )
-            self.log.debug("Error was " + str(e))
+        except:
+            self.log.error("Could not register watch for path: " + str(path), exc_info=True)
 
 
     def getDirectoryStructure(self):
@@ -304,9 +303,8 @@ class InotifyxDetector():
             for wd in self.wd_to_path:
                 try:
                     binding.rm_watch(self.fd, wd)
-                except Exception as e:
-                    self.log.error("Unable to remove watch: " + wd)
-                    self.log.debug("Error was: " + str(e))
+                except:
+                    self.log.error("Unable to remove watch: " + wd, exc_info=True)
         finally:
             os.close(self.fd)
 

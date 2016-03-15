@@ -39,7 +39,7 @@ class TaskProvider():
         #}
 
         self.log               = self.getLogger(logQueue)
-        self.log.debug("TaskProvider: __init__()")
+        self.log.debug("TaskProvider started (PID " + str(os.getpid()) + ").")
 
         self.eventDetector     = None
 
@@ -99,9 +99,7 @@ class TaskProvider():
         except KeyboardInterrupt:
             self.log.debug("Keyboard interruption detected. Shuting down")
         except:
-            trace = traceback.format_exc()
-            self.log.info("Stopping TaskProvider due to unknown error condition.")
-            self.log.debug("Error was: " + str(trace))
+            self.log.info("Stopping TaskProvider due to unknown error condition.", exc_info=True)
 
 
     # Send all logs to the main process
@@ -126,9 +124,8 @@ class TaskProvider():
         try:
             self.requestFwSocket.connect(connectionStr)
             self.log.info("Start requestFwSocket (connect): '" + str(connectionStr) + "'")
-        except Exception as e:
-            self.log.error("Failed to start requestFwSocket (connect): '" + connectionStr + "'")
-            self.log.debug("Error was:" + str(e))
+        except:
+            self.log.error("Failed to start requestFwSocket (connect): '" + connectionStr + "'", exc_info=True)
 
         # socket to disribute the events to the worker
         self.routerSocket = self.context.socket(zmq.PUSH)
@@ -136,9 +133,8 @@ class TaskProvider():
         try:
             self.routerSocket.bind(connectionStr)
             self.log.info("Start to router socket (bind): '" + str(connectionStr) + "'")
-        except Exception as e:
-            self.log.error("Failed to start router Socket (bind): '" + connectionStr + "'")
-            self.log.debug("Error was:" + str(e))
+        except:
+            self.log.error("Failed to start router Socket (bind): '" + connectionStr + "'", exc_info=True)
 
 
     def run (self):
@@ -151,9 +147,8 @@ class TaskProvider():
                 #   "filename"   : "file1.tif"
                 # }
                 workloadList = self.eventDetector.getNewEvent()
-            except Exception, e:
-                self.log.error("Invalid fileEvent message received.")
-                self.log.debug("Error was: " + str(e))
+            except:
+                self.log.error("Invalid fileEvent message received.", exc_info=True)
                 #skip all further instructions and continue with next iteration
                 continue
 
@@ -167,9 +162,7 @@ class TaskProvider():
                     self.log.debug("Get requests... done.")
                     self.log.debug("Requests: " + str(requests))
                 except:
-                    self.log.error("Get Requests... failed.")
-                    trace = traceback.format_exc()
-                    self.log.debug("Error was: " + str(trace))
+                    self.log.error("Get Requests... failed.", exc_info=True)
 
 
                 # build message dict
@@ -177,9 +170,8 @@ class TaskProvider():
                     self.log.debug("Building message dict...")
                     messageDict = cPickle.dumps(workload)  #sets correct escape characters
                     self.log.debug("Building message dict...done.")
-                except Exception, e:
-                    self.log.error("Unable to assemble message dict.")
-                    self.log.debug("Error was: " + stri(e))
+                except:
+                    self.log.error("Unable to assemble message dict.", exc_info=True)
                     continue
 
                 # send the file to the fileMover
@@ -191,9 +183,8 @@ class TaskProvider():
                     self.log.debug(str(message))
                     self.routerSocket.send_multipart(message)
                     self.log.debug("Sending message...done.")
-                except Exception, e:
-                    self.log.error("Sending message...failed.")
-                    self.log.debug("Error was: " + str(e))
+                except:
+                    self.log.error("Sending message...failed.", exc_info=True)
 
 
 

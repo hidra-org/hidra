@@ -110,7 +110,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
         if self.detect_close:
             self.log.debug("On close event detected (from create)")
             if ( not event.is_directory ):
-                self.log.debug("Append event to eventListToObserve")
+                self.log.debug("Append event to eventListToObserve: " + event.src_path)
                 eventListToObserve.append(event.src_path)
 
 

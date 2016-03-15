@@ -65,7 +65,7 @@ class SignalHandler():
 
         # Send all logs to the main process
         self.log = self.getLogger(logQueue)
-        self.log.debug("Init")
+        self.log.debug("SignalHandler started (PID " + str(os.getpid()) + ").")
 
         self.createSockets()
 
@@ -74,9 +74,7 @@ class SignalHandler():
         except KeyboardInterrupt:
             pass
         except:
-            trace = traceback.format_exc()
-            self.log.info("Stopping signalHandler due to unknown error condition.")
-            self.log.debug("Error was: " + str(trace))
+            self.log.error("Stopping signalHandler due to unknown error condition.", exc_info=True)
 
 
     # Send all logs to the main process
@@ -102,9 +100,8 @@ class SignalHandler():
         try:
             self.comSocket.bind(connectionStr)
             self.log.info("Start comSocket (bind): '" + connectionStr + "'")
-        except Exception as e:
-            self.log.error("Failed to start comSocket (bind): '" + connectionStr + "'")
-            self.log.debug("Error was:" + str(e))
+        except:
+            self.log.error("Failed to start comSocket (bind): '" + connectionStr + "'", exc_info=True)
 
         # setting up router for load-balancing worker-processes.
         # each worker-process will handle a file event
@@ -113,9 +110,8 @@ class SignalHandler():
         try:
             self.requestFwSocket.bind(connectionStr)
             self.log.info("Start requestFwSocket (bind): '" + connectionStr + "'")
-        except Exception as e:
-            self.log.error("Failed to start requestFwSocket (bind): '" + connectionStr + "'")
-            self.log.debug("Error was:" + str(e))
+        except:
+            self.log.error("Failed to start requestFwSocket (bind): '" + connectionStr + "'", exc_info=True)
 
         # create socket to receive requests
         self.requestSocket = self.context.socket(zmq.PULL)
@@ -123,9 +119,8 @@ class SignalHandler():
         try:
             self.requestSocket.bind(connectionStr)
             self.log.debug("requestSocket started (bind) for '" + connectionStr + "'")
-        except Exception as e:
-            self.log.error("Failed to start requestSocket (bind): '" + connectionStr + "'")
-            self.log.debug("Error was:" + str(e))
+        except:
+            self.log.error("Failed to start requestSocket (bind): '" + connectionStr + "'", exc_info=True)
 
         # Poller to distinguish between start/stop signals and queries for the next set of signals
         self.poller = zmq.Poller()
@@ -163,10 +158,8 @@ class SignalHandler():
                         openRequests = ["None"]
                         self.requestFwSocket.send(cPickle.dumps(openRequests))
                         self.log.debug("Answered to request: " + str(openRequests))
-                except Exception, e:
-                    self.log.error("Failed to receive/answer new signal requests.")
-                    trace = traceback.format_exc()
-                    self.log.debug("Error was: " + str(trace))
+                except:
+                    self.log.error("Failed to receive/answer new signal requests.", exc_info=True)
 #                continue
 
             if self.comSocket in socks and socks[self.comSocket] == zmq.POLLIN:
@@ -402,7 +395,7 @@ class requestPuller():
                 self.log.info("[getRequests] Requests: " + str(requests))
                 time.sleep(0.25)
             except Exception as e:
-                self.log.error(str(e))
+                self.log.error(str(e), exc_info=True)
                 break
 
     def __exit__(self):
