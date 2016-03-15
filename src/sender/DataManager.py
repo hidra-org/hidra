@@ -256,7 +256,7 @@ class DataManager():
 
         self.signalHandlerPr  = None
         self.taskProviderPr   = None
-        self.dataDispatcherPr = None
+        self.dataDispatcherPr = []
 
         self.log.info("Version: " + str(__version__))
 
@@ -298,10 +298,11 @@ class DataManager():
         self.log.info("Start TaskProvider...done")
 
         for id in range(self.parallelDataStreams):
-            self.log.info("Start DataDispatcher-...")
-            self.dataDispatcherPr = Process ( target = DataDispatcher, args = ( id, self.routerPort, self.chunkSize, self.fixedStreamId, self.logQueue, self.localTarget) )
-            self.dataDispatcherPr.start()
-            self.log.info("Start DataDispatcher...done")
+            self.log.info("Start DataDispatcher-" + str(id) + "...")
+            pr = Process ( target = DataDispatcher, args = ( id, self.routerPort, self.chunkSize, self.fixedStreamId, self.logQueue, self.localTarget) )
+            pr.start()
+            self.dataDispatcherPr.append(pr)
+            self.log.info("Start DataDispatcher-" + str(id) + "...done")
 
 
     def stop(self):
@@ -313,9 +314,12 @@ class DataManager():
             self.taskProviderPr.terminate()
             self.taskProviderPr = None
 
-        if self.dataDispatcherPr:
-            self.dataDispatcherPr.terminate()
-            self.dataDispatcherPr = None
+        for pr in self.dataDispatcherPr:
+            pr.terminate()
+            pr = None
+
+        if self.dataDispatcherPr == [ None for i in self.dataDispatcherPr ]:
+            self.dataDispatcher = []
 
         if not self.extLogQueue and self.logQueueListener:
             self.logQueue.put_nowait(None)

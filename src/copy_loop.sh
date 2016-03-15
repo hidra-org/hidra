@@ -1,6 +1,6 @@
 #/bin/sh
 
-SOURCE=/space/projects/zeromq-data-transferr
+SOURCE=/space/projects/zeromq-data-transfer
 #SOURCE=/home/kuhnm/Arbeit/zeromq-data-transfer
 #SOURCE=/home/p11user/zeromq-data-transfer
 #SOURCE=/home/p11user/live-viewer
