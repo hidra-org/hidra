@@ -12,25 +12,26 @@ import cPickle
 import traceback
 
 
+class loggingFunction:
+    def out(self, x, exc_info = None):
+        if exc_info:
+            print x, traceback.format_exc()
+        else:
+            print x
+    def __init__(self):
+        self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.info     = lambda x, exc_info=None: self.out(x, exc_info)
+        self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
+        self.error    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+
+
 class nexusTransfer():
     def __init__(self, signalHost = None, useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("nexusTransferAPI")
         else:
-            class loggingFunction:
-                def out(self, x, exc_info = None):
-                    if exc_info:
-                        print x, traceback.format_exc()
-                    else:
-                        print x
-                def __init__(self):
-                    self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.info     = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.error    = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-
             self.log = loggingFunction()
 
         # ZMQ applications always start by creating a context,
@@ -44,61 +45,65 @@ class nexusTransfer():
             self.externalContext = False
 
 
-        self.extHost    = "0.0.0.0"
+        self.extHost      = "0.0.0.0"
 
-        self.signalPort = "6000"
-        self.eventPort  = "6001"
-        self.dataPort   = "6002"
+        self.signalPort   = "50050"
+        self.dataPort     = "50100"
 
-        self.dataHost              = None
-        self.dataPort              = None
-
-        self.signalSocket          = None
-        self.eventSocket           = None
-        self.dataSocket            = None
+        self.signalSocket = None
+        self.dataSocket   = None
 
 
         self.__createSockets()
 
 
-    def __createSocket(self):
+    def __createSockets(self):
 
         self.signalSocket = self.context.socket(zmq.REP)
         connectionStr     = "tcp://" + str(self.extHost) + ":" + str(self.signalPort)
-        self.signalSocket.bind(connectionStr)
-        logging.info("signalSocket started (bind) for '" + connectionStr + "'")
-
-        self.eventSocket  = self.context.socket(zmq.PULL)
-        connectionStr     = "tcp://" + str(self.extHost) + ":" + str(self.eventPort)
-        self.eventSocket.bind(connectionStr)
-        logging.info("eventSocket started (bind) for '" + connectionStr + "'")
+        try:
+            self.signalSocket.bind(connectionStr)
+            logging.info("signalSocket started (bind) for '" + connectionStr + "'")
+        except:
+            self.log.error("Failed to start signalSocket (bind): '" + connectionStr + "'", exc_info=True)
 
         self.dataSocket   = self.context.socket(zmq.PULL)
         connectionStr     = "tcp://" + str(self.extHost) + ":" + str(self.dataPort)
-        self.dataSocket.bind(connectionStr)
-        logging.info("dataSocket started (bind) for '" + connectionStr + "'")
+        try:
+            self.dataSocket.bind(connectionStr)
+            self.log.info("dataSocket started (bind) for '" + connectionStr + "'")
+        except:
+            self.log.error("Failed to start dataSocket (bind): '" + connectionStr + "'", exc_info=True)
+
+        self.poller = zmq.Poller()
+        self.poller.register(self.signalSocket, zmq.POLLIN)
+        self.poller.register(self.dataSocket, zmq.POLLIN)
 
 
-    def get(self):
+    def read(self):
 
-        message = self.signalSocket.recv()
-        logging.debug("signalSocket recv: " + message)
+        socks = dict(self.poller.poll())
 
-        self.signalSocket.send(message)
-        logging.debug("signalSocket send: " + message)
+        if self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
 
+            message = self.signalSocket.recv()
+            logging.debug("signalSocket recv: " + message)
 
-        for i in range(5):
-            logging.debug("eventSocket recv: " + str(cPickle.loads(self.eventSocket.recv())))
-            logging.debug("dataSocket recv: " + self.dataSocket.recv())
+            self.signalSocket.send(message)
+            logging.debug("signalSocket send: " + message)
 
+            return message
 
-        message = self.signalSocket.recv()
-        logging.debug("signalSocket recv: " + message)
-        self.signalSocket.send(message)
-        logging.debug("signalSocket send: " + message)
+        if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
 
-        logging.debug("eventSocket recv: " + self.eventSocket.recv())
+            try:
+                return self.__getMultipartMessage()
+            except KeyboardInterrupt:
+                self.log.debug("Keyboard interrupt detected. Stopping to receive.")
+                raise
+            except:
+                self.log.error("Unknown error while receiving files. Need to abort.", exc_info=True)
+                return None, None
 
 
 
@@ -138,13 +143,9 @@ class nexusTransfer():
 
         try:
             if self.signalSocket:
-                logging.info("closing eventSocket...")
+                logging.info("closing signalSocket...")
                 self.signalSocket.close(linger=0)
                 self.signalSocket = None
-            if self.eventSocket:
-                logging.info("closing eventSocket...")
-                self.eventSocket.close(linger=0)
-                self.eventSocket = None
             if self.dataSocket:
                 logging.info("closing dataSocket...")
                 self.dataSocket.close(linger=0)

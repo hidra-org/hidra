@@ -12,25 +12,26 @@ import cPickle
 import traceback
 
 
+class loggingFunction:
+    def out(self, x, exc_info = None):
+        if exc_info:
+            print x, traceback.format_exc()
+        else:
+            print x
+    def __init__(self):
+        self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.info     = lambda x, exc_info=None: self.out(x, exc_info)
+        self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
+        self.error    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+
+
 class dataTransfer():
     def __init__(self, connectionType, signalHost = None, useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("dataTransferAPI")
         else:
-            class loggingFunction:
-                def out(self, x, exc_info = None):
-                    if exc_info:
-                        print x, traceback.format_exc()
-                    else:
-                        print x
-                def __init__(self):
-                    self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.info     = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.error    = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-
             self.log = loggingFunction()
 
         # ZMQ applications always start by creating a context,
@@ -47,7 +48,6 @@ class dataTransfer():
         self.signalHost            = signalHost
         self.signalPort            = "50000"
         self.requestPort           = "50001"
-        self.dataIp                = None
         self.dataHost              = None
         self.dataPort              = None
 

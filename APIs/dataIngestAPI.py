@@ -46,10 +46,12 @@ class dataIngest():
 
 
         self.signalHost  = "zitpcx19282"
-        self.signalPort  = "6000"
+        self.signalPort  = "50050"
 
-        self.eventPort   = "6001"
-        self.dataPort    = "6002"
+        # has to be the same port as configured in dataManager.conf as eventPort
+        self.eventPort   = "50003"
+        # has to be the same port as configured in dataManager.conf as fixedStreamPort #TODO change that to a different port
+        self.dataPort    = "50100"
 
         self.eventSocket = None
         self.dataSocket  = None
@@ -107,7 +109,7 @@ class dataIngest():
             raise Exception("File " + str(filename) + " already opened.")
 
         # send notification to receiver
-        self.signalSocket.send("openFile")
+        self.signalSocket.send("OPEN_FILE")
         self.log.info("Sending signal to open a new file.")
 
         message = self.signalSocket.recv()
@@ -133,7 +135,7 @@ class dataIngest():
     # return error code
     def closeFile(self):
         # send close-signal to signal socket
-        sendMessage = "closeFile"
+        sendMessage = "CLOSE_FILE"
         self.signalSocket.send(sendMessage)
         self.log.info("Sending signal to close the file.")
 

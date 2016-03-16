@@ -24,7 +24,7 @@ import helpers
 
 #enable logging
 logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfile     = os.path.join(logfilePath, "testIngestAPI.log")
+logfile     = os.path.join(logfilePath, "testDataIngestAPI.log")
 helpers.initLogging(logfile, True, "DEBUG")
 
 del BASE_PATH
@@ -37,9 +37,9 @@ print
 class Receiver(threading.Thread):
     def __init__(self):
         self.extHost    = "0.0.0.0"
-        self.signalPort = "6000"
-        self.eventPort  = "6001"
-        self.dataPort   = "6002"
+        self.signalPort = "50050"
+        self.eventPort  = "50003"
+        self.dataPort   = "50100"
 
         self.context       = zmq.Context()
 
@@ -59,6 +59,7 @@ class Receiver(threading.Thread):
         logging.info("dataSocket started (bind) for '" + connectionStr + "'")
 
         threading.Thread.__init__(self)
+
 
     def run(self):
         message = self.signalSocket.recv()
@@ -95,6 +96,10 @@ class Receiver(threading.Thread):
                 logging.info("closing dataSocket...")
                 self.dataSocket.close(linger=0)
                 self.dataSocket = None
+            if self.context:
+                logging.info("destroying context...")
+                self.context.destroy()
+                self.context = None
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
