@@ -204,7 +204,7 @@ if __name__ == '__main__':
     receivingPort    = "6005"
     receivingPort2   = "6006"
     extIp            = "0.0.0.0"
-    dataFwPort       = "6050"
+    dataFwPort       = "50010"
 
     context          = zmq.Context.instance()
 

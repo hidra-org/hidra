@@ -8,6 +8,7 @@ import traceback
 import cPickle
 import shutil
 from logutils.queue import QueueHandler
+from multiprocessing import Process
 
 try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -30,8 +31,10 @@ import helpers
 #  --------------------------  class: DataDispatcher  --------------------------------------
 #
 class DataDispatcher():
+#class DataDispatcher(Process):
 
-    def __init__(self, id, routerPort, chunkSize, fixedStreamId, logQueue, localTarget = None, context = None):
+    def __init__(self, id, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
+                logQueue, localTarget = None, context = None):
 
         supportedDataFetchers = ["getFromFile"]
         dataFetcherProp = {
@@ -43,12 +46,12 @@ class DataDispatcher():
 #                "type"       : "getFromQueue",
 #                "context"    : context,
 #                "extIp"      : "0.0.0.0",
-#                "port"       : "6050"
+#                "port"       : "50010"
 #                }
 
 
         self.id              = id
-        self.log             = self.getLogger(logQueue)
+        self.log             = self.__getLogger(logQueue)
 
         self.log.debug("DataDispatcher-" + str(self.id) + " started (PID " + str(os.getpid()) + ").")
 
@@ -75,10 +78,10 @@ class DataDispatcher():
             self.context    = zmq.Context()
             self.extContext = False
             if self.dataFetcherProp.has_key("context") and not self.dataFetcherProp["context"]:
-                self.dataFetcherProp["context"]    = self.context
+                self.dataFetcherProp["context"] = self.context
 
 
-        self.createSockets()
+        self.__createSockets()
 
 
         if dataFetcher in supportedDataFetchers:
@@ -88,8 +91,10 @@ class DataDispatcher():
         else:
             raise Exception("DataFetcher type " + dataFetcher + " not supported")
 
+#        Process.__init__(self)
+
         try:
-            self.process()
+            self.run()
         except KeyboardInterrupt:
             self.log.debug("KeyboardInterrupt detected. Shutting down DataDispatcher-" + str(self.id) + ".")
             self.stop()
@@ -98,7 +103,7 @@ class DataDispatcher():
             self.stop()
 
 
-    def createSockets(self):
+    def __createSockets(self):
         self.routerSocket = self.context.socket(zmq.PULL)
         connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.routerPort )
         self.routerSocket.connect(connectionStr)
@@ -109,7 +114,7 @@ class DataDispatcher():
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
-    def getLogger (self, queue):
+    def __getLogger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("DataDispatcher-" + str(self.id))
@@ -120,14 +125,18 @@ class DataDispatcher():
         return logger
 
 
-    def process(self):
+    def run(self):
 
         while True:
             # Get workload from router, until finished
             self.log.debug("DataDispatcher-" + str(self.id) + ": waiting for new job")
-            message = self.routerSocket.recv_multipart()
-            self.log.debug("DataDispatcher-" + str(self.id) + ": new job received")
-            self.log.debug("message = " + str(message))
+            try:
+                message = self.routerSocket.recv_multipart()
+                self.log.debug("DataDispatcher-" + str(self.id) + ": new job received")
+                self.log.debug("message = " + str(message))
+            except:
+                self.log.error("DataDispatcher-" + str(self.id) + ": waiting for new job...failed", exc_info=True)
+                continue
 
 
             if len(message) >= 2:
@@ -206,9 +215,11 @@ class DataDispatcher():
         self.log.debug("Closing sockets for DataDispatcher-" + str(self.id))
         for connection in self.openConnections:
             if self.openConnections[connection]:
+                self.log.info("Closing socket " + str(connection))
                 self.openConnections[connection].close(0)
                 self.openConnections[connection] = None
         if self.routerSocket:
+            self.log.info("Closing routerSocket")
             self.routerSocket.close(0)
             self.routerSocket = None
         self.dataFetcher.clean(self.dataFetcherProp)
@@ -227,7 +238,7 @@ class DataDispatcher():
 
 
 if __name__ == '__main__':
-    from multiprocessing import Process, freeze_support, Queue
+    from multiprocessing import freeze_support, Queue
     import time
     from shutil import copyfile
 
@@ -253,7 +264,7 @@ if __name__ == '__main__':
 
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep + "100.cbf"
+    targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + os.sep + "100.cbf"
 
     copyfile(sourceFile, targetFile)
     time.sleep(0.5)
@@ -270,10 +281,25 @@ if __name__ == '__main__':
 
     logConfig = "test"
 
-    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, fixedStreamId, logQueue, localTarget) )
-    dataDispatcherPr.start()
+    dataFetcherProp = {
+            "type"       : "getFromFile",
+            "removeFlag" : False
+            }
+
+#    dataFetcherProp = {
+#            "type"       : "getFromQueue",
+#            "context"    : context,
+#            "extIp"      : "0.0.0.0",
+#            "port"       : "50010"
+#            }
 
     context       = zmq.Context.instance()
+
+#    dataDispatcherPr = DataDispatcher( "0/1", routerPort, chunkSize, fixedStreamId, logQueue, localTarget, context)
+    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
+                                                                  logQueue, localTarget, context) )
+    dataDispatcherPr.start()
+
 
     routerSocket  = context.socket(zmq.PUSH)
     connectionStr = "tcp://127.0.0.1:" + routerPort
@@ -293,7 +319,7 @@ if __name__ == '__main__':
 
     metadata = {
             "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
-            "relativePath": os.sep + "local" + os.sep + "raw",
+            "relativePath": "local",
             "filename"    : "100.cbf"
             }
     targets = [['localhost:6005', 1], ['localhost:6006', 0]]
@@ -303,7 +329,7 @@ if __name__ == '__main__':
 
     time.sleep(1)
 
-    workload = routerSocket.send_multipart(message)
+    routerSocket.send_multipart(message)
     logging.info("=== send message")
 
     try:

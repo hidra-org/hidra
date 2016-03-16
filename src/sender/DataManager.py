@@ -167,6 +167,7 @@ def argumentParsing():
 
     eventDetectorType = arguments.eventDetectorType.lower()
     supportedEDTypes  = ["inotifyx", "watchdog", "zmq"]
+    supportedDFTypes  = ["getFromFile"]
     monitoredDir      = str(arguments.monitoredDir)
     monitoredSubdirs  = arguments.monitoredSubdirs
     localTarget       = str(arguments.localTarget)
@@ -179,6 +180,9 @@ def argumentParsing():
 
     # check if the eventDetectorType is supported
     helpers.checkEventDetectorType(eventDetectorType, supportedEDTypes)
+
+    # check if the dataFetcherType is supported
+#    helpers.checkDataFetcherType(dataFetcherType, supportedDFTypes)
 
     # check if directories exists
     helpers.checkDirExistance(logfilePath)
@@ -259,6 +263,20 @@ class DataManager():
                     }
 
 
+        self.dataFetcherProp = {
+                "type"        : "getFromFile",
+                "removeFlag"  : False
+                }
+
+#        self.dataFetcherProp = {
+#                "type"        : "getFromQueue",    # TODO get from config-file
+#                "context"     : None,
+#                "extIp"       : "0.0.0.0",
+#                "port"        : "50010"            # TODO get from config-file
+#                }
+
+
+
         if arguments.useDataStream:
             self.fixedStreamId = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )
         else:
@@ -313,7 +331,8 @@ class DataManager():
 
         for i in range(self.numberOfStreams):
             id = str(i) + "/" + str(self.numberOfStreams)
-            pr = Process ( target = DataDispatcher, args = ( id, self.routerPort, self.chunkSize, self.fixedStreamId, self.logQueue, self.localTarget) )
+            pr = Process ( target = DataDispatcher, args = ( id, self.routerPort, self.chunkSize, self.fixedStreamId, self.dataFetcherProp,
+                                                            self.logQueue, self.localTarget) )
             pr.start()
             self.dataDispatcherPr.append(pr)
 
