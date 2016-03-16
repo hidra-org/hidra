@@ -8,7 +8,7 @@ import cPickle
 from logutils.queue import QueueHandler
 
 
-class LambdaDetector():
+class ZmqDetector():
 
     def __init__(self, config, logQueue):
 
@@ -50,7 +50,7 @@ class LambdaDetector():
     def getLogger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("lambdaDetector")
+        logger = logging.getLogger("zmqDetector")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -122,7 +122,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "lambdaDetector.log"
+    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "zmqDetector.log"
     logsize  = 10485760
 
     logQueue = Queue(-1)
@@ -144,14 +144,14 @@ if __name__ == '__main__':
     eventPort       = "6001"
     numberOfStreams = 4
     config = {
-            "eventDetectorType" : "lambda",
+            "eventDetectorType" : "zmq",
             "eventPort"         : eventPort,
             "numberOfStreams"   : numberOfStreams,
             "context"           : None,
             }
 
 
-    eventDetector = LambdaDetector(config, logQueue)
+    eventDetector = ZmqDetector(config, logQueue)
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
     targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep

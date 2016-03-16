@@ -62,6 +62,7 @@ def argumentParsing():
     numberOfStreams    = config.get('asection', 'numberOfStreams')
     chunkSize          = int(config.get('asection', 'chunkSize'))
 
+    eventPort          = config.get('asection', 'eventPort')
     routerPort         = config.get('asection', 'routerPort')
 
     localTarget        = config.get('asection', 'localTarget')
@@ -139,6 +140,10 @@ def argumentParsing():
                                                 help    = "Chunk size of file-parts getting send via ZMQ (default=" + str(chunkSize) + ")",
                                                 default = chunkSize )
 
+    parser.add_argument("--eventPort"         , type    = str,
+                                                help    = "ZMQ port to get events from (only needed if eventDetectorType is zmq; \
+                                                           default=" + str(eventPort) + ")",
+                                                default = routerPort )
     parser.add_argument("--routerPort"        , type    = str,
                                                 help    = "ZMQ-router port which coordinates the load-balancing \
                                                            to the worker-processes (default=" + str(routerPort) + ")",
@@ -161,7 +166,7 @@ def argumentParsing():
     onScreen          = arguments.onScreen
 
     eventDetectorType = arguments.eventDetectorType.lower()
-    supportedEDTypes  = ["inotifyx", "watchdog"]
+    supportedEDTypes  = ["inotifyx", "watchdog", "zmq"]
     monitoredDir      = str(arguments.monitoredDir)
     monitoredSubdirs  = arguments.monitoredSubdirs
     localTarget       = str(arguments.localTarget)
@@ -245,11 +250,12 @@ class DataManager():
                     "monSuffixes"       : arguments.monitoredFormats,
                     "timeTillClosed"    : arguments.timeTillClosed
                     }
-        elif arguments.eventDetectorType == "lambda":
+        elif arguments.eventDetectorType == "zmq":
             self.eventDetectorConfig = {
-                    "eventPort"         : "6001", #arguments.eventPort,
+                    "eventDetectorType" : arguments.eventDetectorType,
+                    "eventPort"         : arguments.eventPort,
                     "numberOfStreams"   : arguments.numberOfStreams,
-                    "context"           : None,
+                    "context"           : None, #TODO
                     }
 
 
