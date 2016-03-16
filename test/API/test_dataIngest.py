@@ -101,7 +101,7 @@ class Receiver(threading.Thread):
                 self.context.destroy()
                 self.context = None
         except:
-            self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
+            logging.error("closing ZMQ Sockets...failed.", exc_info=True)
 
 
 

@@ -50,8 +50,9 @@ class dataIngest():
 
         # has to be the same port as configured in dataManager.conf as eventPort
         self.eventPort   = "50003"
-        # has to be the same port as configured in dataManager.conf as fixedStreamPort #TODO change that to a different port
-        self.dataPort    = "50100"
+        #TODO add port in config
+        # has to be the same port as configured in dataManager.conf as ...
+        self.dataPort    = "50010"
 
         self.eventSocket = None
         self.dataSocket  = None
@@ -137,7 +138,11 @@ class dataIngest():
         # send close-signal to signal socket
         sendMessage = "CLOSE_FILE"
         self.signalSocket.send(sendMessage)
-        self.log.info("Sending signal to close the file.")
+        self.log.info("Sending signal to close the file to signalSocket.")
+
+        # send close-signal to event Detector
+        self.eventSocket.send(sendMessage)
+        self.log.debug("Sending signal to close the file to eventSocket.(sendMessage=" + sendMessage + ")")
 
         recvMessage = self.signalSocket.recv()
 
@@ -145,10 +150,6 @@ class dataIngest():
             self.log.debug("recieved message: " + str(recvMessage))
             self.log.debug("send message: " + str(sendMessage))
             raise Exception("Something went wrong while notifying to close the file")
-
-        # send close-signal to event Detector
-        self.eventSocket.send(sendMessage)
-        self.log.debug("Sending signal to close the file.")
 
         self.openFile = None
         self.filePart = None

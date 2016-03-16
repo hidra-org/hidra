@@ -47,8 +47,8 @@ class DataDispatcher():
 #                }
 
 
-        self.id            = id
-        self.log           = self.getLogger(logQueue)
+        self.id              = id
+        self.log             = self.getLogger(logQueue)
 
         self.log.debug("DataDispatcher-" + str(self.id) + " started (PID " + str(os.getpid()) + ").")
 
@@ -91,9 +91,11 @@ class DataDispatcher():
         try:
             self.process()
         except KeyboardInterrupt:
-            self.log.debug("KeyboardInterrupt detected. Shutting down DataDispatcher Nr. " + str(self.id) + ".")
+            self.log.debug("KeyboardInterrupt detected. Shutting down DataDispatcher-" + str(self.id) + ".")
+            self.stop()
         except:
-            self.log.error("Stopping DataDispatcher Nr " + str(self.id) + " due to unknown error condition.", exc_info=True)
+            self.log.error("Stopping DataDispatcher-" + str(self.id) + " due to unknown error condition.", exc_info=True)
+            self.stop()
 
 
     def createSockets(self):
@@ -135,19 +137,45 @@ class DataDispatcher():
                     targets.insert(0,[self.fixedStreamId, 0])
                 # sort the target list by the priority
                 targets = sorted(targets, key=lambda target: target[1])
+
+            elif message[0] == b"CLOSE_FILE":
+                self.log.debug("Router requested to send signal that file was closed.")
+                payload = [ metadata, self.id ]
+
+                # socket already known
+                if self.fixedStreamId in openConnections:
+                    tracker = openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                    log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0")
+                else:
+                    # open socket
+                    socket        = context.socket(zmq.PUSH)
+                    connectionStr = "tcp://" + str(self.fixedStreamId)
+
+                    socket.connect(connectionStr)
+                    log.info("Start socket (connect): '" + str(connectionStr) + "'")
+
+                    # register socket
+                    openConnections[self.fixedStreamId] = socket
+
+                    # send data
+                    tracker = openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                    log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0" )
+
+                # socket not known
+                if not tracker.done:
+                    log.info("Close file signal has not been sent yet, waiting...")
+                    tracker.wait()
+                    log.info("Close file signal has not been sent yet, waiting...done")
+
+                time.sleep(2)
+                self.log.debug("Continue after sleeping.")
+                continue
+
+            elif message[0] == b"EXIT":
+                self.log.debug("Router requested to shutdown DataDispatcher-"+ str(self.id) + ".")
+                break
+
             else:
-                closeFile = message[0] == b"CLOSE_FILE"
-                if closeFile:
-                    self.log.debug("Router requested to send signal that file was closed.")
-                    time.sleep(2)
-                    self.log.debug("Continue after sleeping.")
-                    continue
-
-                finished = message[0] == b"EXIT"
-                if finished:
-                    self.log.debug("Router requested to shutdown DataDispatcher-"+ str(self.id) + ".")
-                    break
-
                 workload = cPickle.loads(message[0])
                 if self.fixedStreamId:
                     targets = [[self.fixedStreamId, 0]]
@@ -196,6 +224,7 @@ class DataDispatcher():
 
     def __del__(self):
         self.stop()
+
 
 if __name__ == '__main__':
     from multiprocessing import Process, freeze_support, Queue

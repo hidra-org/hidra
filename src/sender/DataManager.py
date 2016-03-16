@@ -311,7 +311,8 @@ class DataManager():
         self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.requestFwPort, self.routerPort, self.logQueue) )
         self.taskProviderPr.start()
 
-        for id in range(self.numberOfStreams):
+        for i in range(self.numberOfStreams):
+            id = str(i) + "/" + str(self.numberOfStreams)
             pr = Process ( target = DataDispatcher, args = ( id, self.routerPort, self.chunkSize, self.fixedStreamId, self.logQueue, self.localTarget) )
             pr.start()
             self.dataDispatcherPr.append(pr)
@@ -331,7 +332,7 @@ class DataManager():
             self.log.info("terminate TaskProvider...done")
 
         for pr in self.dataDispatcherPr:
-            id = self.dataDispatcherPr.index(pr)
+            id = str(self.dataDispatcherPr.index(pr)) + "/" + str(self.numberOfStreams)
             self.log.info("terminate DataDispatcher-" + str(id) + "...")
             pr.terminate()
             pr = None

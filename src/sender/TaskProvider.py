@@ -98,8 +98,10 @@ class TaskProvider():
             self.run()
         except KeyboardInterrupt:
             self.log.debug("Keyboard interruption detected. Shuting down")
+            self.stop()
         except:
             self.log.info("Stopping TaskProvider due to unknown error condition.", exc_info=True)
+            self.stop()
 
 
     # Send all logs to the main process

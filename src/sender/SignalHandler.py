@@ -72,9 +72,10 @@ class SignalHandler():
         try:
             self.run()
         except KeyboardInterrupt:
-            pass
+            self.stop()
         except:
             self.log.error("Stopping signalHandler due to unknown error condition.", exc_info=True)
+            self.stop()
 
 
     # Send all logs to the main process

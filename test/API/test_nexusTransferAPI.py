@@ -90,7 +90,7 @@ class Sender(threading.Thread):
                 self.context = None
                 logging.info("Destroying context...done")
         except:
-            self.log.error("Closing ZMQ Sockets...failed.", exc_info=True)
+            logging.error("Closing ZMQ Sockets...failed.", exc_info=True)
 
 
 

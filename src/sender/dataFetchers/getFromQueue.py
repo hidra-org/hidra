@@ -73,19 +73,22 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
 
 
 def sendData (log, targets, sourceFile, metadata, openConnections, context, prop):
+
     #reading source file into memory
     try:
-        log.debug("Getting '" + str(sourceFile) + "'...")
+        log.debug("Getting data out of queue for file '" + str(sourceFile) + "'...")
         data = prop["socket"].recv()
     except:
-        log.error("Unable to get source file '" + str(sourceFile) + "'.", exc_info=True)
+        log.error("Unable to get data out of queue for file '" + str(sourceFile) + "'", exc_info=True)
         raise
 
-    chunkSize = metadata[ "chunkSize" ]
-
-    #send message
     try:
-        log.debug("Passing multipart-message for file " + str(sourceFile) + "...")
+        chunkSize = metadata[ "chunkSize" ]
+    except:
+        log.error("Unable to get chunkSize", exc_info=True)
+
+    try:
+        log.debug("Packing multipart-message for file " + str(sourceFile) + "...")
         chunkNumber = 0
 
         #assemble metadata for zmq-message
@@ -96,8 +99,11 @@ def sendData (log, targets, sourceFile, metadata, openConnections, context, prop
         payload = []
         payload.append(metadataExtended)
         payload.append(data)
+    except:
+        log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
 
-        # streaming data
+    #send message
+    try:
         for target, prio in targets:
 
             # send data to the data stream to store it in the storage system
