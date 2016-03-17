@@ -3,6 +3,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 import zmq
 import os
 import sys
+import time
 import logging
 import traceback
 import cPickle
@@ -131,6 +132,8 @@ class DataDispatcher():
                 message = self.routerSocket.recv_multipart()
                 self.log.debug("DataDispatcher-" + str(self.id) + ": new job received")
                 self.log.debug("message = " + str(message))
+            except KeyboardInterrupt:
+                break
             except:
                 self.log.error("DataDispatcher-" + str(self.id) + ": waiting for new job...failed", exc_info=True)
                 continue
@@ -144,47 +147,49 @@ class DataDispatcher():
                 # sort the target list by the priority
                 targets = sorted(targets, key=lambda target: target[1])
 
-            elif message[0] == b"CLOSE_FILE":
-                self.log.debug("Router requested to send signal that file was closed.")
-                payload = [ metadata, self.id ]
-
-                # socket already known
-                if self.fixedStreamId in openConnections:
-                    tracker = openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
-                    log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0")
-                else:
-                    # open socket
-                    socket        = context.socket(zmq.PUSH)
-                    connectionStr = "tcp://" + str(self.fixedStreamId)
-
-                    socket.connect(connectionStr)
-                    log.info("Start socket (connect): '" + str(connectionStr) + "'")
-
-                    # register socket
-                    openConnections[self.fixedStreamId] = socket
-
-                    # send data
-                    tracker = openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
-                    log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0" )
-
-                # socket not known
-                if not tracker.done:
-                    log.info("Close file signal has not been sent yet, waiting...")
-                    tracker.wait()
-                    log.info("Close file signal has not been sent yet, waiting...done")
-
-                time.sleep(2)
-                self.log.debug("Continue after sleeping.")
-                continue
-
             elif message[0] == b"EXIT":
                 self.log.debug("Router requested to shutdown DataDispatcher-"+ str(self.id) + ".")
                 break
 
             else:
                 workload = cPickle.loads(message[0])
-                if self.fixedStreamId:
+
+                if workload == b"CLOSE_FILE":
+                    self.log.debug("Router requested to send signal that file was closed.")
+                    payload = [ workload, self.id ]
+
+                    # socket already known
+                    if self.fixedStreamId in self.openConnections:
+                        tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                        self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0")
+                    else:
+                        # open socket
+                        socket        = context.socket(zmq.PUSH)
+                        connectionStr = "tcp://" + str(self.fixedStreamId)
+
+                        socket.connect(connectionStr)
+                        self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
+
+                        # register socket
+                        self.openConnections[self.fixedStreamId] = socket
+
+                        # send data
+                        tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                        self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0" )
+
+                    # socket not known
+                    if not tracker.done:
+                        self.log.info("Close file signal has not been sent yet, waiting...")
+                        tracker.wait()
+                        self.log.info("Close file signal has not been sent yet, waiting...done")
+
+                    time.sleep(2)
+                    self.log.debug("Continue after sleeping.")
+                    continue
+
+                elif self.fixedStreamId:
                     targets = [[self.fixedStreamId, 0]]
+
                 else:
                     targets = None
 

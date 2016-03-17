@@ -133,6 +133,8 @@ class TaskProvider():
                 #   "filename"   : "file1.tif"
                 # }
                 workloadList = self.eventDetector.getNewEvent()
+            except KeyboardInterrupt:
+                break
             except:
                 self.log.error("Invalid fileEvent message received.", exc_info=True)
                 #skip all further instructions and continue with next iteration
