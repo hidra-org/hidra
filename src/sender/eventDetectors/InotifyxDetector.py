@@ -75,7 +75,8 @@ class InotifyEvent(object):
 # Modification of the inotifyx example found inside inotifyx library
 # Copyright (c) 2005 Manuel Amador
 # Copyright (c) 2009-2011 Forest Bond
-class InotifyxDetector():
+#class InotifyxDetector():
+class EventDetector():
 
     def __init__(self, config, logQueue):
 
@@ -129,7 +130,7 @@ class InotifyxDetector():
     def getLogger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("inotifyDetector")
+        logger = logging.getLogger("InotifyxDetector")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -355,7 +356,8 @@ if __name__ == '__main__':
             "monSuffixes"       : [".tif", ".cbf"]
             }
 
-    eventDetector = InotifyxDetector(config, logQueue)
+#    eventDetector = InotifyxDetector(config, logQueue)
+    eventDetector = EventDetector(config, logQueue)
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
     targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep

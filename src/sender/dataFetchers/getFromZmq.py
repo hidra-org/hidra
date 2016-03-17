@@ -38,7 +38,7 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
 
     #TODO combine better with sourceFile... (for efficiency)
     if localTarget:
-        targetFile     = os.path.join(localTarget, filename)
+        targetFile     = os.path.join(localTarget, sourceFile)
     else:
         targetFile     = None
 

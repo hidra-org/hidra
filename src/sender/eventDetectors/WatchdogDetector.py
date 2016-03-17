@@ -311,7 +311,8 @@ class checkModTime(threading.Thread):
         self.stop()
 
 
-class WatchdogDetector():
+#class WatchdogDetector():
+class EventDetector():
     def __init__(self, config, logQueue):
         self.log = self.getLogger(logQueue)
 
@@ -433,7 +434,8 @@ if __name__ == '__main__':
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
     targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep
 
-    eventDetector = WatchdogDetector(config, logQueue)
+#    eventDetector = WatchdogDetector(config, logQueue)
+    eventDetector = EventDetector(config, logQueue)
 
     copyFlag = False
 

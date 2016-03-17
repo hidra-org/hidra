@@ -154,7 +154,7 @@ def argumentParsing():
     parser.add_argument("--eventPort"         , type    = str,
                                                 help    = "ZMQ port to get events from (only needed if eventDetectorType is zmq; \
                                                            default=" + str(eventPort) + ")",
-                                                default = routerPort )
+                                                default = eventPort )
     parser.add_argument("--routerPort"        , type    = str,
                                                 help    = "ZMQ-router port which coordinates the load-balancing \
                                                            to the worker-processes (default=" + str(routerPort) + ")",
@@ -177,8 +177,8 @@ def argumentParsing():
     onScreen          = arguments.onScreen
 
     eventDetectorType = arguments.eventDetectorType.lower()
-    supportedEDTypes  = ["inotifyx", "watchdog", "zmq"]
-    supportedDFTypes  = ["getFromFile"]
+    supportedEDTypes  = ["inotifyxdetector", "watchdogdetector", "zmqdetector"]
+    supportedDFTypes  = ["getfromfile", "getfromzmq"]
     monitoredDir      = str(arguments.monitoredDir)
     monitoredSubdirs  = arguments.monitoredSubdirs
     localTarget       = str(arguments.localTarget)
@@ -249,7 +249,7 @@ class DataManager():
         self.requestFwPort    = arguments.requestFwPort
 
         self.log.debug("Configured type of eventDetector: " + arguments.eventDetectorType)
-        if arguments.eventDetectorType == "inotifyx":
+        if arguments.eventDetectorType == "InotifyxDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "monDir"            : arguments.monitoredDir,
@@ -257,7 +257,7 @@ class DataManager():
                     "monSubdirs"        : arguments.monitoredSubdirs,
                     "monSuffixes"       : arguments.monitoredFormats
                     }
-        elif arguments.eventDetectorType == "watchdog":
+        elif arguments.eventDetectorType == "WatchdogDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "monDir"            : arguments.monitoredDir,
@@ -266,12 +266,12 @@ class DataManager():
                     "monSuffixes"       : arguments.monitoredFormats,
                     "timeTillClosed"    : arguments.timeTillClosed
                     }
-        elif arguments.eventDetectorType == "zmq":
+        elif arguments.eventDetectorType == "ZmqDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "eventPort"         : arguments.eventPort,
                     "numberOfStreams"   : arguments.numberOfStreams,
-                    "context"           : None, #TODO
+                    "context"           : None,
                     }
 
 

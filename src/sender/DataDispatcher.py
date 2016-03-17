@@ -65,7 +65,7 @@ class DataDispatcher():
         self.localTarget     = localTarget
 
         self.dataFetcherProp = dataFetcherProp
-        self.log.debug("Configuration for data fetcher: " + str(self.dataFetcherProp))
+        self.log.debug("Configuration for dataFetcher: " + str(self.dataFetcherProp))
 
         dataFetcher          = self.dataFetcherProp["type"]
 
@@ -84,9 +84,9 @@ class DataDispatcher():
 
         self.__createSockets()
 
-        self.log.info("Loading data Fetcher: " + dataFetcher)
+        self.log.info("Loading dataFetcher: " + dataFetcher)
         self.dataFetcher = __import__(dataFetcher)
-        self.dataFetcher.setup(dataFetcherProp)
+        self.dataFetcher.setup(self.log, dataFetcherProp)
 
 #        Process.__init__(self)
 

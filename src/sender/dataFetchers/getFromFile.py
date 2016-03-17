@@ -9,7 +9,7 @@ import cPickle
 import shutil
 
 
-def setup (dataFetcherProp):
+def setup (log, dataFetcherProp):
     #TODO
     # check if dataFetcherProp has correct format
     return

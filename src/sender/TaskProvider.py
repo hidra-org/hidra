@@ -19,6 +19,11 @@ if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
 del SHARED_PATH
 
+EVENTDETECTOR_PATH = BASE_PATH + os.sep + "src" + os.sep + "sender" + os.sep + "eventDetectors"
+if not EVENTDETECTOR_PATH in sys.path:
+    sys.path.append ( EVENTDETECTOR_PATH )
+del EVENTDETECTOR_PATH
+
 import helpers
 
 
@@ -38,20 +43,23 @@ class TaskProvider():
         #        monSuffixes  : ... ,
         #}
 
-        self.log               = self.getLogger(logQueue)
+        self.log                = self.getLogger(logQueue)
         self.log.debug("TaskProvider started (PID " + str(os.getpid()) + ").")
 
-        self.eventDetector     = None
+        self.dataDetectorModule = None
+        self.eventDetector      = None
 
-        self.config = eventDetectorConfig
+        self.config             = eventDetectorConfig
         self.log.debug("Configuration for event detector: " + str(self.config))
 
-        self.localhost         = "127.0.0.1"
-        self.extIp             = "0.0.0.0"
-        self.requestFwPort     = requestFwPort
-        self.routerPort        = routerPort
-        self.requestFwSocket   = None
-        self.routerSocket      = None
+        eventDetectorModule     = self.config["eventDetectorType"]
+
+        self.localhost          = "127.0.0.1"
+        self.extIp              = "0.0.0.0"
+        self.requestFwPort      = requestFwPort
+        self.routerPort         = routerPort
+        self.requestFwSocket    = None
+        self.routerSocket       = None
 
         self.log.debug("Registering ZMQ context")
         # remember if the context was created outside this class or not
@@ -63,34 +71,10 @@ class TaskProvider():
             self.extContext = False
 
 
-        if self.config.has_key("eventDetectorType") and self.config["eventDetectorType"] == "inotifyx":
+        self.log.info("Loading eventDetector: " + eventDetectorModule)
+        self.eventDetectorModule = __import__(eventDetectorModule)
 
-            from eventDetectors.InotifyxDetector import InotifyxDetector as EventDetector
-
-            # check format of config
-            if ( not self.config.has_key("monDir") or
-                    not self.config.has_key("monEventType") or
-                    not self.config.has_key("monSubdirs") or
-                    not self.config.has_key("monSuffixes") ):
-                self.log.error ("Configuration of wrong format")
-
-        elif self.config.has_key("eventDetectorType") and self.config["eventDetectorType"] == "watchdog":
-
-            from eventDetectors.WatchdogDetector import WatchdogDetector as EventDetector
-
-            # check format of config
-            if ( not self.config.has_key("monDir") or
-                    not self.config.has_key("monEventType") or
-                    not self.config.has_key("monSubdirs") or
-                    not self.config.has_key("monSuffixes") or
-                    not self.config.has_key("timeTillClosed") ):
-                self.log.error ("Configuration of wrong format")
-
-        else:
-            self.log.error("Type of event detector is not supported: " + str( self.config["eventDetectorType"] ))
-            return -1
-
-        self.eventDetector = EventDetector(self.config, logQueue)
+        self.eventDetector = self.eventDetectorModule.EventDetector(self.config, logQueue)
 
         self.createSockets()
 
