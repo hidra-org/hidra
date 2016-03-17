@@ -36,14 +36,13 @@ class DataDispatcher():
     def __init__(self, id, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
                 logQueue, localTarget = None, context = None):
 
-        supportedDataFetchers = ["getFromFile"]
-        dataFetcherProp = {
-                "type"       : "getFromFile",
-                "removeFlag" : False
-                }
+#        dataFetcherProp = {
+#                "type"       : "getFromFile",
+#                "removeFlag" : False
+#                }
 
 #        dataFetcherProp = {
-#                "type"       : "getFromQueue",
+#                "type"       : "getFromZmq",
 #                "context"    : context,
 #                "extIp"      : "0.0.0.0",
 #                "port"       : "50010"
@@ -66,6 +65,8 @@ class DataDispatcher():
         self.localTarget     = localTarget
 
         self.dataFetcherProp = dataFetcherProp
+        self.log.debug("Configuration for data fetcher: " + str(self.dataFetcherProp))
+
         dataFetcher          = self.dataFetcherProp["type"]
 
         # dict with informations of all open sockets to which a data stream is opened (host, port,...)
@@ -83,13 +84,9 @@ class DataDispatcher():
 
         self.__createSockets()
 
-
-        if dataFetcher in supportedDataFetchers:
-            self.log.info("Loading data Fetcher: " + dataFetcher)
-            self.dataFetcher = __import__(dataFetcher)
-            self.dataFetcher.setup(dataFetcherProp)
-        else:
-            raise Exception("DataFetcher type " + dataFetcher + " not supported")
+        self.log.info("Loading data Fetcher: " + dataFetcher)
+        self.dataFetcher = __import__(dataFetcher)
+        self.dataFetcher.setup(dataFetcherProp)
 
 #        Process.__init__(self)
 
@@ -287,7 +284,7 @@ if __name__ == '__main__':
             }
 
 #    dataFetcherProp = {
-#            "type"       : "getFromQueue",
+#            "type"       : "getFromZmq",
 #            "context"    : context,
 #            "extIp"      : "0.0.0.0",
 #            "port"       : "50010"

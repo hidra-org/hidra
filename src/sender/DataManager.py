@@ -55,6 +55,9 @@ def argumentParsing():
     monitoredFormats   = json.loads(config.get('asection', 'monitoredFormats'))
     timeTillClosed     = int(config.get('asection', 'timeTillClosed'))
 
+    dataFetcherType    = config.get('asection', 'dataFetcherType')
+    dataFetcherPort    = config.get('asection', 'dataFetcherPort')
+
     useDataStream      = config.getboolean('asection', 'useDataStream')
     fixedStreamHost    = config.get('asection', 'fixedStreamHost')
     fixedStreamPort    = config.get('asection', 'fixedStreamPort')
@@ -120,6 +123,14 @@ def argumentParsing():
                                                 help    = "Time (in seconds) since last modification after which a file will be seen as closed \
                                                            (default=" + str(timeTillClosed) + ")",
                                                 default = timeTillClosed )
+
+    parser.add_argument("--dataFetcherType"   , type    = str,
+                                                help    = "Module with methods specifying how to get the data (default=" + str(dataFetcherType) + ")",
+                                                default = dataFetcherType )
+    parser.add_argument("--dataFetcherPort"   , type    = str,
+                                                help    = "If 'getFromZmq is specified as dataFetcherType is needs a port to listen to \
+                                                           (default=" + str(dataFetcherType) + ")",
+                                                default = dataFetcherPort )
 
     parser.add_argument("--useDataStream"     , type    = str,
                                                 help    = "Enable ZMQ pipe into storage system (if set to false: the file is moved \
@@ -237,6 +248,7 @@ class DataManager():
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
 
+        self.log.debug("Configured type of eventDetector: " + arguments.eventDetectorType)
         if arguments.eventDetectorType == "inotifyx":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
@@ -263,18 +275,19 @@ class DataManager():
                     }
 
 
-        self.dataFetcherProp = {
-                "type"        : "getFromFile",
-                "removeFlag"  : False
-                }
-
-#        self.dataFetcherProp = {
-#                "type"        : "getFromQueue",    # TODO get from config-file
-#                "context"     : None,
-#                "extIp"       : "0.0.0.0",
-#                "port"        : "50010"            # TODO get from config-file
-#                }
-
+        self.log.debug("Configured Type of dataFetcher: " + arguments.dataFetcherType)
+        if arguments.dataFetcherType == "getFromFile":
+            self.dataFetcherProp = {
+                    "type"        : arguments.dataFetcherType,
+                    "removeFlag"  : False
+                    }
+        elif arguments.dataFetcherType == "getFromZmq":
+            self.dataFetcherProp = {
+                    "type"        : arguments.dataFetcherType,
+                    "context"     : None,
+                    "extIp"       : "0.0.0.0",
+                    "port"        : arguments.dataFetcherPort,
+                    }
 
 
         if arguments.useDataStream:

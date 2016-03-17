@@ -44,7 +44,7 @@ class TaskProvider():
         self.eventDetector     = None
 
         self.config = eventDetectorConfig
-        self.log.debug("Configuration for Event detector: " + str(self.config))
+        self.log.debug("Configuration for event detector: " + str(self.config))
 
         self.localhost         = "127.0.0.1"
         self.extIp             = "0.0.0.0"

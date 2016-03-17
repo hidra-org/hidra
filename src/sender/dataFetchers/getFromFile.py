@@ -10,7 +10,9 @@ import shutil
 
 
 def setup (dataFetcherProp):
-    return dict()
+    #TODO
+    # check if dataFetcherProp has correct format
+    return
 
 
 def getMetadata (log, metadata, chunkSize, localTarget = None):

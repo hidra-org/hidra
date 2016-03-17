@@ -11,6 +11,9 @@ import shutil
 
 def setup(log, prop):
 
+    #TODO
+    # check if prop has correct format
+
     # Create zmq socket
     socket        = prop["context"].socket(zmq.PULL)
     connectionStr = "tcp://{ip}:{port}".format( ip=prop["extIp"], port=prop["port"] )
