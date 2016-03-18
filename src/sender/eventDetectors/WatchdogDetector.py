@@ -314,35 +314,47 @@ class checkModTime(threading.Thread):
 #class WatchdogDetector():
 class EventDetector():
     def __init__(self, config, logQueue):
+
         self.log = self.getLogger(logQueue)
+
+        # check format of config
+        if ( not self.config.has_key("monDir") or
+                not self.config.has_key("monEventType") or
+                not self.config.has_key("monSubdirs") or
+                not self.config.has_key("monSuffixes") or
+                not self.config.has_key("timeTillClosed") ):
+            self.log.error ("Configuration of wrong format")
+            self.log.debug ("config="+ str(config))
+            checkPassed = False
 
         self.log.debug("init")
 
-        self.config          = config
-        self.monDir          = self.config["monDir"]
-        self.monSubdirs      = self.config["monSubdirs"]
-        self.log.info("monDir: " + str(self.monDir))
+        if checkPassed:
+            self.config          = config
+            self.monDir          = self.config["monDir"]
+            self.monSubdirs      = self.config["monSubdirs"]
+            self.log.info("monDir: " + str(self.monDir))
 
-        self.paths           = [os.path.normpath(self.monDir + os.sep + directory) for directory in self.config["monSubdirs"]]
-        self.log.info("paths: " + str(self.paths))
+            self.paths           = [os.path.normpath(self.monDir + os.sep + directory) for directory in self.config["monSubdirs"]]
+            self.log.info("paths: " + str(self.paths))
 
-        self.timeTillClosed  = self.config["timeTillClosed"]
-        self.observerThreads = []
-        self.lock            = threading.Lock()
+            self.timeTillClosed  = self.config["timeTillClosed"]
+            self.observerThreads = []
+            self.lock            = threading.Lock()
 
 
-        observerId = 0
-        for path in self.paths:
-            observer = Observer()
-            observer.schedule(WatchdogEventHandler(observerId, self.config, logQueue), path, recursive=True)
-            observer.start()
-            self.log.info("Started observer for directory: " + path)
+            observerId = 0
+            for path in self.paths:
+                observer = Observer()
+                observer.schedule(WatchdogEventHandler(observerId, self.config, logQueue), path, recursive=True)
+                observer.start()
+                self.log.info("Started observer for directory: " + path)
 
-            self.observerThreads.append(observer)
-            observerId += 1
+                self.observerThreads.append(observer)
+                observerId += 1
 
-        self.checkingThread = checkModTime(4, self.timeTillClosed, self.monDir, self.lock, logQueue)
-        self.checkingThread.start()
+            self.checkingThread = checkModTime(4, self.timeTillClosed, self.monDir, self.lock, logQueue)
+            self.checkingThread.start()
 
 
     # Send all logs to the main process
