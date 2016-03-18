@@ -144,7 +144,18 @@ class dataIngest():
         self.eventSocket.send(sendMessage)
         self.log.debug("Sending signal to close the file to eventSocket.(sendMessage=" + sendMessage + ")")
 
-        recvMessage = self.signalSocket.recv()
+        try:
+            socks = dict(self.poller.poll(10000)) # in ms
+        except:
+            self.log.error("Could not poll for signal", exc_info=True)
+
+        # if there was a response
+        if self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
+            #  Get the reply.
+            recvMessage = self.signalSocket.recv()
+            self.log.info("Received answer to signal: " + str(recvMessage) )
+        else:
+            recvMessage = None
 
         if recvMessage != sendMessage:
             self.log.debug("recieved message: " + str(recvMessage))

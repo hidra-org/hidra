@@ -114,16 +114,14 @@ def runDataIngest(numbToSend):
     dI.createFile("1.h5")
 
     for i in range(numbToSend):
-        try:
-            data = "THISISTESTDATA-" + str(i)
-            dI.write(data)
-            logging.info("write")
+        data = "THISISTESTDATA-" + str(i)
+        dI.write(data)
+        logging.info("write")
 
-        except:
-            logging.error("break", exc_info=True)
-            break
-
+#    try:
     dI.closeFile()
+#    except:
+#        logging.error("Could not close file", exc_info=True)
 
     dI.stop()
 
@@ -135,12 +133,8 @@ def runNexusTransfer(numbToRecv):
 
     # number to receive + open signal + close signal
     for i in range(numbToRecv + 2):
-        try:
-            data = nT.read()
-            logging.info("Retrieved: " + str(data))
-        except:
-            logging.error("break", exc_info=True)
-            break
+        data = nT.read()
+        logging.info("Retrieved: " + str(data))
 
     nT.stop()
 
@@ -155,7 +149,6 @@ runNexusTransferThread = threading.Thread(target=runNexusTransfer, args = (numbe
 
 runDataIngestThread.start()
 runNexusTransferThread.start()
-
 
 runDataIngestThread.join()
 runNexusTransferThread.join()
