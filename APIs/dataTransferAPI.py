@@ -8,53 +8,30 @@ import logging
 import json
 import errno
 import os
+import cPickle
+import traceback
+
+
+class loggingFunction:
+    def out(self, x, exc_info = None):
+        if exc_info:
+            print x, traceback.format_exc()
+        else:
+            print x
+    def __init__(self):
+        self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.info     = lambda x, exc_info=None: self.out(x, exc_info)
+        self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
+        self.error    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+
 
 class dataTransfer():
-
-    context         = None
-    externalContext = True
-
-    signalHost      = None
-    signalPort      = None
-    dataIp          = None
-    dataHost        = None
-    dataPort        = None
-
-    signalSocket    = None
-    dataSocket      = None
-
-    log             = None
-
-    connectionType       = None
-    supportedConnections = ["priorityStream", "stream", "queryNext", "OnDA", "queryMetadata"]
-
-    signalPort_MetadataOnly = "50021"
-    signalPort_data         = "50000"
-
-    prioStreamStarted    = False
-    streamStarted        = False
-    queryNextStarted     = False
-    ondaStarted          = False
-    queryMetadataStarted = False
-
-    socketResponseTimeout = None
-
-
-    def __init__(self, connectionType, signalHost, useLog = False, context = None):
+    def __init__(self, connectionType, signalHost = None, useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("dataTransferAPI")
         else:
-            class loggingFunction:
-                def out(self, x):
-                    print x
-                def __init__(self):
-                    self.debug    = lambda x: self.out(x)
-                    self.info     = lambda x: self.out(x)
-                    self.warning  = lambda x: self.out(x)
-                    self.error    = lambda x: self.out(x)
-                    self.critical = lambda x: self.out(x)
-
             self.log = loggingFunction()
 
         # ZMQ applications always start by creating a context,
@@ -67,49 +44,80 @@ class dataTransfer():
             self.context         = zmq.Context()
             self.externalContext = False
 
+
+        self.signalHost            = signalHost
+        self.signalPort            = "50000"
+        self.requestPort           = "50001"
+        self.dataHost              = None
+        self.dataPort              = None
+
+        self.signalSocket          = None
+        self.dataSocket            = None
+        self.requestSocket         = None
+
+        self.targets               = None
+
+        self.supportedConnections = ["stream", "queryNext"]
+
+        self.signalExchanged       = False
+
+        self.streamStarted         = None
+        self.queryNextStarted      = None
+
+        self.socketResponseTimeout = 1000
+
         if connectionType in self.supportedConnections:
             self.connectionType = connectionType
         else:
             raise Exception("Chosen type of connection is not supported.")
 
-        self.signalHost            = signalHost
-        self.socketResponseTimeout = 1000
 
+    # targets: [host, port, prio] or [[host, port, prio], ...]
+    def initiate(self, targets):
 
-
-    def initiate(self, dataPort, dataHost = False):
-
-        if dataHost:
-            self.dataHost = dataHost
-        elif type(dataPort) == list:
-            self.dataHost = str([socket.gethostname() for i in dataPort])
-        else:
-            self.dataHost = socket.gethostname()
-
-        self.dataPort = str(dataPort)
+        if type(targets) != list:
+            self.stop()
+            raise Excepition("Argument 'targets' must be list.")
 
 
         signal = None
         # Signal exchange
-        if self.connectionType == "priorityStream":
-            # for a priority stream not signal has to be exchanged,
-            # this has to be configured at the sender
-            return
         if self.connectionType == "stream":
-            signalPort = self.signalPort_data
+            signalPort = self.signalPort
             signal     = "START_STREAM"
         elif self.connectionType == "queryNext":
-            signalPort = self.signalPort_data
+            signalPort = self.signalPort
             signal     = "START_QUERY_NEXT"
-        elif self.connectionType == "OnDA":
-            signalPort = self.signalPort_data
-            signal     = "START_REALTIME_ANALYSIS"
-        elif self.connectionType == "queryMetadata":
-            signalPort = self.signalPort_MetadataOnly
-            signal     = "START_DISPLAYER"
 
-        self.log.debug("create socket for signal exchange...")
-        self.__createSignalSocket(signalPort)
+        self.log.debug("Create socket for signal exchange...")
+
+
+        if self.signalHost:
+            self.__createSignalSocket(signalPort)
+        else:
+            self.stop()
+            raise Exception("No host to send signal to specified." )
+
+        self.targets = []
+        # [host, port, prio]
+        if len(targets) == 3 and type(targets[0]) != list and type(targets[1]) != list and type(targets[2]) != list:
+            host, port, prio = targets
+            self.targets = [[host + ":" + port, prio]]
+        # [[host, port, prio], ...]
+        else:
+            for t in targets:
+                if type(socket) == list:
+                    host, port, prio = t
+                    self.targets.append([host + ":" + port, prio])
+                else:
+                    self.stop()
+                    self.log.debug("targets=" + str(targets))
+                    raise Exception("Argument 'targets' is of wrong format.")
+
+#        if type(dataPort) == list:
+#            self.dataHost = str([socket.gethostname() for i in dataPort])
+#        else:
+#            self.dataHost = socket.gethostname()
 
         message = self.__sendSignal(signal)
 
@@ -121,13 +129,9 @@ class dataTransfer():
             self.stop()
             raise Exception("Host is not allowed to connect.")
 
-        elif message and message == "INCORRECT_NUMBER_OF_HOSTS":
+        elif message and message == "CONNECTION_ALREADY_OPEN":
             self.stop()
-            raise Exception("Specified number of hosts not working with the number of streams configured in the sender.")
-
-        elif message and message == "INCORRECT_NUMBER_OF_PORTS":
-            self.stop()
-            raise Exception("Specified number of ports not working with the number of streams configured in the sender.")
+            raise Exception("Connection is already open.")
 
         elif message and message == "NO_VALID_SIGNAL":
             self.stop()
@@ -136,6 +140,7 @@ class dataTransfer():
         # if there was no response or the response was of the wrong format, the receiver should be shut down
         elif message and message.startswith(signal):
             self.log.info("Received confirmation ...")
+            self.signalExchanged = True
 
         else:
             raise Exception("Sending start signal ...failed.")
@@ -154,8 +159,7 @@ class dataTransfer():
             self.signalSocket.connect(connectionStr)
             self.log.info("signalSocket started (connect) for '" + connectionStr + "'")
         except Exception as e:
-            self.log.error("Failed to start signalSocket (connect): '" + connectionStr + "'")
-            self.log.debug("Error was:" + str(e))
+            self.log.error("Failed to start signalSocket (connect): '" + connectionStr + "'", exc_info=True)
             raise
 
         # using a Poller to implement the signalSocket timeout (in older ZMQ version there is no option RCVTIMEO)
@@ -167,23 +171,26 @@ class dataTransfer():
 
         # Send the signal that the communication infrastructure should be established
         self.log.info("Sending Signal")
-        sendMessage = [__version__, signal, self.dataHost, self.dataPort]
-#        sendMessage = str(signal) + "," + str(__version__) + "," + str(self.dataHost) + "," + str(self.dataPort)
+
+        sendMessage = ["0.0.1",  signal]
+
+        trg = cPickle.dumps(self.targets)
+        sendMessage.append(trg)
+
+#        sendMessage = [__version__, signal, self.dataHost, self.dataPort]
+
         self.log.debug("Signal: " + str(sendMessage))
         try:
             self.signalSocket.send_multipart(sendMessage)
-#            self.signalSocket.send(sendMessage)
-        except Exception as e:
-            self.log.error("Could not send signal")
-            self.log.info("Error was: " + str(e))
+        except:
+            self.log.error("Could not send signal", exc_info=True)
             raise
 
         message = None
         try:
             socks = dict(self.poller.poll(self.socketResponseTimeout))
-        except Exception as e:
-            self.log.error("Could not poll for new message")
-            self.log.info("Error was: " + str(e))
+        except:
+            self.log.error("Could not poll for new message", exc_info=True)
             raise
 
 
@@ -193,87 +200,78 @@ class dataTransfer():
                 #  Get the reply.
                 message = self.signalSocket.recv()
                 self.log.info("Received answer to signal: " + str(message) )
+
             except KeyboardInterrupt:
                 self.log.error("KeyboardInterrupt: No message received")
                 self.stop()
                 raise
-            except Exception as e:
-                self.log.error("Could not receive answer to signal")
-                self.log.debug("Error was: " + str(e))
+            except:
+                self.log.error("Could not receive answer to signal", exc_info=True)
                 self.stop()
                 raise
 
         return message
 
 
-    def start(self, dataPort = False):
+    def start(self, dataSocket = False, requestHost = None):
 
 #        if not self.connectionType:
 #            raise Exception("No connection specified. Please initiate a connection first.")
 
 
-        alreadyConnected = self.streamStarted or self.queryNextStarted or self.ondaStarted or self.queryMetadataStarted or self.prioStreamStarted
+        alreadyConnected = self.streamStarted or self.queryNextStarted
+
 
         if alreadyConnected:
             raise Exception("Connection already started.")
 
-        if dataPort:
-            port = str(dataPort)
-        elif type(self.dataPort) != list:
-            port = self.dataPort
+        ip   = "0.0.0.0"           #TODO use IP of hostname?
+
+        host = ""
+        port = ""
+        if dataSocket:
+            if type(dataSocket) == list:
+                socketId = dataSocket[0] + ":" + dataSocket[1]
+                host = dataSocket[0]
+            else:
+                socketId = ip + ":" + str(dataSocket)
+                host = socket.gethostname()
+        elif len(self.targets) == 1:
+            host, port = self.targets[0][0].split(":")
+#            ipFromHost = socket.gethostbyaddr(host)[2]
+#            if len(ipFromHost) == 1:
+#                ip = ipFromHost[0]
+            socketId = ip + ":" + port
+
         else:
             raise Exception("Multipe possible ports. Please choose which one to use.")
 
-        ip   = "0.0.0.0"           #TODO use IP of hostname?
+        self.dataSocket = self.context.socket(zmq.PULL)
+        # An additional socket is needed to establish the data retriving mechanism
+        connectionStr = "tcp://" + socketId
+        try:
+            self.dataSocket.bind(connectionStr)
+            self.log.info("Socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
+        except:
+            self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'", exc_info=True)
 
-        signal = None
-        if self.connectionType in ["priorityStream", "stream"]:
 
-            self.dataSocket = self.context.socket(zmq.PULL)
+        if self.connectionType == "queryNext":
+
+            self.requestSocket = self.context.socket(zmq.PUSH)
             # An additional socket is needed to establish the data retriving mechanism
-            connectionStr = "tcp://" + ip + ":" + port
+            connectionStr = "tcp://" + self.signalHost + ":" + self.requestPort
             try:
-                self.dataSocket.bind(connectionStr)
-                self.log.info("Socket started (bind) for '" + connectionStr + "'")
-            except Exception as e:
-                self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'")
-                self.log.debug("Error was:" + str(e))
+                self.requestSocket.connect(connectionStr)
+                self.log.info("Socket started (connect) for '" + connectionStr + "'")
+            except:
+                self.log.error("Failed to start Socket of type " + self.connectionType + " (connect): '" + connectionStr + "'", exc_info=True)
 
-            if self.connectionType == "priorityStream":
-                self.prioStreamStarted = True
-            else:
-                self.streamStarted = True
+            self.queryNextStarted = host + ":" + port
+        else:
+            self.streamStarted    = socketId
 
-        elif self.connectionType in ["queryNext", "queryMetadata"]:
 
-            self.dataSocket = self.context.socket(zmq.REQ)
-            # An additional socket is needed to establish the data retriving mechanism
-            connectionStr = "tcp://" + ip + ":" + port
-            try:
-                self.dataSocket.bind(connectionStr)
-                self.log.info("Socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
-            except Exception as e:
-                self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'")
-                self.log.debug("Error was:" + str(e))
-
-            if self.connectionType == "queryNext":
-                self.queryNextStarted = True
-            else:
-                self.queryMetadataStarted = True
-
-        elif self.connectionType == "OnDA":
-
-            self.dataSocket = self.context.socket(zmq.REQ)
-            # An additional socket is needed to establish the data retriving mechanism
-            connectionStr = "tcp://" + ip + ":" + port
-            try:
-                self.dataSocket.connect(connectionStr)
-                self.log.info("Socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
-            except Exception as e:
-                self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'")
-                self.log.debug("Error was:" + str(e))
-
-            self.ondaStarted = True
 
 
     ##
@@ -291,48 +289,29 @@ class dataTransfer():
     ##
     def get(self):
 
-        if self.prioStreamStarted or self.streamStarted:
+        if not self.streamStarted and not self.queryNextStarted:
+            self.log.info("Could not communicate, no connection was initialized.")
+            return None, None
 
-            #run loop, and wait for incoming messages
-            self.log.debug("Waiting for new messages...")
-            try:
-                return self.__getMultipartMessage()
-            except KeyboardInterrupt:
-                self.log.debug("Keyboard interrupt detected. Stopping to receive.")
-                raise
-            except Exception, e:
-                self.log.error("Unknown error while receiving files. Need to abort.")
-                self.log.debug("Error was: " + str(e))
-                return None
 
-        elif self.queryNextStarted or self.ondaStarted or self.queryMetadataStarted:
+        if self.queryNextStarted :
 
-            sendMessage = "NEXT_FILE"
+            sendMessage = ["NEXT", self.queryNextStarted]
 #            self.log.debug("Asking for next file with message " + str(sendMessage))
             try:
-                self.dataSocket.send(sendMessage)
+                self.requestSocket.send_multipart(sendMessage)
             except Exception as e:
-                self.log.info("Could not send request to dataSocket")
-                self.log.info("Error was: " + str(e))
-                return None
+                self.log.error("Could not send request to requestSocket", exc_info=True)
+                return None, None
 
-            try:
-                #  Get the reply.
-                if self.queryNextStarted or self.ondaStarted:
-                    message = self.dataSocket.recv_multipart()
-                else:
-                    message = self.dataSocket.recv()
-            except Exception as e:
-                message = ""
-                self.log.info("Could not receive answer to request")
-                self.log.info("Error was: " + str(e))
-                return None
-
-            return message
-
-        else:
-            self.log.info("Could not communicate, no connection was initialized.")
-            return None
+        try:
+            return self.__getMultipartMessage()
+        except KeyboardInterrupt:
+            self.log.debug("Keyboard interrupt detected. Stopping to receive.")
+            raise
+        except:
+            self.log.error("Unknown error while receiving files. Need to abort.", exc_info=True)
+            return None, None
 
 
     def __getMultipartMessage(self):
@@ -340,30 +319,26 @@ class dataTransfer():
         #save all chunks to file
         multipartMessage = self.dataSocket.recv_multipart()
 
+        if len(multipartMessage) < 2:
+            self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
+            self.log.debug("multipartMessage=" + str(mutipartMessage))
+
         #extract multipart message
         try:
-            #TODO is string conversion needed here?
-            metadata = str(multipartMessage[0])
+            metadata = cPickle.loads(multipartMessage[0])
         except:
-            self.log.error("An empty config was transferred for the multipart-message.")
+            self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
+            metadata = None
 
         #TODO validate multipartMessage (like correct dict-values for metadata)
 
-        #extraction metadata from multipart-message
-        try:
-            metadataDict = json.loads(metadata)
-        except Exception as e:
-            self.log.error("Could not extract metadata from the multipart-message.")
-            self.log.debug("Error was:" + str(e))
-
         try:
             payload = multipartMessage[1:]
-        except Exception as e:
-            self.log.warning("An empty file was received within the multipart-message")
-            self.log.debug("Error was:" + str(e))
+        except:
+            self.log.warning("An empty file was received within the multipart-message", exc_info=True)
             payload = None
 
-        return [metadataDict, payload]
+        return [metadata, payload]
 
 
     def store(self, targetBasePath, dataObject):
@@ -390,28 +365,24 @@ class dataTransfer():
                     self.__appendChunksToFile(targetBasePath, payloadMetadata, payload)
                     self.log.debug("append to file based on multipart-message...success.")
                 except KeyboardInterrupt:
-                    errorMessage = "KeyboardInterrupt detected. Unable to append multipart-content to file."
-                    self.log.info(errorMessage)
+                    self.log.info("KeyboardInterrupt detected. Unable to append multipart-content to file.")
                     break
                 except Exception, e:
-                    errorMessage = "Unable to append multipart-content to file."
-                    self.log.error(errorMessage)
-                    self.log.debug("Error was: " + str(e))
-                    self.log.debug("append to file based on multipart-message...failed.")
+                    self.log.error("Unable to append multipart-content to file.", exc_info=True)
+                    self.log.debug("Append to file based on multipart-message...failed.")
 
                 if len(payload) < payloadMetadata["chunkSize"] :
                     #indicated end of file. Leave loop
                     filename    = self.generateTargetFilepath(targetBasePath, payloadMetadata)
-                    fileModTime = payloadMetadata["fileModificationTime"]
+                    fileModTime = payloadMetadata["fileModTime"]
 
                     self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
                     break
 
             try:
                 [payloadMetadata, payload] = self.get()
-            except Exception as e:
-                self.log.error("Getting data failed.")
-                self.log.debug("Error was: " + str(e))
+            except:
+                self.log.error("Getting data failed.", exc_info=True)
                 break
 
 
@@ -436,19 +407,14 @@ class dataTransfer():
                     os.makedirs(targetPath)
                     newFile = open(targetFilepath, "w")
                     self.log.info("New target directory created: " + str(targetPath))
-                except Exception, f:
-                    errorMessage = "Unable to save payload to file: '" + targetFilepath + "'"
-                    self.log.error(errorMessage)
-                    self.log.debug("Error was: " + str(f))
+                except:
+                    self.log.error("Unable to save payload to file: '" + targetFilepath + "'", exc_info=True)
                     self.log.debug("targetPath:" + str(targetPath))
-                    raise Exception(errorMessage)
+                    raise
             else:
-                self.log.error("Failed to append payload to file: '" + targetFilepath + "'")
-                self.log.debug("Error was: " + str(e))
+                self.log.error("Failed to append payload to file: '" + targetFilepath + "'", exc_info=True)
         except Exception, e:
-            self.log.error("Failed to append payload to file: '" + targetFilepath + "'")
-            self.log.debug("Error was: " + str(e))
-            self.log.debug("ErrorTyp: " + str(type(e)))
+            self.log.error("Failed to append payload to file: '" + targetFilepath + "'", exc_info=True)
             self.log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
 
         #only write data if a payload exist
@@ -457,11 +423,9 @@ class dataTransfer():
                 for chunk in payload:
                     newFile.write(chunk)
             newFile.close()
-        except Exception, e:
-            errorMessage = "unable to append data to file."
-            self.log.error(errorMessage)
-            self.log.debug("Error was: " + str(e))
-            raise Exception(errorMessage)
+        except:
+            self.log.error("Unable to append data to file.", exc_info=True)
+            raise
 
 
     def generateTargetFilepath(self, basePath, configDict):
@@ -470,7 +434,9 @@ class dataTransfer():
 
         """
         filename     = configDict["filename"]
-        relativePath = configDict["relativePath"]
+        #TODO This is due to Windows path names, check if there has do be done anything additionally to work
+        # e.g. check sourcePath if it's a windows path
+        relativePath = configDict["relativePath"].replace('\\', os.sep)
 
         if relativePath is '' or relativePath is None:
             targetPath = basePath
@@ -487,7 +453,9 @@ class dataTransfer():
         generates path where target file will saved to.
 
         """
-        relativePath = configDict["relativePath"]
+        #TODO This is due to Windows path names, check if there has do be done anything additionally to work
+        # e.g. check sourcePath if it's a windows path
+        relativePath = configDict["relativePath"].replace('\\', os.sep)
 
         # if the relative path starts with a slash path.join will consider it as absolute path
         if relativePath.startswith("/"):
@@ -504,15 +472,11 @@ class dataTransfer():
     #
     ##
     def stop(self):
-        if self.dataSocket and not self.prioStreamStarted:
+        if self.dataSocket and self.signalExchanged:
             if self.streamStarted:
                 signal = "STOP_STREAM"
             elif self.queryNextStarted:
                 signal = "STOP_QUERY_NEXT"
-            elif self.ondaStarted:
-                signal = "STOP_REALTIME_ANALYSIS"
-            elif self.queryMetadataStarted:
-                signal = "STOP_DISPLAYER"
 
             message = self.__sendSignal(signal)
             #TODO need to check correctness of signal?
@@ -526,21 +490,19 @@ class dataTransfer():
                 self.log.info("closing dataSocket...")
                 self.dataSocket.close(linger=0)
                 self.dataSocket = None
-        except Exception as e:
-            self.log.error("closing ZMQ Sockets...failed.")
-            self.log.info("Error was: " + str(e))
+        except:
+            self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
-        if not self.externalContext:
+        # if the context was created inside this class,
+        # it has to be destroyed also within the class
+        if not self.externalContext and self.context:
             try:
-                if self.context:
-                    self.log.info("closing ZMQ context...")
-                    self.context.destroy()
-                    self.context = None
-                    self.log.info("closing ZMQ context...done.")
-            except Exception as e:
-                self.log.error("closing ZMQ context...failed.")
-                self.log.debug("Error was: " + str(e))
-                self.log.debug(sys.exc_info())
+                self.log.info("Closing ZMQ context...")
+                self.context.destroy()
+                self.context = None
+                self.log.info("Closing ZMQ context...done.")
+            except:
+                self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
     def __exit__(self):

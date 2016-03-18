@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import traceback
 
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
@@ -17,41 +18,47 @@ if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
 del SHARED_PATH
 
-import helperScript
+import helpers
 
 #enable logging
 logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfileFullPath = os.path.join(logfilePath, "testAPI.log")
-helperScript.initLogging(logfileFullPath, True, "DEBUG")
+logfile     = os.path.join(logfilePath, "testAPI.log")
+helpers.initLogging(logfile, True, "DEBUG")
 
 del BASE_PATH
 
-
-signalHost   = "zitpcx19282.desy.de"
-#isignalHost   = "zitpcx22614.desy.de"
-dataPort   = ["50205", "50206"]
+dataPort   = "50100"
 
 print
 print "==== TEST: Query for the newest filename ===="
 print
 
-query = dataTransfer("queryNext", signalHost, useLog = True)
+query = dataTransfer("stream", useLog = True)
 
-query.initiate(dataPort)
-query.start(50205)
+query.start(dataPort)
 
 while True:
     try:
         [metadata, data] = query.get()
-    except:
+    except KeyboardInterrupt:
+        break
+    except Exception as e:
+        print "Getting data failed."
+        print "Error was: " + str(e)
         break
 
+
     print
-    print "metadata"
-    print metadata
+    print "metadata of file",  metadata["filename"]
     print "data", str(data)[:10]
     print
-    time.sleep(0.1)
+
+#    try:
+#        query.store("/space/projects/zeromq-data-transfer/data/target/testStore", result)
+#    except Exception as e:
+#        print "Storing data failed."
+#        print "Error was:", e
+#        break
 
 query.stop()
 

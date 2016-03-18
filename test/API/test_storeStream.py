@@ -20,19 +20,19 @@ if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
 del SHARED_PATH
 
-import helperScript
+import helpers
 
 #enable logging
 logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfileFullPath = os.path.join(logfilePath, "testAPI.log")
-helperScript.initLogging(logfileFullPath, True, "DEBUG")
+logfile     = os.path.join(logfilePath, "testAPI.log")
+helpers.initLogging(logfile, True, "DEBUG")
 
 del BASE_PATH
 
 
 signalHost = "zitpcx19282.desy.de"
 #signalHost = "zitpcx22614.desy.de"
-dataPort   = "50100"
+targets = ["zitpcx19282.desy.de", "50100", 0]
 
 print
 print "==== TEST: Stream all files and store them ===="
@@ -41,7 +41,7 @@ print
 
 query = dataTransfer("stream", signalHost, useLog = True)
 
-query.initiate(dataPort)
+query.initiate(targets)
 
 query.start()
 
@@ -57,16 +57,17 @@ while True:
         break
 
     try:
-        query.store("/space/projects/live-viewer/data/target/testStore", result)
+        query.store("/space/projects/zeromq-data-transfer/data/target/testStore", result)
     except Exception as e:
-        print e
+        print "Storing data failed."
+        print "Error was:", e
         break
 
 
 query.stop()
 
 print
-print "==== TEST END: Stream for all files ===="
+print "==== TEST END: Stream all files and store them ===="
 print
 
 

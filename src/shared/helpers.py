@@ -1,9 +1,11 @@
 import os
 import platform
 import logging
+import logging.handlers
 import sys
 import shutil
 import zmq
+from logutils.queue import QueueHandler, QueueListener
 from version import __version__
 
 
@@ -64,6 +66,13 @@ def isSupported():
     return supportValue
 
 
+def getTransportProtocol():
+    if platform.system() == "Linux":
+        return "ipc"
+    else:
+        return "tcp"
+
+
 # This function is needed because configParser always needs a section name
 # the used config file consists of key-value pairs only
 # source: http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788
@@ -80,6 +89,7 @@ class FakeSecHead(object):
                 self.sechead = None
         else:
             return self.fp.readline()
+
 
 # http://code.activestate.com/recipes/541096-prompt-the-user-for-confirmation/
 def confirm(prompt=None, resp=False):
@@ -131,6 +141,16 @@ def confirm(prompt=None, resp=False):
             return False
 
 
+def checkEventDetectorType(eDType, supportedTypes):
+
+    if eDType in supportedTypes:
+        logging.debug("Event detector '" + eDType + "' is ok.")
+    else:
+        logging.error("Event detector '" + eDType + "' is not supported.")
+        sys.exit(1)
+
+
+
 def checkDirEmpty(dirPath):
 
     #check if directory is empty
@@ -150,14 +170,8 @@ def checkDirEmpty(dirPath):
             logging.info("All elements of directory " + str(dirPath) + " were removed.")
 
 
-
-
 def checkSubDirExistance(dirPath, subDirs):
-    """
-    abort if dir does not exist
 
-    :return:
-    """
     dirPath = os.path.normpath(dirPath)
     dirsToCheck = [dirPath + os.sep + directory for directory in subDirs]
     noSubdir = True
@@ -174,41 +188,24 @@ def checkSubDirExistance(dirPath, subDirs):
 
 
 def checkDirExistance(dirPath):
-    """
-    abort if dir does not exist
+    # Check directory path for existance.
+    # Exits if it does not exist
 
-    :return:
-    """
-
-    #check directory path for existance. exits if it does not exist
     if not os.path.exists(dirPath):
         logging.error("Dir '%s' does not exist. Abort." % str(dirPath))
         sys.exit(1)
 
 
 def checkLogFileWritable(filepath, filename):
-    #error if logfile cannot be written
+    # Exits if logfile cannot be written
     try:
-        fullPath = os.path.join(filepath, filename)
-        logFile = open(fullPath, "a")
+        logfullPath = os.path.join(filepath, filename)
+        logFile = open(logfullPath, "a")
+        logFile.close()
     except:
-        print "Unable to create the logfile """ + str(fullPath)
-        print """Please specify a new target by setting the following arguments:
---logfileName
---logfilePath
-"""
+        print "Unable to create the logfile " + str(logfullPath)
+        print "Please specify a new target by setting the following arguments:\n--logfileName\n--logfilePath"
         sys.exit(1)
-
-
-def checkStreamConfig(ips, ports, numberToBe):
-    if len(ips) < numberToBe:
-        logging.error("Not enough IPs specified for OnDA, please check your configuration.")
-        sys.exit(1)
-
-    if len(ports) < numberToBe:
-        logging.error("Not enough ports specified for OnDA, please check your configuration.")
-        sys.exit(1)
-
 
 
 def checkVersion(version, log):
@@ -253,25 +250,98 @@ def checkHost(hostname, whiteList, log):
     return False
 
 
-def extractSignal(message, log):
-    try:
-        messageSplit = message.split(',')
-    except Exception as e:
-        log.info("Received signal is of the wrong format")
-        log.debug("Received signal: " + str(message))
-        return None, None, None, None
+# http://stackoverflow.com/questions/25585518/python-logging-logutils-with-queuehandler-and-queuelistener#25594270
+class CustomQueueListener(QueueListener):
+    def __init__(self, queue, *handlers):
+        super(CustomQueueListener, self).__init__(queue, *handlers)
+        """
+        Initialise an instance with the specified queue and
+        handlers.
+        """
+        # Changing this to a list from tuple in the parent class
+        self.handlers = list(handlers)
 
-    if len(messageSplit) < 3:
-        log.info("Received signal is of the wrong format")
-        log.debug("Received signal is too short: " + str(message))
-        return None, None, None, None
+    def handle(self, record):
+        """
+        Override handle a record.
 
-    signal   = messageSplit[0]
-    hostname = messageSplit[1]
-    port     = messageSplit[2]
+        This just loops through the handlers offering them the record
+        to handle.
 
-    return signal, hostname, port
+        :param record: The record to handle.
+        """
+        record = self.prepare(record)
+        for handler in self.handlers:
+            if record.levelno >= handler.level: # This check is not in the parent class
+                handler.handle(record)
 
+    def addHandler(self, hdlr):
+        """
+        Add the specified handler to this logger.
+        """
+        if not (hdlr in self.handlers):
+            self.handlers.append(hdlr)
+
+    def removeHandler(self, hdlr):
+        """
+        Remove the specified handler from this logger.
+        """
+        if hdlr in self.handlers:
+            hdlr.close()
+            self.handlers.remove(hdlr)
+
+
+# Get the log Configuration for the lisener
+def getLogHandlers(logfile, logsize, verbose, onScreenLogLevel = False):
+    # Enable more detailed logging if verbose-option has been set
+    logLevel = logging.INFO
+    if verbose:
+        logLevel = logging.DEBUG
+
+    # Set format
+    datef='%Y-%m-%d %H:%M:%S'
+    f = '[%(asctime)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s'
+
+    # Setup file handler to output to file
+    # argument for RotatingFileHandler: filename, mode, maxBytes, backupCount)
+    # 1048576 = 1MB
+    h1 = logging.handlers.RotatingFileHandler(logfile, 'a', logsize, 5)
+    f1 = logging.Formatter(datefmt=datef,fmt=f)
+    h1.setFormatter(f1)
+    h1.setLevel(logLevel)
+
+    # Setup stream handler to output to console
+    if onScreenLogLevel:
+        onScreenLogLevelLower = onScreenLogLevel.lower()
+        if onScreenLogLevelLower in ["debug", "info", "warning", "error", "critical"]:
+
+            f  = "[%(asctime)s] > %(message)s"
+
+            if onScreenLogLevelLower == "debug":
+                screenLogLevel = logging.DEBUG
+                f = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s"
+
+                if not verbose:
+                    logging.error("Logging on Screen: Option DEBUG in only active when using verbose option as well (Fallback to INFO).")
+            elif onScreenLogLevelLower == "info":
+                screenLogLevel = logging.INFO
+            elif onScreenLogLevelLower == "warning":
+                screenLogLevel = logging.WARNING
+            elif onScreenLogLevelLower == "error":
+                screenLogLevel = logging.ERROR
+            elif onScreenLogLevelLower == "critical":
+                screenLogLevel = logging.CRITICAL
+
+            h2 = logging.StreamHandler()
+            f2 = logging.Formatter(datefmt=datef, fmt=f)
+            h2.setFormatter(f2)
+            h2.setLevel(screenLogLevel)
+        else:
+            logging.error("Logging on Screen: Option " + str(onScreenLogLevel) + " is not supported.")
+
+        return h1, h2
+    else:
+        return h1
 
 
 def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
@@ -284,7 +354,8 @@ def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
 
     #log everything to file
     logging.basicConfig(level=loggingLevel,
-                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
+#                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
+                        format='%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s',
                         datefmt='%Y-%m-%d_%H:%M:%S',
                         filename=filenameFullPath,
                         filemode="a")

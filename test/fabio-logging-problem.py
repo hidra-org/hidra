@@ -26,7 +26,7 @@ def initLogging(filenameFullPath, verbose):
 
 
 #enable logging
-initLogging("/space/projects/live-viewer/test/cbf_test.log", True)
+initLogging("/space/projects/zeromq-data-transfer/test/cbf_test.log", True)
 logging.debug("Test")
 
 import fabio

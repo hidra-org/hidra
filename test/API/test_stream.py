@@ -16,7 +16,7 @@ from dataTransferAPI import dataTransfer
 
 signalHost = "zitpcx19282.desy.de"
 #signalHost = "zitpcx22614.desy.de"
-dataPort   = "50100"
+targets = ["zitpcx19282.desy.de", "50101", 0]
 
 print
 print "==== TEST: Stream all files ===="
@@ -25,7 +25,7 @@ print
 
 query = dataTransfer("stream", signalHost)
 
-query.initiate(dataPort)
+query.initiate(targets)
 
 query.start()
 
@@ -37,8 +37,7 @@ while True:
         break
 
     print
-    print "metadata"
-    print metadata
+    print "metadata", metadata["filename"]
 #    print "data", str(data)[:10]
     print
 

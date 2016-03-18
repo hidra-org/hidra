@@ -9,7 +9,7 @@ import bisect
 RING_BUFFER_SIZE = 5
 
 # path to the directory (relative or absolute)
-dirpath = "/space/projects/Live_Viewer/target/local"
+dirpath = "/space/projects/zeromq-data-transfer/target/local"
 
 # get all entries in the directory
 entries = (os.path.join(dirpath, fn) for fn in os.listdir(dirpath))
@@ -27,12 +27,12 @@ print entries
 #print entries
 #print len_entries
 
-#targetFilepath = "/space/projects/Live_Viewer/test.tif"
+#targetFilepath = "/space/projects/zeromq-data-transfer/test.tif"
 #entries[:0] = [[os.stat(path)[ST_MTIME], targetFilepath]]
 #print "after prepend"
 #print entries
 
-filename    = "/space/projects/Live_Viewer/test.tif"
+filename    = "/space/projects/zeromq-data-transfer/test.tif"
 #fileModTime = os.stat(filename)[ST_MTIME]
 fileModTime = 1436956680
 

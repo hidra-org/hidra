@@ -1,7 +1,8 @@
 #/bin/sh
 
-SOURCE=/space/projects/live-viewer
-#SOURCE=/home/kuhnm/Arbeit/live-viewer
+SOURCE=/space/projects/zeromq-data-transfer
+#SOURCE=/home/kuhnm/Arbeit/zeromq-data-transfer
+#SOURCE=/home/p11user/zeromq-data-transfer
 #SOURCE=/home/p11user/live-viewer
 
 TARGET=${SOURCE}/data/source/local
@@ -37,7 +38,7 @@ if [ -z "${FORMAT}" ]; then
 fi
 
 case "${FORMAT}" in
-    cbf) FILES=${SOURCE}/test_015_00001.cbf ;;
+    cbf) FILES=${SOURCE}/test_file.cbf ;;
     tif) FILES=${SOURCE}/bf_00000.tif
 esac
 
