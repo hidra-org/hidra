@@ -195,7 +195,13 @@ class SignalHandler():
 
                 for index in range(len(self.allowedQueries)):
                     for i in range(len(self.allowedQueries[index])):
-                        if incomingMessage[1] == self.allowedQueries[index][i][0]:
+
+                        if ".desy.de:" in incomingMessage[1]:
+                            incomingMessage[1] = incomingMessage[1].replace(".desy.de:", ":")
+
+                        incomingSocketId = incomingMessage[1]
+
+                        if incomingSocketId == self.allowedQueries[index][i][0]:
                             self.openRequVari[index].append(self.allowedQueries[index][i])
                             self.log.debug("Add to openRequVari: " + str(self.allowedQueries[index][i]) )
 
@@ -289,8 +295,14 @@ class SignalHandler():
             self.log.info("Received signal to enable querying for data for hosts: " + str(socketIds))
             connectionFound = False
             tmpAllowed = []
+
             for socketConf in socketIds:
+
+                if ".desy.de:" in socketConf[0]:
+                    socketConf[0] = socketConf[0].replace(".desy.de:",":")
+
                 socketId = socketConf[0]
+
                 if socketId in [ i[0] for i in self.allowedQueries]:
                     connectionFound = True
                     self.log.info("Connection to " + str(socketId) + " is already open")
