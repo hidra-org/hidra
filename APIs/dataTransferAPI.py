@@ -106,7 +106,7 @@ class dataTransfer():
         # [[host, port, prio], ...]
         else:
             for t in targets:
-                if type(socket) == list:
+                if type(t) == list:
                     host, port, prio = t
                     self.targets.append([host + ":" + port, prio])
                 else:
@@ -231,24 +231,35 @@ class dataTransfer():
         port = ""
         if dataSocket:
             if type(dataSocket) == list:
-                socketId = dataSocket[0] + ":" + dataSocket[1]
+                socketIdToConnect = dataSocket[0] + ":" + dataSocket[1]
+                ip = dataSocket[0]
                 host = dataSocket[0]
+                port = dataSocket[1]
             else:
-                socketId = ip + ":" + str(dataSocket)
+                self.log.debug("dataSocket=" + str(dataSocket))
+                port = str(dataSocket)
+
                 host = socket.gethostname()
+                socketId = host + ":" + port
+                ipFromHost = socket.gethostbyaddr(host)[2]
+                if len(ipFromHost) == 1:
+                    ip = ipFromHost[0]
+
         elif len(self.targets) == 1:
             host, port = self.targets[0][0].split(":")
-#            ipFromHost = socket.gethostbyaddr(host)[2]
-#            if len(ipFromHost) == 1:
-#                ip = ipFromHost[0]
-            socketId = ip + ":" + port
+            ipFromHost = socket.gethostbyaddr(host)[2]
+            if len(ipFromHost) == 1:
+                ip = ipFromHost[0]
 
         else:
             raise Exception("Multipe possible ports. Please choose which one to use.")
 
+        socketId = host + ":" + port
+        socketIdToConnect = ip + ":" + port
+
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
-        connectionStr = "tcp://" + socketId
+        connectionStr = "tcp://" + socketIdToConnect
         try:
             self.dataSocket.bind(connectionStr)
             self.log.info("Socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
@@ -267,7 +278,7 @@ class dataTransfer():
             except:
                 self.log.error("Failed to start Socket of type " + self.connectionType + " (connect): '" + connectionStr + "'", exc_info=True)
 
-            self.queryNextStarted = host + ":" + port
+            self.queryNextStarted = socketId
         else:
             self.streamStarted    = socketId
 

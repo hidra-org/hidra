@@ -357,9 +357,9 @@ class SignalHandler():
         if self.requestFwSocket:
             self.requestFwSocket.close(0)
             self.requestFwSocket = None
-        if self.requestSockte:
+        if self.requestSocket:
             self.requestSocket.close(0)
-            self.requestSocket.None
+            self.requestSocket = None
         if not self.extContext and self.context:
             self.context.destroy()
             self.context = None
