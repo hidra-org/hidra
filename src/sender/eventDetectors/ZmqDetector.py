@@ -96,7 +96,7 @@ class EventDetector():
         if not self.externalContext and self.context:
             try:
                 self.log.info("Closing ZMQ context...")
-                self.context.destroy()
+                self.context.destroy(0)
                 self.context = None
                 self.log.info("Closing ZMQ context...done.")
             except:

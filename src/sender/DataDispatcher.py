@@ -227,7 +227,7 @@ class DataDispatcher():
         self.dataFetcher.clean(self.dataFetcherProp)
         if not self.extContext and self.context:
             self.log.debug("Destroying context")
-            self.context.destroy()
+            self.context.destroy(0)
             self.context = None
 
 

@@ -183,6 +183,8 @@ class SignalHandler():
                 if checkStatus:
                     self.reactToSignal(signal, target)
 
+                continue
+
             if self.requestSocket in socks and socks[self.requestSocket] == zmq.POLLIN:
                 self.log.debug("")
                 self.log.debug("!!!! requestSocket !!!!")
@@ -219,7 +221,7 @@ class SignalHandler():
                 else:
                     self.log.debug("Version are not compatible")
                     self.sendResponse("VERSION_CONFLICT")
-                    return False, None, None, None
+                    return False, None, None
 
             if signal and host:
 
@@ -232,7 +234,7 @@ class SignalHandler():
                     self.log.debug("One of the hosts is not allowed to connect.")
                     self.log.debug("hosts: " + str(host))
                     self.sendResponse("NO_VALID_HOST")
-                    return False, None, None, None
+                    return False, None, None
 
         return True, signal, target
 
@@ -361,7 +363,7 @@ class SignalHandler():
             self.requestSocket.close(0)
             self.requestSocket = None
         if not self.extContext and self.context:
-            self.context.destroy()
+            self.context.destroy(0)
             self.context = None
 
 

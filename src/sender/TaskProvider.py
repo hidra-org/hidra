@@ -184,7 +184,7 @@ class TaskProvider():
             self.requestFwSocket.close(0)
             self.requestFwSocket = None
         if not self.extContext and self.context:
-            self.context.destroy()
+            self.context.destroy(0)
             self.context = None
 
 
