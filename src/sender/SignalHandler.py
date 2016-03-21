@@ -188,7 +188,6 @@ class SignalHandler():
                 self.log.debug("!!!! requestSocket !!!!")
                 self.log.debug("")
 
-
                 incomingMessage = self.requestSocket.recv_multipart()
                 self.log.debug("Received request: " + str(incomingMessage) )
 

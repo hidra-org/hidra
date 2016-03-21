@@ -14,7 +14,7 @@ import traceback
 
 class dataIngest():
     # return error code
-    def __init__(self, useLog = False, context = None):
+    def __init__ (self, useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("dataIngestAPI")
@@ -65,7 +65,7 @@ class dataIngest():
         self.__createSocket()
 
 
-    def __createSocket(self):
+    def __createSocket (self):
 
         # To send file open and file close notification, a communication socket is needed
         self.signalSocket = self.context.socket(zmq.REQ)
@@ -105,7 +105,7 @@ class dataIngest():
 
 
     # return error code
-    def createFile(self, filename):
+    def createFile (self, filename):
         if self.openFile and self.openFile != filename:
             raise Exception("File " + str(filename) + " already opened.")
 
@@ -120,7 +120,7 @@ class dataIngest():
         self.filePart = 0
 
 
-    def write(self, data):
+    def write (self, data):
         # send event to eventDetector
         message = {
                 "filename" : self.filename,
@@ -134,7 +134,7 @@ class dataIngest():
 
 
     # return error code
-    def closeFile(self):
+    def closeFile (self):
         # send close-signal to signal socket
         sendMessage = "CLOSE_FILE"
         self.signalSocket.send(sendMessage)
@@ -171,7 +171,7 @@ class dataIngest():
     # Send signal that the displayer is quitting, close ZMQ connections, destoying context
     #
     ##
-    def stop(self):
+    def stop (self):
         try:
             if self.signalSocket:
                 self.log.info("closing eventSocket...")
@@ -200,11 +200,11 @@ class dataIngest():
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
-    def __exit__(self):
+    def __exit__ (self):
         self.stop()
 
 
-    def __del__(self):
+    def __del__ (self):
         self.stop()
 
 

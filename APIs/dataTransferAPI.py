@@ -13,12 +13,12 @@ import traceback
 
 
 class loggingFunction:
-    def out(self, x, exc_info = None):
+    def out (self, x, exc_info = None):
         if exc_info:
             print x, traceback.format_exc()
         else:
             print x
-    def __init__(self):
+    def __init__ (self):
         self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
         self.info     = lambda x, exc_info=None: self.out(x, exc_info)
         self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
@@ -27,7 +27,7 @@ class loggingFunction:
 
 
 class dataTransfer():
-    def __init__(self, connectionType, signalHost = None, useLog = False, context = None):
+    def __init__ (self, connectionType, signalHost = None, useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("dataTransferAPI")
@@ -73,7 +73,7 @@ class dataTransfer():
 
 
     # targets: [host, port, prio] or [[host, port, prio], ...]
-    def initiate(self, targets):
+    def initiate (self, targets):
 
         if type(targets) != list:
             self.stop()
@@ -146,7 +146,7 @@ class dataTransfer():
             raise Exception("Sending start signal ...failed.")
 
 
-    def __createSignalSocket(self, signalPort):
+    def __createSignalSocket (self, signalPort):
 
         # To send a notification that a Displayer is up and running, a communication socket is needed
         # create socket to exchange signals with Sender
@@ -167,7 +167,7 @@ class dataTransfer():
         self.poller.register(self.signalSocket, zmq.POLLIN)
 
 
-    def __sendSignal(self, signal):
+    def __sendSignal (self, signal):
 
         # Send the signal that the communication infrastructure should be established
         self.log.info("Sending Signal")
@@ -213,7 +213,7 @@ class dataTransfer():
         return message
 
 
-    def start(self, dataSocket = False, requestHost = None):
+    def start (self, dataSocket = False, requestHost = None):
 
 #        if not self.connectionType:
 #            raise Exception("No connection specified. Please initiate a connection first.")
@@ -287,7 +287,7 @@ class dataTransfer():
     #       (if connection type "queryMetadata" was choosen)
     #
     ##
-    def get(self):
+    def get (self):
 
         if not self.streamStarted and not self.queryNextStarted:
             self.log.info("Could not communicate, no connection was initialized.")
@@ -314,7 +314,7 @@ class dataTransfer():
             return None, None
 
 
-    def __getMultipartMessage(self):
+    def __getMultipartMessage (self):
 
         #save all chunks to file
         multipartMessage = self.dataSocket.recv_multipart()
@@ -341,7 +341,7 @@ class dataTransfer():
         return [metadata, payload]
 
 
-    def store(self, targetBasePath, dataObject):
+    def store (self, targetBasePath, dataObject):
 
         if type(dataObject) is not list and len(dataObject) != 2:
             raise Exception("Wrong input type for 'store'")
@@ -386,7 +386,7 @@ class dataTransfer():
                 break
 
 
-    def __appendChunksToFile(self, targetBasePath, configDict, payload):
+    def __appendChunksToFile (self, targetBasePath, configDict, payload):
 
         chunkCount         = len(payload)
 
@@ -428,7 +428,7 @@ class dataTransfer():
             raise
 
 
-    def generateTargetFilepath(self, basePath, configDict):
+    def generateTargetFilepath (self, basePath, configDict):
         """
         generates full path where target file will saved to.
 
@@ -448,7 +448,7 @@ class dataTransfer():
         return filepath
 
 
-    def __generateTargetPath(self, basePath, configDict):
+    def __generateTargetPath (self, basePath, configDict):
         """
         generates path where target file will saved to.
 
@@ -471,7 +471,7 @@ class dataTransfer():
     # Send signal that the displayer is quitting, close ZMQ connections, destoying context
     #
     ##
-    def stop(self):
+    def stop (self):
         if self.dataSocket and self.signalExchanged:
             if self.streamStarted:
                 signal = "STOP_STREAM"
@@ -505,11 +505,11 @@ class dataTransfer():
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
-    def __exit__(self):
+    def __exit__ (self):
         self.stop()
 
 
-    def __del__(self):
+    def __del__ (self):
         self.stop()
 
 

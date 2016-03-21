@@ -217,7 +217,7 @@ def finishDataHandling (log, sourceFile, targetFile, prop):
 #        self.log.error("Unable to notify Cleaner-pipe to handle file: " + str(workload), exc_info=True)
 
 
-def clean(properties):
+def clean (properties):
     pass
 
 

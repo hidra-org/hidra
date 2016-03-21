@@ -206,7 +206,7 @@ def argumentParsing():
 
 
 class DataManager():
-    def __init__(self, logQueue = None):
+    def __init__ (self, logQueue = None):
         arguments = argumentParsing()
 
         logfilePath           = arguments.logfilePath
@@ -332,7 +332,7 @@ class DataManager():
 
 
 
-    def run(self):
+    def run (self):
         self.signalHandlerPr = Process ( target = SignalHandler, args = (self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue) )
         self.signalHandlerPr.start()
 
@@ -350,7 +350,7 @@ class DataManager():
             self.dataDispatcherPr.append(pr)
 
 
-    def stop(self):
+    def stop (self):
         if self.signalHandlerPr:
             self.log.info("terminate SignalHandler...")
             self.signalHandlerPr.terminate()
@@ -379,9 +379,12 @@ class DataManager():
             self.logQueueListener = None
 
 
-    def __exit__(self):
+    def __exit__ (self):
         self.stop()
 
+
+    def __def__ (self):
+        self.stop()
 
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
@@ -433,7 +436,7 @@ class Test_Receiver_Stream():
         return logger
 
 
-    def sendSignal(self, signal, ports, prio = None):
+    def sendSignal (self, signal, ports, prio = None):
         self.log.info("=== sendSignal : " + signal + ", " + str(ports))
         sendMessage = ["0.0.1",  signal]
         targets = []
@@ -449,7 +452,7 @@ class Test_Receiver_Stream():
         receivedMessage = self.comSocket.recv()
         self.log.info("=== Responce : " + receivedMessage )
 
-    def run(self):
+    def run (self):
         try:
             while True:
                 recv_message = self.fixedRecvSocket.recv_multipart()
@@ -461,7 +464,7 @@ class Test_Receiver_Stream():
         except KeyboardInterrupt:
             pass
 
-    def __exit__(self):
+    def __exit__ (self):
         self.receivingSocket.close(0)
         self.receivingSocket2.close(0)
         context.destroy()
