@@ -51,23 +51,15 @@ class worker():
         self.stop()
 
 
-print
-print "==== TEST: Query for the newest filename ===="
-print
+if __name__ == "__main__":
 
-signalHost = "zitpcx19282.desy.de"
-port = "50104"
+    signalHost = "zitpcx19282.desy.de"
+    port = "50104"
 
-w = worker(4, signalHost, port)
+    w = worker(4, signalHost, port)
 
-try:
-    w.run()
-finally:
-    w.stop()
-
-
-print
-print "==== TEST END: Query for the newest filename ===="
-print
-
+    try:
+        w.run()
+    finally:
+        w.stop()
 

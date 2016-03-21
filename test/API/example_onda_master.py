@@ -29,84 +29,20 @@ helpers.initLogging(logfile, True, "DEBUG")
 del BASE_PATH
 
 
-class worker():
-    def __init__(self, id, signalHost, port):
+if __name__ == "__main__":
 
-        self.id    = id
-        self.port  = port
+    signalHost = "zitpcx19282.desy.de"
 
-        self.log   = logging.getLogger("worker-"+str(self.id))
-
-        self.query = dataTransfer("queryNext", signalHost, useLog = True)
-
-        self.log.debug("start dataTransfer on port " +str(port))
-        self.query.start(port)
-
-        self.run()
+    # a list of targets of the form [<host>, <port, <priority>]
+    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1], ["lsdma-lab04.desy.de", "50104", 1]]
 
 
-    def run(self):
+    query = dataTransfer("queryNext", signalHost, useLog = True)
+    query.initiate(targets)
+
+    try:
         while True:
-            try:
-                self.log.debug("worker-" + str(self.id) + ": waiting")
-                [metadata, data] = self.query.get()
-                time.sleep(0.1)
-            except:
-                break
-
-            self.log.debug("worker-" + str(self.id) + ": metadata " + str(metadata["filename"]))
-        #    print "data", str(data)[:10]
-
-
-    def stop(self):
-        self.query.stop()
-
-
-    def __exit__(self):
-        self.stop()
-
-
-    def __del__(self):
-        self.stop()
-
-
-print
-print "==== TEST: Stream all files ===="
-print
-
-signalHost = "zitpcx19282.desy.de"
-
-# a list of targets of the form [<host>, <port, <priority>]
-targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1], ["zitpcx19282.desy.de", "50104", 1]]
-#targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1], ["lsdma-lab04.desy.de", "50104", 1]]
-
-
-w1 = multiprocessing.Process(target=worker, args=(1, signalHost, "50101"))
-w2 = multiprocessing.Process(target=worker, args=(2, signalHost, "50102"))
-w3 = multiprocessing.Process(target=worker, args=(3, signalHost, "50103"))
-
-query = dataTransfer("queryNext", signalHost, useLog = True)
-query.initiate(targets)
-
-w1.start()
-w2.start()
-w3.start()
-
-try:
-    while True:
-        pass
-except:
-    pass
-finally:
-    w1.terminate()
-    w2.terminate()
-    w3.terminate()
-
-    query.stop()
-
-print
-print "==== TEST END: Stream all files ===="
-print
-
-
+            pass
+    finally:
+        query.stop()
 

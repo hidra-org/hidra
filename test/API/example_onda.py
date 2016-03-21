@@ -70,41 +70,34 @@ class worker(multiprocessing.Process):
         self.stop()
 
 
-print
-print "==== TEST: Stream all files ===="
-print
 
-signalHost = "zitpcx19282.desy.de"
+if __name__ == "__main__":
 
-targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1], ["lsdma-lab04.desy.de", "50104", 1]]
+    signalHost = "zitpcx19282.desy.de"
+
+    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1], ["lsdma-lab04.desy.de", "50104", 1]]
 
 
-w1 = multiprocessing.Process(target=worker, args=(0, signalHost, "50101"))
-w2 = multiprocessing.Process(target=worker, args=(1, signalHost, "50102"))
-w3 = multiprocessing.Process(target=worker, args=(2, signalHost, "50103"))
+    w1 = multiprocessing.Process(target=worker, args=(0, signalHost, "50101"))
+    w2 = multiprocessing.Process(target=worker, args=(1, signalHost, "50102"))
+    w3 = multiprocessing.Process(target=worker, args=(2, signalHost, "50103"))
 
-query = dataTransfer("queryNext", signalHost, useLog = True)
-query.initiate(targets)
+    query = dataTransfer("queryNext", signalHost, useLog = True)
+    query.initiate(targets)
 
-w1.start()
-w2.start()
-w3.start()
+    w1.start()
+    w2.start()
+    w3.start()
 
-try:
-    while True:
+    try:
+        while True:
+            pass
+    except:
         pass
-except:
-    pass
-finally:
-    w1.terminate()
-    w2.terminate()
-    w3.terminate()
+    finally:
+        w1.terminate()
+        w2.terminate()
+        w3.terminate()
 
-    query.stop()
-
-print
-print "==== TEST END: Stream all files ===="
-print
-
-
+        query.stop()
 
