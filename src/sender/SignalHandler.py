@@ -37,7 +37,10 @@ class SignalHandler():
         # to get the logging only handling this class
         log                  = None
 
-        self.context         = context or zmq.Context()
+        # Send all logs to the main process
+        self.log = self.getLogger(logQueue)
+        self.log.debug("SignalHandler started (PID " + str(os.getpid()) + ").")
+
         self.localhost       = "127.0.0.1"
         self.extIp           = "0.0.0.0"
         self.comPort         = comPort
@@ -63,9 +66,14 @@ class SignalHandler():
         self.requestFwSocket = None
         self.requestSocket   = None
 
-        # Send all logs to the main process
-        self.log = self.getLogger(logQueue)
-        self.log.debug("SignalHandler started (PID " + str(os.getpid()) + ").")
+        self.log.debug("Registering ZMQ context")
+        # remember if the context was created outside this class or not
+        if context:
+            self.context    = context
+            self.extContext = True
+        else:
+            self.context    = zmq.Context()
+            self.extContext = False
 
         self.createSockets()
 
@@ -344,9 +352,18 @@ class SignalHandler():
 
     def stop (self):
         self.log.debug("Closing sockets")
-        self.comSocket.close(0)
-        self.requestFwSocket.close(0)
-        self.requestSocket.close(0)
+        if self.comSocket:
+            self.comSocket.close(0)
+            self.comSocket = None
+        if self.requestFwSocket:
+            self.requestFwSocket.close(0)
+            self.requestFwSocket = None
+        if self.requestSockte:
+            self.requestSocket.close(0)
+            self.requestSocket.None
+        if not self.extContext and self.context:
+            self.context.destroy()
+            self.context = None
 
 
     def __exit__ (self):
