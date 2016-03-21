@@ -59,7 +59,7 @@ class dataTransfer():
 
         self.supportedConnections = ["stream", "queryNext"]
 
-        self.signalExchanged       = False
+        self.signalExchanged       = None
 
         self.streamStarted         = None
         self.queryNextStarted      = None
@@ -140,7 +140,7 @@ class dataTransfer():
         # if there was no response or the response was of the wrong format, the receiver should be shut down
         elif message and message.startswith(signal):
             self.log.info("Received confirmation ...")
-            self.signalExchanged = True
+            self.signalExchanged = signal
 
         else:
             raise Exception("Sending start signal ...failed.")
@@ -168,6 +168,9 @@ class dataTransfer():
 
 
     def __sendSignal (self, signal):
+
+        if not signal:
+            return
 
         # Send the signal that the communication infrastructure should be established
         self.log.info("Sending Signal")
@@ -483,11 +486,16 @@ class dataTransfer():
     #
     ##
     def stop (self):
-        if self.dataSocket and self.signalExchanged:
-            if self.streamStarted:
+        if self.signalSocket and self.signalExchanged:
+            self.log.info("Sending close signal")
+            signal = None
+            if self.streamStarted or ( "STREAM" in self.signalExchanged):
                 signal = "STOP_STREAM"
-            elif self.queryNextStarted:
+            elif self.queryNextStarted or ( "QUERY_NEXT" in self.signalExchanged):
                 signal = "STOP_QUERY_NEXT"
+
+
+            self.log.debug("signal=" + str(signal))
 
             message = self.__sendSignal(signal)
             #TODO need to check correctness of signal?
