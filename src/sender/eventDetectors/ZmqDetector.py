@@ -11,7 +11,7 @@ from logutils.queue import QueueHandler
 #class ZmqDetector():
 class EventDetector():
 
-    def __init__(self, config, logQueue):
+    def __init__ (self, config, logQueue):
 
         self.log = self.getLogger(logQueue)
 
@@ -59,7 +59,7 @@ class EventDetector():
         return logger
 
 
-    def createSockets(self):
+    def createSockets (self):
         # create zmq socket to get events
         self.eventSocket = self.context.socket(zmq.PULL)
         connectionStr  = "tcp://{ip}:{port}".format(ip=self.extIp, port=self.eventPort)
@@ -70,7 +70,7 @@ class EventDetector():
             self.log.error("Failed to start eventSocket (bind): '" + connectionStr + "'", exc_info=True)
 
 
-    def getNewEvent(self):
+    def getNewEvent (self):
 
         eventMessage = self.eventSocket.recv()
 
@@ -85,7 +85,7 @@ class EventDetector():
 
 
 
-    def stop(self):
+    def stop (self):
         #close ZMQ
         if self.eventSocket:
             self.eventSocket.close(0)
@@ -96,14 +96,18 @@ class EventDetector():
         if not self.externalContext and self.context:
             try:
                 self.log.info("Closing ZMQ context...")
-                self.context.destroy()
+                self.context.destroy(0)
                 self.context = None
                 self.log.info("Closing ZMQ context...done.")
             except:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
-    def __exit__(self):
+    def __exit__ (self):
+        self.stop()
+
+
+    def __del__ (self):
         self.stop()
 
 

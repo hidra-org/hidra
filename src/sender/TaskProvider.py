@@ -176,7 +176,7 @@ class TaskProvider():
 
 
 
-    def stop(self):
+    def stop (self):
         if self.routerSocket:
             self.routerSocket.close(0)
             self.routerSocket = None
@@ -184,15 +184,15 @@ class TaskProvider():
             self.requestFwSocket.close(0)
             self.requestFwSocket = None
         if not self.extContext and self.context:
-            self.context.destroy()
+            self.context.destroy(0)
             self.context = None
 
 
-    def __exit__(self):
+    def __exit__ (self):
         self.stop()
 
 
-    def __del__(self):
+    def __del__ (self):
         self.stop()
 
 

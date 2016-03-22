@@ -34,7 +34,7 @@ import helpers
 class DataDispatcher():
 #class DataDispatcher(Process):
 
-    def __init__(self, id, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
+    def __init__ (self, id, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
                 logQueue, localTarget = None, context = None):
 
 #        dataFetcherProp = {
@@ -101,7 +101,7 @@ class DataDispatcher():
             self.stop()
 
 
-    def __createSockets(self):
+    def __createSockets (self):
         self.routerSocket = self.context.socket(zmq.PULL)
         connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.routerPort )
         self.routerSocket.connect(connectionStr)
@@ -123,7 +123,7 @@ class DataDispatcher():
         return logger
 
 
-    def run(self):
+    def run (self):
 
         while True:
             # Get workload from router, until finished
@@ -213,7 +213,7 @@ class DataDispatcher():
             self.dataFetcher.finishDataHandling(self.log, sourceFile, targetFile, self.dataFetcherProp)
 
 
-    def stop(self):
+    def stop (self):
         self.log.debug("Closing sockets for DataDispatcher-" + str(self.id))
         for connection in self.openConnections:
             if self.openConnections[connection]:
@@ -227,15 +227,15 @@ class DataDispatcher():
         self.dataFetcher.clean(self.dataFetcherProp)
         if not self.extContext and self.context:
             self.log.debug("Destroying context")
-            self.context.destroy()
+            self.context.destroy(0)
             self.context = None
 
 
-    def __exit__(self):
+    def __exit__ (self):
         self.stop()
 
 
-    def __del__(self):
+    def __del__ (self):
         self.stop()
 
 

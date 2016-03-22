@@ -10,9 +10,11 @@ import errno
 import os
 import cPickle
 import traceback
+import multiprocessing
+import time
 
 
-class loggingFunction:
+class loggingFunction():
     def out(self, x, exc_info = None):
         if exc_info:
             print x, traceback.format_exc()
@@ -24,6 +26,82 @@ class loggingFunction:
         self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
         self.error    = lambda x, exc_info=None: self.out(x, exc_info)
         self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+
+
+class StopPolling():
+    def __init__(self, controlPort, useLog = False, context = None):
+
+        if useLog:
+            self.log = logging.getLogger("nexusTransferAPI")
+        else:
+            self.log = loggingFunction()
+
+        self.extHost         = "0.0.0.0"
+        self.localhost       = "localhost"
+        self.controlPort     = controlPort
+
+        if context:
+            self.context         = context
+            self.externalContext = True
+        else:
+            self.context         = zmq.Context()
+            self.externalContext = False
+
+        self.controlSend  = self.context.socket(zmq.PUSH)
+#        connectionStr     = "inproc://control"
+        connectionStr     = "tcp://" + str(self.localhost) + ":" + str(self.controlPort)
+        try:
+            self.controlSend.connect(connectionStr)
+            self.log.info("contolSend started (connect) for '" + connectionStr + "'")
+        except:
+            self.log.error("Failed to start controlSend (conntect): '" + connectionStr + "'", exc_info=True)
+
+        self.run()
+
+
+    def run(self):
+        try:
+            while True:
+                time.sleep(2)
+        except:
+            self.log.debug("Exception detected")
+        finally:
+            self.log.debug("Sending stop control signal")
+            self.controlSend.send("STOP")
+            self.log.debug("Sending stop control signal..done")
+            self.stop()
+
+
+    def stop(self):
+        try:
+            if self.controlSend:
+                self.log.info("closing controlSend socket...")
+                self.controlSend.close(linger=1)
+                self.controlSend = None
+        except:
+            self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
+
+        # if the context was created inside this class,
+        # it has to be destroyed also within the class
+        if not self.externalContext and self.context:
+            try:
+                self.log.info("Closing ZMQ context...")
+                self.context.destroy()
+                self.context = None
+                self.log.info("Closing ZMQ context...done.")
+            except:
+                self.log.error("Closing ZMQ context...failed.", exc_info=True)
+
+
+    def __exit__(self):
+        self.stop()
+
+
+    def __del__(self):
+        self.stop()
+
+
+
 
 
 class nexusTransfer():
@@ -46,6 +124,7 @@ class nexusTransfer():
 
 
         self.extHost         = "0.0.0.0"
+        self.localhost       = "localhost"
 
         self.signalPort      = "50050"
         self.dataPort        = "50100"
@@ -57,6 +136,11 @@ class nexusTransfer():
         self.recvdCloseFrom  = []
         self.replyToSignal   = False
         self.allCloseRecvd   = False
+
+        self.controlPort     = "50200"
+
+        self.StopPollingThread = multiprocessing.Process (target = StopPolling, args = (self.controlPort, useLog, context))
+        self.StopPollingThread.start()
 
         self.__createSockets()
 
@@ -79,19 +163,25 @@ class nexusTransfer():
         except:
             self.log.error("Failed to start dataSocket (bind): '" + connectionStr + "'", exc_info=True)
 
+        self.controlRecv   = self.context.socket(zmq.PULL)
+#        connectionStr     = "inproc://control"
+        connectionStr     = "tcp://" + str(self.extHost) + ":" + str(self.controlPort)
+        try:
+            self.controlRecv.bind(connectionStr)
+            self.log.info("contolRecv started (bind) for '" + connectionStr + "'")
+        except:
+            self.log.error("Failed to start controlRecv (bind): '" + connectionStr + "'", exc_info=True)
+
         self.poller = zmq.Poller()
         self.poller.register(self.signalSocket, zmq.POLLIN)
         self.poller.register(self.dataSocket, zmq.POLLIN)
+        self.poller.register(self.controlRecv, zmq.POLLIN)
 
 
     def read(self):
-
         while True:
             self.log.debug("polling")
-            try:
-                socks = dict(self.poller.poll())
-            except:
-                break
+            socks = dict(self.poller.poll())
 
             if self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
                 self.log.debug("signalSocket is polling")
@@ -119,6 +209,11 @@ class nexusTransfer():
                     self.log.error("Unknown error while receiving files. Need to abort.", exc_info=True)
                     return None, None
 
+            if self.controlRecv in socks and socks[self.controlRecv] == zmq.POLLIN:
+                self.log.debug("controlRecv is polling")
+                self.controlRecv.recv()
+#                self.log.debug("Control signal received. Stopping.")
+                raise Exception("Control signal received. Stopping.")
 
 
     def __getMultipartMessage(self):
@@ -183,7 +278,9 @@ class nexusTransfer():
     #
     ##
     def stop(self):
+#        self.StopPollingThread.join()
 
+        self.log.debug("closing sockets...")
         try:
             if self.signalSocket:
                 self.log.info("closing signalSocket...")

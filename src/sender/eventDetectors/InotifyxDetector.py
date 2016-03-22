@@ -17,7 +17,7 @@ for name in dir(binding):
 # Source: inotifyx library code example
 # Copyright (c) 2005 Manuel Amador
 # Copyright (c) 2009-2011 Forest Bond
-class InotifyEvent(object):
+class InotifyEvent (object):
     '''
     InotifyEvent(wd, mask, cookie, name)
 
@@ -31,18 +31,18 @@ class InotifyEvent(object):
     name = None
 
 
-    def __init__(self, wd, mask, cookie, name):
+    def __init__ (self, wd, mask, cookie, name):
         self.wd = wd
         self.mask = mask
         self.cookie = cookie
         self.name = name
 
 
-    def __str__(self):
+    def __str__ (self):
         return '%s: %s' % (self.wd, self.get_mask_description())
 
 
-    def __repr__(self):
+    def __repr__ (self):
         return '%s(%s, %s, %s, %s)' % (
           self.__class__.__name__,
           repr(self.wd),
@@ -52,7 +52,7 @@ class InotifyEvent(object):
         )
 
 
-    def get_mask_description(self):
+    def get_mask_description (self):
         '''
         Return an ASCII string describing the mask field in terms of
         bitwise-or'd IN_* constants, or 0.  The result is valid Python code
@@ -78,7 +78,7 @@ class InotifyEvent(object):
 #class InotifyxDetector():
 class EventDetector():
 
-    def __init__(self, config, logQueue):
+    def __init__ (self, config, logQueue):
 
         self.log = self.getLogger(logQueue)
 
@@ -106,7 +106,7 @@ class EventDetector():
             self.add_watch()
 
 
-    def get_events(self, fd, *args):
+    def get_events (self, fd, *args):
         '''
         get_events(fd[, timeout])
 
@@ -138,7 +138,7 @@ class EventDetector():
         return logger
 
 
-    def add_watch(self):
+    def add_watch (self):
         dirsToRegister=self.getDirectoryStructure()
         try:
             for path in dirsToRegister:
@@ -149,7 +149,7 @@ class EventDetector():
             self.log.error("Could not register watch for path: " + str(path), exc_info=True)
 
 
-    def getDirectoryStructure(self):
+    def getDirectoryStructure (self):
         # Add the default subdirs
         self.log.info("paths:" + str(self.paths))
         dirsToWalk    = [os.path.normpath(self.paths[0] + os.sep + directory) for directory in self.monSubdirs]
@@ -170,7 +170,7 @@ class EventDetector():
         return monitoredDirs
 
 
-    def getNewEvent(self):
+    def getNewEvent (self):
 
         eventMessageList = []
         eventMessage = {}
@@ -264,7 +264,7 @@ class EventDetector():
 
 
 
-    def getEventMessage(self, path, filename):
+    def getEventMessage (self, path, filename):
 
         parentDir    = path
         relativePath = ""
@@ -299,7 +299,7 @@ class EventDetector():
 
 
 
-    def stop(self):
+    def stop (self):
         try:
             for wd in self.wd_to_path:
                 try:
@@ -309,9 +309,11 @@ class EventDetector():
         finally:
             os.close(self.fd)
 
-    def __exit__(self):
+    def __exit__ (self):
         self.stop()
 
+    def __del__ (self):
+        self.stop()
 
 if __name__ == '__main__':
     import sys

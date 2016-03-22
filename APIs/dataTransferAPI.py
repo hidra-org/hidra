@@ -13,12 +13,12 @@ import traceback
 
 
 class loggingFunction:
-    def out(self, x, exc_info = None):
+    def out (self, x, exc_info = None):
         if exc_info:
             print x, traceback.format_exc()
         else:
             print x
-    def __init__(self):
+    def __init__ (self):
         self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
         self.info     = lambda x, exc_info=None: self.out(x, exc_info)
         self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
@@ -27,7 +27,7 @@ class loggingFunction:
 
 
 class dataTransfer():
-    def __init__(self, connectionType, signalHost = None, useLog = False, context = None):
+    def __init__ (self, connectionType, signalHost = None, useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("dataTransferAPI")
@@ -59,7 +59,7 @@ class dataTransfer():
 
         self.supportedConnections = ["stream", "queryNext"]
 
-        self.signalExchanged       = False
+        self.signalExchanged       = None
 
         self.streamStarted         = None
         self.queryNextStarted      = None
@@ -73,7 +73,7 @@ class dataTransfer():
 
 
     # targets: [host, port, prio] or [[host, port, prio], ...]
-    def initiate(self, targets):
+    def initiate (self, targets):
 
         if type(targets) != list:
             self.stop()
@@ -106,7 +106,7 @@ class dataTransfer():
         # [[host, port, prio], ...]
         else:
             for t in targets:
-                if type(socket) == list:
+                if type(t) == list:
                     host, port, prio = t
                     self.targets.append([host + ":" + port, prio])
                 else:
@@ -140,13 +140,13 @@ class dataTransfer():
         # if there was no response or the response was of the wrong format, the receiver should be shut down
         elif message and message.startswith(signal):
             self.log.info("Received confirmation ...")
-            self.signalExchanged = True
+            self.signalExchanged = signal
 
         else:
             raise Exception("Sending start signal ...failed.")
 
 
-    def __createSignalSocket(self, signalPort):
+    def __createSignalSocket (self, signalPort):
 
         # To send a notification that a Displayer is up and running, a communication socket is needed
         # create socket to exchange signals with Sender
@@ -167,7 +167,10 @@ class dataTransfer():
         self.poller.register(self.signalSocket, zmq.POLLIN)
 
 
-    def __sendSignal(self, signal):
+    def __sendSignal (self, signal):
+
+        if not signal:
+            return
 
         # Send the signal that the communication infrastructure should be established
         self.log.info("Sending Signal")
@@ -213,7 +216,7 @@ class dataTransfer():
         return message
 
 
-    def start(self, dataSocket = False, requestHost = None):
+    def start (self, dataSocket = False, requestHost = None):
 
 #        if not self.connectionType:
 #            raise Exception("No connection specified. Please initiate a connection first.")
@@ -231,24 +234,35 @@ class dataTransfer():
         port = ""
         if dataSocket:
             if type(dataSocket) == list:
-                socketId = dataSocket[0] + ":" + dataSocket[1]
+                socketIdToConnect = dataSocket[0] + ":" + dataSocket[1]
+                ip = dataSocket[0]
                 host = dataSocket[0]
+                port = dataSocket[1]
             else:
-                socketId = ip + ":" + str(dataSocket)
+                self.log.debug("dataSocket=" + str(dataSocket))
+                port = str(dataSocket)
+
                 host = socket.gethostname()
+                socketId = host + ":" + port
+                ipFromHost = socket.gethostbyaddr(host)[2]
+                if len(ipFromHost) == 1:
+                    ip = ipFromHost[0]
+
         elif len(self.targets) == 1:
             host, port = self.targets[0][0].split(":")
-#            ipFromHost = socket.gethostbyaddr(host)[2]
-#            if len(ipFromHost) == 1:
-#                ip = ipFromHost[0]
-            socketId = ip + ":" + port
+            ipFromHost = socket.gethostbyaddr(host)[2]
+            if len(ipFromHost) == 1:
+                ip = ipFromHost[0]
 
         else:
             raise Exception("Multipe possible ports. Please choose which one to use.")
 
+        socketId = host + ":" + port
+        socketIdToConnect = ip + ":" + port
+
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
-        connectionStr = "tcp://" + socketId
+        connectionStr = "tcp://" + socketIdToConnect
         try:
             self.dataSocket.bind(connectionStr)
             self.log.info("Socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
@@ -267,7 +281,7 @@ class dataTransfer():
             except:
                 self.log.error("Failed to start Socket of type " + self.connectionType + " (connect): '" + connectionStr + "'", exc_info=True)
 
-            self.queryNextStarted = host + ":" + port
+            self.queryNextStarted = socketId
         else:
             self.streamStarted    = socketId
 
@@ -287,7 +301,7 @@ class dataTransfer():
     #       (if connection type "queryMetadata" was choosen)
     #
     ##
-    def get(self):
+    def get (self):
 
         if not self.streamStarted and not self.queryNextStarted:
             self.log.info("Could not communicate, no connection was initialized.")
@@ -314,7 +328,7 @@ class dataTransfer():
             return None, None
 
 
-    def __getMultipartMessage(self):
+    def __getMultipartMessage (self):
 
         #save all chunks to file
         multipartMessage = self.dataSocket.recv_multipart()
@@ -341,7 +355,7 @@ class dataTransfer():
         return [metadata, payload]
 
 
-    def store(self, targetBasePath, dataObject):
+    def store (self, targetBasePath, dataObject):
 
         if type(dataObject) is not list and len(dataObject) != 2:
             raise Exception("Wrong input type for 'store'")
@@ -386,7 +400,7 @@ class dataTransfer():
                 break
 
 
-    def __appendChunksToFile(self, targetBasePath, configDict, payload):
+    def __appendChunksToFile (self, targetBasePath, configDict, payload):
 
         chunkCount         = len(payload)
 
@@ -428,7 +442,7 @@ class dataTransfer():
             raise
 
 
-    def generateTargetFilepath(self, basePath, configDict):
+    def generateTargetFilepath (self, basePath, configDict):
         """
         generates full path where target file will saved to.
 
@@ -448,7 +462,7 @@ class dataTransfer():
         return filepath
 
 
-    def __generateTargetPath(self, basePath, configDict):
+    def __generateTargetPath (self, basePath, configDict):
         """
         generates path where target file will saved to.
 
@@ -471,12 +485,17 @@ class dataTransfer():
     # Send signal that the displayer is quitting, close ZMQ connections, destoying context
     #
     ##
-    def stop(self):
-        if self.dataSocket and self.signalExchanged:
-            if self.streamStarted:
+    def stop (self):
+        if self.signalSocket and self.signalExchanged:
+            self.log.info("Sending close signal")
+            signal = None
+            if self.streamStarted or ( "STREAM" in self.signalExchanged):
                 signal = "STOP_STREAM"
-            elif self.queryNextStarted:
+            elif self.queryNextStarted or ( "QUERY_NEXT" in self.signalExchanged):
                 signal = "STOP_QUERY_NEXT"
+
+
+            self.log.debug("signal=" + str(signal))
 
             message = self.__sendSignal(signal)
             #TODO need to check correctness of signal?
@@ -498,18 +517,18 @@ class dataTransfer():
         if not self.externalContext and self.context:
             try:
                 self.log.info("Closing ZMQ context...")
-                self.context.destroy()
+                self.context.destroy(0)
                 self.context = None
                 self.log.info("Closing ZMQ context...done.")
             except:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
-    def __exit__(self):
+    def __exit__ (self):
         self.stop()
 
 
-    def __del__(self):
+    def __del__ (self):
         self.stop()
 
 

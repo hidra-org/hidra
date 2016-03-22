@@ -76,8 +76,8 @@ def getTransportProtocol():
 # This function is needed because configParser always needs a section name
 # the used config file consists of key-value pairs only
 # source: http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788
-class FakeSecHead(object):
-    def __init__(self, fp):
+class FakeSecHead (object):
+    def __init__ (self, fp):
         self.fp = fp
         self.sechead = '[asection]\n'
 
@@ -92,7 +92,7 @@ class FakeSecHead(object):
 
 
 # http://code.activestate.com/recipes/541096-prompt-the-user-for-confirmation/
-def confirm(prompt=None, resp=False):
+def confirm (prompt=None, resp=False):
     """prompts for yes or no response from the user. Returns True for yes and
     False for no.
 
@@ -141,7 +141,7 @@ def confirm(prompt=None, resp=False):
             return False
 
 
-def checkEventDetectorType(eDType, supportedTypes):
+def checkEventDetectorType (eDType, supportedTypes):
 
     if eDType in supportedTypes:
         logging.debug("Event detector '" + eDType + "' is ok.")
@@ -151,7 +151,7 @@ def checkEventDetectorType(eDType, supportedTypes):
 
 
 
-def checkDirEmpty(dirPath):
+def checkDirEmpty (dirPath):
 
     #check if directory is empty
     if os.listdir(dirPath):
@@ -170,7 +170,7 @@ def checkDirEmpty(dirPath):
             logging.info("All elements of directory " + str(dirPath) + " were removed.")
 
 
-def checkSubDirExistance(dirPath, subDirs):
+def checkSubDirExistance (dirPath, subDirs):
 
     dirPath = os.path.normpath(dirPath)
     dirsToCheck = [dirPath + os.sep + directory for directory in subDirs]
@@ -187,7 +187,7 @@ def checkSubDirExistance(dirPath, subDirs):
         sys.exit(1)
 
 
-def checkDirExistance(dirPath):
+def checkDirExistance (dirPath):
     # Check directory path for existance.
     # Exits if it does not exist
 
@@ -196,7 +196,7 @@ def checkDirExistance(dirPath):
         sys.exit(1)
 
 
-def checkLogFileWritable(filepath, filename):
+def checkLogFileWritable (filepath, filename):
     # Exits if logfile cannot be written
     try:
         logfullPath = os.path.join(filepath, filename)
@@ -208,7 +208,7 @@ def checkLogFileWritable(filepath, filename):
         sys.exit(1)
 
 
-def checkVersion(version, log):
+def checkVersion (version, log):
     if version < __version__:
         log.info("Version of receiver is lower. Please update receiver.")
         return False
@@ -219,7 +219,7 @@ def checkVersion(version, log):
         return True
 
 
-def checkHost(hostname, whiteList, log):
+def checkHost (hostname, whiteList, log):
 
     if hostname and whiteList:
 
@@ -251,8 +251,8 @@ def checkHost(hostname, whiteList, log):
 
 
 # http://stackoverflow.com/questions/25585518/python-logging-logutils-with-queuehandler-and-queuelistener#25594270
-class CustomQueueListener(QueueListener):
-    def __init__(self, queue, *handlers):
+class CustomQueueListener (QueueListener):
+    def __init__ (self, queue, *handlers):
         super(CustomQueueListener, self).__init__(queue, *handlers)
         """
         Initialise an instance with the specified queue and
@@ -261,7 +261,7 @@ class CustomQueueListener(QueueListener):
         # Changing this to a list from tuple in the parent class
         self.handlers = list(handlers)
 
-    def handle(self, record):
+    def handle (self, record):
         """
         Override handle a record.
 
@@ -275,14 +275,14 @@ class CustomQueueListener(QueueListener):
             if record.levelno >= handler.level: # This check is not in the parent class
                 handler.handle(record)
 
-    def addHandler(self, hdlr):
+    def addHandler (self, hdlr):
         """
         Add the specified handler to this logger.
         """
         if not (hdlr in self.handlers):
             self.handlers.append(hdlr)
 
-    def removeHandler(self, hdlr):
+    def removeHandler (self, hdlr):
         """
         Remove the specified handler from this logger.
         """
@@ -292,7 +292,7 @@ class CustomQueueListener(QueueListener):
 
 
 # Get the log Configuration for the lisener
-def getLogHandlers(logfile, logsize, verbose, onScreenLogLevel = False):
+def getLogHandlers (logfile, logsize, verbose, onScreenLogLevel = False):
     # Enable more detailed logging if verbose-option has been set
     logLevel = logging.INFO
     if verbose:
@@ -344,7 +344,7 @@ def getLogHandlers(logfile, logsize, verbose, onScreenLogLevel = False):
         return h1
 
 
-def initLogging(filenameFullPath, verbose, onScreenLogLevel = False):
+def initLogging (filenameFullPath, verbose, onScreenLogLevel = False):
     #@see https://docs.python.org/2/howto/logging-cookbook.html
 
     #more detailed logging if verbose-option has been set

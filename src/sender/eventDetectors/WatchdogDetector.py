@@ -19,8 +19,8 @@ eventListToObserve = []
 eventListToObserveTmp = []
 
 
-class WatchdogEventHandler(PatternMatchingEventHandler):
-    def __init__(self, id, config, logQueue):
+class WatchdogEventHandler (PatternMatchingEventHandler):
+    def __init__ (self, id, config, logQueue):
         self.id = id
         self.log = self.getLogger(logQueue)
 
@@ -82,7 +82,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
         return logger
 
 
-    def process(self, event):
+    def process (self, event):
         self.log.debug("process")
 
         global eventMessageList
@@ -95,13 +95,13 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
             eventMessageList.append(eventMessage)
 
 
-    def on_any_event(self, event):
+    def on_any_event (self, event):
         if self.detect_all:
             self.log.debug("Any event detected")
             self.process(event)
 
 
-    def on_created(self, event):
+    def on_created (self, event):
         global eventListToObserve
 
         if self.detect_create:
@@ -115,7 +115,7 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
                 eventListToObserve.append(event.src_path)
 
 
-    def on_modified(self, event):
+    def on_modified (self, event):
         global eventListToObserve
 
         if self.detect_modify:
@@ -127,19 +127,19 @@ class WatchdogEventHandler(PatternMatchingEventHandler):
                 eventListToObserve.append(event.src_path)
 
 
-    def on_deleted(self, event):
+    def on_deleted (self, event):
         if self.detect_delete:
             self.log.debug("On delete event detected")
             self.process(event)
 
 
-    def on_moved(self, event):
+    def on_moved (self, event):
         if self.detect_move:
             self.log.debug("On move event detected")
             self.process(event)
 
 
-def splitFilePath(filepath, paths):
+def splitFilePath (filepath, paths):
 
     (parentDir,filename) = os.path.split(filepath)
     relativePath = ""
@@ -184,8 +184,8 @@ def splitFilePath(filepath, paths):
     return eventMessage
 
 
-class checkModTime(threading.Thread):
-    def __init__(self, NumberOfThreads, timeTillClosed, monDir, lock, logQueue):
+class checkModTime (threading.Thread):
+    def __init__ (self, NumberOfThreads, timeTillClosed, monDir, lock, logQueue):
         self.log = self.getLogger(logQueue)
 
         self.log.debug("init")
@@ -215,7 +215,7 @@ class checkModTime(threading.Thread):
 
         return logger
 
-    def run(self):
+    def run (self):
         global eventListToObserve
         global eventListToObserveTmp
 
@@ -256,7 +256,7 @@ class checkModTime(threading.Thread):
                 break
 
 
-    def checkLastModified(self, filepath):
+    def checkLastModified (self, filepath):
         global eventMessageList
         global eventListToObserveTmp
 
@@ -295,7 +295,7 @@ class checkModTime(threading.Thread):
                            " sec ago: " + str(filepath))
 
 
-    def stop(self):
+    def stop (self):
         #close the pool and wait for the work to finish
         self.pool.close()
         self.pool.join()
@@ -303,11 +303,15 @@ class checkModTime(threading.Thread):
         self._poolRunning = False
 
 
-    def stopped(self):
+    def stopped (self):
         return self._stop.isSet()
 
 
-    def __exit__(self):
+    def __exit__ (self):
+        self.stop()
+
+
+    def __del__ (self):
         self.stop()
 
 

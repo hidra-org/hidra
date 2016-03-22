@@ -3,18 +3,14 @@
 __version__ = '0.0.1'
 
 import zmq
-import socket
 import logging
-import json
-import errno
-import os
 import cPickle
 import traceback
 
 
 class dataIngest():
     # return error code
-    def __init__(self, useLog = False, context = None):
+    def __init__ (self, useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("dataIngestAPI")
@@ -45,27 +41,31 @@ class dataIngest():
             self.extContext = False
 
 
-        self.signalHost  = "zitpcx19282"
-        self.signalPort  = "50050"
+        self.signalHost   = "zitpcx19282"
+        self.signalPort   = "50050"
 
         # has to be the same port as configured in dataManager.conf as eventPort
-        self.eventPort   = "50003"
+        self.eventPort    = "50003"
         #TODO add port in config
         # has to be the same port as configured in dataManager.conf as ...
-        self.dataPort    = "50010"
+        self.dataPort     = "50010"
 
-        self.eventSocket = None
-        self.dataSocket  = None
+        self.signalSocket = None
+        self.eventSocket  = None
+        self.dataSocket   = None
 
-        self.openFile    = False
-        self.filePart    = None
+        self.poller       = zmq.Poller()
+
+        self.filename     = False
+        self.openFile     = False
+        self.filePart     = None
 
         self.responseTimeout = 1000
 
         self.__createSocket()
 
 
-    def __createSocket(self):
+    def __createSocket (self):
 
         # To send file open and file close notification, a communication socket is needed
         self.signalSocket = self.context.socket(zmq.REQ)
@@ -105,7 +105,7 @@ class dataIngest():
 
 
     # return error code
-    def createFile(self, filename):
+    def createFile (self, filename):
         if self.openFile and self.openFile != filename:
             raise Exception("File " + str(filename) + " already opened.")
 
@@ -120,7 +120,7 @@ class dataIngest():
         self.filePart = 0
 
 
-    def write(self, data):
+    def write (self, data):
         # send event to eventDetector
         message = {
                 "filename" : self.filename,
@@ -134,7 +134,7 @@ class dataIngest():
 
 
     # return error code
-    def closeFile(self):
+    def closeFile (self):
         # send close-signal to signal socket
         sendMessage = "CLOSE_FILE"
         self.signalSocket.send(sendMessage)
@@ -144,7 +144,18 @@ class dataIngest():
         self.eventSocket.send(sendMessage)
         self.log.debug("Sending signal to close the file to eventSocket.(sendMessage=" + sendMessage + ")")
 
-        recvMessage = self.signalSocket.recv()
+        try:
+            socks = dict(self.poller.poll(10000)) # in ms
+        except:
+            self.log.error("Could not poll for signal", exc_info=True)
+
+        # if there was a response
+        if self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
+            #  Get the reply.
+            recvMessage = self.signalSocket.recv()
+            self.log.info("Received answer to signal: " + str(recvMessage) )
+        else:
+            recvMessage = None
 
         if recvMessage != sendMessage:
             self.log.debug("recieved message: " + str(recvMessage))
@@ -160,7 +171,7 @@ class dataIngest():
     # Send signal that the displayer is quitting, close ZMQ connections, destoying context
     #
     ##
-    def stop(self):
+    def stop (self):
         try:
             if self.signalSocket:
                 self.log.info("closing eventSocket...")
@@ -189,11 +200,11 @@ class dataIngest():
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
-    def __exit__(self):
+    def __exit__ (self):
         self.stop()
 
 
-    def __del__(self):
+    def __del__ (self):
         self.stop()
 
 

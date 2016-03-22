@@ -37,7 +37,10 @@ class SignalHandler():
         # to get the logging only handling this class
         log                  = None
 
-        self.context         = context or zmq.Context()
+        # Send all logs to the main process
+        self.log = self.getLogger(logQueue)
+        self.log.debug("SignalHandler started (PID " + str(os.getpid()) + ").")
+
         self.localhost       = "127.0.0.1"
         self.extIp           = "0.0.0.0"
         self.comPort         = comPort
@@ -63,9 +66,14 @@ class SignalHandler():
         self.requestFwSocket = None
         self.requestSocket   = None
 
-        # Send all logs to the main process
-        self.log = self.getLogger(logQueue)
-        self.log.debug("SignalHandler started (PID " + str(os.getpid()) + ").")
+        self.log.debug("Registering ZMQ context")
+        # remember if the context was created outside this class or not
+        if context:
+            self.context    = context
+            self.extContext = True
+        else:
+            self.context    = zmq.Context()
+            self.extContext = False
 
         self.createSockets()
 
@@ -175,18 +183,26 @@ class SignalHandler():
                 if checkStatus:
                     self.reactToSignal(signal, target)
 
+                continue
+
             if self.requestSocket in socks and socks[self.requestSocket] == zmq.POLLIN:
                 self.log.debug("")
                 self.log.debug("!!!! requestSocket !!!!")
                 self.log.debug("")
 
-
                 incomingMessage = self.requestSocket.recv_multipart()
                 self.log.debug("Received request: " + str(incomingMessage) )
 
+#                self.log.debug("self.allowedQueries:" + str(self.allowedQueries))
                 for index in range(len(self.allowedQueries)):
                     for i in range(len(self.allowedQueries[index])):
-                        if incomingMessage[1] == self.allowedQueries[index][i][0]:
+
+                        if ".desy.de:" in incomingMessage[1]:
+                            incomingMessage[1] = incomingMessage[1].replace(".desy.de:", ":")
+
+                        incomingSocketId = incomingMessage[1]
+
+                        if incomingSocketId == self.allowedQueries[index][i][0]:
                             self.openRequVari[index].append(self.allowedQueries[index][i])
                             self.log.debug("Add to openRequVari: " + str(self.allowedQueries[index][i]) )
 
@@ -212,7 +228,7 @@ class SignalHandler():
                 else:
                     self.log.debug("Version are not compatible")
                     self.sendResponse("VERSION_CONFLICT")
-                    return False, None, None, None
+                    return False, None, None
 
             if signal and host:
 
@@ -225,13 +241,13 @@ class SignalHandler():
                     self.log.debug("One of the hosts is not allowed to connect.")
                     self.log.debug("hosts: " + str(host))
                     self.sendResponse("NO_VALID_HOST")
-                    return False, None, None, None
+                    return False, None, None
 
         return True, signal, target
 
 
     def sendResponse (self, signal):
-            self.log.debug("send confirmation back to receiver: " + str(signal) )
+            self.log.debug("Send response back: " + str(signal))
             self.comSocket.send(signal, zmq.NOBLOCK)
 
 
@@ -280,12 +296,22 @@ class SignalHandler():
             self.log.info("Received signal to enable querying for data for hosts: " + str(socketIds))
             connectionFound = False
             tmpAllowed = []
+
             for socketConf in socketIds:
+
+                if ".desy.de:" in socketConf[0]:
+                    socketConf[0] = socketConf[0].replace(".desy.de:",":")
+
                 socketId = socketConf[0]
-                if socketId in [ i[0] for i in self.allowedQueries]:
+
+                self.log.debug("socketId: " + str(socketId))
+#                self.log.debug("self.allowedQueries: " + str(self.allowedQueries))
+                flatlist = [ i[0] for i in [j for sublist in self.allowedQueries for j in sublist]]
+                self.log.debug("flatlist: " + str(flatlist))
+
+                if socketId in flatlist:
                     connectionFound = True
                     self.log.info("Connection to " + str(socketId) + " is already open")
-                    self.sendResponse("CONNECTION_ALREADY_OPEN")
                 elif socketId not in [ i[0] for i in tmpAllowed]:
                     tmpAllowed.append(socketConf)
                 else:
@@ -295,10 +321,14 @@ class SignalHandler():
             if not connectionFound:
                 # send signal back to receiver
                 self.sendResponse(signal)
-                self.allowedQueries.append(sorted(tmpAllowed))
+                self.allowedQueries.append(copy.deepcopy(sorted(tmpAllowed)))
+                del tmpAllowed
 
                 self.openRequVari.append([])
-                self.log.debug("Send response back: " + str(signal))
+            else:
+                # send error back to receiver
+                signal = "CONNECTION_ALREADY_OPEN"
+                self.sendResponse(signal)
 
             return
 
@@ -306,13 +336,25 @@ class SignalHandler():
             self.log.info("Received signal to disable querying for data for hosts: " + str(socketIds))
             connectionNotFound = False
             tmpRemoveIndex = []
+            tmpRemoveElement = []
             found = False
             for socketConf in socketIds:
+
+                if ".desy.de:" in socketConf[0]:
+                    socketConf[0] = socketConf[0].replace(".desy.de:",":")
+
                 socketId = socketConf[0]
-                for i in range(len(self.allowedQueries)):
-                    for j in range(len(self.allowedQueries[i])):
-                        if socketId == self.allowedQueries[i][j][0]:
-                            tmpRemoveIndex.append([i,j])
+
+#                for i in range(len(self.allowedQueries)):
+#                    for j in range(len(self.allowedQueries[i])):
+#                        if socketId == self.allowedQueries[i][j][0]:
+#                            tmpRemoveIndex.append([i,j])
+#                            tmpRemoveElement.append(self.allowedQueries[i][j])
+#                            found = True
+                for sublist in self.allowedQueries:
+                    for element in sublist:
+                        if socketId == element[0]:
+                            tmpRemoveElement.append(element)
                             found = True
                 if not found:
                     connectionNotFound = True
@@ -323,17 +365,34 @@ class SignalHandler():
             else:
                 # send signal back to receiver
                 self.sendResponse(signal)
-                self.log.debug("Send response back: " + str(signal))
-                for i, j in tmpRemoveIndex:
-                    self.log.debug("Remove " + str(self.allowedQueries[i][j]) + " from allowedQueries.")
-                    socketId = self.allowedQueries[i].pop(j)[0]
+
+                for element in tmpRemoveElement:
+
+                    socketId = element[0]
 
                     self.openRequVari =  [ [ b for b in  self.openRequVari[a] if socketId != b[0] ] for a in range(len(self.openRequVari)) ]
                     self.log.debug("Remove all occurences from " + str(socketId) + " from openRequVari.")
 
-                    if not self.allowedQueries[i]:
-                        del self.allowedQueries[i]
-                        del self.openRequVari[i]
+                    for i in range(len(self.allowedQueries)):
+                        sublist.remove(element)
+                        self.log.debug("Remove " + str(socketId) + " from allowedQueries.")
+
+                        if not self.allowedQueries[i]:
+                            del self.allowedQueries[i]
+                            del self.openRequVari[i]
+
+#                for i, j in tmpRemoveIndex:
+#                    self.log.debug("i=" + str(i) + ", j=" + str(j))
+#                    self.log.debug("self.allowedQueries: " + str(self.allowedQueries))
+#                    self.log.debug("Remove " + str(self.allowedQueries[i][j]) + " from allowedQueries.")
+#                    socketId = self.allowedQueries[i][j][0]
+#
+#                    self.openRequVari =  [ [ b for b in  self.openRequVari[a] if socketId != b[0] ] for a in range(len(self.openRequVari)) ]
+#                    self.log.debug("Remove all occurences from " + str(socketId) + " from openRequVari.")
+#
+#                    if not self.allowedQueries[i]:
+#                        del self.allowedQueries[i]
+#                        del self.openRequVari[i]
 
             return
 
@@ -344,9 +403,18 @@ class SignalHandler():
 
     def stop (self):
         self.log.debug("Closing sockets")
-        self.comSocket.close(0)
-        self.requestFwSocket.close(0)
-        self.requestSocket.close(0)
+        if self.comSocket:
+            self.comSocket.close(0)
+            self.comSocket = None
+        if self.requestFwSocket:
+            self.requestFwSocket.close(0)
+            self.requestFwSocket = None
+        if self.requestSocket:
+            self.requestSocket.close(0)
+            self.requestSocket = None
+        if not self.extContext and self.context:
+            self.context.destroy(0)
+            self.context = None
 
 
     def __exit__ (self):

@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-import traceback
 
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
@@ -15,35 +14,39 @@ del BASE_PATH
 from dataTransferAPI import dataTransfer
 
 
-dataPort   = "50100"
+signalHost = "zitpcx19282.desy.de"
+#signalHost = "zitpcx22614.desy.de"
+targets = ["zitpcx19282.desy.de", "50101", 0]
 
 print
-print "==== TEST: Query for the newest filename ===="
+print "==== TEST: Stream all files ===="
 print
 
-query = dataTransfer("stream")
 
-query.start(dataPort)
+query = dataTransfer("stream", signalHost)
+
+query.initiate(targets)
+
+query.start()
+
 
 while True:
     try:
         [metadata, data] = query.get()
-    except KeyboardInterrupt:
-        break
-    except Exception as e:
-        print "Getting data failed."
-        print "Error was: " + str(e)
+    except:
         break
 
     print
-    print "metadata of file",  metadata["filename"]
-    print "data", str(data)[:10]
+    print "metadata", metadata["filename"]
+#    print "data", str(data)[:10]
     print
+
 
 query.stop()
 
 print
-print "==== TEST END: Query for the newest filename ===="
+print "==== TEST END: Stream all files ===="
 print
+
 
 

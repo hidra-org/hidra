@@ -9,7 +9,7 @@ import cPickle
 import shutil
 
 
-def setup(log, prop):
+def setup (log, prop):
 
     #TODO
     # check if prop has correct format
@@ -168,7 +168,7 @@ def finishDataHandling (log, sourceFile, targetFile, removeFlag = False):
     pass
 
 
-def clean(prop):
+def clean (prop):
     # Close zmq socket
     if prop["socket"]:
         prop["socket"].close(0)

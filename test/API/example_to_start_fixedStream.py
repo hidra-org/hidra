@@ -22,15 +22,16 @@ import helpers
 
 #enable logging
 logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfile     = os.path.join(logfilePath, "testAPI.log")
+logfile     = os.path.join(logfilePath, "test_fixedStream.log")
 helpers.initLogging(logfile, True, "DEBUG")
 
 del BASE_PATH
 
+
 dataPort   = "50100"
 
 print
-print "==== TEST: Query for the newest filename ===="
+print "==== TEST: Fixed stream ===="
 print
 
 query = dataTransfer("stream", useLog = True)
@@ -47,23 +48,15 @@ while True:
         print "Error was: " + str(e)
         break
 
-
     print
     print "metadata of file",  metadata["filename"]
     print "data", str(data)[:10]
     print
 
-#    try:
-#        query.store("/space/projects/zeromq-data-transfer/data/target/testStore", result)
-#    except Exception as e:
-#        print "Storing data failed."
-#        print "Error was:", e
-#        break
-
 query.stop()
 
 print
-print "==== TEST END: Query for the newest filename ===="
+print "==== TEST END: Fixed Stream ===="
 print
 
 
