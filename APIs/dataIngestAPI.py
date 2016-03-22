@@ -3,11 +3,7 @@
 __version__ = '0.0.1'
 
 import zmq
-import socket
 import logging
-import json
-import errno
-import os
 import cPickle
 import traceback
 
@@ -45,20 +41,24 @@ class dataIngest():
             self.extContext = False
 
 
-        self.signalHost  = "zitpcx19282"
-        self.signalPort  = "50050"
+        self.signalHost   = "zitpcx19282"
+        self.signalPort   = "50050"
 
         # has to be the same port as configured in dataManager.conf as eventPort
-        self.eventPort   = "50003"
+        self.eventPort    = "50003"
         #TODO add port in config
         # has to be the same port as configured in dataManager.conf as ...
-        self.dataPort    = "50010"
+        self.dataPort     = "50010"
 
-        self.eventSocket = None
-        self.dataSocket  = None
+        self.signalSocket = None
+        self.eventSocket  = None
+        self.dataSocket   = None
 
-        self.openFile    = False
-        self.filePart    = None
+        self.poller       = zmq.Poller()
+
+        self.filename     = False
+        self.openFile     = False
+        self.filePart     = None
 
         self.responseTimeout = 1000
 
