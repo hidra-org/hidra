@@ -81,7 +81,7 @@ class dataIngest():
             raise
 
         # using a Poller to implement the signalSocket timeout (in older ZMQ version there is no option RCVTIMEO)
-        self.poller = zmq.Poller()
+#        self.poller = zmq.Poller()
         self.poller.register(self.signalSocket, zmq.POLLIN)
 
 
@@ -122,11 +122,13 @@ class dataIngest():
 
     def write (self, data):
         # send event to eventDetector
-        message = {
-                "filename" : self.filename,
-                "filePart" : self.filePart
-                }
-        self.eventSocket.send(cPickle.dumps(message))
+#        message = {
+#                "filename" : self.filename,
+#                "filePart" : self.filePart
+#                }
+#        message = "{ 'filename': " + self.filename + ", 'filePart': " + self.filePart + "}"
+        message = '{ "filePart": ' + str(self.filePart) + ', "filename": "' + self.filename + '" }'
+        self.eventSocket.send(message)
 
         # send data to ZMQ-Queue
         self.dataSocket.send(data)
@@ -137,20 +139,28 @@ class dataIngest():
     def closeFile (self):
         # send close-signal to signal socket
         sendMessage = "CLOSE_FILE"
-        self.signalSocket.send(sendMessage)
-        self.log.info("Sending signal to close the file to signalSocket.")
+        try:
+            self.signalSocket.send(sendMessage)
+            self.log.info("Sending signal to close the file to signalSocket.")
+        except:
+            raise Exception("Sending signal to close the file to signalSocket...failed.")
 
         # send close-signal to event Detector
-        self.eventSocket.send(sendMessage)
-        self.log.debug("Sending signal to close the file to eventSocket.(sendMessage=" + sendMessage + ")")
+        try:
+            self.eventSocket.send(sendMessage)
+            self.log.debug("Sending signal to close the file to eventSocket. (sendMessage=" + sendMessage + ")")
+        except:
+            raise Exception("Sending signal to close the file to eventSocket...failed.")
 
         try:
             socks = dict(self.poller.poll(10000)) # in ms
         except:
+            socks = None
             self.log.error("Could not poll for signal", exc_info=True)
 
         # if there was a response
-        if self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
+        if socks and self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
+            self.log.info("Received answer to signal...")
             #  Get the reply.
             recvMessage = self.signalSocket.recv()
             self.log.info("Received answer to signal: " + str(recvMessage) )
@@ -174,7 +184,7 @@ class dataIngest():
     def stop (self):
         try:
             if self.signalSocket:
-                self.log.info("closing eventSocket...")
+                self.log.info("closing signalSocket...")
                 self.signalSocket.close(linger=0)
                 self.signalSocket = None
             if self.eventSocket:
@@ -193,7 +203,7 @@ class dataIngest():
         if not self.extContext and self.context:
             try:
                 self.log.info("Closing ZMQ context...")
-                self.context.destroy()
+                self.context.destroy(0)
                 self.context = None
                 self.log.info("Closing ZMQ context...done.")
             except:

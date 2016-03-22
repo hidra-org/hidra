@@ -35,13 +35,18 @@ print "==== TEST: data ingest ===="
 print
 
 class Receiver(threading.Thread):
-    def __init__(self):
+    def __init__(self, context = None):
         self.extHost    = "0.0.0.0"
         self.signalPort = "50050"
         self.eventPort  = "50003"
         self.dataPort   = "50100"
 
-        self.context       = zmq.Context()
+        if context:
+            self.context    = context
+            self.extContext = True
+        else:
+            self.context    = zmq.Context()
+            self.extContext = False
 
         self.signalSocket  = self.context.socket(zmq.REP)
         connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.signalPort)
@@ -70,7 +75,8 @@ class Receiver(threading.Thread):
 
 
         for i in range(5):
-            logging.debug("eventSocket recv: " + str(cPickle.loads(self.eventSocket.recv())))
+#            logging.debug("eventSocket recv: " + str(cPickle.loads(self.eventSocket.recv())))
+            logging.debug("eventSocket recv: " + self.eventSocket.recv())
             logging.debug("dataSocket recv: " + self.dataSocket.recv())
 
 
@@ -85,7 +91,7 @@ class Receiver(threading.Thread):
     def stop(self):
         try:
             if self.signalSocket:
-                logging.info("closing eventSocket...")
+                logging.info("closing signalSocket...")
                 self.signalSocket.close(linger=0)
                 self.signalSocket = None
             if self.eventSocket:
@@ -103,14 +109,24 @@ class Receiver(threading.Thread):
         except:
             logging.error("closing ZMQ Sockets...failed.", exc_info=True)
 
+        if not self.extContext and self.context:
+            try:
+                self.log.info("Closing ZMQ context...")
+                self.context.destroy(0)
+                self.context = None
+                self.log.info("Closing ZMQ context...done.")
+            except:
+                self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
-receiverThread = Receiver()
+context    = zmq.Context()
+
+receiverThread = Receiver(context)
 receiverThread.start()
 
 
 
-obj = dataIngest(useLog = True)
+obj = dataIngest(useLog = True, context = context)
 
 obj.createFile("1.h5")
 
@@ -124,8 +140,12 @@ for i in range(5):
         logging.error("break", exc_info=True)
         break
 
-obj.closeFile()
+try:
+    obj.closeFile()
+except:
+    logging.error("Failed to close file", exc_info=True)
 
+logging.info("Stopping")
 
 receiverThread.stop()
 obj.stop()

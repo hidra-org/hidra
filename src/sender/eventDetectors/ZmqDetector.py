@@ -5,6 +5,7 @@ import os
 import zmq
 import logging
 import cPickle
+import json
 from logutils.queue import QueueHandler
 
 
@@ -77,7 +78,8 @@ class EventDetector():
         if eventMessage == b"CLOSE_FILE":
             eventMessageList = [ eventMessage for i in range(self.numberOfStreams) ]
         else:
-            eventMessageList = [ cPickle.loads(eventMessage) ]
+            eventMessageList = [ json.loads(eventMessage) ]
+#            eventMessageList = [ cPickle.loads(eventMessage) ]
 
         self.log.debug("eventMessage: " + str(eventMessageList))
 
@@ -93,7 +95,7 @@ class EventDetector():
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class
-        if not self.externalContext and self.context:
+        if not self.extContext and self.context:
             try:
                 self.log.info("Closing ZMQ context...")
                 self.context.destroy(0)
@@ -177,11 +179,13 @@ if __name__ == '__main__':
         try:
             logging.debug("generate event")
             targetFile = targetFileBase + str(i) + ".cbf"
-            message = {
-                    "filename" : targetFile,
-                    "filePart" : 0
-                    }
-            eventSocket.send(cPickle.dumps(message))
+#            message = {
+#                    "filename" : targetFile,
+#                    "filepart" : 0
+#                    }
+            message = '{ "filePart": 0, "filename": "' + targetFile + '" }'
+#            eventSocket.send(cPickle.dumps(message))
+            eventSocket.send(message)
             i += 1
 
             eventList = eventDetector.getNewEvent()
