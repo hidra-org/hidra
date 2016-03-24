@@ -39,7 +39,7 @@ class Receiver(threading.Thread):
         self.extHost    = "0.0.0.0"
         self.signalPort = "50050"
         self.eventPort  = "50003"
-        self.dataPort   = "50100"
+        self.dataPort   = "50010"
 
         if context:
             self.context    = context

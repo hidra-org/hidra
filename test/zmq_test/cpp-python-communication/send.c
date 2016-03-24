@@ -3,11 +3,6 @@
 #include <unistd.h>
 #include <string.h>
 
-void cleanup(void* socket, void* context)
-{
-    zmq_close(socket);
-    zmq_ctx_destroy(context);
-}
 
 int main () {
     char* signalHost = "*";
