@@ -62,7 +62,6 @@ typedef struct {
     //  Prepare our context and socket
     void *context;
     void *signalSocket;
-    void *signalSocket_r;
     void *eventSocket;
     void *dataSocket;
 
@@ -78,8 +77,6 @@ typedef struct {
 
 int dataIngest_init (dataIngest *dI)
 {
-    dI = malloc(sizeof(dataIngest));
-
     dI->signalHost = "zitpcx19282";
     dI->extHost    = "0.0.0.0";
 
@@ -96,12 +93,6 @@ int dataIngest_init (dataIngest *dI)
 	if ( (dI->signalSocket = zmq_socket (dI->context, ZMQ_REQ)) == NULL )
     {
 		perror("ERROR: Could not create 0MQ signalSocket: ");
-		exit(9);
-	}
-
-	if ( (dI->signalSocket_r = zmq_socket (dI->context, ZMQ_REP)) == NULL )
-    {
-		perror("ERROR: Could not create 0MQ signalSocket_r: ");
 		exit(9);
 	}
 
@@ -134,18 +125,6 @@ int dataIngest_init (dataIngest *dI)
     } else {
         printf("signalSocket started (connect) for '%s'\n", connectionStr);
     }
-
-    /**** for testing ***/
-    snprintf(connectionStr, sizeof(connectionStr), "tcp://*:%s", dI->signalPort);
-    if ( zmq_bind(dI->signalSocket_r, connectionStr) )
-    {
-        fprintf (stderr, "ERROR: Could not start signalSocket (bind) for '%s'\n", connectionStr);
-        perror("");
-    } else {
-        printf("signalSocket_r started (bind) for '%s'\n", connectionStr);
-    }
-    /**** end testing ***/
-
 
     snprintf(connectionStr, sizeof(connectionStr), "tcp://localhost:%s", dI->eventPort);
 //    rc = zmq_connect(dI->eventSocket, connectionStr);
@@ -189,17 +168,9 @@ int dataIngest_createFile (dataIngest *dI, char *fileName)
     rc = s_send (dI->signalSocket, "OPEN_FILE");
     printf ("Sending signal to open a new file.\n");
 
-    /**** for testing ***/
-    message2 = s_recv (dI->signalSocket_r);
-    printf ("Received responce: %s\n", message2);
-
-    rc = s_send (dI->signalSocket_r, "OPEN_FILE");
-    printf ("Sending signal to open a new file.\n");
-    /**** end testing ***/
-
 //    s_recv (dI->signalSocket, message);
     message = s_recv (dI->signalSocket);
-    printf ("Received responce: %s\n", message);
+    printf ("Received responce: '%s'\n", message);
 
     dI->filename = fileName;
     dI->filePart = 0;
@@ -224,7 +195,7 @@ int dataIngest_write (dataIngest *dI, char *data, int size)
     rc = s_send (dI->eventSocket, message);
 
     // Send data to ZMQ-Queue
-    rc = s_send (dI->signalSocket, data);
+    rc = s_send (dI->dataSocket, data);
 
     dI->filePart += 1;
 
@@ -298,6 +269,7 @@ int dataIngest_stop (dataIngest *dI)
 //                self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 //    free (dI);
+    printf ("Cleanup finished.\n");
 
     return 0;
 };
@@ -308,6 +280,8 @@ int dataIngest_stop (dataIngest *dI)
 int main ()
 {
     dataIngest *obj;
+    obj = malloc(sizeof(dataIngest));
+
     char *data;
     int i;
     int size;
@@ -329,6 +303,8 @@ int main ()
 
     printf ("Stopping\n");
     rc = dataIngest_stop(obj);
+
+    free (obj);
 
     return 0;
 };

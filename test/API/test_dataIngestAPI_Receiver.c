@@ -32,7 +32,8 @@ static int s_send (void * socket, char* string)
 
 int main() {
 
-    char *extHost    = "0.0.0.0";
+    char *extHost    = "*";
+//    char *extHost    = "0.0.0.0";
     char *signalPort = "50050";
     char *eventPort  = "50003";
     char *dataPort   = "50010";
@@ -76,7 +77,7 @@ int main() {
 
     // Send confirmation
     rc = s_send (signalSocket, message);
-    printf ("signalSocket send: %s\n", message);
+    printf ("signalSocket send: '%s\n'", message);
 
     // Receive data
     for (i = 0; i < 5; i++)
@@ -94,7 +95,7 @@ int main() {
 
     // Send confirmation
     rc = s_send (signalSocket, message);
-    printf("signalSocket send: %s\n", message);
+    printf("signalSocket send: '%s'\n", message);
 
     data = s_recv (eventSocket);
     printf("eventSocket recv: '%s'\n", data);
