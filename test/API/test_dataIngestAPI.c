@@ -7,27 +7,32 @@
 int main()
 {
     dataIngest *obj;
+
     char *data;
     int i;
     int size;
+    int rc;
 
-    dataIngest_init (obj);
+    rc = dataIngest_init (&obj);
 
-    dataIngest_createFile (obj, "1.h5");
+    rc = dataIngest_createFile (obj, "1.h5");
 
     for (i=0; i < 5; i++)
     {
         data = "asdfasdasdfasd";
         size = strlen(data);
-        dataIngest_write (obj, data, size);
+        rc = dataIngest_write (obj, data, size);
         printf ("write\n");
     };
 
-    dataIngest_closeFile (obj);
+    rc = dataIngest_closeFile (obj);
 
     printf ("Stopping\n");
-    dataIngest_stop(obj);
+    rc = dataIngest_stop(obj);
+
+    free (obj);
 
     return 0;
+
 
 };

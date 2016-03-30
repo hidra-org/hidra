@@ -1,10 +1,6 @@
 // API to ingest data into a data transfer unit
 
-//#ifndef DATAINGEST_H
-#define DATAINGEST_H
-
-#define version "0.0.1"
-
+#include <dataIngestAPI.h>
 #include <zmq.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -13,10 +9,6 @@
 #include <assert.h>
 #include <errno.h>
 
-
-typedef int bool;
-#define true 1
-#define false 0
 
 // helper functions for sending and receiving messages
 // source: Pieter Hintjens: ZeroMQ; O'Reilly
@@ -50,7 +42,7 @@ static int s_send (void * socket, char* string)
 };
 
 
-typedef struct {
+struct dataIngest {
     char *signalHost;
     char *extHost;
 
@@ -69,14 +61,18 @@ typedef struct {
 //    zmq::pollitem_t items [];
 
     char *filename;
-    bool openFile;
+    int  openFile;
     int  filePart;
     int  responseTimeout;
-} dataIngest;
+};
 
 
-int dataIngest_init (dataIngest *dI)
+int dataIngest_init (dataIngest **out)
 {
+    dataIngest* dI = malloc(sizeof(dataIngest));
+
+    *out = NULL;
+
     dI->signalHost = "zitpcx19282";
     dI->extHost    = "0.0.0.0";
 
@@ -148,6 +144,7 @@ int dataIngest_init (dataIngest *dI)
         printf("dataSocket started (connect) for '%s'\n", connectionStr);
     }
 
+    *out = dI;
 
     return 0;
 
@@ -161,7 +158,6 @@ int dataIngest_createFile (dataIngest *dI, char *fileName)
 //            raise Exception("File " + str(filename) + " already opened.")
 
     char *message;
-    char *message2;
     int rc;
 
     // Send notification to receiver
@@ -176,7 +172,6 @@ int dataIngest_createFile (dataIngest *dI, char *fileName)
     dI->filePart = 0;
 
     free (message);
-    free (message2);
 
     return 0;
 }
@@ -273,40 +268,3 @@ int dataIngest_stop (dataIngest *dI)
 
     return 0;
 };
-
-//#endif
-
-
-int main ()
-{
-    dataIngest *obj;
-    obj = malloc(sizeof(dataIngest));
-
-    char *data;
-    int i;
-    int size;
-    int rc;
-
-    rc = dataIngest_init (obj);
-
-    rc = dataIngest_createFile (obj, "1.h5");
-
-    for (i=0; i < 5; i++)
-    {
-        data = "asdfasdasdfasd";
-        size = strlen(data);
-        rc = dataIngest_write (obj, data, size);
-        printf ("write\n");
-    };
-
-    rc = dataIngest_closeFile (obj);
-
-    printf ("Stopping\n");
-    rc = dataIngest_stop(obj);
-
-    free (obj);
-
-    return 0;
-};
-
-
