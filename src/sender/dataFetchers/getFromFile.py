@@ -117,6 +117,7 @@ def sendData (log, targets, sourceFile, metadata, openConnections, context, prop
             chunkPayloadMetadata = metadata.copy()
             chunkPayloadMetadata["chunkNumber"] = chunkNumber
             chunkPayloadMetadataJson = cPickle.dumps(chunkPayloadMetadata)
+
             chunkPayload = []
             chunkPayload.append(chunkPayloadMetadataJson)
             chunkPayload.append(fileContent)

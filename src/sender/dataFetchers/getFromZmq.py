@@ -164,7 +164,7 @@ def sendData (log, targets, sourceFile, metadata, openConnections, context, prop
         log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
 
 
-def finishDataHandling (log, sourceFile, targetFile, removeFlag = False):
+def finishDataHandling (log, sourceFile, targetFile, prop):
     pass
 
 
@@ -250,7 +250,7 @@ if __name__ == '__main__':
     openConnections = dict()
 
     dataFetcherProp = {
-            "type"       : "getFromQueue",
+            "type"       : "getFromZmq",
             "context"    : context,
             "extIp"      : extIp,
             "port"       : dataFwPort
@@ -276,6 +276,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
     finally:
+        dataFwSocket.close(0)
         receivingSocket.close(0)
         receivingSocket2.close(0)
         clean(dataFetcherProp)

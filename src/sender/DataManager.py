@@ -38,41 +38,14 @@ def argumentParsing():
     config = ConfigParser.RawConfigParser()
     config.readfp(helpers.FakeSecHead(open(configFile)))
 
+    parser = argparse.ArgumentParser()
+
+    # Logging
+
     logfilePath        = config.get('asection', 'logfilePath')
     logfileName        = config.get('asection', 'logfileName')
-    logfileSize        = config.get('asection', 'logfileSize') #100*1048576
+    logfileSize        = config.get('asection', 'logfileSize')
 
-    comPort            = config.get('asection', 'comPort')
-    whitelist          = json.loads(config.get('asection', 'whitelist'))
-
-    requestPort        = config.get('asection', 'requestPort')
-    requestFwPort      = config.get('asection', 'requestFwPort')
-
-    eventDetectorType  = config.get('asection', 'eventDetectorType')
-    monitoredDir       = config.get('asection', 'monitoredDir')
-    monitoredEventType = config.get('asection', 'monitoredEventType')
-    monitoredSubdirs   = json.loads(config.get('asection', 'monitoredSubdirs'))
-    monitoredFormats   = json.loads(config.get('asection', 'monitoredFormats'))
-    timeTillClosed     = int(config.get('asection', 'timeTillClosed'))
-
-    dataFetcherType    = config.get('asection', 'dataFetcherType')
-    dataFetcherPort    = config.get('asection', 'dataFetcherPort')
-
-    useDataStream      = config.getboolean('asection', 'useDataStream')
-    fixedStreamHost    = config.get('asection', 'fixedStreamHost')
-    fixedStreamPort    = config.get('asection', 'fixedStreamPort')
-
-    numberOfStreams    = config.get('asection', 'numberOfStreams')
-    chunkSize          = int(config.get('asection', 'chunkSize'))
-
-    eventPort          = config.get('asection', 'eventPort')
-    routerPort         = config.get('asection', 'routerPort')
-
-    localTarget        = config.get('asection', 'localTarget')
-    cleanerPort        = config.get('asection', 'cleanerPort')
-
-
-    parser = argparse.ArgumentParser()
     parser.add_argument("--logfilePath"       , type    = str,
                                                 help    = "Path where the logfile will be created (default=" + str(logfilePath) + ")",
                                                 default = logfilePath )
@@ -88,6 +61,14 @@ def argumentParsing():
                                                 help    = "Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)",
                                                 default = False )
 
+    # SignalHandler config
+
+    comPort            = config.get('asection', 'comPort')
+    whitelist          = json.loads(config.get('asection', 'whitelist'))
+
+    requestPort        = config.get('asection', 'requestPort')
+    requestFwPort      = config.get('asection', 'requestFwPort')
+
     parser.add_argument("--comPort"           , type    = str,
                                                 help    = "Port number to receive signals (default=" + str(comPort) + ")",
                                                 default = comPort )
@@ -102,33 +83,90 @@ def argumentParsing():
                                                 help    = "ZMQ port to forward requests (default=" + str(requestFwPort) + ")",
                                                 default = requestFwPort )
 
+    # EventDetector config
+
+    eventDetectorType  = config.get('asection', 'eventDetectorType')
+    # for InotifyxDetector and WatchdogDetector:
+    monitoredDir       = config.get('asection', 'monitoredDir')
+    monitoredEventType = config.get('asection', 'monitoredEventType')
+    monitoredSubdirs   = json.loads(config.get('asection', 'monitoredSubdirs'))
+    monitoredFormats   = json.loads(config.get('asection', 'monitoredFormats'))
+    # for WatchdogDetector:
+    timeTillClosed     = int(config.get('asection', 'timeTillClosed'))
+    # for HttpGetDetector:
+    prefix             = config.get('asection', 'prefix')
+    detectorDevice     = config.get('asection', 'detectorDevice')
+    filewriterDevice   = config.get('asection', 'filewriterDevice')
+
     parser.add_argument("--eventDetectorType" , type    = str,
                                                 help    = "Type of event detector to use (default=" + str(eventDetectorType) + ")",
                                                 default = eventDetectorType )
     parser.add_argument("--monitoredDir"      , type    = str,
                                                 help    = "Directory to be monitor for changes; inside this directory only the specified \
-                                                            subdirectories are monitred (default=" + str(monitoredDir) + ")",
+                                                           subdirectories are monitred (only needed if eventDetector is InotifyxDetector \
+                                                           or WatchdogDetector; default=" + str(monitoredDir) + ")",
                                                 default = monitoredDir )
     parser.add_argument("--monitoredEventType", type    = str,
-                                                help    = "Event type of files to be monitored (default=" + str(monitoredEventType) + ")",
+                                                help    = "Event type of files to be monitored (only needed if eventDetector is InotifyxDetector \
+                                                           or WatchdogDetector; default=" + str(monitoredEventType) + ")",
                                                 default = monitoredEventType )
     parser.add_argument("--monitoredSubdirs"  , type    = str,
-                                                help    = "Subdirectories of 'monitoredDirs' to be monitored (default=" + str(monitoredSubdirs) + ")",
+                                                help    = "Subdirectories of 'monitoredDirs' to be monitored (only needed if eventDetector is \
+                                                           InotifyxDetector or WatchdogDetector; default=" + str(monitoredSubdirs) + ")",
                                                 default = monitoredSubdirs )
     parser.add_argument("--monitoredFormats"  , type    = str,
                                                 help    = "The formats to be monitored, files in an other format will be be neglected \
-                                                           (default=" + str(monitoredFormats) + ")",
+                                                           (only needed if eventDetector is InotifyxDetector or WatchdogDetector; \
+                                                           default=" + str(monitoredFormats) + ")",
                                                 default = monitoredFormats )
     parser.add_argument("--timeTillClosed"    , type    = str,
                                                 help    = "Time (in seconds) since last modification after which a file will be seen as closed \
-                                                           (default=" + str(timeTillClosed) + ")",
+                                                           (only needed if eventDetectorType is WatchdogDetector; default=" + str(timeTillClosed) + ")",
                                                 default = timeTillClosed )
+
+    parser.add_argument("--eventPort"         , type    = str,
+                                                help    = "ZMQ port to get events from \
+                                                           (only needed if eventDetectorType is ZmqDetector; default=" + str(eventPort) + ")",
+                                                default = eventPort )
+
+    parser.add_argument("--prefix"            , type    = str,
+                                                help    = "Supply a scan prefix. Otherwise the prefix is read from the tango server \
+                                                           (only needed if eventDetectorType is HttpDetector; default=" + str(prefix) + ")",
+                                                default = prefix )
+    parser.add_argument("--detectorDevice"    , type    = str,
+                                                help    = "Tango device proxy for the detector \
+                                                           (only needed if eventDetectorType is HttpDetector; default=" + str(detectorDevice) + ")",
+                                                default = detectorDevice )
+    parser.add_argument("--filewriterDevice"  , type    = str,
+                                                help    = "Tango device proxy for the filewriter \
+                                                           (only needed if eventDetectorType is HttpDetector; default=" + str(filewriterDevice) + ")",
+                                                default = filewriterDevice )
+
+    # DataFetcher config
+
+    dataFetcherType    = config.get('asection', 'dataFetcherType')
+
+    # for getFromZMQ:
+    dataFetcherPort    = config.get('asection', 'dataFetcherPort')
+
+    useDataStream      = config.getboolean('asection', 'useDataStream')
+    fixedStreamHost    = config.get('asection', 'fixedStreamHost')
+    fixedStreamPort    = config.get('asection', 'fixedStreamPort')
+
+    numberOfStreams    = config.get('asection', 'numberOfStreams')
+    chunkSize          = int(config.get('asection', 'chunkSize'))
+
+    eventPort          = config.get('asection', 'eventPort')
+    routerPort         = config.get('asection', 'routerPort')
+
+    localTarget        = config.get('asection', 'localTarget')
+    cleanerPort        = config.get('asection', 'cleanerPort')
 
     parser.add_argument("--dataFetcherType"   , type    = str,
                                                 help    = "Module with methods specifying how to get the data (default=" + str(dataFetcherType) + ")",
                                                 default = dataFetcherType )
     parser.add_argument("--dataFetcherPort"   , type    = str,
-                                                help    = "If 'getFromZmq is specified as dataFetcherType is needs a port to listen to \
+                                                help    = "If 'getFromZmq is specified as dataFetcherType it needs a port to listen to \
                                                            (default=" + str(dataFetcherType) + ")",
                                                 default = dataFetcherPort )
 
@@ -138,11 +176,11 @@ def argumentParsing():
                                                 default = useDataStream )
     parser.add_argument("--fixedStreamHost"   , type    = str,
                                                 help    = "Fixed host to send the data to with highest priority \
-                                                        (only active is useDataStream is set; default=" + str(fixedStreamHost) + ")",
+                                                           (only active if useDataStream is set; default=" + str(fixedStreamHost) + ")",
                                                 default = fixedStreamHost )
     parser.add_argument("--fixedStreamPort"   , type    = str,
                                                 help    = "Fixed port to send the data to with highest priority \
-                                                        (only active is useDataStream is set; default=" + str(fixedStreamPort) + ")",
+                                                           (only active if useDataStream is set; default=" + str(fixedStreamPort) + ")",
                                                 default = fixedStreamPort )
     parser.add_argument("--numberOfStreams"   , type    = int,
                                                 help    = "Number of parallel data streams (default=" + str(numberOfStreams) + ")",
@@ -151,10 +189,6 @@ def argumentParsing():
                                                 help    = "Chunk size of file-parts getting send via ZMQ (default=" + str(chunkSize) + ")",
                                                 default = chunkSize )
 
-    parser.add_argument("--eventPort"         , type    = str,
-                                                help    = "ZMQ port to get events from (only needed if eventDetectorType is zmq; \
-                                                           default=" + str(eventPort) + ")",
-                                                default = eventPort )
     parser.add_argument("--routerPort"        , type    = str,
                                                 help    = "ZMQ-router port which coordinates the load-balancing \
                                                            to the worker-processes (default=" + str(routerPort) + ")",
@@ -170,9 +204,10 @@ def argumentParsing():
 
     arguments         = parser.parse_args()
 
-    logfilePath       = str(arguments.logfilePath)
-    logfileName       = str(arguments.logfileName)
-    logfileFullPath   = os.path.join(logfilePath, logfileName)
+    # Check given arguments
+
+    logfilePath       = arguments.logfilePath
+    logfileName       = arguments.logfileName
     verbose           = arguments.verbose
     onScreen          = arguments.onScreen
 
@@ -248,6 +283,7 @@ class DataManager():
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
 
+        # Assemble configuration for eventDetector
         self.log.debug("Configured type of eventDetector: " + arguments.eventDetectorType)
         if arguments.eventDetectorType == "InotifyxDetector":
             self.eventDetectorConfig = {
@@ -271,10 +307,18 @@ class DataManager():
                     "eventDetectorType" : arguments.eventDetectorType,
                     "eventPort"         : arguments.eventPort,
                     "numberOfStreams"   : arguments.numberOfStreams,
-                    "context"           : None,
+                    "context"           : None
+                    }
+        elif arguments.eventDetectorType == "HttpDetector":
+            self.eventDetectorConfig = {
+                    "eventDetectorType" : arguments.eventDetectorType,
+                    "prefix"            : arguments.prefix,
+                    "detectorDevice"    : arguments.detectorDevice,
+                    "filewriterDevice"  : arguments.filewriterDevice
                     }
 
 
+        # Assemble configuration for dataFetcher
         self.log.debug("Configured Type of dataFetcher: " + arguments.dataFetcherType)
         if arguments.dataFetcherType == "getFromFile":
             self.dataFetcherProp = {
@@ -287,6 +331,11 @@ class DataManager():
                     "context"     : None,
                     "extIp"       : "0.0.0.0",
                     "port"        : arguments.dataFetcherPort,
+                    }
+        elif arguments.dataFetcherType == "getFromHttp":
+            self.dataFetcherProp = {
+                    "type"        : arguments.dataFetcherType,
+                    "session"     : None
                     }
 
 
