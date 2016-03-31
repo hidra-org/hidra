@@ -191,7 +191,7 @@ class DataDispatcher():
                     targets = [[self.fixedStreamId, 0]]
 
                 else:
-                    targets = None
+                    targets = []
 
             # get metadata of the file
             try:
@@ -205,7 +205,7 @@ class DataDispatcher():
 
             # send data
             try:
-                self.dataFetcher.sendData(self.log, targets, sourceFile, metadata, self.openConnections, self.context, self.dataFetcherProp)
+                self.dataFetcher.sendData(self.log, targets, sourceFile, targetFile, metadata, self.openConnections, self.context, self.dataFetcherProp)
             except:
                 self.log.error("DataDispatcher-"+str(self.id) + ": Passing new file to data stream...failed.", exc_info=True)
 

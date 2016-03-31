@@ -427,7 +427,7 @@ class dataTransfer():
                     raise
             else:
                 self.log.error("Failed to append payload to file: '" + targetFilepath + "'", exc_info=True)
-        except Exception, e:
+        except:
             self.log.error("Failed to append payload to file: '" + targetFilepath + "'", exc_info=True)
             self.log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
 

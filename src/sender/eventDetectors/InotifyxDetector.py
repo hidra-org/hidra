@@ -289,6 +289,15 @@ class EventDetector():
                 #   "relativePath": "/local"
                 #   "filename"   : "file1.tif"
                 # }
+
+        # remove beginning
+#        relativePath = relativePath[1:]
+
+#        if relativePath.startswith(os.sep):
+#            relativePath = os.path.normpath(relativePath[1:])
+#        else:
+#            relativePath = os.path.normpath(relativePath)
+
                 eventMessage = {
                         "sourcePath"  : parentDir,
                         "relativePath": relativePath,
@@ -309,11 +318,14 @@ class EventDetector():
         finally:
             os.close(self.fd)
 
+
     def __exit__ (self):
         self.stop()
 
+
     def __del__ (self):
         self.stop()
+
 
 if __name__ == '__main__':
     import sys

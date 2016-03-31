@@ -78,7 +78,7 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
     return sourceFile, targetFile, metadata
 
 
-def sendData (log, targets, sourceFile, metadata, openConnections, context, properties):
+def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, properties):
 
     if not targets:
         properties["removeFlag"] = False
@@ -117,6 +117,7 @@ def sendData (log, targets, sourceFile, metadata, openConnections, context, prop
             chunkPayloadMetadata = metadata.copy()
             chunkPayloadMetadata["chunkNumber"] = chunkNumber
             chunkPayloadMetadataJson = cPickle.dumps(chunkPayloadMetadata)
+
             chunkPayload = []
             chunkPayload.append(chunkPayloadMetadataJson)
             chunkPayload.append(fileContent)
@@ -294,7 +295,7 @@ if __name__ == '__main__':
     setup(logging, dataFetcherProp)
 
     sourceFile, targetFile, metadata = getMetadata (logging, workload, chunkSize, localTarget = None)
-    sendData(logging, targets, sourceFile, metadata, openConnections, context, dataFetcherProp)
+    sendData(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
     finishDataHandling(logging, sourceFile, targetFile, dataFetcherProp)
 
