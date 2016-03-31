@@ -75,7 +75,7 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
     return sourceFile, targetFile, metadata
 
 
-def sendData (log, targets, sourceFile, metadata, openConnections, context, prop):
+def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
 
     #reading source file into memory
     try:
@@ -261,7 +261,7 @@ if __name__ == '__main__':
     setup(logging, dataFetcherProp)
 
     sourceFile, targetFile, metadata = getMetadata (logging, workload, chunkSize, localTarget = None)
-    sendData(logging, targets, sourceFile, metadata, openConnections, context, dataFetcherProp)
+    sendData(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
     finishDataHandling(logging, sourceFile, targetFile, dataFetcherProp)
 

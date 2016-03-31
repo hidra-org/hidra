@@ -7,7 +7,6 @@ from logutils.queue import QueueHandler
 import PyTango
 
 
-#class ZmqDetector():
 class EventDetector():
 
     def __init__ (self, config, logQueue):
@@ -28,31 +27,33 @@ class EventDetector():
             try:
                 self.eigerdevice      = PyTango.DeviceProxy (config["detectorDevice"])
             except:
-                self.log.error("Starting the detector device server...failed.", exc_info=True)
+                self.log.error("Starting the detector device server '" + config["detectorDevice"] + "'...failed.", exc_info=True)
 
             try:
                 self.filewriterdevice = PyTango.DeviceProxy (config["filewriterDevice"])
             except:
-                self.log.error("Starting the filewriter device server...failed.", exc_info=True)
+                self.log.error("Starting the filewriter device server '" + config["detectorDevice"] + "'...failed.", exc_info=True)
 
             try:
 
-                if config["prefix"] is None:
-                        self.current_dataset_prefix = self.filewriterdevice.read_attribute("FilenamePattern").value
+                if config["prefix"] == "":
+                    # returns a pattern of the form:
+                    # testp06/$id
+                    self.current_dataset_prefix = self.filewriterdevice.read_attribute("FilenamePattern").value.replace("$id", "")
                 else:
                     self.current_dataset_prefix = config["prefix"]
 
-
-                # ======= Init communication with Eiger detector
                 self.EigerIP          = self.eigerdevice.get_property('Host').get('Host')[0]
 
-                self.images_per_file  = self.filewriterdevice.read_attribute("ImagesPerFile").value
-                self.NbTriggers       = self.eigerdevice.read_attribute("NbTriggers").value
-                self.NbImages         = self.eigerdevice.read_attribute("NbImages").value
-                self.TriggerMode      = self.eigerdevice.read_attribute("TriggerMode").value
-                self.FrameTime        = self.eigerdevice.read_attribute("FrameTime").value
+#               self.images_per_file  = self.filewriterdevice.read_attribute("ImagesPerFile").value
+#                self.NbTriggers       = self.eigerdevice.read_attribute("NbTriggers").value
+#                self.NbImages         = self.eigerdevice.read_attribute("NbImages").value
+#                self.TriggerMode      = self.eigerdevice.read_attribute("TriggerMode").value
+#                self.FrameTime        = self.eigerdevice.read_attribute("FrameTime").value
             except:
-                self.log.error("Getting filename pattern from the filewriter device...failed.")
+                self.log.error("Getting filename pattern from the filewriter device...failed.", exc_info=True)
+
+            self.files_downloaded = []
 
 
 
@@ -73,16 +74,21 @@ class EventDetector():
         return logger
 
 
-
     def getNewEvent (self):
 
+        eventMessageList = []
+
         try:
+            # returns a tuble of the form:
+            # ('testp06/37_data_000001.h5', 'testp06/37_master.h5', 'testp06/36_data_000007.h5', 'testp06/36_data_000006.h5', 'testp06/36_data_000005.h5', 'testp06/36_data_000004.h5', 'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5', 'testp06/36_data_000001.h5', 'testp06/36_master.h5')
             files_stored = self.eigerdevice.read_attribute("FilesInBuffer").value
+
         except:
             return
 
         ## ===== Look for current measurement files
-        available_files = [file for file in files_stored if self.current_dataset_prefix in file]
+#        available_files = [file for file in files_stored if self.current_dataset_prefix in file]
+        available_files = [file for file in files_stored if file.startswith(self.current_dataset_prefix)]
 
         #TODO needed format: list of dictionaries of the form
         # {
@@ -90,14 +96,20 @@ class EventDetector():
         #     "sourcePath"   : sourcePath,
         #     "relativePath" : relativePath
         # }
-#        if relativePath.startswith('/'):
-#            relativePath = os.path.normpath(relativePath[1:])
-#        else:
-#            relativePath = os.path.normpath(relativePath)
 
-        self.log.debug("eventMessage: " + str(available_files))
+        for file in available_files:
+            if file not in self.files_downloaded:
+                ( relativePath, filename ) = os.path.split(file)
+                eventMessage = {
+                        "sourcePath"  : "http://" + self.EigerIP + "/data",
+                        "relativePath": relativePath,
+                        "filename"    : filename
+                        }
+    #            self.log.debug("eventMessage" + str(eventMessage))
+                eventMessageList.append(eventMessage)
+                self.files_downloaded.append(file)
 
-        return available_files
+        return eventMessageList
 
 
     def stop (self):
@@ -147,8 +159,10 @@ if __name__ == '__main__':
     root.addHandler(qh)
 
 
-    detectorDevice   = "haspp10lab:10000/p10/eigerdectris/lab.01"
-    filewriterDevice = "haspp10lab:10000/p10/eigerfilewriter/lab.01"
+#    detectorDevice   = "haspp10lab:10000/p10/eigerdectris/lab.01"
+    detectorDevice   = "haspp06:10000/p06/eigerdectris/exp.01"
+#    filewriterDevice = "haspp10lab:10000/p10/eigerfilewriter/lab.01"
+    filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
     config = {
             "eventDetectorType" : "httpget",
             "prefix"            : None,

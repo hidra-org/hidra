@@ -10,6 +10,7 @@ import requests
 import re
 import urllib2
 import time
+import errno
 
 
 def setup (log, prop):
@@ -63,40 +64,47 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
     return sourceFile, targetFile, metadata
 
 
-def dlProgress(count, blockSize, totalSize):
-	percent = int(count*blockSize*100/totalSize)
-	if percent > 100:
-		percent = 100
-	sys.stdout.write("\r %d%%" % percent)
-	sys.stdout.flush()
-
-
-def download1(file,dest):
-	urllib.urlretrieve(file,dest,reporthook=dlProgress)
-
-
-def delete_folders(url):
-	print 'All data will be deleted from the Eiger.'
-	print 'Data might be lost!!!!!!!!!!!!!!!!!!!!!!'
-	print 'You have 10 s to press CTRL + c to cancel.'
-	time.sleep(10)
-	#Read folders
-	urlcontent = urllib2.urlopen('http://192.168.138.37/data').read()
-	folders = re.findall('<a href=.*</a>',urlcontent)
-	for folder in folders:
-		requests.delete(url+folder.split('"')[1])
-
-
-def sendData (log, targets, sourceFile, metadata, openConnections, context, prop):
+def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, context, prop):
 
     response = prop["session"].get(sourceFile)
-    if response.status_code != 200:
-        raise
+    try:
+        response.raise_for_status()
+        log.debug("Initiating http get for file '" + str(sourceFile) + "' succeded.")
+    except:
+        log.error("Initiating http get for file '" + str(sourceFile) + "' failed.", exc_info=True)
+        return
+
+
+#    if response.status_code != 200:
+#        self.log.error("Unable to get file " + sourceFile + ". Http status code was " + respconse.status_code)
 
     try:
         chunkSize = metadata[ "chunkSize" ]
     except:
         log.error("Unable to get chunkSize", exc_info=True)
+
+    if prop["storeFlag"]:
+        try:
+            log.debug("Opening '" + str(targetFile) + "'...")
+            fileDescriptor = open(str(targetFile), "wb")
+        except IOError, e:
+            # errno.ENOENT == "No such file or directory"
+            if e.errno == errno.ENOENT:
+                #TODO create subdirectory first, then try to open the file again
+                try:
+                    targetPath = os.path.normpath(prop["localTarget"] + os.sep + metadata["relativePath"])
+                    os.makedirs(targetPath)
+                    newFile = open(targetFile, "w")
+                    log.info("New target directory created: " + str(targetPath))
+                except:
+                    log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
+                    log.debug("targetPath:" + str(targetPath))
+                    raise
+            else:
+                log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
+        except:
+            log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
+            log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
 
     chunkNumber = 0
 
@@ -116,6 +124,10 @@ def sendData (log, targets, sourceFile, metadata, openConnections, context, prop
             payload.append(data)
         except:
             log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
+
+
+        if prop["storeFlag"]:
+            fileDescriptor.write(data)
 
         #send message
         try:
@@ -181,16 +193,27 @@ def sendData (log, targets, sourceFile, metadata, openConnections, context, prop
         except:
             log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
 
+    if prop["storeFlag"]:
+        try:
+            log.debug("Closing '" + str(targetFile) + "'...")
+            fileDescriptor.close()
+        except:
+            log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
+            raise
+
 
 def finishDataHandling (log, sourceFile, targetFile, prop):
-    #TODO delete file from detector after sending
-    responce = requests.delete(sourceFile)
+    if prop["removeFlag"]:
+        pass
+        #TODO delete file from detector after sending
+        #    responce = requests.delete(sourceFile)
 
-    try:
-        responce.raise_for_status()
-        log.debug("Deleting file " + str(sourceFile) + " succeded.")
-    except:
-        log.error("Deleting file " + str(sourceFile) + " failed.", exc_info=True)
+        #    try:
+        #        responce.raise_for_status()
+        #        log.debug("Deleting file " + str(sourceFile) + " succeded.")
+        #    except:
+        #        log.error("Deleting file " + str(sourceFile) + " failed.", exc_info=True)
+        # remove file
 
 
 def clean (prop):
@@ -245,6 +268,7 @@ if __name__ == '__main__':
 
 
     prework_sourceFile = BASE_PATH + os.sep + "test_file.cbf"
+    localTarget        = BASE_PATH + os.sep + "data" + os.sep + "target"
 
     #read file to send it in data pipe
     logging.debug("=== copy file to lsdma-lab04")
@@ -252,11 +276,16 @@ if __name__ == '__main__':
     subprocess.call("scp " + prework_sourceFile + " root@lsdma-lab04:/var/www/html/test_httpget/data", shell=True)
 
     workload = {
-            "sourcePath"  : "http://131.169.55.170/test_httpget/data",
-            "relativePath": "",
-            "filename"    : "test_file.cbf"
+            "sourcePath"  : "http://192.168.138.37/data",
+            "relativePath": "testp06",
+            "filename"    : "35_data_000170.h5"
             }
-    targets = [['localhost:' + receivingPort, 1], ['localhost:' + receivingPort2, 0]]
+#    workload = {
+#            "sourcePath"  : "http://131.169.55.170/test_httpget/data",
+#            "relativePath": "",
+#            "filename"    : "test_file.cbf"
+#            }
+    targets = [['localhost:' + receivingPort, 1], ['localhost:' + receivingPort2, 1]]
 
     chunkSize       = 10485760 ; # = 1024*1024*10 = 10 MiB
     localTarget     = BASE_PATH + os.sep + "data" + os.sep + "target"
@@ -264,15 +293,17 @@ if __name__ == '__main__':
 
     dataFetcherProp = {
             "type"       : "getFromHttp",
-            "session"    : None
+            "session"    : None,
+            "storeFlag"  : True,
+            "removeFlag" : False
             }
 
     setup(logging, dataFetcherProp)
 
-    sourceFile, targetFile, metadata = getMetadata (logging, workload, chunkSize, localTarget = None)
+    sourceFile, targetFile, metadata = getMetadata (logging, workload, chunkSize, localTarget)
 #    sourceFile = "http://131.169.55.170/test_httpget/data/test_file.cbf"
 
-    sendData(logging, targets, sourceFile, metadata, openConnections, context, dataFetcherProp)
+    sendData(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
     finishDataHandling(logging, sourceFile, targetFile, dataFetcherProp)
 
@@ -283,7 +314,7 @@ if __name__ == '__main__':
         recv_message = receivingSocket.recv_multipart()
         logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])) + "\ndata-part: " + str(len(recv_message[1])))
     except KeyboardInterrupt:
         pass
     finally:

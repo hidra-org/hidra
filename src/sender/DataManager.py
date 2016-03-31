@@ -93,6 +93,8 @@ def argumentParsing():
     monitoredFormats   = json.loads(config.get('asection', 'monitoredFormats'))
     # for WatchdogDetector:
     timeTillClosed     = int(config.get('asection', 'timeTillClosed'))
+    # for ZmqDetector:
+    eventPort          = config.get('asection', 'eventPort')
     # for HttpGetDetector:
     prefix             = config.get('asection', 'prefix')
     detectorDevice     = config.get('asection', 'detectorDevice')
@@ -212,8 +214,8 @@ def argumentParsing():
     onScreen          = arguments.onScreen
 
     eventDetectorType = arguments.eventDetectorType.lower()
-    supportedEDTypes  = ["inotifyxdetector", "watchdogdetector", "zmqdetector"]
-    supportedDFTypes  = ["getfromfile", "getfromzmq"]
+    supportedEDTypes  = ["inotifyxdetector", "watchdogdetector", "zmqdetector", "httpdetector"]
+    supportedDFTypes  = ["getfromfile", "getfromzmq", "getFromHttp"]
     monitoredDir      = str(arguments.monitoredDir)
     monitoredSubdirs  = arguments.monitoredSubdirs
     localTarget       = str(arguments.localTarget)
@@ -335,7 +337,10 @@ class DataManager():
         elif arguments.dataFetcherType == "getFromHttp":
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
-                    "session"     : None
+                    "localTarget" : arguments.localTarget,
+                    "session"     : None,
+                    "storeFlag"   : True,  #TODO add to config
+                    "removeFlag"  : False  #TODO add to config
                     }
 
 
