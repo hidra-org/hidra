@@ -317,7 +317,7 @@ def getLogHandlers (logfile, logsize, verbose, onScreenLogLevel = False):
     # argument for RotatingFileHandler: filename, mode, maxBytes, backupCount)
     # 1048576 = 1MB
     if isWindows():
-        h1 = logging.handlers.FileHandler(logfile, 'a')
+        h1 = logging.FileHandler(logfile, 'a')
     else:
         h1 = logging.handlers.RotatingFileHandler(logfile, 'a', logsize, 5)
     f1 = logging.Formatter(datefmt=datef,fmt=f)
