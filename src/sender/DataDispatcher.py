@@ -8,7 +8,6 @@ import logging
 import traceback
 import cPickle
 import shutil
-from logutils.queue import QueueHandler
 from multiprocessing import Process
 
 try:
@@ -26,6 +25,7 @@ if not DATAFETCHER_PATH in sys.path:
     sys.path.append ( DATAFETCHER_PATH )
 del DATAFETCHER_PATH
 
+from logutils.queue import QueueHandler
 import helpers
 
 #

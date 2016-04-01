@@ -7,7 +7,6 @@ import logging
 import sys
 import trace
 import cPickle
-from logutils.queue import QueueHandler
 
 try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -24,6 +23,7 @@ if not EVENTDETECTOR_PATH in sys.path:
     sys.path.append ( EVENTDETECTOR_PATH )
 del EVENTDETECTOR_PATH
 
+from logutils.queue import QueueHandler
 import helpers
 
 

@@ -6,8 +6,22 @@ import multiprocessing
 # Next two import lines for this demo only
 from random import choice, random
 import time
+import os
+import sys
+
+try:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
+except:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))
+SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+print BASE_PATH
+
+if not SHARED_PATH in sys.path:
+    sys.path.append ( SHARED_PATH )
+del SHARED_PATH
 
 from logutils.queue import QueueHandler, QueueListener
+
 
 #
 # Because you'll want to define the logging configurations for listener and workers, the

@@ -7,6 +7,20 @@ try:
 except ImportError:
     import queue
 
+import os
+import sys
+
+try:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
+except:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))
+SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+
+if not SHARED_PATH in sys.path:
+    sys.path.append ( SHARED_PATH )
+del SHARED_PATH
+
+
 # Custom imports
 from logutils.queue import QueueHandler, QueueListener
 

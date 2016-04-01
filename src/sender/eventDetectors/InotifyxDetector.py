@@ -5,7 +5,21 @@ import os
 import logging
 from inotifyx import binding
 from inotifyx.distinfo import version as __version__
+import sys
+
+
+try:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
+except:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( sys.argv[0] ) ))))
+SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+
+if not SHARED_PATH in sys.path:
+    sys.path.append ( SHARED_PATH )
+del SHARED_PATH
+
 from logutils.queue import QueueHandler
+
 
 constants = {}
 
@@ -332,14 +346,6 @@ if __name__ == '__main__':
     import time
     from subprocess import call
     from multiprocessing import Queue
-
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
-    SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
-    print "SHARED", SHARED_PATH
-
-    if not SHARED_PATH in sys.path:
-        sys.path.append ( SHARED_PATH )
-    del SHARED_PATH
 
     import helpers
 

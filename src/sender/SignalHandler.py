@@ -8,7 +8,6 @@ import sys
 import traceback
 import copy
 import cPickle
-from logutils.queue import QueueHandler
 
 
 #path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -24,6 +23,7 @@ if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
 del SHARED_PATH
 
+from logutils.queue import QueueHandler
 import helpers
 
 #

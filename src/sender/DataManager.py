@@ -11,7 +11,6 @@ import time
 import cPickle
 from multiprocessing import Process, freeze_support, Queue
 import ConfigParser
-from logutils.queue import QueueHandler
 
 from SignalHandler import SignalHandler
 from TaskProvider import TaskProvider
@@ -28,6 +27,7 @@ if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
 del SHARED_PATH
 
+from logutils.queue import QueueHandler
 import helpers
 from version import __version__
 
