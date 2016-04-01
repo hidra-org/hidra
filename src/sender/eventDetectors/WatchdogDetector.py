@@ -322,14 +322,16 @@ class EventDetector():
         self.log = self.getLogger(logQueue)
 
         # check format of config
-        if ( not self.config.has_key("monDir") or
-                not self.config.has_key("monEventType") or
-                not self.config.has_key("monSubdirs") or
-                not self.config.has_key("monSuffixes") or
-                not self.config.has_key("timeTillClosed") ):
+        if ( not config.has_key("monDir") or
+                not config.has_key("monEventType") or
+                not config.has_key("monSubdirs") or
+                not config.has_key("monSuffixes") or
+                not config.has_key("timeTillClosed") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
+        else:
+            checkPassed = True
 
         self.log.debug("init")
 
