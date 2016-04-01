@@ -285,6 +285,19 @@ class DataManager():
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
 
+        if arguments.useDataStream:
+            self.fixedStreamId = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )
+        else:
+            self.fixedStreamId = None
+
+        self.numberOfStreams  = arguments.numberOfStreams
+        self.chunkSize        = arguments.chunkSize
+
+        self.routerPort       = arguments.routerPort
+
+        self.localTarget      = arguments.localTarget
+        self.cleanerPort      = arguments.cleanerPort
+
         # Assemble configuration for eventDetector
         self.log.debug("Configured type of eventDetector: " + arguments.eventDetectorType)
         if arguments.eventDetectorType == "InotifyxDetector":
@@ -308,7 +321,7 @@ class DataManager():
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "eventPort"         : arguments.eventPort,
-                    "numberOfStreams"   : arguments.numberOfStreams,
+                    "numberOfStreams"   : self.numberOfStreams,
                     "context"           : None
                     }
         elif arguments.eventDetectorType == "HttpDetector":
@@ -337,25 +350,12 @@ class DataManager():
         elif arguments.dataFetcherType == "getFromHttp":
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
-                    "localTarget" : arguments.localTarget,
+                    "localTarget" : self.localTarget,
                     "session"     : None,
                     "storeFlag"   : True,  #TODO add to config
                     "removeFlag"  : False  #TODO add to config
                     }
 
-
-        if arguments.useDataStream:
-            self.fixedStreamId = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )
-        else:
-            self.fixedStreamId = None
-
-        self.numberOfStreams  = arguments.numberOfStreams
-        self.chunkSize        = arguments.chunkSize
-
-        self.routerPort       = arguments.routerPort
-
-        self.localTarget      = arguments.localTarget
-        self.cleanerPort      = arguments.cleanerPort
 
         self.signalHandlerPr  = None
         self.taskProviderPr   = None

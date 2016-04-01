@@ -30,14 +30,14 @@ del BASE_PATH
 
 
 class worker(multiprocessing.Process):
-    def __init__(self, id, signalHost, port):
+    def __init__(self, id, transferType, signalHost, port):
 
         self.id    = id
         self.port  = port
 
         self.log   = logging.getLogger("worker-"+str(self.id))
 
-        self.query = dataTransfer("queryNext", signalHost, useLog = True)
+        self.query = dataTransfer(transferType, signalHost, useLog = True)
 
         self.log.debug("start dataTransfer on port " +str(port))
         self.query.start(port)
@@ -75,14 +75,16 @@ if __name__ == "__main__":
 
     signalHost = "zitpcx19282.desy.de"
 
-    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1], ["lsdma-lab04.desy.de", "50104", 1]]
+    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1]]
+#    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1], ["lsdma-lab04.desy.de", "50104", 1]]
 
+    transferType = "stream"
 
-    w1 = multiprocessing.Process(target=worker, args=(0, signalHost, "50101"))
-    w2 = multiprocessing.Process(target=worker, args=(1, signalHost, "50102"))
-    w3 = multiprocessing.Process(target=worker, args=(2, signalHost, "50103"))
+    w1 = multiprocessing.Process(target=worker, args=(0, transferType, signalHost, "50101"))
+    w2 = multiprocessing.Process(target=worker, args=(1, transferType, signalHost, "50102"))
+    w3 = multiprocessing.Process(target=worker, args=(2, transferType, signalHost, "50103"))
 
-    query = dataTransfer("queryNext", signalHost, useLog = True)
+    query = dataTransfer(transferType, signalHost, useLog = True)
     query.initiate(targets)
 
     w1.start()

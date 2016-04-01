@@ -7,6 +7,7 @@ import logging
 import traceback
 import cPickle
 import shutil
+import errno
 
 
 def setup (log, dataFetcherProp):
@@ -201,8 +202,24 @@ def finishDataHandling (log, sourceFile, targetFile, prop):
         try:
             shutil.move(sourceFile, targetFile)
             log.info("Moving file '" + str(sourceFile) + "' ...success.")
+        except IOError as e:
+
+
+            # errno.ENOENT == "No such file or directory"
+            if e.errno == errno.ENOENT:
+                #TODO create subdirectory first, then try to open the file again
+                try:
+                    targetPath, filename = os.path.split(targetFile)
+                    os.makedirs(targetPath)
+                    shutil.move(sourceFile, targetFile)
+                    log.info("New target directory created: " + str(targetPath))
+                except:
+                    log.error("Unable to move file '" + sourceFilepath + "' to '" + targetFile, exc_info=True)
+                    log.debug("targetPath:" + str(targetPath))
+            else:
+                log.error("Unable to move file '" + sourceFilepath + "' to '" + targetFile, exc_info=True)
         except:
-            log.error("Unable to move file " + str(sourceFile), exc_info=True)
+            log.error("Unable to move file '" + sourceFilepath + "' to '" + targetFile, exc_info=True)
 
 #    # send file to cleaner pipe
 #    try:

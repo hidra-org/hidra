@@ -20,7 +20,8 @@ class worker():
         self.id    = id
         self.port  = port
 
-        self.query = dataTransfer("queryNext", signalHost)
+        self.query = dataTransfer("stream", signalHost)
+#        self.query = dataTransfer("queryNext", signalHost)
 
         print "start dataTransfer on port", str(port)
         self.query.start(port)

@@ -51,6 +51,7 @@ class SignalHandler():
         self.openRequVari    = []
         self.openRequPerm    = []
         self.allowedQueries  = []
+        self.nextRequNode    = 0  # to rotate throu the open permanent requests
 
         self.whiteList       = []
 
@@ -154,7 +155,17 @@ class SignalHandler():
                         break
                     self.log.debug("New request for signals received.")
 
-                    openRequests = copy.deepcopy(self.openRequPerm)
+                    openRequests = []
+
+#                    openRequests = copy.deepcopy(self.openRequPerm)
+                    for requestSet in self.openRequPerm:
+                        if requestSet:
+                            tmp = requestSet[self.nextRequNode]
+                            openRequests.append(copy.deepcopy(tmp))
+                            # distirbute in round-robin order
+                            # TODO multiple request sets need multiple nextRequNode
+                            self.nextRequNode = (self.nextRequNode + 1) % len(requestSet)
+
                     for requestSet in self.openRequVari:
                         if requestSet:
                             tmp = requestSet.pop(0)
@@ -255,40 +266,115 @@ class SignalHandler():
 
         # React to signal
         if signal == "START_STREAM":
-            #FIXME
-            socketId = socketIds[0]
-            self.log.info("Received signal: " + signal + " to host " + str(socketId) + \
-                          " with priority " + str(socketId[1]))
+            self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
+            connectionFound = False
+            tmpAllowed = []
 
-            if socketId in [i[0] for i in self.openRequPerm]:
-                self.log.info("Connection to " + str(socketId) + " is already open")
-                self.sendResponse("CONNECTION_ALREADY_OPEN")
-            else:
+            for socketConf in socketIds:
+
+                if ".desy.de:" in socketConf[0]:
+                    socketConf[0] = socketConf[0].replace(".desy.de:",":")
+
+                socketId = socketConf[0]
+
+                self.log.debug("socketId: " + str(socketId))
+                flatlist = [ i[0] for i in [j for sublist in self.openRequPerm for j in sublist]]
+                self.log.debug("flatlist: " + str(flatlist))
+
+                if socketId in flatlist:
+                    connectionFound = True
+                    self.log.info("Connection to " + str(socketId) + " is already open")
+                elif socketId not in [ i[0] for i in tmpAllowed]:
+                    tmpAllowed.append(socketConf)
+                else:
+                    #TODO send notification (double entries in START_QUERY_NEXT) back?
+                    pass
+
+            if not connectionFound:
                 # send signal back to receiver
                 self.sendResponse(signal)
-                self.log.debug("Send response back: " + str(signal))
-                self.openRequPerm.append(socketId)
+                self.openRequPerm.append(copy.deepcopy(sorted(tmpAllowed)))
+                del tmpAllowed
+
+            else:
+                # send error back to receiver
+                self.sendResponse("CONNECTION_ALREADY_OPEN")
+
+
+#            socketId = socketIds[0]
+#            print "socketIds", socketIds
+#            if socketId in [i[0] for i in self.openRequPerm]:
+#                self.log.info("Connection to " + str(socketId) + " is already open")
+#                self.sendResponse("CONNECTION_ALREADY_OPEN")
+#            else:
+#                # send signal back to receiver
+#                self.sendResponse(signal)
+#                self.log.debug("Send response back: " + str(signal))
+#                self.openRequPerm.append(socketId)
 
             return
 
         elif signal == "STOP_STREAM":
-            #FIXME
-            socketId = socketIds[0][0]
+            self.log.info("Received signal: " + signal + " for host " + str(socketIds))
+            connectionNotFound = False
+            tmpRemoveIndex = []
+            tmpRemoveElement = []
+            found = False
 
-            self.log.info("Received signal: " + signal + " to host " + str(socketId[0]))
+            for socketConf in socketIds:
 
-            if socketId in [i[0] for i in self.openRequPerm]:
+                if ".desy.de:" in socketConf[0]:
+                    socketConf[0] = socketConf[0].replace(".desy.de:",":")
+
+                socketId = socketConf[0]
+
+                for sublist in self.openRequPerm:
+                    for element in sublist:
+                        if socketId == element[0]:
+                            tmpRemoveElement.append(element)
+                            found = True
+                if not found:
+                    connectionNotFound = True
+
+            if connectionNotFound:
+                self.sendResponse("NO_OPEN_CONNECTION_FOUND")
+                self.log.info("No connection to close was found for " + str(socketConf))
+            else:
                 # send signal back to receiver
                 self.sendResponse(signal)
-                self.log.debug("Send response back: " + str(signal))
 
-                for element in self.openRequPerm:
-                    if element[0] == socketId:
-                        self.openRequPerm.remove(element)
-            else:
-                self.log.info("No connection to close was found for " + str(socketId))
-                self.log.debug("self.openReqPerm=" + str(self.openRequPerm))
-                self.sendResponse("NO_OPEN_CONNECTION_FOUND")
+                for element in tmpRemoveElement:
+
+                    socketId = element[0]
+
+                    for i in range(len(self.openRequPerm)):
+                        self.openRequPerm[i].remove(element)
+                        self.log.debug("Remove " + str(socketId) + " from openRequPerm.")
+
+                        if not self.openRequPerm[i]:
+                            del self.openRequPerm[i]
+
+
+
+
+
+
+            #FIXME
+#            socketId = socketIds[0][0]
+#            self.log.info("Received signal: " + signal + " to host " + str(socketId[0]))
+#
+#            if socketId in [i[0] for i in self.openRequPerm]:
+#                # send signal back to receiver
+#                self.sendResponse(signal)
+#                self.log.debug("Send response back: " + str(signal))
+#
+#                for element in self.openRequPerm:
+#                    if element[0] == socketId:
+#                        self.openRequPerm.remove(element)
+#            else:
+#                self.log.info("No connection to close was found for " + str(socketId))
+#                self.log.debug("self.openReqPerm=" + str(self.openRequPerm))
+#                self.sendResponse("NO_OPEN_CONNECTION_FOUND")
 
             return
 
@@ -327,8 +413,7 @@ class SignalHandler():
                 self.openRequVari.append([])
             else:
                 # send error back to receiver
-                signal = "CONNECTION_ALREADY_OPEN"
-                self.sendResponse(signal)
+                self.sendResponse("CONNECTION_ALREADY_OPEN")
 
             return
 
@@ -338,6 +423,7 @@ class SignalHandler():
             tmpRemoveIndex = []
             tmpRemoveElement = []
             found = False
+
             for socketConf in socketIds:
 
                 if ".desy.de:" in socketConf[0]:
@@ -374,7 +460,7 @@ class SignalHandler():
                     self.log.debug("Remove all occurences from " + str(socketId) + " from openRequVari.")
 
                     for i in range(len(self.allowedQueries)):
-                        sublist.remove(element)
+                        sublist.remove(element)  #TODO Bug??
                         self.log.debug("Remove " + str(socketId) + " from allowedQueries.")
 
                         if not self.allowedQueries[i]:
