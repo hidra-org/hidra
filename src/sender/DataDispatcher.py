@@ -142,8 +142,10 @@ class DataDispatcher():
             if len(message) >= 2:
                 workload = cPickle.loads(message[0])
                 targets  = cPickle.loads(message[1])
+
                 if self.fixedStreamId:
-                    targets.insert(0,[self.fixedStreamId, 0])
+                    targets.insert(0,[self.fixedStreamId, 0, "data"])
+
                 # sort the target list by the priority
                 targets = sorted(targets, key=lambda target: target[1])
 
@@ -188,7 +190,7 @@ class DataDispatcher():
                     continue
 
                 elif self.fixedStreamId:
-                    targets = [[self.fixedStreamId, 0]]
+                    targets = [[self.fixedStreamId, 0, "data"]]
 
                 else:
                     targets = []
@@ -324,7 +326,7 @@ if __name__ == '__main__':
             "relativePath": "local",
             "filename"    : "100.cbf"
             }
-    targets = [['localhost:6005', 1], ['localhost:6006', 0]]
+    targets = [['localhost:6005', 1, "data"], ['localhost:6006', 0, "data"]]
 
     message = [ cPickle.dumps(metadata), cPickle.dumps(targets) ]
 #    message = [ cPickle.dumps(metadata)]

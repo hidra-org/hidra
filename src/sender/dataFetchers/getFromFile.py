@@ -123,58 +123,8 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
             chunkPayload.append(chunkPayloadMetadataJson)
             chunkPayload.append(fileContent)
 
-            # streaming data
-
-            for target, prio in targets:
-
-                # send data to the data stream to store it in the storage system
-                if prio == 0:
-                    # socket already known
-                    if target in openConnections:
-                        tracker = openConnections[target].send_multipart(chunkPayload, copy=False, track=True)
-                        log.info("Sending message part from file " + str(sourceFile) + " to '" + target + "' with priority " + str(prio) )
-                    else:
-                        # open socket
-                        socket        = context.socket(zmq.PUSH)
-                        connectionStr = "tcp://" + str(target)
-
-                        socket.connect(connectionStr)
-                        log.info("Start socket (connect): '" + str(connectionStr) + "'")
-
-                        # register socket
-                        openConnections[target] = socket
-
-                        # send data
-                        tracker = openConnections[target].send_multipart(chunkPayload, copy=False, track=True)
-                        log.info("Sending message part from file " + str(sourceFile) + " to '" + target + "' with priority " + str(prio) )
-
-                    # socket not known
-                    if not tracker.done:
-                        log.info("Message part from file " + str(sourceFile) + " has not been sent yet, waiting...")
-                        tracker.wait()
-                        log.info("Message part from file " + str(sourceFile) + " has not been sent yet, waiting...done")
-
-                else:
-                    # socket already known
-                    if target in openConnections:
-                        # send data
-                        openConnections[target].send_multipart(chunkPayload, zmq.NOBLOCK)
-                        log.info("Sending message part from file " + str(sourceFile) + " to " + target)
-                    # socket not known
-                    else:
-                        # open socket
-                        socket        = context.socket(zmq.PUSH)
-                        connectionStr = "tcp://" + str(target)
-
-                        socket.connect(connectionStr)
-                        log.info("Start socket (connect): '" + str(connectionStr) + "'")
-
-                        # register socket
-                        openConnections[target] = socket
-
-                        # send data
-                        openConnections[target].send_multipart(chunkPayload, zmq.NOBLOCK)
-                        log.info("Sending message part from file " + str(sourceFile) + " to " + target)
+            # sending data
+            __sendToTargets(log, targets, sourceFile, openConnections, chunkPayload, context, properties)
 
         #close file
         fileDescriptor.close()
@@ -184,6 +134,60 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
 
     except:
         log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
+
+
+def __sendToTargets(log, targets, sourceFile, openConnections, payload, context, properties):
+
+    for target, prio, sendType in targets:
+
+        # send data to the data stream to store it in the storage system
+        if prio == 0:
+            # socket already known
+            if target in openConnections:
+                tracker = openConnections[target].send_multipart(payload, copy=False, track=True)
+                log.info("Sending message part from file " + str(sourceFile) + " to '" + target + "' with priority " + str(prio) )
+            else:
+                # open socket
+                socket        = context.socket(zmq.PUSH)
+                connectionStr = "tcp://" + str(target)
+
+                socket.connect(connectionStr)
+                log.info("Start socket (connect): '" + str(connectionStr) + "'")
+
+                # register socket
+                openConnections[target] = socket
+
+                # send data
+                tracker = openConnections[target].send_multipart(payload, copy=False, track=True)
+                log.info("Sending message part from file " + str(sourceFile) + " to '" + target + "' with priority " + str(prio) )
+
+            # socket not known
+            if not tracker.done:
+                log.info("Message part from file " + str(sourceFile) + " has not been sent yet, waiting...")
+                tracker.wait()
+                log.info("Message part from file " + str(sourceFile) + " has not been sent yet, waiting...done")
+
+        else:
+            # socket already known
+            if target in openConnections:
+                # send data
+                openConnections[target].send_multipart(payload, zmq.NOBLOCK)
+                log.info("Sending message part from file " + str(sourceFile) + " to " + target)
+            # socket not known
+            else:
+                # open socket
+                socket        = context.socket(zmq.PUSH)
+                connectionStr = "tcp://" + str(target)
+
+                socket.connect(connectionStr)
+                log.info("Start socket (connect): '" + str(connectionStr) + "'")
+
+                # register socket
+                openConnections[target] = socket
+
+                # send data
+                openConnections[target].send_multipart(payload, zmq.NOBLOCK)
+                log.info("Sending message part from file " + str(sourceFile) + " to " + target)
 
 
 def finishDataHandling (log, sourceFile, targetFile, prop):
@@ -296,7 +300,7 @@ if __name__ == '__main__':
             "relativePath": os.sep + "local" + os.sep + "raw",
             "filename"    : "100.cbf"
             }
-    targets = [['localhost:' + receivingPort, 1], ['localhost:' + receivingPort2, 0]]
+    targets = [['localhost:' + receivingPort, 1, "data"], ['localhost:' + receivingPort2, 0, "data"]]
 
     chunkSize       = 10485760 ; # = 1024*1024*10 = 10 MiB
     localTarget     = BASE_PATH + os.sep + "data" + os.sep + "target"

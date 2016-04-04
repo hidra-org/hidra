@@ -52,7 +52,6 @@ class SignalHandler():
         self.openRequPerm    = []
         self.allowedQueries  = []
         self.nextRequNode    = []  # to rotate through the open permanent requests
-#        self.nextRequNode    = 0  # to rotate throu the open permanent requests
 
         self.whiteList       = []
 
@@ -165,7 +164,6 @@ class SignalHandler():
                             tmp = requestSet[self.nextRequNode[index]]
                             openRequests.append(copy.deepcopy(tmp))
                             # distribute in round-robin order
-                            # TODO multiple request sets need multiple nextRequNode
                             self.nextRequNode[index] = (self.nextRequNode[index] + 1) % len(requestSet)
 
                     for requestSet in self.openRequVari:
@@ -206,7 +204,6 @@ class SignalHandler():
                 incomingMessage = self.requestSocket.recv_multipart()
                 self.log.debug("Received request: " + str(incomingMessage) )
 
-#                self.log.debug("self.allowedQueries:" + str(self.allowedQueries))
                 for index in range(len(self.allowedQueries)):
                     for i in range(len(self.allowedQueries[index])):
 
@@ -286,11 +283,14 @@ class SignalHandler():
                 flatlist = [ i[0] for i in [j for sublist in self.openRequPerm for j in sublist]]
                 self.log.debug("flatlist: " + str(flatlist))
 
+                self.log.debug("tmpAllowed: " + str(tmpAllowed))
+                self.log.debug(str([i for i in tmpAllowed]))
                 if socketId in flatlist:
                     connectionFound = True
                     self.log.info("Connection to " + str(socketId) + " is already open")
                 elif socketId not in [ i[0] for i in tmpAllowed]:
-                    tmpAllowed.append(socketConf)
+                    tmpSocketConf = socketConf + ["data"]
+                    tmpAllowed.append(tmpSocketConf)
                 else:
                     #TODO send notification (double entries in START_QUERY_NEXT) back?
                     pass
@@ -305,18 +305,6 @@ class SignalHandler():
             else:
                 # send error back to receiver
                 self.sendResponse("CONNECTION_ALREADY_OPEN")
-
-
-#            socketId = socketIds[0]
-#            print "socketIds", socketIds
-#            if socketId in [i[0] for i in self.openRequPerm]:
-#                self.log.info("Connection to " + str(socketId) + " is already open")
-#                self.sendResponse("CONNECTION_ALREADY_OPEN")
-#            else:
-#                # send signal back to receiver
-#                self.sendResponse(signal)
-#                self.log.debug("Send response back: " + str(signal))
-#                self.openRequPerm.append(socketId)
 
             return
 
@@ -398,7 +386,6 @@ class SignalHandler():
                 socketId = socketConf[0]
 
                 self.log.debug("socketId: " + str(socketId))
-#                self.log.debug("self.allowedQueries: " + str(self.allowedQueries))
                 flatlist = [ i[0] for i in [j for sublist in self.allowedQueries for j in sublist]]
                 self.log.debug("flatlist: " + str(flatlist))
 
@@ -406,7 +393,8 @@ class SignalHandler():
                     connectionFound = True
                     self.log.info("Connection to " + str(socketId) + " is already open")
                 elif socketId not in [ i[0] for i in tmpAllowed]:
-                    tmpAllowed.append(socketConf)
+                    tmpSocketConf = socketConf + ["data"]
+                    tmpAllowed.append(tmpSocketConf)
                 else:
                     #TODO send notification (double entries in START_QUERY_NEXT) back?
                     pass
@@ -424,8 +412,11 @@ class SignalHandler():
 
             return
 
+        ###########################
+        ##      STOP_QUERY       ##
+        ###########################
         elif signal == "STOP_QUERY_NEXT":
-            self.log.info("Received signal to disable querying for data for hosts: " + str(socketIds))
+            self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
             connectionNotFound = False
             tmpRemoveIndex = []
             tmpRemoveElement = []
@@ -438,12 +429,6 @@ class SignalHandler():
 
                 socketId = socketConf[0]
 
-#                for i in range(len(self.allowedQueries)):
-#                    for j in range(len(self.allowedQueries[i])):
-#                        if socketId == self.allowedQueries[i][j][0]:
-#                            tmpRemoveIndex.append([i,j])
-#                            tmpRemoveElement.append(self.allowedQueries[i][j])
-#                            found = True
                 for sublist in self.allowedQueries:
                     for element in sublist:
                         if socketId == element[0]:
