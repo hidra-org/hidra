@@ -51,7 +51,8 @@ class SignalHandler():
         self.openRequVari    = []
         self.openRequPerm    = []
         self.allowedQueries  = []
-        self.nextRequNode    = 0  # to rotate throu the open permanent requests
+        self.nextRequNode    = []  # to rotate through the open permanent requests
+#        self.nextRequNode    = 0  # to rotate throu the open permanent requests
 
         self.whiteList       = []
 
@@ -160,11 +161,12 @@ class SignalHandler():
 #                    openRequests = copy.deepcopy(self.openRequPerm)
                     for requestSet in self.openRequPerm:
                         if requestSet:
-                            tmp = requestSet[self.nextRequNode]
+                            index = self.openRequPerm.index(requestSet)
+                            tmp = requestSet[self.nextRequNode[index]]
                             openRequests.append(copy.deepcopy(tmp))
-                            # distirbute in round-robin order
+                            # distribute in round-robin order
                             # TODO multiple request sets need multiple nextRequNode
-                            self.nextRequNode = (self.nextRequNode + 1) % len(requestSet)
+                            self.nextRequNode[index] = (self.nextRequNode[index] + 1) % len(requestSet)
 
                     for requestSet in self.openRequVari:
                         if requestSet:
@@ -265,6 +267,9 @@ class SignalHandler():
     def reactToSignal (self, signal, socketIds):
 
         # React to signal
+        ###########################
+        ##      START_STREAM     ##
+        ###########################
         if signal == "START_STREAM":
             self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
             connectionFound = False
@@ -294,6 +299,7 @@ class SignalHandler():
                 # send signal back to receiver
                 self.sendResponse(signal)
                 self.openRequPerm.append(copy.deepcopy(sorted(tmpAllowed)))
+                self.nextRequNode.append(0)
                 del tmpAllowed
 
             else:
@@ -314,6 +320,9 @@ class SignalHandler():
 
             return
 
+        ###########################
+        ##      STOP_STREAM      ##
+        ###########################
         elif signal == "STOP_STREAM":
             self.log.info("Received signal: " + signal + " for host " + str(socketIds))
             connectionNotFound = False
@@ -348,18 +357,16 @@ class SignalHandler():
                     socketId = element[0]
 
                     for i in range(len(self.openRequPerm)):
-                        self.openRequPerm[i].remove(element)
-                        self.log.debug("Remove " + str(socketId) + " from openRequPerm.")
+                        if element in self.openRequPerm[i]:
+                            self.openRequPerm[i].remove(element)
+                            self.log.debug("Remove " + str(socketId) + " from openRequPerm.")
 
-                        if not self.openRequPerm[i]:
-                            del self.openRequPerm[i]
+                            if not self.openRequPerm[i]:
+                                del self.openRequPerm[i]
+                                self.nextRequNode.pop(i)
+                            else:
+                                self.nextRequNode[i] = self.nextRequNode[i] % len(self.openRequPerm[i])
 
-
-
-
-
-
-            #FIXME
 #            socketId = socketIds[0][0]
 #            self.log.info("Received signal: " + signal + " to host " + str(socketId[0]))
 #
