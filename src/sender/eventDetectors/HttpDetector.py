@@ -26,23 +26,31 @@ class EventDetector():
 
             try:
                 self.eigerdevice      = PyTango.DeviceProxy (config["detectorDevice"])
+                self.log.info("Starting the detector device server '" + config["detectorDevice"] + "'.")
             except:
                 self.log.error("Starting the detector device server '" + config["detectorDevice"] + "'...failed.", exc_info=True)
 
             try:
                 self.filewriterdevice = PyTango.DeviceProxy (config["filewriterDevice"])
+                self.log.info("Starting the filewriter device server '" + config["detectorDevice"] + "'.")
             except:
                 self.log.error("Starting the filewriter device server '" + config["detectorDevice"] + "'...failed.", exc_info=True)
 
-            try:
-
-                if config["prefix"] == "":
+            if config["prefix"] == "":
+                try:
                     # returns a pattern of the form:
                     # testp06/$id
+                    self.log.debug("Getting filenamePattern")
+                    self.log.debug("filenamePattern: " + self.filewriterdevice.read_attribute("FilenamePattern").value)
                     self.current_dataset_prefix = self.filewriterdevice.read_attribute("FilenamePattern").value.replace("$id", "")
-                else:
+                except:
+                    self.log.error("Getting filename pattern from the filewriter device...failed.", exc_info=True)
                     self.current_dataset_prefix = config["prefix"]
+                    self.log.error("Setting prefix to '" + self.current_dataset_prefix + "'.")
+            else:
+                self.current_dataset_prefix = config["prefix"]
 
+            try:
                 self.EigerIP          = self.eigerdevice.get_property('Host').get('Host')[0]
 
 #               self.images_per_file  = self.filewriterdevice.read_attribute("ImagesPerFile").value
@@ -51,7 +59,7 @@ class EventDetector():
 #                self.TriggerMode      = self.eigerdevice.read_attribute("TriggerMode").value
 #                self.FrameTime        = self.eigerdevice.read_attribute("FrameTime").value
             except:
-                self.log.error("Getting filename pattern from the filewriter device...failed.", exc_info=True)
+                self.log.error("Getting EigerIP...failed.", exc_info=True)
 
             self.files_downloaded = []
 
@@ -79,11 +87,13 @@ class EventDetector():
         eventMessageList = []
 
         try:
+            self.log.debug("Getting 'FilesInBuffer'")
             # returns a tuble of the form:
             # ('testp06/37_data_000001.h5', 'testp06/37_master.h5', 'testp06/36_data_000007.h5', 'testp06/36_data_000006.h5', 'testp06/36_data_000005.h5', 'testp06/36_data_000004.h5', 'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5', 'testp06/36_data_000001.h5', 'testp06/36_master.h5')
             files_stored = self.eigerdevice.read_attribute("FilesInBuffer").value
 
         except:
+            self.log.debug("Getting 'FilesInBuffer'...failed.", exc_info=True)
             return
 
         ## ===== Look for current measurement files
@@ -165,7 +175,7 @@ if __name__ == '__main__':
     filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
     config = {
             "eventDetectorType" : "httpget",
-            "prefix"            : None,
+            "prefix"            : "",
             "detectorDevice"    : detectorDevice,
             "filewriterDevice"  : filewriterDevice
             }
