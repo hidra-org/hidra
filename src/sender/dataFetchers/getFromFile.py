@@ -214,12 +214,12 @@ def finishDataHandling (log, sourceFile, targetFile, prop):
                     shutil.move(sourceFile, targetFile)
                     log.info("New target directory created: " + str(targetPath))
                 except:
-                    log.error("Unable to move file '" + sourceFilepath + "' to '" + targetFile, exc_info=True)
+                    log.error("Unable to move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
                     log.debug("targetPath:" + str(targetPath))
             else:
-                log.error("Unable to move file '" + sourceFilepath + "' to '" + targetFile, exc_info=True)
+                log.error("Unable to move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
         except:
-            log.error("Unable to move file '" + sourceFilepath + "' to '" + targetFile, exc_info=True)
+            log.error("Unable to move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
 
 #    # send file to cleaner pipe
 #    try:
