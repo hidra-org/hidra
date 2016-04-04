@@ -276,6 +276,13 @@ class checkModTime (threading.Thread):
         try:
             # check modification time
             timeLastModified = os.stat(filepath).st_mtime
+        except WindowsError:
+            self.log.error("Unable to get modification time for file: " + filepath, exc_info=True)
+            # remove the file from the observing list
+            self.lock.acquire()
+            eventListToObserveTmp.append(filepath)
+            self.lock.release()
+            return
         except:
             self.log.error("Unable to get modification time for file: " + filepath, exc_info=True)
             return
