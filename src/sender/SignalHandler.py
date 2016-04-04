@@ -261,99 +261,131 @@ class SignalHandler():
             self.comSocket.send(signal, zmq.NOBLOCK)
 
 
+    def __startSignal(self, signal, sendType, socketIds, listToCheck, variList, correspList):
+
+        connectionFound = False
+        tmpAllowed = []
+
+        for socketConf in socketIds:
+
+            if ".desy.de:" in socketConf[0]:
+                socketConf[0] = socketConf[0].replace(".desy.de:",":")
+
+            socketId = socketConf[0]
+
+            self.log.debug("socketId: " + str(socketId))
+            flatlist = [ i[0] for i in [j for sublist in listToCheck for j in sublist]]
+            self.log.debug("flatlist: " + str(flatlist))
+
+            if socketId in flatlist:
+                connectionFound = True
+                self.log.info("Connection to " + str(socketId) + " is already open")
+            elif socketId not in [ i[0] for i in tmpAllowed]:
+                tmpSocketConf = socketConf + [sendType]
+                tmpAllowed.append(tmpSocketConf)
+            else:
+                #TODO send notification (double entries in START_QUERY_NEXT) back?
+                pass
+
+        if not connectionFound:
+            # send signal back to receiver
+            self.sendResponse(signal)
+            listToCheck.append(copy.deepcopy(sorted(tmpAllowed)))
+            if correspList != None:
+                correspList.append(0)
+            del tmpAllowed
+
+            if variList != None:
+                variList.append([])
+        else:
+            # send error back to receiver
+            self.sendResponse("CONNECTION_ALREADY_OPEN")
+
+
+    def __stopSignal(self, signal, socketIds, listToCheck, variList, correspList):
+
+        connectionNotFound = False
+        tmpRemoveIndex = []
+        tmpRemoveElement = []
+        found = False
+
+        for socketConf in socketIds:
+
+            if ".desy.de:" in socketConf[0]:
+                socketConf[0] = socketConf[0].replace(".desy.de:",":")
+
+            socketId = socketConf[0]
+
+            for sublist in listToCheck:
+                for element in sublist:
+                    if socketId == element[0]:
+                        tmpRemoveElement.append(element)
+                        found = True
+            if not found:
+                connectionNotFound = True
+
+        if connectionNotFound:
+            self.sendResponse("NO_OPEN_CONNECTION_FOUND")
+            self.log.info("No connection to close was found for " + str(socketConf))
+        else:
+            # send signal back to receiver
+            self.sendResponse(signal)
+
+            for element in tmpRemoveElement:
+
+                socketId = element[0]
+
+                if variList != None:
+                    variList =  [ [ b for b in  variList[a] if socketId != b[0] ] for a in range(len(variList)) ]
+                    self.log.debug("Remove all occurences from " + str(socketId) + " from variable request list.")
+
+                for i in range(len(listToCheck)):
+                    if element in listToCheck[i]:
+                        listToCheck[i].remove(element)
+                        self.log.debug("Remove " + str(socketId) + " from pemanent request/allowed list.")
+
+                        if not listToCheck[i]:
+                            del listToCheck[i]
+                            if variList != None:
+                                del variList[i]
+                            if correspList != None:
+                                correspList.pop(i)
+                        else:
+                            if correspList != None:
+                                correspList[i] = correspList[i] % len(listToCheck[i])
+
+
     def reactToSignal (self, signal, socketIds):
 
-        # React to signal
         ###########################
         ##      START_STREAM     ##
         ###########################
         if signal == "START_STREAM":
             self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
-            connectionFound = False
-            tmpAllowed = []
 
-            for socketConf in socketIds:
+            self.__startSignal(signal, "data", socketIds, self.openRequPerm, None, self.nextRequNode)
 
-                if ".desy.de:" in socketConf[0]:
-                    socketConf[0] = socketConf[0].replace(".desy.de:",":")
+            return
 
-                socketId = socketConf[0]
+        ###########################
+        ## START_STREAM_METADATA ##
+        ###########################
+        elif signal == "START_STREAM_METADATA":
+            self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
 
-                self.log.debug("socketId: " + str(socketId))
-                flatlist = [ i[0] for i in [j for sublist in self.openRequPerm for j in sublist]]
-                self.log.debug("flatlist: " + str(flatlist))
-
-                self.log.debug("tmpAllowed: " + str(tmpAllowed))
-                self.log.debug(str([i for i in tmpAllowed]))
-                if socketId in flatlist:
-                    connectionFound = True
-                    self.log.info("Connection to " + str(socketId) + " is already open")
-                elif socketId not in [ i[0] for i in tmpAllowed]:
-                    tmpSocketConf = socketConf + ["data"]
-                    tmpAllowed.append(tmpSocketConf)
-                else:
-                    #TODO send notification (double entries in START_QUERY_NEXT) back?
-                    pass
-
-            if not connectionFound:
-                # send signal back to receiver
-                self.sendResponse(signal)
-                self.openRequPerm.append(copy.deepcopy(sorted(tmpAllowed)))
-                self.nextRequNode.append(0)
-                del tmpAllowed
-
-            else:
-                # send error back to receiver
-                self.sendResponse("CONNECTION_ALREADY_OPEN")
+            self.__startSignal(signal, "metadata", socketIds, self.openRequPerm, None, self.nextRequNode)
 
             return
 
         ###########################
         ##      STOP_STREAM      ##
+        ## STOP_STREAM_METADATA  ##
         ###########################
-        elif signal == "STOP_STREAM":
+        elif signal == "STOP_STREAM" or signal == "STOP_STREAM_METADATA":
             self.log.info("Received signal: " + signal + " for host " + str(socketIds))
-            connectionNotFound = False
-            tmpRemoveIndex = []
-            tmpRemoveElement = []
-            found = False
 
-            for socketConf in socketIds:
+            self.__stopSignal(signal, socketIds, self.openRequPerm, None, self.nextRequNode)
 
-                if ".desy.de:" in socketConf[0]:
-                    socketConf[0] = socketConf[0].replace(".desy.de:",":")
-
-                socketId = socketConf[0]
-
-                for sublist in self.openRequPerm:
-                    for element in sublist:
-                        if socketId == element[0]:
-                            tmpRemoveElement.append(element)
-                            found = True
-                if not found:
-                    connectionNotFound = True
-
-            if connectionNotFound:
-                self.sendResponse("NO_OPEN_CONNECTION_FOUND")
-                self.log.info("No connection to close was found for " + str(socketConf))
-            else:
-                # send signal back to receiver
-                self.sendResponse(signal)
-
-                for element in tmpRemoveElement:
-
-                    socketId = element[0]
-
-                    for i in range(len(self.openRequPerm)):
-                        if element in self.openRequPerm[i]:
-                            self.openRequPerm[i].remove(element)
-                            self.log.debug("Remove " + str(socketId) + " from openRequPerm.")
-
-                            if not self.openRequPerm[i]:
-                                del self.openRequPerm[i]
-                                self.nextRequNode.pop(i)
-                            else:
-                                self.nextRequNode[i] = self.nextRequNode[i] % len(self.openRequPerm[i])
             return
 
 
@@ -362,89 +394,29 @@ class SignalHandler():
         ###########################
         elif signal == "START_QUERY_NEXT":
             self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
-            connectionFound = False
-            tmpAllowed = []
 
-            for socketConf in socketIds:
+            self.__startSignal(signal, "data", socketIds, self.allowedQueries, self.openRequVari, None)
 
-                if ".desy.de:" in socketConf[0]:
-                    socketConf[0] = socketConf[0].replace(".desy.de:",":")
+            return
 
-                socketId = socketConf[0]
+        ###########################
+        ## START_QUERY_METADATA  ##
+        ###########################
+        elif signal == "START_QUERY_METADATA":
+            self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
 
-                self.log.debug("socketId: " + str(socketId))
-                flatlist = [ i[0] for i in [j for sublist in self.allowedQueries for j in sublist]]
-                self.log.debug("flatlist: " + str(flatlist))
-
-                if socketId in flatlist:
-                    connectionFound = True
-                    self.log.info("Connection to " + str(socketId) + " is already open")
-                elif socketId not in [ i[0] for i in tmpAllowed]:
-                    tmpSocketConf = socketConf + ["data"]
-                    tmpAllowed.append(tmpSocketConf)
-                else:
-                    #TODO send notification (double entries in START_QUERY_NEXT) back?
-                    pass
-
-            if not connectionFound:
-                # send signal back to receiver
-                self.sendResponse(signal)
-                self.allowedQueries.append(copy.deepcopy(sorted(tmpAllowed)))
-                del tmpAllowed
-
-                self.openRequVari.append([])
-            else:
-                # send error back to receiver
-                self.sendResponse("CONNECTION_ALREADY_OPEN")
+            self.__startSignal(signal, "metadata", socketIds, self.allowedQueries, self.openRequVari, None)
 
             return
 
         ###########################
         ##      STOP_QUERY       ##
+        ## STOP_QUERY_METADATA   ##
         ###########################
-        elif signal == "STOP_QUERY_NEXT":
+        elif signal == "STOP_QUERY_NEXT" or signal == "STOP_QUERY_METADATA":
             self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
-            connectionNotFound = False
-            tmpRemoveIndex = []
-            tmpRemoveElement = []
-            found = False
 
-            for socketConf in socketIds:
-
-                if ".desy.de:" in socketConf[0]:
-                    socketConf[0] = socketConf[0].replace(".desy.de:",":")
-
-                socketId = socketConf[0]
-
-                for sublist in self.allowedQueries:
-                    for element in sublist:
-                        if socketId == element[0]:
-                            tmpRemoveElement.append(element)
-                            found = True
-                if not found:
-                    connectionNotFound = True
-
-            if connectionNotFound:
-                self.sendResponse("NO_OPEN_CONNECTION_FOUND")
-                self.log.info("No connection to close was found for " + str(socketConf))
-            else:
-                # send signal back to receiver
-                self.sendResponse(signal)
-
-                for element in tmpRemoveElement:
-
-                    socketId = element[0]
-
-                    self.openRequVari =  [ [ b for b in  self.openRequVari[a] if socketId != b[0] ] for a in range(len(self.openRequVari)) ]
-                    self.log.debug("Remove all occurences from " + str(socketId) + " from openRequVari.")
-
-                    for i in range(len(self.allowedQueries)):
-                        sublist.remove(element)  #TODO Bug??
-                        self.log.debug("Remove " + str(socketId) + " from allowedQueries.")
-
-                        if not self.allowedQueries[i]:
-                            del self.allowedQueries[i]
-                            del self.openRequVari[i]
+            self.__stopSignal(signal, socketIds, self.allowedQueries, self.openRequVari, None)
 
             return
 

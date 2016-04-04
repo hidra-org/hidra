@@ -57,7 +57,7 @@ class dataTransfer():
 
         self.targets               = None
 
-        self.supportedConnections = ["stream", "queryNext"]
+        self.supportedConnections = ["stream", "streamMetadata", "queryNext", "queryMetadata"]
 
         self.signalExchanged       = None
 
@@ -85,9 +85,15 @@ class dataTransfer():
         if self.connectionType == "stream":
             signalPort = self.signalPort
             signal     = "START_STREAM"
+        elif self.connectionType == "streamMetadata":
+            signalPort = self.signalPort
+            signal     = "START_STREAM_METADATA"
         elif self.connectionType == "queryNext":
             signalPort = self.signalPort
             signal     = "START_QUERY_NEXT"
+        elif self.connectionType == "queryMetadata":
+            signalPort = self.signalPort
+            signal     = "START_QUERY_METADATA"
 
         self.log.debug("Create socket for signal exchange...")
 
@@ -270,7 +276,7 @@ class dataTransfer():
             self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'", exc_info=True)
 
 
-        if self.connectionType == "queryNext":
+        if self.connectionType in ["queryNext", "queryMetadata"]:
 
             self.requestSocket = self.context.socket(zmq.PUSH)
             # An additional socket is needed to establish the data retriving mechanism
@@ -491,7 +497,7 @@ class dataTransfer():
             signal = None
             if self.streamStarted or ( "STREAM" in self.signalExchanged):
                 signal = "STOP_STREAM"
-            elif self.queryNextStarted or ( "QUERY_NEXT" in self.signalExchanged):
+            elif self.queryNextStarted or ( "QUERY" in self.signalExchanged):
                 signal = "STOP_QUERY_NEXT"
 
 

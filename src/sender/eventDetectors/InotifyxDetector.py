@@ -304,13 +304,11 @@ class EventDetector():
                 #   "filename"   : "file1.tif"
                 # }
 
-        # remove beginning
-#        relativePath = relativePath[1:]
-
-#        if relativePath.startswith(os.sep):
-#            relativePath = os.path.normpath(relativePath[1:])
-#        else:
-#            relativePath = os.path.normpath(relativePath)
+                # remove beginning
+                if relativePath.startswith(os.sep):
+                    relativePath = os.path.normpath(relativePath[1:])
+                else:
+                    relativePath = os.path.normpath(relativePath)
 
                 eventMessage = {
                         "sourcePath"  : parentDir,
