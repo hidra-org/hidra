@@ -77,7 +77,7 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
     return sourceFile, targetFile, metadata
 
 
-def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
+def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context):
 
     #reading source file into memory
     try:
@@ -109,7 +109,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
 
     #send message
     try:
-        __sendToTargets(log, targets, sourceFile, openConnections, payload, context, properties)
+        __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metadataExtended, payload, context)
         log.debug("Passing multipart-message for file " + str(sourceFile) + "...done.")
     except:
         log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)

@@ -81,10 +81,10 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
     return sourceFile, targetFile, metadata
 
 
-def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, properties):
+def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
 
     if not targets:
-        properties["removeFlag"] = False
+        prop["removeFlag"] = False
         return
 
     #reading source file into memory
@@ -117,22 +117,22 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
                 break
 
             #assemble metadata for zmq-message
-            chunkPayloadMetadata = metadata.copy()
-            chunkPayloadMetadata["chunkNumber"] = chunkNumber
-            chunkPayloadMetadataJson = cPickle.dumps(chunkPayloadMetadata)
+            chunkMetadata = metadata.copy()
+            chunkMetadata["chunkNumber"] = chunkNumber
+            chunkMetadata = cPickle.dumps(chunkMetadata)
 
             chunkPayload = []
-            chunkPayload.append(chunkPayloadMetadataJson)
+            chunkPayload.append(chunkMetadata)
             chunkPayload.append(fileContent)
 
             # sending data
-            __sendToTargets(log, targets, sourceFile, openConnections, chunkPayload, context, properties)
+            __sendToTargets(log, targets, sourceFile, targetFile, openConnections, chunkMetadata, chunkPayload, context)
 
         #close file
         fileDescriptor.close()
         log.debug("Passing multipart-message for file " + str(sourceFile) + "...done.")
 
-        properties["removeFlag"] = True
+        prop["removeFlag"] = True
 
     except:
         log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
@@ -187,7 +187,7 @@ def finishDataHandling (log, sourceFile, targetFile, prop):
 #        self.log.error("Unable to notify Cleaner-pipe to handle file: " + str(workload), exc_info=True)
 
 
-def clean (properties):
+def clean (prop):
     pass
 
 

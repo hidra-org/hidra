@@ -354,27 +354,14 @@ class SignalHandler():
                                 self.nextRequNode.pop(i)
                             else:
                                 self.nextRequNode[i] = self.nextRequNode[i] % len(self.openRequPerm[i])
-
-#            socketId = socketIds[0][0]
-#            self.log.info("Received signal: " + signal + " to host " + str(socketId[0]))
-#
-#            if socketId in [i[0] for i in self.openRequPerm]:
-#                # send signal back to receiver
-#                self.sendResponse(signal)
-#                self.log.debug("Send response back: " + str(signal))
-#
-#                for element in self.openRequPerm:
-#                    if element[0] == socketId:
-#                        self.openRequPerm.remove(element)
-#            else:
-#                self.log.info("No connection to close was found for " + str(socketId))
-#                self.log.debug("self.openReqPerm=" + str(self.openRequPerm))
-#                self.sendResponse("NO_OPEN_CONNECTION_FOUND")
-
             return
 
+
+        ###########################
+        ##      START_QUERY      ##
+        ###########################
         elif signal == "START_QUERY_NEXT":
-            self.log.info("Received signal to enable querying for data for hosts: " + str(socketIds))
+            self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
             connectionFound = False
             tmpAllowed = []
 
@@ -459,20 +446,8 @@ class SignalHandler():
                             del self.allowedQueries[i]
                             del self.openRequVari[i]
 
-#                for i, j in tmpRemoveIndex:
-#                    self.log.debug("i=" + str(i) + ", j=" + str(j))
-#                    self.log.debug("self.allowedQueries: " + str(self.allowedQueries))
-#                    self.log.debug("Remove " + str(self.allowedQueries[i][j]) + " from allowedQueries.")
-#                    socketId = self.allowedQueries[i][j][0]
-#
-#                    self.openRequVari =  [ [ b for b in  self.openRequVari[a] if socketId != b[0] ] for a in range(len(self.openRequVari)) ]
-#                    self.log.debug("Remove all occurences from " + str(socketId) + " from openRequVari.")
-#
-#                    if not self.allowedQueries[i]:
-#                        del self.allowedQueries[i]
-#                        del self.openRequVari[i]
-
             return
+
 
         else:
             self.log.info("Received signal from host " + str(host) + " unkown: " + str(signal))

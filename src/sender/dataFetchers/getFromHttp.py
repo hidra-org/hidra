@@ -133,7 +133,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
         #send message
         try:
-            __sendToTargets(log, targets, sourceFile, openConnections, payload, context, properties)
+            __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metadataExtended, payload, context)
             log.debug("Passing multipart-message for file " + str(sourceFile) + "...done.")
 
         except:
