@@ -127,9 +127,18 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
         except:
             log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
 
-
         if prop["storeFlag"]:
             fileDescriptor.write(data)
+
+        chunkNumber += 1
+
+    if prop["storeFlag"]:
+        try:
+            log.debug("Closing '" + str(targetFile) + "'...")
+            fileDescriptor.close()
+        except:
+            log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
+            raise
 
         #send message
         try:
@@ -139,13 +148,6 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
         except:
             log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
 
-    if prop["storeFlag"]:
-        try:
-            log.debug("Closing '" + str(targetFile) + "'...")
-            fileDescriptor.close()
-        except:
-            log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
-            raise
 
 
 def finishDataHandling (log, sourceFile, targetFile, prop):
