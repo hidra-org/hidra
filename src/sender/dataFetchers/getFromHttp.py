@@ -152,16 +152,14 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
 def finishDataHandling (log, sourceFile, targetFile, prop):
     if prop["removeFlag"]:
-        pass
         #TODO delete file from detector after sending
-        #    responce = requests.delete(sourceFile)
+        responce = requests.delete(sourceFile)
 
-        #    try:
-        #        responce.raise_for_status()
-        #        log.debug("Deleting file " + str(sourceFile) + " succeded.")
-        #    except:
-        #        log.error("Deleting file " + str(sourceFile) + " failed.", exc_info=True)
-        # remove file
+        try:
+	    responce.raise_for_status()
+	    log.debug("Deleting file " + str(sourceFile) + " succeded.")
+        except:
+            log.error("Deleting file " + str(sourceFile) + " failed.", exc_info=True)
 
 
 def clean (prop):

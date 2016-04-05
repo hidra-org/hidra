@@ -353,7 +353,7 @@ class DataManager():
                     "localTarget" : self.localTarget,
                     "session"     : None,
                     "storeFlag"   : True,  #TODO add to config
-                    "removeFlag"  : False  #TODO add to config
+                    "removeFlag"  : True  #TODO add to config
                     }
 
 

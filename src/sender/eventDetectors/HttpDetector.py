@@ -3,8 +3,14 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Jan Garrevoet <jan,garrevoe
 
 import os
 import logging
+import time
 from logutils.queue import QueueHandler
-import PyTango
+try:
+    import PyTango
+except:
+    import sys
+    sys.path.insert(0, "/usr/local/lib64/python2.6/site-packages")
+    import PyTango
 
 
 class EventDetector():
@@ -86,19 +92,32 @@ class EventDetector():
 
         eventMessageList = []
 
+	files_stored = []
+
         try:
-            self.log.debug("Getting 'FilesInBuffer'")
+#            self.log.debug("Getting 'FilesInBuffer'")
             # returns a tuble of the form:
             # ('testp06/37_data_000001.h5', 'testp06/37_master.h5', 'testp06/36_data_000007.h5', 'testp06/36_data_000006.h5', 'testp06/36_data_000005.h5', 'testp06/36_data_000004.h5', 'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5', 'testp06/36_data_000001.h5', 'testp06/36_master.h5')
             files_stored = self.eigerdevice.read_attribute("FilesInBuffer").value
 
         except:
             self.log.debug("Getting 'FilesInBuffer'...failed.", exc_info=True)
-            return
+            time.sleep(0.2)
+            return eventMessageList
 
+        if not files_stored or set(files_stored).issubset(self.files_downloaded):
+#            self.log.debug("Sleeping")
+            time.sleep(0.5)
+#        else:
+#            self.log.debug("files_stored: " + str(list(files_stored)))
+#            self.log.debug("files_downloaded: " + str(self.files_downloaded))
         ## ===== Look for current measurement files
 #        available_files = [file for file in files_stored if self.current_dataset_prefix in file]
-        available_files = [file for file in files_stored if file.startswith(self.current_dataset_prefix)]
+        if files_stored:
+            available_files = [file for file in files_stored if file.startswith(self.current_dataset_prefix)]
+        else:
+            available_files = []
+
 
         #TODO needed format: list of dictionaries of the form
         # {
@@ -115,7 +134,7 @@ class EventDetector():
                         "relativePath": relativePath,
                         "filename"    : filename
                         }
-    #            self.log.debug("eventMessage" + str(eventMessage))
+                self.log.debug("eventMessage" + str(eventMessage))
                 eventMessageList.append(eventMessage)
                 self.files_downloaded.append(file)
 
