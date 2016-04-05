@@ -55,6 +55,13 @@ class worker(multiprocessing.Process):
                 break
 
             self.log.debug("worker-" + str(self.id) + ": metadata " + str(metadata["filename"]))
+            base_path = "/asap3/petra3/gpfs/p00/2016/commissioning/c20160205_000_smbtest/"
+            filepath = os.path.join(metadata["relativePath"], metadata["filename"])
+            filepath = os.path.join(base_path, filepath)
+            self.log.debug("worker-" + str(self.id) + ": filepath " + filepath)
+
+            with open(filepath, "r") as fileDescriptor:
+                content = fileDescriptor.read()
 #            print "metadata", str(metadata)
 #            print "data", str(data)[:100]
 
@@ -75,15 +82,15 @@ class worker(multiprocessing.Process):
 
 if __name__ == "__main__":
 
-    signalHost = "zitpcx19282.desy.de"
+    signalHost = "asap3-bl-prx07.desy.de"
 
-    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1]]
+    targets = [[signalHost, "50101", 1], [signalHost, "50102", 1], [signalHost, "50103", 1]]
 #    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1], ["lsdma-lab04.desy.de", "50104", 1]]
 
 #    transferType = "queryNext"
-    transferType = "stream"
+#    transferType = "stream"
 #    transferType = "streamMetadata"
-#    transferType = "queryMetadata"
+    transferType = "queryMetadata"
 
     w1 = multiprocessing.Process(target=worker, args=(0, transferType, signalHost, "50101"))
     w2 = multiprocessing.Process(target=worker, args=(1, transferType, signalHost, "50102"))
