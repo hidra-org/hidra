@@ -47,6 +47,7 @@ class SignalHandler():
         self.signalFwPort    = signalFwPort
         self.requestPort     = requestPort
         self.openConnections = []
+        self.forwardSignal   = []
 
         self.openRequVari    = []
         self.openRequPerm    = []
@@ -149,10 +150,13 @@ class SignalHandler():
 
                 try:
                     incomingMessage = self.requestFwSocket.recv()
-                    if incomingMessage == "STOP":
-                        self.requestFwSocket.send(incomingMessage)
+
+                    #TODO do this the right way
+                    if incomingMessage == b"STOP":
+                        self.requestFwSocket.send([incomingMessage])
                         time.sleep(0.1)
                         break
+
                     self.log.debug("New request for signals received.")
 
                     openRequests = []
@@ -171,13 +175,23 @@ class SignalHandler():
                             tmp = requestSet.pop(0)
                             openRequests.append(tmp)
 
-                    if openRequests:
-                        self.requestFwSocket.send(cPickle.dumps(openRequests))
-                        self.log.debug("Answered to request: " + str(openRequests))
+                    if self.forwardSignal:
+                        self.log.info("Fowarding control signal " + str(self.forwardSignal))
+
+                        self.requestFwSocket.send_multipart([self.forwardSignal[0], cPickle.dumps(self.forwardSignal[1])])
+                        self.log.debug("Answered to request: " + str(self.forwardSignal))
+
+                        self.forwardSignal = []
                     else:
-                        openRequests = ["None"]
-                        self.requestFwSocket.send(cPickle.dumps(openRequests))
-                        self.log.debug("Answered to request: " + str(openRequests))
+
+                        if openRequests:
+                            self.requestFwSocket.send_multipart(["", cPickle.dumps(openRequests)])
+                            self.log.debug("Answered to request: " + str([self.forwardSignal, openRequests]))
+                        else:
+                            openRequests = ["None"]
+                            self.requestFwSocket.send_multipart(["", cPickle.dumps(openRequests)])
+                            self.log.debug("Answered to request: " + str([self.forwardSignal, openRequests]))
+
                 except:
                     self.log.error("Failed to receive/answer new signal requests.", exc_info=True)
 #                continue
@@ -330,6 +344,9 @@ class SignalHandler():
         else:
             # send signal back to receiver
             self.sendResponse(signal)
+
+            # send signal to TaskManager
+            self.forwardSignal = ["CLOSE_SOCKETS", socketIds]
 
             for element in tmpRemoveElement:
 

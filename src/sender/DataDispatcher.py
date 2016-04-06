@@ -126,6 +126,7 @@ class DataDispatcher():
     def run (self):
 
         while True:
+
             # Get workload from router, until finished
             self.log.debug("DataDispatcher-" + str(self.id) + ": waiting for new job")
             try:
@@ -140,22 +141,37 @@ class DataDispatcher():
 
 
             if len(message) >= 2:
-                workload = cPickle.loads(message[0])
-                targets  = cPickle.loads(message[1])
 
-                if self.fixedStreamId:
-                    targets.insert(0,[self.fixedStreamId, 0, "data"])
+                if message[0] == b"CLOSE_SOCKETS":
 
-                # sort the target list by the priority
-                targets = sorted(targets, key=lambda target: target[1])
+                    targets  = cPickle.loads(message[1])
+
+                    for socketId, prio in targets:
+                        if self.openConnections.has_key(socketId):
+                            self.log.info("Closing socket " + str(socketId))
+                            if self.openConnections[socketId]:
+                                self.openConnections[socketId].close(0)
+                            del self.openConnections[socketId]
+                    continue
+                else:
+                    workload = cPickle.loads(message[0])
+                    targets  = cPickle.loads(message[1])
+
+                    if self.fixedStreamId:
+                        targets.insert(0,[self.fixedStreamId, 0, "data"])
+
+                    # sort the target list by the priority
+                    targets = sorted(targets, key=lambda target: target[1])
 
             elif message[0] == b"EXIT":
                 self.log.debug("Router requested to shutdown DataDispatcher-"+ str(self.id) + ".")
                 break
 
             else:
+                #TODO is this needed?
                 workload = cPickle.loads(message[0])
 
+                # TODO move this in if len(message) >=2 statement?
                 if workload == b"CLOSE_FILE":
                     self.log.debug("Router requested to send signal that file was closed.")
                     payload = [ workload, self.id ]
@@ -194,6 +210,7 @@ class DataDispatcher():
 
                 else:
                     targets = []
+
 
             # get metadata of the file
             try:

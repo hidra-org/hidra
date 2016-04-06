@@ -146,18 +146,36 @@ class TaskProvider():
                 try:
                     self.log.debug("Get requests...")
                     self.requestFwSocket.send("")
-                    requests = cPickle.loads(self.requestFwSocket.recv())
-                    self.log.debug("Get requests... done.")
+                    recvMessage = self.requestFwSocket.recv_multipart()
+                    signal   = recvMessage[0]
+                    requests = cPickle.loads(recvMessage[1])
                     self.log.debug("Requests: " + str(requests))
                 except:
                     self.log.error("Get Requests... failed.", exc_info=True)
 
+                if signal == b"CLOSE_SOCKETS":
+                    self.log.error("Received " + signal + " signal")
+                    try:
+                        self.log.error("Sending " + signal + " signal")
+                        self.routerSocket.send_multipart(recvMessage)
+                    except:
+                        self.log.error("Sending " + signal + " signal... failed.", exc_info=True)
+
+                    # get requests for this event (again)
+                    try:
+                        self.log.debug("Get requests...")
+                        self.requestFwSocket.send("")
+                        recvMessage = self.requestFwSocket.recv_multipart()
+                        signal   = recvMessage[0]
+                        requests = cPickle.loads(recvMessage[1])
+                        self.log.debug("Requests: " + str(requests))
+                    except:
+                        self.log.error("Get Requests... failed.", exc_info=True)
 
                 # build message dict
                 try:
                     self.log.debug("Building message dict...")
                     messageDict = cPickle.dumps(workload)  #sets correct escape characters
-                    self.log.debug("Building message dict...done.")
                 except:
                     self.log.error("Unable to assemble message dict.", exc_info=True)
                     continue
@@ -170,7 +188,6 @@ class TaskProvider():
                         message.append(cPickle.dumps(requests))
                     self.log.debug(str(message))
                     self.routerSocket.send_multipart(message)
-                    self.log.debug("Sending message...done.")
                 except:
                     self.log.error("Sending message...failed.", exc_info=True)
 
