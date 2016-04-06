@@ -26,11 +26,9 @@ logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
 logfile     = os.path.join(logfilePath, "test_onda.log")
 helpers.initLogging(logfile, True, "DEBUG")
 
-del BASE_PATH
-
 
 class worker(multiprocessing.Process):
-    def __init__(self, id, transferType, signalHost, port):
+    def __init__(self, id, transferType, basePath, signalHost, port):
 
         self.id    = id
         self.port  = port
@@ -38,6 +36,8 @@ class worker(multiprocessing.Process):
         self.log   = logging.getLogger("worker-"+str(self.id))
 
         self.query = dataTransfer(transferType, signalHost, useLog = True)
+
+        self.basePath = basePath
 
         self.log.debug("start dataTransfer on port " +str(port))
         self.query.start(port)
@@ -55,13 +55,12 @@ class worker(multiprocessing.Process):
                 break
 
             self.log.debug("worker-" + str(self.id) + ": metadata " + str(metadata["filename"]))
-            base_path = "/asap3/petra3/gpfs/p00/2016/commissioning/c20160205_000_smbtest/"
             filepath = os.path.join(metadata["relativePath"], metadata["filename"])
-            filepath = os.path.join(base_path, filepath)
-            self.log.debug("worker-" + str(self.id) + ": filepath " + filepath)
+            filepath = os.path.join(basePath, filepath)
 
             with open(filepath, "r") as fileDescriptor:
                 content = fileDescriptor.read()
+                self.log.debug("worker-" + str(self.id) + ": file " + filepath + " read")
 #            print "metadata", str(metadata)
 #            print "data", str(data)[:100]
 
@@ -82,10 +81,12 @@ class worker(multiprocessing.Process):
 
 if __name__ == "__main__":
 
+    signalHost = "zitpcx19282.desy.de"
 #    signalHost = "lsdma-lab04.desy.de"
-    signalHost = "asap3-bl-prx07.desy.de"
+#    signalHost = "asap3-bl-prx07.desy.de"
 
-    targets = [["asap3-bl-prx07.desy.de", "50101", 1], ["asap3-bl-prx07.desy.de", "50102", 1], ["asap3-bl-prx07.desy.de", "50103", 1]]
+#    targets = [["asap3-bl-prx07.desy.de", "50101", 1], ["asap3-bl-prx07.desy.de", "50102", 1], ["asap3-bl-prx07.desy.de", "50103", 1]]
+    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1]]
 #    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1], ["lsdma-lab04.desy.de", "50104", 1]]
 
 #    transferType = "queryNext"
@@ -93,9 +94,12 @@ if __name__ == "__main__":
 #    transferType = "streamMetadata"
     transferType = "queryMetadata"
 
-    w1 = multiprocessing.Process(target=worker, args=(0, transferType, signalHost, "50101"))
-    w2 = multiprocessing.Process(target=worker, args=(1, transferType, signalHost, "50102"))
-    w3 = multiprocessing.Process(target=worker, args=(2, transferType, signalHost, "50103"))
+    basePath = BASE_PATH + os.sep + "data" + os.sep + "target"
+#    basePath = "/asap3/petra3/gpfs/p00/2016/commissioning/c20160205_000_smbtest/"
+
+    w1 = multiprocessing.Process(target=worker, args=(0, transferType, basePath, signalHost, "50101"))
+    w2 = multiprocessing.Process(target=worker, args=(1, transferType, basePath, signalHost, "50102"))
+    w3 = multiprocessing.Process(target=worker, args=(2, transferType, basePath, signalHost, "50103"))
 
     query = dataTransfer(transferType, signalHost, useLog = True)
     query.initiate(targets)
