@@ -108,7 +108,9 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
             log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
             log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
 
-    chunkNumber = 0
+    targets_data     = [i for i in targets if i[2] == "data"]
+    targets_metadata = [i for i in targets if i[2] == "metadata"]
+    chunkNumber      = 0
 
     log.debug("Getting data for file '" + str(sourceFile) + "'...")
     #reading source file into memory
@@ -130,6 +132,14 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
         if prop["storeFlag"]:
             fileDescriptor.write(data)
 
+        #send message to data targets
+        try:
+            __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, metadataExtended, payload, context)
+            log.debug("Passing multipart-message for file " + str(sourceFile) + "...done.")
+
+        except:
+            log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
+
         chunkNumber += 1
 
     if prop["storeFlag"]:
@@ -140,13 +150,13 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
             log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
             raise
 
-        #send message
+        #send message to metadata targets
         try:
-            __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metadataExtended, payload, context)
-            log.debug("Passing multipart-message for file " + str(sourceFile) + "...done.")
+            __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadataExtended, payload, context)
+            log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
 
         except:
-            log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
+            log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
 
 
 
