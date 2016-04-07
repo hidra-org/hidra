@@ -82,7 +82,7 @@ class SignalHandler():
         try:
             self.run()
         except KeyboardInterrupt:
-            self.stop()
+            pass
         except:
             self.log.error("Stopping signalHandler due to unknown error condition.", exc_info=True)
             self.stop()
@@ -176,10 +176,9 @@ class SignalHandler():
                             openRequests.append(tmp)
 
                     if self.forwardSignal:
-                        self.log.info("Fowarding control signal " + str(self.forwardSignal))
 
                         self.requestFwSocket.send_multipart([self.forwardSignal[0], cPickle.dumps(self.forwardSignal[1])])
-                        self.log.debug("Answered to request: " + str(self.forwardSignal))
+                        self.log.info("Fowarding control signal " + str(self.forwardSignal))
 
                         self.forwardSignal = []
                     else:
@@ -229,7 +228,6 @@ class SignalHandler():
                         if incomingSocketId == self.allowedQueries[index][i][0]:
                             self.openRequVari[index].append(self.allowedQueries[index][i])
                             self.log.debug("Add to openRequVari: " + str(self.allowedQueries[index][i]) )
-
 
     def checkSignal (self, incomingMessage):
 
@@ -444,6 +442,7 @@ class SignalHandler():
 
 
     def stop (self):
+
         self.log.debug("Closing sockets")
         if self.comSocket:
             self.comSocket.close(0)

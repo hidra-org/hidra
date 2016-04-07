@@ -408,6 +408,7 @@ class EventDetector():
 
 
     def stop(self):
+        self.log.info("Stopping observer Threads")
         for observer in  self.observerThreads:
             observer.stop()
             observer.join()
@@ -416,8 +417,10 @@ class EventDetector():
         self.checkingThread.stop()
         self.checkingThread.join()
 
-
     def __exit__(self):
+        self.stop()
+
+    def __del__(self):
         self.stop()
 
 

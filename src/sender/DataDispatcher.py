@@ -34,7 +34,7 @@ import helpers
 class DataDispatcher():
 #class DataDispatcher(Process):
 
-    def __init__ (self, id, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
+    def __init__ (self, id, controlPort, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
                 logQueue, localTarget = None, context = None):
 
 #        dataFetcherProp = {
@@ -57,10 +57,14 @@ class DataDispatcher():
 
         self.localhost       = "127.0.0.1"
         self.extIp           = "0.0.0.0"
+        self.controlPort     = controlPort
         self.routerPort      = routerPort
         self.chunkSize       = chunkSize
 
+        self.controlSocket   = None
         self.routerSocket    = None
+
+        self.poller          = None
 
         self.fixedStreamId   = fixedStreamId
         self.localTarget     = localTarget
@@ -94,18 +98,35 @@ class DataDispatcher():
         try:
             self.run()
         except KeyboardInterrupt:
-            self.log.debug("KeyboardInterrupt detected. Shutting down DataDispatcher-" + str(self.id) + ".")
-            self.stop()
+            pass
         except:
             self.log.error("Stopping DataDispatcher-" + str(self.id) + " due to unknown error condition.", exc_info=True)
             self.stop()
 
 
     def __createSockets (self):
+
+        # socket for control signals
+        self.controlSocket = self.context.socket(zmq.SUB)
+        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.controlPort )
+        try:
+            self.controlSocket.connect(connectionStr)
+            self.log.info("Start controlSocket (connect): '" + str(connectionStr) + "'")
+        except:
+            self.log.error("Failed to start controlSocket (connect): '" + connectionStr + "'", exc_info=True)
+
+        # socket to get new workloads from
         self.routerSocket = self.context.socket(zmq.PULL)
         connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.routerPort )
-        self.routerSocket.connect(connectionStr)
-        self.log.info("Start routerSocket (connect): '" + str(connectionStr) + "'")
+        try:
+            self.routerSocket.connect(connectionStr)
+            self.log.info("Start routerSocket (connect): '" + str(connectionStr) + "'")
+        except:
+            self.log.error("Failed to start routerSocket (connect): '" + connectionStr + "'", exc_info=True)
+
+        self.poller = zmq.Poller()
+        self.poller.register(self.controlSocket, zmq.POLLIN)
+        self.poller.register(self.routerSocket, zmq.POLLIN)
 
 
     # Send all logs to the main process
@@ -126,124 +147,144 @@ class DataDispatcher():
     def run (self):
 
         while True:
-
-            # Get workload from router, until finished
             self.log.debug("DataDispatcher-" + str(self.id) + ": waiting for new job")
-            try:
-                message = self.routerSocket.recv_multipart()
-                self.log.debug("DataDispatcher-" + str(self.id) + ": new job received")
-                self.log.debug("message = " + str(message))
-            except KeyboardInterrupt:
-                break
-            except:
-                self.log.error("DataDispatcher-" + str(self.id) + ": waiting for new job...failed", exc_info=True)
-                continue
+            socks = dict(self.poller.poll())
 
+            if self.routerSocket in socks and socks[self.routerSocket] == zmq.POLLIN:
 
-            if len(message) >= 2:
-
-                if message[0] == b"CLOSE_SOCKETS":
-
-                    targets  = cPickle.loads(message[1])
-
-                    for socketId, prio in targets:
-                        if self.openConnections.has_key(socketId):
-                            self.log.info("Closing socket " + str(socketId))
-                            if self.openConnections[socketId]:
-                                self.openConnections[socketId].close(0)
-                            del self.openConnections[socketId]
+                try:
+                    message = self.routerSocket.recv_multipart()
+                    self.log.debug("DataDispatcher-" + str(self.id) + ": new job received")
+                    self.log.debug("message = " + str(message))
+                except:
+                    self.log.error("DataDispatcher-" + str(self.id) + ": waiting for new job...failed", exc_info=True)
                     continue
-                else:
-                    workload = cPickle.loads(message[0])
-                    targets  = cPickle.loads(message[1])
 
-                    if self.fixedStreamId:
-                        targets.insert(0,[self.fixedStreamId, 0, "data"])
 
-                    # sort the target list by the priority
-                    targets = sorted(targets, key=lambda target: target[1])
+                if len(message) >= 2:
 
-            elif message[0] == b"EXIT":
-                self.log.debug("Router requested to shutdown DataDispatcher-"+ str(self.id) + ".")
-                break
+                    if message[0] == b"CLOSE_SOCKETS":
 
-            else:
-                #TODO is this needed?
-                workload = cPickle.loads(message[0])
+                        targets  = cPickle.loads(message[1])
 
-                # TODO move this in if len(message) >=2 statement?
-                if workload == b"CLOSE_FILE":
-                    self.log.debug("Router requested to send signal that file was closed.")
-                    payload = [ workload, self.id ]
-
-                    # socket already known
-                    if self.fixedStreamId in self.openConnections:
-                        tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
-                        self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0")
+                        for socketId, prio in targets:
+                            if self.openConnections.has_key(socketId):
+                                self.log.info("Closing socket " + str(socketId))
+                                if self.openConnections[socketId]:
+                                    self.openConnections[socketId].close(0)
+                                del self.openConnections[socketId]
+                        continue
                     else:
-                        # open socket
-                        socket        = context.socket(zmq.PUSH)
-                        connectionStr = "tcp://" + str(self.fixedStreamId)
+                        workload = cPickle.loads(message[0])
+                        targets  = cPickle.loads(message[1])
 
-                        socket.connect(connectionStr)
-                        self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
+                        if self.fixedStreamId:
+                            targets.insert(0,[self.fixedStreamId, 0, "data"])
 
-                        # register socket
-                        self.openConnections[self.fixedStreamId] = socket
-
-                        # send data
-                        tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
-                        self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0" )
-
-                    # socket not known
-                    if not tracker.done:
-                        self.log.info("Close file signal has not been sent yet, waiting...")
-                        tracker.wait()
-                        self.log.info("Close file signal has not been sent yet, waiting...done")
-
-                    time.sleep(2)
-                    self.log.debug("Continue after sleeping.")
-                    continue
-
-                elif self.fixedStreamId:
-                    targets = [[self.fixedStreamId, 0, "data"]]
+                        # sort the target list by the priority
+                        targets = sorted(targets, key=lambda target: target[1])
 
                 else:
-                    targets = []
+                    #TODO is this needed?
+                    workload = cPickle.loads(message[0])
+
+                    # TODO move this in if len(message) >=2 statement?
+                    if workload == b"CLOSE_FILE":
+                        self.log.debug("Router requested to send signal that file was closed.")
+                        payload = [ workload, self.id ]
+
+                        # socket already known
+                        if self.fixedStreamId in self.openConnections:
+                            tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                            self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0")
+                        else:
+                            # open socket
+                            socket        = context.socket(zmq.PUSH)
+                            connectionStr = "tcp://" + str(self.fixedStreamId)
+
+                            socket.connect(connectionStr)
+                            self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
+
+                            # register socket
+                            self.openConnections[self.fixedStreamId] = socket
+
+                            # send data
+                            tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                            self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0" )
+
+                        # socket not known
+                        if not tracker.done:
+                            self.log.info("Close file signal has not been sent yet, waiting...")
+                            tracker.wait()
+                            self.log.info("Close file signal has not been sent yet, waiting...done")
+
+                        time.sleep(2)
+                        self.log.debug("Continue after sleeping.")
+                        continue
+
+                    elif self.fixedStreamId:
+                        targets = [[self.fixedStreamId, 0, "data"]]
+
+                    else:
+                        targets = []
 
 
-            # get metadata of the file
-            try:
-                self.log.debug("Getting file metadata")
-                sourceFile, targetFile, metadata = self.dataFetcher.getMetadata(self.log, workload, self.chunkSize, self.localTarget)
+                # get metadata of the file
+                try:
+                    self.log.debug("Getting file metadata")
+                    sourceFile, targetFile, metadata = self.dataFetcher.getMetadata(self.log, workload, self.chunkSize, self.localTarget)
 
-            except:
-                self.log.error("Building of metadata dictionary failed for workload: " + str(workload) + ".", exc_info=True)
-                #skip all further instructions and continue with next iteration
-                continue
+                except:
+                    self.log.error("Building of metadata dictionary failed for workload: " + str(workload) + ".", exc_info=True)
+                    #skip all further instructions and continue with next iteration
+                    continue
 
-            # send data
-            try:
-                self.dataFetcher.sendData(self.log, targets, sourceFile, targetFile, metadata, self.openConnections, self.context, self.dataFetcherProp)
-            except:
-                self.log.error("DataDispatcher-"+str(self.id) + ": Passing new file to data stream...failed.", exc_info=True)
+                # send data
+                try:
+                    self.dataFetcher.sendData(self.log, targets, sourceFile, targetFile, metadata, self.openConnections, self.context, self.dataFetcherProp)
+                except:
+                    self.log.error("DataDispatcher-"+str(self.id) + ": Passing new file to data stream...failed.", exc_info=True)
 
-            # finish data handling
-            self.dataFetcher.finishDataHandling(self.log, sourceFile, targetFile, self.dataFetcherProp)
+                # finish data handling
+                self.dataFetcher.finishDataHandling(self.log, sourceFile, targetFile, self.dataFetcherProp)
+
+
+            if self.controlSocket in socks and socks[self.controlSocket] == zmq.POLLIN:
+
+                try:
+                    message = self.controlSocket.recv_multipart()
+                    self.log.debug("DataDispatcher-" + str(self.id) + ": control signal received")
+                    self.log.debug("message = " + str(message))
+                except:
+                    self.log.error("DataDispatcher-" + str(self.id) + ": waiting for control signal...failed", exc_info=True)
+                    continue
+
+                if message[0] == b"EXIT":
+                    self.log.debug("Router requested to shutdown DataDispatcher-"+ str(self.id) + ".")
+                    break
 
 
     def stop (self):
         self.log.debug("Closing sockets for DataDispatcher-" + str(self.id))
+
         for connection in self.openConnections:
             if self.openConnections[connection]:
                 self.log.info("Closing socket " + str(connection))
                 self.openConnections[connection].close(0)
                 self.openConnections[connection] = None
+
+        if self.controlSocket:
+            self.log.info("Closing controlSocket")
+            self.controlSocket.close(0)
+            self.controlSocket = None
+
         if self.routerSocket:
             self.log.info("Closing routerSocket")
             self.routerSocket.close(0)
             self.routerSocket = None
+
         self.dataFetcher.clean(self.dataFetcherProp)
+
         if not self.extContext and self.context:
             self.log.debug("Destroying context")
             self.context.destroy(0)
@@ -290,7 +331,7 @@ if __name__ == '__main__':
     copyfile(sourceFile, targetFile)
     time.sleep(0.5)
 
-
+    controlPort   = "50005"
     routerPort    = "7000"
     receivingPort = "6005"
     receivingPort2 = "6006"
@@ -317,7 +358,7 @@ if __name__ == '__main__':
     context       = zmq.Context.instance()
 
 #    dataDispatcherPr = DataDispatcher( "0/1", routerPort, chunkSize, fixedStreamId, logQueue, localTarget, context)
-    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
+    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, controlPort, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
                                                                   logQueue, localTarget, context) )
     dataDispatcherPr.start()
 

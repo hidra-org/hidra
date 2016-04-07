@@ -84,6 +84,10 @@ def getTransportProtocol():
         return "tcp"
 
 
+class globalObjects (object):
+    controlSocket = None
+    controlFlag   = True
+
 # This function is needed because configParser always needs a section name
 # the used config file consists of key-value pairs only
 # source: http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788

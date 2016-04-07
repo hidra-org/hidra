@@ -32,7 +32,7 @@ import helpers
 #
 
 class TaskProvider():
-    def __init__ (self, eventDetectorConfig, requestFwPort, routerPort, logQueue, context = None):
+    def __init__ (self, eventDetectorConfig, controlPort, requestFwPort, routerPort, logQueue, context = None):
         global BASE_PATH
 
         #eventDetectorConfig = {
@@ -56,10 +56,14 @@ class TaskProvider():
 
         self.localhost          = "127.0.0.1"
         self.extIp              = "0.0.0.0"
+        self.controlPort        = controlPort
         self.requestFwPort      = requestFwPort
         self.routerPort         = routerPort
+
         self.requestFwSocket    = None
         self.routerSocket       = None
+
+        self.poller             = None
 
         self.log.debug("Registering ZMQ context")
         # remember if the context was created outside this class or not
@@ -81,8 +85,7 @@ class TaskProvider():
         try:
             self.run()
         except KeyboardInterrupt:
-            self.log.debug("Keyboard interruption detected. Shuting down")
-            self.stop()
+            pass
         except:
             self.log.info("Stopping TaskProvider due to unknown error condition.", exc_info=True)
             self.stop()
@@ -104,6 +107,7 @@ class TaskProvider():
 
 
     def createSockets (self):
+
         # socket to get requests
         self.requestFwSocket = self.context.socket(zmq.REQ)
         connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.requestFwPort )
@@ -124,7 +128,8 @@ class TaskProvider():
 
 
     def run (self):
-        while True:
+
+        while helpers.globalObjects.controlFlag:
             try:
                 # the event for a file /tmp/test/source/local/file1.tif is of the form:
                 # {
@@ -139,6 +144,8 @@ class TaskProvider():
                 self.log.error("Invalid fileEvent message received.", exc_info=True)
                 #skip all further instructions and continue with next iteration
                 continue
+
+
 
             #TODO validate workload dict
             for workload in workloadList:
@@ -192,15 +199,20 @@ class TaskProvider():
                     self.log.error("Sending message...failed.", exc_info=True)
 
 
-
     def stop (self):
+        self.log.debug("Closing sockets")
         if self.routerSocket:
+            self.log.info("Closing routerSocket")
             self.routerSocket.close(0)
             self.routerSocket = None
+
         if self.requestFwSocket:
+            self.log.info("Closing requestFwSocket")
             self.requestFwSocket.close(0)
             self.requestFwSocket = None
+
         if not self.extContext and self.context:
+            self.log.debug("Destroying context")
             self.context.destroy(0)
             self.context = None
 
@@ -290,6 +302,7 @@ if __name__ == '__main__':
 
     requestFwPort = "6001"
     routerPort    = "7000"
+    controlPort   = "50005"
 
     logQueue = Queue(-1)
 
@@ -307,7 +320,7 @@ if __name__ == '__main__':
     root.addHandler(qh)
 
 
-    taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, requestFwPort, routerPort, logQueue) )
+    taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, controlPort, requestFwPort, routerPort, logQueue) )
     taskProviderPr.start()
 
     requestResponderPr = Process ( target = requestResponder, args = ( requestFwPort, logQueue) )

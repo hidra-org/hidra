@@ -117,6 +117,8 @@ class EventDetector():
             self.monSuffixes  = tuple(config["monSuffixes"])
             self.monSubdirs   = config["monSubdirs"]
 
+            self.timeout      = 0.5
+
             self.add_watch()
 
 
@@ -189,7 +191,7 @@ class EventDetector():
         eventMessageList = []
         eventMessage = {}
 
-        events = self.get_events(self.fd)
+        events = self.get_events(self.fd, self.timeout)
         removedWd = None
         for event in events:
 

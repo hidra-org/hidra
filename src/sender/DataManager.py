@@ -11,6 +11,7 @@ import time
 import cPickle
 from multiprocessing import Process, freeze_support, Queue
 import ConfigParser
+import threading
 
 from SignalHandler import SignalHandler
 from TaskProvider import TaskProvider
@@ -30,7 +31,6 @@ del SHARED_PATH
 from logutils.queue import QueueHandler
 import helpers
 from version import __version__
-
 
 def argumentParsing():
     configFile = CONFIG_PATH + os.sep + "dataManager.conf"
@@ -63,12 +63,16 @@ def argumentParsing():
 
     # SignalHandler config
 
+    controlPort        = config.get('asection', 'controlPort')
     comPort            = config.get('asection', 'comPort')
     whitelist          = json.loads(config.get('asection', 'whitelist'))
 
     requestPort        = config.get('asection', 'requestPort')
     requestFwPort      = config.get('asection', 'requestFwPort')
 
+    parser.add_argument("--controlPort"       , type    = str,
+                                                help    = "Port number to distribute control signals (default=" + str(controlPort) + ")",
+                                                default = controlPort )
     parser.add_argument("--comPort"           , type    = str,
                                                 help    = "Port number to receive signals (default=" + str(comPort) + ")",
                                                 default = comPort )
@@ -162,7 +166,6 @@ def argumentParsing():
     routerPort         = config.get('asection', 'routerPort')
 
     localTarget        = config.get('asection', 'localTarget')
-    cleanerPort        = config.get('asection', 'cleanerPort')
 
     parser.add_argument("--dataFetcherType"   , type    = str,
                                                 help    = "Module with methods specifying how to get the data (default=" + str(dataFetcherType) + ")",
@@ -199,10 +202,6 @@ def argumentParsing():
     parser.add_argument("--localTarget"       , type    = str,
                                                 help    = "Target to move the files into (default=" + str(localTarget) + ")",
                                                 default = localTarget )
-    parser.add_argument("--cleanerPort"       , type    = str,
-                                                help    = "ZMQ-pull-socket port which deletes/moves given file \
-                                                           (default=" + str(cleanerPort) + ")",
-                                                default = cleanerPort )
 
     arguments         = parser.parse_args()
 
@@ -266,7 +265,7 @@ class DataManager():
             if onScreen:
                 h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
 
-                # Start queue listener using the stream handler above
+                # Start queue listener using the stream handler abovehelper.globalObject.
                 self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1, h2)
             else:
                 h1 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
@@ -279,11 +278,19 @@ class DataManager():
         # Create log and set handler to queue handle
         self.log = self.getLogger(self.logQueue)
 
+        self.log.info("DataManager started (PID " + str(os.getpid()) + ").")
+
+
+        self.controlPort      = arguments.controlPort
+
         self.comPort          = arguments.comPort
         self.whitelist        = arguments.whitelist
 
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
+
+        self.localhost        = "localhost"
+        self.extHost          = "0.0.0.0"
 
         if arguments.useDataStream:
             self.fixedStreamId = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )
@@ -296,9 +303,8 @@ class DataManager():
         self.routerPort       = arguments.routerPort
 
         self.localTarget      = arguments.localTarget
-        self.cleanerPort      = arguments.cleanerPort
 
-        # Assemble configuration for eventDetector
+        # Assemble configuration for eventDetectorhelper.globalObject.
         self.log.debug("Configured type of eventDetector: " + arguments.eventDetectorType)
         if arguments.eventDetectorType == "InotifyxDetector":
             self.eventDetectorConfig = {
@@ -353,7 +359,7 @@ class DataManager():
                     "localTarget" : self.localTarget,
                     "session"     : None,
                     "storeFlag"   : True,  #TODO add to config
-                    "removeFlag"  : True  #TODO add to config
+                    "removeFlag"  : False  #TODO add to config
                     }
 
 
@@ -365,8 +371,11 @@ class DataManager():
 
         #create zmq context
         # there should be only one context in one process
-        self.zmqContext = zmq.Context.instance()
+#        self.context = zmq.Context.instance()
+        self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
+
+        self.createSockets()
 
         self.run()
 
@@ -384,6 +393,16 @@ class DataManager():
 
         return logger
 
+    def createSockets(self):
+
+        # socket for control signals
+        helpers.globalObjects.controlSocket = self.context.socket(zmq.PUB)
+        connectionStr  = "tcp://{ip}:{port}".format( ip=self.extHost, port=self.controlPort )
+        try:
+            helpers.globalObjects.controlSocket.bind(connectionStr)
+            self.log.info("Start controlSocket (bind): '" + str(connectionStr) + "'")
+        except:
+            self.log.error("Failed to start controlSocket (bind): '" + connectionStr + "'", exc_info=True)
 
 
     def run (self):
@@ -393,41 +412,43 @@ class DataManager():
         # needed, because otherwise the requests for the first files are not forwarded properly
         time.sleep(0.5)
 
-        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.requestFwPort, self.routerPort, self.logQueue) )
+        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue, self.context) )
+#        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):
             id = str(i) + "/" + str(self.numberOfStreams)
-            pr = Process ( target = DataDispatcher, args = ( id, self.routerPort, self.chunkSize, self.fixedStreamId, self.dataFetcherProp,
+            pr = Process ( target = DataDispatcher, args = (id, self.controlPort, self.routerPort, self.chunkSize, self.fixedStreamId, self.dataFetcherProp,
                                                             self.logQueue, self.localTarget) )
             pr.start()
             self.dataDispatcherPr.append(pr)
 
 
     def stop (self):
-        if self.signalHandlerPr:
-            self.log.info("terminate SignalHandler...")
-            self.signalHandlerPr.terminate()
-            self.signalHandlerPr = None
-            self.log.info("terminate SignalHandler...done")
 
-        if self.taskProviderPr:
-            self.log.info("terminate TaskProvider...")
-            self.taskProviderPr.terminate()
-            self.taskProviderPr = None
-            self.log.info("terminate TaskProvider...done")
+        if helpers.globalObjects.controlSocket:
+            self.log.info("Sending 'Exit' signal")
+            helpers.globalObjects.controlSocket.send_multipart(["Exit"])
 
-        for pr in self.dataDispatcherPr:
-            id = str(self.dataDispatcherPr.index(pr)) + "/" + str(self.numberOfStreams)
-            self.log.info("terminate DataDispatcher-" + str(id) + "...")
-            pr.terminate()
-            pr = None
-            self.log.info("terminate DataDispatcher-" + str(id) + "...done")
+        if helpers.globalObjects.controlFlag:
+            helpers.globalObjects.controlFlag = False
 
-        if self.dataDispatcherPr == [ None for i in self.dataDispatcherPr ]:
-            self.dataDispatcher = []
+        # waiting till the other processes are finished
+        time.sleep(1)
+
+        if helpers.globalObjects.controlSocket:
+            self.log.info("Closing controlSocket")
+            helpers.globalObjects.controlSocket.close(0)
+            helpers.globalObjects.controlSocket = None
+
+        if self.context:
+            self.log.debug("Destroying context")
+            self.context.destroy(0)
+            self.context = None
+            self.log.debug("Destroying context..done")
 
         if not self.extLogQueue and self.logQueueListener:
+            self.log.debug("Stopping logQueue")
             self.logQueue.put_nowait(None)
             self.logQueueListener.stop()
             self.logQueueListener = None
