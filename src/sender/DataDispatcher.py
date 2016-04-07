@@ -115,6 +115,8 @@ class DataDispatcher():
         except:
             self.log.error("Failed to start controlSocket (connect): '" + connectionStr + "'", exc_info=True)
 
+        self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
+
         # socket to get new workloads from
         self.routerSocket = self.context.socket(zmq.PULL)
         connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.routerPort )
@@ -163,26 +165,14 @@ class DataDispatcher():
 
                 if len(message) >= 2:
 
-                    if message[0] == b"CLOSE_SOCKETS":
+                    workload = cPickle.loads(message[0])
+                    targets  = cPickle.loads(message[1])
 
-                        targets  = cPickle.loads(message[1])
+                    if self.fixedStreamId:
+                        targets.insert(0,[self.fixedStreamId, 0, "data"])
 
-                        for socketId, prio in targets:
-                            if self.openConnections.has_key(socketId):
-                                self.log.info("Closing socket " + str(socketId))
-                                if self.openConnections[socketId]:
-                                    self.openConnections[socketId].close(0)
-                                del self.openConnections[socketId]
-                        continue
-                    else:
-                        workload = cPickle.loads(message[0])
-                        targets  = cPickle.loads(message[1])
-
-                        if self.fixedStreamId:
-                            targets.insert(0,[self.fixedStreamId, 0, "data"])
-
-                        # sort the target list by the priority
-                        targets = sorted(targets, key=lambda target: target[1])
+                    # sort the target list by the priority
+                    targets = sorted(targets, key=lambda target: target[1])
 
                 else:
                     #TODO is this needed?
@@ -259,9 +249,26 @@ class DataDispatcher():
                     self.log.error("DataDispatcher-" + str(self.id) + ": waiting for control signal...failed", exc_info=True)
                     continue
 
+                # remove subribtion topic
+                del message[0]
+
                 if message[0] == b"EXIT":
                     self.log.debug("Router requested to shutdown DataDispatcher-"+ str(self.id) + ".")
                     break
+
+                elif message[0] == b"CLOSE_SOCKETS":
+
+                    targets  = cPickle.loads(message[1])
+
+                    for socketId, prio in targets:
+                        if self.openConnections.has_key(socketId):
+                            self.log.info("Closing socket " + str(socketId))
+                            if self.openConnections[socketId]:
+                                self.openConnections[socketId].close(0)
+                            del self.openConnections[socketId]
+                    continue
+                else:
+                    self.log.error("Unhandled control signal received: " + str(message))
 
 
     def stop (self):

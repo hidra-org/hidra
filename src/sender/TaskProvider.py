@@ -126,6 +126,15 @@ class TaskProvider():
         except:
             self.log.error("Failed to start router Socket (bind): '" + connectionStr + "'", exc_info=True)
 
+        # socket send control signals
+        self.controlSocket = self.context.socket(zmq.PUB)
+        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.controlPort )
+        try:
+            self.controlSocket.bind(connectionStr)
+            self.log.info("Start to control socket (bind): '" + str(connectionStr) + "'")
+        except:
+            self.log.error("Failed to start control Socket (bind): '" + connectionStr + "'", exc_info=True)
+
 
     def run (self):
 
@@ -164,7 +173,9 @@ class TaskProvider():
                     self.log.error("Received " + signal + " signal")
                     try:
                         self.log.error("Sending " + signal + " signal")
-                        self.routerSocket.send_multipart(recvMessage)
+                        self.controlSocket.send_multipart(["control"] + recvMessage)
+#                        helpers.globalObjects.controlSocket.send_multipart(recvMessage)
+#                        self.routerSocket.send_multipart(recvMessage)
                     except:
                         self.log.error("Sending " + signal + " signal... failed.", exc_info=True)
 
@@ -210,6 +221,11 @@ class TaskProvider():
             self.log.info("Closing requestFwSocket")
             self.requestFwSocket.close(0)
             self.requestFwSocket = None
+
+        if self.controlSocket:
+            self.log.info("Closing controlSocket")
+            self.controlSocket.close(0)
+            self.controlSocket = None
 
         if not self.extContext and self.context:
             self.log.debug("Destroying context")

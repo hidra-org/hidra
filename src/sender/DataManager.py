@@ -289,7 +289,7 @@ class DataManager():
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
 
-        self.localhost        = "localhost"
+        self.localhost       = "127.0.0.1"
         self.extHost          = "0.0.0.0"
 
         if arguments.useDataStream:
@@ -372,10 +372,10 @@ class DataManager():
         #create zmq context
         # there should be only one context in one process
 #        self.context = zmq.Context.instance()
-        self.context = zmq.Context()
+#        self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
 
-        self.createSockets()
+#        self.createSockets()
 
         self.run()
 
@@ -393,11 +393,12 @@ class DataManager():
 
         return logger
 
+
     def createSockets(self):
 
         # socket for control signals
         helpers.globalObjects.controlSocket = self.context.socket(zmq.PUB)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.extHost, port=self.controlPort )
+        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.controlPort )
         try:
             helpers.globalObjects.controlSocket.bind(connectionStr)
             self.log.info("Start controlSocket (bind): '" + str(connectionStr) + "'")
@@ -412,7 +413,8 @@ class DataManager():
         # needed, because otherwise the requests for the first files are not forwarded properly
         time.sleep(0.5)
 
-        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue, self.context) )
+        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
+#        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue, self.context) )
 #        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
         self.taskProviderPr.start()
 
@@ -426,9 +428,9 @@ class DataManager():
 
     def stop (self):
 
-        if helpers.globalObjects.controlSocket:
-            self.log.info("Sending 'Exit' signal")
-            helpers.globalObjects.controlSocket.send_multipart(["Exit"])
+#        if helpers.globalObjects.controlSocket:
+#            self.log.info("Sending 'Exit' signal")
+#            helpers.globalObjects.controlSocket.send_multipart(["Exit"])
 
         if helpers.globalObjects.controlFlag:
             helpers.globalObjects.controlFlag = False
@@ -436,16 +438,16 @@ class DataManager():
         # waiting till the other processes are finished
         time.sleep(1)
 
-        if helpers.globalObjects.controlSocket:
-            self.log.info("Closing controlSocket")
-            helpers.globalObjects.controlSocket.close(0)
-            helpers.globalObjects.controlSocket = None
+#        if helpers.globalObjects.controlSocket:
+#            self.log.info("Closing controlSocket")
+#            helpers.globalObjects.controlSocket.close(0)
+#            helpers.globalObjects.controlSocket = None
 
-        if self.context:
-            self.log.debug("Destroying context")
-            self.context.destroy(0)
-            self.context = None
-            self.log.debug("Destroying context..done")
+#        if self.context:
+#            self.log.debug("Destroying context")
+#            self.context.destroy(0)
+#            self.context = None
+#            self.log.debug("Destroying context..done")
 
         if not self.extLogQueue and self.logQueueListener:
             self.log.debug("Stopping logQueue")
@@ -460,6 +462,7 @@ class DataManager():
 
     def __def__ (self):
         self.stop()
+
 
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
