@@ -159,7 +159,8 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
 
 
-def finishDataHandling (log, sourceFile, targetFile, metadata, openConnections, context, prop):
+def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
+
     if prop["removeFlag"]:
         #TODO delete file from detector after sending
         responce = requests.delete(sourceFile)

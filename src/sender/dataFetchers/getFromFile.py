@@ -13,7 +13,6 @@ from send_helpers import __sendToTargets
 
 
 def setup (log, dataFetcherProp):
-    dataFetcherProp["targets_metadata"] = []
     #TODO
     # check if dataFetcherProp has correct format
     return
@@ -99,7 +98,6 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
     chunkSize = metadata[ "chunkSize"   ]
 
     targets_data     = [i for i in targets if i[2] == "data"]
-    targets_metadata = [i for i in targets if i[2] == "metadata"]
     chunkNumber = 0
 
     log.debug("Passing multipart-message for file " + str(sourceFile) + "...")
@@ -141,10 +139,11 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
 
     prop["removeFlag"] = True
-    prop["targets_metadata"] = targets_metadata
 
 
-def finishDataHandling (log, sourceFile, targetFile, metadata, openConnections, context, prop):
+def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
+
+    targets_metadata = [i for i in targets if i[2] == "metadata"]
 
     if prop["storeFlag"]:
 
@@ -172,7 +171,7 @@ def finishDataHandling (log, sourceFile, targetFile, metadata, openConnections, 
 
         #send message to metadata targets
         try:
-            __sendToTargets(log, prop["targets_metadata"], sourceFile, targetFile, openConnections, metadata, None, context)
+            __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context)
             log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
 
         except:

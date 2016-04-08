@@ -114,7 +114,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
 
 
-def finishDataHandling (log, sourceFile, targetFile, metadata, openConnections, context, prop):
+def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
     pass
 
 
