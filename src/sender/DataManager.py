@@ -338,7 +338,7 @@ class DataManager():
                     "monSubdirs"        : arguments.fixSubdirs,
                     "monSuffixes"       : arguments.monitoredFormats,
                     "timeout"           : 0.1,
-                    "history"           : arguments.historySize
+                    "historySize"       : arguments.historySize
                     }
         elif arguments.eventDetectorType == "WatchdogDetector":
             self.eventDetectorConfig = {
@@ -361,7 +361,8 @@ class DataManager():
                     "eventDetectorType" : arguments.eventDetectorType,
                     "prefix"            : arguments.prefix,
                     "detectorDevice"    : arguments.detectorDevice,
-                    "filewriterDevice"  : arguments.filewriterDevice
+                    "filewriterDevice"  : arguments.filewriterDevice,
+                    "historySize"       : arguments.historySize
                     }
 
 

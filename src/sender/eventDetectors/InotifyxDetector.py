@@ -104,7 +104,7 @@ class EventDetector():
                 not config.has_key("monSubdirs") or
                 not config.has_key("monSuffixes") or
                 not config.has_key("timeout") or
-                not config.has_key("history") ):
+                not config.has_key("historySize") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
@@ -122,7 +122,7 @@ class EventDetector():
 
             self.timeout      = config["timeout"]
 
-            self.history      = collections.deque(maxlen=config["history"])
+            self.history      = collections.deque(maxlen=config["historySize"])
 
             self.add_watch()
 
@@ -380,10 +380,11 @@ if __name__ == '__main__':
             "monDir"            : BASE_PATH + os.sep + "data" + os.sep + "source",
             "monEventType"      : "IN_CLOSE_WRITE",
             "monSubdirs"        : ["commissioning", "current", "local"],
-            "monSuffixes"       : [".tif", ".cbf"]
+            "monSuffixes"       : [".tif", ".cbf"],
+            "timeout"           : 0.1,
+            "historySize"       : 0
             }
 
-#    eventDetector = InotifyxDetector(config, logQueue)
     eventDetector = EventDetector(config, logQueue)
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"

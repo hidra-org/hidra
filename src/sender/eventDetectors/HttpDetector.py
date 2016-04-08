@@ -23,7 +23,8 @@ class EventDetector():
         checkPassed = True
         if ( not config.has_key("prefix") or
                 not config.has_key("detectorDevice") or
-                not config.has_key("filewriterDevice") ):
+                not config.has_key("filewriterDevice") or
+                not config.has_key("historySize") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
@@ -67,7 +68,7 @@ class EventDetector():
             except:
                 self.log.error("Getting EigerIP...failed.", exc_info=True)
 
-            self.files_downloaded = []
+            self.files_downloaded = collections.deque(maxlen=config["historySize"])
 
 
 
@@ -92,7 +93,7 @@ class EventDetector():
 
         eventMessageList = []
 
-	files_stored = []
+        files_stored = []
 
         try:
 #            self.log.debug("Getting 'FilesInBuffer'")
@@ -196,7 +197,8 @@ if __name__ == '__main__':
             "eventDetectorType" : "httpget",
             "prefix"            : "",
             "detectorDevice"    : detectorDevice,
-            "filewriterDevice"  : filewriterDevice
+            "filewriterDevice"  : filewriterDevice,
+            "historySize"       : 1000
             }
 
 
