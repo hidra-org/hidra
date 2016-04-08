@@ -421,8 +421,8 @@ class dataTransfer():
         except IOError, e:
             # errno.ENOENT == "No such file or directory"
             if e.errno == errno.ENOENT:
-                #TODO create subdirectory first, then try to open the file again
                 try:
+                    #TODO do not create commissioning, current, local
                     targetPath = self.__generateTargetPath(targetBasePath, configDict)
                     os.makedirs(targetPath)
                     newFile = open(targetFilepath, "w")

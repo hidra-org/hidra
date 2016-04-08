@@ -96,6 +96,8 @@ def argumentParsing():
     monitoredDir       = config.get('asection', 'monitoredDir')
     monitoredEventType = config.get('asection', 'monitoredEventType')
     monitoredFormats   = json.loads(config.get('asection', 'monitoredFormats'))
+    # for InotifyxDetector:
+    historySize        = int(config.get('asection', 'historySize'))
     # for WatchdogDetector:
     timeTillClosed     = int(config.get('asection', 'timeTillClosed'))
     # for ZmqDetector:
@@ -128,6 +130,12 @@ def argumentParsing():
                                                            (only needed if eventDetector is InotifyxDetector or WatchdogDetector; \
                                                            default=" + str(monitoredFormats) + ")",
                                                 default = monitoredFormats )
+
+    parser.add_argument("--historySize"       , type    = int,
+                                                help    = "Number of events stored to look for doubles \
+                                                           (needed if eventDetector is InotifyxDetector; default=" + str(historySize) + ")",
+                                                default = historySize)
+
     parser.add_argument("--timeTillClosed"    , type    = str,
                                                 help    = "Time (in seconds) since last modification after which a file will be seen as closed \
                                                            (only needed if eventDetectorType is WatchdogDetector; default=" + str(timeTillClosed) + ")",
@@ -329,7 +337,8 @@ class DataManager():
                     "monEventType"      : arguments.monitoredEventType,
                     "monSubdirs"        : arguments.fixSubdirs,
                     "monSuffixes"       : arguments.monitoredFormats,
-                    "timeout"           : 0.1
+                    "timeout"           : 0.1,
+                    "history"           : arguments.historySize
                     }
         elif arguments.eventDetectorType == "WatchdogDetector":
             self.eventDetectorConfig = {

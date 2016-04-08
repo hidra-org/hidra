@@ -6,6 +6,7 @@ import logging
 from inotifyx import binding
 from inotifyx.distinfo import version as __version__
 import sys
+import collections
 
 
 try:
@@ -102,7 +103,8 @@ class EventDetector():
                 not config.has_key("monEventType") or
                 not config.has_key("monSubdirs") or
                 not config.has_key("monSuffixes") or
-                not config.has_key("timeout") ):
+                not config.has_key("timeout") or
+                not config.has_key("history") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
@@ -119,6 +121,8 @@ class EventDetector():
             self.monSubdirs   = config["monSubdirs"]
 
             self.timeout      = config["timeout"]
+
+            self.history      = collections.deque(maxlen=config["history"])
 
             self.add_watch()
 
@@ -261,7 +265,7 @@ class EventDetector():
                 continue
 
             # only files of the configured event type are send
-            if not is_dir and is_ofEventType:
+            if not is_dir and is_ofEventType and [path, event.name] not in self.history:
 
 #                print path, event.name, parts
 #                print event.name
@@ -276,6 +280,8 @@ class EventDetector():
                 eventMessage = self.getEventMessage(path, event.name)
                 self.log.debug("eventMessage" + str(eventMessage))
                 eventMessageList.append(eventMessage)
+
+                self.history.append([path, event.name])
 
         return eventMessageList
 
