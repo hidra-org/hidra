@@ -116,6 +116,7 @@ class DataDispatcher():
             self.log.error("Failed to start controlSocket (connect): '" + connectionStr + "'", exc_info=True)
 
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
+        self.controlSocket.setsockopt(zmq.SUBSCRIBE, "signal")
 
         # socket to get new workloads from
         self.routerSocket = self.context.socket(zmq.PULL)
@@ -178,7 +179,6 @@ class DataDispatcher():
                     #TODO is this needed?
                     workload = cPickle.loads(message[0])
 
-                    # TODO move this in if len(message) >=2 statement?
                     if workload == b"CLOSE_FILE":
                         self.log.debug("Router requested to send signal that file was closed.")
                         payload = [ workload, self.id ]

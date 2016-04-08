@@ -372,10 +372,10 @@ class DataManager():
         #create zmq context
         # there should be only one context in one process
 #        self.context = zmq.Context.instance()
-#        self.context = zmq.Context()
+        self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
 
-#        self.createSockets()
+        self.createSockets()
 
         self.run()
 
@@ -413,9 +413,7 @@ class DataManager():
         # needed, because otherwise the requests for the first files are not forwarded properly
         time.sleep(0.5)
 
-        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
-#        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue, self.context) )
-#        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
+        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue, self.context) )
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):
@@ -428,9 +426,9 @@ class DataManager():
 
     def stop (self):
 
-#        if helpers.globalObjects.controlSocket:
-#            self.log.info("Sending 'Exit' signal")
-#            helpers.globalObjects.controlSocket.send_multipart(["Exit"])
+        if helpers.globalObjects.controlSocket:
+            self.log.info("Sending 'Exit' signal")
+            helpers.globalObjects.controlSocket.send_multipart(["control", "Exit"])
 
         if helpers.globalObjects.controlFlag:
             helpers.globalObjects.controlFlag = False
@@ -438,16 +436,15 @@ class DataManager():
         # waiting till the other processes are finished
         time.sleep(1)
 
-#        if helpers.globalObjects.controlSocket:
-#            self.log.info("Closing controlSocket")
-#            helpers.globalObjects.controlSocket.close(0)
-#            helpers.globalObjects.controlSocket = None
+        if helpers.globalObjects.controlSocket:
+            self.log.info("Closing controlSocket")
+            helpers.globalObjects.controlSocket.close(0)
+            helpers.globalObjects.controlSocket = None
 
-#        if self.context:
-#            self.log.debug("Destroying context")
-#            self.context.destroy(0)
-#            self.context = None
-#            self.log.debug("Destroying context..done")
+        if self.context:
+            self.log.debug("Destroying context")
+            self.context.destroy(0)
+            self.context = None
 
         if not self.extLogQueue and self.logQueueListener:
             self.log.debug("Stopping logQueue")
