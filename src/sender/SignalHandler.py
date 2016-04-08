@@ -357,7 +357,7 @@ class SignalHandler():
                         self.log.debug("Remove " + str(socketId) + " from pemanent request/allowed list.")
 
                         if not listToCheck[i]:
-                            del listToCheck[i]
+                            tmpRemoveIndex.append(i)
                             if variList != None:
                                 del variList[i]
                             if correspList != None:
@@ -365,6 +365,9 @@ class SignalHandler():
                         else:
                             if correspList != None:
                                 correspList[i] = correspList[i] % len(listToCheck[i])
+
+                for index in tmpRemoveIndex:
+                    del listToCheck[index]
 
             # send signal to TaskManager
             self.forwardSignal = ["CLOSE_SOCKETS", socketIds]
