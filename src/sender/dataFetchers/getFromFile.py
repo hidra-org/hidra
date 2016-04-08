@@ -13,6 +13,7 @@ from send_helpers import __sendToTargets
 
 
 def setup (log, dataFetcherProp):
+    dataFetcherProp["targets_metadata"] = []
     #TODO
     # check if dataFetcherProp has correct format
     return
@@ -97,65 +98,61 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
 
     chunkSize = metadata[ "chunkSize"   ]
 
-    #send message
-    try:
-        log.debug("Passing multipart-message for file " + str(sourceFile) + "...")
-        chunkNumber = 0
-        stillChunksToRead = True
-        while stillChunksToRead:
-            chunkNumber += 1
+    targets_data     = [i for i in targets if i[2] == "data"]
+    targets_metadata = [i for i in targets if i[2] == "metadata"]
+    chunkNumber = 0
 
-            #read next chunk from file
-            fileContent = fileDescriptor.read(chunkSize)
+    log.debug("Passing multipart-message for file " + str(sourceFile) + "...")
+    while True:
 
-            #detect if end of file has been reached
-            if not fileContent:
-                stillChunksToRead = False
+        #read next chunk from file
+        fileContent = fileDescriptor.read(chunkSize)
 
-                #as chunk is empty decrease chunck-counter
-                chunkNumber -= 1
-                break
+        #detect if end of file has been reached
+        if not fileContent:
+            break
 
+        try:
             #assemble metadata for zmq-message
             chunkMetadata = metadata.copy()
             chunkMetadata["chunkNumber"] = chunkNumber
-            chunkMetadata = cPickle.dumps(chunkMetadata)
 
             chunkPayload = []
             chunkPayload.append(chunkMetadata)
             chunkPayload.append(fileContent)
-
-            # sending data
-            __sendToTargets(log, targets, sourceFile, targetFile, openConnections, chunkMetadata, chunkPayload, context)
-
-        #close file
-        fileDescriptor.close()
-        log.debug("Passing multipart-message for file " + str(sourceFile) + "...done.")
-
-        prop["removeFlag"] = True
-
-    except:
-        log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
-
-
-def finishDataHandling (log, sourceFile, targetFile, prop):
-
-    if prop["removeFlag"]:
-        # remove file
-        try:
-            os.remove(sourceFile)
-            log.info("Removing file '" + str(sourceFile) + "' ...success.")
         except:
-            log.error("Unable to remove file " + str(sourceFile), exc_info=True)
+            log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
 
-        prop["removeFlag"] = False
-    else:
+        #send message to data targets
+        try:
+            __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, None, chunkPayload, context)
+            log.debug("Passing multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")...done.")
+
+        except:
+            log.error("Unable to send multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")", exc_info=True)
+
+        chunkNumber += 1
+
+    #close file
+    try:
+        log.debug("Closing '" + str(targetFile) + "'...")
+        fileDescriptor.close()
+    except:
+        log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
+
+    prop["removeFlag"] = True
+    prop["targets_metadata"] = targets_metadata
+
+
+def finishDataHandling (log, sourceFile, targetFile, metadata, openConnections, context, prop):
+
+    if prop["storeFlag"]:
+
         # move file
         try:
             shutil.move(sourceFile, targetFile)
             log.info("Moving file '" + str(sourceFile) + "' ...success.")
         except IOError as e:
-
 
             # errno.ENOENT == "No such file or directory"
             if e.errno == errno.ENOENT:
@@ -173,18 +170,24 @@ def finishDataHandling (log, sourceFile, targetFile, prop):
         except:
             log.error("Unable to move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
 
-#    # send file to cleaner pipe
-#    try:
-#        #sending to pipe
-#        self.log.debug("send file-event for file to cleaner-pipe...")
-#        self.log.debug("metadata = " + str(metadata))
-#        self.cleanerSocket.send(cPickle.dumps(metadata))
-#        self.log.debug("send file-event for file to cleaner-pipe...success.")
-#
-#        #TODO: remember workload. append to list?
-#        # can be used to verify files which have been processed twice or more
-#    except:
-#        self.log.error("Unable to notify Cleaner-pipe to handle file: " + str(workload), exc_info=True)
+        #send message to metadata targets
+        try:
+            __sendToTargets(log, prop["targets_metadata"], sourceFile, targetFile, openConnections, metadata, None, context)
+            log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
+
+        except:
+            log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
+
+    elif prop["removeFlag"]:
+        # remove file
+        try:
+            os.remove(sourceFile)
+            log.info("Removing file '" + str(sourceFile) + "' ...success.")
+        except:
+            log.error("Unable to remove file " + str(sourceFile), exc_info=True)
+
+        prop["removeFlag"] = False
+
 
 
 def clean (prop):

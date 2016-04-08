@@ -344,6 +344,7 @@ class DataManager():
         if arguments.dataFetcherType == "getFromFile":
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
+                    "storeFlag"   : True,  #TODO add to config
                     "removeFlag"  : False
                     }
         elif arguments.dataFetcherType == "getFromZmq":

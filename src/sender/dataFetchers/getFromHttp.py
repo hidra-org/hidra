@@ -121,7 +121,6 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
             #assemble metadata for zmq-message
             metadataExtended = metadata.copy()
             metadataExtended["chunkNumber"] = chunkNumber
-            metadataExtended = cPickle.dumps(metadataExtended)
 
             payload = []
             payload.append(metadataExtended)
@@ -160,7 +159,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
 
 
-def finishDataHandling (log, sourceFile, targetFile, prop):
+def finishDataHandling (log, sourceFile, targetFile, metadata, openConnections, context, prop):
     if prop["removeFlag"]:
         #TODO delete file from detector after sending
         responce = requests.delete(sourceFile)

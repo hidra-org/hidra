@@ -236,7 +236,7 @@ class DataDispatcher():
                     self.log.error("DataDispatcher-"+str(self.id) + ": Passing new file to data stream...failed.", exc_info=True)
 
                 # finish data handling
-                self.dataFetcher.finishDataHandling(self.log, sourceFile, targetFile, self.dataFetcherProp)
+                self.dataFetcher.finishDataHandling(self.log, sourceFile, targetFile, metadata, self.openConnections, self.context, self.dataFetcherProp)
 
 
             if self.controlSocket in socks and socks[self.controlSocket] == zmq.POLLIN:

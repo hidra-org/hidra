@@ -29,7 +29,7 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
 
             elif sendType == "metadata":
                 #cPickle.dumps(None) is 'N.'
-                tracker = openConnections[target].send_multipart([metadata, cPickle.dumps(None)], copy=False, track=True)
+                tracker = openConnections[target].send_multipart([cPickle.dumps(metadata), cPickle.dumps(None)], copy=False, track=True)
                 log.info("Sending metadata of message part from file " + str(sourceFile) +
                          " to '" + target + "' with priority " + str(prio) )
                 log.debug("metadata=" + str(metadata))
@@ -62,8 +62,8 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
                          " to " + target)
 
             elif sendType == "metadata":
-                openConnections[target].send_multipart([metadata, cPickle.dumps(None)], zmq.NOBLOCK)
+                openConnections[target].send_multipart([cPickle.dumps(metadata), cPickle.dumps(None)], zmq.NOBLOCK)
                 log.info("Sending metadata of message part from file " + str(sourceFile) +
                          " to " + target)
-                log.debug("metadata=" + str([metadata]))
+                log.debug("metadata=" + str(metadata))
 

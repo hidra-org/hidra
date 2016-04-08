@@ -99,7 +99,6 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         #assemble metadata for zmq-message
         metadataExtended = metadata.copy()
         metadataExtended["chunkNumber"] = chunkNumber
-        metadataExtended = cPickle.dumps(metadata)
 
         payload = []
         payload.append(metadataExtended)
@@ -115,7 +114,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
 
 
-def finishDataHandling (log, sourceFile, targetFile, prop):
+def finishDataHandling (log, sourceFile, targetFile, metadata, openConnections, context, prop):
     pass
 
 
