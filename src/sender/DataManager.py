@@ -90,10 +90,11 @@ def argumentParsing():
     # EventDetector config
 
     eventDetectorType  = config.get('asection', 'eventDetectorType')
+    # for InotifyxDetector and WatchdogDetector and getFromFile:
+    fixSubdirs   = json.loads(config.get('asection', 'fixSubdirs'))
     # for InotifyxDetector and WatchdogDetector:
     monitoredDir       = config.get('asection', 'monitoredDir')
     monitoredEventType = config.get('asection', 'monitoredEventType')
-    monitoredSubdirs   = json.loads(config.get('asection', 'monitoredSubdirs'))
     monitoredFormats   = json.loads(config.get('asection', 'monitoredFormats'))
     # for WatchdogDetector:
     timeTillClosed     = int(config.get('asection', 'timeTillClosed'))
@@ -107,6 +108,12 @@ def argumentParsing():
     parser.add_argument("--eventDetectorType" , type    = str,
                                                 help    = "Type of event detector to use (default=" + str(eventDetectorType) + ")",
                                                 default = eventDetectorType )
+    parser.add_argument("--fixSubdirs"        , type    = str,
+                                                help    = "Subdirectories to be monitored and to store data to \
+                                                           (only needed if eventDetector is InotifyxDetector or WatchdogDetector \
+                                                           and dataFetcher is getFromFile; default=" + str(fixSubdirs) + ")",
+                                                default = fixSubdirs )
+
     parser.add_argument("--monitoredDir"      , type    = str,
                                                 help    = "Directory to be monitor for changes; inside this directory only the specified \
                                                            subdirectories are monitred (only needed if eventDetector is InotifyxDetector \
@@ -116,10 +123,6 @@ def argumentParsing():
                                                 help    = "Event type of files to be monitored (only needed if eventDetector is InotifyxDetector \
                                                            or WatchdogDetector; default=" + str(monitoredEventType) + ")",
                                                 default = monitoredEventType )
-    parser.add_argument("--monitoredSubdirs"  , type    = str,
-                                                help    = "Subdirectories of 'monitoredDirs' to be monitored (only needed if eventDetector is \
-                                                           InotifyxDetector or WatchdogDetector; default=" + str(monitoredSubdirs) + ")",
-                                                default = monitoredSubdirs )
     parser.add_argument("--monitoredFormats"  , type    = str,
                                                 help    = "The formats to be monitored, files in an other format will be be neglected \
                                                            (only needed if eventDetector is InotifyxDetector or WatchdogDetector; \
@@ -167,6 +170,10 @@ def argumentParsing():
 
     localTarget        = config.get('asection', 'localTarget')
 
+    storeFlag          = config.getboolean('asection', 'storeFlag')
+    removeFlag         = config.getboolean('asection', 'removeFlag')
+
+
     parser.add_argument("--dataFetcherType"   , type    = str,
                                                 help    = "Module with methods specifying how to get the data (default=" + str(dataFetcherType) + ")",
                                                 default = dataFetcherType )
@@ -203,6 +210,15 @@ def argumentParsing():
                                                 help    = "Target to move the files into (default=" + str(localTarget) + ")",
                                                 default = localTarget )
 
+    parser.add_argument("--storeFlag"         , type    = bool,
+                                                help    = "Flag describing if the data should be stored in localTarget \
+                                                           (needed if dataFetcherType is getFromFile or getFromHttp; default=" + str(storeFlag) + ")",
+                                                default = storeFlag )
+    parser.add_argument("--removeFlag"         , type    = bool,
+                                                help    = "Flag describing if the files should be removed from the source \
+                                                           (needed if dataFetcherType is getFromHttp; default=" + str(removeFlag) + ")",
+                                                default = removeFlag )
+
     arguments         = parser.parse_args()
 
     # Check given arguments
@@ -215,8 +231,8 @@ def argumentParsing():
     eventDetectorType = arguments.eventDetectorType.lower()
     supportedEDTypes  = ["inotifyxdetector", "watchdogdetector", "zmqdetector", "httpdetector"]
     supportedDFTypes  = ["getfromfile", "getfromzmq", "getFromHttp"]
+    fixSubdirs        = arguments.fixSubdirs
     monitoredDir      = str(arguments.monitoredDir)
-    monitoredSubdirs  = arguments.monitoredSubdirs
     localTarget       = str(arguments.localTarget)
 
     useDataStream     = arguments.useDataStream
@@ -234,7 +250,7 @@ def argumentParsing():
     # check if directories exists
     helpers.checkDirExistance(logfilePath)
     helpers.checkDirExistance(monitoredDir)
-    helpers.checkSubDirExistance(monitoredDir, monitoredSubdirs)
+    helpers.checkSubDirExistance(monitoredDir, fixSubdirs)
     if useDataStream:
         helpers.checkDirExistance(localTarget)
 
@@ -311,15 +327,16 @@ class DataManager():
                     "eventDetectorType" : arguments.eventDetectorType,
                     "monDir"            : arguments.monitoredDir,
                     "monEventType"      : arguments.monitoredEventType,
-                    "monSubdirs"        : arguments.monitoredSubdirs,
-                    "monSuffixes"       : arguments.monitoredFormats
+                    "monSubdirs"        : arguments.fixSubdirs,
+                    "monSuffixes"       : arguments.monitoredFormats,
+                    "timeout"           : 0.1
                     }
         elif arguments.eventDetectorType == "WatchdogDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "monDir"            : arguments.monitoredDir,
                     "monEventType"      : arguments.monitoredEventType,
-                    "monSubdirs"        : arguments.monitoredSubdirs,
+                    "monSubdirs"        : arguments.fixSubdirs,
                     "monSuffixes"       : arguments.monitoredFormats,
                     "timeTillClosed"    : arguments.timeTillClosed
                     }
@@ -344,7 +361,8 @@ class DataManager():
         if arguments.dataFetcherType == "getFromFile":
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
-                    "storeFlag"   : True,  #TODO add to config
+                    "fixSubdirs"  : arguments.fixSubdirs,
+                    "storeFlag"   : arguments.storeFlag,
                     "removeFlag"  : False
                     }
         elif arguments.dataFetcherType == "getFromZmq":
@@ -359,8 +377,8 @@ class DataManager():
                     "type"        : arguments.dataFetcherType,
                     "localTarget" : self.localTarget,
                     "session"     : None,
-                    "storeFlag"   : True,  #TODO add to config
-                    "removeFlag"  : False  #TODO add to config
+                    "storeFlag"   : arguments.storeFlag,
+                    "removeFlag"  : arguments.removeFlag
                     }
 
 
@@ -435,7 +453,7 @@ class DataManager():
             helpers.globalObjects.controlFlag = False
 
         # waiting till the other processes are finished
-        time.sleep(1)
+        time.sleep(0.5)
 
         if helpers.globalObjects.controlSocket:
             self.log.info("Closing controlSocket")

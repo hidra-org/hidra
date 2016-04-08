@@ -92,21 +92,34 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
         except IOError, e:
             # errno.ENOENT == "No such file or directory"
             if e.errno == errno.ENOENT:
-                #TODO create subdirectory first, then try to open the file again
-                try:
-                    targetPath = os.path.normpath(prop["localTarget"] + os.sep + metadata["relativePath"])
-                    os.makedirs(targetPath)
-                    newFile = open(targetFile, "w")
-                    log.info("New target directory created: " + str(targetPath))
-                except:
-                    log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
-                    log.debug("targetPath:" + str(targetPath))
-                    raise
+
+                subdir, tmp = os.path.split(metadata["relativePath"])
+
+                if metadata["relativePath"] in prop["fixSubdirs"]:
+                    log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
+                              ": Directory " + metadata["relativePath"] + " is not available", exc_info=True)
+                    prop["removeFlag"] = False
+                elif subdir in prop["fixSubdirs"] :
+                    log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
+                              ": Directory " + subdir + " is not available", exc_info=True)
+                    prop["removeFlag"] = False
+                else:
+                    try:
+                        targetPath = os.path.normpath(prop["localTarget"] + os.sep + metadata["relativePath"])
+                        os.makedirs(targetPath)
+                        newFile = open(targetFile, "w")
+                        log.info("New target directory created: " + str(targetPath))
+                    except:
+                        log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
+                        log.debug("targetPath:" + str(targetPath))
+                        raise
             else:
                 log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
+                prop["removeFlag"] = False
         except:
             log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
             log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
+            prop["removeFlag"] = False
 
     targets_data     = [i for i in targets if i[2] == "data"]
     targets_metadata = [i for i in targets if i[2] == "metadata"]

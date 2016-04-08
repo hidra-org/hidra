@@ -155,19 +155,31 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
 
             # errno.ENOENT == "No such file or directory"
             if e.errno == errno.ENOENT:
-                #TODO create subdirectory first, then try to open the file again
-                try:
-                    targetPath, filename = os.path.split(targetFile)
-                    os.makedirs(targetPath)
-                    shutil.move(sourceFile, targetFile)
-                    log.info("New target directory created: " + str(targetPath))
-                except:
-                    log.error("Unable to move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
-                    log.debug("targetPath:" + str(targetPath))
+                subdir, tmp = os.path.split(metadata["relativePath"])
+
+                if metadata["relativePath"] in prop["fixSubdirs"]:
+                    log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
+                              ": Directory " + metadata["relativePath"] + " is not available", exc_info=True)
+                    return
+                elif subdir in prop["fixSubdirs"] :
+                    log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
+                              ": Directory " + subdir + " is not available", exc_info=True)
+                    return
+                else:
+                    try:
+                        targetPath, filename = os.path.split(targetFile)
+                        os.makedirs(targetPath)
+                        shutil.move(sourceFile, targetFile)
+                        log.info("New target directory created: " + str(targetPath))
+                    except:
+                        log.error("Unable to move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
+                        log.debug("targetPath:" + str(targetPath))
             else:
                 log.error("Unable to move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
+                return
         except:
             log.error("Unable to move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
+            return
 
         #send message to metadata targets
         try:

@@ -101,7 +101,8 @@ class EventDetector():
         if ( not config.has_key("monDir") or
                 not config.has_key("monEventType") or
                 not config.has_key("monSubdirs") or
-                not config.has_key("monSuffixes") ):
+                not config.has_key("monSuffixes") or
+                not config.has_key("timeout") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
@@ -117,7 +118,7 @@ class EventDetector():
             self.monSuffixes  = tuple(config["monSuffixes"])
             self.monSubdirs   = config["monSubdirs"]
 
-            self.timeout      = 0.5
+            self.timeout      = config["timeout"]
 
             self.add_watch()
 
