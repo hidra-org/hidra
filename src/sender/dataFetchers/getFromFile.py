@@ -12,10 +12,18 @@ import errno
 from send_helpers import __sendToTargets
 
 
-def setup (log, dataFetcherProp):
-    #TODO
-    # check if dataFetcherProp has correct format
-    return
+def setup (log, prop):
+
+    if ( not prop.has_key("fixSubdirs") or
+        not prop.has_key("storeFlag") or
+        not prop.has_key("removeFlag") ):
+
+        log.error ("Configuration of wrong format")
+        log.debug ("dataFetcherProp="+ str(prop))
+        return False
+
+    else:
+        return True
 
 
 def getMetadata (log, metadata, chunkSize, localTarget = None):

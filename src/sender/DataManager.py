@@ -385,7 +385,6 @@ class DataManager():
         elif arguments.dataFetcherType == "getFromHttp":
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
-                    "localTarget" : self.localTarget,
                     "session"     : None,
                     "storeFlag"   : arguments.storeFlag,
                     "removeFlag"  : arguments.removeFlag

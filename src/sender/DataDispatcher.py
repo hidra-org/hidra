@@ -91,17 +91,15 @@ class DataDispatcher():
 
         self.log.info("Loading dataFetcher: " + dataFetcher)
         self.dataFetcher = __import__(dataFetcher)
-        self.dataFetcher.setup(self.log, dataFetcherProp)
+        if self.dataFetcher.setup(self.log, dataFetcherProp):
 
-#        Process.__init__(self)
-
-        try:
-            self.run()
-        except KeyboardInterrupt:
-            pass
-        except:
-            self.log.error("Stopping DataDispatcher-" + str(self.id) + " due to unknown error condition.", exc_info=True)
-            self.stop()
+            try:
+                self.run()
+            except KeyboardInterrupt:
+                pass
+            except:
+                self.log.error("Stopping DataDispatcher-" + str(self.id) + " due to unknown error condition.", exc_info=True)
+                self.stop()
 
 
     def __createSockets (self):

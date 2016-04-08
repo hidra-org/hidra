@@ -16,10 +16,21 @@ from send_helpers import __sendToTargets
 
 
 def setup (log, prop):
-    #TODO
-    # check if prop has correct format
 
-    prop["session"] = requests.session()
+    if ( not prop.has_key("session") or
+        not prop.has_key("storeFlag") or
+        not prop.has_key("removeFlag") ):
+
+        log.error ("Configuration of wrong format")
+        log.debug ("dataFetcherProp="+ str(prop))
+        return False
+
+    else:
+
+        prop["session"] = requests.session()
+
+        return True
+
 
 
 def getMetadata (log, metadata, chunkSize, localTarget = None):
@@ -105,7 +116,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
                     prop["removeFlag"] = False
                 else:
                     try:
-                        targetPath = os.path.normpath(prop["localTarget"] + os.sep + metadata["relativePath"])
+                        targetPath, filename = os.path.split(targetFile)
                         os.makedirs(targetPath)
                         newFile = open(targetFile, "w")
                         log.info("New target directory created: " + str(targetPath))

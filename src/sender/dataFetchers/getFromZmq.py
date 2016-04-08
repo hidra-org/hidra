@@ -13,17 +13,26 @@ from send_helpers import __sendToTargets
 
 def setup (log, prop):
 
-    #TODO
-    # check if prop has correct format
+    if ( not prop.has_key("context") or
+        not prop.has_key("extIp") or
+        not prop.has_key("port") ):
 
-    # Create zmq socket
-    socket        = prop["context"].socket(zmq.PULL)
-    connectionStr = "tcp://{ip}:{port}".format( ip=prop["extIp"], port=prop["port"] )
-    socket.bind(connectionStr)
-    log.info("Start socket (bind): '" + str(connectionStr) + "'")
+        log.error ("Configuration of wrong format")
+        log.debug ("dataFetcherProp="+ str(prop))
+        return False
 
-    # register socket
-    prop["socket"] = socket
+    else:
+
+        # Create zmq socket
+        socket        = prop["context"].socket(zmq.PULL)
+        connectionStr = "tcp://{ip}:{port}".format( ip=prop["extIp"], port=prop["port"] )
+        socket.bind(connectionStr)
+        log.info("Start socket (bind): '" + str(connectionStr) + "'")
+
+        # register socket
+        prop["socket"] = socket
+
+        return True
 
 
 def getMetadata (log, metadata, chunkSize, localTarget = None):
