@@ -343,9 +343,6 @@ class SignalHandler():
             # send signal back to receiver
             self.sendResponse(signal)
 
-            # send signal to TaskManager
-            self.forwardSignal = ["CLOSE_SOCKETS", socketIds]
-
             for element in tmpRemoveElement:
 
                 socketId = element[0]
@@ -368,6 +365,11 @@ class SignalHandler():
                         else:
                             if correspList != None:
                                 correspList[i] = correspList[i] % len(listToCheck[i])
+
+            # send signal to TaskManager
+            self.forwardSignal = ["CLOSE_SOCKETS", socketIds]
+
+        return listToCheck, variList, correspList
 
 
     def reactToSignal (self, signal, socketIds):
@@ -399,7 +401,7 @@ class SignalHandler():
         elif signal == "STOP_STREAM" or signal == "STOP_STREAM_METADATA":
             self.log.info("Received signal: " + signal + " for host " + str(socketIds))
 
-            self.__stopSignal(signal, socketIds, self.openRequPerm, None, self.nextRequNode)
+            self.openRequPerm, nonetmp, self.nextRequNode = self.__stopSignal(signal, socketIds, self.openRequPerm, None, self.nextRequNode)
 
             return
 
@@ -431,7 +433,7 @@ class SignalHandler():
         elif signal == "STOP_QUERY_NEXT" or signal == "STOP_QUERY_METADATA":
             self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
 
-            self.__stopSignal(signal, socketIds, self.allowedQueries, self.openRequVari, None)
+            self.allowedQueries, self.openRequVari, nonetmp = self.__stopSignal(signal, socketIds, self.allowedQueries, self.openRequVari, None)
 
             return
 
