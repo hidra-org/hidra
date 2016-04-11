@@ -247,7 +247,7 @@ class DataDispatcher():
                     self.log.error("DataDispatcher-" + str(self.id) + ": waiting for control signal...failed", exc_info=True)
                     continue
 
-                # remove subribtion topic
+                # remove subsription topic
                 del message[0]
 
                 if message[0] == b"EXIT":

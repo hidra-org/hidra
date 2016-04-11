@@ -435,13 +435,15 @@ class DataManager():
 
 
     def run (self):
-        self.signalHandlerPr = Process ( target = SignalHandler, args = (self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue) )
+#        self.signalHandlerPr = Process ( target = SignalHandler, args = (self.controlPort, self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue, self.context) )
+        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.controlPort, self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue, self.context) )
         self.signalHandlerPr.start()
 
         # needed, because otherwise the requests for the first files are not forwarded properly
         time.sleep(0.5)
 
-        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue, self.context) )
+        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
+#        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue, self.context) )
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):
@@ -456,7 +458,7 @@ class DataManager():
 
         if helpers.globalObjects.controlSocket:
             self.log.info("Sending 'Exit' signal")
-            helpers.globalObjects.controlSocket.send_multipart(["control", "Exit"])
+            helpers.globalObjects.controlSocket.send_multipart(["control", "EXIT"])
 
         if helpers.globalObjects.controlFlag:
             helpers.globalObjects.controlFlag = False

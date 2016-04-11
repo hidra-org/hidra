@@ -60,6 +60,7 @@ class TaskProvider():
         self.requestFwPort      = requestFwPort
         self.routerPort         = routerPort
 
+        self.controlSocket      = None
         self.requestFwSocket    = None
         self.routerSocket       = None
 
@@ -108,6 +109,17 @@ class TaskProvider():
 
     def createSockets (self):
 
+        # socket to get control signals from
+        self.controlSocket = self.context.socket(zmq.SUB)
+        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.controlPort )
+        try:
+            self.controlSocket.connect(connectionStr)
+            self.log.info("Start controlSocket (connect): '" + str(connectionStr) + "'")
+        except:
+            self.log.error("Failed to start controlSocket (connect): '" + connectionStr + "'", exc_info=True)
+
+        self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
+
         # socket to get requests
         self.requestFwSocket = self.context.socket(zmq.REQ)
         connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.requestFwPort )
@@ -126,10 +138,13 @@ class TaskProvider():
         except:
             self.log.error("Failed to start router Socket (bind): '" + connectionStr + "'", exc_info=True)
 
+        self.poller = zmq.Poller()
+        self.poller.register(self.controlSocket, zmq.POLLIN)
 
     def run (self):
+        i = 0
 
-        while helpers.globalObjects.controlFlag:
+        while True:
             try:
                 # the event for a file /tmp/test/source/local/file1.tif is of the form:
                 # {
@@ -145,14 +160,13 @@ class TaskProvider():
                 #skip all further instructions and continue with next iteration
                 continue
 
-
-
             #TODO validate workload dict
             for workload in workloadList:
                 # get requests for this event
                 try:
                     self.log.debug("Get requests...")
                     self.requestFwSocket.send("")
+
                     recvMessage = self.requestFwSocket.recv_multipart()
                     signal   = recvMessage[0]
                     requests = cPickle.loads(recvMessage[1])
@@ -160,24 +174,24 @@ class TaskProvider():
                 except:
                     self.log.error("Get Requests... failed.", exc_info=True)
 
-                if signal == b"CLOSE_SOCKETS":
-                    self.log.error("Received " + signal + " signal")
-                    try:
-                        self.log.error("Sending " + signal + " signal")
-                        helpers.globalObjects.controlSocket.send_multipart(["signal"] + recvMessage)
-                    except:
-                        self.log.error("Sending " + signal + " signal... failed.", exc_info=True)
+#                if signal == b"CLOSE_SOCKETS":
+#                    self.log.error("Received " + signal + " signal")
+#                    try:
+#                        self.log.error("Sending " + signal + " signal")
+#                        helpers.globalObjects.controlSocket.send_multipart(["signal"] + recvMessage)
+#                    except:
+#                        self.log.error("Sending " + signal + " signal... failed.", exc_info=True)
 
                     # get requests for this event (again)
-                    try:
-                        self.log.debug("Get requests...")
-                        self.requestFwSocket.send("")
-                        recvMessage = self.requestFwSocket.recv_multipart()
-                        signal   = recvMessage[0]
-                        requests = cPickle.loads(recvMessage[1])
-                        self.log.debug("Requests: " + str(requests))
-                    except:
-                        self.log.error("Get Requests... failed.", exc_info=True)
+#                    try:
+#                        self.log.debug("Get requests...")
+#                        self.requestFwSocket.send("")
+#                        recvMessage = self.requestFwSocket.recv_multipart()
+#                        signal   = recvMessage[0]
+#                        requests = cPickle.loads(recvMessage[1])
+#                        self.log.debug("Requests: " + str(requests))
+#                    except:
+#                        self.log.error("Get Requests... failed.", exc_info=True)
 
                 # build message dict
                 try:
@@ -199,8 +213,35 @@ class TaskProvider():
                     self.log.error("Sending message...failed.", exc_info=True)
 
 
+            socks = dict(self.poller.poll(0))
+
+            if self.controlSocket in socks and socks[self.controlSocket] == zmq.POLLIN:
+
+                try:
+                    message = self.controlSocket.recv_multipart()
+                    self.log.debug("Control signal received: message = " + str(message))
+                except:
+                    self.log.error("Waiting for control signal...failed", exc_info=True)
+                    continue
+
+                # remove subsription topic
+                del message[0]
+
+                if message[0] == b"EXIT":
+                    self.log.debug("Requested to shutdown.")
+                    break
+                else:
+                    self.log.error("Unhandled control signal received: " + str(message))
+
+
+
     def stop (self):
         self.log.debug("Closing sockets")
+        if self.controlSocket:
+            self.log.info("Closing controlSocket")
+            self.controlSocket.close(0)
+            self.controlSocket = None
+
         if self.routerSocket:
             self.log.info("Closing routerSocket")
             self.routerSocket.close(0)

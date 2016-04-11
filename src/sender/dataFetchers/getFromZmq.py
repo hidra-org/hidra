@@ -110,7 +110,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         metadataExtended["chunkNumber"] = chunkNumber
 
         payload = []
-        payload.append(metadataExtended)
+        payload.append(cPickle.dumps(metadataExtended))
         payload.append(data)
     except:
         log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
