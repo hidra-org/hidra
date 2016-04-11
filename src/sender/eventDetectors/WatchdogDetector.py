@@ -12,6 +12,7 @@ import copy
 from multiprocessing.dummy import Pool as ThreadPool
 import threading
 import sys
+import bisect
 
 try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
@@ -123,7 +124,8 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
             self.log.debug("On close event detected (from create)")
             if ( not event.is_directory ):
                 self.log.debug("Append event to eventListToObserve: " + event.src_path)
-                eventListToObserve.append(event.src_path)
+#                eventListToObserve.append(event.src_path)
+                bisect.insort_left(eventListToObserve, event.src_path)
 
 
     def on_modified (self, event):
@@ -135,7 +137,8 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
         if self.detect_close:
             if ( not event.is_directory ) and ( event.src_path not in eventListToObserve ):
                 self.log.debug("On close event detected (from modify)")
-                eventListToObserve.append(event.src_path)
+#                eventListToObserve.append(event.src_path)
+                bisect.insort_left(eventListToObserve, event.src_path)
 
 
     def on_deleted (self, event):
