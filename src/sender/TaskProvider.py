@@ -167,31 +167,10 @@ class TaskProvider():
                     self.log.debug("Get requests...")
                     self.requestFwSocket.send("")
 
-                    recvMessage = self.requestFwSocket.recv_multipart()
-                    signal   = recvMessage[0]
-                    requests = cPickle.loads(recvMessage[1])
+                    requests = cPickle.loads(self.requestFwSocket.recv())
                     self.log.debug("Requests: " + str(requests))
                 except:
                     self.log.error("Get Requests... failed.", exc_info=True)
-
-#                if signal == b"CLOSE_SOCKETS":
-#                    self.log.error("Received " + signal + " signal")
-#                    try:
-#                        self.log.error("Sending " + signal + " signal")
-#                        helpers.globalObjects.controlSocket.send_multipart(["signal"] + recvMessage)
-#                    except:
-#                        self.log.error("Sending " + signal + " signal... failed.", exc_info=True)
-
-                    # get requests for this event (again)
-#                    try:
-#                        self.log.debug("Get requests...")
-#                        self.requestFwSocket.send("")
-#                        recvMessage = self.requestFwSocket.recv_multipart()
-#                        signal   = recvMessage[0]
-#                        requests = cPickle.loads(recvMessage[1])
-#                        self.log.debug("Requests: " + str(requests))
-#                    except:
-#                        self.log.error("Get Requests... failed.", exc_info=True)
 
                 # build message dict
                 try:

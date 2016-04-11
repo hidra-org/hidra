@@ -192,21 +192,18 @@ class SignalHandler():
                             openRequests.append(tmp)
 
                     if openRequests:
-                        self.requestFwSocket.send_multipart(["", cPickle.dumps(openRequests)])
-                        self.log.debug("Answered to request: " + str([self.forwardSignal, openRequests]))
+                        self.requestFwSocket.send(cPickle.dumps(openRequests))
+                        self.log.debug("Answered to request: " + str(openRequests))
                     else:
                         openRequests = ["None"]
-                        self.requestFwSocket.send_multipart(["", cPickle.dumps(openRequests)])
-                        self.log.debug("Answered to request: " + str([self.forwardSignal, openRequests]))
+                        self.requestFwSocket.send(cPickle.dumps(openRequests))
+                        self.log.debug("Answered to request: " + str(openRequests))
 
                 except:
                     self.log.error("Failed to receive/answer new signal requests.", exc_info=True)
 #                continue
 
             if self.comSocket in socks and socks[self.comSocket] == zmq.POLLIN:
-                self.log.debug("")
-                self.log.debug("comSocket")
-                self.log.debug("")
 
                 incomingMessage = self.comSocket.recv_multipart()
                 self.log.debug("Received signal: " + str(incomingMessage) )
@@ -218,9 +215,6 @@ class SignalHandler():
                 continue
 
             if self.requestSocket in socks and socks[self.requestSocket] == zmq.POLLIN:
-                self.log.debug("")
-                self.log.debug("!!!! requestSocket !!!!")
-                self.log.debug("")
 
                 incomingMessage = self.requestSocket.recv_multipart()
                 self.log.debug("Received request: " + str(incomingMessage) )
