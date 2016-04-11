@@ -224,15 +224,13 @@ class dataTransfer():
 
     def start (self, dataSocket = False, requestHost = None):
 
-#        if not self.connectionType:
-#            raise Exception("No connection specified. Please initiate a connection first.")
-
-
         alreadyConnected = self.streamStarted or self.queryNextStarted
 
-
+        #TODO Do I need to raise an exception here?
         if alreadyConnected:
-            raise Exception("Connection already started.")
+#            raise Exception("Connection already started.")
+            self.log.info("Connection already started.")
+            return
 
         ip   = "0.0.0.0"           #TODO use IP of hostname?
 
@@ -245,7 +243,6 @@ class dataTransfer():
                 host = dataSocket[0]
                 port = dataSocket[1]
             else:
-                self.log.debug("dataSocket=" + str(dataSocket))
                 port = str(dataSocket)
 
                 host = socket.gethostname()
@@ -292,8 +289,6 @@ class dataTransfer():
             self.streamStarted    = socketId
 
 
-
-
     ##
     #
     # Receives or queries for new files depending on the connection initialized
@@ -337,7 +332,12 @@ class dataTransfer():
     def __getMultipartMessage (self):
 
         #save all chunks to file
-        multipartMessage = self.dataSocket.recv_multipart()
+        try:
+            multipartMessage = self.dataSocket.recv_multipart()
+        except:
+            self.log.error("Receiving files..failed.")
+            return [None, None]
+
 
         if len(multipartMessage) < 2:
             self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
@@ -453,6 +453,9 @@ class dataTransfer():
         generates full path where target file will saved to.
 
         """
+        if not configDict:
+            return None
+
         filename     = configDict["filename"]
         #TODO This is due to Windows path names, check if there has do be done anything additionally to work
         # e.g. check sourcePath if it's a windows path
@@ -501,8 +504,6 @@ class dataTransfer():
                 signal = "STOP_QUERY_NEXT"
 
 
-            self.log.debug("signal=" + str(signal))
-
             message = self.__sendSignal(signal)
             #TODO need to check correctness of signal?
 
@@ -515,6 +516,10 @@ class dataTransfer():
                 self.log.info("closing dataSocket...")
                 self.dataSocket.close(linger=0)
                 self.dataSocket = None
+            if self.requestSocket:
+                self.log.info("closing requestSocket...")
+                self.requestSocket.close(linger=0)
+                self.requestSocket = None
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
