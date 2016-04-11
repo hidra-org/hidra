@@ -91,17 +91,15 @@ class DataDispatcher():
 
         self.log.info("Loading dataFetcher: " + dataFetcher)
         self.dataFetcher = __import__(dataFetcher)
-        self.dataFetcher.setup(self.log, dataFetcherProp)
+        if self.dataFetcher.setup(self.log, dataFetcherProp):
 
-#        Process.__init__(self)
-
-        try:
-            self.run()
-        except KeyboardInterrupt:
-            pass
-        except:
-            self.log.error("Stopping DataDispatcher-" + str(self.id) + " due to unknown error condition.", exc_info=True)
-            self.stop()
+            try:
+                self.run()
+            except KeyboardInterrupt:
+                pass
+            except:
+                self.log.error("Stopping DataDispatcher-" + str(self.id) + " due to unknown error condition.", exc_info=True)
+                self.stop()
 
 
     def __createSockets (self):
@@ -116,6 +114,7 @@ class DataDispatcher():
             self.log.error("Failed to start controlSocket (connect): '" + connectionStr + "'", exc_info=True)
 
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
+        self.controlSocket.setsockopt(zmq.SUBSCRIBE, "signal")
 
         # socket to get new workloads from
         self.routerSocket = self.context.socket(zmq.PULL)
@@ -178,7 +177,6 @@ class DataDispatcher():
                     #TODO is this needed?
                     workload = cPickle.loads(message[0])
 
-                    # TODO move this in if len(message) >=2 statement?
                     if workload == b"CLOSE_FILE":
                         self.log.debug("Router requested to send signal that file was closed.")
                         payload = [ workload, self.id ]
@@ -236,7 +234,7 @@ class DataDispatcher():
                     self.log.error("DataDispatcher-"+str(self.id) + ": Passing new file to data stream...failed.", exc_info=True)
 
                 # finish data handling
-                self.dataFetcher.finishDataHandling(self.log, sourceFile, targetFile, self.dataFetcherProp)
+                self.dataFetcher.finishDataHandling(self.log, targets, sourceFile, targetFile, metadata, self.openConnections, self.context, self.dataFetcherProp)
 
 
             if self.controlSocket in socks and socks[self.controlSocket] == zmq.POLLIN:
@@ -249,7 +247,7 @@ class DataDispatcher():
                     self.log.error("DataDispatcher-" + str(self.id) + ": waiting for control signal...failed", exc_info=True)
                     continue
 
-                # remove subribtion topic
+                # remove subsription topic
                 del message[0]
 
                 if message[0] == b"EXIT":

@@ -13,17 +13,26 @@ from send_helpers import __sendToTargets
 
 def setup (log, prop):
 
-    #TODO
-    # check if prop has correct format
+    if ( not prop.has_key("context") or
+        not prop.has_key("extIp") or
+        not prop.has_key("port") ):
 
-    # Create zmq socket
-    socket        = prop["context"].socket(zmq.PULL)
-    connectionStr = "tcp://{ip}:{port}".format( ip=prop["extIp"], port=prop["port"] )
-    socket.bind(connectionStr)
-    log.info("Start socket (bind): '" + str(connectionStr) + "'")
+        log.error ("Configuration of wrong format")
+        log.debug ("dataFetcherProp="+ str(prop))
+        return False
 
-    # register socket
-    prop["socket"] = socket
+    else:
+
+        # Create zmq socket
+        socket        = prop["context"].socket(zmq.PULL)
+        connectionStr = "tcp://{ip}:{port}".format( ip=prop["extIp"], port=prop["port"] )
+        socket.bind(connectionStr)
+        log.info("Start socket (bind): '" + str(connectionStr) + "'")
+
+        # register socket
+        prop["socket"] = socket
+
+        return True
 
 
 def getMetadata (log, metadata, chunkSize, localTarget = None):
@@ -99,10 +108,9 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         #assemble metadata for zmq-message
         metadataExtended = metadata.copy()
         metadataExtended["chunkNumber"] = chunkNumber
-        metadataExtended = cPickle.dumps(metadata)
 
         payload = []
-        payload.append(metadataExtended)
+        payload.append(cPickle.dumps(metadataExtended))
         payload.append(data)
     except:
         log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
@@ -115,7 +123,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
 
 
-def finishDataHandling (log, sourceFile, targetFile, prop):
+def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
     pass
 
 

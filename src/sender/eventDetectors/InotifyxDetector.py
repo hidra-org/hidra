@@ -6,6 +6,7 @@ import logging
 from inotifyx import binding
 from inotifyx.distinfo import version as __version__
 import sys
+import collections
 
 
 try:
@@ -101,7 +102,9 @@ class EventDetector():
         if ( not config.has_key("monDir") or
                 not config.has_key("monEventType") or
                 not config.has_key("monSubdirs") or
-                not config.has_key("monSuffixes") ):
+                not config.has_key("monSuffixes") or
+                not config.has_key("timeout") or
+                not config.has_key("historySize") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
@@ -117,7 +120,9 @@ class EventDetector():
             self.monSuffixes  = tuple(config["monSuffixes"])
             self.monSubdirs   = config["monSubdirs"]
 
-            self.timeout      = 0.5
+            self.timeout      = config["timeout"]
+
+            self.history      = collections.deque(maxlen=config["historySize"])
 
             self.add_watch()
 
@@ -260,7 +265,7 @@ class EventDetector():
                 continue
 
             # only files of the configured event type are send
-            if not is_dir and is_ofEventType:
+            if not is_dir and is_ofEventType and [path, event.name] not in self.history:
 
 #                print path, event.name, parts
 #                print event.name
@@ -275,6 +280,8 @@ class EventDetector():
                 eventMessage = self.getEventMessage(path, event.name)
                 self.log.debug("eventMessage" + str(eventMessage))
                 eventMessageList.append(eventMessage)
+
+                self.history.append([path, event.name])
 
         return eventMessageList
 
@@ -373,10 +380,11 @@ if __name__ == '__main__':
             "monDir"            : BASE_PATH + os.sep + "data" + os.sep + "source",
             "monEventType"      : "IN_CLOSE_WRITE",
             "monSubdirs"        : ["commissioning", "current", "local"],
-            "monSuffixes"       : [".tif", ".cbf"]
+            "monSuffixes"       : [".tif", ".cbf"],
+            "timeout"           : 0.1,
+            "historySize"       : 0
             }
 
-#    eventDetector = InotifyxDetector(config, logQueue)
     eventDetector = EventDetector(config, logQueue)
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"

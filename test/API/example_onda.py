@@ -55,8 +55,10 @@ class worker(multiprocessing.Process):
                 break
 
             self.log.debug("worker-" + str(self.id) + ": metadata " + str(metadata["filename"]))
-            filepath = os.path.join(metadata["relativePath"], metadata["filename"])
-            filepath = os.path.join(basePath, filepath)
+#            filepath = os.path.join(metadata["relativePath"], metadata["filename"])
+#            filepath = os.path.join(basePath, filepath)
+            filepath = self.query.generateTargetFilepath(basePath, metadata)
+            self.log.debug("worker-" + str(self.id) + ": filepath " + filepath)
 
             with open(filepath, "r") as fileDescriptor:
                 content = fileDescriptor.read()

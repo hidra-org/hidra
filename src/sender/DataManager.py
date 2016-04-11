@@ -90,11 +90,14 @@ def argumentParsing():
     # EventDetector config
 
     eventDetectorType  = config.get('asection', 'eventDetectorType')
+    # for InotifyxDetector and WatchdogDetector and getFromFile:
+    fixSubdirs   = json.loads(config.get('asection', 'fixSubdirs'))
     # for InotifyxDetector and WatchdogDetector:
     monitoredDir       = config.get('asection', 'monitoredDir')
     monitoredEventType = config.get('asection', 'monitoredEventType')
-    monitoredSubdirs   = json.loads(config.get('asection', 'monitoredSubdirs'))
     monitoredFormats   = json.loads(config.get('asection', 'monitoredFormats'))
+    # for InotifyxDetector:
+    historySize        = int(config.get('asection', 'historySize'))
     # for WatchdogDetector:
     timeTillClosed     = int(config.get('asection', 'timeTillClosed'))
     # for ZmqDetector:
@@ -107,6 +110,12 @@ def argumentParsing():
     parser.add_argument("--eventDetectorType" , type    = str,
                                                 help    = "Type of event detector to use (default=" + str(eventDetectorType) + ")",
                                                 default = eventDetectorType )
+    parser.add_argument("--fixSubdirs"        , type    = str,
+                                                help    = "Subdirectories to be monitored and to store data to \
+                                                           (only needed if eventDetector is InotifyxDetector or WatchdogDetector \
+                                                           and dataFetcher is getFromFile; default=" + str(fixSubdirs) + ")",
+                                                default = fixSubdirs )
+
     parser.add_argument("--monitoredDir"      , type    = str,
                                                 help    = "Directory to be monitor for changes; inside this directory only the specified \
                                                            subdirectories are monitred (only needed if eventDetector is InotifyxDetector \
@@ -116,15 +125,17 @@ def argumentParsing():
                                                 help    = "Event type of files to be monitored (only needed if eventDetector is InotifyxDetector \
                                                            or WatchdogDetector; default=" + str(monitoredEventType) + ")",
                                                 default = monitoredEventType )
-    parser.add_argument("--monitoredSubdirs"  , type    = str,
-                                                help    = "Subdirectories of 'monitoredDirs' to be monitored (only needed if eventDetector is \
-                                                           InotifyxDetector or WatchdogDetector; default=" + str(monitoredSubdirs) + ")",
-                                                default = monitoredSubdirs )
     parser.add_argument("--monitoredFormats"  , type    = str,
                                                 help    = "The formats to be monitored, files in an other format will be be neglected \
                                                            (only needed if eventDetector is InotifyxDetector or WatchdogDetector; \
                                                            default=" + str(monitoredFormats) + ")",
                                                 default = monitoredFormats )
+
+    parser.add_argument("--historySize"       , type    = int,
+                                                help    = "Number of events stored to look for doubles \
+                                                           (needed if eventDetector is InotifyxDetector; default=" + str(historySize) + ")",
+                                                default = historySize)
+
     parser.add_argument("--timeTillClosed"    , type    = str,
                                                 help    = "Time (in seconds) since last modification after which a file will be seen as closed \
                                                            (only needed if eventDetectorType is WatchdogDetector; default=" + str(timeTillClosed) + ")",
@@ -167,6 +178,10 @@ def argumentParsing():
 
     localTarget        = config.get('asection', 'localTarget')
 
+    storeData          = config.getboolean('asection', 'storeData')
+    removeData         = config.getboolean('asection', 'removeData')
+
+
     parser.add_argument("--dataFetcherType"   , type    = str,
                                                 help    = "Module with methods specifying how to get the data (default=" + str(dataFetcherType) + ")",
                                                 default = dataFetcherType )
@@ -203,6 +218,15 @@ def argumentParsing():
                                                 help    = "Target to move the files into (default=" + str(localTarget) + ")",
                                                 default = localTarget )
 
+    parser.add_argument("--storeData"         , type    = bool,
+                                                help    = "Flag describing if the data should be stored in localTarget \
+                                                           (needed if dataFetcherType is getFromFile or getFromHttp; default=" + str(storeData) + ")",
+                                                default = storeData )
+    parser.add_argument("--removeData"         , type    = bool,
+                                                help    = "Flag describing if the files should be removed from the source \
+                                                           (needed if dataFetcherType is getFromHttp; default=" + str(removeData) + ")",
+                                                default = removeData )
+
     arguments         = parser.parse_args()
 
     # Check given arguments
@@ -215,8 +239,8 @@ def argumentParsing():
     eventDetectorType = arguments.eventDetectorType.lower()
     supportedEDTypes  = ["inotifyxdetector", "watchdogdetector", "zmqdetector", "httpdetector"]
     supportedDFTypes  = ["getfromfile", "getfromzmq", "getFromHttp"]
+    fixSubdirs        = arguments.fixSubdirs
     monitoredDir      = str(arguments.monitoredDir)
-    monitoredSubdirs  = arguments.monitoredSubdirs
     localTarget       = str(arguments.localTarget)
 
     useDataStream     = arguments.useDataStream
@@ -234,7 +258,7 @@ def argumentParsing():
     # check if directories exists
     helpers.checkDirExistance(logfilePath)
     helpers.checkDirExistance(monitoredDir)
-    helpers.checkSubDirExistance(monitoredDir, monitoredSubdirs)
+    helpers.checkSubDirExistance(monitoredDir, fixSubdirs)
     if useDataStream:
         helpers.checkDirExistance(localTarget)
 
@@ -311,15 +335,17 @@ class DataManager():
                     "eventDetectorType" : arguments.eventDetectorType,
                     "monDir"            : arguments.monitoredDir,
                     "monEventType"      : arguments.monitoredEventType,
-                    "monSubdirs"        : arguments.monitoredSubdirs,
-                    "monSuffixes"       : arguments.monitoredFormats
+                    "monSubdirs"        : arguments.fixSubdirs,
+                    "monSuffixes"       : arguments.monitoredFormats,
+                    "timeout"           : 0.1,
+                    "historySize"       : arguments.historySize
                     }
         elif arguments.eventDetectorType == "WatchdogDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "monDir"            : arguments.monitoredDir,
                     "monEventType"      : arguments.monitoredEventType,
-                    "monSubdirs"        : arguments.monitoredSubdirs,
+                    "monSubdirs"        : arguments.fixSubdirs,
                     "monSuffixes"       : arguments.monitoredFormats,
                     "timeTillClosed"    : arguments.timeTillClosed
                     }
@@ -335,7 +361,8 @@ class DataManager():
                     "eventDetectorType" : arguments.eventDetectorType,
                     "prefix"            : arguments.prefix,
                     "detectorDevice"    : arguments.detectorDevice,
-                    "filewriterDevice"  : arguments.filewriterDevice
+                    "filewriterDevice"  : arguments.filewriterDevice,
+                    "historySize"       : arguments.historySize
                     }
 
 
@@ -344,6 +371,8 @@ class DataManager():
         if arguments.dataFetcherType == "getFromFile":
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
+                    "fixSubdirs"  : arguments.fixSubdirs,
+                    "storeData"   : arguments.storeData,
                     "removeFlag"  : False
                     }
         elif arguments.dataFetcherType == "getFromZmq":
@@ -356,10 +385,9 @@ class DataManager():
         elif arguments.dataFetcherType == "getFromHttp":
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
-                    "localTarget" : self.localTarget,
                     "session"     : None,
-                    "storeFlag"   : True,  #TODO add to config
-                    "removeFlag"  : False  #TODO add to config
+                    "storeData"   : arguments.storeData,
+                    "removeData"  : arguments.removeData
                     }
 
 
@@ -372,10 +400,10 @@ class DataManager():
         #create zmq context
         # there should be only one context in one process
 #        self.context = zmq.Context.instance()
-#        self.context = zmq.Context()
+        self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
 
-#        self.createSockets()
+        self.createSockets()
 
         self.run()
 
@@ -407,15 +435,15 @@ class DataManager():
 
 
     def run (self):
-        self.signalHandlerPr = Process ( target = SignalHandler, args = (self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue) )
+#        self.signalHandlerPr = Process ( target = SignalHandler, args = (self.controlPort, self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue, self.context) )
+        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.controlPort, self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue, self.context) )
         self.signalHandlerPr.start()
 
         # needed, because otherwise the requests for the first files are not forwarded properly
         time.sleep(0.5)
 
-        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
+        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
 #        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue, self.context) )
-#        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):
@@ -428,26 +456,25 @@ class DataManager():
 
     def stop (self):
 
-#        if helpers.globalObjects.controlSocket:
-#            self.log.info("Sending 'Exit' signal")
-#            helpers.globalObjects.controlSocket.send_multipart(["Exit"])
+        if helpers.globalObjects.controlSocket:
+            self.log.info("Sending 'Exit' signal")
+            helpers.globalObjects.controlSocket.send_multipart(["control", "EXIT"])
 
         if helpers.globalObjects.controlFlag:
             helpers.globalObjects.controlFlag = False
 
         # waiting till the other processes are finished
-        time.sleep(1)
+        time.sleep(0.5)
 
-#        if helpers.globalObjects.controlSocket:
-#            self.log.info("Closing controlSocket")
-#            helpers.globalObjects.controlSocket.close(0)
-#            helpers.globalObjects.controlSocket = None
+        if helpers.globalObjects.controlSocket:
+            self.log.info("Closing controlSocket")
+            helpers.globalObjects.controlSocket.close(0)
+            helpers.globalObjects.controlSocket = None
 
-#        if self.context:
-#            self.log.debug("Destroying context")
-#            self.context.destroy(0)
-#            self.context = None
-#            self.log.debug("Destroying context..done")
+        if self.context:
+            self.log.debug("Destroying context")
+            self.context.destroy(0)
+            self.context = None
 
         if not self.extLogQueue and self.logQueueListener:
             self.log.debug("Stopping logQueue")

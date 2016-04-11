@@ -23,7 +23,8 @@ class EventDetector():
         checkPassed = True
         if ( not config.has_key("prefix") or
                 not config.has_key("detectorDevice") or
-                not config.has_key("filewriterDevice") ):
+                not config.has_key("filewriterDevice") or
+                not config.has_key("historySize") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
@@ -58,16 +59,22 @@ class EventDetector():
 
             try:
                 self.EigerIP          = self.eigerdevice.get_property('Host').get('Host')[0]
-
-#               self.images_per_file  = self.filewriterdevice.read_attribute("ImagesPerFile").value
-#                self.NbTriggers       = self.eigerdevice.read_attribute("NbTriggers").value
-#                self.NbImages         = self.eigerdevice.read_attribute("NbImages").value
-#                self.TriggerMode      = self.eigerdevice.read_attribute("TriggerMode").value
-#                self.FrameTime        = self.eigerdevice.read_attribute("FrameTime").value
             except:
                 self.log.error("Getting EigerIP...failed.", exc_info=True)
 
-            self.files_downloaded = []
+            try:
+               self.images_per_file  = self.filewriterdevice.read_attribute("ImagesPerFile").value
+#                self.NbTriggers       = self.eigerdevice.read_attribute("NbTriggers").value
+#                self.NbImages         = self.eigerdevice.read_attribute("NbImages").value
+#                self.TriggerMode      = self.eigerdevice.read_attribute("TriggerMode").value
+                self.FrameTime        = self.eigerdevice.read_attribute("FrameTime").value
+            except:
+                self.log.error("Getting attributes...failed.", exc_info=True)
+                self.images_per_file = 1
+                self.FrameTime       = 0.5
+
+
+            self.files_downloaded = collections.deque(maxlen=config["historySize"])
 
 
 
@@ -92,10 +99,9 @@ class EventDetector():
 
         eventMessageList = []
 
-	files_stored = []
+        files_stored = []
 
         try:
-#            self.log.debug("Getting 'FilesInBuffer'")
             # returns a tuble of the form:
             # ('testp06/37_data_000001.h5', 'testp06/37_master.h5', 'testp06/36_data_000007.h5', 'testp06/36_data_000006.h5', 'testp06/36_data_000005.h5', 'testp06/36_data_000004.h5', 'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5', 'testp06/36_data_000001.h5', 'testp06/36_master.h5')
             files_stored = self.eigerdevice.read_attribute("FilesInBuffer").value
@@ -106,13 +112,9 @@ class EventDetector():
             return eventMessageList
 
         if not files_stored or set(files_stored).issubset(self.files_downloaded):
-#            self.log.debug("Sleeping")
-            time.sleep(0.5)
-#        else:
-#            self.log.debug("files_stored: " + str(list(files_stored)))
-#            self.log.debug("files_downloaded: " + str(self.files_downloaded))
+            time.sleep(self.images_per_file * self.FrameTime)
+
         ## ===== Look for current measurement files
-#        available_files = [file for file in files_stored if self.current_dataset_prefix in file]
         if files_stored:
             available_files = [file for file in files_stored if file.startswith(self.current_dataset_prefix)]
         else:
@@ -196,7 +198,8 @@ if __name__ == '__main__':
             "eventDetectorType" : "httpget",
             "prefix"            : "",
             "detectorDevice"    : detectorDevice,
-            "filewriterDevice"  : filewriterDevice
+            "filewriterDevice"  : filewriterDevice,
+            "historySize"       : 1000
             }
 
 
