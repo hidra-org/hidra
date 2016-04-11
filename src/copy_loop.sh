@@ -14,7 +14,7 @@ usage() { echo "Usage: $0 [-f <cbf|tif>] [-s <sourcepath>] [-t <targetpath>] [-n
 while getopts ':f:s:t:n:' OPTION ; do
     case "${OPTION}" in
         f) FORMAT=${OPTARG}
-            if [ "${FORMAT}" != "cbf" ] && [ "${FORMAT}" != "tif" ]; then usage; fi
+            if [ "${FORMAT}" != "cbf" ] && [ "${FORMAT}" != "tif" ]; then echo "${FORMAT} not supported"; exit 1; fi
 #           ((${FORMAT} == "cbf" || ${FORMAT} == "tif")) || usage
             ;;
         s) SOURCE=${OPTARG}
