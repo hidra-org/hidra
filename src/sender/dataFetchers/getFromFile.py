@@ -15,7 +15,7 @@ from send_helpers import __sendToTargets
 def setup (log, prop):
 
     if ( not prop.has_key("fixSubdirs") or
-        not prop.has_key("storeFlag") or
+        not prop.has_key("storeData") or
         not prop.has_key("removeFlag") ):
 
         log.error ("Configuration of wrong format")
@@ -153,7 +153,7 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
 
     targets_metadata = [i for i in targets if i[2] == "metadata"]
 
-    if prop["storeFlag"]:
+    if prop["storeData"]:
 
         # move file
         try:
