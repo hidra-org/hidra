@@ -178,8 +178,8 @@ def argumentParsing():
 
     localTarget        = config.get('asection', 'localTarget')
 
-    storeFlag          = config.getboolean('asection', 'storeFlag')
-    removeFlag         = config.getboolean('asection', 'removeFlag')
+    storeData          = config.getboolean('asection', 'storeData')
+    removeData         = config.getboolean('asection', 'removeData')
 
 
     parser.add_argument("--dataFetcherType"   , type    = str,
@@ -218,14 +218,14 @@ def argumentParsing():
                                                 help    = "Target to move the files into (default=" + str(localTarget) + ")",
                                                 default = localTarget )
 
-    parser.add_argument("--storeFlag"         , type    = bool,
+    parser.add_argument("--storeData"         , type    = bool,
                                                 help    = "Flag describing if the data should be stored in localTarget \
-                                                           (needed if dataFetcherType is getFromFile or getFromHttp; default=" + str(storeFlag) + ")",
-                                                default = storeFlag )
-    parser.add_argument("--removeFlag"         , type    = bool,
+                                                           (needed if dataFetcherType is getFromFile or getFromHttp; default=" + str(storeData) + ")",
+                                                default = storeData )
+    parser.add_argument("--removeData"         , type    = bool,
                                                 help    = "Flag describing if the files should be removed from the source \
-                                                           (needed if dataFetcherType is getFromHttp; default=" + str(removeFlag) + ")",
-                                                default = removeFlag )
+                                                           (needed if dataFetcherType is getFromHttp; default=" + str(removeData) + ")",
+                                                default = removeData )
 
     arguments         = parser.parse_args()
 
@@ -372,7 +372,7 @@ class DataManager():
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
                     "fixSubdirs"  : arguments.fixSubdirs,
-                    "storeFlag"   : arguments.storeFlag,
+                    "storeData"   : arguments.storeData,
                     "removeFlag"  : False
                     }
         elif arguments.dataFetcherType == "getFromZmq":
@@ -386,8 +386,8 @@ class DataManager():
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
                     "session"     : None,
-                    "storeFlag"   : arguments.storeFlag,
-                    "removeFlag"  : arguments.removeFlag
+                    "storeData"   : arguments.storeData,
+                    "removeData"  : arguments.removeData
                     }
 
 

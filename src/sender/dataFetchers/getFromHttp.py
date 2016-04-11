@@ -18,8 +18,8 @@ from send_helpers import __sendToTargets
 def setup (log, prop):
 
     if ( not prop.has_key("session") or
-        not prop.has_key("storeFlag") or
-        not prop.has_key("removeFlag") ):
+        not prop.has_key("storeData") or
+        not prop.has_key("removeData") ):
 
         log.error ("Configuration of wrong format")
         log.debug ("dataFetcherProp="+ str(prop))
@@ -96,7 +96,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
     except:
         log.error("Unable to get chunkSize", exc_info=True)
 
-    if prop["storeFlag"]:
+    if prop["storeData"]:
         try:
             log.debug("Opening '" + str(targetFile) + "'...")
             fileDescriptor = open(str(targetFile), "wb")
@@ -109,11 +109,11 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
                 if metadata["relativePath"] in prop["fixSubdirs"]:
                     log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
                               ": Directory " + metadata["relativePath"] + " is not available", exc_info=True)
-                    prop["removeFlag"] = False
+                    prop["removeData"] = False
                 elif subdir in prop["fixSubdirs"] :
                     log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
                               ": Directory " + subdir + " is not available", exc_info=True)
-                    prop["removeFlag"] = False
+                    prop["removeData"] = False
                 else:
                     try:
                         targetPath, filename = os.path.split(targetFile)
@@ -126,11 +126,11 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
                         raise
             else:
                 log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
-                prop["removeFlag"] = False
+                prop["removeData"] = False
         except:
             log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
             log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
-            prop["removeFlag"] = False
+            prop["removeData"] = False
 
     targets_data     = [i for i in targets if i[2] == "data"]
     targets_metadata = [i for i in targets if i[2] == "metadata"]
@@ -152,7 +152,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
         except:
             log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
 
-        if prop["storeFlag"]:
+        if prop["storeData"]:
             fileDescriptor.write(data)
 
         #send message to data targets
@@ -165,7 +165,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
         chunkNumber += 1
 
-    if prop["storeFlag"]:
+    if prop["storeData"]:
         try:
             log.debug("Closing '" + str(targetFile) + "'...")
             fileDescriptor.close()
@@ -185,7 +185,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
 def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
 
-    if prop["removeFlag"]:
+    if prop["removeData"]:
         #TODO delete file from detector after sending
         responce = requests.delete(sourceFile)
 
@@ -274,8 +274,8 @@ if __name__ == '__main__':
     dataFetcherProp = {
             "type"       : "getFromHttp",
             "session"    : None,
-            "storeFlag"  : True,
-            "removeFlag" : False
+            "storeData"  : True,
+            "removeData" : False
             }
 
     setup(logging, dataFetcherProp)
