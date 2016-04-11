@@ -222,7 +222,7 @@ class dataTransfer():
         return message
 
 
-    def start (self, dataSocket = False, requestHost = None):
+    def start (self, dataSocket = False):
 
         alreadyConnected = self.streamStarted or self.queryNextStarted
 
@@ -239,8 +239,8 @@ class dataTransfer():
         if dataSocket:
             if type(dataSocket) == list:
                 socketIdToConnect = dataSocket[0] + ":" + dataSocket[1]
-                ip = dataSocket[0]
                 host = dataSocket[0]
+                ip   = socket.gethostbyaddr(host)[2][0]
                 port = dataSocket[1]
             else:
                 port = str(dataSocket)
