@@ -36,6 +36,7 @@ class LiveView(QThread):
     zmqQuery      = None
 #    zmqSignalIp      = "haspp11eval01.desy.de"
     zmqSignalIp   = "zitpcx19282.desy.de"
+#    zmqSignalIp   = "zitpcx22614w.desy.de"
     zmqDataPort   = "50022"
     basePath      = BASE_PATH + os.sep + "data" + os.sep + "target"
 
@@ -52,6 +53,8 @@ class LiveView(QThread):
         self.zmqQuery = dataTransfer( "queryNext", self.zmqSignalIp )
         self.zmqQuery.initiate([socket.gethostname(), self.zmqDataPort, "1"])
         self.zmqQuery.start(self.zmqDataPort)
+#        self.zmqQuery.initiate(["zitpcx22164w", self.zmqDataPort, "1"])
+#        self.zmqQuery.start(["zitpcx22614w", self.zmqDataPort])
 
         self.mutex = QMutex()
 
@@ -91,7 +94,7 @@ class LiveView(QThread):
                 self.mutex.lock()
 
                 # get latest file from reveiver
-                [metadata, data] = self.zmqQuery.get()
+                [metadata, data] = self.zmqQuery.get(1)
 
                 receivedFile = self.zmqQuery.generateTargetFilepath(self.basePath, metadata)
                 print "Next file: ", receivedFile
@@ -174,16 +177,16 @@ if __name__ == '__main__':
         print "LiveViewer stop"
         lv.stop()
 
-    time.sleep(1)
+#    time.sleep(1)
+#
+#    try:
+#        print "LiveViewer start"
+#        lv.start()
 
-    try:
-        print "LiveViewer start"
-        lv.start()
-
-        time.sleep(2)
-    finally:
-        print "LiveViewer stop"
-        lv.stop()
+#        time.sleep(2)
+#    finally:
+#        print "LiveViewer stop"
+#        lv.stop()
 
         del LiveView
 

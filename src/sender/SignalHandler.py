@@ -219,17 +219,32 @@ class SignalHandler():
                 incomingMessage = self.requestSocket.recv_multipart()
                 self.log.debug("Received request: " + str(incomingMessage) )
 
-                for index in range(len(self.allowedQueries)):
-                    for i in range(len(self.allowedQueries[index])):
+                if incomingMessage[0] == "NEXT":
 
-                        if ".desy.de:" in incomingMessage[1]:
-                            incomingMessage[1] = incomingMessage[1].replace(".desy.de:", ":")
+                    if ".desy.de:" in incomingMessage[1]:
+                        incomingMessage[1] = incomingMessage[1].replace(".desy.de:", ":")
 
-                        incomingSocketId = incomingMessage[1]
+                    incomingSocketId = incomingMessage[1]
 
-                        if incomingSocketId == self.allowedQueries[index][i][0]:
-                            self.openRequVari[index].append(self.allowedQueries[index][i])
-                            self.log.debug("Add to openRequVari: " + str(self.allowedQueries[index][i]) )
+                    for index in range(len(self.allowedQueries)):
+                        for i in range(len(self.allowedQueries[index])):
+                            if incomingSocketId == self.allowedQueries[index][i][0]:
+                                self.openRequVari[index].append(self.allowedQueries[index][i])
+                                self.log.debug("Add to openRequVari: " + str(self.allowedQueries[index][i]) )
+
+                elif incomingMessage[0] == "CANCEL":
+
+                    if ".desy.de:" in incomingMessage[1]:
+                        incomingMessage[1] = incomingMessage[1].replace(".desy.de:", ":")
+
+                    incomingSocketId = incomingMessage[1]
+
+                    self.openRequVari =  [ [ b for b in  self.openRequVari[a] if incomingSocketId != b[0] ] for a in range(len(self.openRequVari)) ]
+                    self.log.debug("Remove all occurences from " + str(incomingSocketId) + " from variable request list.")
+
+                else:
+                    self.log.debug("Request not supported.")
+
 
             if self.controlSocket in socks and socks[self.controlSocket] == zmq.POLLIN:
 
