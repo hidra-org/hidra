@@ -246,6 +246,8 @@ def argumentParsing():
     useDataStream     = arguments.useDataStream
     numberOfStreams   = arguments.numberOfStreams
 
+    storeData         = arguments.storeData
+
     # check if logfile is writable
     helpers.checkLogFileWritable(logfilePath, logfileName)
 
@@ -258,9 +260,10 @@ def argumentParsing():
     # check if directories exists
     helpers.checkDirExistance(logfilePath)
     helpers.checkDirExistance(monitoredDir)
-    helpers.checkSubDirExistance(monitoredDir, fixSubdirs)
-    if useDataStream:
+    helpers.checkAnySubDirExists(monitoredDir, fixSubdirs)
+    if storeData:
         helpers.checkDirExistance(localTarget)
+        helpers.checkAllSubDirExist(localTarget, fixSubdirs)
 
     return arguments
 

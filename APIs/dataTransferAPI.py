@@ -272,6 +272,7 @@ class dataTransfer():
         except:
             self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'", exc_info=True)
 
+            self.poller.register(self.dataSocket, zmq.POLLIN)
 
         if self.connectionType in ["queryNext", "queryMetadata"]:
 
@@ -294,71 +295,74 @@ class dataTransfer():
     # Receives or queries for new files depending on the connection initialized
     #
     # returns either
-    #   the next file
-    #       (if connection type "stream" was choosen)
     #   the newest file
-    #       (if connection type "queryNext" was choosen)
+    #       (if connection type "queryNext" or "stream" was choosen)
     #   the path of the newest file
-    #       (if connection type "queryMetadata" was choosen)
+    #       (if connection type "queryMetadata" or "streamMetadata" was choosen)
     #
     ##
-    def get (self):
+    def get (self, timeout=None):
 
         if not self.streamStarted and not self.queryNextStarted:
             self.log.info("Could not communicate, no connection was initialized.")
             return None, None
 
-
         if self.queryNextStarted :
 
             sendMessage = ["NEXT", self.queryNextStarted]
-#            self.log.debug("Asking for next file with message " + str(sendMessage))
             try:
                 self.requestSocket.send_multipart(sendMessage)
             except Exception as e:
                 self.log.error("Could not send request to requestSocket", exc_info=True)
                 return None, None
 
+        # receive data
         try:
-            return self.__getMultipartMessage()
-        except KeyboardInterrupt:
-            self.log.debug("Keyboard interrupt detected. Stopping to receive.")
+            socks = dict(self.poller.poll(timeout))
+        except:
+            self.log.error("Could not poll for new message", exc_info=True)
             raise
-        except:
-            self.log.error("Unknown error while receiving files. Need to abort.", exc_info=True)
-            return None, None
 
+        # if there was a response
+        if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
 
-    def __getMultipartMessage (self):
+            try:
+                multipartMessage = self.dataSocket.recv_multipart()
+            except:
+                self.log.error("Receiving files..failed.")
+                return [None, None]
 
-        #save all chunks to file
-        try:
-            multipartMessage = self.dataSocket.recv_multipart()
-        except:
-            self.log.error("Receiving files..failed.")
+            if len(multipartMessage) < 2:
+                self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
+                self.log.debug("multipartMessage=" + str(mutipartMessage))
+                return [None, None]
+
+            # extract multipart message
+            try:
+                metadata = cPickle.loads(multipartMessage[0])
+            except:
+                self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
+                metadata = None
+
+            #TODO validate multipartMessage (like correct dict-values for metadata)
+
+            try:
+                payload = multipartMessage[1:]
+            except:
+                self.log.warning("An empty file was received within the multipart-message", exc_info=True)
+                payload = None
+
+            return [metadata, payload]
+        else:
+            self.log.warning("Could not receive data in the given time.")
+
+            if self.queryNextStarted :
+                try:
+                    self.requestSocket.send_multipart(["CANCEL", self.queryNextStarted])
+                except Exception as e:
+                    self.log.error("Could not cancel the next query", exc_info=True)
+
             return [None, None]
-
-
-        if len(multipartMessage) < 2:
-            self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
-            self.log.debug("multipartMessage=" + str(mutipartMessage))
-
-        #extract multipart message
-        try:
-            metadata = cPickle.loads(multipartMessage[0])
-        except:
-            self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
-            metadata = None
-
-        #TODO validate multipartMessage (like correct dict-values for metadata)
-
-        try:
-            payload = multipartMessage[1:]
-        except:
-            self.log.warning("An empty file was received within the multipart-message", exc_info=True)
-            payload = None
-
-        return [metadata, payload]
 
 
     def store (self, targetBasePath, dataObject):

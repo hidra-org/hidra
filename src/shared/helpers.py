@@ -88,6 +88,7 @@ class globalObjects (object):
     controlSocket = None
     controlFlag   = True
 
+
 # This function is needed because configParser always needs a section name
 # the used config file consists of key-value pairs only
 # source: http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788
@@ -185,7 +186,7 @@ def checkDirEmpty (dirPath):
             logging.info("All elements of directory " + str(dirPath) + " were removed.")
 
 
-def checkSubDirExistance (dirPath, subDirs):
+def checkAnySubDirExists (dirPath, subDirs):
 
     dirPath = os.path.normpath(dirPath)
     dirsToCheck = [dirPath + os.sep + directory for directory in subDirs]
@@ -200,6 +201,16 @@ def checkSubDirExistance (dirPath, subDirs):
         logging.error("There are none of the specified subdirectories inside '%s'. Abort." % str(dirPath))
         logging.error("Checked paths: " + str(dirsToCheck))
         sys.exit(1)
+
+
+def checkAllSubDirExist (dirPath, subDirs):
+
+    dirPath = os.path.normpath(dirPath)
+    dirsToCheck = [dirPath + os.sep + directory for directory in subDirs]
+
+    for d in dirsToCheck:
+        if not os.path.exists(d):
+            logging.warning("Dir '%s' does not exist." % str(d))
 
 
 def checkDirExistance (dirPath):
