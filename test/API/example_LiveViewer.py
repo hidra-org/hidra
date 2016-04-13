@@ -34,11 +34,12 @@ class LiveView(QThread):
     mutex = None
 
     zmqQuery      = None
-#    zmqSignalIp      = "haspp11eval01.desy.de"
+    zmqSignalIp      = "haspp11eval01.desy.de"
 #    zmqSignalIp   = "zitpcx19282.desy.de"
-    zmqSignalIp   = "zitpcx22614w.desy.de"
+#    zmqSignalIp   = "zitpcx22614w.desy.de"
     zmqDataPort   = "50022"
-    basePath      = BASE_PATH + os.sep + "data" + os.sep + "target"
+#    basePath      = BASE_PATH + os.sep + "data" + os.sep + "target"
+    basePath      = "/gpfs"
 
 
     def __init__(self, path=None, filetype=None, interval=None, parent=None):
@@ -51,10 +52,10 @@ class LiveView(QThread):
             self.interval = interval
 
         self.zmqQuery = dataTransfer( "queryNext", self.zmqSignalIp )
-#        self.zmqQuery.initiate([socket.gethostname(), self.zmqDataPort, "1"])
-#        self.zmqQuery.start(self.zmqDataPort)
-        self.zmqQuery.initiate(["zitpcx22614w", self.zmqDataPort, "1"])
-        self.zmqQuery.start(["zitpcx22614w", self.zmqDataPort])
+        self.zmqQuery.initiate([socket.gethostname(), self.zmqDataPort, "1"])
+        self.zmqQuery.start(self.zmqDataPort)
+#        self.zmqQuery.initiate(["zitpcx22614w", self.zmqDataPort, "1"])
+#        self.zmqQuery.start(["zitpcx22614w", self.zmqDataPort])
 
         self.mutex = QMutex()
 
@@ -104,20 +105,20 @@ class LiveView(QThread):
                     self.mutex.unlock()
                     continue
 
-                time.sleep(0.2)
+#                time.sleep(0.2)
                 # display image
-#                try:
-#                    self.subframe.loadFile(receivedFile)
+                try:
+                    self.subframe.loadFile(receivedFile)
                 # viewer or subframe has been closed by the user
-#                except:
-#                    self.mutex.unlock()
-#                    time.sleep(0.1)
-#                    try:
-#                        self.subframe = self.viewer.openSubFrame()
-#                    except:
-#                        self.viewer = albula.openMainFrame()
-#                        self.subframe = self.viewer.openSubFrame()
-#                    continue
+                except:
+                    self.mutex.unlock()
+                    time.sleep(0.1)
+                    try:
+                        self.subframe = self.viewer.openSubFrame()
+                    except:
+                        self.viewer = albula.openMainFrame()
+                        self.subframe = self.viewer.openSubFrame()
+                    continue
                 self.mutex.unlock()
                 # wait interval
                 interval = 0.0
