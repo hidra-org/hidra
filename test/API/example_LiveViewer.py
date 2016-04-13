@@ -3,7 +3,6 @@ import os
 import sys
 import time
 import socket
-#from dectris import albula
 from PyQt4 import QtCore
 from PyQt4.QtCore import SIGNAL, QThread, QMutex
 
@@ -16,6 +15,7 @@ if not API_PATH in sys.path:
 del API_PATH
 
 from dataTransferAPI import dataTransfer
+from dectris import albula
 
 
 class LiveView(QThread):
@@ -51,7 +51,7 @@ class LiveView(QThread):
         if interval is not None:
             self.interval = interval
 
-        self.zmqQuery = dataTransfer( "queryNext", self.zmqSignalIp )
+        self.zmqQuery = dataTransfer( "queryMetadata", self.zmqSignalIp )
         self.zmqQuery.initiate([socket.gethostname(), self.zmqDataPort, "1"])
         self.zmqQuery.start(self.zmqDataPort)
 #        self.zmqQuery.initiate(["zitpcx22614w", self.zmqDataPort, "1"])
