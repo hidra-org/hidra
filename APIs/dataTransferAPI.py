@@ -173,6 +173,7 @@ class dataTransfer():
         self.poller.register(self.signalSocket, zmq.POLLIN)
 
 
+
     def __sendSignal (self, signal):
 
         if not signal:
@@ -272,7 +273,7 @@ class dataTransfer():
         except:
             self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'", exc_info=True)
 
-            self.poller.register(self.dataSocket, zmq.POLLIN)
+        self.poller.register(self.dataSocket, zmq.POLLIN)
 
         if self.connectionType in ["queryNext", "queryMetadata"]:
 
@@ -317,11 +318,18 @@ class dataTransfer():
                 return None, None
 
         # receive data
-        try:
-            socks = dict(self.poller.poll(timeout))
-        except:
-            self.log.error("Could not poll for new message", exc_info=True)
-            raise
+        if timeout:
+            try:
+                socks = dict(self.poller.poll(timeout))
+            except:
+                self.log.error("Could not poll for new message", exc_info=True)
+                raise
+        else:
+            try:
+                socks = dict(self.poller.poll())
+            except:
+                self.log.error("Could not poll for new message", exc_info=True)
+                raise
 
         # if there was a response
         if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
