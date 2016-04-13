@@ -83,12 +83,12 @@ class worker(multiprocessing.Process):
 
 if __name__ == "__main__":
 
-    signalHost = "zitpcx19282.desy.de"
+#    signalHost = "zitpcx19282.desy.de"
 #    signalHost = "lsdma-lab04.desy.de"
-#    signalHost = "asap3-bl-prx07.desy.de"
+    signalHost = "asap3-bl-prx07.desy.de"
 
-#    targets = [["asap3-bl-prx07.desy.de", "50101", 1], ["asap3-bl-prx07.desy.de", "50102", 1], ["asap3-bl-prx07.desy.de", "50103", 1]]
-    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1]]
+    targets = [["asap3-bl-prx07.desy.de", "50101", 1], ["asap3-bl-prx07.desy.de", "50102", 1], ["asap3-bl-prx07.desy.de", "50103", 1]]
+#    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1]]
 #    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1], ["lsdma-lab04.desy.de", "50104", 1]]
 
 #    transferType = "queryNext"
@@ -96,8 +96,8 @@ if __name__ == "__main__":
 #    transferType = "streamMetadata"
     transferType = "queryMetadata"
 
-    basePath = BASE_PATH + os.sep + "data" + os.sep + "target"
-#    basePath = "/asap3/petra3/gpfs/p00/2016/commissioning/c20160205_000_smbtest/"
+#    basePath = BASE_PATH + os.sep + "data" + os.sep + "target"
+    basePath = "/asap3/petra3/gpfs/p00/2016/commissioning/c20160205_000_smbtest/"
 
     w1 = multiprocessing.Process(target=worker, args=(0, transferType, basePath, signalHost, "50101"))
     w2 = multiprocessing.Process(target=worker, args=(1, transferType, basePath, signalHost, "50102"))
