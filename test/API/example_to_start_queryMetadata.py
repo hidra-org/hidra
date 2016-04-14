@@ -14,12 +14,11 @@ del BASE_PATH
 from dataTransferAPI import dataTransfer
 
 
-#signalHost   = "zitpcx19282.desy.de"
-signalHost   = "zitpcx22614w.desy.de"
-#targets = ["zitpcx19282.desy.de", "50101", 0]
-targets = ["zitpcx22614w.desy.de", "50101", 0]
-basePath = "/home/kuhnm/Arbeit/zeromq-data-transfer/data/target"
-#basePath = "/space/projects/zeromq-data-transfer/data/target"
+signalHost   = "zitpcx19282.desy.de"
+#signalHost   = "zitpcx22614w.desy.de"
+targets = ["zitpcx19282.desy.de", "50101", 0]
+#targets = ["zitpcx22614w.desy.de", "50101", 0]
+basePath = BASE_PATH + os.sep + "data" + os.sep + "target"
 
 print
 print "==== TEST: Query for the newest filename ===="

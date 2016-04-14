@@ -64,7 +64,7 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
         log.debug("fileModTime(%s) = %s" % (sourceFile, str(fileModTime)))
 
     except:
-        log.error("Unable to create metadata dictionary.", exc_info=True)
+        log.error("Unable to create metadata dictionary.")
         raise
 
     try:
@@ -83,7 +83,7 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
 
         log.debug("metadata = " + str(metadata))
     except:
-        log.error("Unable to assemble multi-part message.", exc_info=True)
+        log.error("Unable to assemble multi-part message.")
         raise
 
     return sourceFile, targetFile, metadata
@@ -129,13 +129,14 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         except:
             log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
 
-        #send message to data targets
-        try:
-            __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, None, chunkPayload, context)
-            log.debug("Passing multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")...done.")
+        if targets_data:
+            #send message to data targets
+            try:
+                __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, None, chunkPayload, context)
+                log.debug("Passing multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")...done.")
 
-        except:
-            log.error("Unable to send multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")", exc_info=True)
+            except:
+                log.error("Unable to send multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")", exc_info=True)
 
         chunkNumber += 1
 
@@ -190,12 +191,13 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
             return
 
         #send message to metadata targets
-        try:
-            __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context)
-            log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
+        if targets_metadata:
+            try:
+                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context)
+                log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
 
-        except:
-            log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
+            except:
+                log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
 
     elif prop["removeFlag"]:
         # remove file

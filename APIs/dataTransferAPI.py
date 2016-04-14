@@ -51,6 +51,7 @@ class dataTransfer():
         self.signalSocket          = None
         self.dataSocket            = None
         self.requestSocket         = None
+        self.poller                = zmq.Poller()
 
         self.targets               = None
 
@@ -169,7 +170,6 @@ class dataTransfer():
             raise
 
         # using a Poller to implement the signalSocket timeout (in older ZMQ version there is no option RCVTIMEO)
-        self.poller = zmq.Poller()
         self.poller.register(self.signalSocket, zmq.POLLIN)
 
 

@@ -91,15 +91,15 @@ def argumentParsing():
 
     eventDetectorType  = config.get('asection', 'eventDetectorType')
     # for InotifyxDetector and WatchdogDetector and getFromFile:
-    fixSubdirs   = json.loads(config.get('asection', 'fixSubdirs'))
+    fixSubdirs         = json.loads(config.get('asection', 'fixSubdirs'))
     # for InotifyxDetector and WatchdogDetector:
     monitoredDir       = config.get('asection', 'monitoredDir')
     monitoredEventType = config.get('asection', 'monitoredEventType')
     monitoredFormats   = json.loads(config.get('asection', 'monitoredFormats'))
     # for InotifyxDetector:
-    historySize        = int(config.get('asection', 'historySize'))
+    historySize        = config.getint('asection', 'historySize')
     # for WatchdogDetector:
-    timeTillClosed     = int(config.get('asection', 'timeTillClosed'))
+    timeTillClosed     = config.getfloat('asection', 'timeTillClosed')
     # for ZmqDetector:
     eventPort          = config.get('asection', 'eventPort')
     # for HttpGetDetector:
@@ -136,7 +136,7 @@ def argumentParsing():
                                                            (needed if eventDetector is InotifyxDetector; default=" + str(historySize) + ")",
                                                 default = historySize)
 
-    parser.add_argument("--timeTillClosed"    , type    = str,
+    parser.add_argument("--timeTillClosed"    , type    = float,
                                                 help    = "Time (in seconds) since last modification after which a file will be seen as closed \
                                                            (only needed if eventDetectorType is WatchdogDetector; default=" + str(timeTillClosed) + ")",
                                                 default = timeTillClosed )
@@ -170,8 +170,8 @@ def argumentParsing():
     fixedStreamHost    = config.get('asection', 'fixedStreamHost')
     fixedStreamPort    = config.get('asection', 'fixedStreamPort')
 
-    numberOfStreams    = config.get('asection', 'numberOfStreams')
-    chunkSize          = int(config.get('asection', 'chunkSize'))
+    numberOfStreams    = config.getint('asection', 'numberOfStreams')
+    chunkSize          = config.getint('asection', 'chunkSize')
 
     eventPort          = config.get('asection', 'eventPort')
     routerPort         = config.get('asection', 'routerPort')
@@ -222,7 +222,7 @@ def argumentParsing():
                                                 help    = "Flag describing if the data should be stored in localTarget \
                                                            (needed if dataFetcherType is getFromFile or getFromHttp; default=" + str(storeData) + ")",
                                                 default = storeData )
-    parser.add_argument("--removeData"         , type    = bool,
+    parser.add_argument("--removeData"        , type    = bool,
                                                 help    = "Flag describing if the files should be removed from the source \
                                                            (needed if dataFetcherType is getFromHttp; default=" + str(removeData) + ")",
                                                 default = removeData )
@@ -240,8 +240,8 @@ def argumentParsing():
     supportedEDTypes  = ["inotifyxdetector", "watchdogdetector", "zmqdetector", "httpdetector"]
     supportedDFTypes  = ["getfromfile", "getfromzmq", "getFromHttp"]
     fixSubdirs        = arguments.fixSubdirs
-    monitoredDir      = str(arguments.monitoredDir)
-    localTarget       = str(arguments.localTarget)
+    monitoredDir      = arguments.monitoredDir
+    localTarget       = arguments.localTarget
 
     useDataStream     = arguments.useDataStream
     numberOfStreams   = arguments.numberOfStreams
