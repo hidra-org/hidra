@@ -347,7 +347,9 @@ class SignalHandler():
                 variList.append([])
         else:
             # send error back to receiver
-            self.sendResponse("CONNECTION_ALREADY_OPEN")
+#            self.sendResponse("CONNECTION_ALREADY_OPEN")
+            # "reopen" the connection and confirm to receiver
+            self.sendResponse(signal)
 
 
     def __stopSignal(self, signal, socketIds, listToCheck, variList, correspList):

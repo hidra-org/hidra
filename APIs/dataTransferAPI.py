@@ -40,9 +40,6 @@ class dataTransfer():
         if context:
             self.context         = context
             self.externalContext = True
-        else:
-            self.context         = zmq.Context()
-            self.externalContext = False
 
 
         self.signalHost            = signalHost
@@ -79,6 +76,9 @@ class dataTransfer():
             self.stop()
             raise Excepition("Argument 'targets' must be list.")
 
+        if not self.context:
+            self.context         = zmq.Context()
+            self.externalContext = False
 
         signal = None
         # Signal exchange
@@ -269,7 +269,7 @@ class dataTransfer():
         connectionStr = "tcp://" + socketIdToConnect
         try:
             self.dataSocket.bind(connectionStr)
-            self.log.info("Socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
+            self.log.info("Data socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
         except:
             self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'", exc_info=True)
 
@@ -282,7 +282,7 @@ class dataTransfer():
             connectionStr = "tcp://" + self.signalHost + ":" + self.requestPort
             try:
                 self.requestSocket.connect(connectionStr)
-                self.log.info("Socket started (connect) for '" + connectionStr + "'")
+                self.log.info("Request socket started (connect) for '" + connectionStr + "'")
             except:
                 self.log.error("Failed to start Socket of type " + self.connectionType + " (connect): '" + connectionStr + "'", exc_info=True)
 
@@ -518,6 +518,9 @@ class dataTransfer():
 
             message = self.__sendSignal(signal)
             #TODO need to check correctness of signal?
+
+            self.streamStarted    = None
+            self.queryNextStarted = None
 
         try:
             if self.signalSocket:
