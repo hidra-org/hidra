@@ -1,8 +1,8 @@
 #!/bin/bash
 INSTANZ="DataManager"
-Pidfile=/space/projects/zeromq-data-transfer/DataManager.pid
+Pidfile=/root/zeromq-data-transfer/DataManager.pid
 
-DATAMANAGER=/space/projects/zeromq-data-transfer/src/sender/DataManager.py
+DATAMANAGER=/root/zeromq-data-transfer/src/sender/DataManager.py
 
 if [ -f $Pidfile ]
 then
@@ -13,11 +13,12 @@ fi
 start() {
 		if [ -f $Pidfile ] ; then
 				if test `ps -e | grep -c $Pid` = 1; then
-						echo "Not starting $INSTANZ - instance already running with PID: $Pid"
+						echo "Not starting $INSTANZ - instance already running"
+#						echo "Not starting $INSTANZ - instance already running with PID: $Pid"
 				else
 						echo "Starting $INSTANZ"
 						nohup /usr/bin/python ${DATAMANAGER} &> /dev/null &
-						echo $! > $Pidfile
+                        $(ps -ef | grep '${DATAMANAGER}' | awk '{ print $2 }') > $PIDfile
 				fi
 		else
 				echo "Starting $INSTANZ"
@@ -31,9 +32,9 @@ stop()
 {
 		if [ -f $Pidfile ] ; then
 				echo "Stopping $INSTANZ"
-#                pid=$(ps -ef | grep '${DATAMANAGER}' | awk '{ print $2 }')
-                echo ${pid}
-                kill -15 $Pid
+                pkill python
+#                echo ${pid}
+#                kill -15 $Pid
                 rm $Pidfile
 #                echo $!
 		else
@@ -48,7 +49,8 @@ status()
 				if test `ps -e | grep -c $Pid` = 0; then
 						echo "$INSTANZ not running"
 				else
-						echo "$INSTANZ running with PID: [$Pid]"
+#						echo "$INSTANZ running with PID: [$Pid]"
+						echo "$INSTANZ running"
 				fi
 		else
 				echo "$Pidfile does not exist! Cannot process $INSTANZ status!"
