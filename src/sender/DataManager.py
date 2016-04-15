@@ -248,6 +248,7 @@ def argumentParsing():
 
     storeData         = arguments.storeData
 
+
     # check if logfile is writable
     helpers.checkLogFileWritable(logfilePath, logfileName)
 
@@ -400,7 +401,10 @@ class DataManager():
 
         self.log.info("Version: " + str(__version__))
 
-        #create zmq context
+        # IP and DNS name should be both in the whitelist
+        helpers.extendWhitelist(self.whitelist, self.log)
+
+        # Create zmq context
         # there should be only one context in one process
 #        self.context = zmq.Context.instance()
         self.context = zmq.Context()

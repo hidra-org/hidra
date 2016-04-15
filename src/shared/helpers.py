@@ -5,6 +5,7 @@ import logging.handlers
 import sys
 import shutil
 import zmq
+import socket
 from version import __version__
 
 try:
@@ -274,6 +275,38 @@ def checkHost (hostname, whiteList, log):
                 return True
 
     return False
+
+
+
+# IP and DNS name should be both in the whitelist
+def extendWhitelist(whitelist, log):
+    log.info("Configured whitelist: " + str(whitelist))
+    extendedWhitelist = []
+
+    for host in whitelist:
+
+        if host == "localhost":
+            elementToAdd = socket.gethostbyname(host)
+        else:
+            hostname, tmp, ip = socket.gethostbyaddr(host)
+
+            if hostname.endswith(".desy.de"):
+                hostModified = hostname[:-8]
+            else:
+                hostModified = hostname
+
+
+            if hostModified not in whitelist:
+                extendedWhitelist.append(hostModified)
+
+            if ip[0] not in whitelist:
+                extendedWhitelist.append(ip[0])
+
+    for host in extendedWhitelist:
+        whitelist.append(host)
+
+    log.info("Extended whitelist: " + str(whitelist))
+
 
 
 # http://stackoverflow.com/questions/25585518/python-logging-logutils-with-queuehandler-and-queuelistener#25594270
