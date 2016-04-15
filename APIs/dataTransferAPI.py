@@ -38,8 +38,11 @@ class dataTransfer():
         # and then using that for creating sockets
         # (source: ZeroMQ, Messaging for Many Applications by Pieter Hintjens)
         if context:
-            self.context         = context
-            self.externalContext = True
+            self.context    = context
+            self.extContext = True
+        else:
+            self.context    = zmq.Context()
+            self.extContext = False
 
 
         self.signalHost            = signalHost
@@ -78,8 +81,8 @@ class dataTransfer():
             raise Excepition("Argument 'targets' must be list.")
 
         if not self.context:
-            self.context         = zmq.Context()
-            self.externalContext = False
+            self.context    = zmq.Context()
+            self.extContext = False
 
         signal = None
         # Signal exchange
@@ -540,7 +543,7 @@ class dataTransfer():
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class
-        if not self.externalContext and self.context:
+        if not self.extContext and self.context:
             try:
                 self.log.info("Closing ZMQ context...")
                 self.context.destroy(0)
