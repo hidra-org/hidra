@@ -469,6 +469,15 @@ class DataManager():
         while self.signalHandlerPr.is_alive() and self.taskProviderPr.is_alive() and all(dataDispatcher.is_alive() for dataDispatcher in self.dataDispatcherPr):
             pass
 
+        # notify which subprocess terminated
+        if not self.signalHandlerPr.is_alive():
+            self.log.info("SignalHandler terminated.")
+        if not self.taskProviderPr.is_alive():
+            self.log.info("TaskProvider terminated.")
+        if not any(dataDispatcher.is_alive() for dataDispatcher in self.dataDispatcherPr):
+            self.log.info("One DataDispatcher terminated.")
+
+
     def stop (self):
 
         if helpers.globalObjects.controlSocket:
