@@ -81,10 +81,12 @@ class TaskProvider():
 
         self.eventDetector = self.eventDetectorModule.EventDetector(self.config, logQueue)
 
-        self.createSockets()
-
         try:
+            self.createSockets()
+
             self.run()
+        except zmq.ZMQError:
+            pass
         except KeyboardInterrupt:
             pass
         except:
@@ -117,6 +119,7 @@ class TaskProvider():
             self.log.info("Start controlSocket (connect): '" + str(connectionStr) + "'")
         except:
             self.log.error("Failed to start controlSocket (connect): '" + connectionStr + "'", exc_info=True)
+            raise
 
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
 
@@ -128,6 +131,7 @@ class TaskProvider():
             self.log.info("Start requestFwSocket (connect): '" + str(connectionStr) + "'")
         except:
             self.log.error("Failed to start requestFwSocket (connect): '" + connectionStr + "'", exc_info=True)
+            raise
 
         # socket to disribute the events to the worker
         self.routerSocket = self.context.socket(zmq.PUSH)
@@ -137,6 +141,7 @@ class TaskProvider():
             self.log.info("Start to router socket (bind): '" + str(connectionStr) + "'")
         except:
             self.log.error("Failed to start router Socket (bind): '" + connectionStr + "'", exc_info=True)
+            raise
 
         self.poller = zmq.Poller()
         self.poller.register(self.controlSocket, zmq.POLLIN)

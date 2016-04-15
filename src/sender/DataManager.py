@@ -410,9 +410,12 @@ class DataManager():
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
 
-        self.createSockets()
+        try:
+            self.createSockets()
 
-        self.run()
+            self.run()
+        except:
+            self.stop()
 
     # Send all logs to the main process
     # The worker configuration is done at the start of the worker process run.
@@ -439,18 +442,21 @@ class DataManager():
             self.log.info("Start controlSocket (bind): '" + str(connectionStr) + "'")
         except:
             self.log.error("Failed to start controlSocket (bind): '" + connectionStr + "'", exc_info=True)
+            helpers.globalObjects.controlSocket = None
+            raise
 
 
     def run (self):
-#        self.signalHandlerPr = Process ( target = SignalHandler, args = (self.controlPort, self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue, self.context) )
         self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.controlPort, self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue, self.context) )
         self.signalHandlerPr.start()
 
         # needed, because otherwise the requests for the first files are not forwarded properly
         time.sleep(0.5)
 
+        if not self.signalHandlerPr.is_alive():
+            return
+
         self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
-#        self.taskProviderPr = threading.Thread ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue, self.context) )
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):
@@ -460,6 +466,8 @@ class DataManager():
             pr.start()
             self.dataDispatcherPr.append(pr)
 
+        while self.signalHandlerPr.is_alive() and self.taskProviderPr.is_alive() and all(dataDispatcher.is_alive() for dataDispatcher in self.dataDispatcherPr):
+            pass
 
     def stop (self):
 
@@ -659,13 +667,8 @@ if __name__ == '__main__':
                 logQueueListener.stop()
 
     else:
-        sender = DataManager()
-
         try:
-            while True:
-                pass
-        except:
-            pass
+            sender = DataManager()
         finally:
             sender.stop()
 

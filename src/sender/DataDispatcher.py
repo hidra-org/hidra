@@ -86,15 +86,16 @@ class DataDispatcher():
             if self.dataFetcherProp.has_key("context") and not self.dataFetcherProp["context"]:
                 self.dataFetcherProp["context"] = self.context
 
-
-        self.__createSockets()
-
         self.log.info("Loading dataFetcher: " + dataFetcher)
         self.dataFetcher = __import__(dataFetcher)
-        if self.dataFetcher.setup(self.log, dataFetcherProp):
 
+        if self.dataFetcher.setup(self.log, dataFetcherProp):
             try:
+                self.__createSockets()
+
                 self.run()
+            except zmq.ZMQError:
+                pass
             except KeyboardInterrupt:
                 pass
             except:
@@ -112,6 +113,7 @@ class DataDispatcher():
             self.log.info("Start controlSocket (connect): '" + str(connectionStr) + "'")
         except:
             self.log.error("Failed to start controlSocket (connect): '" + connectionStr + "'", exc_info=True)
+            raise
 
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "signal")
@@ -124,6 +126,7 @@ class DataDispatcher():
             self.log.info("Start routerSocket (connect): '" + str(connectionStr) + "'")
         except:
             self.log.error("Failed to start routerSocket (connect): '" + connectionStr + "'", exc_info=True)
+            raise
 
         self.poller = zmq.Poller()
         self.poller.register(self.controlSocket, zmq.POLLIN)

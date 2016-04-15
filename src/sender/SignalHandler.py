@@ -81,10 +81,12 @@ class SignalHandler():
             self.context    = zmq.Context()
             self.extContext = False
 
-        self.createSockets()
-
         try:
+            self.createSockets()
+
             self.run()
+        except zmq.ZMQError:
+            pass
         except KeyboardInterrupt:
             pass
         except:
@@ -117,6 +119,7 @@ class SignalHandler():
             self.log.info("Start controlSocket (connect): '" + connectionStr + "'")
         except:
             self.log.error("Failed to start controlSocket (connect): '" + connectionStr + "'", exc_info=True)
+            raise
 
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
 
@@ -128,6 +131,7 @@ class SignalHandler():
             self.log.info("Start comSocket (bind): '" + connectionStr + "'")
         except:
             self.log.error("Failed to start comSocket (bind): '" + connectionStr + "'", exc_info=True)
+            raise
 
         # setting up router for load-balancing worker-processes.
         # each worker-process will handle a file event
@@ -138,6 +142,7 @@ class SignalHandler():
             self.log.info("Start requestFwSocket (bind): '" + connectionStr + "'")
         except:
             self.log.error("Failed to start requestFwSocket (bind): '" + connectionStr + "'", exc_info=True)
+            raise
 
         # create socket to receive requests
         self.requestSocket = self.context.socket(zmq.PULL)
@@ -147,6 +152,7 @@ class SignalHandler():
             self.log.debug("requestSocket started (bind) for '" + connectionStr + "'")
         except:
             self.log.error("Failed to start requestSocket (bind): '" + connectionStr + "'", exc_info=True)
+            raise
 
         # Poller to distinguish between start/stop signals and queries for the next set of signals
         self.poller = zmq.Poller()
