@@ -26,11 +26,24 @@ class loggingFunction:
         self.critical = lambda x, exc_info=None: self.out(x, exc_info)
 
 
+class noLoggingFunction:
+    def out (self, x, exc_info = None):
+        pass
+    def __init__ (self):
+        self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.info     = lambda x, exc_info=None: self.out(x, exc_info)
+        self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
+        self.error    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+
+
 class dataTransfer():
     def __init__ (self, connectionType, signalHost = None, useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("dataTransferAPI")
+        elif useLog == None:
+            self.log = noLoggingFunction()
         else:
             self.log = loggingFunction()
 
