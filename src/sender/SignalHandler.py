@@ -149,7 +149,7 @@ class SignalHandler():
         connectionStr      = "tcp://{ip}:{port}".format(ip=self.extIp, port=self.requestPort)
         try:
             self.requestSocket.bind(connectionStr)
-            self.log.debug("requestSocket started (bind) for '" + connectionStr + "'")
+            self.log.info("requestSocket started (bind) for '" + connectionStr + "'")
         except:
             self.log.error("Failed to start requestSocket (bind): '" + connectionStr + "'", exc_info=True)
             raise
@@ -217,6 +217,8 @@ class SignalHandler():
                 checkStatus, signal, target = self.checkSignal(incomingMessage)
                 if checkStatus:
                     self.reactToSignal(signal, target)
+                else:
+                    self.sendResponse("NO_VALID_SIGNAL")
 
                 continue
 
@@ -236,7 +238,7 @@ class SignalHandler():
                         for i in range(len(self.allowedQueries[index])):
                             if incomingSocketId == self.allowedQueries[index][i][0]:
                                 self.openRequVari[index].append(self.allowedQueries[index][i])
-                                self.log.debug("Add to openRequVari: " + str(self.allowedQueries[index][i]) )
+                                self.log.info("Add to open requests: " + str(self.allowedQueries[index][i]) )
 
                 elif incomingMessage[0] == "CANCEL":
 
@@ -246,10 +248,10 @@ class SignalHandler():
                     incomingSocketId = incomingMessage[1]
 
                     self.openRequVari =  [ [ b for b in  self.openRequVari[a] if incomingSocketId != b[0] ] for a in range(len(self.openRequVari)) ]
-                    self.log.debug("Remove all occurences from " + str(incomingSocketId) + " from variable request list.")
+                    self.log.info("Remove all occurences from " + str(incomingSocketId) + " from variable request list.")
 
                 else:
-                    self.log.debug("Request not supported.")
+                    self.log.info("Request not supported.")
 
 
             if self.controlSocket in socks and socks[self.controlSocket] == zmq.POLLIN:
@@ -265,7 +267,7 @@ class SignalHandler():
                 del message[0]
 
                 if message[0] == b"EXIT":
-                    self.log.debug("Requested to shutdown.")
+                    self.log.info("Requested to shutdown.")
                     break
                 else:
                     self.log.error("Unhandled control signal received: " + str(message[0]))
@@ -277,14 +279,17 @@ class SignalHandler():
 
             self.log.info("Received signal is of the wrong format")
             self.log.debug("Received signal is too short or too long: " + str(incomingMessage))
-            return False, None, None, None
+            return False, None, None
 
         else:
 
             version, signal, target = incomingMessage
             target = cPickle.loads(target)
 
-            host = [t[0].split(":")[0] for t in target]
+            try:
+                host = [t[0].split(":")[0] for t in target]
+            except:
+                return False, None, None
 
             if version:
                 if helpers.checkVersion(version, self.log):

@@ -305,7 +305,7 @@ def extendWhitelist(whitelist, log):
     for host in extendedWhitelist:
         whitelist.append(host)
 
-    log.info("Extended whitelist: " + str(whitelist))
+    log.debug("Extended whitelist: " + str(whitelist))
 
 
 
