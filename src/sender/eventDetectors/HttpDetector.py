@@ -47,16 +47,17 @@ class EventDetector():
                 self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
 
             if config["prefix"] == "":
-                try:
+#                try:
                     # returns a pattern of the form:
                     # testp06/$id
-                    self.log.debug("Getting filenamePattern")
-                    self.log.debug("filenamePattern: " + self.filewriterdevice.read_attribute("FilenamePattern").value)
-                    self.current_dataset_prefix = self.filewriterdevice.read_attribute("FilenamePattern").value.replace("$id", "")
-                except:
-                    self.log.error("Getting filename pattern from the filewriter device...failed.", exc_info=True)
-                    self.current_dataset_prefix = config["prefix"]
-                    self.log.error("Setting prefix to '" + self.current_dataset_prefix + "'.")
+#                    self.log.debug("Getting filenamePattern")
+#                    self.log.debug("filenamePattern: " + self.filewriterdevice.read_attribute("FilenamePattern").value)
+#                    self.current_dataset_prefix = self.filewriterdevice.read_attribute("FilenamePattern").value.replace("$id", "")
+#                except:
+#                    self.log.error("Getting filename pattern from the filewriter device...failed.", exc_info=True)
+#                    self.current_dataset_prefix = config["prefix"]
+#                    self.log.error("Setting prefix to '" + self.current_dataset_prefix + "'.")
+                self.current_dataset_prefix = ""
             else:
                 self.current_dataset_prefix = config["prefix"]
 
@@ -111,6 +112,8 @@ class EventDetector():
 
         except PyTango.CommunicationFailed:
             self.log.info("Getting 'FilesInBuffer'...failed due to PyTango.CommunicationFailed.", exc_info=True)
+
+            # I don't think I need this 
             try:
                 self.eigerdevice      = PyTango.DeviceProxy (self.detectorDevice_conf)
                 self.log.info("Starting the detector device server '" + self.detectorDevice_conf + "'.")
