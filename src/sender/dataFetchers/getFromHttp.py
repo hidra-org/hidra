@@ -19,7 +19,8 @@ def setup (log, prop):
 
     if ( not prop.has_key("session") or
         not prop.has_key("storeData") or
-        not prop.has_key("removeData") ):
+        not prop.has_key("removeData") or 
+        not prop.has_key("fixSubdirs")):
 
         log.error ("Configuration of wrong format")
         log.debug ("dataFetcherProp="+ str(prop))

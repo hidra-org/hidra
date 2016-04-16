@@ -390,6 +390,7 @@ class DataManager():
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
                     "session"     : None,
+                    "fixSubdirs"  : arguments.fixSubdirs,
                     "storeData"   : arguments.storeData,
                     "removeData"  : arguments.removeData
                     }
