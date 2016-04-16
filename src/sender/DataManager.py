@@ -676,8 +676,10 @@ if __name__ == '__main__':
                 logQueueListener.stop()
 
     else:
+        sender = None
         try:
             sender = DataManager()
         finally:
-            sender.stop()
+            if sender:
+                sender.stop()
 

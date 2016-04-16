@@ -11,7 +11,6 @@ import re
 import urllib2
 import time
 import errno
-from datetime import datetime
 
 from send_helpers import __sendToTargets
 
@@ -69,7 +68,7 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
         #        "chunkSize"    : chunkSize
         #        }
         metadata[ "chunkSize" ] = chunkSize
-        metadata[ "fileModTime" ] = datetime.now()
+        metadata[ "fileModTime" ] = time.time()
 
         log.debug("metadata = " + str(metadata))
     except:
