@@ -120,7 +120,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
                     try:
                         targetPath, filename = os.path.split(targetFile)
                         os.makedirs(targetPath)
-                        newFile = open(targetFile, "w")
+                        fileDesciptor = open(targetFile, "w")
                         log.info("New target directory created: " + str(targetPath))
                     except:
                         log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
