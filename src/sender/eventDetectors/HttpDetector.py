@@ -107,7 +107,7 @@ class EventDetector():
         try:
             # returns a tuble of the form:
             # ('testp06/37_data_000001.h5', 'testp06/37_master.h5', 'testp06/36_data_000007.h5', 'testp06/36_data_000006.h5', 'testp06/36_data_000005.h5', 'testp06/36_data_000004.h5', 'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5', 'testp06/36_data_000001.h5', 'testp06/36_master.h5')
-            files_stored = self.eigerdevice.read_attribute("FilesInBuffer").value
+            files_stored = self.eigerdevice.read_attribute("FilesInBuffer", timeout=3).value
 
         except PyTango.CommunicationFailed:
             self.log.info("Getting 'FilesInBuffer'...failed due to PyTango.CommunicationFailed.", exc_info=True)
@@ -122,6 +122,8 @@ class EventDetector():
                 self.log.info("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'.")
             except:
                 self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
+            time.sleep(0.2)
+            return eventMessageList
         except:
             self.log.error("Getting 'FilesInBuffer'...failed.", exc_info=True)
             time.sleep(0.2)
