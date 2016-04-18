@@ -5,6 +5,7 @@ import os
 import logging
 import time
 from logutils.queue import QueueHandler
+import collections
 try:
     import PyTango
 except:
@@ -30,30 +31,33 @@ class EventDetector():
             checkPassed = False
 
         if checkPassed:
+            self.detectorDevice_conf   = config["detectorDevice"]
+            self.fileWriterDevice_conf = config["filewriterDevice"]
 
             try:
-                self.eigerdevice      = PyTango.DeviceProxy (config["detectorDevice"])
-                self.log.info("Starting the detector device server '" + config["detectorDevice"] + "'.")
+                self.eigerdevice      = PyTango.DeviceProxy (self.detectorDevice_conf)
+                self.log.info("Starting the detector device server '" + self.detectorDevice_conf + "'.")
             except:
-                self.log.error("Starting the detector device server '" + config["detectorDevice"] + "'...failed.", exc_info=True)
+                self.log.error("Starting the detector device server '" + self.detectorDevice_conf + "'...failed.", exc_info=True)
 
             try:
-                self.filewriterdevice = PyTango.DeviceProxy (config["filewriterDevice"])
-                self.log.info("Starting the filewriter device server '" + config["detectorDevice"] + "'.")
+                self.filewriterdevice = PyTango.DeviceProxy (self.fileWriterDevice_conf)
+                self.log.info("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'.")
             except:
-                self.log.error("Starting the filewriter device server '" + config["detectorDevice"] + "'...failed.", exc_info=True)
+                self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
 
             if config["prefix"] == "":
-                try:
+#                try:
                     # returns a pattern of the form:
                     # testp06/$id
-                    self.log.debug("Getting filenamePattern")
-                    self.log.debug("filenamePattern: " + self.filewriterdevice.read_attribute("FilenamePattern").value)
-                    self.current_dataset_prefix = self.filewriterdevice.read_attribute("FilenamePattern").value.replace("$id", "")
-                except:
-                    self.log.error("Getting filename pattern from the filewriter device...failed.", exc_info=True)
-                    self.current_dataset_prefix = config["prefix"]
-                    self.log.error("Setting prefix to '" + self.current_dataset_prefix + "'.")
+#                    self.log.debug("Getting filenamePattern")
+#                    self.log.debug("filenamePattern: " + self.filewriterdevice.read_attribute("FilenamePattern").value)
+#                    self.current_dataset_prefix = self.filewriterdevice.read_attribute("FilenamePattern").value.replace("$id", "")
+#                except:
+#                    self.log.error("Getting filename pattern from the filewriter device...failed.", exc_info=True)
+#                    self.current_dataset_prefix = config["prefix"]
+#                    self.log.error("Setting prefix to '" + self.current_dataset_prefix + "'.")
+                self.current_dataset_prefix = ""
             else:
                 self.current_dataset_prefix = config["prefix"]
 
@@ -63,7 +67,7 @@ class EventDetector():
                 self.log.error("Getting EigerIP...failed.", exc_info=True)
 
             try:
-               self.images_per_file  = self.filewriterdevice.read_attribute("ImagesPerFile").value
+                self.images_per_file  = self.filewriterdevice.read_attribute("ImagesPerFile").value
 #                self.NbTriggers       = self.eigerdevice.read_attribute("NbTriggers").value
 #                self.NbImages         = self.eigerdevice.read_attribute("NbImages").value
 #                self.TriggerMode      = self.eigerdevice.read_attribute("TriggerMode").value
@@ -104,10 +108,27 @@ class EventDetector():
         try:
             # returns a tuble of the form:
             # ('testp06/37_data_000001.h5', 'testp06/37_master.h5', 'testp06/36_data_000007.h5', 'testp06/36_data_000006.h5', 'testp06/36_data_000005.h5', 'testp06/36_data_000004.h5', 'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5', 'testp06/36_data_000001.h5', 'testp06/36_master.h5')
-            files_stored = self.eigerdevice.read_attribute("FilesInBuffer").value
+            files_stored = self.eigerdevice.read_attribute("FilesInBuffer", timeout=3).value
 
+        except PyTango.CommunicationFailed:
+            self.log.info("Getting 'FilesInBuffer'...failed due to PyTango.CommunicationFailed.", exc_info=True)
+
+            # I don't think I need this 
+            try:
+                self.eigerdevice      = PyTango.DeviceProxy (self.detectorDevice_conf)
+                self.log.info("Starting the detector device server '" + self.detectorDevice_conf + "'.")
+            except:
+                self.log.error("Starting the detector device server '" + self.detectorDevice_conf + "'...failed.", exc_info=True)
+
+            try:
+                self.filewriterdevice = PyTango.DeviceProxy (self.fileWriterDevice_conf)
+                self.log.info("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'.")
+            except:
+                self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
+            time.sleep(0.2)
+            return eventMessageList
         except:
-            self.log.debug("Getting 'FilesInBuffer'...failed.", exc_info=True)
+            self.log.error("Getting 'FilesInBuffer'...failed.", exc_info=True)
             time.sleep(0.2)
             return eventMessageList
 

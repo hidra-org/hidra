@@ -214,13 +214,13 @@ class SignalHandler():
                 incomingMessage = self.comSocket.recv_multipart()
                 self.log.debug("Received signal: " + str(incomingMessage) )
 
-                checkStatus, signal, target = self.checkSignal(incomingMessage)
-                if checkStatus:
+                checkFailed, signal, target = self.checkSignalInverted(incomingMessage)
+                if not checkFailed:
                     self.reactToSignal(signal, target)
                 else:
-                    self.sendResponse("NO_VALID_SIGNAL")
+                    self.sendResponse(checkFailed)
 
-                continue
+#                continue
 
             if self.requestSocket in socks and socks[self.requestSocket] == zmq.POLLIN:
 
@@ -273,13 +273,13 @@ class SignalHandler():
                     self.log.error("Unhandled control signal received: " + str(message[0]))
 
 
-    def checkSignal (self, incomingMessage):
+    def checkSignalInverted (self, incomingMessage):
 
         if len(incomingMessage) != 3:
 
             self.log.info("Received signal is of the wrong format")
             self.log.debug("Received signal is too short or too long: " + str(incomingMessage))
-            return False, None, None
+            return "NO_VALID_SIGNAL", None, None
 
         else:
 
@@ -289,15 +289,15 @@ class SignalHandler():
             try:
                 host = [t[0].split(":")[0] for t in target]
             except:
-                return False, None, None
+                return "NO_VALID_SIGNAL", None, None
 
             if version:
                 if helpers.checkVersion(version, self.log):
                     self.log.debug("Versions are compatible: " + str(version))
                 else:
                     self.log.debug("Version are not compatible")
-                    self.sendResponse("VERSION_CONFLICT")
-                    return False, None, None
+#                    self.sendResponse("VERSION_CONFLICT")
+                    return "VERSION_CONFLICT", None, None
 
             if signal and host:
 
@@ -309,10 +309,10 @@ class SignalHandler():
                 else:
                     self.log.debug("One of the hosts is not allowed to connect.")
                     self.log.debug("hosts: " + str(host))
-                    self.sendResponse("NO_VALID_HOST")
-                    return False, None, None
+#                    self.sendResponse("NO_VALID_HOST")
+                    return "NO_VALID_HOST", None, None
 
-        return True, signal, target
+        return False, signal, target
 
 
     def sendResponse (self, signal):
