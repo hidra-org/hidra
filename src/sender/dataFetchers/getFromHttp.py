@@ -29,6 +29,7 @@ def setup (log, prop):
     else:
 
         prop["session"] = requests.session()
+        prop["removeFlag"] = False
 
         return True
 
@@ -98,6 +99,8 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
     except:
         log.error("Unable to get chunkSize", exc_info=True)
 
+    prop["removeFlag"] = prop["removeData"]
+
     if prop["storeData"]:
         try:
             log.debug("Opening '" + str(targetFile) + "'...")
@@ -111,28 +114,29 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
                 if metadata["relativePath"] in prop["fixSubdirs"]:
                     log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
                               ": Directory " + metadata["relativePath"] + " is not available", exc_info=True)
-                    prop["removeData"] = False
+                    prop["removeFlag"] = False
                 elif subdir in prop["fixSubdirs"] :
                     log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
                               ": Directory " + subdir + " is not available", exc_info=True)
-                    prop["removeData"] = False
+                    prop["removeFlag"] = False
                 else:
                     try:
                         targetPath, filename = os.path.split(targetFile)
                         os.makedirs(targetPath)
-                        fileDesciptor = open(targetFile, "w")
+                        fileDescriptor = open(targetFile, "w")
                         log.info("New target directory created: " + str(targetPath))
                     except:
                         log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
                         log.debug("targetPath:" + str(targetPath))
+                        prop["removeFlag"] = False
                         raise
             else:
                 log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
-                prop["removeData"] = False
+                prop["removeFlag"] = False
         except:
             log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
             log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
-            prop["removeData"] = False
+            prop["removeFlag"] = False
 
     targets_data     = [i for i in targets if i[2] == "data"]
     targets_metadata = [i for i in targets if i[2] == "metadata"]
@@ -171,6 +175,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
         try:
             log.debug("Closing '" + str(targetFile) + "'...")
             fileDescriptor.close()
+            prop["removeFlag"] = True
         except:
             log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
             raise
@@ -191,8 +196,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
 def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
 
-    if prop["removeData"]:
-        #TODO delete file from detector after sending
+    if prop["removeData"] and prop["removeFlag"]:
         responce = requests.delete(sourceFile)
 
         try:
