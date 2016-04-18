@@ -19,7 +19,7 @@ def setup (log, prop):
 
     if ( not prop.has_key("session") or
         not prop.has_key("storeData") or
-        not prop.has_key("removeData") or 
+        not prop.has_key("removeData") or
         not prop.has_key("fixSubdirs")):
 
         log.error ("Configuration of wrong format")
@@ -174,6 +174,10 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
         except:
             log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
             raise
+
+        # update the creation and modification time
+        metadata[ "fileModTime" ]   = os.stat(targetFile).st_mtime
+        metadata[ "fileCreateTime"] = os.stat(targetFile).st_ctime
 
         #send message to metadata targets
         try:
