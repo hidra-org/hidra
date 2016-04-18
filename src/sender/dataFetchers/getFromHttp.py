@@ -181,8 +181,8 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
             raise
 
         # update the creation and modification time
-        metadata[ "fileModTime" ]   = os.stat(targetFile).st_mtime
-        metadata[ "fileCreateTime"] = os.stat(targetFile).st_ctime
+        metadataExtended[ "fileModTime" ]   = os.stat(targetFile).st_mtime
+        metadataExtended[ "fileCreateTime"] = os.stat(targetFile).st_ctime
 
         #send message to metadata targets
         try:
