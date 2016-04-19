@@ -22,8 +22,7 @@ class EventDetector():
 
         # check format of config
         checkPassed = True
-        if ( not config.has_key("prefix") or
-                not config.has_key("detectorDevice") or
+        if ( config.has_key("detectorDevice") or
                 not config.has_key("filewriterDevice") or
                 not config.has_key("historySize") ):
             self.log.error ("Configuration of wrong format")
@@ -46,11 +45,6 @@ class EventDetector():
             except:
                 self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
 
-            if config["prefix"] == "":
-                self.current_dataset_prefix = ""
-            else:
-                self.current_dataset_prefix = config["prefix"]
-
             try:
                 self.EigerIP          = self.eigerdevice.get_property('Host').get('Host')[0]
             except:
@@ -66,9 +60,6 @@ class EventDetector():
 
 
             self.files_downloaded = collections.deque(maxlen=config["historySize"])
-
-
-
 
 
     # Send all logs to the main process
@@ -122,21 +113,8 @@ class EventDetector():
         if not files_stored or set(files_stored).issubset(self.files_downloaded):
             time.sleep(self.images_per_file * self.FrameTime)
 
-        ## ===== Look for current measurement files
-        if files_stored:
-            available_files = [file for file in files_stored if file.startswith(self.current_dataset_prefix)]
-        else:
-            available_files = []
 
-
-        #TODO needed format: list of dictionaries of the form
-        # {
-        #     "filename"     : filename,
-        #     "sourcePath"   : sourcePath,
-        #     "relativePath" : relativePath
-        # }
-
-        for file in available_files:
+        for file in files_stored:
             if file not in self.files_downloaded:
                 ( relativePath, filename ) = os.path.split(file)
                 eventMessage = {
@@ -204,7 +182,6 @@ if __name__ == '__main__':
     filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
     config = {
             "eventDetectorType" : "httpget",
-            "prefix"            : "",
             "detectorDevice"    : detectorDevice,
             "filewriterDevice"  : filewriterDevice,
             "historySize"       : 1000

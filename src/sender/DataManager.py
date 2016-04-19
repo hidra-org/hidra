@@ -104,7 +104,6 @@ def argumentParsing():
     # for ZmqDetector:
     eventPort          = config.get('asection', 'eventPort')
     # for HttpGetDetector:
-    prefix             = config.get('asection', 'prefix')
     detectorDevice     = config.get('asection', 'detectorDevice')
     filewriterDevice   = config.get('asection', 'filewriterDevice')
 
@@ -147,10 +146,6 @@ def argumentParsing():
                                                            (only needed if eventDetectorType is ZmqDetector; default=" + str(eventPort) + ")",
                                                 default = eventPort )
 
-    parser.add_argument("--prefix"            , type    = str,
-                                                help    = "Supply a scan prefix. Otherwise the prefix is read from the tango server \
-                                                           (only needed if eventDetectorType is HttpDetector; default=" + str(prefix) + ")",
-                                                default = prefix )
     parser.add_argument("--detectorDevice"    , type    = str,
                                                 help    = "Tango device proxy for the detector \
                                                            (only needed if eventDetectorType is HttpDetector; default=" + str(detectorDevice) + ")",
@@ -367,7 +362,6 @@ class DataManager():
         elif arguments.eventDetectorType == "HttpDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
-                    "prefix"            : arguments.prefix,
                     "detectorDevice"    : arguments.detectorDevice,
                     "filewriterDevice"  : arguments.filewriterDevice,
                     "historySize"       : arguments.historySize
