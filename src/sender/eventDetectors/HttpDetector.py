@@ -50,15 +50,10 @@ class EventDetector():
             except:
                 self.log.error("Getting EigerIP...failed.", exc_info=True)
 
-            try:
-                self.images_per_file  = self.filewriterdevice.read_attribute("ImagesPerFile").value
-                self.FrameTime        = self.eigerdevice.read_attribute("FrameTime").value
-            except:
-                self.log.error("Getting attributes...failed.", exc_info=True)
-                self.images_per_file = 1
-                self.FrameTime       = 0.5
+            # time to sleep after detector returned emtpy file list
+            self.sleepTime        = 0.5
 
-
+            # history to prevend double events
             self.files_downloaded = collections.deque(maxlen=config["historySize"])
 
 
@@ -85,34 +80,19 @@ class EventDetector():
 
         try:
             # returns a tuble of the form:
-            # ('testp06/37_data_000001.h5', 'testp06/37_master.h5', 'testp06/36_data_000007.h5', 'testp06/36_data_000006.h5', 'testp06/36_data_000005.h5', 'testp06/36_data_000004.h5', 'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5', 'testp06/36_data_000001.h5', 'testp06/36_master.h5')
+            # ('testp06/37_data_000001.h5', 'testp06/37_master.h5',
+            #  'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5',
+            #  'testp06/36_data_000001.h5', 'testp06/36_master.h5')
             files_stored = self.eigerdevice.read_attribute("FilesInBuffer", timeout=3).value
 
-        except PyTango.CommunicationFailed:
-            self.log.info("Getting 'FilesInBuffer'...failed due to PyTango.CommunicationFailed.", exc_info=True)
-
-            # I don't think I need this
-            try:
-                self.eigerdevice      = PyTango.DeviceProxy (self.detectorDevice_conf)
-                self.log.info("Starting the detector device server '" + self.detectorDevice_conf + "'.")
-            except:
-                self.log.error("Starting the detector device server '" + self.detectorDevice_conf + "'...failed.", exc_info=True)
-
-            try:
-                self.filewriterdevice = PyTango.DeviceProxy (self.fileWriterDevice_conf)
-                self.log.info("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'.")
-            except:
-                self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
-            time.sleep(0.2)
-            return eventMessageList
         except:
             self.log.error("Getting 'FilesInBuffer'...failed.", exc_info=True)
             time.sleep(0.2)
             return eventMessageList
 
         if not files_stored or set(files_stored).issubset(self.files_downloaded):
-            time.sleep(self.images_per_file * self.FrameTime)
-
+            # no new files received
+            time.sleep(self.sleep_time)
 
         for file in files_stored:
             if file not in self.files_downloaded:
