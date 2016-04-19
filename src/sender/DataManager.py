@@ -12,6 +12,7 @@ import cPickle
 from multiprocessing import Process, freeze_support, Queue
 import ConfigParser
 import threading
+import signal
 
 from SignalHandler import SignalHandler
 from TaskProvider import TaskProvider
@@ -238,7 +239,7 @@ def argumentParsing():
 
     eventDetectorType = arguments.eventDetectorType.lower()
     supportedEDTypes  = ["inotifyxdetector", "watchdogdetector", "zmqdetector", "httpdetector"]
-    supportedDFTypes  = ["getfromfile", "getfromzmq", "getFromHttp"]
+    supportedDFTypes  = ["getfromfile", "getfromzmq", "getfromhttp"]
     fixSubdirs        = arguments.fixSubdirs
     monitoredDir      = arguments.monitoredDir
     localTarget       = arguments.localTarget
@@ -303,10 +304,13 @@ class DataManager():
 
             self.logQueueListener.start()
 
+
         # Create log and set handler to queue handle
         self.log = self.getLogger(self.logQueue)
 
         self.log.info("DataManager started (PID " + str(os.getpid()) + ").")
+
+        signal.signal(signal.SIGTERM, self.signal_term_handler)
 
 
         self.controlPort      = arguments.controlPort
@@ -506,6 +510,11 @@ class DataManager():
             self.logQueue.put_nowait(None)
             self.logQueueListener.stop()
             self.logQueueListener = None
+
+
+    def signal_term_handler(self, signal, frame):
+        self.log.debug('got SIGTERM')
+        self.stop()
 
 
     def __exit__ (self):
