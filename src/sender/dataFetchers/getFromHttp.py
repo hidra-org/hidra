@@ -99,12 +99,16 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
     except:
         log.error("Unable to get chunkSize", exc_info=True)
 
-    prop["removeFlag"] = prop["removeData"]
+    fileOpened = False
+    fileWritten = True
+    fileClosed = False
+    fileSend = True
 
     if prop["storeData"]:
         try:
             log.debug("Opening '" + str(targetFile) + "'...")
             fileDescriptor = open(str(targetFile), "wb")
+            fileOpened = True
         except IOError, e:
             # errno.ENOENT == "No such file or directory"
             if e.errno == errno.ENOENT:
@@ -114,32 +118,29 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
                 if metadata["relativePath"] in prop["fixSubdirs"]:
                     log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
                               ": Directory " + metadata["relativePath"] + " is not available", exc_info=True)
-                    prop["removeFlag"] = False
                 elif subdir in prop["fixSubdirs"] :
                     log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
                               ": Directory " + subdir + " is not available", exc_info=True)
-                    prop["removeFlag"] = False
                 else:
                     try:
                         targetPath, filename = os.path.split(targetFile)
                         os.makedirs(targetPath)
                         fileDescriptor = open(targetFile, "w")
                         log.info("New target directory created: " + str(targetPath))
+                        fileOpened = True
                     except OSError, e:
                         log.info("Target directory creation failed, was already created in the meantime: " + str(targetPath))
                         fileDescriptor = open(targetFile, "w")
+                        fileOpened = True
                     except:
                         log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
                         log.debug("targetPath:" + str(targetPath))
-                        prop["removeFlag"] = False
                         raise
             else:
                 log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
-                prop["removeFlag"] = False
         except:
             log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
             log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
-            prop["removeFlag"] = False
 
     targets_data     = [i for i in targets if i[2] == "data"]
     targets_metadata = [i for i in targets if i[2] == "metadata"]
@@ -162,7 +163,12 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
             log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
 
         if prop["storeData"]:
-            fileDescriptor.write(data)
+            try:
+                fileDescriptor.write(data)
+            except:
+                log.error("Unable write data for file " + str(sourceFile), exc_info=True)
+                fileWritten = False
+
 
         #send message to data targets
         try:
@@ -171,6 +177,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
         except:
             log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
+            fileSend = False
 
         chunkNumber += 1
 
@@ -178,7 +185,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
         try:
             log.debug("Closing '" + str(targetFile) + "'...")
             fileDescriptor.close()
-            prop["removeFlag"] = True
+            fileClosed = True
         except:
             log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
             raise
@@ -194,6 +201,10 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
         except:
             log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
+
+        prop["removeFlag"] = fileOpened and fileWritten and fileClosed
+    else:
+        prop["removeFlag"] = fileSend
 
 
 
