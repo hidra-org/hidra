@@ -57,14 +57,16 @@ class DataDispatcher():
 
         self.localhost       = "127.0.0.1"
         self.extIp           = "0.0.0.0"
-        self.controlPort     = controlPort
-        self.routerPort      = routerPort
-        self.chunkSize       = chunkSize
+
+        self.controlConId    = "tcp://{ip}:{port}".format(ip=self.localhost, port=controlPort)
+        self.routerConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=routerPort )
 
         self.controlSocket   = None
         self.routerSocket    = None
 
         self.poller          = None
+
+        self.chunkSize       = chunkSize
 
         self.fixedStreamId   = fixedStreamId
         self.localTarget     = localTarget
@@ -106,26 +108,24 @@ class DataDispatcher():
     def __createSockets (self):
 
         # socket for control signals
-        self.controlSocket = self.context.socket(zmq.SUB)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.controlPort )
         try:
-            self.controlSocket.connect(connectionStr)
-            self.log.info("Start controlSocket (connect): '" + str(connectionStr) + "'")
+            self.controlSocket = self.context.socket(zmq.SUB)
+            self.controlSocket.connect(self.controlConId)
+            self.log.info("Start controlSocket (connect): '" + self.controlConId + "'")
         except:
-            self.log.error("Failed to start controlSocket (connect): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start controlSocket (connect): '" + self.controlConId + "'", exc_info=True)
             raise
 
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "signal")
 
         # socket to get new workloads from
-        self.routerSocket = self.context.socket(zmq.PULL)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.routerPort )
         try:
-            self.routerSocket.connect(connectionStr)
-            self.log.info("Start routerSocket (connect): '" + str(connectionStr) + "'")
+            self.routerSocket = self.context.socket(zmq.PULL)
+            self.routerSocket.connect(self.routerConId)
+            self.log.info("Start routerSocket (connect): '" + str(self.routerConId) + "'")
         except:
-            self.log.error("Failed to start routerSocket (connect): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start routerSocket (connect): '" + self.routerConId + "'", exc_info=True)
             raise
 
         self.poller = zmq.Poller()
@@ -353,6 +353,8 @@ if __name__ == '__main__':
 
     dataFetcherProp = {
             "type"       : "getFromFile",
+            "fixSubdirs" : ["commissioning", "current", "local"],
+            "storeData"  : False,
             "removeFlag" : False
             }
 

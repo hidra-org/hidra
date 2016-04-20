@@ -56,9 +56,14 @@ class TaskProvider():
 
         self.localhost          = "127.0.0.1"
         self.extIp              = "0.0.0.0"
+
         self.controlPort        = controlPort
         self.requestFwPort      = requestFwPort
         self.routerPort         = routerPort
+
+        self.controlConId       = "tcp://{ip}:{port}".format(ip=self.localhost, port=controlPort)
+        self.requestFwConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=requestFwPort)
+        self.routerConId        = "tcp://{ip}:{port}".format(ip=self.localhost, port=routerPort )
 
         self.controlSocket      = None
         self.requestFwSocket    = None
@@ -112,39 +117,37 @@ class TaskProvider():
     def createSockets (self):
 
         # socket to get control signals from
-        self.controlSocket = self.context.socket(zmq.SUB)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.controlPort )
         try:
-            self.controlSocket.connect(connectionStr)
-            self.log.info("Start controlSocket (connect): '" + str(connectionStr) + "'")
+            self.controlSocket = self.context.socket(zmq.SUB)
+            self.controlSocket.connect(self.controlConId)
+            self.log.info("Start controlSocket (connect): '" + self.controlConId + "'")
         except:
-            self.log.error("Failed to start controlSocket (connect): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start controlSocket (connect): '" + self.controlConId + "'", exc_info=True)
             raise
 
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
 
         # socket to get requests
-        self.requestFwSocket = self.context.socket(zmq.REQ)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.requestFwPort )
         try:
-            self.requestFwSocket.connect(connectionStr)
-            self.log.info("Start requestFwSocket (connect): '" + str(connectionStr) + "'")
+            self.requestFwSocket = self.context.socket(zmq.REQ)
+            self.requestFwSocket.connect(self.requestFwConId)
+            self.log.info("Start requestFwSocket (connect): '" + self.requestFwConId + "'")
         except:
-            self.log.error("Failed to start requestFwSocket (connect): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start requestFwSocket (connect): '" + self.requestFwConId + "'", exc_info=True)
             raise
 
         # socket to disribute the events to the worker
-        self.routerSocket = self.context.socket(zmq.PUSH)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.routerPort )
         try:
-            self.routerSocket.bind(connectionStr)
-            self.log.info("Start to router socket (bind): '" + str(connectionStr) + "'")
+            self.routerSocket = self.context.socket(zmq.PUSH)
+            self.routerSocket.bind(self.routerConId)
+            self.log.info("Start to router socket (bind): '" + self.routerConId + "'")
         except:
-            self.log.error("Failed to start router Socket (bind): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start router Socket (bind): '" + self.routerConId + "'", exc_info=True)
             raise
 
         self.poller = zmq.Poller()
         self.poller.register(self.controlSocket, zmq.POLLIN)
+
 
     def run (self):
         i = 0
@@ -317,12 +320,13 @@ if __name__ == '__main__':
 #            }
 
     eventDetectorConfig = {
-            "eventDetectorType" : "watchdog",
+            "eventDetectorType" : "InotifyxDetector",
             "monDir"            : BASE_PATH + os.sep + "data" + os.sep + "source",
             "monEventType"      : "IN_CLOSE_WRITE",
             "monSubdirs"        : ["commissioning", "current", "local"],
             "monSuffixes"       : [".tif", ".cbf"],
-            "timeTillClosed"    : 1 #s
+            "timeout"           : 0.1,
+            "historySize"       : 0
             }
 
     requestFwPort = "6001"
@@ -360,6 +364,8 @@ if __name__ == '__main__':
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
     targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
+    if not os.path.exists(targetFileBase):
+        os.makedirs(targetFileBase)
 
     i = 100
     try:

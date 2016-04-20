@@ -307,17 +307,20 @@ class DataManager():
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
+        self.localhost        = "127.0.0.1"
+        self.extIp            = "0.0.0.0"
 
         self.controlPort      = arguments.controlPort
-
         self.comPort          = arguments.comPort
-        self.whitelist        = arguments.whitelist
-
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
 
-        self.localhost       = "127.0.0.1"
-        self.extHost          = "0.0.0.0"
+        self.controlConId    = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPort)
+        self.comConId        = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.comPort)
+        self.requestFwConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
+        self.requestConId    = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.requestPort)
+
+        self.whitelist        = arguments.whitelist
 
         if arguments.useDataStream:
             self.fixedStreamId = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )
@@ -434,13 +437,12 @@ class DataManager():
     def createSockets(self):
 
         # socket for control signals
-        helpers.globalObjects.controlSocket = self.context.socket(zmq.PUB)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.controlPort )
         try:
-            helpers.globalObjects.controlSocket.bind(connectionStr)
-            self.log.info("Start controlSocket (bind): '" + str(connectionStr) + "'")
+            helpers.globalObjects.controlSocket = self.context.socket(zmq.PUB)
+            helpers.globalObjects.controlSocket.bind(self.controlConId)
+            self.log.info("Start controlSocket (bind): '" + str(self.controlConId) + "'")
         except:
-            self.log.error("Failed to start controlSocket (bind): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start controlSocket (bind): '" + self.controlConId + "'", exc_info=True)
             helpers.globalObjects.controlSocket = None
             raise
 
