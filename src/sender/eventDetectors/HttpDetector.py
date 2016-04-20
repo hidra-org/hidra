@@ -84,6 +84,8 @@ class EventDetector():
             #  'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5',
             #  'testp06/36_data_000001.h5', 'testp06/36_master.h5')
             files_stored = self.eigerdevice.read_attribute("FilesInBuffer", timeout=3).value
+#            http://192.168.138.37/filewriter/api/1.6.0/files
+
 
         except:
             self.log.error("Getting 'FilesInBuffer'...failed.", exc_info=True)

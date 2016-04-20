@@ -285,25 +285,22 @@ def extendWhitelist(whitelist, log):
 
     for host in whitelist:
 
-        try:
-            if host == "localhost":
-                elementToAdd = socket.gethostbyname(host)
+        if host == "localhost":
+            elementToAdd = socket.gethostbyname(host)
+        else:
+            hostname, tmp, ip = socket.gethostbyaddr(host)
+
+            if hostname.endswith(".desy.de"):
+                hostModified = hostname[:-8]
             else:
-                hostname, tmp, ip = socket.gethostbyaddr(host)
-
-                if hostname.endswith(".desy.de"):
-                    hostModified = hostname[:-8]
-                else:
-                    hostModified = hostname
+                hostModified = hostname
 
 
-                if hostModified not in whitelist:
-                    extendedWhitelist.append(hostModified)
+            if hostModified not in whitelist:
+                extendedWhitelist.append(hostModified)
 
-                if ip[0] not in whitelist:
-                    extendedWhitelist.append(ip[0])
-        except:
-            log.warning("Extendion of whitelist failed.")
+            if ip[0] not in whitelist:
+                extendedWhitelist.append(ip[0])
 
     for host in extendedWhitelist:
         whitelist.append(host)
