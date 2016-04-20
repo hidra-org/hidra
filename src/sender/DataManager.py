@@ -276,6 +276,8 @@ class DataManager():
         verbose               = arguments.verbose
         onScreen              = arguments.onScreen
 
+        self.currentPID       = os.getpid()
+
         self.extLogQueue      = False
 
         if logQueue:
@@ -303,7 +305,7 @@ class DataManager():
         # Create log and set handler to queue handle
         self.log = self.getLogger(self.logQueue)
 
-        self.log.info("DataManager started (PID " + str(os.getpid()) + ").")
+        self.log.info("DataManager started (PID " + str(self.currentPID) + ").")
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -316,11 +318,20 @@ class DataManager():
         self.requestFwPort    = arguments.requestFwPort
         self.routerPort       = arguments.routerPort
 
-        self.controlConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPort)
         self.comConId         = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.comPort)
-        self.requestFwConId   = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
         self.requestConId     = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.requestPort)
-        self.routerConId      = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.routerPort)
+
+        if helpers.isWindows():
+            self.log.info("Using tcp for internal communication.")
+            self.controlConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPort)
+            self.requestFwConId   = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
+            self.routerConId      = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.routerPort)
+        else:
+            self.log.info("Using ipc for internal communication.")
+            self.controlConId     = "ipc://{pid}_{id}".format(pid=self.currentPID, id="control")
+            self.requestFwConId   = "ipc://{pid}_{id}".format(pid=self.currentPID, id="requestFw")
+            self.routerConId      = "ipc://{pid}_{id}".format(pid=self.currentPID, id="router")
+
 
         self.whitelist        = arguments.whitelist
 
