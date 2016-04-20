@@ -276,6 +276,8 @@ class DataManager():
         verbose               = arguments.verbose
         onScreen              = arguments.onScreen
 
+        self.currentPID       = os.getpid()
+
         self.extLogQueue      = False
 
         if logQueue:
@@ -303,7 +305,7 @@ class DataManager():
         # Create log and set handler to queue handle
         self.log = self.getLogger(self.logQueue)
 
-        self.log.info("DataManager started (PID " + str(os.getpid()) + ").")
+        self.log.info("DataManager started (PID " + str(self.currentPID) + ").")
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -314,11 +316,22 @@ class DataManager():
         self.comPort          = arguments.comPort
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
+        self.routerPort       = arguments.routerPort
 
-        self.controlConId    = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPort)
-        self.comConId        = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.comPort)
-        self.requestFwConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
-        self.requestConId    = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.requestPort)
+        self.comConId         = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.comPort)
+        self.requestConId     = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.requestPort)
+
+        if helpers.isWindows():
+            self.log.info("Using tcp for internal communication.")
+            self.controlConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPort)
+            self.requestFwConId   = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
+            self.routerConId      = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.routerPort)
+        else:
+            self.log.info("Using ipc for internal communication.")
+            self.controlConId     = "ipc://{pid}_{id}".format(pid=self.currentPID, id="control")
+            self.requestFwConId   = "ipc://{pid}_{id}".format(pid=self.currentPID, id="requestFw")
+            self.routerConId      = "ipc://{pid}_{id}".format(pid=self.currentPID, id="router")
+
 
         self.whitelist        = arguments.whitelist
 
@@ -329,8 +342,6 @@ class DataManager():
 
         self.numberOfStreams  = arguments.numberOfStreams
         self.chunkSize        = arguments.chunkSize
-
-        self.routerPort       = arguments.routerPort
 
         self.localTarget      = arguments.localTarget
 
@@ -448,7 +459,7 @@ class DataManager():
 
 
     def run (self):
-        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.controlPort, self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue, self.context) )
+        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.controlConId, self.whitelist, self.comConId, self.requestFwConId, self.requestConId, self.logQueue, self.context) )
         self.signalHandlerPr.start()
 
         # needed, because otherwise the requests for the first files are not forwarded properly
@@ -457,12 +468,12 @@ class DataManager():
         if not self.signalHandlerPr.is_alive():
             return
 
-        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
+        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlConId, self.requestFwConId, self.routerConId, self.logQueue) )
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):
             id = str(i) + "/" + str(self.numberOfStreams)
-            pr = Process ( target = DataDispatcher, args = (id, self.controlPort, self.routerPort, self.chunkSize, self.fixedStreamId, self.dataFetcherProp,
+            pr = Process ( target = DataDispatcher, args = (id, self.controlConId, self.routerConId, self.chunkSize, self.fixedStreamId, self.dataFetcherProp,
                                                             self.logQueue, self.localTarget) )
             pr.start()
             self.dataDispatcherPr.append(pr)

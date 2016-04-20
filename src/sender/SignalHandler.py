@@ -31,7 +31,7 @@ import helpers
 #
 class SignalHandler():
 
-    def __init__ (self, controlPort, whiteList, comPort, requestFwPort, requestPort,
+    def __init__ (self, controlConId, whiteList, comConId, requestFwConId, requestConId,
                   logQueue, context = None):
 
         # to get the logging only handling this class
@@ -41,13 +41,10 @@ class SignalHandler():
         self.log = self.getLogger(logQueue)
         self.log.debug("SignalHandler started (PID " + str(os.getpid()) + ").")
 
-        self.localhost       = "127.0.0.1"
-        self.extIp           = "0.0.0.0"
-
-        self.controlConId    = "tcp://{ip}:{port}".format(ip=self.localhost, port=controlPort)
-        self.comConId        = "tcp://{ip}:{port}".format(ip=self.extIp, port=comPort)
-        self.requestFwConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=requestFwPort)
-        self.requestConId    = "tcp://{ip}:{port}".format(ip=self.extIp, port=requestPort)
+        self.controlConId    = controlConId
+        self.comConId        = comConId
+        self.requestFwConId  = requestFwConId
+        self.requestConId    = requestConId
 
         self.openConnections = []
         self.forwardSignal   = []
@@ -561,12 +558,20 @@ if __name__ == '__main__':
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
 
     whiteList     = ["localhost", "zitpcx19282"]
-    localhost     = "127.0.0.1"
-    extHost       = "0.0.0.0"
-    comPort       = "6000"
-    requestFwPort = "6001"
-    requestPort   = "6002"
-    controlPort   = "7000"
+
+
+    localhost       = "127.0.0.1"
+    extIp           = "0.0.0.0"
+
+    controlPort     = "7000"
+    comPort         = "6000"
+    requestFwPort   = "6001"
+    requestPort     = "6002"
+
+    controlConId    = "tcp://{ip}:{port}".format(ip=localhost, port=controlPort)
+    comConId        = "tcp://{ip}:{port}".format(ip=extIp,     port=comPort)
+    requestFwConId  = "tcp://{ip}:{port}".format(ip=localhost, port=requestFwPort)
+    requestConId    = "tcp://{ip}:{port}".format(ip=extIp,     port=requestPort)
 
     logfile  = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler.log"
     logsize  = 10485760
@@ -595,7 +600,7 @@ if __name__ == '__main__':
     helpers.globalObjects.controlSocket.bind(connectionStr)
     logging.info("=== controlSocket bind to: '" + connectionStr + "'")
 
-    signalHandlerPr = threading.Thread ( target = SignalHandler, args = (controlPort, whiteList, comPort, requestFwPort, requestPort, logQueue, context) )
+    signalHandlerPr = threading.Thread ( target = SignalHandler, args = (controlConId, whiteList, comConId, requestFwConId, requestConId, logQueue, context) )
     signalHandlerPr.start()
 
     requestPullerPr = Process ( target = requestPuller, args = (requestFwPort, logQueue) )

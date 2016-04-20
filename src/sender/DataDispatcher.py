@@ -34,7 +34,7 @@ import helpers
 class DataDispatcher():
 #class DataDispatcher(Process):
 
-    def __init__ (self, id, controlPort, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
+    def __init__ (self, id, controlConId, routerConId, chunkSize, fixedStreamId, dataFetcherProp,
                 logQueue, localTarget = None, context = None):
 
 #        dataFetcherProp = {
@@ -55,11 +55,8 @@ class DataDispatcher():
 
         self.log.debug("DataDispatcher-" + str(self.id) + " started (PID " + str(os.getpid()) + ").")
 
-        self.localhost       = "127.0.0.1"
-        self.extIp           = "0.0.0.0"
-
-        self.controlConId    = "tcp://{ip}:{port}".format(ip=self.localhost, port=controlPort)
-        self.routerConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=routerPort )
+        self.controlConId    = controlConId
+        self.routerConId     = routerConId
 
         self.controlSocket   = None
         self.routerSocket    = None
@@ -339,15 +336,22 @@ if __name__ == '__main__':
     copyfile(sourceFile, targetFile)
     time.sleep(0.5)
 
-    controlPort   = "50005"
-    routerPort    = "7000"
-    receivingPort = "6005"
-    receivingPort2 = "6006"
-    chunkSize     = 10485760 ; # = 1024*1024*10 = 10 MiB
+    localhost      = "127.0.0.1"
+    extIp          = "0.0.0.0"
+    controlPort    = "50005"
+    routerPort     = "7000"
 
-    localTarget   = BASE_PATH + os.sep + "data" + os.sep + "target"
-    fixedStreamId = False
-    fixedStreamId = "localhost:6006"
+    controlConId   = "tcp://{ip}:{port}".format(ip=localhost, port=controlPort)
+    routerConId    = "tcp://{ip}:{port}".format(ip=localhost, port=routerPort )
+
+    receivingPort  = "6005"
+    receivingPort2 = "6006"
+
+    chunkSize      = 10485760 ; # = 1024*1024*10 = 10 MiB
+
+    localTarget    = BASE_PATH + os.sep + "data" + os.sep + "target"
+    fixedStreamId  = False
+    fixedStreamId  = "localhost:6006"
 
     logConfig = "test"
 
@@ -367,8 +371,7 @@ if __name__ == '__main__':
 
     context       = zmq.Context.instance()
 
-#    dataDispatcherPr = DataDispatcher( "0/1", routerPort, chunkSize, fixedStreamId, logQueue, localTarget, context)
-    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, controlPort, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
+    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, controlConId, routerConId, chunkSize, fixedStreamId, dataFetcherProp,
                                                                   logQueue, localTarget, context) )
     dataDispatcherPr.start()
 
