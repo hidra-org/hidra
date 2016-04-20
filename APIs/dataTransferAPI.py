@@ -37,6 +37,28 @@ class noLoggingFunction:
         self.critical = lambda x, exc_info=None: self.out(x, exc_info)
 
 
+class NotSupported(Exception):
+    pass
+
+class FormatError(Exception):
+    pass
+
+class ConnectionFailed(Exception):
+    pass
+
+class VersionError(Exception):
+    pass
+
+class AuthenticationFailed(Exception):
+    pass
+
+class CommunicationFailed(Exception):
+    pass
+
+class DataSavingError(Exception):
+    pass
+
+
 class dataTransfer():
     def __init__ (self, connectionType, signalHost = None, useLog = False, context = None):
 
@@ -83,7 +105,7 @@ class dataTransfer():
         if connectionType in self.supportedConnections:
             self.connectionType = connectionType
         else:
-            raise Exception("Chosen type of connection is not supported.")
+            raise NotSupported("Chosen type of connection is not supported.")
 
 
     # targets: [host, port, prio] or [[host, port, prio], ...]
@@ -91,7 +113,7 @@ class dataTransfer():
 
         if type(targets) != list:
             self.stop()
-            raise Excepition("Argument 'targets' must be list.")
+            raise FormatError("Argument 'targets' must be list.")
 
         if not self.context:
             self.context    = zmq.Context()
@@ -119,7 +141,7 @@ class dataTransfer():
             self.__createSignalSocket(signalPort)
         else:
             self.stop()
-            raise Exception("No host to send signal to specified." )
+            raise ConnectionFailed("No host to send signal to specified." )
 
         self.targets = []
         # [host, port, prio]
@@ -129,13 +151,13 @@ class dataTransfer():
         # [[host, port, prio], ...]
         else:
             for t in targets:
-                if type(t) == list:
+                if type(t) == list and len(t) == 3:
                     host, port, prio = t
                     self.targets.append([host + ":" + port, prio])
                 else:
                     self.stop()
                     self.log.debug("targets=" + str(targets))
-                    raise Exception("Argument 'targets' is of wrong format.")
+                    raise FormatError("Argument 'targets' is of wrong format.")
 
 #        if type(dataPort) == list:
 #            self.dataHost = str([socket.gethostname() for i in dataPort])
@@ -146,19 +168,19 @@ class dataTransfer():
 
         if message and message == "VERSION_CONFLICT":
             self.stop()
-            raise Exception("Versions are conflicting.")
+            raise VersionError("Versions are conflicting.")
 
         elif message and message == "NO_VALID_HOST":
             self.stop()
-            raise Exception("Host is not allowed to connect.")
+            raise AuthenticationFailed("Host is not allowed to connect.")
 
         elif message and message == "CONNECTION_ALREADY_OPEN":
             self.stop()
-            raise Exception("Connection is already open.")
+            raise CommunicationFailed("Connection is already open.")
 
         elif message and message == "NO_VALID_SIGNAL":
             self.stop()
-            raise Exception("Connection type is not supported for this kind of sender.")
+            raise CommunicationFailed("Connection type is not supported for this kind of sender.")
 
         # if there was no response or the response was of the wrong format, the receiver should be shut down
         elif message and message.startswith(signal):
@@ -166,7 +188,7 @@ class dataTransfer():
             self.signalExchanged = signal
 
         else:
-            raise Exception("Sending start signal ...failed.")
+            raise CommunicationFailed("Sending start signal ...failed.")
 
 
     def __createSignalSocket (self, signalPort):
@@ -181,8 +203,8 @@ class dataTransfer():
         try:
             self.signalSocket.connect(connectionStr)
             self.log.info("signalSocket started (connect) for '" + connectionStr + "'")
-        except Exception as e:
-            self.log.error("Failed to start signalSocket (connect): '" + connectionStr + "'", exc_info=True)
+        except:
+            self.log.error("Failed to start signalSocket (connect): '" + connectionStr + "'")
             raise
 
         # using a Poller to implement the signalSocket timeout (in older ZMQ version there is no option RCVTIMEO)
@@ -209,14 +231,14 @@ class dataTransfer():
         try:
             self.signalSocket.send_multipart(sendMessage)
         except:
-            self.log.error("Could not send signal", exc_info=True)
+            self.log.error("Could not send signal")
             raise
 
         message = None
         try:
             socks = dict(self.poller.poll(self.socketResponseTimeout))
         except:
-            self.log.error("Could not poll for new message", exc_info=True)
+            self.log.error("Could not poll for new message")
             raise
 
 
@@ -227,13 +249,8 @@ class dataTransfer():
                 message = self.signalSocket.recv()
                 self.log.info("Received answer to signal: " + str(message) )
 
-            except KeyboardInterrupt:
-                self.log.error("KeyboardInterrupt: No message received")
-                self.stop()
-                raise
             except:
-                self.log.error("Could not receive answer to signal", exc_info=True)
-                self.stop()
+                self.log.error("Could not receive answer to signal")
                 raise
 
         return message
@@ -275,7 +292,7 @@ class dataTransfer():
                 ip = ipFromHost[0]
 
         else:
-            raise Exception("Multipe possible ports. Please choose which one to use.")
+            raise FormatError("Multipe possible ports. Please choose which one to use.")
 
         socketId = host + ":" + port
         socketIdToConnect = ip + ":" + port
@@ -338,13 +355,13 @@ class dataTransfer():
             try:
                 socks = dict(self.poller.poll(timeout))
             except:
-                self.log.error("Could not poll for new message", exc_info=True)
+                self.log.error("Could not poll for new message")
                 raise
         else:
             try:
                 socks = dict(self.poller.poll())
             except:
-                self.log.error("Could not poll for new message", exc_info=True)
+                self.log.error("Could not poll for new message")
                 raise
 
         # if there was a response
@@ -392,14 +409,14 @@ class dataTransfer():
     def store (self, targetBasePath, dataObject):
 
         if type(dataObject) is not list and len(dataObject) != 2:
-            raise Exception("Wrong input type for 'store'")
+            raise FormatError("Wrong input type for 'store'")
 
         payloadMetadata   = dataObject[0]
         payload           = dataObject[1]
 
 
         if type(payloadMetadata) is not dict or type(payload) is not list:
-            raise Exception("payload: Wrong input format in 'store'")
+            raise FormatError("payload: Wrong input format in 'store'")
 
         #save all chunks to file
         while True:
@@ -456,14 +473,16 @@ class dataTransfer():
                     newFile = open(targetFilepath, "w")
                     self.log.info("New target directory created: " + str(targetPath))
                 except:
-                    self.log.error("Unable to save payload to file: '" + targetFilepath + "'", exc_info=True)
+                    self.log.error("Unable to save payload to file: '" + targetFilepath + "'")
                     self.log.debug("targetPath:" + str(targetPath))
                     raise
             else:
-                self.log.error("Failed to append payload to file: '" + targetFilepath + "'", exc_info=True)
+                self.log.error("Failed to append payload to file: '" + targetFilepath + "'")
+                raise
         except:
-            self.log.error("Failed to append payload to file: '" + targetFilepath + "'", exc_info=True)
-            self.log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
+            self.log.error("Failed to append payload to file: '" + targetFilepath + "'")
+#            self.log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
+            raise
 
         #only write data if a payload exist
         try:
@@ -472,7 +491,7 @@ class dataTransfer():
                     newFile.write(chunk)
             newFile.close()
         except:
-            self.log.error("Unable to append data to file.", exc_info=True)
+            self.log.error("Unable to append data to file.")
             raise
 
 
