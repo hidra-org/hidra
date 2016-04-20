@@ -462,7 +462,7 @@ class DataManager():
 
         for i in range(self.numberOfStreams):
             id = str(i) + "/" + str(self.numberOfStreams)
-            pr = Process ( target = DataDispatcher, args = (id, self.controlPort, self.routerPort, self.chunkSize, self.fixedStreamId, self.dataFetcherProp,
+            pr = Process ( target = DataDispatcher, args = (id, self.controlConId, self.routerConId, self.chunkSize, self.fixedStreamId, self.dataFetcherProp,
                                                             self.logQueue, self.localTarget) )
             pr.start()
             self.dataDispatcherPr.append(pr)

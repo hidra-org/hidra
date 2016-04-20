@@ -58,13 +58,6 @@ class TaskProvider():
         self.requestFwConId     = requestFwConId
         self.routerConId        = routerConId
 
-        self.localhost          = "127.0.0.1"
-        self.extIp              = "0.0.0.0"
-
-#        self.controlConId       = "tcp://{ip}:{port}".format(ip=self.localhost, port=controlPort)
-#        self.requestFwConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=requestFwPort)
-#        self.routerConId        = "tcp://{ip}:{port}".format(ip=self.localhost, port=routerPort )
-
         self.controlSocket      = None
         self.requestFwSocket    = None
         self.routerSocket       = None
