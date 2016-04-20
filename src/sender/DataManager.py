@@ -448,7 +448,7 @@ class DataManager():
 
 
     def run (self):
-        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.controlPort, self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue, self.context) )
+        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.controlConId, self.whitelist, self.comConId, self.requestFwConId, self.requestConId, self.logQueue, self.context) )
         self.signalHandlerPr.start()
 
         # needed, because otherwise the requests for the first files are not forwarded properly
