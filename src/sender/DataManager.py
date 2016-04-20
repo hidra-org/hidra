@@ -314,11 +314,13 @@ class DataManager():
         self.comPort          = arguments.comPort
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
+        self.routerPort       = arguments.routerPort
 
-        self.controlConId    = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPort)
-        self.comConId        = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.comPort)
-        self.requestFwConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
-        self.requestConId    = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.requestPort)
+        self.controlConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPort)
+        self.comConId         = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.comPort)
+        self.requestFwConId   = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
+        self.requestConId     = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.requestPort)
+        self.routerConId      = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.routerPort)
 
         self.whitelist        = arguments.whitelist
 
@@ -329,8 +331,6 @@ class DataManager():
 
         self.numberOfStreams  = arguments.numberOfStreams
         self.chunkSize        = arguments.chunkSize
-
-        self.routerPort       = arguments.routerPort
 
         self.localTarget      = arguments.localTarget
 
@@ -457,7 +457,7 @@ class DataManager():
         if not self.signalHandlerPr.is_alive():
             return
 
-        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
+        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlConId, self.requestFwConId, self.routerConId, self.logQueue) )
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):

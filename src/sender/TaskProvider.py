@@ -32,7 +32,7 @@ import helpers
 #
 
 class TaskProvider():
-    def __init__ (self, eventDetectorConfig, controlPort, requestFwPort, routerPort, logQueue, context = None):
+    def __init__ (self, eventDetectorConfig, controlConId, requestFwConId, routerConId, logQueue, context = None):
         global BASE_PATH
 
         #eventDetectorConfig = {
@@ -54,16 +54,16 @@ class TaskProvider():
 
         eventDetectorModule     = self.config["eventDetectorType"]
 
+        self.controlConId       = controlConId
+        self.requestFwConId     = requestFwConId
+        self.routerConId        = routerConId
+
         self.localhost          = "127.0.0.1"
         self.extIp              = "0.0.0.0"
 
-        self.controlPort        = controlPort
-        self.requestFwPort      = requestFwPort
-        self.routerPort         = routerPort
-
-        self.controlConId       = "tcp://{ip}:{port}".format(ip=self.localhost, port=controlPort)
-        self.requestFwConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=requestFwPort)
-        self.routerConId        = "tcp://{ip}:{port}".format(ip=self.localhost, port=routerPort )
+#        self.controlConId       = "tcp://{ip}:{port}".format(ip=self.localhost, port=controlPort)
+#        self.requestFwConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=requestFwPort)
+#        self.routerConId        = "tcp://{ip}:{port}".format(ip=self.localhost, port=routerPort )
 
         self.controlSocket      = None
         self.requestFwSocket    = None
@@ -329,9 +329,16 @@ if __name__ == '__main__':
             "historySize"       : 0
             }
 
-    requestFwPort = "6001"
-    routerPort    = "7000"
-    controlPort   = "50005"
+    localhost       = "127.0.0.1"
+    extIp           = "0.0.0.0"
+
+    controlPort     = "50005"
+    requestFwPort   = "6001"
+    routerPort      = "7000"
+
+    controlConId    = "tcp://{ip}:{port}".format(ip=localhost, port=controlPort)
+    requestFwConId  = "tcp://{ip}:{port}".format(ip=localhost, port=requestFwPort)
+    routerConId     = "tcp://{ip}:{port}".format(ip=localhost, port=routerPort )
 
     logQueue = Queue(-1)
 
@@ -349,7 +356,7 @@ if __name__ == '__main__':
     root.addHandler(qh)
 
 
-    taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, controlPort, requestFwPort, routerPort, logQueue) )
+    taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, controlConId, requestFwConId, routerConId, logQueue) )
     taskProviderPr.start()
 
     requestResponderPr = Process ( target = requestResponder, args = ( requestFwPort, logQueue) )
