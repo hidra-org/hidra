@@ -44,13 +44,15 @@ class TaskProvider():
         #}
 
         self.log                = self.getLogger(logQueue)
-        self.log.debug("TaskProvider started (PID " + str(os.getpid()) + ").")
+
+        self.currentPID         = os.getpid()
+        self.log.debug("TaskProvider started (PID " + str(self.currentPID) + ").")
 
         self.dataDetectorModule = None
         self.eventDetector      = None
 
         self.config             = eventDetectorConfig
-        self.log.debug("Configuration for event detector: " + str(self.config))
+        self.log.info("Configuration for event detector: " + str(self.config))
 
         eventDetectorModule     = self.config["eventDetectorType"]
 
@@ -64,12 +66,12 @@ class TaskProvider():
 
         self.poller             = None
 
-        self.log.debug("Registering ZMQ context")
         # remember if the context was created outside this class or not
         if context:
             self.context    = context
             self.extContext = True
         else:
+            self.log.info("Registering ZMQ context")
             self.context    = zmq.Context()
             self.extContext = False
 
@@ -88,7 +90,7 @@ class TaskProvider():
         except KeyboardInterrupt:
             pass
         except:
-            self.log.info("Stopping TaskProvider due to unknown error condition.", exc_info=True)
+            self.log.error("Stopping TaskProvider due to unknown error condition.", exc_info=True)
             self.stop()
 
 
@@ -216,12 +218,7 @@ class TaskProvider():
 
 
     def stop (self):
-        self.log.debug("Closing sockets")
-        if self.controlSocket:
-            self.log.info("Closing controlSocket")
-            self.controlSocket.close(0)
-            self.controlSocket = None
-
+        self.log.debug("Closing sockets for TaskProvider")
         if self.routerSocket:
             self.log.info("Closing routerSocket")
             self.routerSocket.close(0)
@@ -232,8 +229,13 @@ class TaskProvider():
             self.requestFwSocket.close(0)
             self.requestFwSocket = None
 
+        if self.controlSocket:
+            self.log.info("Closing controlSocket")
+            self.controlSocket.close(0)
+            self.controlSocket = None
+
         if not self.extContext and self.context:
-            self.log.debug("Destroying context")
+            self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
 

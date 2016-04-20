@@ -36,10 +36,10 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
 
 
             if not tracker.done:
-                log.info("Message part from file " + str(sourceFile) +
+                log.idebug("Message part from file " + str(sourceFile) +
                          " has not been sent yet, waiting...")
                 tracker.wait()
-                log.info("Message part from file " + str(sourceFile) +
+                log.debug("Message part from file " + str(sourceFile) +
                          " has not been sent yet, waiting...done")
 
         else:

@@ -1,6 +1,5 @@
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Jan Garrevoet <jan,garrevoet@desy.de>'
 
-
 import os
 import logging
 import time
@@ -21,13 +20,16 @@ class EventDetector():
         self.log = self.getLogger(logQueue)
 
         # check format of config
-        checkPassed = True
         if ( config.has_key("detectorDevice") or
                 not config.has_key("filewriterDevice") or
                 not config.has_key("historySize") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
+        else:
+            checkPassed = True
+            self.log.info("Event detector configuration" + str(config))
+
 
         if checkPassed:
             self.detectorDevice_conf   = config["detectorDevice"]
@@ -85,7 +87,6 @@ class EventDetector():
             #  'testp06/36_data_000001.h5', 'testp06/36_master.h5')
             files_stored = self.eigerdevice.read_attribute("FilesInBuffer", timeout=3).value
 #            http://192.168.138.37/filewriter/api/1.6.0/files
-
 
         except:
             self.log.error("Getting 'FilesInBuffer'...failed.", exc_info=True)

@@ -346,7 +346,7 @@ class DataManager():
         self.localTarget      = arguments.localTarget
 
         # Assemble configuration for eventDetectorhelper.globalObject.
-        self.log.debug("Configured type of eventDetector: " + arguments.eventDetectorType)
+        self.log.info("Configured type of eventDetector: " + arguments.eventDetectorType)
         if arguments.eventDetectorType == "InotifyxDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
@@ -383,7 +383,7 @@ class DataManager():
 
 
         # Assemble configuration for dataFetcher
-        self.log.debug("Configured Type of dataFetcher: " + arguments.dataFetcherType)
+        self.log.info("Configured Type of dataFetcher: " + arguments.dataFetcherType)
         if arguments.dataFetcherType == "getFromFile":
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
@@ -429,6 +429,7 @@ class DataManager():
             self.run()
         except:
             self.stop()
+
 
     # Send all logs to the main process
     # The worker configuration is done at the start of the worker process run.
@@ -508,12 +509,12 @@ class DataManager():
             helpers.globalObjects.controlSocket = None
 
         if self.context:
-            self.log.debug("Destroying context")
+            self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
 
         if not self.extLogQueue and self.logQueueListener:
-            self.log.debug("Stopping logQueue")
+            self.log.info("Stopping logQueue")
             self.logQueue.put_nowait(None)
             self.logQueueListener.stop()
             self.logQueueListener = None

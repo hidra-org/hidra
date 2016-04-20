@@ -98,7 +98,6 @@ class EventDetector():
         self.log = self.getLogger(logQueue)
 
         # check format of config
-        checkPassed = True
         if ( not config.has_key("monDir") or
                 not config.has_key("monEventType") or
                 not config.has_key("monSubdirs") or
@@ -108,6 +107,9 @@ class EventDetector():
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
+        else:
+            checkPassed = True
+
 
         self.wd_to_path   = {}
         self.fd           = binding.init()
@@ -172,9 +174,9 @@ class EventDetector():
 
     def getDirectoryStructure (self):
         # Add the default subdirs
-        self.log.info("paths:" + str(self.paths))
+        self.log.debug("paths:" + str(self.paths))
         dirsToWalk    = [os.path.normpath(self.paths[0] + os.sep + directory) for directory in self.monSubdirs]
-        self.log.info("dirsToWalk:" + str(dirsToWalk))
+        self.log.debug("dirsToWalk:" + str(dirsToWalk))
         monitoredDirs = []
 
         # Walk the tree

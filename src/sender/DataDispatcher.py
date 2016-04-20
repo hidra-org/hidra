@@ -53,7 +53,8 @@ class DataDispatcher():
         self.id              = id
         self.log             = self.__getLogger(logQueue)
 
-        self.log.debug("DataDispatcher-" + str(self.id) + " started (PID " + str(os.getpid()) + ").")
+        self.currentPID         = os.getpid()
+        self.log.debug("DataDispatcher-" + str(self.id) + " started (PID " + str(self.currentPID) + ").")
 
         self.controlConId    = controlConId
         self.routerConId     = routerConId
@@ -69,7 +70,7 @@ class DataDispatcher():
         self.localTarget     = localTarget
 
         self.dataFetcherProp = dataFetcherProp
-        self.log.debug("Configuration for dataFetcher: " + str(self.dataFetcherProp))
+        self.log.info("Configuration for dataFetcher: " + str(self.dataFetcherProp))
 
         dataFetcher          = self.dataFetcherProp["type"]
 
@@ -291,7 +292,7 @@ class DataDispatcher():
         self.dataFetcher.clean(self.dataFetcherProp)
 
         if not self.extContext and self.context:
-            self.log.debug("Destroying context")
+            self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
 

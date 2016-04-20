@@ -39,7 +39,9 @@ class SignalHandler():
 
         # Send all logs to the main process
         self.log = self.getLogger(logQueue)
-        self.log.debug("SignalHandler started (PID " + str(os.getpid()) + ").")
+
+        self.currentPID      = os.getpid()
+        self.log.debug("SignalHandler started (PID " + str(self.currentPID) + ").")
 
         self.controlConId    = controlConId
         self.comConId        = comConId
@@ -69,12 +71,12 @@ class SignalHandler():
         self.requestFwSocket = None
         self.requestSocket   = None
 
-        self.log.debug("Registering ZMQ context")
         # remember if the context was created outside this class or not
         if context:
             self.context    = context
             self.extContext = True
         else:
+            self.log.info("Registering ZMQ context")
             self.context    = zmq.Context()
             self.extContext = False
 
@@ -476,21 +478,29 @@ class SignalHandler():
 
 
     def stop (self):
-
-        self.log.debug("Closing sockets")
+        self.log.debug("Closing sockets for SignalHandler")
         if self.comSocket:
+            self.log.info("Closing comSocket")
             self.comSocket.close(0)
             self.comSocket = None
+
         if self.requestFwSocket:
+            self.log.info("Closing requestFwSocket")
             self.requestFwSocket.close(0)
             self.requestFwSocket = None
+
         if self.requestSocket:
+            self.log.info("Closing requestSocket")
             self.requestSocket.close(0)
             self.requestSocket = None
+
         if self.controlSocket:
+            self.log.info("Closing controlSocket")
             self.controlSocket.close(0)
             self.controlSocket = None
+
         if not self.extContext and self.context:
+            self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
 
