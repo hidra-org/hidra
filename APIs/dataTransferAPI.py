@@ -297,12 +297,16 @@ class dataTransfer():
 
         socketId = host + ":" + port
         socketIdToConnect = ip + ":" + port
+#        socketIdToConnect = "[" + ip + "]:" + port
 
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
         connectionStr = "tcp://" + socketIdToConnect
+
         try:
+#            self.dataSocket.ipv6 = True
             self.dataSocket.bind(connectionStr)
+#            self.dataSocket.bind("tcp://[2003:ce:5bc0:a600:fa16:54ff:fef4:9fc0]:50102")
             self.log.info("Data socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
         except:
             self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'", exc_info=True)
