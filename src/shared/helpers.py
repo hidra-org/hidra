@@ -28,9 +28,9 @@ def isWindows():
 
     if platformName == windowsName:
         returnValue = True
-    # osName = os.name
-    # supportedWindowsNames = ["nt"]
-    # if osName in supportedWindowsNames:
+    # osRelease = platform.release()
+    # supportedWindowsReleases = ["7"]
+    # if osRelease in supportedWindowsReleases:
     #     returnValue = True
 
     return returnValue
@@ -45,44 +45,6 @@ def isLinux():
         returnValue = True
 
     return returnValue
-
-
-
-def isPosix():
-    osName = os.name
-    supportedPosixNames = ["posix"]
-    returnValue = False
-
-    if osName in supportedPosixNames:
-        returnValue = True
-
-    return returnValue
-
-
-
-def isSupported():
-    supportedWindowsReleases = ["7"]
-    osRelease = platform.release()
-    supportValue = False
-
-    #check windows
-    if isWindows():
-        supportValue = True
-        # if osRelease in supportedWindowsReleases:
-        #     supportValue = True
-
-    #check linux
-    if isLinux():
-        supportValue = True
-
-    return supportValue
-
-
-def getTransportProtocol():
-    if platform.system() == "Linux":
-        return "ipc"
-    else:
-        return "tcp"
 
 
 class globalObjects (object):
@@ -285,25 +247,22 @@ def extendWhitelist(whitelist, log):
 
     for host in whitelist:
 
-        try:
-            if host == "localhost":
-                elementToAdd = socket.gethostbyname(host)
+        if host == "localhost":
+            elementToAdd = socket.gethostbyname(host)
+        else:
+            hostname, tmp, ip = socket.gethostbyaddr(host)
+
+            if hostname.endswith(".desy.de"):
+                hostModified = hostname[:-8]
             else:
-                hostname, tmp, ip = socket.gethostbyaddr(host)
-
-                if hostname.endswith(".desy.de"):
-                    hostModified = hostname[:-8]
-                else:
-                    hostModified = hostname
+                hostModified = hostname
 
 
-                if hostModified not in whitelist:
-                    extendedWhitelist.append(hostModified)
+            if hostModified not in whitelist:
+                extendedWhitelist.append(hostModified)
 
-                if ip[0] not in whitelist:
-                    extendedWhitelist.append(ip[0])
-        except:
-            log.warning("Extendion of whitelist failed.")
+            if ip[0] not in whitelist:
+                extendedWhitelist.append(ip[0])
 
     for host in extendedWhitelist:
         whitelist.append(host)

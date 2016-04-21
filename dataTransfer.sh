@@ -1,8 +1,10 @@
 #!/bin/bash
 INSTANZ="DataManager"
-Pidfile=/root/zeromq-data-transfer/DataManager.pid
+Pidfile=/space/projects/zeromq-data-transfer/DataManager.pid
+#Pidfile=/root/zeromq-data-transfer/DataManager.pid
 
-DATAMANAGER=/root/zeromq-data-transfer/src/sender/DataManager.py
+DATAMANAGER=/space/projects/zeromq-data-transfer/src/sender/DataManager.py
+#DATAMANAGER=/root/zeromq-data-transfer/src/sender/DataManager.py
 
 if [ -f $Pidfile ]
 then
@@ -10,53 +12,46 @@ then
 fi
 
 
-start() {
-		if [ -f $Pidfile ] ; then
-				if test `ps -e | grep -c $Pid` = 1; then
-						echo "Not starting $INSTANZ - instance already running"
-#						echo "Not starting $INSTANZ - instance already running with PID: $Pid"
-				else
-						echo "Starting $INSTANZ"
-						nohup /usr/bin/python ${DATAMANAGER} &> /dev/null &
-                        $(ps -ef | grep '${DATAMANAGER}' | awk '{ print $2 }') > $PIDfile
-				fi
-		else
-				echo "Starting $INSTANZ"
-				nohup /usr/bin/python ${DATAMANAGER} &> /dev/null &
-				echo $! > $Pidfile
-		fi
+start()
+{
+    if [ -f $Pidfile ] && test `ps -e | grep -c $Pid` = 1; then
+        echo "Not starting $INSTANZ - instance already running"
+#        echo "Not starting $INSTANZ - instance already running with PID: $Pid"
+    else
+        echo "Starting $INSTANZ"
+        nohup /usr/bin/python ${DATAMANAGER} &
+        echo $! > $Pidfile
+    fi
 }
 
 
 stop()
 {
-		if [ -f $Pidfile ] ; then
-				echo "Stopping $INSTANZ"
-                pkill python
-#                echo ${pid}
-#                kill -15 $Pid
-                rm $Pidfile
-#                echo $!
-		else
-				echo "Cannot stop $INSTANZ - no Pidfile found!"
-		fi
+    if [ -f $Pidfile ] ; then
+        echo "Stopping $INSTANZ"
+#        pkill python
+        kill -15 $Pid
+        rm $Pidfile
+    else
+        echo "Cannot stop $INSTANZ - no Pidfile found!"
+    fi
 }
 
 status()
 {
-
-		if [ -f $Pidfile ] ; then
-				if test `ps -e | grep -c $Pid` = 0; then
-						echo "$INSTANZ not running"
-				else
-#						echo "$INSTANZ running with PID: [$Pid]"
-						echo "$INSTANZ running"
-				fi
-		else
-				echo "$Pidfile does not exist! Cannot process $INSTANZ status!"
-				exit 1
-		fi
-    }
+    if [ -f $Pidfile ] ; then
+        if test `ps -e | grep -c $Pid` = 0; then
+            echo "$INSTANZ not running"
+        else
+#            echo "$INSTANZ running with PID: [$Pid]"
+            echo "$INSTANZ running"
+        fi
+    else
+        echo "$INSTANZ not running"
+#        echo "$Pidfile does not exist! Cannot process $INSTANZ status!"
+#        exit 1
+    fi
+}
 
 
 case "$1" in

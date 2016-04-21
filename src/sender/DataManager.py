@@ -104,7 +104,6 @@ def argumentParsing():
     # for ZmqDetector:
     eventPort          = config.get('asection', 'eventPort')
     # for HttpGetDetector:
-    prefix             = config.get('asection', 'prefix')
     detectorDevice     = config.get('asection', 'detectorDevice')
     filewriterDevice   = config.get('asection', 'filewriterDevice')
 
@@ -147,10 +146,6 @@ def argumentParsing():
                                                            (only needed if eventDetectorType is ZmqDetector; default=" + str(eventPort) + ")",
                                                 default = eventPort )
 
-    parser.add_argument("--prefix"            , type    = str,
-                                                help    = "Supply a scan prefix. Otherwise the prefix is read from the tango server \
-                                                           (only needed if eventDetectorType is HttpDetector; default=" + str(prefix) + ")",
-                                                default = prefix )
     parser.add_argument("--detectorDevice"    , type    = str,
                                                 help    = "Tango device proxy for the detector \
                                                            (only needed if eventDetectorType is HttpDetector; default=" + str(detectorDevice) + ")",
@@ -281,6 +276,8 @@ class DataManager():
         verbose               = arguments.verbose
         onScreen              = arguments.onScreen
 
+        self.currentPID       = os.getpid()
+
         self.extLogQueue      = False
 
         if logQueue:
@@ -308,21 +305,35 @@ class DataManager():
         # Create log and set handler to queue handle
         self.log = self.getLogger(self.logQueue)
 
-        self.log.info("DataManager started (PID " + str(os.getpid()) + ").")
+        self.log.info("DataManager started (PID " + str(self.currentPID) + ").")
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
+        self.localhost        = "127.0.0.1"
+        self.extIp            = "0.0.0.0"
 
         self.controlPort      = arguments.controlPort
-
         self.comPort          = arguments.comPort
-        self.whitelist        = arguments.whitelist
-
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
+        self.routerPort       = arguments.routerPort
 
-        self.localhost       = "127.0.0.1"
-        self.extHost          = "0.0.0.0"
+        self.comConId         = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.comPort)
+        self.requestConId     = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.requestPort)
+
+        if helpers.isWindows():
+            self.log.info("Using tcp for internal communication.")
+            self.controlConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPort)
+            self.requestFwConId   = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
+            self.routerConId      = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.routerPort)
+        else:
+            self.log.info("Using ipc for internal communication.")
+            self.controlConId     = "ipc://{pid}_{id}".format(pid=self.currentPID, id="control")
+            self.requestFwConId   = "ipc://{pid}_{id}".format(pid=self.currentPID, id="requestFw")
+            self.routerConId      = "ipc://{pid}_{id}".format(pid=self.currentPID, id="router")
+
+
+        self.whitelist        = arguments.whitelist
 
         if arguments.useDataStream:
             self.fixedStreamId = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )
@@ -332,12 +343,10 @@ class DataManager():
         self.numberOfStreams  = arguments.numberOfStreams
         self.chunkSize        = arguments.chunkSize
 
-        self.routerPort       = arguments.routerPort
-
         self.localTarget      = arguments.localTarget
 
         # Assemble configuration for eventDetectorhelper.globalObject.
-        self.log.debug("Configured type of eventDetector: " + arguments.eventDetectorType)
+        self.log.info("Configured type of eventDetector: " + arguments.eventDetectorType)
         if arguments.eventDetectorType == "InotifyxDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
@@ -367,7 +376,6 @@ class DataManager():
         elif arguments.eventDetectorType == "HttpDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
-                    "prefix"            : arguments.prefix,
                     "detectorDevice"    : arguments.detectorDevice,
                     "filewriterDevice"  : arguments.filewriterDevice,
                     "historySize"       : arguments.historySize
@@ -375,7 +383,7 @@ class DataManager():
 
 
         # Assemble configuration for dataFetcher
-        self.log.debug("Configured Type of dataFetcher: " + arguments.dataFetcherType)
+        self.log.info("Configured Type of dataFetcher: " + arguments.dataFetcherType)
         if arguments.dataFetcherType == "getFromFile":
             self.dataFetcherProp = {
                     "type"        : arguments.dataFetcherType,
@@ -422,6 +430,7 @@ class DataManager():
         except:
             self.stop()
 
+
     # Send all logs to the main process
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
@@ -440,19 +449,18 @@ class DataManager():
     def createSockets(self):
 
         # socket for control signals
-        helpers.globalObjects.controlSocket = self.context.socket(zmq.PUB)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.controlPort )
         try:
-            helpers.globalObjects.controlSocket.bind(connectionStr)
-            self.log.info("Start controlSocket (bind): '" + str(connectionStr) + "'")
+            helpers.globalObjects.controlSocket = self.context.socket(zmq.PUB)
+            helpers.globalObjects.controlSocket.bind(self.controlConId)
+            self.log.info("Start controlSocket (bind): '" + str(self.controlConId) + "'")
         except:
-            self.log.error("Failed to start controlSocket (bind): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start controlSocket (bind): '" + self.controlConId + "'", exc_info=True)
             helpers.globalObjects.controlSocket = None
             raise
 
 
     def run (self):
-        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.controlPort, self.whitelist, self.comPort, self.requestFwPort, self.requestPort, self.logQueue, self.context) )
+        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.controlConId, self.whitelist, self.comConId, self.requestFwConId, self.requestConId, self.logQueue, self.context) )
         self.signalHandlerPr.start()
 
         # needed, because otherwise the requests for the first files are not forwarded properly
@@ -461,12 +469,12 @@ class DataManager():
         if not self.signalHandlerPr.is_alive():
             return
 
-        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlPort, self.requestFwPort, self.routerPort, self.logQueue) )
+        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlConId, self.requestFwConId, self.routerConId, self.logQueue) )
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):
             id = str(i) + "/" + str(self.numberOfStreams)
-            pr = Process ( target = DataDispatcher, args = (id, self.controlPort, self.routerPort, self.chunkSize, self.fixedStreamId, self.dataFetcherProp,
+            pr = Process ( target = DataDispatcher, args = (id, self.controlConId, self.routerConId, self.chunkSize, self.fixedStreamId, self.dataFetcherProp,
                                                             self.logQueue, self.localTarget) )
             pr.start()
             self.dataDispatcherPr.append(pr)
@@ -501,12 +509,12 @@ class DataManager():
             helpers.globalObjects.controlSocket = None
 
         if self.context:
-            self.log.debug("Destroying context")
+            self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
 
         if not self.extLogQueue and self.logQueueListener:
-            self.log.debug("Stopping logQueue")
+            self.log.info("Stopping logQueue")
             self.logQueue.put_nowait(None)
             self.logQueueListener.stop()
             self.logQueueListener = None

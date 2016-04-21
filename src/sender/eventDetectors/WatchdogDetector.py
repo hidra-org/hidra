@@ -48,7 +48,6 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
         WatchdogEventHandler.patterns = patterns
 
         self.log.debug("init: super")
-#        PatternMatchingEventHandler.__init__()
         super(WatchdogEventHandler, self,).__init__()
 
         # learn what events to detect
@@ -60,22 +59,22 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
         self.detect_close  = False
 
         if "all" in config["monEventType"].lower():
-            self.log.debug("Activate all event types")
+            self.log.info("Activate all event types")
             self.detect_all    = True
         elif "create" in config["monEventType"].lower():
-            self.log.debug("Activate on create event types")
+            self.log.info("Activate on create event types")
             self.detect_create = True
         elif "modify" in config["monEventType"].lower():
-            self.log.debug("Activate on modify event types")
+            self.log.info("Activate on modify event types")
             self.detect_modify = True
         elif "delete" in config["monEventType"].lower():
-            self.log.debug("Activate on delete event types")
+            self.log.info("Activate on delete event types")
             self.detect_delete = True
         elif "move" in config["monEventType"].lower():
-            self.log.debug("Activate on move event types")
+            self.log.info("Activate on move event types")
             self.detect_move   = True
         elif "close" in config["monEventType"].lower():
-            self.log.debug("Activate on close event types")
+            self.log.info("Activate on close event types")
             self.detect_close  = True
 
 
@@ -245,7 +244,7 @@ class checkModTime (threading.Thread):
                 if self._poolRunning:
                     self.pool.map(self.checkLastModified, eventListToObserveCopy)
                 else:
-                    self.log.debug("Pool was already closed")
+                    self.log.info("Pool was already closed")
                     break
 #                self.log.debug("eventMessageList: " + str(eventMessageList))
 
@@ -354,16 +353,14 @@ class EventDetector():
         else:
             checkPassed = True
 
-        self.log.debug("init")
 
         if checkPassed:
             self.config          = config
             self.monDir          = self.config["monDir"]
             self.monSubdirs      = self.config["monSubdirs"]
-            self.log.info("monDir: " + str(self.monDir))
 
             self.paths           = [os.path.normpath(self.monDir + os.sep + directory) for directory in self.config["monSubdirs"]]
-            self.log.info("paths: " + str(self.paths))
+            self.log.debug("paths: " + str(self.paths))
 
             self.timeTillClosed  = self.config["timeTillClosed"]
             self.observerThreads = []

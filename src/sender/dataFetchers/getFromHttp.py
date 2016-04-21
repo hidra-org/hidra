@@ -85,26 +85,26 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
     response = prop["session"].get(sourceFile)
     try:
         response.raise_for_status()
-        log.debug("Initiating http get for file '" + str(sourceFile) + "' succeded.")
+        log.debug("Initiating http get for file '" + sourceFile + "' succeded.")
     except:
-        log.error("Initiating http get for file '" + str(sourceFile) + "' failed.", exc_info=True)
+        log.error("Initiating http get for file '" + sourceFile + "' failed.", exc_info=True)
         return
-
-
-#    if response.status_code != 200:
-#        self.log.error("Unable to get file " + sourceFile + ". Http status code was " + respconse.status_code)
 
     try:
         chunkSize = metadata[ "chunkSize" ]
     except:
         log.error("Unable to get chunkSize", exc_info=True)
 
-    prop["removeFlag"] = prop["removeData"]
+    fileOpened  = False
+    fileWritten = True
+    fileClosed  = False
+    fileSend    = True
 
     if prop["storeData"]:
         try:
-            log.debug("Opening '" + str(targetFile) + "'...")
-            fileDescriptor = open(str(targetFile), "wb")
+            log.debug("Opening '" + targetFile + "'...")
+            fileDescriptor = open(targetFile, "wb")
+            fileOpened = True
         except IOError, e:
             # errno.ENOENT == "No such file or directory"
             if e.errno == errno.ENOENT:
@@ -113,33 +113,30 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
                 if metadata["relativePath"] in prop["fixSubdirs"]:
                     log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
-                              ": Directory " + metadata["relativePath"] + " is not available", exc_info=True)
-                    prop["removeFlag"] = False
+                              ": Directory " + metadata["relativePath"] + " is not available.", exc_info=True)
+
                 elif subdir in prop["fixSubdirs"] :
                     log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
-                              ": Directory " + subdir + " is not available", exc_info=True)
-                    prop["removeFlag"] = False
+                              ": Directory " + subdir + " is not available.", exc_info=True)
                 else:
                     try:
                         targetPath, filename = os.path.split(targetFile)
                         os.makedirs(targetPath)
                         fileDescriptor = open(targetFile, "w")
-                        log.info("New target directory created: " + str(targetPath))
+                        log.info("New target directory created: " + targetPath)
+                        fileOpened = True
                     except OSError, e:
-                        log.info("Target directory creation failed, was already created in the meantime: " + str(targetPath))
+                        log.info("Target directory creation failed, was already created in the meantime: " + targetPath)
                         fileDescriptor = open(targetFile, "w")
+                        fileOpened = True
                     except:
                         log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
-                        log.debug("targetPath:" + str(targetPath))
-                        prop["removeFlag"] = False
+                        log.debug("targetPath:" + targetPath)
                         raise
             else:
                 log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
-                prop["removeFlag"] = False
         except:
             log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
-            log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
-            prop["removeFlag"] = False
 
     targets_data     = [i for i in targets if i[2] == "data"]
     targets_metadata = [i for i in targets if i[2] == "metadata"]
@@ -159,28 +156,34 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
             payload.append(cPickle.dumps(metadataExtended))
             payload.append(data)
         except:
-            log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
+            log.error("Unable to pack multipart-message for file " + sourceFile, exc_info=True)
 
         if prop["storeData"]:
-            fileDescriptor.write(data)
+            try:
+                fileDescriptor.write(data)
+            except:
+                log.error("Unable write data for file " + sourceFile, exc_info=True)
+                fileWritten = False
+
 
         #send message to data targets
         try:
             __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, metadataExtended, payload, context)
-            log.debug("Passing multipart-message for file " + str(sourceFile) + "...done.")
+            log.debug("Passing multipart-message for file " + sourceFile + "...done.")
 
         except:
-            log.error("Unable to send multipart-message for file " + str(sourceFile), exc_info=True)
+            log.error("Unable to send multipart-message for file " + sourceFile, exc_info=True)
+            fileSend = False
 
         chunkNumber += 1
 
     if prop["storeData"]:
         try:
-            log.debug("Closing '" + str(targetFile) + "'...")
+            log.debug("Closing '" + targetFile + "'...")
             fileDescriptor.close()
-            prop["removeFlag"] = True
+            fileClosed = True
         except:
-            log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
+            log.error("Unable to close target file '" + targetFile + "'.", exc_info=True)
             raise
 
         # update the creation and modification time
@@ -189,24 +192,31 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
         #send message to metadata targets
         try:
-            __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadataExtended, payload, context)
-            log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
+            __sendToTargets(log, targets_metadata, sourceFile, targetFile,
+                            openConnections, metadataExtended, payload,
+                            context)
+            log.debug("Passing metadata multipart-message for file " + sourceFile + "...done.")
 
         except:
-            log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
+            log.error("Unable to send metadata multipart-message for file " + sourceFile, exc_info=True)
+
+        prop["removeFlag"] = fileOpened and fileWritten and fileClosed
+    else:
+        prop["removeFlag"] = fileSend
 
 
 
-def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
+def finishDataHandling (log, targets, sourceFile, targetFile, metadata,
+                        openConnections, context, prop):
 
     if prop["removeData"] and prop["removeFlag"]:
         responce = requests.delete(sourceFile)
 
         try:
 	    responce.raise_for_status()
-	    log.debug("Deleting file " + str(sourceFile) + " succeded.")
+	    log.debug("Deleting file " + sourceFile + " succeded.")
         except:
-            log.error("Deleting file " + str(sourceFile) + " failed.", exc_info=True)
+            log.error("Deleting file " + sourceFile + " failed.", exc_info=True)
 
 
 def clean (prop):

@@ -210,7 +210,6 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
         prop["removeFlag"] = False
 
 
-
 def clean (prop):
     pass
 

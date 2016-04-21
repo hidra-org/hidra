@@ -34,7 +34,7 @@ import helpers
 class DataDispatcher():
 #class DataDispatcher(Process):
 
-    def __init__ (self, id, controlPort, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
+    def __init__ (self, id, controlConId, routerConId, chunkSize, fixedStreamId, dataFetcherProp,
                 logQueue, localTarget = None, context = None):
 
 #        dataFetcherProp = {
@@ -53,24 +53,24 @@ class DataDispatcher():
         self.id              = id
         self.log             = self.__getLogger(logQueue)
 
-        self.log.debug("DataDispatcher-" + str(self.id) + " started (PID " + str(os.getpid()) + ").")
+        self.currentPID         = os.getpid()
+        self.log.debug("DataDispatcher-" + str(self.id) + " started (PID " + str(self.currentPID) + ").")
 
-        self.localhost       = "127.0.0.1"
-        self.extIp           = "0.0.0.0"
-        self.controlPort     = controlPort
-        self.routerPort      = routerPort
-        self.chunkSize       = chunkSize
+        self.controlConId    = controlConId
+        self.routerConId     = routerConId
 
         self.controlSocket   = None
         self.routerSocket    = None
 
         self.poller          = None
 
+        self.chunkSize       = chunkSize
+
         self.fixedStreamId   = fixedStreamId
         self.localTarget     = localTarget
 
         self.dataFetcherProp = dataFetcherProp
-        self.log.debug("Configuration for dataFetcher: " + str(self.dataFetcherProp))
+        self.log.info("Configuration for dataFetcher: " + str(self.dataFetcherProp))
 
         dataFetcher          = self.dataFetcherProp["type"]
 
@@ -106,26 +106,24 @@ class DataDispatcher():
     def __createSockets (self):
 
         # socket for control signals
-        self.controlSocket = self.context.socket(zmq.SUB)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.controlPort )
         try:
-            self.controlSocket.connect(connectionStr)
-            self.log.info("Start controlSocket (connect): '" + str(connectionStr) + "'")
+            self.controlSocket = self.context.socket(zmq.SUB)
+            self.controlSocket.connect(self.controlConId)
+            self.log.info("Start controlSocket (connect): '" + self.controlConId + "'")
         except:
-            self.log.error("Failed to start controlSocket (connect): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start controlSocket (connect): '" + self.controlConId + "'", exc_info=True)
             raise
 
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "signal")
 
         # socket to get new workloads from
-        self.routerSocket = self.context.socket(zmq.PULL)
-        connectionStr  = "tcp://{ip}:{port}".format( ip=self.localhost, port=self.routerPort )
         try:
-            self.routerSocket.connect(connectionStr)
-            self.log.info("Start routerSocket (connect): '" + str(connectionStr) + "'")
+            self.routerSocket = self.context.socket(zmq.PULL)
+            self.routerSocket.connect(self.routerConId)
+            self.log.info("Start routerSocket (connect): '" + str(self.routerConId) + "'")
         except:
-            self.log.error("Failed to start routerSocket (connect): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start routerSocket (connect): '" + self.routerConId + "'", exc_info=True)
             raise
 
         self.poller = zmq.Poller()
@@ -294,7 +292,7 @@ class DataDispatcher():
         self.dataFetcher.clean(self.dataFetcherProp)
 
         if not self.extContext and self.context:
-            self.log.debug("Destroying context")
+            self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
 
@@ -339,20 +337,29 @@ if __name__ == '__main__':
     copyfile(sourceFile, targetFile)
     time.sleep(0.5)
 
-    controlPort   = "50005"
-    routerPort    = "7000"
-    receivingPort = "6005"
-    receivingPort2 = "6006"
-    chunkSize     = 10485760 ; # = 1024*1024*10 = 10 MiB
+    localhost      = "127.0.0.1"
+    extIp          = "0.0.0.0"
+    controlPort    = "50005"
+    routerPort     = "7000"
 
-    localTarget   = BASE_PATH + os.sep + "data" + os.sep + "target"
-    fixedStreamId = False
-    fixedStreamId = "localhost:6006"
+    controlConId   = "tcp://{ip}:{port}".format(ip=localhost, port=controlPort)
+    routerConId    = "tcp://{ip}:{port}".format(ip=localhost, port=routerPort )
+
+    receivingPort  = "6005"
+    receivingPort2 = "6006"
+
+    chunkSize      = 10485760 ; # = 1024*1024*10 = 10 MiB
+
+    localTarget    = BASE_PATH + os.sep + "data" + os.sep + "target"
+    fixedStreamId  = False
+    fixedStreamId  = "localhost:6006"
 
     logConfig = "test"
 
     dataFetcherProp = {
             "type"       : "getFromFile",
+            "fixSubdirs" : ["commissioning", "current", "local"],
+            "storeData"  : False,
             "removeFlag" : False
             }
 
@@ -365,8 +372,7 @@ if __name__ == '__main__':
 
     context       = zmq.Context.instance()
 
-#    dataDispatcherPr = DataDispatcher( "0/1", routerPort, chunkSize, fixedStreamId, logQueue, localTarget, context)
-    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, controlPort, routerPort, chunkSize, fixedStreamId, dataFetcherProp,
+    dataDispatcherPr = Process ( target = DataDispatcher, args = ( 1, controlConId, routerConId, chunkSize, fixedStreamId, dataFetcherProp,
                                                                   logQueue, localTarget, context) )
     dataDispatcherPr.start()
 

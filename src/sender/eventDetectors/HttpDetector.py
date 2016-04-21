@@ -1,6 +1,5 @@
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Jan Garrevoet <jan,garrevoet@desy.de>'
 
-
 import os
 import logging
 import time
@@ -21,14 +20,16 @@ class EventDetector():
         self.log = self.getLogger(logQueue)
 
         # check format of config
-        checkPassed = True
-        if ( not config.has_key("prefix") or
-                not config.has_key("detectorDevice") or
+        if ( not config.has_key("detectorDevice") or
                 not config.has_key("filewriterDevice") or
                 not config.has_key("historySize") ):
-            self.log.error ("Configuration of wrong format")
-            self.log.debug ("config="+ str(config))
+            self.log.error("Configuration of wrong format")
+            self.log.debug("config="+ str(config))
             checkPassed = False
+        else:
+            checkPassed = True
+            self.log.info("Event detector configuration" + str(config))
+
 
         if checkPassed:
             self.detectorDevice_conf   = config["detectorDevice"]
@@ -46,29 +47,16 @@ class EventDetector():
             except:
                 self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
 
-            if config["prefix"] == "":
-                self.current_dataset_prefix = ""
-            else:
-                self.current_dataset_prefix = config["prefix"]
-
             try:
                 self.EigerIP          = self.eigerdevice.get_property('Host').get('Host')[0]
             except:
                 self.log.error("Getting EigerIP...failed.", exc_info=True)
 
-            try:
-                self.images_per_file  = self.filewriterdevice.read_attribute("ImagesPerFile").value
-                self.FrameTime        = self.eigerdevice.read_attribute("FrameTime").value
-            except:
-                self.log.error("Getting attributes...failed.", exc_info=True)
-                self.images_per_file = 1
-                self.FrameTime       = 0.5
+            # time to sleep after detector returned emtpy file list
+            self.sleepTime        = 0.5
 
-
+            # history to prevend double events
             self.files_downloaded = collections.deque(maxlen=config["historySize"])
-
-
-
 
 
     # Send all logs to the main process
@@ -94,49 +82,40 @@ class EventDetector():
 
         try:
             # returns a tuble of the form:
-            # ('testp06/37_data_000001.h5', 'testp06/37_master.h5', 'testp06/36_data_000007.h5', 'testp06/36_data_000006.h5', 'testp06/36_data_000005.h5', 'testp06/36_data_000004.h5', 'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5', 'testp06/36_data_000001.h5', 'testp06/36_master.h5')
+            # ('testp06/37_data_000001.h5', 'testp06/37_master.h5',
+            #  'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5',
+            #  'testp06/36_data_000001.h5', 'testp06/36_master.h5')
             files_stored = self.eigerdevice.read_attribute("FilesInBuffer", timeout=3).value
+#            http://192.168.138.37/filewriter/api/1.6.0/files
 
-        except PyTango.CommunicationFailed:
-            self.log.info("Getting 'FilesInBuffer'...failed due to PyTango.CommunicationFailed.", exc_info=True)
+#        except PyTango.CommunicationFailed:
+#            self.log.info("Getting 'FilesInBuffer'...failed due to PyTango.CommunicationFailed.", exc_info=True)
 
             # I don't think I need this
-            try:
-                self.eigerdevice      = PyTango.DeviceProxy (self.detectorDevice_conf)
-                self.log.info("Starting the detector device server '" + self.detectorDevice_conf + "'.")
-            except:
-                self.log.error("Starting the detector device server '" + self.detectorDevice_conf + "'...failed.", exc_info=True)
+#            try:
+#                self.eigerdevice      = PyTango.DeviceProxy (self.detectorDevice_conf)
+#                self.log.info("Starting the detector device server '" + self.detectorDevice_conf + "'.")
+#            except:
+#                self.log.error("Starting the detector device server '" + self.detectorDevice_conf + "'...failed.", exc_info=True)
 
-            try:
-                self.filewriterdevice = PyTango.DeviceProxy (self.fileWriterDevice_conf)
-                self.log.info("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'.")
-            except:
-                self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
-            time.sleep(0.2)
-            return eventMessageList
-        except:
-            self.log.error("Getting 'FilesInBuffer'...failed.", exc_info=True)
+#            try:
+#                self.filewriterdevice = PyTango.DeviceProxy (self.fileWriterDevice_conf)
+#                self.log.info("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'.")
+#            except:
+#                self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
+#            time.sleep(0.2)
+#            return eventMessageList
+
+        except Exception as e:
+            self.log.error("Getting 'FilesInBuffer'...failed." + str(e))
             time.sleep(0.2)
             return eventMessageList
 
         if not files_stored or set(files_stored).issubset(self.files_downloaded):
-            time.sleep(self.images_per_file * self.FrameTime)
+            # no new files received
+            time.sleep(self.sleep_time)
 
-        ## ===== Look for current measurement files
-        if files_stored:
-            available_files = [file for file in files_stored if file.startswith(self.current_dataset_prefix)]
-        else:
-            available_files = []
-
-
-        #TODO needed format: list of dictionaries of the form
-        # {
-        #     "filename"     : filename,
-        #     "sourcePath"   : sourcePath,
-        #     "relativePath" : relativePath
-        # }
-
-        for file in available_files:
+        for file in files_stored:
             if file not in self.files_downloaded:
                 ( relativePath, filename ) = os.path.split(file)
                 eventMessage = {
@@ -204,7 +183,6 @@ if __name__ == '__main__':
     filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
     config = {
             "eventDetectorType" : "httpget",
-            "prefix"            : "",
             "detectorDevice"    : detectorDevice,
             "filewriterDevice"  : filewriterDevice,
             "historySize"       : 1000

@@ -31,13 +31,14 @@ class EventDetector():
         self.log = self.getLogger(logQueue)
 
         # check format of config
-        checkPassed = True
         if ( not config.has_key("context") or
                 not config.has_key("eventPort") or
                 not config.has_key("numberOfStreams") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
+        else:
+            checkPassed = True
 
 
         if checkPassed:
@@ -47,12 +48,12 @@ class EventDetector():
 
             self.numberOfStreams = config["numberOfStreams"]
 
-            self.log.debug("Registering ZMQ context")
             # remember if the context was created outside this class or not
             if config["context"]:
                 self.context    = config["context"]
                 self.extContext = True
             else:
+                self.log.info("Registering ZMQ context")
                 self.context    = zmq.Context()
                 self.extContext = False
 
