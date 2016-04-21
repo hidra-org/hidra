@@ -388,7 +388,7 @@ class dataTransfer():
             #TODO validate multipartMessage (like correct dict-values for metadata)
 
             try:
-                payload = multipartMessage[1:]
+                payload = multipartMessage[1]
             except:
                 self.log.warning("An empty file was received within the multipart-message", exc_info=True)
                 payload = None
