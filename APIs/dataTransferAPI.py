@@ -220,7 +220,7 @@ class dataTransfer():
         # Send the signal that the communication infrastructure should be established
         self.log.info("Sending Signal")
 
-        sendMessage = ["0.0.1",  signal]
+        sendMessage = [__version__,  signal]
 
         trg = cPickle.dumps(self.targets)
         sendMessage.append(trg)
@@ -270,6 +270,7 @@ class dataTransfer():
 
         host = ""
         port = ""
+
         if dataSocket:
             if type(dataSocket) == list:
                 socketIdToConnect = dataSocket[0] + ":" + dataSocket[1]
