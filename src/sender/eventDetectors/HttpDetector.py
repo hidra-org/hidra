@@ -20,11 +20,11 @@ class EventDetector():
         self.log = self.getLogger(logQueue)
 
         # check format of config
-        if ( config.has_key("detectorDevice") or
+        if ( not config.has_key("detectorDevice") or
                 not config.has_key("filewriterDevice") or
                 not config.has_key("historySize") ):
-            self.log.error ("Configuration of wrong format")
-            self.log.debug ("config="+ str(config))
+            self.log.error("Configuration of wrong format")
+            self.log.debug("config="+ str(config))
             checkPassed = False
         else:
             checkPassed = True
@@ -88,8 +88,26 @@ class EventDetector():
             files_stored = self.eigerdevice.read_attribute("FilesInBuffer", timeout=3).value
 #            http://192.168.138.37/filewriter/api/1.6.0/files
 
-        except:
-            self.log.error("Getting 'FilesInBuffer'...failed.", exc_info=True)
+#        except PyTango.CommunicationFailed:
+#            self.log.info("Getting 'FilesInBuffer'...failed due to PyTango.CommunicationFailed.", exc_info=True)
+
+            # I don't think I need this
+#            try:
+#                self.eigerdevice      = PyTango.DeviceProxy (self.detectorDevice_conf)
+#                self.log.info("Starting the detector device server '" + self.detectorDevice_conf + "'.")
+#            except:
+#                self.log.error("Starting the detector device server '" + self.detectorDevice_conf + "'...failed.", exc_info=True)
+
+#            try:
+#                self.filewriterdevice = PyTango.DeviceProxy (self.fileWriterDevice_conf)
+#                self.log.info("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'.")
+#            except:
+#                self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
+#            time.sleep(0.2)
+#            return eventMessageList
+
+        except Exception as e:
+            self.log.error("Getting 'FilesInBuffer'...failed." + str(e))
             time.sleep(0.2)
             return eventMessageList
 
