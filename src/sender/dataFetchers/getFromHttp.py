@@ -69,8 +69,9 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
         #        "relativePath" : relativePath,
         #        "chunkSize"    : chunkSize
         #        }
-        metadata[ "chunkSize" ] = chunkSize
-        metadata[ "fileModTime" ] = time.time()
+        metadata[ "chunkSize" ]     = chunkSize
+        metadata[ "fileModTime" ]   = time.time()
+        metadata[ "fileCreateTime"] = time.time()
 
         log.debug("metadata = " + str(metadata))
     except:

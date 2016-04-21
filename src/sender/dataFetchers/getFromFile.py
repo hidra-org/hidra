@@ -57,9 +57,10 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
     try:
         # For quick testing set filesize of file as chunksize
         log.debug("get filesize for '" + str(sourceFile) + "'...")
-        filesize    = os.path.getsize(sourceFile)
-        fileModTime = os.stat(sourceFile).st_mtime
-        chunksize   = filesize    #can be used later on to split multipart message
+        filesize       = os.path.getsize(sourceFile)
+        fileModTime    = os.stat(sourceFile).st_mtime
+        fileCreateTime = os.stat(sourceFile).st_ctime
+        chunksize      = filesize    #can be used later on to split multipart message
         log.debug("filesize(%s) = %s" % (sourceFile, str(filesize)))
         log.debug("fileModTime(%s) = %s" % (sourceFile, str(fileModTime)))
 
@@ -77,9 +78,10 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
         #        "fileModTime"  : fileModTime,
         #        "chunkSize"    : self.zmqMessageChunkSize
         #        }
-        metadata[ "filesize"    ] = filesize
-        metadata[ "fileModTime" ] = fileModTime
-        metadata[ "chunkSize"   ] = chunkSize
+        metadata[ "filesize"    ]   = filesize
+        metadata[ "fileModTime" ]   = fileModTime
+        metadata[ "fileCreateTime"] = fileCreateTime
+        metadata[ "chunkSize"   ]   = chunkSize
 
         log.debug("metadata = " + str(metadata))
     except:
