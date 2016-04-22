@@ -31,7 +31,7 @@ import helpers
 #
 class SignalHandler():
 
-    def __init__ (self, controlConId, whiteList, comConId, requestFwConId, requestConId,
+    def __init__ (self, lock, controlConId, whiteList, comConId, requestFwConId, requestConId,
                   logQueue, context = None):
 
         # to get the logging only handling this class
@@ -47,6 +47,8 @@ class SignalHandler():
         self.comConId        = comConId
         self.requestFwConId  = requestFwConId
         self.requestConId    = requestConId
+
+        self.lock            = lock
 
         self.openConnections = []
         self.forwardSignal   = []
@@ -401,7 +403,9 @@ class SignalHandler():
                     del listToCheck[index]
 
             # send signal to TaskManager
+            self.lock.acquire()
             helpers.globalObjects.controlSocket.send_multipart(["signal", "CLOSE_SOCKETS", cPickle.dumps(socketIds)])
+            self.lock.release()
 
         return listToCheck, variList, correspList
 
@@ -604,6 +608,8 @@ if __name__ == '__main__':
     # Register context
     context = zmq.Context()
 
+    lock             = threading.Lock()
+
     # create control socket
     helpers.globalObjects.controlSocket = context.socket(zmq.PUB)
     connectionStr  = "tcp://{ip}:{port}".format( ip=localhost, port=controlPort )
@@ -679,13 +685,18 @@ if __name__ == '__main__':
     time.sleep(1)
 
 
+    self.lock.acquire()
     helpers.globalObjects.controlSocket.send_multipart(["control", "EXIT"])
+    self.lock.release()
     logging.debug("=== EXIT")
 
     signalHandlerPr.join()
     requestPullerPr.terminate()
 
+    self.lock.acquire()
     helpers.globalObjects.controlSocket.close(0)
+    self.lock.release()
+
     comSocket.close(0)
     requestSocket.close(0)
     requestFwSocket.close(0)

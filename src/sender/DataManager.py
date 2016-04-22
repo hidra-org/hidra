@@ -291,7 +291,7 @@ class DataManager():
             if onScreen:
                 h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
 
-                # Start queue listener using the stream handler abovehelper.globalObject.
+                # Start queue listener using the stream handler above.
                 self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1, h2)
             else:
                 h1 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
@@ -317,6 +317,8 @@ class DataManager():
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
         self.routerPort       = arguments.routerPort
+
+        self.lock             = threading.Lock()
 
         self.comConId         = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.comPort)
         self.requestConId     = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.requestPort)
@@ -345,7 +347,7 @@ class DataManager():
 
         self.localTarget      = arguments.localTarget
 
-        # Assemble configuration for eventDetectorhelper.globalObject.
+        # Assemble configuration for eventDetector.
         self.log.info("Configured type of eventDetector: " + arguments.eventDetectorType)
         if arguments.eventDetectorType == "InotifyxDetector":
             self.eventDetectorConfig = {
@@ -450,17 +452,20 @@ class DataManager():
 
         # socket for control signals
         try:
+            self.lock.acquire()
             helpers.globalObjects.controlSocket = self.context.socket(zmq.PUB)
             helpers.globalObjects.controlSocket.bind(self.controlConId)
             self.log.info("Start controlSocket (bind): '" + str(self.controlConId) + "'")
+            self.lock.release()
         except:
             self.log.error("Failed to start controlSocket (bind): '" + self.controlConId + "'", exc_info=True)
             helpers.globalObjects.controlSocket = None
+            self.lock.release()
             raise
 
 
     def run (self):
-        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.controlConId, self.whitelist, self.comConId, self.requestFwConId, self.requestConId, self.logQueue, self.context) )
+        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.lock, self.controlConId, self.whitelist, self.comConId, self.requestFwConId, self.requestConId, self.logQueue, self.context) )
         self.signalHandlerPr.start()
 
         # needed, because otherwise the requests for the first files are not forwarded properly
@@ -494,8 +499,10 @@ class DataManager():
     def stop (self):
 
         if helpers.globalObjects.controlSocket:
+            self.lock.acquire()
             self.log.info("Sending 'Exit' signal")
             helpers.globalObjects.controlSocket.send_multipart(["control", "EXIT"])
+            self.lock.release()
 
         if helpers.globalObjects.controlFlag:
             helpers.globalObjects.controlFlag = False
@@ -504,9 +511,11 @@ class DataManager():
         time.sleep(0.5)
 
         if helpers.globalObjects.controlSocket:
+            self.lock.acquire()
             self.log.info("Closing controlSocket")
             helpers.globalObjects.controlSocket.close(0)
             helpers.globalObjects.controlSocket = None
+            self.lock.release()
 
         if self.context:
             self.log.info("Destroying context")
