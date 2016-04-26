@@ -10,6 +10,7 @@ import errno
 import os
 import cPickle
 import traceback
+from zmq.auth.thread import ThreadAuthenticator
 
 
 class loggingFunction:
@@ -89,7 +90,10 @@ class dataTransfer():
         self.signalSocket          = None
         self.dataSocket            = None
         self.requestSocket         = None
+
         self.poller                = zmq.Poller()
+
+        self.auth                  = None
 
         self.targets               = None
 
@@ -256,7 +260,13 @@ class dataTransfer():
         return message
 
 
-    def start (self, dataSocket = False):
+    def start (self, dataSocket = False, whitelist = None):
+
+        # Receive data only from whitelisted nodes
+        if whitelist:
+            self.auth = ThreadAuthenticator(self.context)
+            self.auth.start()
+            self.auth.allow(whitelist)
 
         socketIdToConnect = self.streamStarted or self.queryNextStarted
 
@@ -301,6 +311,7 @@ class dataTransfer():
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
         connectionStr = "tcp://" + socketIdToConnect
+        self.dataSocket.zap_domain = b'global'
 
         try:
 #            self.dataSocket.ipv6 = True
@@ -576,6 +587,14 @@ class dataTransfer():
                 self.requestSocket = None
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
+
+        if self.auth:
+            try:
+                self.auth.stop()
+                self.auth = None
+                self.log.info("Stopping authentication thread...done.")
+            except:
+                self.log.error("Stopping authentication thread...done.", exc_info=True)
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class

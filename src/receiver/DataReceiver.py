@@ -112,6 +112,8 @@ class DataReceiver:
         self.dataIp    = dataIp
         self.dataPort  = dataPort
 
+        self.whitelist = "131.169.185.121"
+
         self.log.info("Writing to directory '" + self.targetDir + "'.")
 
         self.dataTransfer   = dataTransfer("stream", useLog = True)
@@ -127,7 +129,8 @@ class DataReceiver:
     def run(self):
 
         try:
-            self.dataTransfer.start(self.dataPort)
+            self.dataTransfer.start(self.dataPort, self.whitelist)
+#            self.dataTransfer.start(self.dataPort)
         except:
             self.log.error("Could not initiate stream", exc_info=True)
             raise
