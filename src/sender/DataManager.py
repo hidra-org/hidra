@@ -34,6 +34,7 @@ from logutils.queue import QueueHandler
 import helpers
 from version import __version__
 
+
 def argumentParsing():
     configFile = CONFIG_PATH + os.sep + "dataManager.conf"
 
@@ -316,6 +317,10 @@ class DataManager():
 
         self.localhost        = "127.0.0.1"
         self.extIp            = "0.0.0.0"
+        self.ipcPath          = "/tmp/zeromq-data-transfer"
+
+        if not os.path.exists(self.ipcPath):
+            os.makedirs(self.ipcPath)
 
         self.controlPubPort   = arguments.controlPubPort
         self.controlSubPort   = arguments.controlSubPort
@@ -335,13 +340,14 @@ class DataManager():
             self.routerConId      = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.routerPort)
         else:
             self.log.info("Using ipc for internal communication.")
-            self.controlPubConId  = "ipc://{pid}_{id}".format(pid=self.currentPID, id="controlPub")
-            self.controlSubConId  = "ipc://{pid}_{id}".format(pid=self.currentPID, id="controlSub")
-            self.requestFwConId   = "ipc://{pid}_{id}".format(pid=self.currentPID, id="requestFw")
-            self.routerConId      = "ipc://{pid}_{id}".format(pid=self.currentPID, id="router")
+            self.controlPubConId  = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub")
+            self.controlSubConId  = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub")
+            self.requestFwConId   = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="requestFw")
+            self.routerConId      = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="router")
 
 
         self.device           = None
+        self.controlSocket   = None
 
         self.whitelist        = arguments.whitelist
 
@@ -544,20 +550,17 @@ class DataManager():
 
     def stop (self):
 
-        if helpers.globalObjects.controlSocket:
+        if self.controlSocket:
             self.log.info("Sending 'Exit' signal")
-            helpers.globalObjects.controlSocket.send_multipart(["control", "EXIT"])
-
-        if helpers.globalObjects.controlFlag:
-            helpers.globalObjects.controlFlag = False
+            self.controlSocket.send_multipart(["control", "EXIT"])
 
         # waiting till the other processes are finished
         time.sleep(0.5)
 
-        if helpers.globalObjects.controlSocket:
+        if self.controlSocket:
             self.log.info("Closing controlSocket")
-            helpers.globalObjects.controlSocket.close(0)
-            helpers.globalObjects.controlSocket = None
+            self.controlSocket.close(0)
+            self.controlSocket = None
 
         if self.context:
             self.log.info("Destroying context")

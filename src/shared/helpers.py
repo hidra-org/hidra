@@ -48,7 +48,6 @@ def isLinux():
 
 
 class globalObjects (object):
-    controlSocket = None
     controlFlag   = True
 
 
