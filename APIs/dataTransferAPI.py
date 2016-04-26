@@ -420,12 +420,13 @@ class dataTransfer():
         payload           = dataObject[1]
 
 
-        if type(payloadMetadata) is not dict or type(payload) is not list:
+        if type(payloadMetadata) is not dict:
             raise FormatError("payload: Wrong input format in 'store'")
 
         #save all chunks to file
         while True:
 
+            #TODO check if payload != cPickle.dumps(None) ?
             if payloadMetadata and payload:
                 #append to file
                 try:
@@ -457,8 +458,6 @@ class dataTransfer():
 
 
     def __appendChunksToFile (self, targetBasePath, configDict, payload):
-
-        chunkCount         = len(payload)
 
         #generate target filepath
         targetFilepath = self.generateTargetFilepath(targetBasePath, configDict)
@@ -492,8 +491,7 @@ class dataTransfer():
         #only write data if a payload exist
         try:
             if payload != None:
-                for chunk in payload:
-                    newFile.write(chunk)
+                newFile.write(payload)
             newFile.close()
         except:
             self.log.error("Unable to append data to file.")

@@ -104,14 +104,15 @@ def argumentParsing():
 
 
 class DataReceiver:
-    def __init__(self, outputDir, dataIp, dataPort):
+    def __init__(self, targetDir, dataIp, dataPort):
 
-        self.outputDir = os.path.normpath(outputDir)
+        self.log            = self.getLogger()
+
+        self.targetDir = os.path.normpath(targetDir)
         self.dataIp    = dataIp
         self.dataPort  = dataPort
 
-        self.log            = self.getLogger()
-        self.log.debug("Init")
+        self.log.info("Writing to directory '" + self.targetDir + "'.")
 
         self.dataTransfer   = dataTransfer("stream", useLog = True)
 
@@ -146,7 +147,7 @@ class DataReceiver:
                 raise
 
             try:
-                self.dataTransfer.store(self.outputDir, [payloadMetadata, payload] )
+                self.dataTransfer.store(self.targetDir, [payloadMetadata, payload] )
             except KeyboardInterrupt:
                 return
             except:
