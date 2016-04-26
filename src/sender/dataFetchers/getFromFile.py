@@ -9,20 +9,20 @@ import cPickle
 import shutil
 import errno
 
-from send_helpers import __sendToTargets
+from send_helpers import __sendToTargets, DataHandlingError
 
 
 def setup (log, prop):
 
     if ( not prop.has_key("fixSubdirs") or
-        not prop.has_key("storeData") or
-        not prop.has_key("removeFlag") ):
+        not prop.has_key("storeData") ):
 
         log.error ("Configuration of wrong format")
         log.debug ("dataFetcherProp="+ str(prop))
         return False
 
     else:
+        prop["removeFlag"] = False
         return True
 
 
@@ -97,6 +97,13 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         prop["removeFlag"] = False
         return
 
+    chunkSize = metadata[ "chunkSize"   ]
+
+    targets_data     = [i for i in targets if i[2] == "data"]
+
+    chunkNumber = 0
+    sendError = False
+
     #reading source file into memory
     try:
         log.debug("Opening '" + str(sourceFile) + "'...")
@@ -104,11 +111,6 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
     except:
         log.error("Unable to read source file '" + str(sourceFile) + "'.", exc_info=True)
         raise
-
-    chunkSize = metadata[ "chunkSize"   ]
-
-    targets_data     = [i for i in targets if i[2] == "data"]
-    chunkNumber = 0
 
     log.debug("Passing multipart-message for file " + str(sourceFile) + "...")
     while True:
@@ -137,6 +139,9 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
                 __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, None, chunkPayload, context)
                 log.debug("Passing multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")...done.")
 
+            except DataHandlingError:
+                log.error("Unable to send multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")", exc_info=True)
+                sendError = True
             except:
                 log.error("Unable to send multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")", exc_info=True)
 
@@ -148,48 +153,76 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         fileDescriptor.close()
     except:
         log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
+        raise
 
-    prop["removeFlag"] = True
+    if not sendError:
+        prop["removeFlag"] = True
+
+
+def __dataHandling(log, sourceFile, targetFile, actionFunction, metadata, prop):
+    try:
+        actionFunction(sourceFile, targetFile)
+    except IOError as e:
+
+        # errno.ENOENT == "No such file or directory"
+        if e.errno == errno.ENOENT:
+            subdir, tmp = os.path.split(metadata["relativePath"])
+
+            if metadata["relativePath"] in prop["fixSubdirs"]:
+                log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile +
+                          ": Directory " + metadata["relativePath"] + " is not available.", exc_info=True)
+                raise
+            elif subdir in prop["fixSubdirs"] :
+                log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile +
+                          ": Directory " + subdir + " is not available.", exc_info=True)
+                raise
+            else:
+                try:
+                    targetPath, filename = os.path.split(targetFile)
+                    os.makedirs(targetPath)
+                    log.info("New target directory created: " + str(targetPath))
+                    actionFunction(sourceFile, targetFile)
+                except:
+                    log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
+                    log.debug("targetPath:" + str(targetPath))
+        else:
+            log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
+            raise
+    except:
+        log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
+        raise
 
 
 def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
 
     targets_metadata = [i for i in targets if i[2] == "metadata"]
 
-    if prop["storeData"]:
+    if prop["storeData"] and prop["removeFlag"]:
 
         # move file
         try:
-            shutil.move(sourceFile, targetFile)
+            __dataHandling(log, sourceFile, targetFile, shutil.move, metadata, prop)
             log.info("Moving file '" + str(sourceFile) + "' ...success.")
-        except IOError as e:
-
-            # errno.ENOENT == "No such file or directory"
-            if e.errno == errno.ENOENT:
-                subdir, tmp = os.path.split(metadata["relativePath"])
-
-                if metadata["relativePath"] in prop["fixSubdirs"]:
-                    log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
-                              ": Directory " + metadata["relativePath"] + " is not available", exc_info=True)
-                    return
-                elif subdir in prop["fixSubdirs"] :
-                    log.error("Unable to move file '" + sourceFile + "' to '" + targetFile +
-                              ": Directory " + subdir + " is not available", exc_info=True)
-                    return
-                else:
-                    try:
-                        targetPath, filename = os.path.split(targetFile)
-                        os.makedirs(targetPath)
-                        shutil.move(sourceFile, targetFile)
-                        log.info("New target directory created: " + str(targetPath))
-                    except:
-                        log.error("Unable to move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
-                        log.debug("targetPath:" + str(targetPath))
-            else:
-                log.error("Unable to move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
-                return
         except:
-            log.error("Unable to move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
+            return
+
+        #send message to metadata targets
+        if targets_metadata:
+            try:
+                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context)
+                log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
+
+            except:
+                log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
+
+    elif prop["StoreData"]:
+
+        # copy file
+        # (does not preserve file owner, group or ACLs)
+        try:
+            __dataHandling(log, sourceFile, targetFile, shutil.copy, metadata, prop)
+            log.info("Copying file '" + str(sourceFile) + "' ...success.")
+        except:
             return
 
         #send message to metadata targets
@@ -281,7 +314,8 @@ if __name__ == '__main__':
 
     dataFetcherProp = {
             "type"       : "getFromFile",
-            "removeFlag" : False
+            "fixSubdirs" : ["commissioning", "current", "local"],
+            "storeData"  : False
             }
 
     logging.debug("openConnections before function call: " + str(openConnections))
