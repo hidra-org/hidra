@@ -3,6 +3,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import argparse
 import zmq
+import zmq.devices
 import os
 import logging
 import sys
@@ -64,16 +65,20 @@ def argumentParsing():
 
     # SignalHandler config
 
-    controlPort        = config.get('asection', 'controlPort')
+    controlPubPort     = config.get('asection', 'controlPubPort')
+    controlSubPort     = config.get('asection', 'controlSubPort')
     comPort            = config.get('asection', 'comPort')
     whitelist          = json.loads(config.get('asection', 'whitelist'))
 
     requestPort        = config.get('asection', 'requestPort')
     requestFwPort      = config.get('asection', 'requestFwPort')
 
-    parser.add_argument("--controlPort"       , type    = str,
-                                                help    = "Port number to distribute control signals (default=" + str(controlPort) + ")",
-                                                default = controlPort )
+    parser.add_argument("--controlPubPort"    , type    = str,
+                                                help    = "Port number to publish control signals (default=" + str(controlPubPort) + ")",
+                                                default = controlPubPort )
+    parser.add_argument("--controlSubPort"    , type    = str,
+                                                help    = "Port number to receive control signals (default=" + str(controlSubPort) + ")",
+                                                default = controlSubPort )
     parser.add_argument("--comPort"           , type    = str,
                                                 help    = "Port number to receive signals (default=" + str(comPort) + ")",
                                                 default = comPort )
@@ -312,28 +317,31 @@ class DataManager():
         self.localhost        = "127.0.0.1"
         self.extIp            = "0.0.0.0"
 
-        self.controlPort      = arguments.controlPort
+        self.controlPubPort   = arguments.controlPubPort
+        self.controlSubPort   = arguments.controlSubPort
         self.comPort          = arguments.comPort
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
         self.routerPort       = arguments.routerPort
-
-        self.lock             = threading.Lock()
 
         self.comConId         = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.comPort)
         self.requestConId     = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.requestPort)
 
         if helpers.isWindows():
             self.log.info("Using tcp for internal communication.")
-            self.controlConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPort)
+            self.controlPubConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPubPort)
+            self.controlSubConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlSubPort)
             self.requestFwConId   = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
             self.routerConId      = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.routerPort)
         else:
             self.log.info("Using ipc for internal communication.")
-            self.controlConId     = "ipc://{pid}_{id}".format(pid=self.currentPID, id="control")
+            self.controlPubConId  = "ipc://{pid}_{id}".format(pid=self.currentPID, id="controlPub")
+            self.controlSubConId  = "ipc://{pid}_{id}".format(pid=self.currentPID, id="controlSub")
             self.requestFwConId   = "ipc://{pid}_{id}".format(pid=self.currentPID, id="requestFw")
             self.routerConId      = "ipc://{pid}_{id}".format(pid=self.currentPID, id="router")
 
+
+        self.device           = None
 
         self.whitelist        = arguments.whitelist
 
@@ -450,22 +458,42 @@ class DataManager():
 
     def createSockets(self):
 
+        # initiate forwarder for control signals (multiple pub, multiple sub)
+        try:
+            self.device = zmq.devices.ThreadDevice(zmq.FORWARDER, zmq.SUB, zmq.PUB)
+            self.device.bind_in(self.controlPubConId)
+            self.device.bind_out(self.controlSubConId)
+            self.device.setsockopt_in(zmq.SUBSCRIBE, b"")
+            self.device.start()
+            self.log.info("Start thead device forwarding messages from '" + str(self.controlPubConId) + "' to '" + str(self.controlSubConId) + "'")
+        except:
+            self.log.error("Failed to start thead device forwarding messages from '" + str(self.controlPubConId) + "' to '" + str(self.controlSubConId) + "'", exc_info=True)
+            raise
+
+
         # socket for control signals
         try:
-            self.lock.acquire()
-            helpers.globalObjects.controlSocket = self.context.socket(zmq.PUB)
-            helpers.globalObjects.controlSocket.bind(self.controlConId)
-            self.log.info("Start controlSocket (bind): '" + str(self.controlConId) + "'")
-            self.lock.release()
+            self.controlSocket = self.context.socket(zmq.PUB)
+            self.controlSocket.connect(self.controlPubConId)
+            self.log.info("Start controlSocket (connect): '" + str(self.controlPubConId) + "'")
         except:
-            self.log.error("Failed to start controlSocket (bind): '" + self.controlConId + "'", exc_info=True)
-            helpers.globalObjects.controlSocket = None
-            self.lock.release()
+            self.log.error("Failed to start controlSocket (connect): '" + self.controlPubConId + "'", exc_info=True)
             raise
 
 
     def run (self):
-        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.lock, self.controlConId, self.whitelist, self.comConId, self.requestFwConId, self.requestConId, self.logQueue, self.context) )
+        self.signalHandlerPr = threading.Thread ( target = SignalHandler,
+                                                  args   = (
+                                                      self.controlPubConId,
+                                                      self.controlSubConId,
+                                                      self.whitelist,
+                                                      self.comConId,
+                                                      self.requestFwConId,
+                                                      self.requestConId,
+                                                      self.logQueue,
+                                                      self.context
+                                                      )
+                                                  )
         self.signalHandlerPr.start()
 
         # needed, because otherwise the requests for the first files are not forwarded properly
@@ -474,13 +502,31 @@ class DataManager():
         if not self.signalHandlerPr.is_alive():
             return
 
-        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlConId, self.requestFwConId, self.routerConId, self.logQueue) )
+        self.taskProviderPr = Process ( target = TaskProvider,
+                                        args   = (
+                                            self.eventDetectorConfig,
+                                            self.controlSubConId,
+                                            self.requestFwConId,
+                                            self.routerConId,
+                                            self.logQueue
+                                            )
+                                        )
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):
             id = str(i) + "/" + str(self.numberOfStreams)
-            pr = Process ( target = DataDispatcher, args = (id, self.controlConId, self.routerConId, self.chunkSize, self.fixedStreamId, self.dataFetcherProp,
-                                                            self.logQueue, self.localTarget) )
+            pr = Process ( target = DataDispatcher,
+                           args   = (
+                               id,
+                               self.controlSubConId,
+                               self.routerConId,
+                               self.chunkSize,
+                               self.fixedStreamId,
+                               self.dataFetcherProp,
+                               self.logQueue,
+                               self.localTarget
+                               )
+                           )
             pr.start()
             self.dataDispatcherPr.append(pr)
 
@@ -499,10 +545,8 @@ class DataManager():
     def stop (self):
 
         if helpers.globalObjects.controlSocket:
-            self.lock.acquire()
             self.log.info("Sending 'Exit' signal")
             helpers.globalObjects.controlSocket.send_multipart(["control", "EXIT"])
-            self.lock.release()
 
         if helpers.globalObjects.controlFlag:
             helpers.globalObjects.controlFlag = False
@@ -511,11 +555,9 @@ class DataManager():
         time.sleep(0.5)
 
         if helpers.globalObjects.controlSocket:
-            self.lock.acquire()
             self.log.info("Closing controlSocket")
             helpers.globalObjects.controlSocket.close(0)
             helpers.globalObjects.controlSocket = None
-            self.lock.release()
 
         if self.context:
             self.log.info("Destroying context")

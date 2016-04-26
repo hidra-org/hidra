@@ -274,6 +274,56 @@ def extendWhitelist(whitelist, log):
     log.debug("Extended whitelist: " + str(whitelist))
 
 
+#class forwarderThread(threading.Thread):
+#    def __init__ (self, controlPubConId, controlSubConId, context):
+#
+#        threading.Thread.__init__(self)
+#
+#        self.controlPubConId = controlPubConId
+#        self.controlSubConId = controlSubConId
+#        self.context         = context
+#
+#        self.frontend        = None
+#        self.backend         = None
+#
+#
+#    def run (self):
+#        # initiate XPUB/XSUB for control signals
+#
+#        # Socket facing clients
+#        self.frontend = context.socket(zmq.SUB)
+#        self.frontend.bind(controlPubConId)
+#        logging.info("=== [forwarder] frontend bind to: '" + controlPubConId + "'")
+#
+#        self.frontend.setsockopt(zmq.SUBSCRIBE, "")
+#
+#        # Socket facing services
+#        self.backend = context.socket(zmq.PUB)
+#        self.backend.bind(controlSubConId)
+#        logging.info("=== [forwarder] backend bind to: '" + controlSubConId + "'")
+#
+#        zmq.device(zmq.FORWARDER, self.frontend, self.backend)
+#        logging.info("=== [forwarder] forwarder initiated")
+#
+#
+#    def stop (self):
+#        if self.frontend:
+#            logging.info("=== [forwarder] close frontend")
+#            self.frontend.close()
+#            self.frontend = None
+#        if self.backend:
+#            logging.info("=== [forwarder] close backend")
+#            self.backend.close()
+#            self.backend = None
+#
+#
+#    def __exit (self):
+#        self.stop()
+#
+#
+#    def __del__ (self):
+#        self.stop()
+
 
 # http://stackoverflow.com/questions/25585518/python-logging-logutils-with-queuehandler-and-queuelistener#25594270
 class CustomQueueListener (QueueListener):
