@@ -258,46 +258,45 @@ class dataTransfer():
 
     def start (self, dataSocket = False):
 
-        alreadyConnected = self.streamStarted or self.queryNextStarted
+        socketIdToConnect = self.streamStarted or self.queryNextStarted
 
-        #TODO Do I need to raise an exception here?
-        if alreadyConnected:
-#            raise Exception("Connection already started.")
-            self.log.info("Connection already started.")
-            return
+        if socketIdToConnect:
+            self.log.info("Reopening already started connection.")
+        else:
 
-        ip   = "0.0.0.0"           #TODO use IP of hostname?
+            ip   = "0.0.0.0"           #TODO use IP of hostname?
 
-        host = ""
-        port = ""
+            host = ""
+            port = ""
 
-        if dataSocket:
-            if type(dataSocket) == list:
-                socketIdToConnect = dataSocket[0] + ":" + dataSocket[1]
-                host = dataSocket[0]
-                ip   = socket.gethostbyaddr(host)[2][0]
-                port = dataSocket[1]
-            else:
-                port = str(dataSocket)
+            if dataSocket:
+                if type(dataSocket) == list:
+                    socketIdToConnect = dataSocket[0] + ":" + dataSocket[1]
+                    host = dataSocket[0]
+                    ip   = socket.gethostbyaddr(host)[2][0]
+                    port = dataSocket[1]
+                else:
+                    port = str(dataSocket)
 
-                host = socket.gethostname()
-                socketId = host + ":" + port
+                    host = socket.gethostname()
+                    socketId = host + ":" + port
+                    ipFromHost = socket.gethostbyaddr(host)[2]
+                    if len(ipFromHost) == 1:
+                        ip = ipFromHost[0]
+
+            elif len(self.targets) == 1:
+                host, port = self.targets[0][0].split(":")
                 ipFromHost = socket.gethostbyaddr(host)[2]
                 if len(ipFromHost) == 1:
                     ip = ipFromHost[0]
 
-        elif len(self.targets) == 1:
-            host, port = self.targets[0][0].split(":")
-            ipFromHost = socket.gethostbyaddr(host)[2]
-            if len(ipFromHost) == 1:
-                ip = ipFromHost[0]
+            else:
+                raise FormatError("Multipe possible ports. Please choose which one to use.")
 
-        else:
-            raise FormatError("Multipe possible ports. Please choose which one to use.")
+            socketId = host + ":" + port
+            socketIdToConnect = ip + ":" + port
+#            socketIdToConnect = "[" + ip + "]:" + port
 
-        socketId = host + ":" + port
-        socketIdToConnect = ip + ":" + port
-#        socketIdToConnect = "[" + ip + "]:" + port
 
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
@@ -310,6 +309,7 @@ class dataTransfer():
             self.log.info("Data socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
         except:
             self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'", exc_info=True)
+            raise
 
         self.poller.register(self.dataSocket, zmq.POLLIN)
 
@@ -323,6 +323,7 @@ class dataTransfer():
                 self.log.info("Request socket started (connect) for '" + connectionStr + "'")
             except:
                 self.log.error("Failed to start Socket of type " + self.connectionType + " (connect): '" + connectionStr + "'", exc_info=True)
+                raise
 
             self.queryNextStarted = socketId
         else:
