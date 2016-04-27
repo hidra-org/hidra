@@ -1,6 +1,6 @@
 # API to communicate with a data transfer unit
 
-__version__ = '2.1.0'
+__version__ = '2.1.1'
 
 import zmq
 import socket
@@ -220,7 +220,7 @@ class dataTransfer():
         # Send the signal that the communication infrastructure should be established
         self.log.info("Sending Signal")
 
-        sendMessage = ["0.0.1",  signal]
+        sendMessage = [__version__,  signal]
 
         trg = cPickle.dumps(self.targets)
         sendMessage.append(trg)
@@ -270,6 +270,7 @@ class dataTransfer():
 
         host = ""
         port = ""
+
         if dataSocket:
             if type(dataSocket) == list:
                 socketIdToConnect = dataSocket[0] + ":" + dataSocket[1]
@@ -296,12 +297,16 @@ class dataTransfer():
 
         socketId = host + ":" + port
         socketIdToConnect = ip + ":" + port
+#        socketIdToConnect = "[" + ip + "]:" + port
 
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
         connectionStr = "tcp://" + socketIdToConnect
+
         try:
+#            self.dataSocket.ipv6 = True
             self.dataSocket.bind(connectionStr)
+#            self.dataSocket.bind("tcp://[2003:ce:5bc0:a600:fa16:54ff:fef4:9fc0]:50102")
             self.log.info("Data socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
         except:
             self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'", exc_info=True)

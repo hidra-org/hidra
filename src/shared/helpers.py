@@ -198,6 +198,7 @@ def checkLogFileWritable (filepath, filename):
 
 
 def checkVersion (version, log):
+    log.debug("remote version: " + version + ", local version: " + __version__)
     if version < __version__:
         log.info("Version of receiver is lower. Please update receiver.")
         return False
@@ -250,19 +251,22 @@ def extendWhitelist(whitelist, log):
         if host == "localhost":
             elementToAdd = socket.gethostbyname(host)
         else:
-            hostname, tmp, ip = socket.gethostbyaddr(host)
+            try:
+                hostname, tmp, ip = socket.gethostbyaddr(host)
 
-            if hostname.endswith(".desy.de"):
-                hostModified = hostname[:-8]
-            else:
-                hostModified = hostname
+                if hostname.endswith(".desy.de"):
+                    hostModified = hostname[:-8]
+                else:
+                    hostModified = hostname
 
 
-            if hostModified not in whitelist:
-                extendedWhitelist.append(hostModified)
+                if hostModified not in whitelist:
+                    extendedWhitelist.append(hostModified)
 
-            if ip[0] not in whitelist:
-                extendedWhitelist.append(ip[0])
+                if ip[0] not in whitelist:
+                    extendedWhitelist.append(ip[0])
+            except:
+                pass
 
     for host in extendedWhitelist:
         whitelist.append(host)
