@@ -118,7 +118,10 @@ class DataReceiver:
 
         self.dataTransfer   = dataTransfer("stream", useLog = True)
 
-        self.run()
+        try:
+            self.run()
+        finally:
+            self.stop()
 
 
     def getLogger(self):
@@ -143,16 +146,11 @@ class DataReceiver:
         while continueReceiving:
             try:
                 [payloadMetadata, payload] = self.dataTransfer.get()
-            except KeyboardInterrupt:
-                return
             except:
-                self.log.error("Getting data failed.", exc_info=True)
-                raise
+                break
 
             try:
                 self.dataTransfer.store(self.targetDir, [payloadMetadata, payload] )
-            except KeyboardInterrupt:
-                return
             except:
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise

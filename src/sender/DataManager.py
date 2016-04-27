@@ -405,7 +405,6 @@ class DataManager():
                     "type"        : arguments.dataFetcherType,
                     "fixSubdirs"  : arguments.fixSubdirs,
                     "storeData"   : arguments.storeData,
-                    "removeFlag"  : False
                     }
         elif arguments.dataFetcherType == "getFromZmq":
             self.dataFetcherProp = {
@@ -444,6 +443,8 @@ class DataManager():
 
             self.run()
         except:
+            pass
+        finally:
             self.stop()
 
 
