@@ -106,7 +106,7 @@ def argumentParsing():
 class DataReceiver:
     def __init__(self, targetDir, dataIp, dataPort):
 
-        self.log            = self.getLogger()
+        self.log       = self.getLogger()
 
         self.targetDir = os.path.normpath(targetDir)
         self.dataIp    = dataIp

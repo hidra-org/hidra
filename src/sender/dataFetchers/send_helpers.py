@@ -8,7 +8,7 @@ class DataHandlingError(Exception):
     pass
 
 
-def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metadata, payload, context):
+def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metadata, payload, context, timeout = -1):
 
     for target, prio, sendType in targets:
 
@@ -46,13 +46,13 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
                 if not tracker.done:
                     log.debug("Message part from file " + str(sourceFile) +
                              " has not been sent yet, waiting...")
-                    tracker.wait()
+                    tracker.wait(timeout)
                     log.debug("Message part from file " + str(sourceFile) +
                              " has not been sent yet, waiting...done")
 
             except:
                 raise DataHandlingError("Sending (metadata of) message part from file " + str(sourceFile) +
-                          " to '" + target + "' with priority " + str(prio) + " failed.")
+                                        " to '" + target + "' with priority " + str(prio) + " failed.")
 
 
         else:

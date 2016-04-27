@@ -22,6 +22,7 @@ def setup (log, prop):
         return False
 
     else:
+        prop["timeout"]    = -1 #10
         prop["removeFlag"] = False
         return True
 
@@ -209,13 +210,13 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
         #send message to metadata targets
         if targets_metadata:
             try:
-                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context)
+                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"])
                 log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
 
             except:
                 log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
 
-    elif prop["StoreData"]:
+    elif prop["storeData"]:
 
         # copy file
         # (does not preserve file owner, group or ACLs)
