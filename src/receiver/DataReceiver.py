@@ -37,6 +37,7 @@ def argumentParsing():
     logfileName    = config.get('asection', 'logfileName')
     logfileSize    = config.get('asection', 'logfileSize')
 
+    whitelist      = config.get('asection', 'whitelist')
 
     targetDir      = config.get('asection', 'targetDir')
 
@@ -45,30 +46,33 @@ def argumentParsing():
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--logfilePath"          , type    = str,
-                                                   help    = "Path where logfile will be created (default=" + str(logfilePath) + ")",
-                                                   default = logfilePath )
-    parser.add_argument("--logfileName"          , type    = str,
-                                                   help    = "Filename used for logging (default=" + str(logfileName) + ")",
-                                                   default = logfileName )
-    parser.add_argument("--logfileSize"          , type    = int,
-                                                   help    = "File size in B before rollover (linux only; (default=" + str(logfileSize) + ")",
-                                                   default = logfileSize )
-    parser.add_argument("--verbose"              , help    = "More verbose output",
-                                                   action  = "store_true" )
-    parser.add_argument("--onScreen"             , type    = str,
-                                                   help    = "Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)",
-                                                   default = False )
+    parser.add_argument("--logfilePath"       , type    = str,
+                                                help    = "Path where logfile will be created (default=" + str(logfilePath) + ")",
+                                                default = logfilePath )
+    parser.add_argument("--logfileName"       , type    = str,
+                                                help    = "Filename used for logging (default=" + str(logfileName) + ")",
+                                                default = logfileName )
+    parser.add_argument("--logfileSize"       , type    = int,
+                                                help    = "File size in B before rollover (linux only; (default=" + str(logfileSize) + ")",
+                                                default = logfileSize )
+    parser.add_argument("--verbose"           , help    = "More verbose output",
+                                                action  = "store_true" )
+    parser.add_argument("--onScreen"          , type    = str,
+                                                help    = "Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)",
+                                                default = False )
 
-    parser.add_argument("--targetDir"            , type    = str,
-                                                   help    = "Where incoming data will be stored to (default=" + str(targetDir) + ")",
-                                                   default = targetDir )
-    parser.add_argument("--dataStreamIp"         , type    = str,
-                                                   help    = "Ip of dataStream-socket to pull new files from (default=" + str(dataStreamIp) + ")",
-                                                   default = dataStreamIp )
-    parser.add_argument("--dataStreamPort"       , type    = str,
-                                                   help    = "Port number of dataStream-socket to pull new files from (default=" + str(dataStreamPort) + ")",
-                                                   default = dataStreamPort )
+    parser.add_argument("--whitelist"         , type    = str,
+                                                help    = "List of hosts allowed to connect (default=" + str(whitelist) + ")",
+                                                default = whitelist )
+    parser.add_argument("--targetDir"         , type    = str,
+                                                help    = "Where incoming data will be stored to (default=" + str(targetDir) + ")",
+                                                default = targetDir )
+    parser.add_argument("--dataStreamIp"      , type    = str,
+                                                help    = "Ip of dataStream-socket to pull new files from (default=" + str(dataStreamIp) + ")",
+                                                default = dataStreamIp )
+    parser.add_argument("--dataStreamPort"    , type    = str,
+                                                help    = "Port number of dataStream-socket to pull new files from (default=" + str(dataStreamPort) + ")",
+                                                default = dataStreamPort )
 
 
     arguments   = parser.parse_args()
@@ -104,19 +108,20 @@ def argumentParsing():
 
 
 class DataReceiver:
-    def __init__(self, targetDir, dataIp, dataPort):
+    def __init__(self):
+        arguments = argumentParsing()
 
-        self.log       = self.getLogger()
+        self.log          = self.getLogger()
 
-        self.targetDir = os.path.normpath(targetDir)
-        self.dataIp    = dataIp
-        self.dataPort  = dataPort
+        self.whitelist    = arguments.whitelist
 
-        self.whitelist = "131.169.185.121"
+        self.targetDir    = os.path.normpath(arguments.targetDir)
+        self.dataIp       = arguments.dataStreamIp
+        self.dataPort     = arguments.dataStreamPort
 
         self.log.info("Writing to directory '" + self.targetDir + "'.")
 
-        self.dataTransfer   = dataTransfer("stream", useLog = True)
+        self.dataTransfer = dataTransfer("stream", useLog = True)
 
         try:
             self.run()
@@ -162,17 +167,15 @@ class DataReceiver:
             self.dataTransfer.stop()
             self.dataTransfer = None
 
+
     def __exit__(self):
         self.stop()
 
 
+    def __del__(self):
+        self.stop()
+
+
 if __name__ == "__main__":
-
-    arguments      = argumentParsing()
-
-    targetDir      = arguments.targetDir
-    dataStreamIp   = arguments.dataStreamIp
-    dataStreamPort = arguments.dataStreamPort
-
     #start file receiver
-    receiver = DataReceiver(targetDir, dataStreamIp, dataStreamPort)
+    receiver = DataReceiver()
