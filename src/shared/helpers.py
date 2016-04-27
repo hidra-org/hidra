@@ -102,7 +102,6 @@ def confirm (prompt=None, resp=False):
             ans = raw_input(prompt)
         except KeyboardInterrupt:
             logging.error("Keyboard Interruption detected.")
-            sys.exit(1)
         except Exception as e:
             logging.error("Something went wrong with the confirmation.")
             logging.debug("Error was: " + str(e))
@@ -191,8 +190,8 @@ def checkLogFileWritable (filepath, filename):
         logFile = open(logfullPath, "a")
         logFile.close()
     except:
-        print "Unable to create the logfile " + str(logfullPath)
-        print "Please specify a new target by setting the following arguments:\n--logfileName\n--logfilePath"
+        logging.error("Unable to create the logfile " + str(logfullPath))
+        logging.error("Please specify a new target by setting the following arguments:\n--logfileName\n--logfilePath")
         sys.exit(1)
 
 
@@ -238,6 +237,16 @@ def checkHost (hostname, whiteList, log):
 
     return False
 
+
+def checkPing(host, log = logging):
+    if isWindows():
+        response = os.system("ping -n 1 -w 2 " + host)
+    else:
+        response = os.system("ping -c 1 -w 2 " + host + " > /dev/null 2>&1")
+
+    if response != 0:
+        log.error(host + " is not pingable.")
+        sys.exit(1)
 
 
 # IP and DNS name should be both in the whitelist

@@ -246,6 +246,8 @@ def argumentParsing():
     localTarget       = arguments.localTarget
 
     useDataStream     = arguments.useDataStream
+    fixedStreamHost   = arguments.fixedStreamHost
+
     numberOfStreams   = arguments.numberOfStreams
 
     storeData         = arguments.storeData
@@ -267,6 +269,10 @@ def argumentParsing():
     if storeData:
         helpers.checkDirExistance(localTarget)
         helpers.checkAllSubDirExist(localTarget, fixSubdirs)
+
+
+    if useDataStream:
+        helpers.checkPing(fixedStreamHost)
 
     return arguments
 
@@ -355,6 +361,7 @@ class DataManager():
             self.fixedStreamId = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )
         else:
             self.fixedStreamId = None
+
 
         self.numberOfStreams  = arguments.numberOfStreams
         self.chunkSize        = arguments.chunkSize
