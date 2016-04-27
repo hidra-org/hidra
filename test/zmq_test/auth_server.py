@@ -13,10 +13,11 @@ socket.zap_domain = b'global'
 socket.bind("tcp://" + ip + ":%s" % port)
 
 auth = ThreadAuthenticator(context)
-#whitelist = "131.169.185.121"
-whitelist = "131.169.185.34"
 auth.start()
-auth.allow(whitelist)
+
+whitelist = ["131.169.185.34", "131.169.185.121"]
+for host in whitelist:
+    auth.allow(host)
 
 
 while True:

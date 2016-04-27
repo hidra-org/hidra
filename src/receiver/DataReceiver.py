@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 import ConfigParser
+import json
 
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -37,7 +38,7 @@ def argumentParsing():
     logfileName    = config.get('asection', 'logfileName')
     logfileSize    = config.get('asection', 'logfileSize')
 
-    whitelist      = config.get('asection', 'whitelist')
+    whitelist      = json.loads(config.get('asection', 'whitelist'))
 
     targetDir      = config.get('asection', 'targetDir')
 
@@ -114,6 +115,8 @@ class DataReceiver:
         self.log          = self.getLogger()
 
         self.whitelist    = arguments.whitelist
+
+        self.log.info("Configured whitelist: " + str(self.whitelist))
 
         self.targetDir    = os.path.normpath(arguments.targetDir)
         self.dataIp       = arguments.dataStreamIp

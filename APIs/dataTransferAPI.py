@@ -264,9 +264,24 @@ class dataTransfer():
 
         # Receive data only from whitelisted nodes
         if whitelist:
-            self.auth = ThreadAuthenticator(self.context)
-            self.auth.start()
-            self.auth.allow(whitelist)
+            if type(whitelist) == list:
+                self.auth = ThreadAuthenticator(self.context)
+                self.auth.start()
+                for host in whitelist:
+                    try:
+                        if host == "localhost":
+                            ip = [socket.gethostbyname(host)]
+                        else:
+                            hostname, tmp, ip = socket.gethostbyaddr(host)
+
+                        self.log.debug("Allowing host " + host + " (" + str(ip[0]) + ")")
+                        self.auth.allow(ip[0])
+                    except:
+                        self.log.error("Error was: ", exc_info=True)
+                        raise AuthenticationFailed("Could not get IP of host " + host)
+            else:
+                raise FormatError("Whitelist has to be a list of IPs")
+
 
         socketIdToConnect = self.streamStarted or self.queryNextStarted
 
