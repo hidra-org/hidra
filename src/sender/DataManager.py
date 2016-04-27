@@ -357,11 +357,12 @@ class DataManager():
 
         self.whitelist        = arguments.whitelist
 
-        if arguments.useDataStream:
+        self.useDataStream = arguments.useDataStream
+
+        if self.useDataStream:
             self.fixedStreamId = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )
         else:
             self.fixedStreamId = None
-
 
         self.numberOfStreams  = arguments.numberOfStreams
         self.chunkSize        = arguments.chunkSize
@@ -445,10 +446,13 @@ class DataManager():
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
 
-        try:
-            self.createSockets()
+        self.testSocket = None
 
-            self.run()
+        try:
+            if self.testFixedStreamingHost():
+                self.createSockets()
+
+                self.run()
         except:
             pass
         finally:
@@ -493,6 +497,29 @@ class DataManager():
         except:
             self.log.error("Failed to start controlSocket (connect): '" + self.controlPubConId + "'", exc_info=True)
             raise
+
+
+    def testFixedStreamingHost(self):
+        if self.useDataStream:
+            try:
+                self.testSocket = self.context.socket(zmq.PUSH)
+                connectionStr   = "tcp://" + self.fixedStreamId
+
+                self.testSocket.connect(connectionStr)
+                self.log.info("Start testSocket (connect): '" + str(connectionStr) + "'")
+            except:
+                self.log.error("Failed to start testSocket (connect): '" + str(connectionStr) + "'", exc_info=True)
+                return False
+
+            try:
+                tracker = self.testSocket.send_multipart(b"ALIVE_TEST", copy=False, track=True)
+                if not tracker.done:
+                    tracker.wait(2)
+            except:
+                self.log.error("Failed to send test message to fixed streaming host", exc_info=True)
+                return False
+
+        return True
 
 
     def run (self):
@@ -569,6 +596,11 @@ class DataManager():
             self.log.info("Closing controlSocket")
             self.controlSocket.close(0)
             self.controlSocket = None
+
+        if self.testSocket:
+            self.log.debug("Stopping testing socket")
+            self.testSocket.close(0)
+            self.testSocket = None
 
         if self.context:
             self.log.info("Destroying context")

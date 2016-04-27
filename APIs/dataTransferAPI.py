@@ -382,60 +382,63 @@ class dataTransfer():
                 self.log.error("Could not send request to requestSocket", exc_info=True)
                 return None, None
 
-        # receive data
-        if timeout:
-            try:
-                socks = dict(self.poller.poll(timeout))
-            except:
-                self.log.error("Could not poll for new message")
-                raise
-        else:
-            try:
-                socks = dict(self.poller.poll())
-            except:
-                self.log.error("Could not poll for new message")
-                raise
-
-        # if there was a response
-        if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
-
-            try:
-                multipartMessage = self.dataSocket.recv_multipart()
-            except:
-                self.log.error("Receiving files..failed.")
-                return [None, None]
-
-            if len(multipartMessage) < 2:
-                self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
-                self.log.debug("multipartMessage=" + str(mutipartMessage))
-                return [None, None]
-
-            # extract multipart message
-            try:
-                metadata = cPickle.loads(multipartMessage[0])
-            except:
-                self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
-                metadata = None
-
-            #TODO validate multipartMessage (like correct dict-values for metadata)
-
-            try:
-                payload = multipartMessage[1]
-            except:
-                self.log.warning("An empty file was received within the multipart-message", exc_info=True)
-                payload = None
-
-            return [metadata, payload]
-        else:
-            self.log.warning("Could not receive data in the given time.")
-
-            if self.queryNextStarted :
+        while True:
+            # receive data
+            if timeout:
                 try:
-                    self.requestSocket.send_multipart(["CANCEL", self.queryNextStarted])
-                except Exception as e:
-                    self.log.error("Could not cancel the next query", exc_info=True)
+                    socks = dict(self.poller.poll(timeout))
+                except:
+                    self.log.error("Could not poll for new message")
+                    raise
+            else:
+                try:
+                    socks = dict(self.poller.poll())
+                except:
+                    self.log.error("Could not poll for new message")
+                    raise
 
-            return [None, None]
+            # if there was a response
+            if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
+
+                try:
+                    multipartMessage = self.dataSocket.recv_multipart()
+                except:
+                    self.log.error("Receiving files..failed.")
+                    return [None, None]
+
+                if multipartMessage == b"ALIVE_TEST":
+                    continue
+                elif len(multipartMessage) < 2:
+                    self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
+                    self.log.debug("multipartMessage=" + str(mutipartMessage))
+                    return [None, None]
+
+                # extract multipart message
+                try:
+                    metadata = cPickle.loads(multipartMessage[0])
+                except:
+                    self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
+                    metadata = None
+
+                #TODO validate multipartMessage (like correct dict-values for metadata)
+
+                try:
+                    payload = multipartMessage[1]
+                except:
+                    self.log.warning("An empty file was received within the multipart-message", exc_info=True)
+                    payload = None
+
+                return [metadata, payload]
+            else:
+                self.log.warning("Could not receive data in the given time.")
+
+                if self.queryNextStarted :
+                    try:
+                        self.requestSocket.send_multipart(["CANCEL", self.queryNextStarted])
+                    except Exception as e:
+                        self.log.error("Could not cancel the next query", exc_info=True)
+
+                return [None, None]
 
 
     def store (self, targetBasePath, dataObject):
