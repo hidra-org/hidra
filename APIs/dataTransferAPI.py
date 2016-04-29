@@ -403,14 +403,15 @@ class dataTransfer():
                 try:
                     multipartMessage = self.dataSocket.recv_multipart()
                 except:
-                    self.log.error("Receiving files..failed.")
+                    self.log.error("Receiving data..failed.", exc_info=True)
                     return [None, None]
 
-                if multipartMessage == b"ALIVE_TEST":
+
+                if multipartMessage[0] == b"ALIVE_TEST":
                     continue
                 elif len(multipartMessage) < 2:
                     self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
-                    self.log.debug("multipartMessage=" + str(mutipartMessage))
+                    self.log.debug("multipartMessage=" + str(mutipartMessage)[:100])
                     return [None, None]
 
                 # extract multipart message
