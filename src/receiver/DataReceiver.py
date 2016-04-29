@@ -140,7 +140,7 @@ class DataReceiver:
     def run(self):
 
         try:
-            self.dataTransfer.start(self.dataPort, self.whitelist)
+            self.dataTransfer.start([self.dataIp, self.dataPort], self.whitelist)
 #            self.dataTransfer.start(self.dataPort)
         except:
             self.log.error("Could not initiate stream", exc_info=True)
