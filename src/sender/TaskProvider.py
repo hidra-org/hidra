@@ -7,6 +7,8 @@ import logging
 import sys
 import trace
 import cPickle
+import signal
+import errno
 
 try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -44,6 +46,8 @@ class TaskProvider():
         #}
 
         self.log                = self.getLogger(logQueue)
+
+        signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         self.currentPID         = os.getpid()
         self.log.debug("TaskProvider started (PID " + str(self.currentPID) + ").")
@@ -158,6 +162,12 @@ class TaskProvider():
                 workloadList = self.eventDetector.getNewEvent()
             except KeyboardInterrupt:
                 break
+            except IOError as e:
+                if e.errno == errno.EINTR:
+                    break
+                else:
+                    self.log.error("Invalid fileEvent message received.", exc_info=True)
+                    continue
             except:
                 self.log.error("Invalid fileEvent message received.", exc_info=True)
                 #skip all further instructions and continue with next iteration
@@ -238,6 +248,11 @@ class TaskProvider():
             self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
+
+
+    def signal_term_handler(self, signal, frame):
+        self.log.debug('got SIGTERM')
+        self.stop()
 
 
     def __exit__ (self):

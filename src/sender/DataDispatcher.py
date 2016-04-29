@@ -8,6 +8,7 @@ import logging
 import traceback
 import cPickle
 import shutil
+import signal
 from multiprocessing import Process
 
 try:
@@ -53,7 +54,9 @@ class DataDispatcher():
         self.id              = id
         self.log             = self.__getLogger(logQueue)
 
-        self.currentPID         = os.getpid()
+        signal.signal(signal.SIGTERM, self.signal_term_handler)
+
+        self.currentPID      = os.getpid()
         self.log.debug("DataDispatcher-" + str(self.id) + " started (PID " + str(self.currentPID) + ").")
 
         self.controlConId    = controlConId
@@ -295,6 +298,11 @@ class DataDispatcher():
             self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
+
+
+    def signal_term_handler(self, signal, frame):
+        self.log.debug('got SIGTERM')
+        self.stop()
 
 
     def __exit__ (self):
