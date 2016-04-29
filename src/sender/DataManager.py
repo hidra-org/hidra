@@ -512,7 +512,7 @@ class DataManager():
                 return False
 
             try:
-                tracker = self.testSocket.send_multipart(b"ALIVE_TEST", copy=False, track=True)
+                tracker = self.testSocket.send_multipart([b"ALIVE_TEST"], copy=False, track=True)
                 if not tracker.done:
                     tracker.wait(2)
             except:
