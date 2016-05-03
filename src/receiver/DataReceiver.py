@@ -7,6 +7,8 @@ import logging
 import os
 import ConfigParser
 import json
+import subprocess
+import re
 
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -38,7 +40,22 @@ def argumentParsing():
     logfileName    = config.get('asection', 'logfileName')
     logfileSize    = config.get('asection', 'logfileSize')
 
-    whitelist      = json.loads(config.get('asection', 'whitelist'))
+    try:
+        whitelist      = json.loads(config.get('asection', 'whitelist'))
+    except ValueError:
+        ldap_cn = config.get('asection', 'whitelist')
+        p = subprocess.Popen("ldapsearch -x -H ldap://it-ldap-slave.desy.de:1389 cn=" + ldap_cn + " -LLL", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        lines = p.stdout.readlines()
+
+        matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]', re.M|re.I)
+        whitelist = []
+
+        for line in lines:
+
+            if matchHost.match(line):
+                if matchHost.match(line).group(1) not in whitelist:
+                    whitelist.append(matchHost.match(line).group(1))
+
 
     targetDir      = config.get('asection', 'targetDir')
 
