@@ -359,7 +359,7 @@ class DataManager():
 
 
         self.device           = None
-        self.controlSocket   = None
+        self.controlPubSocket = None
 
         self.whitelist        = arguments.whitelist
 
@@ -497,11 +497,11 @@ class DataManager():
 
         # socket for control signals
         try:
-            self.controlSocket = self.context.socket(zmq.PUB)
-            self.controlSocket.connect(self.controlPubConId)
-            self.log.info("Start controlSocket (connect): '" + str(self.controlPubConId) + "'")
+            self.controlPubSocket = self.context.socket(zmq.PUB)
+            self.controlPubSocket.connect(self.controlPubConId)
+            self.log.info("Start controlPubSocket (connect): '" + str(self.controlPubConId) + "'")
         except:
-            self.log.error("Failed to start controlSocket (connect): '" + self.controlPubConId + "'", exc_info=True)
+            self.log.error("Failed to start controlPubSocket (connect): '" + self.controlPubConId + "'", exc_info=True)
             raise
 
 
@@ -591,20 +591,20 @@ class DataManager():
 
     def stop (self):
 
-        if self.controlSocket:
+        if self.controlPubSocket:
             self.log.info("Sending 'Exit' signal")
-            self.controlSocket.send_multipart(["control", "EXIT"])
+            self.controlPubSocket.send_multipart(["control", "EXIT"])
 
         # waiting till the other processes are finished
         time.sleep(0.5)
 
-        if self.controlSocket:
-            self.log.info("Closing controlSocket")
-            self.controlSocket.close(0)
-            self.controlSocket = None
+        if self.controlPubSocket:
+            self.log.info("Closing controlPubSocket")
+            self.controlPubSocket.close(0)
+            self.controlPubSocket = None
 
         if self.testSocket:
-            self.log.debug("Stopping testing socket")
+            self.log.debug("Stopping testSocket")
             self.testSocket.close(0)
             self.testSocket = None
 
@@ -612,6 +612,12 @@ class DataManager():
             self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
+
+        try:
+            os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub"))
+            os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub"))
+        except:
+            self.log.error("Could not remove remaining ipc sockets", exc_info=True)
 
         if not self.extLogQueue and self.logQueueListener:
             self.log.info("Stopping logQueue")
@@ -629,7 +635,7 @@ class DataManager():
         self.stop()
 
 
-    def __def__ (self):
+    def __del__ (self):
         self.stop()
 
 

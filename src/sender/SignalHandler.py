@@ -94,6 +94,7 @@ class SignalHandler():
             pass
         except:
             self.log.error("Stopping signalHandler due to unknown error condition.", exc_info=True)
+        finally:
             self.stop()
 
 

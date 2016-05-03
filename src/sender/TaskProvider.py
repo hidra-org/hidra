@@ -95,6 +95,7 @@ class TaskProvider():
             pass
         except:
             self.log.error("Stopping TaskProvider due to unknown error condition.", exc_info=True)
+        finally:
             self.stop()
 
 

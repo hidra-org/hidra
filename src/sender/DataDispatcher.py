@@ -103,6 +103,7 @@ class DataDispatcher():
                 pass
             except:
                 self.log.error("Stopping DataDispatcher-" + str(self.id) + " due to unknown error condition.", exc_info=True)
+            finally:
                 self.stop()
 
 

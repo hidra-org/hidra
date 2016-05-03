@@ -60,6 +60,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
         done
         if checkpid $DATATRANSFER_PID ; then
             kill -KILL $DATATRANSFER_PID
+            #TODO rm ipc sockets in /tmp/zeromq-data-transfer
         fi
     	RETVAL=$?
 #    	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/zeromq-data-transfer
