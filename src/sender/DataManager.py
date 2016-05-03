@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
@@ -14,6 +16,7 @@ from multiprocessing import Process, freeze_support, Queue
 import ConfigParser
 import threading
 import signal
+import setproctitle
 
 from SignalHandler import SignalHandler
 from TaskProvider import TaskProvider
@@ -279,6 +282,9 @@ def argumentParsing():
 
 class DataManager():
     def __init__ (self, logQueue = None):
+        procname = "zeromq-data-transfer"
+        setproctitle.setproctitle(procname)
+
         arguments = argumentParsing()
 
         logfilePath           = arguments.logfilePath
