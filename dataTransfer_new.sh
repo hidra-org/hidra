@@ -16,8 +16,10 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="ZMQ data transfer"
 # Process name ( For display )
 NAME=zeromq-data-transfer
+#DAEMON=/home/kuhnm/Arbeit/zeromq-data-transfer/src/sender/DataManager.py
 DAEMON=/space/projects/zeromq-data-transfer/src/sender/DataManager.py
 DAEMON_ARGS="--verbose"
+#PIDFILE=/home/kuhnm/Arbeit/zeromq-data-transfer/$NAME.pid
 PIDFILE=/space/projects/zeromq-data-transfer/$NAME.pid
 PYTHON=/usr/bin/python
 
@@ -33,36 +35,34 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
     start()
     {
     	echo -n "Starting ${DESC}..."
-	    ${DAEMON} --pidfile ${PIDFILE}
+	    ${DAEMON} ${DAEMON_ARGS} &
 #	    /usr/bin/python ${DAEMON} --pidfile ${PIDFILE}
     	RETVAL=$?
-	    [ "$RETVAL" = 0 ] && touch /var/lock/subsys/zeromq-data-transfer
+#	    [ "$RETVAL" = 0 ] && touch /var/lock/subsys/zeromq-data-transfer
     	echo
     }
 
     stop()
     {
 	    echo -n "Stopping ${DESC}..."
-    	if [ -n "`cat ${PIDFILE} 2>/dev/null`" ];
-	    then
-	        DATATRANSFER_PID="`pidofproc -p ${PIDFILE} ${NAME}`"
-    	    if [ -z "$DATATRANSFER_PID" ]; then
-        		exit 0
-	        fi
-     	    # stop gracefully and wait up to 180 seconds.
-	        kill -TERM $DATATRANSFER_PID >/dev/null 2>&1
-	        TIMEOUT=0
-    	    while checkpid $DATATRANSFER_PID && [ $TIMEOUT -lt 180 ] ; do
-                sleep 1
-                let TIMEOUT=TIMEOUT+1
-            done
-            if checkpid $DATATRANSFER_PID ; then
-                #TODO kill subprocesses too
-                kill -KILL $DATATRANSFER_PID
-            fi
-	    fi
+        DATATRANSFER_PID="`pidofproc ${NAME}`"
+        # stop gracefully and wait up to 180 seconds.
+#        if [ -z "$DATATRANSFER_PID" ]; then
+#            exit 0
+#        else
+            kill $DATATRANSFER_PID > /dev/null 2>&1
+#        fi
+
+        TIMEOUT=0
+        while checkpid $DATATRANSFER_PID && [ $TIMEOUT -lt 30 ] ; do
+            sleep 1
+            let TIMEOUT=TIMEOUT+1
+        done
+        if checkpid $DATATRANSFER_PID ; then
+            kill -KILL $DATATRANSFER_PID
+        fi
     	RETVAL=$?
-    	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/zeromq-data-transfer
+#    	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/zeromq-data-transfer
 	    echo
     }
 
@@ -79,11 +79,12 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             start
             ;;
         status)
-            status -p ${PIDFILE} ${NAME}
+            status ${NAME}
+#            status -p ${PIDFILE} ${NAME}
             RETVAL=$?
             ;;
         *)
-            echo "Usage: $0 {start|stop|restart}"
+            echo "Usage: $0 {start|stop|status|restart}"
             RETVAL=1
             ;;
     esac
