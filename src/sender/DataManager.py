@@ -52,6 +52,8 @@ def argumentParsing():
     logfileName        = config.get('asection', 'logfileName')
     logfileSize        = config.get('asection', 'logfileSize')
 
+    procname           = config.get('asection', 'procname')
+
     parser.add_argument("--logfilePath"       , type    = str,
                                                 help    = "Path where the logfile will be created (default=" + str(logfilePath) + ")",
                                                 default = logfilePath )
@@ -66,6 +68,10 @@ def argumentParsing():
     parser.add_argument("--onScreen"          , type    = str,
                                                 help    = "Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)",
                                                 default = False )
+
+    parser.add_argument("--procname"          , type    = str,
+                                                help    = "Name with which the serevice should be running (default=" + str(procname) + ")",
+                                                default = procname )
 
     # SignalHandler config
 
@@ -282,9 +288,6 @@ def argumentParsing():
 
 class DataManager():
     def __init__ (self, logQueue = None):
-        procname = "zeromq-data-transfer"
-        setproctitle.setproctitle(procname)
-
         arguments = argumentParsing()
 
         logfilePath           = arguments.logfilePath
@@ -322,6 +325,10 @@ class DataManager():
 
         # Create log and set handler to queue handle
         self.log = self.getLogger(self.logQueue)
+
+        procname              = arguments.procname
+        setproctitle.setproctitle(procname)
+        self.log.info("Running as " + str(procname) )
 
         self.log.info("DataManager started (PID " + str(self.currentPID) + ").")
 
