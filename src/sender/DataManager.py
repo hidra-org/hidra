@@ -356,7 +356,7 @@ class DataManager():
                     "monEventType"      : arguments.monitoredEventType,
                     "monSubdirs"        : arguments.fixSubdirs,
                     "monSuffixes"       : arguments.monitoredFormats,
-                    "timeout"           : 0.1,
+                    "timeout"           : 1,
                     "historySize"       : arguments.historySize
                     }
         elif arguments.eventDetectorType == "WatchdogDetector":
@@ -485,6 +485,7 @@ class DataManager():
             self.dataDispatcherPr.append(pr)
 
         while self.signalHandlerPr.is_alive() and self.taskProviderPr.is_alive() and all(dataDispatcher.is_alive() for dataDispatcher in self.dataDispatcherPr):
+            time.sleep(1)
             pass
 
         # notify which subprocess terminated
@@ -594,7 +595,7 @@ class Test_Receiver_Stream():
 
     def sendSignal (self, signal, ports, prio = None):
         self.log.info("=== sendSignal : " + signal + ", " + str(ports))
-        sendMessage = ["0.0.1",  signal]
+        sendMessage = [__version__,  signal]
         targets = []
         if type(ports) == list:
             for port in ports:
