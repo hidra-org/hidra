@@ -212,9 +212,6 @@ class EventDetector():
             parts = event.get_mask_description()
             parts_array = parts.split("|")
 
-#            print path, event.name, parts
-#            print event.name
-
             is_dir        = ("IN_ISDIR" in parts_array)
             is_created    = ("IN_CREATE" in parts_array)
             is_moved_from = ("IN_MOVED_FROM" in parts_array)
@@ -222,9 +219,23 @@ class EventDetector():
 
             is_ofEventType = (self.monEventType in parts_array)
 
+#            self.log.debug(path + " " + event.name + " " + parts)
+#            self.log.debug(event.name)
+#            self.log.debug("is_dir: " + str(is_dir))
+#            self.log.debug("is_created: " + str(is_created))
+#            self.log.debug("is_moved_from: " + str(is_moved_from))
+#            self.log.debug("is_moved_to: " + str(is_moved_to))
+#            self.log.debug("is_ofEventType: " + str(is_ofEventType))
+
+
             # if a new directory is created or a directory is renamed inside the monitored one,
             # this one has to be monitored as well
             if is_dir and (is_created or is_moved_to):
+
+#                self.log.debug("is_dir and is created: " + str(is_created) + "
+#                self.log.debug(path + " " + event.name + " " + parts)
+#                self.log.debug(event.name)
+
                 dirname = os.path.join(path, event.name)
                 self.log.info("Directory event detected: " + str(dirname) + "," + str(parts))
                 if dirname in self.paths:
@@ -245,13 +256,26 @@ class EventDetector():
                             wd = binding.add_watch(self.fd, traversedPath)
                             self.wd_to_path[wd] = traversedPath
                             self.log.info("Added new subdirectory to watch:" + str(traversedPath))
+                        self.log.debug("files: " +str(files))
                         for filename in files:
+#                            self.log.debug("filename: " + filename)
+                            if not filename.endswith(self.monSuffixes):
+                                self.log.debug("File ending not in monitored Suffixes: " + str(filename))
+                                self.log.debug("detected events were: " + str(parts))
+                                continue
                             eventMessage = self.getEventMessage(path, filename)
+                            self.log.debug("eventMessage: " + str(eventMessage))
                             eventMessageList.append(eventMessage)
+#                            self.log.debug("eventMessageList: " + str(eventMessageList))
                 continue
 
             # if a directory is renamed the old watch has to be removed
             if is_dir and is_moved_from:
+
+#                self.log.debug("is_dir and is_moved_from")
+#                self.log.debug(path + " " + event.name + " " + parts)
+#                self.log.debug(event.name)
+
                 dirname = os.path.join(path, event.name)
                 for watch, watchPath in self.wd_to_path.iteritems():
                     if watchPath == dirname:
@@ -269,8 +293,9 @@ class EventDetector():
             # only files of the configured event type are send
             if not is_dir and is_ofEventType and [path, event.name] not in self.history:
 
-#                print path, event.name, parts
-#                print event.name
+#                self.log.debug("not is_dir and is_ofEventType")
+#                self.log.debug(path + " " + event.name + " " + parts)
+#                self.log.debug(event.name)
 
                 # only files with end with a suffix specified in monSuffixed are monitored
                 if not event.name.endswith(self.monSuffixes):
