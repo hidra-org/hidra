@@ -197,10 +197,10 @@ def checkLogFileWritable (filepath, filename):
 
 def checkVersion (version, log):
     log.debug("remote version: " + version + ", local version: " + __version__)
-    if version < __version__:
+    if version.rsplit(".", 1)[0] < __version__.rsplit(".", 1)[0]:
         log.info("Version of receiver is lower. Please update receiver.")
         return False
-    elif version > __version__:
+    elif version.rsplit(".", 1)[0] > __version__.rsplit(".", 1)[0]:
         log.info("Version of receiver is higher. Please update sender.")
         return False
     else:

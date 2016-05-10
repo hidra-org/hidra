@@ -275,7 +275,7 @@ class SignalHandler():
 
         if len(incomingMessage) != 3:
 
-            self.log.info("Received signal is of the wrong format")
+            self.log.warning("Received signal is of the wrong format")
             self.log.debug("Received signal is too short or too long: " + str(incomingMessage))
             return "NO_VALID_SIGNAL", None, None
 
@@ -291,9 +291,9 @@ class SignalHandler():
 
             if version:
                 if helpers.checkVersion(version, self.log):
-                    self.log.debug("Versions are compatible: " + str(version))
+                    self.log.info("Versions are compatible")
                 else:
-                    self.log.debug("Version are not compatible")
+                    self.log.warning("Version are not compatible")
                     return "VERSION_CONFLICT", None, None
 
             if signal and host:
@@ -301,10 +301,10 @@ class SignalHandler():
                 # Checking signal sending host
                 self.log.debug("Check if host to send data to are in WhiteList...")
                 if helpers.checkHost(host, self.whiteList, self.log):
-                    self.log.debug("Hosts are allowed to connect.")
+                    self.log.info("Hosts are allowed to connect.")
                     self.log.debug("hosts: " + str(host))
                 else:
-                    self.log.debug("One of the hosts is not allowed to connect.")
+                    self.log.warning("One of the hosts is not allowed to connect.")
                     self.log.debug("hosts: " + str(host))
                     return "NO_VALID_HOST", None, None
 
