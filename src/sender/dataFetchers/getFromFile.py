@@ -93,9 +93,16 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
 
 def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
 
-    if not targets:
-        prop["removeFlag"] = False
+    targets_data     = [i for i in targets if i[2] == "data"]
+
+    if not targets_data:
+        prop["removeFlag"] = True
         return
+
+    chunkSize = metadata[ "chunkSize" ]
+
+    chunkNumber = 0
+    sendError = False
 
     #reading source file into memory
     try:
@@ -131,14 +138,13 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         except:
             log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
 
-        if targets_data:
-            #send message to data targets
-            try:
-                __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, None, chunkPayload, context)
-                log.debug("Passing multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")...done.")
+        #send message to data targets
+        try:
+            __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, None, chunkPayload, context)
+            log.debug("Passing multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")...done.")
 
-            except:
-                log.error("Unable to send multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")", exc_info=True)
+        except:
+            log.error("Unable to send multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")", exc_info=True)
 
         chunkNumber += 1
 
