@@ -415,7 +415,7 @@ class SignalHandler():
                     del listToCheck[index]
 
             # send signal to TaskManager
-            controlPubSocket.send_multipart(["signal", "CLOSE_SOCKETS", cPickle.dumps(socketIds)])
+            self.controlPubSocket.send_multipart(["signal", "CLOSE_SOCKETS", cPickle.dumps(socketIds)])
 
         return listToCheck, variList, correspList
 
