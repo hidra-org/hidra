@@ -100,10 +100,11 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         prop["removeFlag"] = True
         return
 
-    chunkSize = metadata[ "chunkSize" ]
+    prop["removeFlag"] = False
+    chunkSize          = metadata[ "chunkSize" ]
 
-    chunkNumber = 0
-    sendError = False
+    chunkNumber        = 0
+    sendError          = False
 
     #reading source file into memory
     try:
