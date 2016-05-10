@@ -263,7 +263,7 @@ class EventDetector():
             self.history      = collections.deque(maxlen=config["historySize"])
 
             self.cleanUpTime  = 5
-            self.cleanUpTime  = 120
+            self.actionTime   = 120
 
             self.lock         = threading.Lock()
 
