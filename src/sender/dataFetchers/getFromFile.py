@@ -229,7 +229,7 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
         #send message to metadata targets
         if targets_metadata:
             try:
-                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context)
+                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"])
                 log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
 
             except:
@@ -244,6 +244,15 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
             log.error("Unable to remove file " + str(sourceFile), exc_info=True)
 
         prop["removeFlag"] = False
+
+        #send message to metadata targets
+        if targets_metadata:
+            try:
+                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"] )
+                log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
+
+            except:
+                log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
 
 
 def clean (prop):
