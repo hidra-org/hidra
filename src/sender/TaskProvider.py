@@ -168,11 +168,10 @@ class TaskProvider():
                     break
                 else:
                     self.log.error("Invalid fileEvent message received.", exc_info=True)
-                    continue
+                    workloadList = []
             except:
                 self.log.error("Invalid fileEvent message received.", exc_info=True)
-                #skip all further instructions and continue with next iteration
-                continue
+                workloadList = []
 
             #TODO validate workload dict
             for workload in workloadList:
