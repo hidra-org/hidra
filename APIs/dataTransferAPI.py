@@ -326,7 +326,8 @@ class dataTransfer():
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
         connectionStr = "tcp://" + socketIdToConnect
-        self.dataSocket.zap_domain = b'global'
+        if whitelist:
+            self.dataSocket.zap_domain = b'global'
 
         try:
 #            self.dataSocket.ipv6 = True
