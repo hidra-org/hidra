@@ -15,7 +15,8 @@ from send_helpers import __sendToTargets, DataHandlingError
 def setup (log, prop):
 
     if ( not prop.has_key("fixSubdirs") or
-        not prop.has_key("storeData") ):
+        not prop.has_key("storeData")  or
+        not prop.has_key("removeData") ):
 
         log.error ("Configuration of wrong format")
         log.debug ("dataFetcherProp="+ str(prop))
@@ -198,7 +199,7 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
 
     targets_metadata = [i for i in targets if i[2] == "metadata"]
 
-    if prop["storeData"] and prop["removeFlag"]:
+    if prop["storeData"] and prop["removeData"] and prop["removeFlag"]:
 
         # move file
         try:
@@ -206,15 +207,6 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
             log.info("Moving file '" + str(sourceFile) + "' ...success.")
         except:
             return
-
-        #send message to metadata targets
-        if targets_metadata:
-            try:
-                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"])
-                log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
-
-            except:
-                log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
 
     elif prop["storeData"]:
 
@@ -226,16 +218,7 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
         except:
             return
 
-        #send message to metadata targets
-        if targets_metadata:
-            try:
-                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"])
-                log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
-
-            except:
-                log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
-
-    elif prop["removeFlag"]:
+    elif prop["removeData"] and prop["removeFlag"]:
         # remove file
         try:
             os.remove(sourceFile)
@@ -245,14 +228,14 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
 
         prop["removeFlag"] = False
 
-        #send message to metadata targets
-        if targets_metadata:
-            try:
-                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"] )
-                log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
+    #send message to metadata targets
+    if targets_metadata:
+        try:
+            __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"] )
+            log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
 
-            except:
-                log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
+        except:
+            log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
 
 
 def clean (prop):
