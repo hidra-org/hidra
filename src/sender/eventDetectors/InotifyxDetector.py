@@ -239,7 +239,10 @@ class EventDetector():
                 not config.has_key("monEventType") or
                 not config.has_key("monSuffixes") or
                 not config.has_key("timeout") or
-                not config.has_key("historySize") ):
+                not config.has_key("historySize") or
+                not config.has_key("useCleanUp") or
+                not config.has_key("cleanUpTime") or
+                not config.has_key("actionTime") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
@@ -262,15 +265,16 @@ class EventDetector():
 
             self.history      = collections.deque(maxlen=config["historySize"])
 
-            self.cleanUpTime  = 5
-            self.actionTime   = 120
+            self.cleanUpTime  = config["cleanUpTime"]
+            self.actionTime   = config["actionTime"]
 
             self.lock         = threading.Lock()
 
             self.add_watch()
 
-            self.cleanupThread = CleanUp(self.paths, self.monSubdirs, self.monSuffixes, self.cleanUpTime, self.actionTime, self.lock, logQueue)
-            self.cleanupThread.start()
+            if config["useCleanUp"]:
+                self.cleanupThread = CleanUp(self.paths, self.monSubdirs, self.monSuffixes, self.cleanUpTime, self.actionTime, self.lock, logQueue)
+                self.cleanupThread.start()
 
 
     def get_events (self, fd, *args):
