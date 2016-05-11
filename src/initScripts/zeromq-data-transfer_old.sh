@@ -29,8 +29,7 @@ stop()
 {
     if [ -f $Pidfile ] ; then
         echo "Stopping $INSTANZ"
-#        pkill python
-        kill -15 $Pid
+        kill $Pid
         rm $Pidfile
     else
         echo "Cannot stop $INSTANZ - no Pidfile found!"

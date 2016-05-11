@@ -1,6 +1,6 @@
 # API to communicate with a data transfer unit
 
-__version__ = '2.1.4'
+__version__ = '2.2.0'
 
 import zmq
 import socket
@@ -10,6 +10,7 @@ import errno
 import os
 import cPickle
 import traceback
+from zmq.auth.thread import ThreadAuthenticator
 
 
 class loggingFunction:
@@ -89,7 +90,10 @@ class dataTransfer():
         self.signalSocket          = None
         self.dataSocket            = None
         self.requestSocket         = None
+
         self.poller                = zmq.Poller()
+
+        self.auth                  = None
 
         self.targets               = None
 
@@ -256,52 +260,73 @@ class dataTransfer():
         return message
 
 
-    def start (self, dataSocket = False):
+    def start (self, dataSocket = False, whitelist = None):
 
-        alreadyConnected = self.streamStarted or self.queryNextStarted
+        # Receive data only from whitelisted nodes
+        if whitelist:
+            if type(whitelist) == list:
+                self.auth = ThreadAuthenticator(self.context)
+                self.auth.start()
+                for host in whitelist:
+                    try:
+                        if host == "localhost":
+                            ip = [socket.gethostbyname(host)]
+                        else:
+                            hostname, tmp, ip = socket.gethostbyaddr(host)
 
-        #TODO Do I need to raise an exception here?
-        if alreadyConnected:
-#            raise Exception("Connection already started.")
-            self.log.info("Connection already started.")
-            return
-
-        ip   = "0.0.0.0"           #TODO use IP of hostname?
-
-        host = ""
-        port = ""
-
-        if dataSocket:
-            if type(dataSocket) == list:
-                socketIdToConnect = dataSocket[0] + ":" + dataSocket[1]
-                host = dataSocket[0]
-                ip   = socket.gethostbyaddr(host)[2][0]
-                port = dataSocket[1]
+                        self.log.debug("Allowing host " + host + " (" + str(ip[0]) + ")")
+                        self.auth.allow(ip[0])
+                    except:
+                        self.log.error("Error was: ", exc_info=True)
+                        raise AuthenticationFailed("Could not get IP of host " + host)
             else:
-                port = str(dataSocket)
+                raise FormatError("Whitelist has to be a list of IPs")
 
-                host = socket.gethostname()
-                socketId = host + ":" + port
+
+        socketIdToConnect = self.streamStarted or self.queryNextStarted
+
+        if socketIdToConnect:
+            self.log.info("Reopening already started connection.")
+        else:
+
+            ip   = "0.0.0.0"           #TODO use IP of hostname?
+
+            host = ""
+            port = ""
+
+            if dataSocket:
+                if type(dataSocket) == list:
+                    socketIdToConnect = dataSocket[0] + ":" + dataSocket[1]
+                    host = dataSocket[0]
+                    ip   = socket.gethostbyaddr(host)[2][0]
+                    port = dataSocket[1]
+                else:
+                    port = str(dataSocket)
+
+                    host = socket.gethostname()
+                    socketId = host + ":" + port
+                    ipFromHost = socket.gethostbyaddr(host)[2]
+                    if len(ipFromHost) == 1:
+                        ip = ipFromHost[0]
+
+            elif len(self.targets) == 1:
+                host, port = self.targets[0][0].split(":")
                 ipFromHost = socket.gethostbyaddr(host)[2]
                 if len(ipFromHost) == 1:
                     ip = ipFromHost[0]
 
-        elif len(self.targets) == 1:
-            host, port = self.targets[0][0].split(":")
-            ipFromHost = socket.gethostbyaddr(host)[2]
-            if len(ipFromHost) == 1:
-                ip = ipFromHost[0]
+            else:
+                raise FormatError("Multipe possible ports. Please choose which one to use.")
 
-        else:
-            raise FormatError("Multipe possible ports. Please choose which one to use.")
+            socketId = host + ":" + port
+            socketIdToConnect = ip + ":" + port
+#            socketIdToConnect = "[" + ip + "]:" + port
 
-        socketId = host + ":" + port
-        socketIdToConnect = ip + ":" + port
-#        socketIdToConnect = "[" + ip + "]:" + port
 
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
         connectionStr = "tcp://" + socketIdToConnect
+        self.dataSocket.zap_domain = b'global'
 
         try:
 #            self.dataSocket.ipv6 = True
@@ -310,6 +335,7 @@ class dataTransfer():
             self.log.info("Data socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
         except:
             self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'", exc_info=True)
+            raise
 
         self.poller.register(self.dataSocket, zmq.POLLIN)
 
@@ -323,6 +349,7 @@ class dataTransfer():
                 self.log.info("Request socket started (connect) for '" + connectionStr + "'")
             except:
                 self.log.error("Failed to start Socket of type " + self.connectionType + " (connect): '" + connectionStr + "'", exc_info=True)
+                raise
 
             self.queryNextStarted = socketId
         else:
@@ -355,60 +382,64 @@ class dataTransfer():
                 self.log.error("Could not send request to requestSocket", exc_info=True)
                 return None, None
 
-        # receive data
-        if timeout:
-            try:
-                socks = dict(self.poller.poll(timeout))
-            except:
-                self.log.error("Could not poll for new message")
-                raise
-        else:
-            try:
-                socks = dict(self.poller.poll())
-            except:
-                self.log.error("Could not poll for new message")
-                raise
-
-        # if there was a response
-        if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
-
-            try:
-                multipartMessage = self.dataSocket.recv_multipart()
-            except:
-                self.log.error("Receiving files..failed.")
-                return [None, None]
-
-            if len(multipartMessage) < 2:
-                self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
-                self.log.debug("multipartMessage=" + str(mutipartMessage))
-                return [None, None]
-
-            # extract multipart message
-            try:
-                metadata = cPickle.loads(multipartMessage[0])
-            except:
-                self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
-                metadata = None
-
-            #TODO validate multipartMessage (like correct dict-values for metadata)
-
-            try:
-                payload = multipartMessage[1]
-            except:
-                self.log.warning("An empty file was received within the multipart-message", exc_info=True)
-                payload = None
-
-            return [metadata, payload]
-        else:
-            self.log.warning("Could not receive data in the given time.")
-
-            if self.queryNextStarted :
+        while True:
+            # receive data
+            if timeout:
                 try:
-                    self.requestSocket.send_multipart(["CANCEL", self.queryNextStarted])
-                except Exception as e:
-                    self.log.error("Could not cancel the next query", exc_info=True)
+                    socks = dict(self.poller.poll(timeout))
+                except:
+                    self.log.error("Could not poll for new message")
+                    raise
+            else:
+                try:
+                    socks = dict(self.poller.poll())
+                except:
+                    self.log.error("Could not poll for new message")
+                    raise
 
-            return [None, None]
+            # if there was a response
+            if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
+
+                try:
+                    multipartMessage = self.dataSocket.recv_multipart()
+                except:
+                    self.log.error("Receiving data..failed.", exc_info=True)
+                    return [None, None]
+
+
+                if multipartMessage[0] == b"ALIVE_TEST":
+                    continue
+                elif len(multipartMessage) < 2:
+                    self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
+                    self.log.debug("multipartMessage=" + str(mutipartMessage)[:100])
+                    return [None, None]
+
+                # extract multipart message
+                try:
+                    metadata = cPickle.loads(multipartMessage[0])
+                except:
+                    self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
+                    metadata = None
+
+                #TODO validate multipartMessage (like correct dict-values for metadata)
+
+                try:
+                    payload = multipartMessage[1]
+                except:
+                    self.log.warning("An empty file was received within the multipart-message", exc_info=True)
+                    payload = None
+
+                return [metadata, payload]
+            else:
+                self.log.warning("Could not receive data in the given time.")
+
+                if self.queryNextStarted :
+                    try:
+                        self.requestSocket.send_multipart(["CANCEL", self.queryNextStarted])
+                    except Exception as e:
+                        self.log.error("Could not cancel the next query", exc_info=True)
+
+                return [None, None]
 
 
     def store (self, targetBasePath, dataObject):
@@ -420,12 +451,13 @@ class dataTransfer():
         payload           = dataObject[1]
 
 
-        if type(payloadMetadata) is not dict or type(payload) is not list:
+        if type(payloadMetadata) is not dict:
             raise FormatError("payload: Wrong input format in 'store'")
 
         #save all chunks to file
         while True:
 
+            #TODO check if payload != cPickle.dumps(None) ?
             if payloadMetadata and payload:
                 #append to file
                 try:
@@ -457,8 +489,6 @@ class dataTransfer():
 
 
     def __appendChunksToFile (self, targetBasePath, configDict, payload):
-
-        chunkCount         = len(payload)
 
         #generate target filepath
         targetFilepath = self.generateTargetFilepath(targetBasePath, configDict)
@@ -492,8 +522,7 @@ class dataTransfer():
         #only write data if a payload exist
         try:
             if payload != None:
-                for chunk in payload:
-                    newFile.write(chunk)
+                newFile.write(payload)
             newFile.close()
         except:
             self.log.error("Unable to append data to file.")
@@ -577,6 +606,14 @@ class dataTransfer():
                 self.requestSocket = None
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
+
+        if self.auth:
+            try:
+                self.auth.stop()
+                self.auth = None
+                self.log.info("Stopping authentication thread...done.")
+            except:
+                self.log.error("Stopping authentication thread...done.", exc_info=True)
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class

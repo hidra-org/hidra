@@ -1,8 +1,11 @@
+#!/usr/bin/env python
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 import argparse
 import zmq
+import zmq.devices
 import os
 import logging
 import sys
@@ -13,6 +16,7 @@ from multiprocessing import Process, freeze_support, Queue
 import ConfigParser
 import threading
 import signal
+import setproctitle
 
 from SignalHandler import SignalHandler
 from TaskProvider import TaskProvider
@@ -33,6 +37,7 @@ from logutils.queue import QueueHandler
 import helpers
 from version import __version__
 
+
 def argumentParsing():
     configFile = CONFIG_PATH + os.sep + "dataManager.conf"
 
@@ -46,6 +51,8 @@ def argumentParsing():
     logfilePath        = config.get('asection', 'logfilePath')
     logfileName        = config.get('asection', 'logfileName')
     logfileSize        = config.get('asection', 'logfileSize')
+
+    procname           = config.get('asection', 'procname')
 
     parser.add_argument("--logfilePath"       , type    = str,
                                                 help    = "Path where the logfile will be created (default=" + str(logfilePath) + ")",
@@ -62,18 +69,26 @@ def argumentParsing():
                                                 help    = "Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)",
                                                 default = False )
 
+    parser.add_argument("--procname"          , type    = str,
+                                                help    = "Name with which the serevice should be running (default=" + str(procname) + ")",
+                                                default = procname )
+
     # SignalHandler config
 
-    controlPort        = config.get('asection', 'controlPort')
+    controlPubPort     = config.get('asection', 'controlPubPort')
+    controlSubPort     = config.get('asection', 'controlSubPort')
     comPort            = config.get('asection', 'comPort')
     whitelist          = json.loads(config.get('asection', 'whitelist'))
 
     requestPort        = config.get('asection', 'requestPort')
     requestFwPort      = config.get('asection', 'requestFwPort')
 
-    parser.add_argument("--controlPort"       , type    = str,
-                                                help    = "Port number to distribute control signals (default=" + str(controlPort) + ")",
-                                                default = controlPort )
+    parser.add_argument("--controlPubPort"    , type    = str,
+                                                help    = "Port number to publish control signals (default=" + str(controlPubPort) + ")",
+                                                default = controlPubPort )
+    parser.add_argument("--controlSubPort"    , type    = str,
+                                                help    = "Port number to receive control signals (default=" + str(controlSubPort) + ")",
+                                                default = controlSubPort )
     parser.add_argument("--comPort"           , type    = str,
                                                 help    = "Port number to receive signals (default=" + str(comPort) + ")",
                                                 default = comPort )
@@ -99,6 +114,7 @@ def argumentParsing():
     monitoredFormats   = json.loads(config.get('asection', 'monitoredFormats'))
     # for InotifyxDetector:
     historySize        = config.getint('asection', 'historySize')
+    useCleanUp         = config.getboolean('asection', 'useCleanUp')
     # for WatchdogDetector:
     timeTillClosed     = config.getfloat('asection', 'timeTillClosed')
     # for ZmqDetector:
@@ -135,6 +151,12 @@ def argumentParsing():
                                                 help    = "Number of events stored to look for doubles \
                                                            (needed if eventDetector is InotifyxDetector; default=" + str(historySize) + ")",
                                                 default = historySize)
+
+    parser.add_argument("--useCleanUp"         , type    = bool,
+                                                help    = "Flag describing if a clean up thread which regularly checks \
+                                                           if some files were missed should be activated \
+                                                           (needed if eventDetector is InotifyxDetector; default=" + str(useCleanUp) + ")",
+                                                default = useCleanUp )
 
     parser.add_argument("--timeTillClosed"    , type    = float,
                                                 help    = "Time (in seconds) since last modification after which a file will be seen as closed \
@@ -240,6 +262,8 @@ def argumentParsing():
     localTarget       = arguments.localTarget
 
     useDataStream     = arguments.useDataStream
+    fixedStreamHost   = arguments.fixedStreamHost
+
     numberOfStreams   = arguments.numberOfStreams
 
     storeData         = arguments.storeData
@@ -261,6 +285,10 @@ def argumentParsing():
     if storeData:
         helpers.checkDirExistance(localTarget)
         helpers.checkAllSubDirExist(localTarget, fixSubdirs)
+
+
+    if useDataStream:
+        helpers.checkPing(fixedStreamHost)
 
     return arguments
 
@@ -305,39 +333,53 @@ class DataManager():
         # Create log and set handler to queue handle
         self.log = self.getLogger(self.logQueue)
 
+        procname              = arguments.procname
+        setproctitle.setproctitle(procname)
+        self.log.info("Running as " + str(procname) )
+
         self.log.info("DataManager started (PID " + str(self.currentPID) + ").")
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         self.localhost        = "127.0.0.1"
         self.extIp            = "0.0.0.0"
+        self.ipcPath          = "/tmp/zeromq-data-transfer"
 
-        self.controlPort      = arguments.controlPort
+        if not os.path.exists(self.ipcPath):
+            os.makedirs(self.ipcPath)
+
+        self.controlPubPort   = arguments.controlPubPort
+        self.controlSubPort   = arguments.controlSubPort
         self.comPort          = arguments.comPort
         self.requestPort      = arguments.requestPort
         self.requestFwPort    = arguments.requestFwPort
         self.routerPort       = arguments.routerPort
-
-        self.lock             = threading.Lock()
 
         self.comConId         = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.comPort)
         self.requestConId     = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.requestPort)
 
         if helpers.isWindows():
             self.log.info("Using tcp for internal communication.")
-            self.controlConId     = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPort)
+            self.controlPubConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPubPort)
+            self.controlSubConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlSubPort)
             self.requestFwConId   = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
             self.routerConId      = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.routerPort)
         else:
             self.log.info("Using ipc for internal communication.")
-            self.controlConId     = "ipc://{pid}_{id}".format(pid=self.currentPID, id="control")
-            self.requestFwConId   = "ipc://{pid}_{id}".format(pid=self.currentPID, id="requestFw")
-            self.routerConId      = "ipc://{pid}_{id}".format(pid=self.currentPID, id="router")
+            self.controlPubConId  = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub")
+            self.controlSubConId  = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub")
+            self.requestFwConId   = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="requestFw")
+            self.routerConId      = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="router")
 
+
+        self.device           = None
+        self.controlPubSocket = None
 
         self.whitelist        = arguments.whitelist
 
-        if arguments.useDataStream:
+        self.useDataStream = arguments.useDataStream
+
+        if self.useDataStream:
             self.fixedStreamId = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )
         else:
             self.fixedStreamId = None
@@ -357,7 +399,10 @@ class DataManager():
                     "monSubdirs"        : arguments.fixSubdirs,
                     "monSuffixes"       : arguments.monitoredFormats,
                     "timeout"           : 1,
-                    "historySize"       : arguments.historySize
+                    "historySize"       : arguments.historySize,
+                    "useCleanUp"        : arguments.useCleanUp,
+                    "cleanUpTime"       : 5,
+                    "actionTime"        : 120
                     }
         elif arguments.eventDetectorType == "WatchdogDetector":
             self.eventDetectorConfig = {
@@ -391,7 +436,6 @@ class DataManager():
                     "type"        : arguments.dataFetcherType,
                     "fixSubdirs"  : arguments.fixSubdirs,
                     "storeData"   : arguments.storeData,
-                    "removeFlag"  : False
                     }
         elif arguments.dataFetcherType == "getFromZmq":
             self.dataFetcherProp = {
@@ -425,11 +469,16 @@ class DataManager():
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
 
-        try:
-            self.createSockets()
+        self.testSocket = None
 
-            self.run()
+        try:
+            if self.testFixedStreamingHost():
+                self.createSockets()
+
+                self.run()
         except:
+            pass
+        finally:
             self.stop()
 
 
@@ -450,22 +499,65 @@ class DataManager():
 
     def createSockets(self):
 
-        # socket for control signals
+        # initiate forwarder for control signals (multiple pub, multiple sub)
         try:
-            self.lock.acquire()
-            helpers.globalObjects.controlSocket = self.context.socket(zmq.PUB)
-            helpers.globalObjects.controlSocket.bind(self.controlConId)
-            self.log.info("Start controlSocket (bind): '" + str(self.controlConId) + "'")
-            self.lock.release()
+            self.device = zmq.devices.ThreadDevice(zmq.FORWARDER, zmq.SUB, zmq.PUB)
+            self.device.bind_in(self.controlPubConId)
+            self.device.bind_out(self.controlSubConId)
+            self.device.setsockopt_in(zmq.SUBSCRIBE, b"")
+            self.device.start()
+            self.log.info("Start thead device forwarding messages from '" + str(self.controlPubConId) + "' to '" + str(self.controlSubConId) + "'")
         except:
-            self.log.error("Failed to start controlSocket (bind): '" + self.controlConId + "'", exc_info=True)
-            helpers.globalObjects.controlSocket = None
-            self.lock.release()
+            self.log.error("Failed to start thead device forwarding messages from '" + str(self.controlPubConId) + "' to '" + str(self.controlSubConId) + "'", exc_info=True)
             raise
 
 
+        # socket for control signals
+        try:
+            self.controlPubSocket = self.context.socket(zmq.PUB)
+            self.controlPubSocket.connect(self.controlPubConId)
+            self.log.info("Start controlPubSocket (connect): '" + str(self.controlPubConId) + "'")
+        except:
+            self.log.error("Failed to start controlPubSocket (connect): '" + self.controlPubConId + "'", exc_info=True)
+            raise
+
+
+    def testFixedStreamingHost(self):
+        if self.useDataStream:
+            try:
+                self.testSocket = self.context.socket(zmq.PUSH)
+                connectionStr   = "tcp://" + self.fixedStreamId
+
+                self.testSocket.connect(connectionStr)
+                self.log.info("Start testSocket (connect): '" + str(connectionStr) + "'")
+            except:
+                self.log.error("Failed to start testSocket (connect): '" + str(connectionStr) + "'", exc_info=True)
+                return False
+
+            try:
+                tracker = self.testSocket.send_multipart([b"ALIVE_TEST"], copy=False, track=True)
+                if not tracker.done:
+                    tracker.wait(2)
+            except:
+                self.log.error("Failed to send test message to fixed streaming host", exc_info=True)
+                return False
+
+        return True
+
+
     def run (self):
-        self.signalHandlerPr = threading.Thread ( target = SignalHandler, args = (self.lock, self.controlConId, self.whitelist, self.comConId, self.requestFwConId, self.requestConId, self.logQueue, self.context) )
+        self.signalHandlerPr = threading.Thread ( target = SignalHandler,
+                                                  args   = (
+                                                      self.controlPubConId,
+                                                      self.controlSubConId,
+                                                      self.whitelist,
+                                                      self.comConId,
+                                                      self.requestFwConId,
+                                                      self.requestConId,
+                                                      self.logQueue,
+                                                      self.context
+                                                      )
+                                                  )
         self.signalHandlerPr.start()
 
         # needed, because otherwise the requests for the first files are not forwarded properly
@@ -474,13 +566,31 @@ class DataManager():
         if not self.signalHandlerPr.is_alive():
             return
 
-        self.taskProviderPr = Process ( target = TaskProvider, args = (self.eventDetectorConfig, self.controlConId, self.requestFwConId, self.routerConId, self.logQueue) )
+        self.taskProviderPr = Process ( target = TaskProvider,
+                                        args   = (
+                                            self.eventDetectorConfig,
+                                            self.controlSubConId,
+                                            self.requestFwConId,
+                                            self.routerConId,
+                                            self.logQueue
+                                            )
+                                        )
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):
             id = str(i) + "/" + str(self.numberOfStreams)
-            pr = Process ( target = DataDispatcher, args = (id, self.controlConId, self.routerConId, self.chunkSize, self.fixedStreamId, self.dataFetcherProp,
-                                                            self.logQueue, self.localTarget) )
+            pr = Process ( target = DataDispatcher,
+                           args   = (
+                               id,
+                               self.controlSubConId,
+                               self.routerConId,
+                               self.chunkSize,
+                               self.fixedStreamId,
+                               self.dataFetcherProp,
+                               self.logQueue,
+                               self.localTarget
+                               )
+                           )
             pr.start()
             self.dataDispatcherPr.append(pr)
 
@@ -499,29 +609,33 @@ class DataManager():
 
     def stop (self):
 
-        if helpers.globalObjects.controlSocket:
-            self.lock.acquire()
+        if self.controlPubSocket:
             self.log.info("Sending 'Exit' signal")
-            helpers.globalObjects.controlSocket.send_multipart(["control", "EXIT"])
-            self.lock.release()
-
-        if helpers.globalObjects.controlFlag:
-            helpers.globalObjects.controlFlag = False
+            self.controlPubSocket.send_multipart(["control", "EXIT"])
 
         # waiting till the other processes are finished
         time.sleep(0.5)
 
-        if helpers.globalObjects.controlSocket:
-            self.lock.acquire()
-            self.log.info("Closing controlSocket")
-            helpers.globalObjects.controlSocket.close(0)
-            helpers.globalObjects.controlSocket = None
-            self.lock.release()
+        if self.controlPubSocket:
+            self.log.info("Closing controlPubSocket")
+            self.controlPubSocket.close(0)
+            self.controlPubSocket = None
+
+        if self.testSocket:
+            self.log.debug("Stopping testSocket")
+            self.testSocket.close(0)
+            self.testSocket = None
 
         if self.context:
             self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
+
+        try:
+            os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub"))
+            os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub"))
+        except:
+            self.log.error("Could not remove remaining ipc sockets", exc_info=True)
 
         if not self.extLogQueue and self.logQueueListener:
             self.log.info("Stopping logQueue")
@@ -539,7 +653,7 @@ class DataManager():
         self.stop()
 
 
-    def __def__ (self):
+    def __del__ (self):
         self.stop()
 
 

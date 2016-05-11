@@ -9,7 +9,6 @@ API_PATH    = BASE_PATH + os.sep + "APIs"
 if not API_PATH in sys.path:
     sys.path.append ( API_PATH )
 del API_PATH
-del BASE_PATH
 
 from dataTransferAPI import dataTransfer
 
@@ -18,7 +17,8 @@ signalHost   = "zitpcx19282.desy.de"
 #signalHost   = "zitpcx22614w.desy.de"
 targets = ["zitpcx19282.desy.de", "50101", 0]
 #targets = ["zitpcx22614w.desy.de", "50101", 0]
-basePath = BASE_PATH + os.sep + "data" + os.sep + "target"
+baseTargetPath = BASE_PATH + os.sep + "data" + os.sep + "target"
+del BASE_PATH
 
 print
 print "==== TEST: Query for the newest filename ===="
@@ -37,7 +37,7 @@ while True:
         break
 
     print
-    print query.generateTargetFilepath(basePath, metadata)
+    print query.generateTargetFilepath(baseTargetPath, metadata)
     print
 #    time.sleep(0.1)
 

@@ -1,26 +1,20 @@
 import zmq
-from zmq.auth.thread import ThreadAuthenticator
-import time
 import sys
+import time
 
 port = "5556"
-ip = "*"
-#ip="zitpcx19282.desy.de"
+#ip="localhost"
+#ip="*"
+ip="zitpcx19282.desy.de"
 
 context = zmq.Context()
+print "Connecting to server..."
 socket = context.socket(zmq.PUSH)
-socket.zap_domain = b'global'
-socket.bind("tcp://" + ip + ":%s" % port)
-
-auth = ThreadAuthenticator(context)
-auth.start()
-
-whitelist = ["131.169.185.34", "131.169.185.121"]
-for host in whitelist:
-    auth.allow(host)
+socket.connect("tcp://"+ ip + ":" + port)
 
 
-while True:
+#  Do 10 requests, waiting each time for a response
+for request in range (1,10):
     try:
         message = ["World"]
         print "Send: ", message
@@ -34,5 +28,6 @@ while True:
         print "sleeping..."
         time.sleep (1)
         print "sleeping...done"
-    finally:
-        auth.stop()
+
+    except:
+        break

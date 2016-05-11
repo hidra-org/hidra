@@ -48,7 +48,6 @@ def isLinux():
 
 
 class globalObjects (object):
-    controlSocket = None
     controlFlag   = True
 
 
@@ -103,7 +102,6 @@ def confirm (prompt=None, resp=False):
             ans = raw_input(prompt)
         except KeyboardInterrupt:
             logging.error("Keyboard Interruption detected.")
-            sys.exit(1)
         except Exception as e:
             logging.error("Something went wrong with the confirmation.")
             logging.debug("Error was: " + str(e))
@@ -192,17 +190,17 @@ def checkLogFileWritable (filepath, filename):
         logFile = open(logfullPath, "a")
         logFile.close()
     except:
-        print "Unable to create the logfile " + str(logfullPath)
-        print "Please specify a new target by setting the following arguments:\n--logfileName\n--logfilePath"
+        logging.error("Unable to create the logfile " + str(logfullPath))
+        logging.error("Please specify a new target by setting the following arguments:\n--logfileName\n--logfilePath")
         sys.exit(1)
 
 
 def checkVersion (version, log):
     log.debug("remote version: " + version + ", local version: " + __version__)
-    if version < __version__:
+    if version.rsplit(".", 1)[0] < __version__.rsplit(".", 1)[0]:
         log.info("Version of receiver is lower. Please update receiver.")
         return False
-    elif version > __version__:
+    elif version.rsplit(".", 1)[0] > __version__.rsplit(".", 1)[0]:
         log.info("Version of receiver is higher. Please update sender.")
         return False
     else:
@@ -240,6 +238,16 @@ def checkHost (hostname, whiteList, log):
     return False
 
 
+def checkPing(host, log = logging):
+    if isWindows():
+        response = os.system("ping -n 1 -w 2 " + host)
+    else:
+        response = os.system("ping -c 1 -w 2 " + host + " > /dev/null 2>&1")
+
+    if response != 0:
+        log.error(host + " is not pingable.")
+        sys.exit(1)
+
 
 # IP and DNS name should be both in the whitelist
 def extendWhitelist(whitelist, log):
@@ -273,6 +281,56 @@ def extendWhitelist(whitelist, log):
 
     log.debug("Extended whitelist: " + str(whitelist))
 
+
+#class forwarderThread(threading.Thread):
+#    def __init__ (self, controlPubConId, controlSubConId, context):
+#
+#        threading.Thread.__init__(self)
+#
+#        self.controlPubConId = controlPubConId
+#        self.controlSubConId = controlSubConId
+#        self.context         = context
+#
+#        self.frontend        = None
+#        self.backend         = None
+#
+#
+#    def run (self):
+#        # initiate XPUB/XSUB for control signals
+#
+#        # Socket facing clients
+#        self.frontend = context.socket(zmq.SUB)
+#        self.frontend.bind(controlPubConId)
+#        logging.info("=== [forwarder] frontend bind to: '" + controlPubConId + "'")
+#
+#        self.frontend.setsockopt(zmq.SUBSCRIBE, "")
+#
+#        # Socket facing services
+#        self.backend = context.socket(zmq.PUB)
+#        self.backend.bind(controlSubConId)
+#        logging.info("=== [forwarder] backend bind to: '" + controlSubConId + "'")
+#
+#        zmq.device(zmq.FORWARDER, self.frontend, self.backend)
+#        logging.info("=== [forwarder] forwarder initiated")
+#
+#
+#    def stop (self):
+#        if self.frontend:
+#            logging.info("=== [forwarder] close frontend")
+#            self.frontend.close()
+#            self.frontend = None
+#        if self.backend:
+#            logging.info("=== [forwarder] close backend")
+#            self.backend.close()
+#            self.backend = None
+#
+#
+#    def __exit (self):
+#        self.stop()
+#
+#
+#    def __del__ (self):
+#        self.stop()
 
 
 # http://stackoverflow.com/questions/25585518/python-logging-logutils-with-queuehandler-and-queuelistener#25594270

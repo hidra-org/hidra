@@ -2,12 +2,14 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import time
 import zmq
+import zmq.devices
 import logging
 import os
 import sys
 import traceback
 import copy
 import cPickle
+import threading
 
 
 #path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -31,7 +33,7 @@ import helpers
 #
 class SignalHandler():
 
-    def __init__ (self, lock, controlConId, whiteList, comConId, requestFwConId, requestConId,
+    def __init__ (self, controlPubConId, controlSubConId, whiteList, comConId, requestFwConId, requestConId,
                   logQueue, context = None):
 
         # to get the logging only handling this class
@@ -40,25 +42,24 @@ class SignalHandler():
         # Send all logs to the main process
         self.log = self.getLogger(logQueue)
 
-        self.currentPID      = os.getpid()
+        self.currentPID       = os.getpid()
         self.log.debug("SignalHandler started (PID " + str(self.currentPID) + ").")
 
-        self.controlConId    = controlConId
-        self.comConId        = comConId
-        self.requestFwConId  = requestFwConId
-        self.requestConId    = requestConId
+        self.controlPubConId  = controlPubConId
+        self.controlSubConId  = controlSubConId
+        self.comConId         = comConId
+        self.requestFwConId   = requestFwConId
+        self.requestConId     = requestConId
 
-        self.lock            = lock
+        self.openConnections  = []
+        self.forwardSignal    = []
 
-        self.openConnections = []
-        self.forwardSignal   = []
+        self.openRequVari     = []
+        self.openRequPerm     = []
+        self.allowedQueries   = []
+        self.nextRequNode     = []  # to rotate through the open permanent requests
 
-        self.openRequVari    = []
-        self.openRequPerm    = []
-        self.allowedQueries  = []
-        self.nextRequNode    = []  # to rotate through the open permanent requests
-
-        self.whiteList       = []
+        self.whiteList        = []
 
         #remove .desy.de from hostnames
         for host in whiteList:
@@ -68,10 +69,11 @@ class SignalHandler():
                 self.whiteList.append(host)
 
         # sockets
-        self.controlSocket   = None
-        self.comSocket       = None
-        self.requestFwSocket = None
-        self.requestSocket   = None
+        self.controlPubSocket = None
+        self.controlSubSocket = None
+        self.comSocket        = None
+        self.requestFwSocket  = None
+        self.requestSocket    = None
 
         # remember if the context was created outside this class or not
         if context:
@@ -92,6 +94,7 @@ class SignalHandler():
             pass
         except:
             self.log.error("Stopping signalHandler due to unknown error condition.", exc_info=True)
+        finally:
             self.stop()
 
 
@@ -112,16 +115,25 @@ class SignalHandler():
 
     def createSockets (self):
 
-        # socket to get control signals from
+        # socket to send control signals to
         try:
-            self.controlSocket = self.context.socket(zmq.SUB)
-            self.controlSocket.connect(self.controlConId)
-            self.log.info("Start controlSocket (connect): '" + self.controlConId + "'")
+            self.controlPubSocket = self.context.socket(zmq.PUB)
+            self.controlPubSocket.connect(self.controlPubConId)
+            self.log.info("Start controlPubSocket (connect): '" + self.controlPubConId + "'")
         except:
-            self.log.error("Failed to start controlSocket (connect): '" + self.controlConId + "'", exc_info=True)
+            self.log.error("Failed to start controlPubSocket (connect): '" + self.controlPubConId + "'", exc_info=True)
             raise
 
-        self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
+        # socket to get control signals from
+        try:
+            self.controlSubSocket = self.context.socket(zmq.SUB)
+            self.controlSubSocket.connect(self.controlSubConId)
+            self.log.info("Start controlSubSocket (connect): '" + self.controlSubConId + "'")
+        except:
+            self.log.error("Failed to start controlSubSocket (connect): '" + self.controlSubConId + "'", exc_info=True)
+            raise
+
+        self.controlSubSocket.setsockopt(zmq.SUBSCRIBE, "control")
 
         # create zmq socket for signal communication with receiver
         try:
@@ -153,7 +165,7 @@ class SignalHandler():
 
         # Poller to distinguish between start/stop signals and queries for the next set of signals
         self.poller = zmq.Poller()
-        self.poller.register(self.controlSocket, zmq.POLLIN)
+        self.poller.register(self.controlSubSocket, zmq.POLLIN)
         self.poller.register(self.comSocket, zmq.POLLIN)
         self.poller.register(self.requestFwSocket, zmq.POLLIN)
         self.poller.register(self.requestSocket, zmq.POLLIN)
@@ -240,10 +252,10 @@ class SignalHandler():
                     self.log.info("Request not supported.")
 
 
-            if self.controlSocket in socks and socks[self.controlSocket] == zmq.POLLIN:
+            if self.controlSubSocket in socks and socks[self.controlSubSocket] == zmq.POLLIN:
 
                 try:
-                    message = self.controlSocket.recv_multipart()
+                    message = self.controlSubSocket.recv_multipart()
                     self.log.debug("Control signal received.")
                 except:
                     self.log.error("Waiting for control signal...failed", exc_info=True)
@@ -263,7 +275,7 @@ class SignalHandler():
 
         if len(incomingMessage) != 3:
 
-            self.log.info("Received signal is of the wrong format")
+            self.log.warning("Received signal is of the wrong format")
             self.log.debug("Received signal is too short or too long: " + str(incomingMessage))
             return "NO_VALID_SIGNAL", None, None
 
@@ -279,9 +291,9 @@ class SignalHandler():
 
             if version:
                 if helpers.checkVersion(version, self.log):
-                    self.log.debug("Versions are compatible: " + str(version))
+                    self.log.info("Versions are compatible")
                 else:
-                    self.log.debug("Version are not compatible")
+                    self.log.warning("Version are not compatible")
                     return "VERSION_CONFLICT", None, None
 
             if signal and host:
@@ -289,10 +301,10 @@ class SignalHandler():
                 # Checking signal sending host
                 self.log.debug("Check if host to send data to are in WhiteList...")
                 if helpers.checkHost(host, self.whiteList, self.log):
-                    self.log.debug("Hosts are allowed to connect.")
+                    self.log.info("Hosts are allowed to connect.")
                     self.log.debug("hosts: " + str(host))
                 else:
-                    self.log.debug("One of the hosts is not allowed to connect.")
+                    self.log.warning("One of the hosts is not allowed to connect.")
                     self.log.debug("hosts: " + str(host))
                     return "NO_VALID_HOST", None, None
 
@@ -403,9 +415,7 @@ class SignalHandler():
                     del listToCheck[index]
 
             # send signal to TaskManager
-            self.lock.acquire()
-            helpers.globalObjects.controlSocket.send_multipart(["signal", "CLOSE_SOCKETS", cPickle.dumps(socketIds)])
-            self.lock.release()
+            self.controlPubSocket.send_multipart(["signal", "CLOSE_SOCKETS", cPickle.dumps(socketIds)])
 
         return listToCheck, variList, correspList
 
@@ -498,10 +508,15 @@ class SignalHandler():
             self.requestSocket.close(0)
             self.requestSocket = None
 
-        if self.controlSocket:
-            self.log.info("Closing controlSocket")
-            self.controlSocket.close(0)
-            self.controlSocket = None
+        if self.controlPubSocket:
+            self.log.info("Closing controlPubSocket")
+            self.controlPubSocket.close(0)
+            self.controlPubSocket = None
+
+        if self.controlSubSocket:
+            self.log.info("Closing controlSubSocket")
+            self.controlSubSocket.close(0)
+            self.controlSubSocket = None
 
         if not self.extContext and self.context:
             self.log.info("Destroying context")
@@ -520,15 +535,14 @@ class SignalHandler():
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
 class requestPuller():
-    def __init__ (self, requestFwPort, logQueue, context = None):
+    def __init__ (self, requestFwConId, logQueue, context = None):
 
         self.log = self.getLogger(logQueue)
 
         self.context         = context or zmq.Context.instance()
         self.requestFwSocket = self.context.socket(zmq.REQ)
-        connectionStr   = "tcp://localhost:" + requestFwPort
-        self.requestFwSocket.connect(connectionStr)
-        self.log.info("[getRequests] requestFwSocket started (connect) for '" + connectionStr + "'")
+        self.requestFwSocket.connect(requestFwConId)
+        self.log.info("[getRequests] requestFwSocket started (connect) for '" + requestFwConId + "'")
 
         self.run()
 
@@ -568,23 +582,25 @@ if __name__ == '__main__':
     from multiprocessing import Process, freeze_support, Queue
     import time
     import threading
+    from version import __version__
 
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
 
     whiteList     = ["localhost", "zitpcx19282"]
-
 
     localhost       = "127.0.0.1"
     extIp           = "0.0.0.0"
 
     controlPort     = "7000"
     comPort         = "6000"
-    requestFwPort   = "6001"
     requestPort     = "6002"
 
-    controlConId    = "tcp://{ip}:{port}".format(ip=localhost, port=controlPort)
+    currentPID      = os.getpid()
+
+    controlPubConId = "ipc://{pid}_{id}".format(pid=currentPID, id="controlPub")
+    controlSubConId = "ipc://{pid}_{id}".format(pid=currentPID, id="controlSub")
     comConId        = "tcp://{ip}:{port}".format(ip=extIp,     port=comPort)
-    requestFwConId  = "tcp://{ip}:{port}".format(ip=localhost, port=requestFwPort)
+    requestFwConId  = "ipc://{pid}_{id}".format(pid=currentPID, id="requestFw")
     requestConId    = "tcp://{ip}:{port}".format(ip=extIp,     port=requestPort)
 
     logfile  = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler.log"
@@ -608,24 +624,28 @@ if __name__ == '__main__':
     # Register context
     context = zmq.Context()
 
-    lock             = threading.Lock()
+    # initiate forwarder for control signals (multiple pub, multiple sub)
+    device = zmq.devices.ThreadDevice(zmq.FORWARDER, zmq.SUB, zmq.PUB)
+    device.bind_in(controlPubConId)
+    device.bind_out(controlSubConId)
+    device.setsockopt_in(zmq.SUBSCRIBE, b"")
+    device.start()
 
     # create control socket
-    helpers.globalObjects.controlSocket = context.socket(zmq.PUB)
-    connectionStr  = "tcp://{ip}:{port}".format( ip=localhost, port=controlPort )
-    helpers.globalObjects.controlSocket.bind(connectionStr)
-    logging.info("=== controlSocket bind to: '" + connectionStr + "'")
+    controlPubSocket = context.socket(zmq.PUB)
+    controlPubSocket.connect(controlPubConId)
+    logging.info("=== controlPubSocket connect to: '" + controlPubConId + "'")
 
-    signalHandlerPr = threading.Thread ( target = SignalHandler, args = (controlConId, whiteList, comConId, requestFwConId, requestConId, logQueue, context) )
+    signalHandlerPr = threading.Thread ( target = SignalHandler, args = (controlPubConId, controlSubConId, whiteList, comConId, requestFwConId, requestConId, logQueue, context) )
     signalHandlerPr.start()
 
-    requestPullerPr = Process ( target = requestPuller, args = (requestFwPort, logQueue) )
+    requestPullerPr = Process ( target = requestPuller, args = (requestFwConId, logQueue) )
     requestPullerPr.start()
 
 
     def sendSignal(socket, signal, ports, prio = None):
         logging.info("=== sendSignal : " + signal + ", " + str(ports))
-        sendMessage = ["0.0.1",  signal]
+        sendMessage = [__version__,  signal]
         targets = []
         if type(ports) == list:
             for port in ports:
@@ -646,19 +666,16 @@ if __name__ == '__main__':
 
 
     comSocket       = context.socket(zmq.REQ)
-    connectionStr   = "tcp://localhost:" + comPort
-    comSocket.connect(connectionStr)
-    logging.info("=== comSocket connected to " + connectionStr)
+    comSocket.connect(comConId)
+    logging.info("=== comSocket connected to " + comConId)
 
     requestSocket   = context.socket(zmq.PUSH)
-    connectionStr   = "tcp://localhost:" + requestPort
-    requestSocket.connect(connectionStr)
-    logging.info("=== requestSocket connected to " + connectionStr)
+    requestSocket.connect(requestConId)
+    logging.info("=== requestSocket connected to " + requestConId)
 
     requestFwSocket = context.socket(zmq.REQ)
-    connectionStr   = "tcp://localhost:" + requestFwPort
-    requestFwSocket.connect(connectionStr)
-    logging.info("=== requestFwSocket connected to " + connectionStr)
+    requestFwSocket.connect(requestFwConId)
+    logging.info("=== requestFwSocket connected to " + requestFwConId)
 
     time.sleep(1)
 
@@ -685,21 +702,18 @@ if __name__ == '__main__':
     time.sleep(1)
 
 
-    self.lock.acquire()
-    helpers.globalObjects.controlSocket.send_multipart(["control", "EXIT"])
-    self.lock.release()
+    controlPubSocket.send_multipart(["control", "EXIT"])
     logging.debug("=== EXIT")
 
     signalHandlerPr.join()
     requestPullerPr.terminate()
 
-    self.lock.acquire()
-    helpers.globalObjects.controlSocket.close(0)
-    self.lock.release()
+    controlPubSocket.close(0)
 
     comSocket.close(0)
     requestSocket.close(0)
     requestFwSocket.close(0)
+
     context.destroy()
 
     logQueue.put_nowait(None)

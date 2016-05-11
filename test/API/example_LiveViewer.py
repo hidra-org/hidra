@@ -15,7 +15,7 @@ if not API_PATH in sys.path:
 del API_PATH
 
 from dataTransferAPI import dataTransfer
-from dectris import albula
+#from dectris import albula
 
 
 class LiveView(QThread):
@@ -34,8 +34,8 @@ class LiveView(QThread):
     mutex = None
 
     zmqQuery      = None
-    zmqSignalIp      = "haspp11eval01.desy.de"
-#    zmqSignalIp   = "zitpcx19282.desy.de"
+#    zmqSignalIp      = "haspp11eval01.desy.de"
+    zmqSignalIp   = "zitpcx19282.desy.de"
 #    zmqSignalIp   = "zitpcx22614w.desy.de"
     zmqDataPort   = "50022"
 #    basePath      = BASE_PATH + os.sep + "data" + os.sep + "target"
@@ -107,18 +107,18 @@ class LiveView(QThread):
 
 #                time.sleep(0.2)
                 # display image
-                try:
-                    self.subframe.loadFile(receivedFile)
-                # viewer or subframe has been closed by the user
-                except:
-                    self.mutex.unlock()
-                    time.sleep(0.1)
-                    try:
-                        self.subframe = self.viewer.openSubFrame()
-                    except:
-                        self.viewer = albula.openMainFrame()
-                        self.subframe = self.viewer.openSubFrame()
-                    continue
+#                try:
+#                    self.subframe.loadFile(receivedFile)
+#                # viewer or subframe has been closed by the user
+#                except:
+#                    self.mutex.unlock()
+#                    time.sleep(0.1)
+#                    try:
+#                        self.subframe = self.viewer.openSubFrame()
+#                    except:
+#                        self.viewer = albula.openMainFrame()
+#                        self.subframe = self.viewer.openSubFrame()
+#                    continue
                 self.mutex.unlock()
                 # wait interval
                 interval = 0.0

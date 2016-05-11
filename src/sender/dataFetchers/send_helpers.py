@@ -3,7 +3,12 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 import zmq
 import cPickle
 
-def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metadata, payload, context):
+
+class DataHandlingError(Exception):
+    pass
+
+
+def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metadata, payload, context, timeout = -1):
 
     for target, prio, sendType in targets:
 
@@ -12,35 +17,43 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
             # socket not known
             if target not in openConnections:
                 # open socket
-                socket        = context.socket(zmq.PUSH)
-                connectionStr = "tcp://" + str(target)
+                try:
+                    socket        = context.socket(zmq.PUSH)
+                    connectionStr = "tcp://" + str(target)
 
-                socket.connect(connectionStr)
-                log.info("Start socket (connect): '" + str(connectionStr) + "'")
+                    socket.connect(connectionStr)
+                    log.info("Start socket (connect): '" + str(connectionStr) + "'")
 
-                # register socket
-                openConnections[target] = socket
+                    # register socket
+                    openConnections[target] = socket
+                except:
+                    raise DataHandlingError("Failed to start socket (connect): '" + str(connectionStr) + "'")
 
             # send data
-            if sendType == "data":
-                tracker = openConnections[target].send_multipart(payload, copy=False, track=True)
-                log.info("Sending message part from file " + str(sourceFile) +
-                         " to '" + target + "' with priority " + str(prio) )
+            try:
+                if sendType == "data":
+                    tracker = openConnections[target].send_multipart(payload, copy=False, track=True)
+                    log.info("Sending message part from file " + str(sourceFile) +
+                             " to '" + target + "' with priority " + str(prio) )
 
-            elif sendType == "metadata":
-                #cPickle.dumps(None) is 'N.'
-                tracker = openConnections[target].send_multipart([cPickle.dumps(metadata), cPickle.dumps(None)], copy=False, track=True)
-                log.info("Sending metadata of message part from file " + str(sourceFile) +
-                         " to '" + target + "' with priority " + str(prio) )
-                log.debug("metadata=" + str(metadata))
+                elif sendType == "metadata":
+                    #cPickle.dumps(None) is 'N.'
+                    tracker = openConnections[target].send_multipart([cPickle.dumps(metadata), cPickle.dumps(None)], copy=False, track=True)
+                    log.info("Sending metadata of message part from file " + str(sourceFile) +
+                             " to '" + target + "' with priority " + str(prio) )
+                    log.debug("metadata=" + str(metadata))
 
+                if not tracker.done:
+                    log.debug("Message part from file " + str(sourceFile) +
+                             " has not been sent yet, waiting...")
+                    tracker.wait(timeout)
+                    log.debug("Message part from file " + str(sourceFile) +
+                             " has not been sent yet, waiting...done")
 
-            if not tracker.done:
-                log.idebug("Message part from file " + str(sourceFile) +
-                         " has not been sent yet, waiting...")
-                tracker.wait()
-                log.debug("Message part from file " + str(sourceFile) +
-                         " has not been sent yet, waiting...done")
+            except:
+                raise DataHandlingError("Sending (metadata of) message part from file " + str(sourceFile) +
+                                        " to '" + target + "' with priority " + str(prio) + " failed.")
+
 
         else:
             # socket not known
