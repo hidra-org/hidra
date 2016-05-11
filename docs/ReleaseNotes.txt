@@ -1,5 +1,10 @@
 Zeromq Data Transfer 2.2.0
 
+- Fixed problems that the dataTransferAPI could not received data
+
+
+Zeromq Data Transfer 2.2.0
+
 - Fixed stopping: The service is shut down if one process dies
 - Enabled whitelist for data receiver
 - Added tests to check status of fixed data receiver
