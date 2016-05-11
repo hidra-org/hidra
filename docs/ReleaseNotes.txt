@@ -1,0 +1,52 @@
+Zeromq Data Transfer develop
+
+- Fixed stopping: The service is shut down if one process dies
+- Enabled whitelist for data receiver
+- Added tests to check status of fixed data receiver
+- Runs now under process name zeromq-data-receiver
+- Added init script
+- Fixed clean up after shut down
+- Enabled combination of data receiver whitelist with ldapsearch
+- Added option to enable a clean up thread which checks the directory for missed files
+- Version check does not consider bugfixes anymore
+
+
+Zeromq Data Transfer 2.1.4
+
+- Fixed copied file removal (Part 2)
+
+
+Zeromq Data Transfer 2.1.3
+
+- Fixed copied file removal (Part 1)
+
+
+Zeromq Data Transfer 2.1.2
+
+- Fixed too high processor usage
+- Fixed suffix check in treewalk after creation of directory
+
+
+Zeromq Data Transfer 2.1.1
+
+- Fixed error handling with incorrect whitelists
+- Fixed version checking
+- Added file create time to metadata
+
+
+Zeromq Data Transfer 2.1.0
+
+- Added file removal safeguard
+- Enabled use of IPC internal communication for Linux nodes
+- Added exception definitions for dataTransferAPI
+- Misc bug fixing
+
+
+Zeromq Data Transfer 2.0.0
+
+- Added functionality to get Data via HTTP Get
+- Redesigned architecture
+
+Zeromq Data Transfer 1.0.0
+
+- Initial implementation
