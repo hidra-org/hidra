@@ -113,11 +113,11 @@ def argumentParsing():
     monitoredDir       = config.get('asection', 'monitoredDir')
     monitoredEventType = config.get('asection', 'monitoredEventType')
     monitoredFormats   = json.loads(config.get('asection', 'monitoredFormats'))
+    timeTillClosed     = config.getfloat('asection', 'timeTillClosed')
     # for InotifyxDetector:
     historySize        = config.getint('asection', 'historySize')
     useCleanUp         = config.getboolean('asection', 'useCleanUp')
-    # for WatchdogDetector:
-    timeTillClosed     = config.getfloat('asection', 'timeTillClosed')
+    actionTime         = config.getfloat('asection', 'actionTime')
     # for ZmqDetector:
     eventPort          = config.get('asection', 'eventPort')
     # for HttpGetDetector:
@@ -159,10 +159,18 @@ def argumentParsing():
                                                            (needed if eventDetector is InotifyxDetector; default=" + str(useCleanUp) + ")",
                                                 default = useCleanUp )
 
+    parser.add_argument("--actionTime"        , type    = float,
+                                                help    = "Intervall time (in seconds) used for clea nup \
+                                                           (only needed if eventDetectorType is InotifyxDetector; default=" + str(actionTime) + ")",
+                                                default = actionTime )
+
     parser.add_argument("--timeTillClosed"    , type    = float,
                                                 help    = "Time (in seconds) since last modification after which a file will be seen as closed \
-                                                           (only needed if eventDetectorType is WatchdogDetector; default=" + str(timeTillClosed) + ")",
+                                                           (only needed if eventDetectorType is InotifyxDetector (for clean up) or WatchdogDetector; \
+                                                           default=" + str(timeTillClosed) + ")",
                                                 default = timeTillClosed )
+
+
 
     parser.add_argument("--eventPort"         , type    = str,
                                                 help    = "ZMQ port to get events from \
@@ -407,8 +415,8 @@ class DataManager():
                     "timeout"           : 1,
                     "historySize"       : arguments.historySize,
                     "useCleanUp"        : arguments.useCleanUp,
-                    "cleanUpTime"       : 5,
-                    "actionTime"        : 120
+                    "cleanUpTime"       : arguments.timeTillClosed,
+                    "actionTime"        : arguments.actionTime
                     }
         elif arguments.eventDetectorType == "WatchdogDetector":
             self.eventDetectorConfig = {
