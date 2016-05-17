@@ -422,10 +422,12 @@ def getLogHandlers (logfile, logsize, verbose, onScreenLogLevel = False):
             f2 = logging.Formatter(datefmt=datef, fmt=f)
             h2.setFormatter(f2)
             h2.setLevel(screenLogLevel)
+
+            return h1, h2
         else:
             logging.error("Logging on Screen: Option " + str(onScreenLogLevel) + " is not supported.")
+            exit(1)
 
-        return h1, h2
     else:
         return h1
 

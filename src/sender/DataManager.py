@@ -8,6 +8,7 @@ import zmq
 import zmq.devices
 import os
 import logging
+import errno
 import sys
 import json
 import time
@@ -70,7 +71,7 @@ def argumentParsing():
                                                 default = False )
 
     parser.add_argument("--procname"          , type    = str,
-                                                help    = "Name with which the serevice should be running (default=" + str(procname) + ")",
+                                                help    = "Name with which the service should be running (default=" + str(procname) + ")",
                                                 default = procname )
 
     # SignalHandler config
@@ -295,6 +296,20 @@ def argumentParsing():
 
 class DataManager():
     def __init__ (self, logQueue = None):
+        self.device           = None
+        self.controlPubSocket = None
+        self.testSocket       = None
+        self.context          = None
+        self.extLogQueue      = True
+        self.log              = None
+        self.logQueueListener = None
+
+        self.localhost        = "127.0.0.1"
+        self.extIp            = "0.0.0.0"
+        self.ipcPath          = "/tmp/zeromq-data-transfer"
+
+        self.currentPID       = os.getpid()
+
         arguments = argumentParsing()
 
         logfilePath           = arguments.logfilePath
@@ -304,14 +319,12 @@ class DataManager():
         verbose               = arguments.verbose
         onScreen              = arguments.onScreen
 
-        self.currentPID       = os.getpid()
-
-        self.extLogQueue      = False
-
         if logQueue:
             self.logQueue    = logQueue
             self.extLogQueue = True
         else:
+            self.extLogQueue = False
+
             # Get queue
             self.logQueue    = Queue(-1)
 
@@ -341,10 +354,6 @@ class DataManager():
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
-        self.localhost        = "127.0.0.1"
-        self.extIp            = "0.0.0.0"
-        self.ipcPath          = "/tmp/zeromq-data-transfer"
-
         if not os.path.exists(self.ipcPath):
             os.makedirs(self.ipcPath)
 
@@ -371,9 +380,6 @@ class DataManager():
             self.requestFwConId   = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="requestFw")
             self.routerConId      = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="router")
 
-
-        self.device           = None
-        self.controlPubSocket = None
 
         self.whitelist        = arguments.whitelist
 
@@ -469,8 +475,6 @@ class DataManager():
 #        self.context = zmq.Context.instance()
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
-
-        self.testSocket = None
 
         try:
             if self.testFixedStreamingHost():
@@ -635,7 +639,12 @@ class DataManager():
         try:
             os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub"))
             os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub"))
-        except:
+        except OSError as e:
+            if e.errno == errno.ENOENT:
+                pass
+            else:
+                self.log.error("Could not remove remaining ipc sockets", exc_info=True)
+        except Exception as e:
             self.log.error("Could not remove remaining ipc sockets", exc_info=True)
 
         if not self.extLogQueue and self.logQueueListener:
