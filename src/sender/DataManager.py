@@ -637,14 +637,13 @@ class DataManager():
             self.context = None
 
         try:
-            os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub"))
-            os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub"))
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                pass
-            else:
-                self.log.error("Could not remove remaining ipc sockets", exc_info=True)
-        except Exception as e:
+            controlPubPath = "{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub")
+            controlSubPath = "{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub")
+            if os.path.isfile(controlPubPath):
+                os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub"))
+            if os.path.isfile(controlPubPath):
+                os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub"))
+        except Exception:
             self.log.error("Could not remove remaining ipc sockets", exc_info=True)
 
         if not self.extLogQueue and self.logQueueListener:
