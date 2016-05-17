@@ -222,10 +222,10 @@ class DataDispatcher():
                         targets = []
 
 
-                # get metadata of the file
+                # get metadata and paths of the file
                 try:
-                    self.log.debug("Getting file metadata")
-                    sourceFile, targetFile, metadata = self.dataFetcher.getMetadata(self.log, workload, self.chunkSize, self.localTarget)
+                    self.log.debug("Getting file paths and metadata")
+                    sourceFile, targetFile, metadata = self.dataFetcher.getMetadata(self.log, self.dataFetcherProp, targets, workload, self.chunkSize, self.localTarget)
 
                 except:
                     self.log.error("Building of metadata dictionary failed for workload: " + str(workload) + ".", exc_info=True)

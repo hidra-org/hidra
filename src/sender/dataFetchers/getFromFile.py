@@ -28,7 +28,7 @@ def setup (log, prop):
         return True
 
 
-def getMetadata (log, metadata, chunkSize, localTarget = None):
+def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
 
     #extract fileEvent metadata
     try:
@@ -56,50 +56,53 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
     else:
         targetFile     = None
 
-    try:
-        # For quick testing set filesize of file as chunksize
-        log.debug("get filesize for '" + str(sourceFile) + "'...")
-        filesize       = os.path.getsize(sourceFile)
-        fileModTime    = os.stat(sourceFile).st_mtime
-        fileCreateTime = os.stat(sourceFile).st_ctime
-        chunksize      = filesize    #can be used later on to split multipart message
-        log.debug("filesize(%s) = %s" % (sourceFile, str(filesize)))
-        log.debug("fileModTime(%s) = %s" % (sourceFile, str(fileModTime)))
+    if targets:
+        try:
+            # For quick testing set filesize of file as chunksize
+            log.debug("get filesize for '" + str(sourceFile) + "'...")
+            filesize       = os.path.getsize(sourceFile)
+            fileModTime    = os.stat(sourceFile).st_mtime
+            fileCreateTime = os.stat(sourceFile).st_ctime
+            chunksize      = filesize    #can be used later on to split multipart message
+            log.debug("filesize(%s) = %s" % (sourceFile, str(filesize)))
+            log.debug("fileModTime(%s) = %s" % (sourceFile, str(fileModTime)))
 
-    except:
-        log.error("Unable to create metadata dictionary.")
-        raise
+        except:
+            log.error("Unable to create metadata dictionary.")
+            raise
 
-    try:
-        log.debug("create metadata for source file...")
-        #metadata = {
-        #        "filename"     : filename,
-        #        "sourcePath"   : sourcePath,
-        #        "relativePath" : relativePath,
-        #        "filesize"     : filesize,
-        #        "fileModTime"  : fileModTime,
-        #        "chunkSize"    : self.zmqMessageChunkSize
-        #        }
-        metadata[ "filesize"    ]   = filesize
-        metadata[ "fileModTime" ]   = fileModTime
-        metadata[ "fileCreateTime"] = fileCreateTime
-        metadata[ "chunkSize"   ]   = chunkSize
+        try:
+            log.debug("create metadata for source file...")
+            #metadata = {
+            #        "filename"     : filename,
+            #        "sourcePath"   : sourcePath,
+            #        "relativePath" : relativePath,
+            #        "filesize"     : filesize,
+            #        "fileModTime"  : fileModTime,
+            #        "chunkSize"    : self.zmqMessageChunkSize
+            #        }
+            metadata[ "filesize"    ]   = filesize
+            metadata[ "fileModTime" ]   = fileModTime
+            metadata[ "fileCreateTime"] = fileCreateTime
+            metadata[ "chunkSize"   ]   = chunkSize
 
-        log.debug("metadata = " + str(metadata))
-    except:
-        log.error("Unable to assemble multi-part message.")
-        raise
+            log.debug("metadata = " + str(metadata))
+        except:
+            log.error("Unable to assemble multi-part message.")
+            raise
 
-    return sourceFile, targetFile, metadata
+        return sourceFile, targetFile, metadata
+    else:
+        return sourceFile, targetFile, dict()
 
 
 def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
 
-    targets_data     = [i for i in targets if i[2] == "data"]
-
-    if not targets_data:
+    if not targets:
         prop["removeFlag"] = True
         return
+
+    targets_data       = [i for i in targets if i[2] == "data"]
 
     prop["removeFlag"] = False
     chunkSize          = metadata[ "chunkSize" ]

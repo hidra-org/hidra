@@ -379,7 +379,8 @@ class EventDetector():
 
             is_ofEventType = (self.monEventType in parts_array)
 
-#            self.log.debug(path + " " + event.name + " " + parts)
+#            if not is_dir:
+#                self.log.debug(path + " " + event.name + " " + parts)
 #            self.log.debug(event.name)
 #            self.log.debug("is_dir: " + str(is_dir))
 #            self.log.debug("is_created: " + str(is_created))
@@ -527,7 +528,10 @@ if __name__ == '__main__':
             "monSubdirs"        : ["commissioning", "current", "local"],
             "monSuffixes"       : [".tif", ".cbf"],
             "timeout"           : 0.1,
-            "historySize"       : 0
+            "historySize"       : 0,
+            "useCleanUp"        : False,
+            "cleanUpTime"       : 5,
+            "actionTime"        : 120
             }
 
     eventDetector = EventDetector(config, logQueue)

@@ -35,7 +35,7 @@ def setup (log, prop):
         return True
 
 
-def getMetadata (log, metadata, chunkSize, localTarget = None):
+def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
 
     #extract fileEvent metadata
     try:
