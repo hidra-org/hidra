@@ -120,6 +120,8 @@ def confirm (prompt=None, resp=False):
 
 def checkEventDetectorType (eDType, supportedTypes):
 
+    eDType = eDType.lower()
+
     if eDType in supportedTypes:
         logging.debug("Event detector '" + eDType + "' is ok.")
     else:
@@ -172,6 +174,15 @@ def checkAllSubDirExist (dirPath, subDirs):
     for d in dirsToCheck:
         if not os.path.exists(d):
             logging.warning("Dir '%s' does not exist." % str(d))
+
+
+def checkFileExistance (filePath):
+    # Check file for existance.
+    # Exits if it does not exist
+
+    if not os.path.exists(filePath):
+        logging.error("File '%s' does not exist. Abort." % str(filePath))
+        sys.exit(1)
 
 
 def checkDirExistance (dirPath):
