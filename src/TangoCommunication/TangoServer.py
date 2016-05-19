@@ -213,8 +213,12 @@ class ZmqDT():
             #
             # execute the start action ...
             #
-            #write configfile
-            #start service
+
+            # write configfile
+            # /etc/zeromq-data-transfer/P01.conf
+
+            # start service
+            #systemctl start zeromq-data-transfer@P01.service
 
 
 #            python src/sender/DataManager.py --verbose --procname self.procname --detectorDevice self.detectorDevice --filewriterDevice self.filewriterDevice --historySize self.historySize --localTarget self.localTarget --storeData self.storeData --removeData self.removeData --whitelist self.whitelist
