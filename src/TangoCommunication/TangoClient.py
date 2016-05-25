@@ -12,7 +12,7 @@ msgs = [
     "set historySize 0",
     "set storeData True",
     "set removeData True",
-    "set whitelist ['localhost',zitpcx19282]",
+    'set whitelist ["localhost","zitpcx19282"]',
     "do start",
     "exit",
 ]

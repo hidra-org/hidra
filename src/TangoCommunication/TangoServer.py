@@ -225,29 +225,31 @@ class ZmqDT():
 
     #            f.write("eventDetectorType  = HttpDetector"                                     + "\n")
                 f.write("eventDetectorType  = InotifyxDetector"                                 + "\n")
-                f.write("fixSubdirs         = ['commissioning', 'current', 'local']"            + "\n")
+                f.write('fixSubdirs         = ["commissioning", "current", "local"]'            + "\n")
                 f.write("monitoredDir       = /space/projects/zeromq-data-transfer/data/source" + "\n")
                 f.write("monitoredEventType = IN_CLOSE_WRITE"                                   + "\n")
-                f.write("monitoredFormats   = ['.tif', '.cbf']"                                 + "\n")
+                f.write('monitoredFormats   = [".tif", ".cbf"]'                                 + "\n")
                 f.write("useCleanUp         = False"                                            + "\n")
                 f.write("actionTime         = 150"                                              + "\n")
                 f.write("timeTillClosed     = 2"                                                + "\n")
 
     #            f.write("dataFetcherType    = getFromHttp"                                      + "\n")
-                f.write("dataFetcherType    = getFromFile"                                       + "\n")
+                f.write("dataFetcherType    = getFromFile"                                      + "\n")
 
-                f.write("chunkSize          = 10485760"                                          + "\n")
+                f.write("numberOfStreams    = 1"                                                + "\n")
+                f.write("useDataStream      = False"                                            + "\n")
+                f.write("chunkSize          = 10485760"                                         + "\n")
 
 
-                f.write("detectorDevice     = " +  str(self.detectorDevice)                        + "\n")
-                f.write("filewriterDevice   = " +  str(self.filewriterDevice)                      + "\n")
+                f.write("detectorDevice     = " +  str(self.detectorDevice)                     + "\n")
+                f.write("filewriterDevice   = " +  str(self.filewriterDevice)                   + "\n")
                 # TODO replace TangoDevices with the following
-                #f.write("eigerIp            = " +  str(self.eigerIp)                               + "\n")
-                f.write("historySize        = " +  str(self.historySize)                           + "\n")
-                f.write("localTarget        = " +  str(self.localTarget)                           + "\n")
-                f.write("storeData          = " +  str(self.storeData)                             + "\n")
-                f.write("removeData         = " +  str(self.removeData)                            + "\n")
-                f.write("whitelist          = " +  str(self.whitelist)                             + "\n")
+                #f.write("eigerIp            = " +  str(self.eigerIp)                            + "\n")
+                f.write("historySize        = " +  str(self.historySize)                        + "\n")
+                f.write("localTarget        = " +  str(self.localTarget)                        + "\n")
+                f.write("storeData          = " +  str(self.storeData)                          + "\n")
+                f.write("removeData         = " +  str(self.removeData)                         + "\n")
+                f.write("whitelist          = " +  str(self.whitelist)                          + "\n")
 
             # start service
             #systemctl start zeromq-data-transfer@P01.service
