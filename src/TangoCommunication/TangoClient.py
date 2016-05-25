@@ -16,6 +16,7 @@ msgs = [
     'set whitelist ["localhost","zitpcx19282"]',
     "do start",
     "do status",
+    "do stop",
     "bye"
 ]
 
