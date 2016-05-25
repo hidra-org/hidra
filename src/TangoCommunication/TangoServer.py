@@ -1,17 +1,38 @@
 #!/usr/bin/env python
 #
-import thread, os, socket
+import thread
+import os
+import socket
+import subprocess
+import psutil
 
-PORT = 50900
+PORT = 51000
+
+BASEDIR = "/root/zeromq-data-transfer"
+#BASEDIR = "/space/projects/zeromq-data-transfer"
+
+CONFIGPATH = "/root/zeromq-data-transfer/conf"
+#CONFIGPATH = "/space/projects/zeromq-data-transfer/conf"
+
+LOGPATH = "/root/zeromq-data-transfer/logs"
+#LOGPATH = "/space/projects/zeromq-data-transfer/logs"
 
 #
 # assume that the server listening to 7651 serves p09
 #
 port2BL = {
-    "50900": "P08",
-    "50901": "P09",
-    "50902": "P10",
-    "50903": "P11"
+    "51000": "p00",
+    "51001": "p01",
+    "51002": "p02",
+    "51003": "p03",
+    "51004": "p04",
+    "51005": "p05",
+    "51006": "p06",
+    "51007": "p07",
+    "51008": "p08",
+    "51009": "p09",
+    "51010": "p10",
+    "51011": "p11"
     }
 
 
@@ -53,10 +74,10 @@ class ZmqDT():
 
     def execMsg (self, msg):
         '''
-        set filedir /gpfs/current/raw/ge_00005
+        set filedir /gpfs/current/raw
           returns DONE
         get filedir
-          returns /gpfs/current/raw/ge_00005
+          returns /gpfs/current/raw
         do reset
           return DONE
         '''
@@ -89,7 +110,7 @@ class ZmqDT():
 
     def set (self, param, value):
         '''
-        set a parameter, e.g.: set filedir /gpfs/current/raw/ge_00005
+        set a parameter, e.g.: set filedir /gpfs/current/raw/
         '''
 
         key = param.lower()
@@ -133,7 +154,7 @@ class ZmqDT():
 
     def get (self, param):
         '''
-        return the value of a parameter, e.g.: get locatarget
+        return the value of a parameter, e.g.: get localtarget
         '''
         key = param.lower()
 
@@ -180,11 +201,11 @@ class ZmqDT():
         elif key == "stop":
             return self.stop()
 
-#        elif key == "restart":
-#            return self.stop()
+        elif key == "restart":
+            return self.stop()
 
-#        elif key == "status":
-#            return self.stop()
+        elif key == "status":
+            return self.stop()
 
         else:
             return "ERROR"
@@ -214,19 +235,19 @@ class ZmqDT():
 
             # write configfile
             # /etc/zeromq-data-transfer/P01.conf
-            configFile = "/space/projects/zeromq-data-transfer/conf/" + self.beamline + ".conf"
+            configFile = CONFIGPATH + os.sep + self.beamline + ".conf"
             with open(configFile, 'w') as f:
-                f.write("logfilePath        = /space/projects/zeromq-data-transfer/logs"        + "\n")
+                f.write("logfilePath        = " + LOGPATH                                       + "\n")
                 f.write("logfileName        = dataManager.log"                                  + "\n")
                 f.write("logfileSize        = 10485760"                                         + "\n")
-                f.write("procname           = zeromq-data-transfer"                             + "\n")
+                f.write("procname           = " + self.procname                                 + "\n")
                 f.write("comPort            = 50000"                                            + "\n")
                 f.write("requestPort        = 50001"                                            + "\n")
 
     #            f.write("eventDetectorType  = HttpDetector"                                     + "\n")
                 f.write("eventDetectorType  = InotifyxDetector"                                 + "\n")
                 f.write('fixSubdirs         = ["commissioning", "current", "local"]'            + "\n")
-                f.write("monitoredDir       = /space/projects/zeromq-data-transfer/data/source" + "\n")
+                f.write("monitoredDir       = " + BASEDIR + "/data/source"                      + "\n")
                 f.write("monitoredEventType = IN_CLOSE_WRITE"                                   + "\n")
                 f.write('monitoredFormats   = [".tif", ".cbf"]'                                 + "\n")
                 f.write("useCleanUp         = False"                                            + "\n")
@@ -251,28 +272,60 @@ class ZmqDT():
                 f.write("removeData         = " +  str(self.removeData)                         + "\n")
                 f.write("whitelist          = " +  str(self.whitelist)                          + "\n")
 
+            # check if service is running
+            # psutil version 4
+            if self.procname in [psutil.Process(i).name() for i in psutil.pids()]:
+            # psutil version 1
+#            if self.procname in [psutil.Process(i).name for i in psutil.get_pid_list()]:
+                print self.procname + " is already running"
+                return "ERROR"
+
             # start service
-            #systemctl start zeromq-data-transfer@P01.service
+            p = subprocess.call(["systemctl", "start", "zeromq-data-transfer@" + self.beamline + ".service"])
+            print "returncode=", p
 
-
-#            python src/sender/DataManager.py --verbose --procname self.procname --detectorDevice self.detectorDevice --filewriterDevice self.filewriterDevice --historySize self.historySize --localTarget self.localTarget --storeData self.storeData --removeData self.removeData --whitelist self.whitelist
-            return "DONE"
+            if p == 0:
+                return "DONE"
+            else:
+                return "ERROR"
 
         else:
-            print "if failed"
             return "ERROR"
 
 
     def stop (self):
+        # stop service
+        p = subprocess.call(["systemctl", "stop", "zeromq-data-transfer@" + self.beamline + ".service"])
         return "DONE"
+
+        if p == 0:
+            return "DONE"
+        else:
+            return "ERROR"
 
 
     def restart (self):
-       return "DONE"
+        # stop service
+        p = subprocess.call(["systemctl", "stop", "zeromq-data-transfer@" + self.beamline + ".service"])
+
+        # start service
+        p = subprocess.call(["systemctl", "start", "zeromq-data-transfer@" + self.beamline + ".service"])
+        print "returncode=", p
+
+        if p == 0:
+            return "DONE"
+        else:
+            return "ERROR"
 
 
     def status (self):
-        return "DONE"
+        if self.procname in [psutil.Process(i).name() for i in psutil.pids()]:
+        # psutil version 1
+#            if self.procname in [psutil.Process(i).name for i in psutil.get_pid_list()]:
+            print self.procname + " is already running"
+            return "RUNNING"
+        else:
+            return "NOT RUNNING"
 
 
 class sockel (object):
