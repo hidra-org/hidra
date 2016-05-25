@@ -2,16 +2,17 @@
 #
 import thread, os, socket
 
-PORT = 7651
+PORT = 50900
 
 #
 # assume that the server listening to 7651 serves p09
 #
 port2BL = {
-    "7650": "P08"
-    "7651": "P09",
-    "7652": "P10",
-    "7653": "P11"}
+    "50900": "P08",
+    "50901": "P09",
+    "50902": "P10",
+    "50903": "P11"
+    }
 
 
 class ZmqDT():
@@ -196,36 +197,68 @@ class ZmqDT():
         #
         # see, if all required params are there.
         #
-        if self.FileDir
-        and self.FilePrefix
-        and self.FilePostfix:
 
-        if self.detectorDevice
-        and self.filewriterDevice
-        # TODO replace TangoDevices with the following
-        #and self.eigerIp
-        and self.historySize
-        and self.localTarget
-        and self.storeData
-        and self.removeData
-        and self.whitelist:
+#        if (self.detectorDevice
+#            and self.filewriterDevice
+#            # TODO replace TangoDevices with the following
+#            #and self.eigerIp
+#            and self.historySize
+#            and self.localTarget
+#            and self.storeData
+#            and self.removeData
+#            and self.whitelist ):
 
-            #
-            # execute the start action ...
-            #
+        #
+        # execute the start action ...
+        #
 
-            # write configfile
-            # /etc/zeromq-data-transfer/P01.conf
+        # write configfile
+        # /etc/zeromq-data-transfer/P01.conf
+        configFile = "/space/projects/zeromq-data-transfer/conf/" + self.beamline + ".conf"
+        with open(configFile, 'w') as f:
+            f.write("logfilePath        = /space/projects/zeromq-data-transfer/logs"        + "\n")
+            f.write("logfileName        = dataManager.log"                                  + "\n")
+            f.write("logfileSize        = 10485760"                                         + "\n")
+            f.write("procname           = zeromq-data-transfer"                             + "\n")
+            f.write("comPort            = 50000"                                            + "\n")
+            f.write("requestPort        = 50001"                                            + "\n")
 
-            # start service
-            #systemctl start zeromq-data-transfer@P01.service
+#            f.write("eventDetectorType  = HttpDetector"                                     + "\n")
+            f.write("eventDetectorType  = InotifyxDetector"                                 + "\n")
+            f.write("fixSubdirs         = ['commissioning', 'current', 'local']"            + "\n")
+            f.write("monitoredDir       = /space/projects/zeromq-data-transfer/data/source" + "\n")
+            f.write("monitoredEventType = IN_CLOSE_WRITE"                                   + "\n")
+            f.write("monitoredFormats   = ['.tif', '.cbf']"                                 + "\n")
+            f.write("useCleanUp         = False"                                            + "\n")
+            f.write("actionTime         = 150"                                              + "\n")
+            f.write("timeTillClosed     = 2"                                                + "\n")
+
+#            f.write("dataFetcherType    = getFromHttp"                                      + "\n")
+            f.write("dataFetcherType    = getFromFile"                                       + "\n")
+
+            f.write("chunkSize          = 10485760"                                          + "\n")
+
+
+            f.write("detectorDevice     = " +  str(self.detectorDevice)                        + "\n")
+            f.write("filewriterDevice   = " +  str(self.filewriterDevice)                      + "\n")
+            # TODO replace TangoDevices with the following
+            #f.write("eigerIp            = " +  str(self.eigerIp)                               + "\n")
+            f.write("historySize        = " +  str(self.historySize)                           + "\n")
+            f.write("localTarget        = " +  str(self.localTarget)                           + "\n")
+            f.write("storeData          = " +  str(self.storeData)                             + "\n")
+            f.write("removeData         = " +  str(self.removeData)                            + "\n")
+            f.write("whitelist          = " +  str(self.whitelist)                             + "\n")
+
+        # start service
+        #systemctl start zeromq-data-transfer@P01.service
 
 
 #            python src/sender/DataManager.py --verbose --procname self.procname --detectorDevice self.detectorDevice --filewriterDevice self.filewriterDevice --historySize self.historySize --localTarget self.localTarget --storeData self.storeData --removeData self.removeData --whitelist self.whitelist
-            return "DONE"
+        return "DONE"
 
-        else:
-            return "ERROR"
+#        else:
+#            print "if failed"
+#            return "ERROR"
 
 
     def stop (self):
