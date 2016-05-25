@@ -238,7 +238,7 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
             log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
 
         except:
-            log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
+            log.error("Unable to send metadata multipart-message for file " + str(sourceFile) + " to " + str(targets_metadata), exc_info=True)
 
 
 def clean (prop):

@@ -213,6 +213,8 @@ class CleanUp (threading.Thread):
 
                 if timeCurrent - timeLastModified >= self.cleanUpTime:
                     self.log.debug("New closed file detected: " + str(filepath))
+#                    self.log.debug("modTime: " + str(timeLastModified) + "currentTime: " + str(timeCurrent))
+#                    self.log.debug("timeCurrent - timeLastModified: " + str(timeCurrent - timeLastModified) + ", cleanUpTime: " + str(self.cleanUpTime))
                     eventMessage = getEventMessage(root, filename, self.paths)
                     self.log.debug("eventMessage: " + str(eventMessage))
 
