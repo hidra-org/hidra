@@ -81,13 +81,13 @@ class ZmqDT():
         do reset
           return DONE
         '''
-        tokens = msg.split(' ')
+        tokens = msg.split(' ', 2)
 
-        if len( tokens) == 0:
+        if len(tokens) == 0:
             return "ERROR"
 
         if tokens[0].lower() == 'set':
-            if len( tokens) != 3:
+            if len( tokens) < 3:
                 return "ERROR"
 
             return self.set(tokens[1], tokens[2])
@@ -202,10 +202,10 @@ class ZmqDT():
             return self.stop()
 
         elif key == "restart":
-            return self.stop()
+            return self.restart()
 
         elif key == "status":
-            return self.stop()
+            return self.status()
 
         else:
             return "ERROR"
@@ -282,7 +282,6 @@ class ZmqDT():
 
             # start service
             p = subprocess.call(["systemctl", "start", "zeromq-data-transfer@" + self.beamline + ".service"])
-            print "returncode=", p
 
             if p == 0:
                 return "DONE"
@@ -319,10 +318,11 @@ class ZmqDT():
 
 
     def status (self):
+        p = subprocess.call(["systemctl", "status", "zeromq-data-transfer@" + self.beamline + ".service"])
         if self.procname in [psutil.Process(i).name() for i in psutil.pids()]:
         # psutil version 1
 #            if self.procname in [psutil.Process(i).name for i in psutil.get_pid_list()]:
-            print self.procname + " is already running"
+            print self.procname + " is running"
             return "RUNNING"
         else:
             return "NOT RUNNING"

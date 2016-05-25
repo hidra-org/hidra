@@ -15,6 +15,7 @@ msgs = [
     "set removeData True",
     'set whitelist ["localhost","zitpcx19282"]',
     "do start",
+    "do status",
     "bye"
 ]
 
