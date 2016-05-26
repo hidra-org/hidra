@@ -273,11 +273,7 @@ class ZmqDT():
                 f.write("whitelist          = " +  str(self.whitelist)                          + "\n")
 
             # check if service is running
-            # psutil version 4
-            if self.procname in [psutil.Process(i).name() for i in psutil.pids()]:
-            # psutil version 1
-#            if self.procname in [psutil.Process(i).name for i in psutil.get_pid_list()]:
-                print self.procname + " is already running"
+            if self.status() == "RUNNING":
                 return "ERROR"
 
             # start service
@@ -318,11 +314,9 @@ class ZmqDT():
 
 
     def status (self):
-        p = subprocess.call(["systemctl", "status", "zeromq-data-transfer@" + self.beamline + ".service"])
-        if self.procname in [psutil.Process(i).name() for i in psutil.pids()]:
-        # psutil version 1
-#            if self.procname in [psutil.Process(i).name for i in psutil.get_pid_list()]:
-            print self.procname + " is running"
+        p = subprocess.call(["systemctl", "is-active", "zeromq-data-transfer@" + self.beamline + ".service"])
+
+        if p == 0:
             return "RUNNING"
         else:
             return "NOT RUNNING"
