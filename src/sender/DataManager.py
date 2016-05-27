@@ -221,10 +221,11 @@ def argumentParsing():
             arguments.monitoredFormats = arguments.monitoredFormats   or json.loads(config.get('asection', 'monitoredFormats'))
         except:
             arguments.monitoredFormats = json.loads(config.get('asection', 'monitoredFormats').replace("'", '"'))
-        arguments.timeTillClosed     = arguments.timeTillClosed     or config.getfloat('asection', 'timeTillClosed')
         arguments.historySize        = arguments.historySize        or config.getint('asection', 'historySize')
         arguments.useCleanUp         = arguments.useCleanUp         or config.getboolean('asection', 'useCleanUp')
-        arguments.actionTime         = arguments.actionTime         or config.getfloat('asection', 'actionTime')
+        if arguments.useCleanUp:
+            arguments.actionTime         = arguments.actionTime         or config.getfloat('asection', 'actionTime')
+            arguments.timeTillClosed     = arguments.timeTillClosed     or config.getfloat('asection', 'timeTillClosed')
 
     if arguments.eventDetectorType == "WatchdogDetector":
         try:
