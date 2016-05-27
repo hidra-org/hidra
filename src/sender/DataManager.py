@@ -108,7 +108,7 @@ def argumentParsing():
                                                 help    = "Number of events stored to look for doubles \
                                                            (needed if eventDetector is InotifyxDetector)")
 
-    parser.add_argument("--useCleanUp"         , type    = bool,
+    parser.add_argument("--useCleanUp"        , type    = bool,
                                                 help    = "Flag describing if a clean up thread which regularly checks \
                                                            if some files were missed should be activated \
                                                            (needed if eventDetector is InotifyxDetector)")
@@ -191,7 +191,10 @@ def argumentParsing():
     arguments.procname           = arguments.procname           or config.get('asection', 'procname')
 
     arguments.comPort            = arguments.comPort            or config.get('asection', 'comPort')
-    arguments.whitelist          = arguments.whitelist          or json.loads(config.get('asection', 'whitelist'))
+    try:
+        arguments.whitelist      = arguments.whitelist          or json.loads(config.get('asection', 'whitelist'))
+    except:
+        arguments.whitelist      = json.loads(config.get('asection', 'whitelist').replace("'", '"'))
 
     arguments.requestPort        = arguments.requestPort        or config.get('asection', 'requestPort')
 
@@ -208,20 +211,32 @@ def argumentParsing():
 
     if arguments.eventDetectorType == "InotifyxDetector":
         # for InotifyxDetector and WatchdogDetector and getFromFile:
-        arguments.fixSubdirs         = arguments.fixSubdirs         or json.loads(config.get('asection', 'fixSubdirs'))
+        try:
+            arguments.fixSubdirs         = arguments.fixSubdirs         or json.loads(config.get('asection', 'fixSubdirs'))
+        except:
+            arguments.fixSubdirs     = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
         arguments.monitoredDir       = arguments.monitoredDir       or config.get('asection', 'monitoredDir')
         arguments.monitoredEventType = arguments.monitoredEventType or config.get('asection', 'monitoredEventType')
-        arguments.monitoredFormats   = arguments.monitoredFormats   or json.loads(config.get('asection', 'monitoredFormats'))
+        try:
+            arguments.monitoredFormats = arguments.monitoredFormats   or json.loads(config.get('asection', 'monitoredFormats'))
+        except:
+            arguments.monitoredFormats = json.loads(config.get('asection', 'monitoredFormats').replace("'", '"'))
         arguments.timeTillClosed     = arguments.timeTillClosed     or config.getfloat('asection', 'timeTillClosed')
         arguments.historySize        = arguments.historySize        or config.getint('asection', 'historySize')
         arguments.useCleanUp         = arguments.useCleanUp         or config.getboolean('asection', 'useCleanUp')
         arguments.actionTime         = arguments.actionTime         or config.getfloat('asection', 'actionTime')
 
     if arguments.eventDetectorType == "WatchdogDetector":
-        arguments.fixSubdirs         = arguments.fixSubdirs         or json.loads(config.get('asection', 'fixSubdirs'))
+        try:
+            arguments.fixSubdirs         = arguments.fixSubdirs         or json.loads(config.get('asection', 'fixSubdirs'))
+        except:
+            arguments.fixSubdirs     = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
         arguments.monitoredDir       = arguments.monitoredDir       or config.get('asection', 'monitoredDir')
         arguments.monitoredEventType = arguments.monitoredEventType or config.get('asection', 'monitoredEventType')
-        arguments.monitoredFormats   = arguments.monitoredFormats   or json.loads(config.get('asection', 'monitoredFormats'))
+        try:
+            arguments.monitoredFormats   = arguments.monitoredFormats   or json.loads(config.get('asection', 'monitoredFormats'))
+        except:
+            arguments.monitoredFormats = json.loads(config.get('asection', 'monitoredFormats').replace("'", '"'))
         arguments.timeTillClosed     = arguments.timeTillClosed     or config.getfloat('asection', 'timeTillClosed')
 
     if arguments.eventDetectorType == "ZmqDetector":
@@ -371,7 +386,7 @@ class DataManager():
 
         self.whitelist        = arguments.whitelist
 
-        self.useDataStream = arguments.useDataStream
+        self.useDataStream    = arguments.useDataStream
 
         if self.useDataStream:
             self.fixedStreamId = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )
