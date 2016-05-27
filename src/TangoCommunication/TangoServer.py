@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 #
-import thread
 import threading
 import os
 import sys
 import socket
 import subprocess
-import psutil
 import logging
 from multiprocessing import Queue
 
@@ -337,11 +335,10 @@ class ZmqDT():
             return "NOT RUNNING"
 
 
-class sockel (object):
+class socketCommunication (object):
     '''
     one socket for the port, accept() generates new sockets
     '''
-    sckt = None
 
     def __init__ (self, logQueue):
         self.conn   = None
@@ -351,15 +348,7 @@ class sockel (object):
 
         self.log = self.getLogger(logQueue)
 
-        if sockel.sckt is None:
-            self.createSocket()
-
-        self.conn, self.addr = sockel.sckt.accept()
-
-        if not str(PORT) in port2BL.keys():
-            raise Exception( "sockel.__init__: port %d not identified" % str(PORT))
-
-        self.zmqDT = ZmqDT( port2BL[ str(PORT)])
+        self.createSocket()
 
 
     def getLogger (self, queue):
@@ -369,24 +358,66 @@ class sockel (object):
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
+        logger.debug("getLogger (sockel)")
 
         return logger
 
 
     def createSocket (self):
         self.log.debug("create the main socket")
-        try:
-            sockel.sckt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        except Exception, e:
-            print "socket() failed", e
-            sys.exit()
-        try:
-            sockel.sckt.bind( (self.host, self.port))
-        except Exception, e:
-            raise Exception( "sockel.__init__: bind() failed %s" % str(e))
 
-        self.log.debug("bind( %s, %d) ok" % (self.host, self.port))
-        sockel.sckt.listen(5)
+        try:
+            self.sckt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        except Exception:
+            self.log.error("socket() failed", exc_info=True)
+            sys.exit()
+
+        try:
+            self.sckt.bind( (self.host, self.port))
+        except Exception, e:
+            raise Exception("sockel.__init__: bind() failed %s" % str(e))
+
+        self.log.debug("bind( {h}, {p}) ok".format(h=self.host, p=self.port))
+        self.sckt.listen(5)
+
+
+    def run (self):
+        while True:
+            self.conn, self.addr = self.sckt.accept()
+
+            threading.Thread(target=self.socketServer).start()
+
+
+
+    def socketServer (self):
+        if not str(PORT) in port2BL.keys():
+            raise Exception("sockel.__init__: port {p] not identified".format(p=PORT))
+
+        self.zmqDT = ZmqDT(port2BL[str(PORT)])
+
+        while True:
+
+            msg = self.recv()
+
+            if len(msg) == 0:
+                self.log.debug("received empty msg")
+                continue
+
+            elif msg.lower().find('bye') == 0:
+                self.log.debug("received 'bye', closing socket")
+                self.close()
+                break
+
+            elif msg.find('exit') >= 0:
+                self.close()
+                self.finish()
+                sys.exit(1)
+
+            reply = self.zmqDT.execMsg (msg)
+
+            if self.send (reply) == 0:
+                self.close()
+                break
 
 
     def close (self):
@@ -399,7 +430,7 @@ class sockel (object):
 
 
     def finish (self):
-        sockel.sckt.close()
+        self.sckt.close()
 
 
     def recv (self):
@@ -410,18 +441,18 @@ class sockel (object):
             print e
             argout = None
 
-        self.log.debug("recv (len %2d): %s" % (len( argout.strip()), argout.strip()))
+        self.log.debug("recv (len {l}): {m}".format(l=len(argout.strip()), m=argout.strip()))
 
         return argout.strip()
 
 
     def send (self, msg):
         try:
-            argout = self.conn.send( msg)
+            argout = self.conn.send(msg)
         except:
             argout = ""
 
-        self.log.debug("sent (len %2d): %s" % (argout, msg))
+        self.log.debug("sent (len {l}): {m}".format(l=argout, m=msg))
 
         return argout
 
@@ -455,6 +486,13 @@ class TangoServer():
 
         self.log.info("Init")
 
+        # waits for new accepts on the original socket,
+        # receives the newly created socket and
+        # creates threads to handle each client separatly
+        s = socketCommunication(self.logQueue)
+
+        s.run()
+
 
     def getLogger (self, queue):
         # Create log and set handler to queue handle
@@ -463,49 +501,11 @@ class TangoServer():
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
+        logger.debug("getLogger (TangoServer)")
 
         return logger
 
 
-    def socketAcceptor (self):
-
-        # waits for new accepts on the original socket,
-        # receives the newly created socket and
-        # creates threads to handle each client separatly
-        while True:
-            s = sockel(self.logQueue)
-            self.log.info("socketAcceptor: new connect")
-            threading.Thread(target=self.socketServer, args=(s, ))
-
-
-    def socketServer (self, s):
-
-        while True:
-
-            msg = s.recv()
-
-            if len(msg) == 0:
-                self.log.debug("received empty msg")
-                continue
-
-            elif msg.lower().find('bye') == 0:
-                self.log.debug("received 'bye', closing socket")
-                s.close()
-                break
-
-            elif msg.find('exit') >= 0:
-                s.close()
-                s.finish()
-                sys.exit(1)
-
-            reply = s.zmqDT.execMsg (msg)
-
-            if s.send (reply) == 0:
-                s.close()
-                break
-
-
 if __name__ == '__main__':
     t = TangoServer()
-    t.socketAcceptor()
 
