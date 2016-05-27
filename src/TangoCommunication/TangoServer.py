@@ -301,16 +301,10 @@ class ZmqDT():
 
     def restart (self):
         # stop service
-        p = subprocess.call(["systemctl", "stop", "zeromq-data-transfer@" + self.beamline + ".service"])
+        self.stop()
 
         # start service
-        p = subprocess.call(["systemctl", "start", "zeromq-data-transfer@" + self.beamline + ".service"])
-        print "returncode=", p
-
-        if p == 0:
-            return "DONE"
-        else:
-            return "ERROR"
+        self.start()
 
 
     def status (self):

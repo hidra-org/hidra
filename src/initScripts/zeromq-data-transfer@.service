@@ -6,6 +6,7 @@ After=network-online.target
 [Service]
 TimeoutStartSec=0
 WorkingDirectory=/root/zeromq-data-transfer
+User=root
 ExecStart=/root/zeromq-data-transfer/src/sender/DataManager.py --verbose --configFile /root/zeromq-data-transfer/conf/%i.conf
 
 [Install]
