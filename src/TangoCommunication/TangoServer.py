@@ -335,7 +335,7 @@ class ZmqDT():
             return "NOT RUNNING"
 
 
-class socketCommunication (object):
+class socketCom (object):
     '''
     one socket for the port, accept() generates new sockets
     '''
@@ -354,30 +354,30 @@ class socketCommunication (object):
     def getLogger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("sockel")
+        logger = logging.getLogger("socketCom")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
-        logger.debug("getLogger (sockel)")
 
         return logger
 
 
     def createSocket (self):
-        self.log.debug("create the main socket")
 
         try:
             self.sckt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.log.debug("Socket created.")
         except Exception:
-            self.log.error("socket() failed", exc_info=True)
+            self.log.error("Creation of socket failed", exc_info=True)
             sys.exit()
 
         try:
             self.sckt.bind( (self.host, self.port))
-        except Exception, e:
-            raise Exception("sockel.__init__: bind() failed %s" % str(e))
+            self.log.info("Start socket (bind):  {h}, {p}".format(h=self.host, p=self.port))
+        except Exception:
+            self.log.error("Failed to start socket (bind).", exc_info=True)
+            raise
 
-        self.log.debug("bind( {h}, {p}) ok".format(h=self.host, p=self.port))
         self.sckt.listen(5)
 
 
@@ -391,7 +391,7 @@ class socketCommunication (object):
 
     def socketServer (self):
         if not str(PORT) in port2BL.keys():
-            raise Exception("sockel.__init__: port {p] not identified".format(p=PORT))
+            raise Exception("Port {p} not identified".format(p=PORT))
 
         self.zmqDT = ZmqDT(port2BL[str(PORT)])
 
@@ -400,15 +400,16 @@ class socketCommunication (object):
             msg = self.recv()
 
             if len(msg) == 0:
-                self.log.debug("received empty msg")
+                self.log.debug("Received empty msg")
                 continue
 
             elif msg.lower().find('bye') == 0:
-                self.log.debug("received 'bye', closing socket")
+                self.log.debug("Received 'bye'")
                 self.close()
                 break
 
             elif msg.find('exit') >= 0:
+                self.log.debug("Received 'exit'")
                 self.close()
                 self.finish()
                 sys.exit(1)
@@ -425,12 +426,17 @@ class socketCommunication (object):
         # close the 'accepted' socket only, not the main socket
         # because it may still be in use by another client
         #
-        if not self.conn is None:
+        if self.conn:
+            self.log.info("Closing connection")
             self.conn.close()
+            self.conn = None
 
 
     def finish (self):
-        self.sckt.close()
+        if self.sckt:
+            self.log.info("Closing Socket")
+            self.sckt.close()
+            self.sckt = None
 
 
     def recv (self):
@@ -441,7 +447,7 @@ class socketCommunication (object):
             print e
             argout = None
 
-        self.log.debug("recv (len {l}): {m}".format(l=len(argout.strip()), m=argout.strip()))
+        self.log.debug("Recv (len {l: <2}): {m}".format(l=len(argout.strip()), m=argout.strip()))
 
         return argout.strip()
 
@@ -452,9 +458,19 @@ class socketCommunication (object):
         except:
             argout = ""
 
-        self.log.debug("sent (len {l}): {m}".format(l=argout, m=msg))
+        self.log.debug("Send (len {l: <2}): {m}".format(l=argout, m=msg))
 
         return argout
+
+
+    def __exit__ (self):
+        print "exit"
+        self.finish()
+
+
+    def __del__ (self):
+        print "del"
+        self.finish()
 
 
 class TangoServer():
@@ -489,7 +505,7 @@ class TangoServer():
         # waits for new accepts on the original socket,
         # receives the newly created socket and
         # creates threads to handle each client separatly
-        s = socketCommunication(self.logQueue)
+        s = socketCom(self.logQueue)
 
         s.run()
 
