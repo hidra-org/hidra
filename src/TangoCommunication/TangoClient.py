@@ -5,19 +5,20 @@ import sys
 port = 51000
 
 msgs = [
-    "set localTarget /root/zeromq-data-transfer/data/target",
-#    "set localTarget /space/projects/zeromq-data-transfer/data/target",
-    "get localTarget",
-    "set detectorDevice haspp06:10000/p06/eigerdectris/exp.01",
-    "set filewriterDevice haspp06:10000/p06/eigerfilewriter/exp.01",
-    "set historySize 0",
-    "set storeData True",
-    "set removeData True",
+    'set localTarget /root/zeromq-data-transfer/data/target',
+#    'set localTarget /space/projects/zeromq-data-transfer/data/target',
+    'get localTarget',
+    'set detectorDevice haspp06:10000/p06/eigerdectris/exp.01',
+    'set filewriterDevice haspp06:10000/p06/eigerfilewriter/exp.01',
+    'set historySize 0',
+    'set storeData True',
+    'set removeData True',
     'set whitelist ["localhost","zitpcx19282"]',
-    "do start",
-    "do status",
-    "do stop",
-    "bye"
+    'do start',
+    'do status',
+    'do stop',
+#    'exit'
+    'bye'
 ]
 
 #host = socket.gethostname()
