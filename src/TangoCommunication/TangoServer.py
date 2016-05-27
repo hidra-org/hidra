@@ -1,10 +1,31 @@
 #!/usr/bin/env python
 #
 import thread
+import threading
 import os
+import sys
 import socket
 import subprocess
 import psutil
+import logging
+from multiprocessing import Queue
+
+try:
+    BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+except:
+    BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
+SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+CONFIG_PATH = BASE_PATH + os.sep + "conf"
+
+if not SHARED_PATH in sys.path:
+    sys.path.append ( SHARED_PATH )
+del SHARED_PATH
+del CONFIG_PATH
+
+import helpers
+from logutils.queue import QueueHandler
+
+
 
 PORT = 51000
 
@@ -322,11 +343,13 @@ class sockel (object):
     '''
     sckt = None
 
-    def __init__ (self):
+    def __init__ (self, logQueue):
         self.conn   = None
         self.addr   = None
         self.host   = socket.gethostname()
         self.port   = PORT # TODO init variable
+
+        self.log = self.getLogger(logQueue)
 
         if sockel.sckt is None:
             self.createSocket()
@@ -339,8 +362,19 @@ class sockel (object):
         self.zmqDT = ZmqDT( port2BL[ str(PORT)])
 
 
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
+        logger = logging.getLogger("sockel")
+        logger.propagate = False
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
+        return logger
+
+
     def createSocket (self):
-        print "create the main socket"
+        self.log.debug("create the main socket")
         try:
             sockel.sckt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         except Exception, e:
@@ -351,7 +385,7 @@ class sockel (object):
         except Exception, e:
             raise Exception( "sockel.__init__: bind() failed %s" % str(e))
 
-        print "bind( %s, %d) ok" % (self.host, self.port)
+        self.log.debug("bind( %s, %d) ok" % (self.host, self.port))
         sockel.sckt.listen(5)
 
 
@@ -376,7 +410,7 @@ class sockel (object):
             print e
             argout = None
 
-        print "recv (len %2d): %s" % (len( argout.strip()), argout.strip())
+        self.log.debug("recv (len %2d): %s" % (len( argout.strip()), argout.strip()))
 
         return argout.strip()
 
@@ -387,48 +421,91 @@ class sockel (object):
         except:
             argout = ""
 
-        print "sent (len %2d): %s" % (argout, msg)
+        self.log.debug("sent (len %2d): %s" % (argout, msg))
 
         return argout
 
 
-def socketAcceptor ():
-    # waits for new accepts on the original socket,
-    # receives the newly created socket and
-    # creates threads to handle each client separatly
-    while True:
-        s = sockel()
-        print "socketAcceptor: new connect"
-        thread.start_new_thread( socketServer, (s, ))
+class TangoServer():
+    def __init__(self):
+        onScreen = "debug"
+        verbose  = True
+        logfile  = BASE_PATH + os.sep + "logs" + os.sep + "tangoServer.log"
+        logsize  = 10485760
+
+        # Get queue
+        self.logQueue    = Queue(-1)
+
+        # Get the log Configuration for the lisener
+        if onScreen:
+            h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
+
+            # Start queue listener using the stream handler above.
+            self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1, h2)
+        else:
+            h1 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
+
+            # Start queue listener using the stream handler above
+            self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1)
+
+        self.logQueueListener.start()
+
+        # Create log and set handler to queue handle
+        self.log = self.getLogger(self.logQueue)
+
+        self.log.info("Init")
 
 
-def socketServer (s):
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
+        logger = logging.getLogger("TangoServer")
+        logger.propagate = False
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
 
-    while True:
+        return logger
 
-        msg = s.recv()
 
-        if len(msg) == 0:
-            print "received empty msg"
-            continue
+    def socketAcceptor (self):
 
-        elif msg.lower().find('bye') == 0:
-            print "received 'bye', closing socket"
-            s.close()
-            break
+        # waits for new accepts on the original socket,
+        # receives the newly created socket and
+        # creates threads to handle each client separatly
+        while True:
+            s = sockel(self.logQueue)
+            self.log.info("socketAcceptor: new connect")
+            threading.Thread(target=self.socketServer, args=(s, ))
 
-        elif msg.find('exit') >= 0:
-            s.close()
-            s.finish()
-            os._exit(1)
 
-        reply = s.zmqDT.execMsg (msg)
+    def socketServer (self, s):
 
-        if s.send (reply) == 0:
-            s.close()
-            break
+        while True:
+
+            msg = s.recv()
+
+            if len(msg) == 0:
+                self.log.debug("received empty msg")
+                continue
+
+            elif msg.lower().find('bye') == 0:
+                self.log.debug("received 'bye', closing socket")
+                s.close()
+                break
+
+            elif msg.find('exit') >= 0:
+                s.close()
+                s.finish()
+                sys.exit(1)
+
+            reply = s.zmqDT.execMsg (msg)
+
+            if s.send (reply) == 0:
+                s.close()
+                break
 
 
 if __name__ == '__main__':
-    socketAcceptor()
+    t = TangoServer()
+    t.socketAcceptor()
 
