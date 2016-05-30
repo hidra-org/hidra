@@ -178,12 +178,31 @@ class TaskProvider():
                 # get requests for this event
                 try:
                     self.log.debug("Get requests...")
-                    self.requestFwSocket.send("")
+                    self.requestFwSocket.send("GET_REQUESTS")
 
                     requests = cPickle.loads(self.requestFwSocket.recv())
                     self.log.debug("Requests: " + str(requests))
                 except:
                     self.log.error("Get Requests... failed.", exc_info=True)
+
+
+                # check if file suffix is requested by target
+                new_requests = []
+                for r in requests:
+                    #TODO check if filename exists
+                    try:
+                        if workload["filename"].endswith(tuple(r[2])):
+                            new_requests.append(t)
+                        else:
+                            #send request back to SignalHandler
+                            self.requestFwSocket.send("ADD_REQUESTS")
+                            pass
+                    except:
+                        self.log.error("Workload or requests is of wrong format")
+                        continue
+
+                requests = new_requests
+                self.log.debug("Modified requests:" + str(requests))
 
                 # build message dict
                 try:
@@ -295,7 +314,7 @@ class requestResponder():
     def run (self):
         hostname = socket.gethostname()
         self.log.info("[requestResponder] Start run")
-        openRequests = [[hostname + ':6003', 1], [hostname + ':6004', 0]]
+        openRequests = [[hostname + ':6003', 1, [".cbf"]], [hostname + ':6004', 0, [".cbf"]]]
         while True:
             request = self.requestFwSocket.recv()
             self.log.debug("[requestResponder] Received request: " + str(request) )
