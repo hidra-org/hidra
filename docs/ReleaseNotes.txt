@@ -1,6 +1,15 @@
-Zeromq Data Transfer 2.2.0
+Zeromq Data Transfer develop
 
-- Fixed problems that the dataTransferAPI could not received data
+- Sender can now be controlled via tango
+- Added cleanup arguments into config gile
+- Files get accessed only if data or metadata is send via zeromq
+- Fixed DataReceiver (no shell)
+- Added command line argument error handling
+- Removed ringbuffer remains of old architecture
+
+Zeromq Data Transfer 2.2.1
+
+- Fixed data receiving problems with dataTransferAPI due to ZAP
 
 
 Zeromq Data Transfer 2.2.0
