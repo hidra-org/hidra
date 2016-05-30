@@ -238,8 +238,7 @@ class EventDetector():
         # check format of config
         if ( not config.has_key("monDir") or
                 not config.has_key("monSubdirs") or
-                not config.has_key("monEventType") or
-                not config.has_key("monSuffixes") or
+                not config.has_key("monEvents") or
                 not config.has_key("timeout") or
                 not config.has_key("historySize") or
                 not config.has_key("useCleanUp") or
@@ -260,8 +259,13 @@ class EventDetector():
             self.paths        = [ config["monDir"] ]
 
             self.monSubdirs   = config["monSubdirs"]
-            self.monEventType = config["monEventType"]
-            self.monSuffixes  = tuple(config["monSuffixes"])
+
+            suffixList = []
+            for key, value in config["monEvents"].iteritems():
+                suffixList += value
+            self.monSuffixes = tuple(suffixList)
+
+            self.monEvents    = config["monEvents"]
 
             self.timeout      = config["timeout"]
 
@@ -379,7 +383,10 @@ class EventDetector():
             is_moved_from = ("IN_MOVED_FROM" in parts_array)
             is_moved_to   = ("IN_MOVED_TO" in parts_array)
 
-            is_ofEventType = (self.monEventType in parts_array)
+            currentMonEvent = None
+            for key, value in self.monEvents.iteritems():
+                if key in parts_array:
+                    currentMonEvent = key
 
 #            if not is_dir:
 #                self.log.debug(path + " " + event.name + " " + parts)
@@ -388,7 +395,6 @@ class EventDetector():
 #            self.log.debug("is_created: " + str(is_created))
 #            self.log.debug("is_moved_from: " + str(is_moved_from))
 #            self.log.debug("is_moved_to: " + str(is_moved_to))
-#            self.log.debug("is_ofEventType: " + str(is_ofEventType))
 
 
             # if a new directory is created or a directory is renamed inside the monitored one,
@@ -455,18 +461,18 @@ class EventDetector():
                 continue
 
             # only files of the configured event type are send
-            if not is_dir and is_ofEventType and [path, event.name] not in self.history:
+            if not is_dir and currentMonEvent and [path, event.name] not in self.history:
 
-#                self.log.debug("not is_dir and is_ofEventType")
+#                self.log.debug("not is_dir")
+#                self.log.debug("currentMonEvent: " + currentMonEvent)
 #                self.log.debug(path + " " + event.name + " " + parts)
 #                self.log.debug(event.name)
 
-                # only files with end with a suffix specified in monSuffixed are monitored
-                if not event.name.endswith(self.monSuffixes):
+                # only files ending with a suffix specified with the current event are monitored
+                if not event.name.endswith(tuple(self.monEvents[currentMonEvent])):
                     self.log.debug("File ending not in monitored Suffixes: " + str(event.name))
                     self.log.debug("detected events were: " + str(parts))
                     continue
-
 
                 eventMessage = getEventMessage(path, event.name, self.paths)
                 self.log.debug("eventMessage" + str(eventMessage))
@@ -526,9 +532,8 @@ if __name__ == '__main__':
     config = {
             "eventDetectorType" : "inotifyx",
             "monDir"            : BASE_PATH + os.sep + "data" + os.sep + "source",
-            "monEventType"      : "IN_CLOSE_WRITE",
             "monSubdirs"        : ["commissioning", "current", "local"],
-            "monSuffixes"       : [".tif", ".cbf"],
+            "monitoredEvents"   : {"IN_CLOSE_WRITE" : [".tif", ".cbf"], "IN_MOVED_TO" : [".log"]},
             "timeout"           : 0.1,
             "historySize"       : 0,
             "useCleanUp"        : False,
