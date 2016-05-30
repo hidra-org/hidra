@@ -335,32 +335,36 @@ class ZmqDT():
             return "NOT RUNNING"
 
 
-class socketCom (object):
+class socketServer (object):
     '''
     one socket for the port, accept() generates new sockets
     '''
 
     def __init__ (self, logQueue):
-        self.conn   = None
-        self.addr   = None
-        self.host   = socket.gethostname()
-        self.port   = PORT # TODO init variable
+        self.logQueue = logQueue
 
-        self.log = self.getLogger(logQueue)
+        self.log      = self.getLogger(logQueue)
+
+        self.host     = socket.gethostname()
+        self.port     = PORT # TODO init variable
+        self.conns    = []
+        self.bl       = port2BL[str(PORT)]
+        self.socket   = None
+
+        if not str(PORT) in port2BL.keys():
+            raise Exception("Port {p} not identified".format(p=PORT))
 
         self.createSocket()
-
 
     def getLogger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("socketCom")
+        logger = logging.getLogger("socketServer")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 
         return logger
-
 
     def createSocket (self):
 
@@ -383,17 +387,57 @@ class socketCom (object):
 
     def run (self):
         while True:
-            self.conn, self.addr = self.sckt.accept()
+            try:
+                conn, addr = self.sckt.accept()
 
-            threading.Thread(target=self.socketServer).start()
+                threading.Thread(target=socketCom, args=(self.logQueue, self.bl, conn, addr)).start()
+            except KeyboardInterrupt:
+                break
+            except Exception, e:
+                self.log.error("Stopped due to unknown error", exc_info=True)
+                break
 
 
+    def finish (self):
+        if self.sckt:
+            self.log.info("Closing Socket")
+            self.sckt.close()
+            self.sckt = None
 
-    def socketServer (self):
-        if not str(PORT) in port2BL.keys():
-            raise Exception("Port {p} not identified".format(p=PORT))
 
-        self.zmqDT = ZmqDT(port2BL[str(PORT)])
+    def __exit__ (self):
+        self.finish()
+
+
+    def __del__ (self):
+        self.finish()
+
+
+class socketCom ():
+    def __init__ (self, logQueue, bl, conn, addr):
+        self.id    = threading.current_thread()
+
+        self.log   = self.getLogger(logQueue)
+
+        self.zmqDT = ZmqDT(bl)
+        self.conn  = conn
+        self.addr  = addr
+
+        self.run()
+
+
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
+        logger = logging.getLogger("socketCom_" + str(self.id))
+        logger.propagate = False
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
+        return logger
+
+
+    def run (self):
 
         while True:
 
@@ -411,7 +455,6 @@ class socketCom (object):
             elif msg.find('exit') >= 0:
                 self.log.debug("Received 'exit'")
                 self.close()
-                self.finish()
                 sys.exit(1)
 
             reply = self.zmqDT.execMsg (msg)
@@ -419,24 +462,6 @@ class socketCom (object):
             if self.send (reply) == 0:
                 self.close()
                 break
-
-
-    def close (self):
-        #
-        # close the 'accepted' socket only, not the main socket
-        # because it may still be in use by another client
-        #
-        if self.conn:
-            self.log.info("Closing connection")
-            self.conn.close()
-            self.conn = None
-
-
-    def finish (self):
-        if self.sckt:
-            self.log.info("Closing Socket")
-            self.sckt.close()
-            self.sckt = None
 
 
     def recv (self):
@@ -463,14 +488,23 @@ class socketCom (object):
         return argout
 
 
+    def close (self):
+        #
+        # close the 'accepted' socket only, not the main socket
+        # because it may still be in use by another client
+        #
+        if self.conn:
+            self.log.info("Closing connection")
+            self.conn.close()
+            self.conn = None
+
+
     def __exit__ (self):
-        print "exit"
-        self.finish()
+        self.close()
 
 
     def __del__ (self):
-        print "del"
-        self.finish()
+        self.close()
 
 
 class TangoServer():
@@ -505,7 +539,7 @@ class TangoServer():
         # waits for new accepts on the original socket,
         # receives the newly created socket and
         # creates threads to handle each client separatly
-        s = socketCom(self.logQueue)
+        s = socketServer(self.logQueue)
 
         s.run()
 
@@ -517,7 +551,6 @@ class TangoServer():
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
-        logger.debug("getLogger (TangoServer)")
 
         return logger
 

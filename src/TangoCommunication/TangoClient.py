@@ -33,11 +33,12 @@ except Exception, e:
     sckt.close()
     sys.exit()
 
-for msg in msgs:
-    sckt.send(msg)
-    print "sent (len %2d): %s" % (len(msg), msg)
-    reply = sckt.recv(1024)
-    print "recv (len %2d): %s " % (len( reply), reply)
-
-sckt.close()
+try:
+    for msg in msgs:
+        sckt.send(msg)
+        print "sent (len %2d): %s" % (len(msg), msg)
+        reply = sckt.recv(1024)
+        print "recv (len %2d): %s " % (len( reply), reply)
+finally:
+    sckt.close()
 
