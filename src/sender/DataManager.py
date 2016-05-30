@@ -241,12 +241,12 @@ def argumentParsing():
         except:
             arguments.fixSubdirs     = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
         arguments.monitoredDir       = arguments.monitoredDir       or config.get('asection', 'monitoredDir')
-        arguments.monitoredEventType = arguments.monitoredEventType or config.get('asection', 'monitoredEventType')
         try:
-            arguments.monitoredFormats   = arguments.monitoredFormats or json.loads(config.get('asection', 'monitoredFormats'))
+            arguments.monitoredEvents = arguments.monitoredEvents   or json.loads(config.get('asection', 'monitoredEvents'))
         except:
-            arguments.monitoredFormats = json.loads(config.get('asection', 'monitoredFormats').replace("'", '"'))
+            arguments.monitoredEvents = json.loads(config.get('asection', 'monitoredEvents').replace("'", '"'))
         arguments.timeTillClosed     = arguments.timeTillClosed     or config.getfloat('asection', 'timeTillClosed')
+        arguments.actionTime         = arguments.actionTime         or config.getfloat('asection', 'actionTime')
 
     if arguments.eventDetectorType == "ZmqDetector":
         arguments.eventPort          = arguments.eventPort          or config.get('asection', 'eventPort')
@@ -425,10 +425,10 @@ class DataManager():
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "monDir"            : arguments.monitoredDir,
-                    "monEventType"      : arguments.monitoredEventType,
                     "monSubdirs"        : arguments.fixSubdirs,
-                    "monSuffixes"       : arguments.monitoredFormats,
-                    "timeTillClosed"    : arguments.timeTillClosed
+                    "monEvents"         : arguments.monitoredEvents,
+                    "timeTillClosed"    : arguments.timeTillClosed,
+                    "actionTime"        : arguments.actionTime
                     }
         elif arguments.eventDetectorType == "ZmqDetector":
             self.eventDetectorConfig = {
