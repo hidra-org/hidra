@@ -97,12 +97,6 @@ def argumentParsing():
                                                 help    = "Directory to be monitor for changes; inside this directory only the specified \
                                                            subdirectories are monitred (only needed if eventDetector is InotifyxDetector \
                                                            or WatchdogDetector)")
-    parser.add_argument("--monitoredEventType", type    = str,
-                                                help    = "Event type of files to be monitored (only needed if eventDetector is InotifyxDetector \
-                                                           or WatchdogDetector)")
-    parser.add_argument("--monitoredFormats"  , type    = str,
-                                                help    = "The formats to be monitored, files in an other format will be be neglected \
-                                                           (only needed if eventDetector is InotifyxDetector or WatchdogDetector)")
     parser.add_argument("--monitoredEvents"   , type    = str,
                                                 help    = "Event type of files (options are: IN_CLOSE_WRITE, IN_MOVED_TO, ...) and \
                                                            the formats to be monitored, files in an other format will be be neglected \
@@ -220,11 +214,6 @@ def argumentParsing():
         except:
             arguments.fixSubdirs     = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
         arguments.monitoredDir       = arguments.monitoredDir       or config.get('asection', 'monitoredDir')
-        arguments.monitoredEventType = arguments.monitoredEventType or config.get('asection', 'monitoredEventType')
-        try:
-            arguments.monitoredFormats = arguments.monitoredFormats or json.loads(config.get('asection', 'monitoredFormats'))
-        except:
-            arguments.monitoredFormats = json.loads(config.get('asection', 'monitoredFormats').replace("'", '"'))
         try:
             arguments.monitoredEvents = arguments.monitoredEvents   or json.loads(config.get('asection', 'monitoredEvents'))
         except:
