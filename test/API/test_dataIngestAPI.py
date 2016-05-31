@@ -34,8 +34,8 @@ print
 print "==== TEST: data ingest ===="
 print
 
-class Receiver(threading.Thread):
-    def __init__(self, context = None):
+class Receiver (threading.Thread):
+    def __init__ (self, context = None):
         self.extHost    = "0.0.0.0"
         self.signalPort = "50050"
         self.eventPort  = "50003"
@@ -63,32 +63,43 @@ class Receiver(threading.Thread):
         self.dataSocket.bind(connectionStr)
         logging.info("dataSocket started (bind) for '" + connectionStr + "'")
 
+        self.poller = zmq.Poller()
+        self.poller.register(self.signalSocket, zmq.POLLIN)
+        self.poller.register(self.eventSocket, zmq.POLLIN)
+        self.poller.register(self.dataSocket, zmq.POLLIN)
+
         threading.Thread.__init__(self)
 
 
-    def run(self):
-        message = self.signalSocket.recv()
-        logging.debug("signalSocket recv: " + message)
+    def run (self):
+        while True:
+            try:
+                socks = dict(self.poller.poll())
 
-        self.signalSocket.send(message)
-        logging.debug("signalSocket send: " + message)
+                if socks and self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
+
+                    message = self.signalSocket.recv()
+                    logging.debug("signalSocket recv: " + message)
+
+                    self.signalSocket.send(message)
+                    logging.debug("signalSocket send: " + message)
+
+                    if message == "CLOSE_FILE":
+                        break
+
+                if socks and self.eventSocket in socks and socks[self.eventSocket] == zmq.POLLIN:
+
+#                    logging.debug("eventSocket recv: " + str(cPickle.loads(self.eventSocket.recv())))
+                    logging.debug("eventSocket recv: " + self.eventSocket.recv())
+
+                if socks and self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
+
+                    logging.debug("dataSocket recv: " + self.dataSocket.recv())
+            except:
+                break
 
 
-        for i in range(5):
-#            logging.debug("eventSocket recv: " + str(cPickle.loads(self.eventSocket.recv())))
-            logging.debug("eventSocket recv: " + self.eventSocket.recv())
-            logging.debug("dataSocket recv: " + self.dataSocket.recv())
-
-
-        message = self.signalSocket.recv()
-        logging.debug("signalSocket recv: " + message)
-        self.signalSocket.send(message)
-        logging.debug("signalSocket send: " + message)
-
-        logging.debug("eventSocket recv: " + self.eventSocket.recv())
-
-
-    def stop(self):
+    def stop (self):
         try:
             if self.signalSocket:
                 logging.info("closing signalSocket...")
@@ -102,10 +113,6 @@ class Receiver(threading.Thread):
                 logging.info("closing dataSocket...")
                 self.dataSocket.close(linger=0)
                 self.dataSocket = None
-            if self.context:
-                logging.info("destroying context...")
-                self.context.destroy()
-                self.context = None
         except:
             logging.error("closing ZMQ Sockets...failed.", exc_info=True)
 
@@ -117,6 +124,14 @@ class Receiver(threading.Thread):
                 self.log.info("Closing ZMQ context...done.")
             except:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
+
+
+    def __del__ (self):
+        self.stop()
+
+
+    def __exit__ (self):
+        self.stop()
 
 
 context    = zmq.Context()
