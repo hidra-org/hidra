@@ -186,23 +186,24 @@ class SignalHandler():
                     incomingMessage = self.requestFwSocket.recv_multipart()
                     if incomingMessage[0] == "GET_REQUESTS":
                         self.log.debug("New request for signals received.")
+                        filename = incomingMessage[1]
                         openRequests = []
 
                         for requestSet in self.openRequPerm:
                             if requestSet:
                                 index = self.openRequPerm.index(requestSet)
                                 tmp = requestSet[self.nextRequNode[index]]
-                                openRequests.append(copy.deepcopy(tmp))
-                                # distribute in round-robin order
-                                self.nextRequNode[index] = (self.nextRequNode[index] + 1) % len(requestSet)
+                                # Check if filename suffix matches requested suffix
+                                if filename.endswith(tuple(tmp[2])):
+                                    openRequests.append(copy.deepcopy(tmp))
+                                    # distribute in round-robin order
+                                    self.nextRequNode[index] = (self.nextRequNode[index] + 1) % len(requestSet)
 
-                        self.log.debug("self.openRequVari=" + str(self.openRequVari))
                         for requestSet in self.openRequVari:
-                            if requestSet:
+                            # Check if filename suffix matches requested suffix
+                            if requestSet and filename.endswith(tuple(requestSet[0][2])):
                                 tmp = requestSet.pop(0)
                                 openRequests.append(tmp)
-                            else:
-                                openRequests.append([])
 
                         if openRequests:
                             self.requestFwSocket.send(cPickle.dumps(openRequests))
@@ -211,17 +212,6 @@ class SignalHandler():
                             openRequests = ["None"]
                             self.requestFwSocket.send(cPickle.dumps(openRequests))
                             self.log.debug("Answered to request: " + str(openRequests))
-
-                    # if an event was of the wrong format for the request this one is added again
-                    elif incomingMessage[0] == "ADD_REQUESTS":
-                        returned_requests = cPickle.loads(incomingMessage[1])
-                        self.log.debug("Returned request: " + str(returned_requests))
-                        self.requestFwSocket.send("")
-
-                        for i in range(len(self.openRequVari)):
-                            if returned_requests[i]:
-                                self.openRequVari[i].insert(0,returned_requests[i])
-
 
                 except:
                     self.log.error("Failed to receive/answer new signal requests.", exc_info=True)
