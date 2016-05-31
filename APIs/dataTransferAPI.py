@@ -636,7 +636,7 @@ class dataTransfer():
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
-    def force_stop (self, targets):
+    def forceStop (self, targets):
 
         if type(targets) != list:
             self.stop()
