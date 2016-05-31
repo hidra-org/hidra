@@ -178,7 +178,7 @@ class TaskProvider():
                 # get requests for this event
                 try:
                     self.log.debug("Get requests...")
-                    self.requestFwSocket.send("GET_REQUESTS")
+                    self.requestFwSocket.send_multipart(["GET_REQUESTS"])
 
                     requests = cPickle.loads(self.requestFwSocket.recv())
                     self.log.debug("Requests: " + str(requests))
@@ -188,21 +188,31 @@ class TaskProvider():
 
                 # check if file suffix is requested by target
                 new_requests = []
+                returned_requests = []
                 for r in requests:
-                    #TODO check if filename exists
-                    try:
-                        if workload["filename"].endswith(tuple(r[2])):
-                            new_requests.append(t)
-                        else:
-                            #send request back to SignalHandler
-                            self.requestFwSocket.send("ADD_REQUESTS")
-                            pass
-                    except:
-                        self.log.error("Workload or requests is of wrong format")
-                        continue
+                    if r:
+                        try:
+                            if workload["filename"].endswith(tuple(r[2])):
+                                new_requests.append(r)
+                                returned_requests.append([])
+                            else:
+                                returned_requests.append(r)
+                        except:
+                            self.log.error("Workload or requests is of wrong format", exc_info=True)
+                            continue
+                    else:
+                        returned_requests.append([])
 
-                requests = new_requests
-                self.log.debug("Modified requests:" + str(requests))
+                #send request back to SignalHandler
+                if any(returned_requests):
+                    self.requestFwSocket.send_multipart(["ADD_REQUESTS", cPickle.dumps(returned_requests)])
+                    self.requestFwSocket.recv()
+
+                if new_requests:
+                    requests = new_requests
+                else:
+                    requests = ["None"]
+                self.log.debug("Modified requests: " + str(requests))
 
                 # build message dict
                 try:
@@ -316,7 +326,7 @@ class requestResponder():
         self.log.info("[requestResponder] Start run")
         openRequests = [[hostname + ':6003', 1, [".cbf"]], [hostname + ':6004', 0, [".cbf"]]]
         while True:
-            request = self.requestFwSocket.recv()
+            request = self.requestFwSocket.recv_multipart()
             self.log.debug("[requestResponder] Received request: " + str(request) )
 
             self.requestFwSocket.send(cPickle.dumps(openRequests))
