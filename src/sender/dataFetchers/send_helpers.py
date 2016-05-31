@@ -10,7 +10,7 @@ class DataHandlingError(Exception):
 
 def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metadata, payload, context, timeout = -1):
 
-    for target, prio, sendType in targets:
+    for target, prio, suffixes, sendType in targets:
 
         # send data to the data stream to store it in the storage system
         if prio == 0:

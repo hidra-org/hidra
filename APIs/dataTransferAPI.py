@@ -151,22 +151,24 @@ class dataTransfer():
         # [host, port, prio]
         if len(targets) == 3 and type(targets[0]) != list and type(targets[1]) != list and type(targets[2]) != list:
             host, port, prio = targets
-            self.targets = [[host + ":" + port, prio]]
-        # [[host, port, prio], ...]
+            self.targets = [[host + ":" + port, prio, [""]]]
+        # [host, port, prio, suffixes]
+        elif len(targets) == 4 and type(targets[0]) != list and type(targets[1]) != list and type(targets[2]) != list and type(targets[3]) == list:
+            host, port, prio, suffixes = targets
+            self.targets = [[host + ":" + port, prio, suffixes]]
+        # [[host, port, prio], ...] or [[host, port, prio, suffixes], ...]
         else:
             for t in targets:
                 if type(t) == list and len(t) == 3:
                     host, port, prio = t
-                    self.targets.append([host + ":" + port, prio])
+                    self.targets.append([host + ":" + port, prio, [""]])
+                elif type(t) == list and len(t) == 4 and type(t[3]):
+                    host, port, prio, suffixes = t
+                    self.targets.append([host + ":" + port, prio, suffixes])
                 else:
                     self.stop()
                     self.log.debug("targets=" + str(targets))
                     raise FormatError("Argument 'targets' is of wrong format.")
-
-#        if type(dataPort) == list:
-#            self.dataHost = str([socket.gethostname() for i in dataPort])
-#        else:
-#            self.dataHost = socket.gethostname()
 
         message = self.__sendSignal(signal)
 

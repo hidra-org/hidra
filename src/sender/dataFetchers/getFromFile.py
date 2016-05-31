@@ -102,7 +102,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         prop["removeFlag"] = True
         return
 
-    targets_data       = [i for i in targets if i[2] == "data"]
+    targets_data       = [i for i in targets if i[3] == "data"]
 
     prop["removeFlag"] = False
     chunkSize          = metadata[ "chunkSize" ]
@@ -200,7 +200,7 @@ def __dataHandling(log, sourceFile, targetFile, actionFunction, metadata, prop):
 
 def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
 
-    targets_metadata = [i for i in targets if i[2] == "metadata"]
+    targets_metadata = [i for i in targets if i[3] == "metadata"]
 
     if prop["storeData"] and prop["removeData"] and prop["removeFlag"]:
 

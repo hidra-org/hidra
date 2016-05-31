@@ -97,12 +97,10 @@ def argumentParsing():
                                                 help    = "Directory to be monitor for changes; inside this directory only the specified \
                                                            subdirectories are monitred (only needed if eventDetector is InotifyxDetector \
                                                            or WatchdogDetector)")
-    parser.add_argument("--monitoredEventType", type    = str,
-                                                help    = "Event type of files to be monitored (only needed if eventDetector is InotifyxDetector \
-                                                           or WatchdogDetector)")
-    parser.add_argument("--monitoredFormats"  , type    = str,
-                                                help    = "The formats to be monitored, files in an other format will be be neglected \
-                                                           (only needed if eventDetector is InotifyxDetector or WatchdogDetector)")
+    parser.add_argument("--monitoredEvents"   , type    = str,
+                                                help    = "Event type of files (options are: IN_CLOSE_WRITE, IN_MOVED_TO, ...) and \
+                                                           the formats to be monitored, files in an other format will be be neglected \
+                                                           (needed if eventDetector is InotifyxDetector or WatchdogDetector)")
 
     parser.add_argument("--historySize"       , type    = int,
                                                 help    = "Number of events stored to look for doubles \
@@ -212,33 +210,32 @@ def argumentParsing():
     if arguments.eventDetectorType == "InotifyxDetector":
         # for InotifyxDetector and WatchdogDetector and getFromFile:
         try:
-            arguments.fixSubdirs         = arguments.fixSubdirs         or json.loads(config.get('asection', 'fixSubdirs'))
+            arguments.fixSubdirs         = arguments.fixSubdirs     or json.loads(config.get('asection', 'fixSubdirs'))
         except:
             arguments.fixSubdirs     = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
         arguments.monitoredDir       = arguments.monitoredDir       or config.get('asection', 'monitoredDir')
-        arguments.monitoredEventType = arguments.monitoredEventType or config.get('asection', 'monitoredEventType')
         try:
-            arguments.monitoredFormats = arguments.monitoredFormats   or json.loads(config.get('asection', 'monitoredFormats'))
+            arguments.monitoredEvents = arguments.monitoredEvents   or json.loads(config.get('asection', 'monitoredEvents'))
         except:
-            arguments.monitoredFormats = json.loads(config.get('asection', 'monitoredFormats').replace("'", '"'))
+            arguments.monitoredEvents = json.loads(config.get('asection', 'monitoredEvents').replace("'", '"'))
         arguments.historySize        = arguments.historySize        or config.getint('asection', 'historySize')
         arguments.useCleanUp         = arguments.useCleanUp         or config.getboolean('asection', 'useCleanUp')
         if arguments.useCleanUp:
-            arguments.actionTime         = arguments.actionTime         or config.getfloat('asection', 'actionTime')
-            arguments.timeTillClosed     = arguments.timeTillClosed     or config.getfloat('asection', 'timeTillClosed')
+            arguments.actionTime         = arguments.actionTime     or config.getfloat('asection', 'actionTime')
+            arguments.timeTillClosed     = arguments.timeTillClosed or config.getfloat('asection', 'timeTillClosed')
 
     if arguments.eventDetectorType == "WatchdogDetector":
         try:
-            arguments.fixSubdirs         = arguments.fixSubdirs         or json.loads(config.get('asection', 'fixSubdirs'))
+            arguments.fixSubdirs         = arguments.fixSubdirs     or json.loads(config.get('asection', 'fixSubdirs'))
         except:
             arguments.fixSubdirs     = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
         arguments.monitoredDir       = arguments.monitoredDir       or config.get('asection', 'monitoredDir')
-        arguments.monitoredEventType = arguments.monitoredEventType or config.get('asection', 'monitoredEventType')
         try:
-            arguments.monitoredFormats   = arguments.monitoredFormats   or json.loads(config.get('asection', 'monitoredFormats'))
+            arguments.monitoredEvents = arguments.monitoredEvents   or json.loads(config.get('asection', 'monitoredEvents'))
         except:
-            arguments.monitoredFormats = json.loads(config.get('asection', 'monitoredFormats').replace("'", '"'))
+            arguments.monitoredEvents = json.loads(config.get('asection', 'monitoredEvents').replace("'", '"'))
         arguments.timeTillClosed     = arguments.timeTillClosed     or config.getfloat('asection', 'timeTillClosed')
+        arguments.actionTime         = arguments.actionTime         or config.getfloat('asection', 'actionTime')
 
     if arguments.eventDetectorType == "ZmqDetector":
         arguments.eventPort          = arguments.eventPort          or config.get('asection', 'eventPort')
@@ -247,29 +244,29 @@ def argumentParsing():
         arguments.detectorDevice     = arguments.detectorDevice     or config.get('asection', 'detectorDevice')
         arguments.filewriterDevice   = arguments.filewriterDevice   or config.get('asection', 'filewriterDevice')
 
-    arguments.dataFetcherType    = arguments.dataFetcherType    or config.get('asection', 'dataFetcherType')
+    arguments.dataFetcherType    = arguments.dataFetcherType        or config.get('asection', 'dataFetcherType')
 
     if arguments.dataFetcherType == "getFromFile":
-        arguments.fixSubdirs         = arguments.fixSubdirs      or json.loads(config.get('asection', 'fixSubdirs'))
+        arguments.fixSubdirs         = arguments.fixSubdirs         or json.loads(config.get('asection', 'fixSubdirs'))
 
     if arguments.dataFetcherType == "getFromZMQ":
-        arguments.dataFetcherPort    = arguments.dataFetcherPort or config.get('asection', 'dataFetcherPort')
+        arguments.dataFetcherPort    = arguments.dataFetcherPort    or config.get('asection', 'dataFetcherPort')
 
-    arguments.useDataStream      = arguments.useDataStream      or config.getboolean('asection', 'useDataStream')
+    arguments.useDataStream      = arguments.useDataStream          or config.getboolean('asection', 'useDataStream')
 
     if arguments.useDataStream:
         arguments.fixedStreamHost    = arguments.fixedStreamHost    or config.get('asection', 'fixedStreamHost')
         arguments.fixedStreamPort    = arguments.fixedStreamPort    or config.get('asection', 'fixedStreamPort')
 
-    arguments.numberOfStreams    = arguments.numberOfStreams    or config.getint('asection', 'numberOfStreams')
-    arguments.chunkSize          = arguments.chunkSize          or config.getint('asection', 'chunkSize')
+    arguments.numberOfStreams    = arguments.numberOfStreams        or config.getint('asection', 'numberOfStreams')
+    arguments.chunkSize          = arguments.chunkSize              or config.getint('asection', 'chunkSize')
 
-    arguments.storeData          = arguments.storeData          or config.getboolean('asection', 'storeData')
+    arguments.storeData          = arguments.storeData              or config.getboolean('asection', 'storeData')
 
     if arguments.storeData:
         arguments.localTarget        = arguments.localTarget        or config.get('asection', 'localTarget')
 
-    arguments.removeData         = arguments.removeData         or config.getboolean('asection', 'removeData')
+    arguments.removeData         = arguments.removeData             or config.getboolean('asection', 'removeData')
 
 
 
@@ -405,9 +402,8 @@ class DataManager():
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "monDir"            : arguments.monitoredDir,
-                    "monEventType"      : arguments.monitoredEventType,
                     "monSubdirs"        : arguments.fixSubdirs,
-                    "monSuffixes"       : arguments.monitoredFormats,
+                    "monEvents"         : arguments.monitoredEvents,
                     "timeout"           : 1,
                     "historySize"       : arguments.historySize,
                     "useCleanUp"        : arguments.useCleanUp,
@@ -418,10 +414,10 @@ class DataManager():
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "monDir"            : arguments.monitoredDir,
-                    "monEventType"      : arguments.monitoredEventType,
                     "monSubdirs"        : arguments.fixSubdirs,
-                    "monSuffixes"       : arguments.monitoredFormats,
-                    "timeTillClosed"    : arguments.timeTillClosed
+                    "monEvents"         : arguments.monitoredEvents,
+                    "timeTillClosed"    : arguments.timeTillClosed,
+                    "actionTime"        : arguments.actionTime
                     }
         elif arguments.eventDetectorType == "ZmqDetector":
             self.eventDetectorConfig = {

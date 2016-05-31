@@ -156,6 +156,9 @@ class DataDispatcher():
             self.log.debug("DataDispatcher-" + str(self.id) + ": waiting for new job")
             socks = dict(self.poller.poll())
 
+            ######################################
+            #     messages from TaskProvider     #
+            ######################################
             if self.routerSocket in socks and socks[self.routerSocket] == zmq.POLLIN:
 
                 try:
@@ -173,7 +176,7 @@ class DataDispatcher():
                     targets  = cPickle.loads(message[1])
 
                     if self.fixedStreamId:
-                        targets.insert(0,[self.fixedStreamId, 0, "data"])
+                        targets.insert(0,[self.fixedStreamId, 0, [""], "data"])
 
                     # sort the target list by the priority
                     targets = sorted(targets, key=lambda target: target[1])
@@ -216,7 +219,7 @@ class DataDispatcher():
                         continue
 
                     elif self.fixedStreamId:
-                        targets = [[self.fixedStreamId, 0, "data"]]
+                        targets = [[self.fixedStreamId, 0, [""], "data"]]
 
                     else:
                         targets = []
@@ -242,6 +245,9 @@ class DataDispatcher():
                 self.dataFetcher.finishDataHandling(self.log, targets, sourceFile, targetFile, metadata, self.openConnections, self.context, self.dataFetcherProp)
 
 
+            ######################################
+            #         control commands           #
+            ######################################
             if self.controlSocket in socks and socks[self.controlSocket] == zmq.POLLIN:
 
                 try:
@@ -263,7 +269,7 @@ class DataDispatcher():
 
                     targets  = cPickle.loads(message[1])
 
-                    for socketId, prio in targets:
+                    for socketId, prio, suffix in targets:
                         if self.openConnections.has_key(socketId):
                             self.log.info("Closing socket " + str(socketId))
                             if self.openConnections[socketId]:

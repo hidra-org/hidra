@@ -177,38 +177,58 @@ class SignalHandler():
         while True:
             socks = dict(self.poller.poll())
 
+            ######################################
+            # incoming request from TaskProvider #
+            ######################################
             if self.requestFwSocket in socks and socks[self.requestFwSocket] == zmq.POLLIN:
 
                 try:
-                    incomingMessage = self.requestFwSocket.recv()
-                    self.log.debug("New request for signals received.")
+                    incomingMessage = self.requestFwSocket.recv_multipart()
+                    if incomingMessage[0] == "GET_REQUESTS":
+                        self.log.debug("New request for signals received.")
+                        openRequests = []
 
-                    openRequests = []
+                        for requestSet in self.openRequPerm:
+                            if requestSet:
+                                index = self.openRequPerm.index(requestSet)
+                                tmp = requestSet[self.nextRequNode[index]]
+                                openRequests.append(copy.deepcopy(tmp))
+                                # distribute in round-robin order
+                                self.nextRequNode[index] = (self.nextRequNode[index] + 1) % len(requestSet)
 
-                    for requestSet in self.openRequPerm:
-                        if requestSet:
-                            index = self.openRequPerm.index(requestSet)
-                            tmp = requestSet[self.nextRequNode[index]]
-                            openRequests.append(copy.deepcopy(tmp))
-                            # distribute in round-robin order
-                            self.nextRequNode[index] = (self.nextRequNode[index] + 1) % len(requestSet)
+                        self.log.debug("self.openRequVari=" + str(self.openRequVari))
+                        for requestSet in self.openRequVari:
+                            if requestSet:
+                                tmp = requestSet.pop(0)
+                                openRequests.append(tmp)
+                            else:
+                                openRequests.append([])
 
-                    for requestSet in self.openRequVari:
-                        if requestSet:
-                            tmp = requestSet.pop(0)
-                            openRequests.append(tmp)
+                        if openRequests:
+                            self.requestFwSocket.send(cPickle.dumps(openRequests))
+                            self.log.debug("Answered to request: " + str(openRequests))
+                        else:
+                            openRequests = ["None"]
+                            self.requestFwSocket.send(cPickle.dumps(openRequests))
+                            self.log.debug("Answered to request: " + str(openRequests))
 
-                    if openRequests:
-                        self.requestFwSocket.send(cPickle.dumps(openRequests))
-                        self.log.debug("Answered to request: " + str(openRequests))
-                    else:
-                        openRequests = ["None"]
-                        self.requestFwSocket.send(cPickle.dumps(openRequests))
-                        self.log.debug("Answered to request: " + str(openRequests))
+                    # if an event was of the wrong format for the request this one is added again
+                    elif incomingMessage[0] == "ADD_REQUESTS":
+                        returned_requests = cPickle.loads(incomingMessage[1])
+                        self.log.debug("Returned request: " + str(returned_requests))
+                        self.requestFwSocket.send("")
+
+                        for i in range(len(self.openRequVari)):
+                            if returned_requests[i]:
+                                self.openRequVari[i].insert(0,returned_requests[i])
+
 
                 except:
                     self.log.error("Failed to receive/answer new signal requests.", exc_info=True)
 
+            ######################################
+            #  start/stop command from external  #
+            ######################################
             if self.comSocket in socks and socks[self.comSocket] == zmq.POLLIN:
 
                 incomingMessage = self.comSocket.recv_multipart()
@@ -220,6 +240,9 @@ class SignalHandler():
                 else:
                     self.sendResponse(checkFailed)
 
+            ######################################
+            #        request from external       #
+            ######################################
             if self.requestSocket in socks and socks[self.requestSocket] == zmq.POLLIN:
 
                 incomingMessage = self.requestSocket.recv_multipart()
@@ -252,6 +275,9 @@ class SignalHandler():
                     self.log.info("Request not supported.")
 
 
+            ######################################
+            #   control commands from internal   #
+            ######################################
             if self.controlSubSocket in socks and socks[self.controlSubSocket] == zmq.POLLIN:
 
                 try:
@@ -564,7 +590,7 @@ class requestPuller():
         self.log.info("[getRequests] Start run")
         while True:
             try:
-                self.requestFwSocket.send("")
+                self.requestFwSocket.send_multipart(["GET_REQUESTS"])
                 self.log.info("[getRequests] send")
                 requests = cPickle.loads(self.requestFwSocket.recv())
                 self.log.info("[getRequests] Requests: " + str(requests))
