@@ -54,12 +54,14 @@ class Receiver (threading.Thread):
         logging.info("signalSocket started (bind) for '" + connectionStr + "'")
 
         self.eventSocket   = self.context.socket(zmq.PULL)
-        connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.eventPort)
+        connectionStr = "ipc:///tmp/zeromq-data-transfer/eventDetConId"
+#        connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.eventPort)
         self.eventSocket.bind(connectionStr)
         logging.info("eventSocket started (bind) for '" + connectionStr + "'")
 
         self.dataSocket    = self.context.socket(zmq.PULL)
-        connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.dataPort)
+        connectionStr = "ipc:///tmp/zeromq-data-transfer/dataFetchConId"
+#        connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.dataPort)
         self.dataSocket.bind(connectionStr)
         logging.info("dataSocket started (bind) for '" + connectionStr + "'")
 
@@ -72,6 +74,8 @@ class Receiver (threading.Thread):
 
 
     def run (self):
+        mark_as_close = False
+        all_closed = False
         while True:
             try:
                 socks = dict(self.poller.poll())
@@ -81,21 +85,36 @@ class Receiver (threading.Thread):
                     message = self.signalSocket.recv()
                     logging.debug("signalSocket recv: " + message)
 
-                    self.signalSocket.send(message)
-                    logging.debug("signalSocket send: " + message)
-
                     if message == "CLOSE_FILE":
-                        break
+                        if all_closed:
+                            self.signalSocket.send(message)
+                            logging.debug("signalSocket send: " + message)
+                            break
+                        else:
+                            mark_as_close = message
+                    else:
+                        self.signalSocket.send(message)
+                        logging.debug("signalSocket send: " + message)
 
                 if socks and self.eventSocket in socks and socks[self.eventSocket] == zmq.POLLIN:
 
-#                    logging.debug("eventSocket recv: " + str(cPickle.loads(self.eventSocket.recv())))
-                    logging.debug("eventSocket recv: " + self.eventSocket.recv())
+                    eventMessage = self.eventSocket.recv()
+#                    logging.debug("eventSocket recv: " + str(cPickle.loads(eventMessage)))
+                    logging.debug("eventSocket recv: " + eventMessage)
+
+                    if eventMessage == "CLOSE_FILE":
+                        if mark_as_close:
+                            self.signalSocket.send(message)
+                            logging.debug("signalSocket send: " + message)
+                            break
+                        else:
+                            all_closed = True
 
                 if socks and self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
 
                     logging.debug("dataSocket recv: " + self.dataSocket.recv())
             except:
+                logging.error("Exception in run", exc_info=True)
                 break
 
 
