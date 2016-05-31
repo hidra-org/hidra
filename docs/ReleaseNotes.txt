@@ -1,4 +1,4 @@
-Zeromq Data Transfer develop
+Zeromq Data Transfer 2.3.0
 
 - Added method to dataTransferAPI to manually stop streams/queries
 - Added option to specify which file formats to be send via zeromq
