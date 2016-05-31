@@ -120,6 +120,8 @@ def confirm (prompt=None, resp=False):
 
 def checkEventDetectorType (eDType, supportedTypes):
 
+    eDType = eDType.lower()
+
     if eDType in supportedTypes:
         logging.debug("Event detector '" + eDType + "' is ok.")
     else:
@@ -172,6 +174,15 @@ def checkAllSubDirExist (dirPath, subDirs):
     for d in dirsToCheck:
         if not os.path.exists(d):
             logging.warning("Dir '%s' does not exist." % str(d))
+
+
+def checkFileExistance (filePath):
+    # Check file for existance.
+    # Exits if it does not exist
+
+    if not os.path.exists(filePath):
+        logging.error("File '%s' does not exist. Abort." % str(filePath))
+        sys.exit(1)
 
 
 def checkDirExistance (dirPath):
@@ -422,10 +433,12 @@ def getLogHandlers (logfile, logsize, verbose, onScreenLogLevel = False):
             f2 = logging.Formatter(datefmt=datef, fmt=f)
             h2.setFormatter(f2)
             h2.setLevel(screenLogLevel)
+
+            return h1, h2
         else:
             logging.error("Logging on Screen: Option " + str(onScreenLogLevel) + " is not supported.")
+            exit(1)
 
-        return h1, h2
     else:
         return h1
 

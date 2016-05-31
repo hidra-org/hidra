@@ -1,6 +1,6 @@
 # API to communicate with a data transfer unit
 
-__version__ = '2.2.0'
+__version__ = '2.3.0'
 
 import zmq
 import socket
@@ -147,26 +147,7 @@ class dataTransfer():
             self.stop()
             raise ConnectionFailed("No host to send signal to specified." )
 
-        self.targets = []
-        # [host, port, prio]
-        if len(targets) == 3 and type(targets[0]) != list and type(targets[1]) != list and type(targets[2]) != list:
-            host, port, prio = targets
-            self.targets = [[host + ":" + port, prio]]
-        # [[host, port, prio], ...]
-        else:
-            for t in targets:
-                if type(t) == list and len(t) == 3:
-                    host, port, prio = t
-                    self.targets.append([host + ":" + port, prio])
-                else:
-                    self.stop()
-                    self.log.debug("targets=" + str(targets))
-                    raise FormatError("Argument 'targets' is of wrong format.")
-
-#        if type(dataPort) == list:
-#            self.dataHost = str([socket.gethostname() for i in dataPort])
-#        else:
-#            self.dataHost = socket.gethostname()
+        self.__setTargets (targets)
 
         message = self.__sendSignal(signal)
 
@@ -214,6 +195,33 @@ class dataTransfer():
         # using a Poller to implement the signalSocket timeout (in older ZMQ version there is no option RCVTIMEO)
         self.poller.register(self.signalSocket, zmq.POLLIN)
 
+
+    def __setTargets (self, targets):
+        self.targets = []
+
+        # [host, port, prio]
+        if len(targets) == 3 and type(targets[0]) != list and type(targets[1]) != list and type(targets[2]) != list:
+            host, port, prio = targets
+            self.targets = [[host + ":" + port, prio, [""]]]
+
+        # [host, port, prio, suffixes]
+        elif len(targets) == 4 and type(targets[0]) != list and type(targets[1]) != list and type(targets[2]) != list and type(targets[3]) == list:
+            host, port, prio, suffixes = targets
+            self.targets = [[host + ":" + port, prio, suffixes]]
+
+        # [[host, port, prio], ...] or [[host, port, prio, suffixes], ...]
+        else:
+            for t in targets:
+                if type(t) == list and len(t) == 3:
+                    host, port, prio = t
+                    self.targets.append([host + ":" + port, prio, [""]])
+                elif type(t) == list and len(t) == 4 and type(t[3]):
+                    host, port, prio, suffixes = t
+                    self.targets.append([host + ":" + port, prio, suffixes])
+                else:
+                    self.stop()
+                    self.log.debug("targets=" + str(targets))
+                    raise FormatError("Argument 'targets' is of wrong format.")
 
 
     def __sendSignal (self, signal):
@@ -626,6 +634,65 @@ class dataTransfer():
                 self.log.info("Closing ZMQ context...done.")
             except:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
+
+
+    def forceStop (self, targets):
+
+        if type(targets) != list:
+            self.stop()
+            raise FormatError("Argument 'targets' must be list.")
+
+        if not self.context:
+            self.context    = zmq.Context()
+            self.extContext = False
+
+        signal = None
+        # Signal exchange
+        if self.connectionType == "stream":
+            signalPort = self.signalPort
+            signal     = "STOP_STREAM"
+        elif self.connectionType == "streamMetadata":
+            signalPort = self.signalPort
+            signal     = "STOP_STREAM_METADATA"
+        elif self.connectionType == "queryNext":
+            signalPort = self.signalPort
+            signal     = "STOP_QUERY_NEXT"
+        elif self.connectionType == "queryMetadata":
+            signalPort = self.signalPort
+            signal     = "STOP_QUERY_METADATA"
+
+        self.log.debug("Create socket for signal exchange...")
+
+
+        if self.signalHost and not self.signalSocket:
+            self.__createSignalSocket(signalPort)
+        elif not self.signalHost:
+            self.stop()
+            raise ConnectionFailed("No host to send signal to specified." )
+
+        self.__setTargets (targets)
+
+        message = self.__sendSignal(signal)
+
+        if message and message == "VERSION_CONFLICT":
+            self.stop()
+            raise VersionError("Versions are conflicting.")
+
+        elif message and message == "NO_VALID_HOST":
+            self.stop()
+            raise AuthenticationFailed("Host is not allowed to connect.")
+
+        elif message and message == "CONNECTION_ALREADY_OPEN":
+            self.stop()
+            raise CommunicationFailed("Connection is already open.")
+
+        elif message and message == "NO_VALID_SIGNAL":
+            self.stop()
+            raise CommunicationFailed("Connection type is not supported for this kind of sender.")
+
+        # if there was no response or the response was of the wrong format, the receiver should be shut down
+        elif message and message.startswith(signal):
+            self.log.info("Received confirmation ...")
 
 
     def __exit__ (self):

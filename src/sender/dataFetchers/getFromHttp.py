@@ -34,8 +34,7 @@ def setup (log, prop):
         return True
 
 
-
-def getMetadata (log, metadata, chunkSize, localTarget = None):
+def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
 
     #extract fileEvent metadata
     try:
@@ -139,8 +138,8 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
         except:
             log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
 
-    targets_data     = [i for i in targets if i[2] == "data"]
-    targets_metadata = [i for i in targets if i[2] == "metadata"]
+    targets_data     = [i for i in targets if i[3] == "data"]
+    targets_metadata = [i for i in targets if i[3] == "metadata"]
     chunkNumber      = 0
 
     log.debug("Getting data for file '" + str(sourceFile) + "'...")

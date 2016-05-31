@@ -178,12 +178,14 @@ class TaskProvider():
                 # get requests for this event
                 try:
                     self.log.debug("Get requests...")
-                    self.requestFwSocket.send("")
+                    self.requestFwSocket.send_multipart(["GET_REQUESTS", workload["filename"]])
 
                     requests = cPickle.loads(self.requestFwSocket.recv())
                     self.log.debug("Requests: " + str(requests))
                 except:
                     self.log.error("Get Requests... failed.", exc_info=True)
+                    requests = ["None"]
+
 
                 # build message dict
                 try:
@@ -295,9 +297,9 @@ class requestResponder():
     def run (self):
         hostname = socket.gethostname()
         self.log.info("[requestResponder] Start run")
-        openRequests = [[hostname + ':6003', 1], [hostname + ':6004', 0]]
+        openRequests = [[hostname + ':6003', 1, [".cbf"]], [hostname + ':6004', 0, [".cbf"]]]
         while True:
-            request = self.requestFwSocket.recv()
+            request = self.requestFwSocket.recv_multipart()
             self.log.debug("[requestResponder] Received request: " + str(request) )
 
             self.requestFwSocket.send(cPickle.dumps(openRequests))

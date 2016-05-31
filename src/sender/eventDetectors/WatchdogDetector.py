@@ -41,9 +41,10 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
         self.paths        = [ config["monDir"] ]
 
         patterns = []
-        for suffix in config["monSuffixes"]:
-            #TODO check format
-            patterns.append("*" + suffix)
+        for event, suffix in config["monEvents"].iteritems():
+            for s in suffix:
+                #TODO check format
+                patterns.append("*" + s)
 
         WatchdogEventHandler.patterns = patterns
 
@@ -58,24 +59,27 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
         self.detect_move   = False
         self.detect_close  = False
 
-        if "all" in config["monEventType"].lower():
-            self.log.info("Activate all event types")
-            self.detect_all    = True
-        elif "create" in config["monEventType"].lower():
-            self.log.info("Activate on create event types")
-            self.detect_create = True
-        elif "modify" in config["monEventType"].lower():
-            self.log.info("Activate on modify event types")
-            self.detect_modify = True
-        elif "delete" in config["monEventType"].lower():
-            self.log.info("Activate on delete event types")
-            self.detect_delete = True
-        elif "move" in config["monEventType"].lower():
-            self.log.info("Activate on move event types")
-            self.detect_move   = True
-        elif "close" in config["monEventType"].lower():
-            self.log.info("Activate on close event types")
-            self.detect_close  = True
+        for event, suffix in config["monEvents"].iteritems():
+            if "all" in event.lower():
+                self.log.info("Activate all event types")
+                self.detect_all    = tuple(suffix)
+            elif "create" in event.lower():
+                self.log.info("Activate on create event types")
+                self.detect_create = tuple(suffix)
+            elif "modify" in event.lower():
+                self.log.info("Activate on modify event types")
+                self.detect_modify = tuple(suffix)
+            elif "delete" in event.lower():
+                self.log.info("Activate on delete event types")
+                self.detect_delete = tuple(suffix)
+            elif "move" in event.lower():
+                self.log.info("Activate on move event types")
+                self.detect_move   = tuple(suffix)
+            elif "close" in event.lower():
+                self.log.info("Activate on close event types")
+                self.detect_close  = tuple(suffix)
+
+        self.log.debug("self.detect_close=" + str(self.detect_close) + ", self.detect_move" + str(self.detect_move))
 
 
     # Send all logs to the main process
@@ -107,7 +111,7 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
 
 
     def on_any_event (self, event):
-        if self.detect_all:
+        if self.detect_all and event.src_path.endswith(self.detect_all):
             self.log.debug("Any event detected")
             self.process(event)
 
@@ -115,12 +119,13 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
     def on_created (self, event):
         global eventListToObserve
 
-        if self.detect_create:
+        if self.detect_create and event.src_path.endswith(self.detect_create):
             #TODO only fire for file-event. skip directory-events.
             self.log.debug("On move event detected")
             self.process(event)
-        if self.detect_close:
+        if self.detect_close and event.src_path.endswith(self.detect_close):
             self.log.debug("On close event detected (from create)")
+            self.log.debug("event.src_path="+str(event.src_path))
             if ( not event.is_directory ):
                 self.log.debug("Append event to eventListToObserve: " + event.src_path)
 #                eventListToObserve.append(event.src_path)
@@ -130,10 +135,10 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
     def on_modified (self, event):
         global eventListToObserve
 
-        if self.detect_modify:
+        if self.detect_modify and event.src_path.endswith(self.detect_modify):
             self.log.debug("On modify event detected")
             self.process(event)
-        if self.detect_close:
+        if self.detect_close and event.src_path.endswith(self.detect_close):
             if ( not event.is_directory ) and ( event.src_path not in eventListToObserve ):
                 self.log.debug("On close event detected (from modify)")
 #                eventListToObserve.append(event.src_path)
@@ -141,13 +146,13 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
 
 
     def on_deleted (self, event):
-        if self.detect_delete:
+        if self.detect_delete and event.src_path.endswith(self.detect_delete):
             self.log.debug("On delete event detected")
             self.process(event)
 
 
     def on_moved (self, event):
-        if self.detect_move:
+        if self.detect_move and event.src_path.endswith(self.detect_move):
             self.log.debug("On move event detected")
             self.process(event)
 
@@ -198,7 +203,7 @@ def splitFilePath (filepath, paths):
 
 
 class checkModTime (threading.Thread):
-    def __init__ (self, NumberOfThreads, timeTillClosed, monDir, lock, logQueue):
+    def __init__ (self, NumberOfThreads, timeTillClosed, monDir, actionTime, lock, logQueue):
         self.log = self.getLogger(logQueue)
 
         self.log.debug("init")
@@ -206,6 +211,7 @@ class checkModTime (threading.Thread):
         self.pool           = ThreadPool(NumberOfThreads)
         self.monDir         = monDir
         self.timeTillClosed = timeTillClosed # s
+        self.actionTime     = actionTime
         self.lock           = lock
         self._stop          = threading.Event()
         self._poolRunning   = True
@@ -263,7 +269,7 @@ class checkModTime (threading.Thread):
                 self.lock.release()
 
 #                self.log.debug("List to observe after map-function: " + str(eventListToObserve))
-                time.sleep(2)
+                time.sleep(self.actionTime)
             except:
                 self.log.error("Stopping loop due to error", exc_info=True)
                 break
@@ -343,10 +349,10 @@ class EventDetector():
 
         # check format of config
         if ( not config.has_key("monDir") or
-                not config.has_key("monEventType") or
                 not config.has_key("monSubdirs") or
-                not config.has_key("monSuffixes") or
-                not config.has_key("timeTillClosed") ):
+                not config.has_key("monEvents") or
+                not config.has_key("timeTillClosed") or
+                not config.has_key("actionTime") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
             checkPassed = False
@@ -363,6 +369,8 @@ class EventDetector():
             self.log.debug("paths: " + str(self.paths))
 
             self.timeTillClosed  = self.config["timeTillClosed"]
+            self.actionTime      = self.config["actionTime"]
+
             self.observerThreads = []
             self.lock            = threading.Lock()
 
@@ -377,7 +385,7 @@ class EventDetector():
                 self.observerThreads.append(observer)
                 observerId += 1
 
-            self.checkingThread = checkModTime(4, self.timeTillClosed, self.monDir, self.lock, logQueue)
+            self.checkingThread = checkModTime(4, self.timeTillClosed, self.monDir, self.actionTime, self.lock, logQueue)
             self.checkingThread.start()
 
 
@@ -417,8 +425,10 @@ class EventDetector():
         self.checkingThread.stop()
         self.checkingThread.join()
 
+
     def __exit__(self):
         self.stop()
+
 
     def __del__(self):
         self.stop()
@@ -463,11 +473,10 @@ if __name__ == '__main__':
     config = {
             #TODO normpath to make insensitive to "/" at the end
             "monDir"         : BASE_PATH + os.sep + "data" + os.sep + "source",
-            "monEventType"   : "ON_CLOSE",
-#            "monEventType"   : "IN_CREATE",
             "monSubdirs"     : ["commissioning", "current", "local"],
-            "monSuffixes"    : [".tif", ".cbf"],
-            "timeTillClosed" : 1 #s
+            "monEvents"      : {"IN_CLOSE_WRITE" : [".tif", ".cbf"], "IN_MOVED_TO" : [".log"]},
+            "timeTillClosed" : 1, #s
+            "actionTime"     : 2 #s
             }
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"

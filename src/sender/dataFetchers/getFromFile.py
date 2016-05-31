@@ -15,7 +15,8 @@ from send_helpers import __sendToTargets, DataHandlingError
 def setup (log, prop):
 
     if ( not prop.has_key("fixSubdirs") or
-        not prop.has_key("storeData") ):
+        not prop.has_key("storeData")  or
+        not prop.has_key("removeData") ):
 
         log.error ("Configuration of wrong format")
         log.debug ("dataFetcherProp="+ str(prop))
@@ -27,7 +28,7 @@ def setup (log, prop):
         return True
 
 
-def getMetadata (log, metadata, chunkSize, localTarget = None):
+def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
 
     #extract fileEvent metadata
     try:
@@ -55,50 +56,53 @@ def getMetadata (log, metadata, chunkSize, localTarget = None):
     else:
         targetFile     = None
 
-    try:
-        # For quick testing set filesize of file as chunksize
-        log.debug("get filesize for '" + str(sourceFile) + "'...")
-        filesize       = os.path.getsize(sourceFile)
-        fileModTime    = os.stat(sourceFile).st_mtime
-        fileCreateTime = os.stat(sourceFile).st_ctime
-        chunksize      = filesize    #can be used later on to split multipart message
-        log.debug("filesize(%s) = %s" % (sourceFile, str(filesize)))
-        log.debug("fileModTime(%s) = %s" % (sourceFile, str(fileModTime)))
+    if targets:
+        try:
+            # For quick testing set filesize of file as chunksize
+            log.debug("get filesize for '" + str(sourceFile) + "'...")
+            filesize       = os.path.getsize(sourceFile)
+            fileModTime    = os.stat(sourceFile).st_mtime
+            fileCreateTime = os.stat(sourceFile).st_ctime
+            chunksize      = filesize    #can be used later on to split multipart message
+            log.debug("filesize(%s) = %s" % (sourceFile, str(filesize)))
+            log.debug("fileModTime(%s) = %s" % (sourceFile, str(fileModTime)))
 
-    except:
-        log.error("Unable to create metadata dictionary.")
-        raise
+        except:
+            log.error("Unable to create metadata dictionary.")
+            raise
 
-    try:
-        log.debug("create metadata for source file...")
-        #metadata = {
-        #        "filename"     : filename,
-        #        "sourcePath"   : sourcePath,
-        #        "relativePath" : relativePath,
-        #        "filesize"     : filesize,
-        #        "fileModTime"  : fileModTime,
-        #        "chunkSize"    : self.zmqMessageChunkSize
-        #        }
-        metadata[ "filesize"    ]   = filesize
-        metadata[ "fileModTime" ]   = fileModTime
-        metadata[ "fileCreateTime"] = fileCreateTime
-        metadata[ "chunkSize"   ]   = chunkSize
+        try:
+            log.debug("create metadata for source file...")
+            #metadata = {
+            #        "filename"     : filename,
+            #        "sourcePath"   : sourcePath,
+            #        "relativePath" : relativePath,
+            #        "filesize"     : filesize,
+            #        "fileModTime"  : fileModTime,
+            #        "chunkSize"    : self.zmqMessageChunkSize
+            #        }
+            metadata[ "filesize"    ]   = filesize
+            metadata[ "fileModTime" ]   = fileModTime
+            metadata[ "fileCreateTime"] = fileCreateTime
+            metadata[ "chunkSize"   ]   = chunkSize
 
-        log.debug("metadata = " + str(metadata))
-    except:
-        log.error("Unable to assemble multi-part message.")
-        raise
+            log.debug("metadata = " + str(metadata))
+        except:
+            log.error("Unable to assemble multi-part message.")
+            raise
 
-    return sourceFile, targetFile, metadata
+        return sourceFile, targetFile, metadata
+    else:
+        return sourceFile, targetFile, dict()
 
 
 def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
 
-    targets_data     = [i for i in targets if i[2] == "data"]
-
-    if not targets_data:
+    if not targets:
         prop["removeFlag"] = True
         return
+
+    targets_data       = [i for i in targets if i[3] == "data"]
 
     prop["removeFlag"] = False
     chunkSize          = metadata[ "chunkSize" ]
@@ -196,9 +200,9 @@ def __dataHandling(log, sourceFile, targetFile, actionFunction, metadata, prop):
 
 def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
 
-    targets_metadata = [i for i in targets if i[2] == "metadata"]
+    targets_metadata = [i for i in targets if i[3] == "metadata"]
 
-    if prop["storeData"] and prop["removeFlag"]:
+    if prop["storeData"] and prop["removeData"] and prop["removeFlag"]:
 
         # move file
         try:
@@ -206,15 +210,6 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
             log.info("Moving file '" + str(sourceFile) + "' ...success.")
         except:
             return
-
-        #send message to metadata targets
-        if targets_metadata:
-            try:
-                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"])
-                log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
-
-            except:
-                log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
 
     elif prop["storeData"]:
 
@@ -226,16 +221,7 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
         except:
             return
 
-        #send message to metadata targets
-        if targets_metadata:
-            try:
-                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"])
-                log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
-
-            except:
-                log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
-
-    elif prop["removeFlag"]:
+    elif prop["removeData"] and prop["removeFlag"]:
         # remove file
         try:
             os.remove(sourceFile)
@@ -245,14 +231,14 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
 
         prop["removeFlag"] = False
 
-        #send message to metadata targets
-        if targets_metadata:
-            try:
-                __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"] )
-                log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
+    #send message to metadata targets
+    if targets_metadata:
+        try:
+            __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"] )
+            log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
 
-            except:
-                log.error("Unable to send metadata multipart-message for file " + str(sourceFile), exc_info=True)
+        except:
+            log.error("Unable to send metadata multipart-message for file " + str(sourceFile) + " to " + str(targets_metadata), exc_info=True)
 
 
 def clean (prop):

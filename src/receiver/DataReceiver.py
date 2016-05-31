@@ -44,7 +44,7 @@ def argumentParsing():
         whitelist      = json.loads(config.get('asection', 'whitelist'))
     except ValueError:
         ldap_cn = config.get('asection', 'whitelist')
-        p = subprocess.Popen("ldapsearch -x -H ldap://it-ldap-slave.desy.de:1389 cn=" + ldap_cn + " -LLL", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        p = subprocess.Popen(["ldapsearch",  "-x", "-H ldap://it-ldap-slave.desy.de:1389", "cn=" + ldap_cn , "-LLL"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         lines = p.stdout.readlines()
 
         matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]', re.M|re.I)

@@ -1,6 +1,19 @@
-Zeromq Data Transfer 2.2.0
+Zeromq Data Transfer 2.3.0
 
-- Fixed problems that the dataTransferAPI could not received data
+- Added method to dataTransferAPI to manually stop streams/queries
+- Added option to specify which file formats to be send via zeromq
+- Added option look for multiple event types in parallel (combined with file suffixes)
+- DataManager can now be controlled via tango
+- Added systemd service script
+- Added cleanup arguments into config file
+- Files get accessed only if data or metadata is send via zeromq
+- Fixed DataReceiver (no shell)
+- Added command line argument error handling
+- Removed ringbuffer remains of old architecture
+
+Zeromq Data Transfer 2.2.1
+
+- Fixed data receiving problems with dataTransferAPI due to ZAP
 
 
 Zeromq Data Transfer 2.2.0
