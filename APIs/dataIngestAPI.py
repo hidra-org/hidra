@@ -85,7 +85,7 @@ class dataIngest():
 
         if isWindows():
             self.log.info("Using tcp for internal communication.")
-            self.eventDetConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=self.dataFetchPort)
+            self.eventDetConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=self.eventDetPort)
             self.dataFetchConId = "tcp://{ip}:{port}".format(ip=self.localhost, port=self.dataFetchPort)
         else:
             self.log.info("Using ipc for internal communication.")
