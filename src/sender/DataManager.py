@@ -286,8 +286,9 @@ def argumentParsing():
 
     # check if directories exist
     helpers.checkDirExistance(arguments.logfilePath)
-    helpers.checkDirExistance(arguments.monitoredDir)
-    helpers.checkAnySubDirExists(arguments.monitoredDir, arguments.fixSubdirs)
+    if arguments.monitoredDir:
+        helpers.checkDirExistance(arguments.monitoredDir)
+        helpers.checkAnySubDirExists(arguments.monitoredDir, arguments.fixSubdirs)
     if arguments.storeData:
         helpers.checkDirExistance(arguments.localTarget)
         helpers.checkAllSubDirExist(arguments.localTarget, arguments.fixSubdirs)
