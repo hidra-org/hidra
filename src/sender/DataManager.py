@@ -264,6 +264,10 @@ def argumentParsing():
     arguments.storeData          = arguments.storeData              or config.getboolean('asection', 'storeData')
 
     if arguments.storeData:
+        try:
+            arguments.fixSubdirs         = arguments.fixSubdirs     or json.loads(config.get('asection', 'fixSubdirs'))
+        except:
+            arguments.fixSubdirs     = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
         arguments.localTarget        = arguments.localTarget        or config.get('asection', 'localTarget')
 
     arguments.removeData         = arguments.removeData             or config.getboolean('asection', 'removeData')
@@ -375,12 +379,18 @@ class DataManager():
             self.controlSubConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlSubPort)
             self.requestFwConId   = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
             self.routerConId      = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.routerPort)
+
+            eventDetConStr        = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.eventPort)
+            dataFetchConStr     = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.dataFetcherPort)
         else:
             self.log.info("Using ipc for internal communication.")
             self.controlPubConId  = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub")
             self.controlSubConId  = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub")
             self.requestFwConId   = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="requestFw")
             self.routerConId      = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="router")
+
+            eventDetConStr        = "ipc://{path}/{id}".format(path=self.ipcPath, id="eventDetConId")
+            dataFetchConStr       = "ipc://{path}/{id}".format(path=self.ipcPath, id="dataFetchConId")
 
 
         self.whitelist        = arguments.whitelist
@@ -423,9 +433,9 @@ class DataManager():
         elif arguments.eventDetectorType == "ZmqDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
-                    "eventPort"         : arguments.eventPort,
-                    "numberOfStreams"   : self.numberOfStreams,
-                    "context"           : None
+                    "context"           : None,
+                    "eventDetConStr"    : eventDetConStr,
+                    "numberOfStreams"   : self.numberOfStreams
                     }
         elif arguments.eventDetectorType == "HttpDetector":
             self.eventDetectorConfig = {
@@ -440,25 +450,24 @@ class DataManager():
         self.log.info("Configured Type of dataFetcher: " + arguments.dataFetcherType)
         if arguments.dataFetcherType == "getFromFile":
             self.dataFetcherProp = {
-                    "type"        : arguments.dataFetcherType,
-                    "fixSubdirs"  : arguments.fixSubdirs,
-                    "storeData"   : arguments.storeData,
-                    "removeData"  : arguments.removeData
+                    "type"            : arguments.dataFetcherType,
+                    "fixSubdirs"      : arguments.fixSubdirs,
+                    "storeData"       : arguments.storeData,
+                    "removeData"      : arguments.removeData
                     }
         elif arguments.dataFetcherType == "getFromZmq":
             self.dataFetcherProp = {
-                    "type"        : arguments.dataFetcherType,
-                    "context"     : None,
-                    "extIp"       : "0.0.0.0",
-                    "port"        : arguments.dataFetcherPort,
+                    "type"            : arguments.dataFetcherType,
+                    "context"         : None,
+                    "dataFetchConStr" : dataFetchConStr
                     }
         elif arguments.dataFetcherType == "getFromHttp":
             self.dataFetcherProp = {
-                    "type"        : arguments.dataFetcherType,
-                    "session"     : None,
-                    "fixSubdirs"  : arguments.fixSubdirs,
-                    "storeData"   : arguments.storeData,
-                    "removeData"  : arguments.removeData
+                    "type"            : arguments.dataFetcherType,
+                    "session"         : None,
+                    "fixSubdirs"      : arguments.fixSubdirs,
+                    "storeData"       : arguments.storeData,
+                    "removeData"      : arguments.removeData
                     }
 
 

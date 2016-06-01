@@ -74,12 +74,13 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
         try:
             log.debug("create metadata for source file...")
             #metadata = {
-            #        "filename"     : filename,
-            #        "sourcePath"   : sourcePath,
-            #        "relativePath" : relativePath,
-            #        "filesize"     : filesize,
-            #        "fileModTime"  : fileModTime,
-            #        "chunkSize"    : self.zmqMessageChunkSize
+            #        "filename"       : ...,
+            #        "sourcePath"     : ...,
+            #        "relativePath"   : ...,
+            #        "filesize"       : ...,
+            #        "fileModTime"    : ...,
+            #        "fileCreateTime" : ...,
+            #        "chunkSize"      : ...
             #        }
             metadata[ "filesize"    ]   = filesize
             metadata[ "fileModTime" ]   = fileModTime

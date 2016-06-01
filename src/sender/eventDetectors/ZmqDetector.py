@@ -32,7 +32,7 @@ class EventDetector():
 
         # check format of config
         if ( not config.has_key("context") or
-                not config.has_key("eventPort") or
+                not config.has_key("eventDetConStr") or
                 not config.has_key("numberOfStreams") ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config="+ str(config))
@@ -42,8 +42,7 @@ class EventDetector():
 
 
         if checkPassed:
-            self.eventPort       = config["eventPort"]
-            self.extIp           = "0.0.0.0"
+            self.eventDetConStr  = config["eventDetConStr"]
             self.eventSocket     = None
 
             self.numberOfStreams = config["numberOfStreams"]
@@ -76,14 +75,15 @@ class EventDetector():
 
 
     def createSockets (self):
-        # create zmq socket to get events
-        self.eventSocket = self.context.socket(zmq.PULL)
-        connectionStr  = "tcp://{ip}:{port}".format(ip=self.extIp, port=self.eventPort)
+
+        # Create zmq socket to get events
         try:
-            self.eventSocket.bind(connectionStr)
-            self.log.info("Start eventSocket (bind): '" + connectionStr + "'")
+            self.eventSocket = self.context.socket(zmq.PULL)
+            self.eventSocket.bind(self.eventDetConStr)
+            self.log.info("Start eventSocket (bind): '" + self.eventDetConStr + "'")
         except:
-            self.log.error("Failed to start eventSocket (bind): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start eventSocket (bind): '" + self.eventDetConStr + "'", exc_info=True)
+            raise
 
 
     def getNewEvent (self):
@@ -93,8 +93,14 @@ class EventDetector():
         if eventMessage == b"CLOSE_FILE":
             eventMessageList = [ eventMessage for i in range(self.numberOfStreams) ]
         else:
-            eventMessageList = [ json.loads(eventMessage) ]
-#            eventMessageList = [ cPickle.loads(eventMessage) ]
+
+            eventMessage = json.loads(eventMessage)
+#            eventMessage = cPickle.loads(eventMessage)
+
+            # Convert back to ascii
+            eventMessage["filename"] = eventMessage["filename"].encode('ascii')
+
+            eventMessageList = [ eventMessage ]
 
         self.log.debug("eventMessage: " + str(eventMessageList))
 
@@ -163,13 +169,14 @@ if __name__ == '__main__':
     root.addHandler(qh)
 
 
-    eventPort       = "6001"
-    numberOfStreams = 4
+    eventDetConStr  = "ipc://{ip}/{port}".format(ip="/tmp/zeromq-data-transfer", port="eventDetConId")
+    print "eventDetConStr", eventDetConStr
+    numberOfStreams = 1
     config = {
-            "eventDetectorType" : "zmq",
-            "eventPort"         : eventPort,
-            "numberOfStreams"   : numberOfStreams,
+            "eventDetectorType" : "ZmqDetector",
             "context"           : None,
+            "eventDetConStr"    : eventDetConStr,
+            "numberOfStreams"   : numberOfStreams,
             }
 
 
@@ -184,9 +191,8 @@ if __name__ == '__main__':
 
     # create zmq socket to send events
     eventSocket    = context.socket(zmq.PUSH)
-    connectionStr  = "tcp://localhost:{port}".format(port=eventPort)
-    eventSocket.connect(connectionStr)
-    logging.info("Start eventSocket (connect): '" + connectionStr + "'")
+    eventSocket.connect(eventDetConStr)
+    logging.info("Start eventSocket (connect): '" + eventDetConStr + "'")
 
 
     i = 100
@@ -205,7 +211,7 @@ if __name__ == '__main__':
 
             eventList = eventDetector.getNewEvent()
             if eventList:
-                print "eventList:", eventList
+                logging.debug("eventList: " + str(eventList))
 
             time.sleep(1)
         except KeyboardInterrupt:
@@ -214,7 +220,7 @@ if __name__ == '__main__':
     eventSocket.send(b"CLOSE_FILE")
 
     eventList = eventDetector.getNewEvent()
-    print "eventList:", eventList
+    logging.debug("eventList: " + str(eventList))
 
     logQueue.put_nowait(None)
     logQueueListener.stop()

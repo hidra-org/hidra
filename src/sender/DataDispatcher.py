@@ -186,37 +186,41 @@ class DataDispatcher():
                     workload = cPickle.loads(message[0])
 
                     if workload == b"CLOSE_FILE":
-                        self.log.debug("Router requested to send signal that file was closed.")
-                        payload = [ workload, self.id ]
+                        if self.fixedStreamId:
+                            self.log.debug("Router requested to send signal that file was closed.")
+                            payload = [ workload, self.id ]
 
-                        # socket already known
-                        if self.fixedStreamId in self.openConnections:
-                            tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
-                            self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0")
+                            # socket already known
+                            if self.fixedStreamId in self.openConnections:
+                                tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                                self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0")
+                            else:
+                                # open socket
+                                socket        = self.context.socket(zmq.PUSH)
+                                connectionStr = "tcp://" + str(self.fixedStreamId)
+
+                                socket.connect(connectionStr)
+                                self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
+
+                                # register socket
+                                self.openConnections[self.fixedStreamId] = socket
+
+                                # send data
+                                tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                                self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0" )
+
+                            # socket not known
+                            if not tracker.done:
+                                self.log.info("Close file signal has not been sent yet, waiting...")
+                                tracker.wait()
+                                self.log.info("Close file signal has not been sent yet, waiting...done")
+
+                            time.sleep(2)
+                            self.log.debug("Continue after sleeping.")
+                            continue
                         else:
-                            # open socket
-                            socket        = context.socket(zmq.PUSH)
-                            connectionStr = "tcp://" + str(self.fixedStreamId)
-
-                            socket.connect(connectionStr)
-                            self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
-
-                            # register socket
-                            self.openConnections[self.fixedStreamId] = socket
-
-                            # send data
-                            tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
-                            self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0" )
-
-                        # socket not known
-                        if not tracker.done:
-                            self.log.info("Close file signal has not been sent yet, waiting...")
-                            tracker.wait()
-                            self.log.info("Close file signal has not been sent yet, waiting...done")
-
-                        time.sleep(2)
-                        self.log.debug("Continue after sleeping.")
-                        continue
+                            self.log.warning("Router requested to send signal that file was closed, but no target specified.")
+                            continue
 
                     elif self.fixedStreamId:
                         targets = [[self.fixedStreamId, 0, [""], "data"]]

@@ -182,6 +182,9 @@ class TaskProvider():
 
                     requests = cPickle.loads(self.requestFwSocket.recv())
                     self.log.debug("Requests: " + str(requests))
+                except TypeError:
+                    # This happens when CLOSE_FILE is sent as workload
+                    requests = ["None"]
                 except:
                     self.log.error("Get Requests... failed.", exc_info=True)
                     requests = ["None"]
