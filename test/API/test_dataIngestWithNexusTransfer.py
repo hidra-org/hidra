@@ -35,24 +35,29 @@ print
 
 
 class ZmqDataManager(threading.Thread):
-    def __init__(self):
+    def __init__(self, context = None):
         self.extHost      = "0.0.0.0"
         self.localhost    = "localhost"
-        self.eventPort    = "50003"
-        self.dataInPort   = "50010"
         self.dataOutPort  = "50100"
 
         self.log          = logging.getLogger("ZmqDataManager")
 
-        self.context      = zmq.Context()
+        if context:
+            self.context    = context
+            self.extContext = True
+        else:
+            self.context    = zmq.Context()
+            self.extContext = False
 
         self.eventSocket  = self.context.socket(zmq.PULL)
-        connectionStr     = "tcp://" + str(self.extHost) + ":" + str(self.eventPort)
+        connectionStr     = "ipc:///tmp/zeromq-data-transfer/eventDetConId"
+#        connectionStr     = "tcp://" + str(self.extHost) + ":" + str(self.eventPort)
         self.eventSocket.bind(connectionStr)
         self.log.info("eventSocket started (bind) for '" + connectionStr + "'")
 
         self.dataInSocket  = self.context.socket(zmq.PULL)
-        connectionStr      = "tcp://" + str(self.extHost) + ":" + str(self.dataInPort)
+        connectionStr      = "ipc:///tmp/zeromq-data-transfer/dataFetchConId"
+#        connectionStr      = "tcp://" + str(self.extHost) + ":" + str(self.dataInPort)
         self.dataInSocket.bind(connectionStr)
         self.log.info("dataInSocket started (bind) for '" + connectionStr + "'")
 
@@ -61,29 +66,45 @@ class ZmqDataManager(threading.Thread):
         self.dataOutSocket.connect(connectionStr)
         self.log.info("dataOutSocket started (connect) for '" + connectionStr + "'")
 
+        self.poller = zmq.Poller()
+        self.poller.register(self.eventSocket, zmq.POLLIN)
+        self.poller.register(self.dataInSocket, zmq.POLLIN)
+
         threading.Thread.__init__(self)
 
 
     def run(self):
-        for i in range(6):
+        while True:
             try:
-                metadata = self.eventSocket.recv()
+                socks = dict(self.poller.poll())
+                dataMessage = None
+                metadata    = None
 
-                if metadata == b"CLOSE_FILE":
+                if socks and self.eventSocket in socks and socks[self.eventSocket] == zmq.POLLIN:
+
+                    metadata = self.eventSocket.recv()
                     self.log.debug("eventSocket recv: " + metadata)
-                    dataMessage = [metadata, "0/1"]
-                else:
-                    self.log.debug("eventSocket recv: " + str(cPickle.loads(metadata)))
+
+                    if metadata == b"CLOSE_FILE":
+                        self.dataOutSocket.send_multipart([metadata, "0/1"])
+
+                if socks and self.dataInSocket in socks and socks[self.dataInSocket] == zmq.POLLIN:
 
                     data = self.dataInSocket.recv()
-                    self.log.debug("dataSocket recv: " + data)
+                    self.log.debug("dataSocket recv: " + str(data))
 
-                    dataMessage = [metadata, data]
+                    dataMessage = [cPickle.dumps(metadata), data]
 
-                self.dataOutSocket.send_multipart(dataMessage)
-                self.log.debug("Send")
+                    self.dataOutSocket.send_multipart(dataMessage)
+                    self.log.debug("Send")
+
+            except zmq.ZMQError, e:
+                if not str(e) == "Socket operation on non-socket":
+                    self.log.error("Error in run", exc_info=True)
+                break
             except:
                 self.log.error("Error in run", exc_info=True)
+                break
 
 
     def stop(self):
@@ -100,12 +121,19 @@ class ZmqDataManager(threading.Thread):
                 self.log.info("closing dataOutSocket...")
                 self.dataOutSocket.close(linger=0)
                 self.dataOutSocket = None
-            if self.context:
-                self.log.info("destroying context...")
-                self.context.destroy()
-                self.context = None
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
+
+
+        if not self.extContext and self.context:
+            try:
+                self.log.info("Closing ZMQ context...")
+                self.context.destroy(0)
+                self.context = None
+                self.log.info("Closing ZMQ context...done.")
+            except:
+                self.log.error("Closing ZMQ context...failed.", exc_info=True)
+
 
 
 def runDataIngest(numbToSend):
@@ -114,14 +142,19 @@ def runDataIngest(numbToSend):
     dI.createFile("1.h5")
 
     for i in range(numbToSend):
-        data = "THISISTESTDATA-" + str(i)
-        dI.write(data)
-        logging.info("write")
+        try:
+            data = "THISISTESTDATA-" + str(i)
+            dI.write(data)
+            logging.info("write")
+        except:
+            logging.error("runDataIngest break", exc_info=True)
+            break
 
-#    try:
-    dI.closeFile()
-#    except:
-#        logging.error("Could not close file", exc_info=True)
+
+    try:
+        dI.closeFile()
+    except:
+        logging.error("Could not close file", exc_info=True)
 
     dI.stop()
 
@@ -133,8 +166,15 @@ def runNexusTransfer(numbToRecv):
 
     # number to receive + open signal + close signal
     for i in range(numbToRecv + 2):
-        data = nT.read()
-        logging.info("Retrieved: " + str(data))
+        try:
+            data = nT.read()
+            logging.info("Retrieved: " + str(data))
+
+            if data == "CLOSE_FILE":
+                break
+        except:
+            logging.error("runNexusTransfer break", exc_info=True)
+            break
 
     nT.stop()
 

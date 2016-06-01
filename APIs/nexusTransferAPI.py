@@ -102,8 +102,6 @@ class StopPolling():
 
 
 
-
-
 class nexusTransfer():
     def __init__(self, signalHost = None, useLog = False, context = None):
 
@@ -139,8 +137,8 @@ class nexusTransfer():
 
         self.controlPort     = "50200"
 
-        self.StopPollingThread = multiprocessing.Process (target = StopPolling, args = (self.controlPort, useLog, context))
-        self.StopPollingThread.start()
+#        self.StopPollingThread = multiprocessing.Process (target = StopPolling, args = (self.controlPort, useLog, context))
+#        self.StopPollingThread.start()
 
         self.__createSockets()
 
@@ -189,8 +187,13 @@ class nexusTransfer():
                 message = self.signalSocket.recv()
                 self.log.debug("signalSocket recv: " + message)
 
-                if message == b"CLOSE_FILE" and not self.allCloseRecvd:
-                    self.replyToSignal = message
+                if message == b"CLOSE_FILE":
+                    if self.allCloseRecvd:
+                        self.signalSocket.send(message)
+                        logging.debug("signalSocket send: " + message)
+                        break
+                    else:
+                        self.replyToSignal = message
                 else:
                     self.signalSocket.send(message)
                     self.log.debug("signalSocket send: " + message)
@@ -240,6 +243,7 @@ class nexusTransfer():
                 self.numberOfStreams = int(id.split("/")[1])
 
             # have all signals arrived?
+            self.log.debug("self.recvdCloseFrom=" + str(self.recvdCloseFrom) + ", self.numberOfStreams=" + str(self.numberOfStreams))
             if len(self.recvdCloseFrom) == self.numberOfStreams:
                 self.log.info("All close-file-signals arrived")
                 self.allCloseRecvd = True
@@ -251,6 +255,9 @@ class nexusTransfer():
                     pass
 
                 return "CLOSE_FILE"
+            else:
+                self.log.info("self.recvdCloseFrom=" + str(self.recvdCloseFrom) + ", self.numberOfStreams=" + str(self.numberOfStreams))
+
 
 
         else:

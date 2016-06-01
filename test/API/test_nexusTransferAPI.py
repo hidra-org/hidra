@@ -73,6 +73,15 @@ class Sender(threading.Thread):
             self.dataSocket.send_multipart(dataMessage)
             logging.debug("Send")
 
+        message = "CLOSE_FILE"
+        logging.debug("Send " + message)
+        self.signalSocket.send(message)
+
+        self.dataSocket.send_multipart([message, "0/1"])
+
+        recvMessage = self.signalSocket.recv()
+        logging.debug("Recv confirmation" + recvMessage)
+
 
     def stop(self):
         try:
@@ -101,10 +110,13 @@ senderThread.start()
 
 obj = nexusTransfer(useLog = True)
 
-for i in range(6):
+while True:
     try:
         data = obj.read()
         logging.debug("Retrieved: " + str(data))
+
+        if data == "CLOSE_FILE":
+            break
     except:
         logging.error("break", exc_info=True)
         break
