@@ -230,7 +230,7 @@ class nexusTransfer():
 
         if len(multipartMessage) < 2:
             self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
-            self.log.debug("multipartMessage=" + str(mutipartMessage))
+            self.log.debug("multipartMessage=" + str(multipartMessage))
             #TODO return errorcode
 
         if multipartMessage[0] == b"CLOSE_FILE":
