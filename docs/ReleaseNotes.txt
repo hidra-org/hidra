@@ -1,3 +1,9 @@
+Zeromq Data Transfer 2.3.1
+
+- Fixed filename sending for requests (unicode problem)
+- Fixed missing metadata if no target is specified
+- Fixed parallel directory creation attempts
+
 Zeromq Data Transfer 2.3.0
 
 - Added method to dataTransferAPI to manually stop streams/queries
