@@ -186,7 +186,7 @@ class SignalHandler():
                     incomingMessage = self.requestFwSocket.recv_multipart()
                     if incomingMessage[0] == "GET_REQUESTS":
                         self.log.debug("New request for signals received.")
-                        filename = incomingMessage[1]
+                        filename = cPickle.loads(incomingMessage[1])
                         openRequests = []
 
                         for requestSet in self.openRequPerm:

@@ -390,6 +390,7 @@ class EventDetector():
 
 #            if not is_dir:
 #                self.log.debug(path + " " + event.name + " " + parts)
+#                self.log.debug("currentMonEvent: " + str(currentMonEvent))
 #            self.log.debug(event.name)
 #            self.log.debug("is_dir: " + str(is_dir))
 #            self.log.debug("is_created: " + str(is_created))
@@ -470,8 +471,8 @@ class EventDetector():
 
                 # only files ending with a suffix specified with the current event are monitored
                 if not event.name.endswith(tuple(self.monEvents[currentMonEvent])):
-                    self.log.debug("File ending not in monitored Suffixes: " + str(event.name))
-                    self.log.debug("detected events were: " + str(parts))
+#                    self.log.debug("File ending not in monitored Suffixes: " + str(event.name))
+#                    self.log.debug("detected events were: " + str(parts))
                     continue
 
                 eventMessage = getEventMessage(path, event.name, self.paths)

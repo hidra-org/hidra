@@ -178,7 +178,7 @@ class TaskProvider():
                 # get requests for this event
                 try:
                     self.log.debug("Get requests...")
-                    self.requestFwSocket.send_multipart(["GET_REQUESTS", workload["filename"]])
+                    self.requestFwSocket.send_multipart(["GET_REQUESTS", cPickle.dumps(workload["filename"])])
 
                     requests = cPickle.loads(self.requestFwSocket.recv())
                     self.log.debug("Requests: " + str(requests))
