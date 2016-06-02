@@ -93,7 +93,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
 
         return sourceFile, targetFile, metadata
     else:
-        return sourceFile, targetFile, dict()
+        return sourceFile, targetFile, metadata
 
 
 def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
