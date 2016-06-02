@@ -212,6 +212,7 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
             __dataHandling(log, sourceFile, targetFile, shutil.move, metadata, prop)
             log.info("Moving file '" + str(sourceFile) + "' ...success.")
         except:
+            log.error("Could not move file {f} to {t}".format(f=sourceFile, t=targetFile), exc_info=True)
             return
 
     elif prop["storeData"]:
