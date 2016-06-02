@@ -187,6 +187,9 @@ def __dataHandling(log, sourceFile, targetFile, actionFunction, metadata, prop):
                     os.makedirs(targetPath)
                     log.info("New target directory created: " + str(targetPath))
                     actionFunction(sourceFile, targetFile)
+                except OSError, e:
+                    log.info("Target directory creation failed, was already created in the meantime: " + targetPath)
+                    actionFunction(sourceFile, targetFile)
                 except:
                     log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
                     log.debug("targetPath:" + str(targetPath))
