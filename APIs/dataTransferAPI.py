@@ -1,6 +1,6 @@
 # API to communicate with a data transfer unit
 
-__version__ = '2.3.0'
+__version__ = '2.3.1'
 
 import zmq
 import socket

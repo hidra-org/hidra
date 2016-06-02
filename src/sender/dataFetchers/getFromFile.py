@@ -94,7 +94,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
 
         return sourceFile, targetFile, metadata
     else:
-        return sourceFile, targetFile, dict()
+        return sourceFile, targetFile, metadata
 
 
 def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
@@ -188,6 +188,9 @@ def __dataHandling(log, sourceFile, targetFile, actionFunction, metadata, prop):
                     os.makedirs(targetPath)
                     log.info("New target directory created: " + str(targetPath))
                     actionFunction(sourceFile, targetFile)
+                except OSError, e:
+                    log.info("Target directory creation failed, was already created in the meantime: " + targetPath)
+                    actionFunction(sourceFile, targetFile)
                 except:
                     log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
                     log.debug("targetPath:" + str(targetPath))
@@ -210,6 +213,7 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
             __dataHandling(log, sourceFile, targetFile, shutil.move, metadata, prop)
             log.info("Moving file '" + str(sourceFile) + "' ...success.")
         except:
+            log.error("Could not move file {f} to {t}".format(f=sourceFile, t=targetFile), exc_info=True)
             return
 
     elif prop["storeData"]:
