@@ -440,7 +440,7 @@ class dataTransfer():
 
                 return [metadata, payload]
             else:
-                self.log.warning("Could not receive data in the given time.")
+#                self.log.warning("Could not receive data in the given time.")
 
                 if self.queryNextStarted :
                     try:
