@@ -31,48 +31,23 @@ from dataTransferAPI import dataTransfer
 
 
 def argumentParsing():
-    configFile = CONFIG_PATH + os.sep + "dataReceiver.conf"
+    defaultConfig = CONFIG_PATH + os.sep + "dataReceiver.conf"
 
-    config = ConfigParser.RawConfigParser()
-    config.readfp(helpers.FakeSecHead(open(configFile)))
-
-    logfilePath    = config.get('asection', 'logfilePath')
-    logfileName    = config.get('asection', 'logfileName')
-    logfileSize    = config.get('asection', 'logfileSize')
-
-    try:
-        whitelist      = json.loads(config.get('asection', 'whitelist'))
-    except ValueError:
-        ldap_cn = config.get('asection', 'whitelist')
-        p = subprocess.Popen(["ldapsearch",  "-x", "-H ldap://it-ldap-slave.desy.de:1389", "cn=" + ldap_cn , "-LLL"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        lines = p.stdout.readlines()
-
-        matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]', re.M|re.I)
-        whitelist = []
-
-        for line in lines:
-
-            if matchHost.match(line):
-                if matchHost.match(line).group(1) not in whitelist:
-                    whitelist.append(matchHost.match(line).group(1))
-
-
-    targetDir      = config.get('asection', 'targetDir')
-
-    dataStreamIp   = config.get('asection', 'dataStreamIp')
-    dataStreamPort = config.get('asection', 'dataStreamPort')
-
+    ##################################
+    #   Get command line arguments   #
+    ##################################
 
     parser = argparse.ArgumentParser()
+
+    parser.add_argument("--configFile"        , type    = str,
+                                                help    = "Location of the configuration file")
+
     parser.add_argument("--logfilePath"       , type    = str,
-                                                help    = "Path where logfile will be created (default=" + str(logfilePath) + ")",
-                                                default = logfilePath )
+                                                help    = "Path where logfile will be created")
     parser.add_argument("--logfileName"       , type    = str,
-                                                help    = "Filename used for logging (default=" + str(logfileName) + ")",
-                                                default = logfileName )
+                                                help    = "Filename used for logging")
     parser.add_argument("--logfileSize"       , type    = int,
-                                                help    = "File size in B before rollover (linux only; (default=" + str(logfileSize) + ")",
-                                                default = logfileSize )
+                                                help    = "File size before rollover in B (linux only)")
     parser.add_argument("--verbose"           , help    = "More verbose output",
                                                 action  = "store_true" )
     parser.add_argument("--onScreen"          , type    = str,
@@ -80,35 +55,67 @@ def argumentParsing():
                                                 default = False )
 
     parser.add_argument("--whitelist"         , type    = str,
-                                                help    = "List of hosts allowed to connect (default=" + str(whitelist) + ")",
-                                                default = whitelist )
+                                                help    = "List of hosts allowed to connect")
     parser.add_argument("--targetDir"         , type    = str,
-                                                help    = "Where incoming data will be stored to (default=" + str(targetDir) + ")",
-                                                default = targetDir )
+                                                help    = "Where incoming data will be stored to")
     parser.add_argument("--dataStreamIp"      , type    = str,
-                                                help    = "Ip of dataStream-socket to pull new files from (default=" + str(dataStreamIp) + ")",
-                                                default = dataStreamIp )
+                                                help    = "Ip of dataStream-socket to pull new files from")
     parser.add_argument("--dataStreamPort"    , type    = str,
-                                                help    = "Port number of dataStream-socket to pull new files from (default=" + str(dataStreamPort) + ")",
-                                                default = dataStreamPort )
-
+                                                help    = "Port number of dataStream-socket to pull new files from")
 
     arguments   = parser.parse_args()
+    arguments.configFile         = arguments.configFile or defaultConfig
 
-    logfilePath = arguments.logfilePath
-    logfileName = arguments.logfileName
-    logfile     = os.path.join(logfilePath, logfileName)
-    logsize     = arguments.logfileSize
-    verbose     = arguments.verbose
-    onScreen    = arguments.onScreen
+    # check if configFile exist
+    helpers.checkFileExistance(arguments.configFile)
 
-    targetDir   = arguments.targetDir
+    ##################################
+    # Get arguments from config file #
+    ##################################
+
+    config = ConfigParser.RawConfigParser()
+    config.readfp(helpers.FakeSecHead(open(arguments.configFile)))
+
+    arguments.logfilePath        = arguments.logfilePath        or config.get('asection', 'logfilePath')
+    arguments.logfileName        = arguments.logfileName        or config.get('asection', 'logfileName')
+
+    if not helpers.isWindows():
+        arguments.logfileSize    = arguments.logfileSize        or config.get('asection', 'logfileSize')
+
+    try:
+        arguments.whitelist      = arguments.whitelist          or json.loads(config.get('asection', 'whitelist'))
+    except ValueError:
+        ldap_cn = config.get('asection', 'whitelist')
+        p = subprocess.Popen(["ldapsearch",  "-x", "-H ldap://it-ldap-slave.desy.de:1389", "cn=" + ldap_cn , "-LLL"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        lines = p.stdout.readlines()
+
+        matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]', re.M|re.I)
+        arguments.whitelist = []
+
+        for line in lines:
+
+            if matchHost.match(line):
+                if matchHost.match(line).group(1) not in arguments.whitelist:
+                    arguments.whitelist.append(matchHost.match(line).group(1))
+    except:
+        arguments.whitelist      = json.loads(config.get('asection', 'whitelist').replace("'", '"'))
+
+    arguments.targetDir          = arguments.targetDir          or config.get('asection', 'targetDir')
+
+    arguments.dataStreamIp       = arguments.dataStreamIp       or config.get('asection', 'dataStreamIp')
+    arguments.dataStreamPort     = arguments.dataStreamPort     or config.get('asection', 'dataStreamPort')
+
+    ##################################
+    #     Check given arguments      #
+    ##################################
+
+    logfile     = os.path.join(arguments.logfilePath, arguments.logfileName)
 
     #enable logging
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
 
-    handlers = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
+    handlers = helpers.getLogHandlers(logfile, arguments.logfileSize, arguments.verbose, arguments.onScreen)
 
     if type(handlers) == tuple:
         for h in handlers:
@@ -117,10 +124,10 @@ def argumentParsing():
         root.addHandler(handlers)
 
     # check target directory for existance
-    helpers.checkDirExistance(targetDir)
+    helpers.checkDirExistance(arguments.targetDir)
 
     # check if logfile is writable
-    helpers.checkLogFileWritable(logfilePath, logfileName)
+    helpers.checkLogFileWritable(arguments.logfilePath, arguments.logfileName)
 
     return arguments
 
