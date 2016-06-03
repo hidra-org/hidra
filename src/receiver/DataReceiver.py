@@ -134,6 +134,8 @@ def argumentParsing():
 
 class DataReceiver:
     def __init__(self):
+        self.dataTransfer = None
+
         arguments = argumentParsing()
 
         self.log          = self.getLogger()
