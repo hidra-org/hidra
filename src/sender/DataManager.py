@@ -553,8 +553,11 @@ class DataManager():
                 tracker = self.testSocket.send_multipart([b"ALIVE_TEST"], copy=False, track=True)
                 if not tracker.done:
                     tracker.wait(2)
+                if not tracker.done:
+                    self.log.error("Failed to send test message to fixed streaming host {id}".format(id=self.fixedStreamId), exc_info=True)
+                    return False
             except:
-                self.log.error("Failed to send test message to fixed streaming host", exc_info=True)
+                self.log.error("Failed to send test message to fixed streaming host {id}".format(id=self.fixedStreamId), exc_info=True)
                 return False
 
         return True
