@@ -12,23 +12,23 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
 
     for target, prio, suffixes, sendType in targets:
 
+        # socket not known
+        if target not in openConnections:
+            # open socket
+            try:
+                socket        = context.socket(zmq.PUSH)
+                connectionStr = "tcp://" + str(target)
+
+                socket.connect(connectionStr)
+                log.info("Start socket (connect): '" + str(connectionStr) + "'")
+
+                # register socket
+                openConnections[target] = socket
+            except:
+                raise DataHandlingError("Failed to start socket (connect): '" + str(connectionStr) + "'")
+
         # send data to the data stream to store it in the storage system
         if prio == 0:
-            # socket not known
-            if target not in openConnections:
-                # open socket
-                try:
-                    socket        = context.socket(zmq.PUSH)
-                    connectionStr = "tcp://" + str(target)
-
-                    socket.connect(connectionStr)
-                    log.info("Start socket (connect): '" + str(connectionStr) + "'")
-
-                    # register socket
-                    openConnections[target] = socket
-                except:
-                    raise DataHandlingError("Failed to start socket (connect): '" + str(connectionStr) + "'")
-
             # send data
             try:
                 if sendType == "data":
@@ -54,19 +54,7 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
                 raise DataHandlingError("Sending (metadata of) message part from file " + str(sourceFile) +
                                         " to '" + target + "' with priority " + str(prio) + " failed.")
 
-
         else:
-            # socket not known
-            if target not in openConnections:
-                # open socket
-                socket        = context.socket(zmq.PUSH)
-                connectionStr = "tcp://" + str(target)
-
-                socket.connect(connectionStr)
-                log.info("Start socket (connect): '" + str(connectionStr) + "'")
-
-                # register socket
-                openConnections[target] = socket
 
             # send data
             if sendType == "data":
