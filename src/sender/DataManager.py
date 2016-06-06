@@ -538,7 +538,7 @@ class DataManager():
 
 
     def testFixedStreamingHost(self):
-        if self.useDataStream:
+        if self.useDataStream and False:
             try:
                 self.testSocket = self.context.socket(zmq.PUSH)
                 connectionStr   = "tcp://" + self.fixedStreamId
@@ -556,6 +556,8 @@ class DataManager():
                 if not tracker.done:
                     self.log.error("Failed to send test message to fixed streaming host {id}".format(id=self.fixedStreamId), exc_info=True)
                     return False
+                else:
+                    self.log.info("Sending test message to fixed streaming host {id} ... success".format(id=self.fixedStreamId))
             except:
                 self.log.error("Failed to send test message to fixed streaming host {id}".format(id=self.fixedStreamId), exc_info=True)
                 return False
