@@ -152,6 +152,8 @@ class DataDispatcher():
 
     def run (self):
 
+        fixedStreamId = [self.fixedStreamId, 0, [""], "data"]
+
         while True:
             self.log.debug("DataDispatcher-" + str(self.id) + ": waiting for new job")
             socks = dict(self.poller.poll())
@@ -176,7 +178,8 @@ class DataDispatcher():
                     targets  = cPickle.loads(message[1])
 
                     if self.fixedStreamId:
-                        targets.insert(0,[self.fixedStreamId, 0, [""], "data"])
+                        targets.insert(0,fixedStreamId)
+                        self.log.debug("Added fixedStreamId {f} to targets {t}.".format(f=fixedStreamId, t=targets))
 
                     # sort the target list by the priority
                     targets = sorted(targets, key=lambda target: target[1])
@@ -223,7 +226,8 @@ class DataDispatcher():
                             continue
 
                     elif self.fixedStreamId:
-                        targets = [[self.fixedStreamId, 0, [""], "data"]]
+                        targets = [fixedStreamId]
+                        self.log.debug("Added fixedStreamId to targets {t}.".format(t=targets))
 
                     else:
                         targets = []
