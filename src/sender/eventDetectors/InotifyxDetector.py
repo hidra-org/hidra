@@ -339,8 +339,9 @@ class EventDetector():
                 monitoredDirs.append(directory)
                 for root, directories, files in os.walk(directory):
                     # Add the found dirs to the list for the inotify-watch
-                    monitoredDirs.append(root)
-                    self.log.info("Add directory to monitor: " + str(root))
+                    if root not in monitoredDirs:
+                        monitoredDirs.append(root)
+                        self.log.info("Add directory to monitor: " + str(root))
             else:
                 self.log.info("Dir does not exist: " + str(directory))
 
