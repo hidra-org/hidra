@@ -184,7 +184,7 @@ def argumentParsing():
     arguments.logfileName        = arguments.logfileName        or config.get('asection', 'logfileName')
 
     if not helpers.isWindows():
-        arguments.logfileSize    = arguments.logfileSize        or config.get('asection', 'logfileSize')
+        arguments.logfileSize    = arguments.logfileSize        or config.getint('asection', 'logfileSize')
 
     arguments.procname           = arguments.procname           or config.get('asection', 'procname')
 
@@ -338,6 +338,7 @@ class DataManager():
             # Get queue
             self.logQueue    = Queue(-1)
 
+
             # Get the log Configuration for the lisener
             if onScreen:
                 h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
@@ -381,7 +382,7 @@ class DataManager():
             self.routerConId      = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.routerPort)
 
             eventDetConStr        = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.eventPort)
-            dataFetchConStr     = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.dataFetcherPort)
+            dataFetchConStr       = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.dataFetcherPort)
         else:
             self.log.info("Using ipc for internal communication.")
             self.controlPubConId  = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub")
