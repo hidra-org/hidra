@@ -18,12 +18,16 @@ DESC="ZMQ data transfer"
 NAME=zeromq-data-transfer
 #DAEMON=/home/kuhnm/Arbeit/zeromq-data-transfer/src/sender/DataManager.py
 DAEMON=/space/projects/zeromq-data-transfer/src/sender/DataManager.py
+#DAEMON=/home/kuhnm/zeromq-data-transfer/src/sender/DataManager.py
 DAEMON_ARGS="--verbose"
 #PIDFILE=/home/kuhnm/Arbeit/zeromq-data-transfer/$NAME.pid
 PIDFILE=/space/projects/zeromq-data-transfer/$NAME.pid
+#PIDFILE=/home/kuhnm/zeromq-data-transfer/$NAME.pid
+IPCPATH=/tmp/zeromq-data-transfer
 PYTHON=/usr/bin/python
 
 SCRIPTNAME=/etc/init.d/$NAME
+
 
 if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 # Red Hat or Centos...
@@ -31,12 +35,11 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
     # source function library.
     . /etc/rc.d/init.d/functions
 
-    RETVAL=0
     start()
     {
     	echo -n "Starting ${DESC}..."
 	    ${DAEMON} ${DAEMON_ARGS} &
-#	    /usr/bin/python ${DAEMON} --pidfile ${PIDFILE}
+        echo $! > $PIDFILE
     	RETVAL=$?
 #	    [ "$RETVAL" = 0 ] && touch /var/lock/subsys/zeromq-data-transfer
     	echo
@@ -54,14 +57,21 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 #        fi
 
         TIMEOUT=0
-        while checkpid $DATATRANSFER_PID && [ $TIMEOUT -lt 30 ] ; do
+#        while checkpid $DATATRANSFER_PID && [ $TIMEOUT -lt 30 ] ; do
+        while checkpid $DATATRANSFER_PID && [ $TIMEOUT -lt 5 ] ; do
             sleep 1
             let TIMEOUT=TIMEOUT+1
         done
+        echo $DATATRANSFER_PID
+
         if checkpid $DATATRANSFER_PID ; then
-            kill -KILL $DATATRANSFER_PID
-            #TODO rm ipc sockets in /tmp/zeromq-data-transfer
+            killall -KILL $NAME
+
+            SOCKETID=`cat $PIDFILE`
+
+            rm -f "${IPCPATH}/${SOCKETID}"*
         fi
+        rm -f $PIDFILE
     	RETVAL=$?
 #    	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/zeromq-data-transfer
 	    echo
@@ -81,7 +91,6 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             ;;
         status)
             status ${NAME}
-#            status -p ${PIDFILE} ${NAME}
             RETVAL=$?
             ;;
         *)
