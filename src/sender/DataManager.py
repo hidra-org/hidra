@@ -539,7 +539,7 @@ class DataManager():
 
 
     def testFixedStreamingHost(self):
-        if self.useDataStream and False:
+        if self.useDataStream:
             try:
                 self.testSocket = self.context.socket(zmq.PUSH)
                 connectionStr   = "tcp://" + self.fixedStreamId
@@ -551,14 +551,27 @@ class DataManager():
                 return False
 
             try:
-                tracker = self.testSocket.send_multipart([b"ALIVE_TEST"], copy=False, track=True)
-                if not tracker.done:
-                    tracker.wait(2)
-                if not tracker.done:
-                    self.log.error("Failed to send test message to fixed streaming host {id}".format(id=self.fixedStreamId), exc_info=True)
-                    return False
-                else:
+                self.log.debug("ZMQ version used: {v}".format(v=zmq.__version__))
+
+                # With older ZMQ versions the tracker results in an ZMQError in
+                # the DataDispatchers when an event is processed
+                # (ZMQError: Address already in use)
+                if zmq.__version__ >= "14.5.0":
+
+                    self.testSocket.send_multipart([b"ALIVE_TEST"])
                     self.log.info("Sending test message to fixed streaming host {id} ... success".format(id=self.fixedStreamId))
+
+                else:
+
+                    tracker = self.testSocket.send_multipart([b"ALIVE_TEST"], copy=False, track=True)
+                    if not tracker.done:
+                        tracker.wait(2)
+                    self.log.debug("tracker.done = {t}".format(t=tracker.done))
+                    if not tracker.done:
+                        self.log.error("Failed to send test message to fixed streaming host {id}".format(id=self.fixedStreamId), exc_info=True)
+                        return False
+                    else:
+                        self.log.info("Sending test message to fixed streaming host {id} ... success".format(id=self.fixedStreamId))
             except:
                 self.log.error("Failed to send test message to fixed streaming host {id}".format(id=self.fixedStreamId), exc_info=True)
                 return False
