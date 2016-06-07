@@ -665,15 +665,19 @@ class DataManager():
             self.context.destroy(0)
             self.context = None
 
+        controlPubPath = "{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub")
+        controlSubPath = "{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub")
         try:
-            controlPubPath = "{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub")
-            controlSubPath = "{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub")
-            if os.path.isfile(controlPubPath):
-                os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlPub"))
-            if os.path.isfile(controlPubPath):
-                os.remove("{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub"))
-        except Exception:
-            self.log.error("Could not remove remaining ipc sockets", exc_info=True)
+            os.remove(controlPubPath)
+            self.log.debug("Removed ipc socket: {p}".format(p=controlPubPath))
+        except:
+            self.log.warning("Could not remove ipc socket: {p}".format(p=controlPubPath), exc_info=True)
+
+        try:
+            os.remove(controlSubPath)
+            self.log.debug("Removed ipc socket: {s}".format(s=controlSubPath))
+        except:
+            self.log.debug("Could not remove ipc socket: {s}".format(s=controlSubPath), exc_info=True)
 
         if not self.extLogQueue and self.logQueueListener:
             self.log.info("Stopping logQueue")
