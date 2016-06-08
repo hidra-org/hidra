@@ -492,6 +492,8 @@ class DataManager():
                 self.createSockets()
 
                 self.run()
+        except KeyboardInterrupt:
+            pass
         except:
             self.error("Stopping due to unknown error condition", exc_info=True)
         finally:
