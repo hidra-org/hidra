@@ -88,7 +88,7 @@ class SignalHandler():
 
             self.run()
         except zmq.ZMQError:
-            pass
+            self.log.error("Stopping signalHandler due to ZMQError.", exc_info=True)
         except KeyboardInterrupt:
             pass
         except:

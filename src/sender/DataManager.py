@@ -493,7 +493,7 @@ class DataManager():
 
                 self.run()
         except:
-            pass
+            self.error("Stopping due to unknown error condition", exc_info=True)
         finally:
             self.stop()
 
