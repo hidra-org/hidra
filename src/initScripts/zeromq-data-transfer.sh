@@ -146,8 +146,6 @@ elif [ -f /etc/debian_version ] ; then
         start-stop-daemon --stop --quiet --pidfile $PIDFILE #--name $NAME
 #        start-stop-daemon --stop --quiet --retry=TERM/180/KILL/5 --pidfile $PIDFILE
 
-#        pidofproc $NAME || status="$?";
-
         RETVAL="$?"
         [ "$RETVAL" = 2 ] && return 2
         # Wait for children to finish too if this is a daemon that forks
@@ -158,6 +156,10 @@ elif [ -f /etc/debian_version ] ; then
         # sleep for some time.
         start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $DAEMON
         [ "$?" = 2 ] && return 2
+
+        SOCKETID=`cat $PIDFILE`
+        rm -f "${IPCPATH}/${SOCKETID}"*
+
         # Many daemons don't delete their pidfiles when they exit.
         rm -f $PIDFILE
         return "$RETVAL"
