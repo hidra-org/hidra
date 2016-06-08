@@ -60,25 +60,26 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
     else:
         targetFile = None
 
-    try:
-        log.debug("create metadata for source file...")
-        #metadata = {
-        #        "filename"       : ...,
-        #        "sourcePath"     : ...,
-        #        "relativePath"   : ...,
-        #        "filesize"       : ...,
-        #        "fileModTime"    : ...,
-        #        "fileCreateTime" : ...,
-        #        "chunkSize"      : ...
-        #        }
-        metadata[ "fileModTime" ]   = time.time()
-        metadata[ "fileCreateTime"] = time.time()
-        metadata[ "chunkSize" ]     = chunkSize
+    if targets:
+        try:
+            log.debug("create metadata for source file...")
+            #metadata = {
+            #        "filename"       : ...,
+            #        "sourcePath"     : ...,
+            #        "relativePath"   : ...,
+            #        "filesize"       : ...,
+            #        "fileModTime"    : ...,
+            #        "fileCreateTime" : ...,
+            #        "chunkSize"      : ...
+            #        }
+            metadata[ "fileModTime" ]   = time.time()
+            metadata[ "fileCreateTime"] = time.time()
+            metadata[ "chunkSize" ]     = chunkSize
 
-        log.debug("metadata = " + str(metadata))
-    except:
-        log.error("Unable to assemble multi-part message.", exc_info=True)
-        raise
+            log.debug("metadata = " + str(metadata))
+        except:
+            log.error("Unable to assemble multi-part message.", exc_info=True)
+            raise
 
     return sourceFile, targetFile, metadata
 

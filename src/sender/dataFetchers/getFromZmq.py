@@ -88,9 +88,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
             log.error("Unable to assemble multi-part message.", exc_info=True)
             raise
 
-        return sourceFile, targetFile, metadata
-    else:
-        return sourceFile, targetFile, dict()
+    return sourceFile, targetFile, metadata
 
 
 def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
