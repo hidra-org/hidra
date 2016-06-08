@@ -94,13 +94,8 @@ class EventDetector():
             eventMessageList = [ eventMessage for i in range(self.numberOfStreams) ]
         else:
 
-            eventMessage = json.loads(eventMessage)
-#            eventMessage = cPickle.loads(eventMessage)
-
-            # Convert back to ascii
-            eventMessage["filename"] = eventMessage["filename"].encode('ascii')
-
-            eventMessageList = [ eventMessage ]
+            eventMessageList = [ json.loads(eventMessage) ]
+#            eventMessageList = [ cPickle.loads(eventMessage) ]
 
         self.log.debug("eventMessage: " + str(eventMessageList))
 
