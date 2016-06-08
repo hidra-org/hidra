@@ -451,22 +451,19 @@ class dataTransfer():
                 return [None, None]
 
 
-    def store (self, targetBasePath, dataObject):
-
-        if type(dataObject) is not list and len(dataObject) != 2:
-            raise FormatError("Wrong input type for 'store'")
-
-        payloadMetadata   = dataObject[0]
-        payload           = dataObject[1]
-
-
-        if type(payloadMetadata) is not dict:
-            raise FormatError("payload: Wrong input format in 'store'")
+    def store (self, targetBasePath):
 
         #save all chunks to file
         while True:
 
-            #TODO check if payload != cPickle.dumps(None) ?
+            try:
+                [payloadMetadata, payload] = self.get()
+            except KeyboardInterrupt:
+                raise
+            except:
+                self.log.error("Getting data failed.", exc_info=True)
+                raise
+
             if payloadMetadata and payload:
                 #append to file
                 try:
@@ -474,7 +471,6 @@ class dataTransfer():
                     #TODO: save message to file using a thread (avoids blocking)
                     #TODO: instead of open/close file for each chunk recyle the file-descriptor for all chunks opened
                     self.__appendChunksToFile(targetBasePath, payloadMetadata, payload)
-                    self.log.debug("append to file based on multipart-message...success.")
                 except KeyboardInterrupt:
                     self.log.info("KeyboardInterrupt detected. Unable to append multipart-content to file.")
                     break
@@ -489,12 +485,6 @@ class dataTransfer():
 
                     self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
                     break
-
-            try:
-                [payloadMetadata, payload] = self.get()
-            except:
-                self.log.error("Getting data failed.", exc_info=True)
-                break
 
 
     def __appendChunksToFile (self, targetBasePath, configDict, payload):

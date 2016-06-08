@@ -495,7 +495,7 @@ class DataManager():
         except KeyboardInterrupt:
             pass
         except:
-            self.error("Stopping due to unknown error condition", exc_info=True)
+            self.log.error("Stopping due to unknown error condition", exc_info=True)
         finally:
             self.stop()
 

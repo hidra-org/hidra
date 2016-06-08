@@ -154,6 +154,10 @@ class DataReceiver:
 
         try:
             self.run()
+        except KeyboardInterrupt:
+            pass
+        except:
+            self.log.error("Stopping due to unknown error condition", exc_info=True)
         finally:
             self.stop()
 
@@ -179,12 +183,9 @@ class DataReceiver:
         #run loop, and wait for incoming messages
         while continueReceiving:
             try:
-                [payloadMetadata, payload] = self.dataTransfer.get()
-            except:
+                self.dataTransfer.store(self.targetDir)
+            except KeyboardInterrupt:
                 break
-
-            try:
-                self.dataTransfer.store(self.targetDir, [payloadMetadata, payload] )
             except:
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise
