@@ -390,8 +390,8 @@ class DataManager():
             self.requestFwConId   = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="requestFw")
             self.routerConId      = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="router")
 
-            eventDetConStr        = "ipc://{path}/{id}".format(path=self.ipcPath, id="eventDetConId")
-            dataFetchConStr       = "ipc://{path}/{id}".format(path=self.ipcPath, id="dataFetchConId")
+            eventDetConStr        = "ipc://{path}/{id}".format(path=self.ipcPath, id="eventDet")
+            dataFetchConStr       = "ipc://{path}/{id}".format(path=self.ipcPath, id="dataFetch")
 
 
         self.whitelist        = arguments.whitelist

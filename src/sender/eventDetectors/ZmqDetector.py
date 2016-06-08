@@ -164,7 +164,7 @@ if __name__ == '__main__':
     root.addHandler(qh)
 
 
-    eventDetConStr  = "ipc://{ip}/{port}".format(ip="/tmp/zeromq-data-transfer", port="eventDetConId")
+    eventDetConStr  = "ipc://{ip}/{port}".format(ip="/tmp/zeromq-data-transfer", port="eventDet")
     print "eventDetConStr", eventDetConStr
     numberOfStreams = 1
     config = {

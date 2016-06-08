@@ -89,10 +89,10 @@ class dataIngest():
             self.dataFetchConId = "tcp://{ip}:{port}".format(ip=self.localhost, port=self.dataFetchPort)
         else:
             self.log.info("Using ipc for internal communication.")
-            self.eventDetConId  = "ipc://{path}/{id}".format(path=self.ipcPath, id="eventDetConId")
-            self.dataFetchConId = "ipc://{path}/{id}".format(path=self.ipcPath, id="dataFetchConId")
-#            self.eventDetConId   = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="eventDetConId")
-#            self.dataFetchConId  = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="dataFetchConId")
+            self.eventDetConId  = "ipc://{path}/{id}".format(path=self.ipcPath, id="eventDet")
+            self.dataFetchConId = "ipc://{path}/{id}".format(path=self.ipcPath, id="dataFetch")
+#            self.eventDetConId   = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="eventDet")
+#            self.dataFetchConId  = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="dataFetch")
 
         self.signalSocket    = None
         self.eventDetSocket  = None
