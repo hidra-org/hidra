@@ -672,12 +672,16 @@ class DataManager():
         try:
             os.remove(controlPubPath)
             self.log.debug("Removed ipc socket: {p}".format(p=controlPubPath))
+        except OSError:
+            self.log.warning("Could not remove ipc socket: {p}".format(p=controlPubPath))
         except:
             self.log.warning("Could not remove ipc socket: {p}".format(p=controlPubPath), exc_info=True)
 
         try:
             os.remove(controlSubPath)
             self.log.debug("Removed ipc socket: {s}".format(s=controlSubPath))
+        except OSError:
+            self.log.warning("Could not remove ipc socket: {s}".format(s=controlSubPath))
         except:
             self.log.debug("Could not remove ipc socket: {s}".format(s=controlSubPath), exc_info=True)
 
