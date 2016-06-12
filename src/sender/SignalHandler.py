@@ -207,10 +207,14 @@ class SignalHandler():
                         if openRequests:
                             self.requestFwSocket.send(cPickle.dumps(openRequests))
                             self.log.debug("Answered to request: " + str(openRequests))
+                            self.log.debug("openRequVari: " + str(self.openRequVari))
+                            self.log.debug("allowedQueries: " + str(self.allowedQueries))
                         else:
                             openRequests = ["None"]
                             self.requestFwSocket.send(cPickle.dumps(openRequests))
                             self.log.debug("Answered to request: " + str(openRequests))
+                            self.log.debug("openRequVari: " + str(self.openRequVari))
+                            self.log.debug("allowedQueries: " + str(self.allowedQueries))
 
                 except:
                     self.log.error("Failed to receive/answer new signal requests.", exc_info=True)
