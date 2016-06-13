@@ -89,11 +89,6 @@ if __name__ == "__main__":
 #    signalHost = "lsdma-lab04.desy.de"
 #    signalHost = "asap3-bl-prx07.desy.de"
 
-    targets = [[signalHost, "50101", 1, [".cbf"]], [signalHost, "50102", 1, [".cbf"]], [signalHost, "50103", 1, [".cbf"]]]
-#    targets = [[signalHost, "50101", 1, [".cbf"]]]
-#    targets = [[signalHost, "50101", 1], [signalHost, "50102", 1], [signalHost, "50103", 1]]
-#    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]], ["zitpcx19282.desy.de", "50102", 1, [".cbf"]], ["zitpcx19282.desy.de", "50103", 1, [".cbf"]], ["lsdma-lab04.desy.de", "50104", 1, [".cbf"]]]
-
 #    transferType = "queryNext"
 #    transferType = "stream"
 #    transferType = "streamMetadata"
@@ -105,10 +100,19 @@ if __name__ == "__main__":
     numberOfWorker = 3
     workers = []
 
+    targets = []
+
     for n in range(numberOfWorker):
         p = str(50100 + n)
+
+        targets.append([signalHost, p, 1, [".cbf"]])
+
         w = multiprocessing.Process(target=worker, args=(n, transferType, basePath, signalHost, p))
         workers.append(w)
+
+#    targets = [[signalHost, "50101", 1, [".cbf"]]]
+#    targets = [[signalHost, "50101", 1], [signalHost, "50102", 1], [signalHost, "50103", 1]]
+#    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]], ["zitpcx19282.desy.de", "50102", 1, [".cbf"]], ["zitpcx19282.desy.de", "50103", 1, [".cbf"]], ["lsdma-lab04.desy.de", "50104", 1, [".cbf"]]]
 
     query = dataTransfer(transferType, signalHost, useLog = True)
     query.initiate(targets)
