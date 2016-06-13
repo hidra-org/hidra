@@ -328,17 +328,31 @@ class dataTransfer():
 
             socketId = host + ":" + port
             socketIdToConnect = ip + ":" + port
-#            socketIdToConnect = "[" + ip + "]:" + port
 
+#            try:
+#                socket.inet_aton(ip)
+#                self.log.info("IPv4 address detected ({ip}).".format(ip=ip))
+#                socketIdToConnect = ip + ":" + port
+#                isIPv6 = False
+#            except socket.error:
+#                self.log.info("Not a IPv4 address ({ip}), asume it's an IPv6 address.".format(ip=ip))
+#                socketIdToConnect = "[" + ip + "]:" + port
+#                isIPv6 = True
+
+#            socketIdToConnect = "192.168.178.25:" + port
 
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
         connectionStr = "tcp://" + socketIdToConnect
+
         if whitelist:
             self.dataSocket.zap_domain = b'global'
 
-        try:
+#        if isIPv6:
 #            self.dataSocket.ipv6 = True
+#            self.log.debug("Enabling IPv6 socket")
+
+        try:
             self.dataSocket.bind(connectionStr)
 #            self.dataSocket.bind("tcp://[2003:ce:5bc0:a600:fa16:54ff:fef4:9fc0]:50102")
             self.log.info("Data socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
