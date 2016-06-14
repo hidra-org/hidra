@@ -103,6 +103,10 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
 
     targets_data       = [i for i in targets if i[3] == "data"]
 
+    if not targets_data:
+        prop["removeFlag"] = True
+        return
+
     prop["removeFlag"] = False
     chunkSize          = metadata[ "chunkSize" ]
 
@@ -141,8 +145,6 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         #send message to data targets
         try:
             __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, None, chunkPayload, context)
-            log.debug("Passing multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")...done.")
-
         except DataHandlingError:
             log.error("Unable to send multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")", exc_info=True)
             sendError = True

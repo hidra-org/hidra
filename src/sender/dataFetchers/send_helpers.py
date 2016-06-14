@@ -72,11 +72,11 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
             if sendType == "data":
                 openConnections[target].send_multipart(payload, zmq.NOBLOCK)
                 log.info("Sending message part from file " + str(sourceFile) +
-                         " to " + target)
+                         " to '" + target + "' with priority " + str(prio) )
 
             elif sendType == "metadata":
                 openConnections[target].send_multipart([cPickle.dumps(metadata), cPickle.dumps(None)], zmq.NOBLOCK)
                 log.info("Sending metadata of message part from file " + str(sourceFile) +
-                         " to " + target)
+                         " to '" + target + "' with priority " + str(prio) )
                 log.debug("metadata=" + str(metadata))
 
