@@ -1,3 +1,14 @@
+Zeromq Data Transfer develop
+
+- Handling of open connections to known hosts with different send configurations
+- Changed socket format in dataIngestAPI to IPC (on Linux)
+- Fixed receiving of CLOSE_FILE messages in nexusTransferAPI
+- Removed timeout warning in dataTransferAPI
+- Fixed double adding to watch in InotifyxDetector
+- Tracker in ALIVE_TEST only used if ZMQ version id higher that 14.5.0 due to error in older ZMQ versions
+- Fixed IPC socket cleanup
+- Fixed getMetadata if no targets are specified
+
 Zeromq Data Transfer 2.3.1
 
 - Fixed log rotation
