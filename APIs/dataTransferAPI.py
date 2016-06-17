@@ -41,6 +41,9 @@ class noLoggingFunction:
 class NotSupported(Exception):
     pass
 
+class UsageError(Exception):
+    pass
+
 class FormatError(Exception):
     pass
 
@@ -80,16 +83,21 @@ class dataTransfer():
             self.context    = zmq.Context()
             self.extContext = False
 
+        self.currentPID            = os.getpid()
 
         self.signalHost            = signalHost
         self.signalPort            = "50000"
         self.requestPort           = "50001"
+        self.fileOpPort            = "50050"
         self.dataHost              = None
         self.dataPort              = None
+        self.ipcPath               = "/tmp/zeromq-data-transfer"
 
         self.signalSocket          = None
-        self.dataSocket            = None
         self.requestSocket         = None
+        self.fileOpSocket          = None
+        self.controlRecv           = None
+        self.dataSocket            = None
 
         self.poller                = zmq.Poller()
 
@@ -97,14 +105,26 @@ class dataTransfer():
 
         self.targets               = None
 
-        self.supportedConnections = ["stream", "streamMetadata", "queryNext", "queryMetadata"]
+        self.supportedConnections = ["stream", "streamMetadata", "queryNext", "queryMetadata", "nexus"]
 
         self.signalExchanged       = None
 
         self.streamStarted         = None
         self.queryNextStarted      = None
+        self.nexusStarted          = None
 
         self.socketResponseTimeout = 1000
+
+        self.numberOfStreams       = None
+        self.recvdCloseFrom        = []
+        self.replyToSignal         = False
+        self.allCloseRecvd         = False
+
+        self.fileOpened            = False
+        self.callbackParams        = None
+        self.openCallback          = None
+        self.readCallback          = None
+        self.closeCallback         = None
 
         if connectionType in self.supportedConnections:
             self.connectionType = connectionType
@@ -114,6 +134,9 @@ class dataTransfer():
 
     # targets: [host, port, prio] or [[host, port, prio], ...]
     def initiate (self, targets):
+        if self.connectionType == "nexus":
+            self.log.info("There is no need for a signal exchange for connection type 'nexus'")
+            return
 
         if type(targets) != list:
             self.stop()
@@ -146,6 +169,7 @@ class dataTransfer():
         else:
             self.stop()
             raise ConnectionFailed("No host to send signal to specified." )
+
 
         self.__setTargets (targets)
 
@@ -291,9 +315,9 @@ class dataTransfer():
                 raise FormatError("Whitelist has to be a list of IPs")
 
 
-        socketIdToConnect = self.streamStarted or self.queryNextStarted
+        socketIdToBind = self.streamStarted or self.queryNextStarted or self.nexusStarted
 
-        if socketIdToConnect:
+        if socketIdToBind:
             self.log.info("Reopening already started connection.")
         else:
 
@@ -304,7 +328,7 @@ class dataTransfer():
 
             if dataSocket:
                 if type(dataSocket) == list:
-                    socketIdToConnect = dataSocket[0] + ":" + dataSocket[1]
+                    socketIdToBind = dataSocket[0] + ":" + dataSocket[1]
                     host = dataSocket[0]
                     ip   = socket.gethostbyaddr(host)[2][0]
                     port = dataSocket[1]
@@ -327,23 +351,23 @@ class dataTransfer():
                 raise FormatError("Multipe possible ports. Please choose which one to use.")
 
             socketId = host + ":" + port
-            socketIdToConnect = ip + ":" + port
+            socketIdToBind = ip + ":" + port
 
 #            try:
 #                socket.inet_aton(ip)
 #                self.log.info("IPv4 address detected ({ip}).".format(ip=ip))
-#                socketIdToConnect = ip + ":" + port
+#                socketIdToBind = ip + ":" + port
 #                isIPv6 = False
 #            except socket.error:
 #                self.log.info("Not a IPv4 address ({ip}), asume it's an IPv6 address.".format(ip=ip))
-#                socketIdToConnect = "[" + ip + "]:" + port
+#                socketIdToBind = "[" + ip + "]:" + port
 #                isIPv6 = True
 
-#            socketIdToConnect = "192.168.178.25:" + port
+#            socketIdToBind = "192.168.178.25:" + port
 
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
-        connectionStr = "tcp://" + socketIdToConnect
+        connectionStr = "tcp://" + socketIdToBind
 
         if whitelist:
             self.dataSocket.zap_domain = b'global'
@@ -375,8 +399,161 @@ class dataTransfer():
                 raise
 
             self.queryNextStarted = socketId
+
+        elif self.connectionType in ["nexus"]:
+
+            self.fileOpSocket = self.context.socket(zmq.REP)
+            # An additional socket is needed to get signals to open and close nexus files
+            connectionStr     = "tcp://" + ip + ":" + self.fileOpPort
+            try:
+                self.fileOpSocket.bind(connectionStr)
+                self.log.info("File operation socket started (bind) for '" + connectionStr + "'")
+            except:
+                self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'", exc_info=True)
+
+            if not os.path.exists(self.ipcPath):
+                os.makedirs(self.ipcPath)
+
+            self.controlSocket   = self.context.socket(zmq.PULL)
+            controlConStr        = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="control_API")
+            try:
+                self.controlSocket.bind(controlConStr)
+                self.log.info("Internal controlling socket started (bind) for '" + controlConStr + "'")
+            except:
+                self.log.error("Failed to start internal controlling socket (bind): '" + controlConStr + "'", exc_info=True)
+
+            self.poller.register(self.fileOpSocket, zmq.POLLIN)
+            self.poller.register(self.controlSocket, zmq.POLLIN)
+
+            self.nexusStarted = socketId
         else:
             self.streamStarted    = socketId
+
+
+    def read(self, callbackParams, openCallback, readCallback, closeCallback):
+
+        if not self.connectionType == "nexus" or not self.nexusStarted:
+            raise UsageError("Wrong connection type (current: {conType}) or session not started.".format(conType=self.connectionType))
+
+        self.callbackParams = callbackParams
+        self.openCallback   = openCallback
+        self.readCallback   = readCallback
+        self.closeCallback  = closeCallback
+
+        while True:
+            self.log.debug("polling")
+            try:
+                socks = dict(self.poller.poll())
+            except:
+                self.log.error("Could not poll for new message")
+                raise
+
+            if self.fileOpSocket in socks and socks[self.fileOpSocket] == zmq.POLLIN:
+                self.log.debug("fileOpSocket is polling")
+
+                message = self.fileOpSocket.recv()
+                self.log.debug("fileOpSocket recv: " + message)
+
+                if message == b"CLOSE_FILE":
+                    if self.allCloseRecvd:
+                        self.fileOpSocket.send(message)
+                        logging.debug("fileOpSocket send: " + message)
+                        self.allCloseRecvd = False
+                        break
+                    else:
+                        self.replyToSignal = message
+                elif message == b"OPEN_FILE":
+                    self.fileOpSocket.send(message)
+                    self.log.debug("fileOpSocket send: " + message)
+
+                    self.openCallback(self.callbackParams, message)
+                    self.fileOpened = True
+#                    return message
+                else:
+                    self.fileOpSocket.send("ERROR")
+                    self.log.debug("fileOpSocket send: " + message)
+
+            if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
+                self.log.debug("dataSocket is polling")
+
+                try:
+                    multipartMessage = self.dataSocket.recv_multipart()
+                    self.log.debug("multipartMessage=" + str(multipartMessage))
+                except:
+                    self.log.error("Could not receive data due to unknown error.", exc_info=True)
+
+                if multipartMessage[0] == b"ALIVE_TEST":
+                    continue
+
+                if len(multipartMessage) < 2:
+                    self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
+                    self.log.debug("multipartMessage=" + str(multipartMessage))
+                    #TODO return errorcode
+
+                try:
+                    self.__reactOnMessage(multipartMessage)
+                except KeyboardInterrupt:
+                    self.log.debug("Keyboard interrupt detected. Stopping to receive.")
+                    raise
+                except:
+                    self.log.error("Unknown error while receiving files. Need to abort.", exc_info=True)
+                    return None, None
+
+            if self.controlSocket in socks and socks[self.controlSocket] == zmq.POLLIN:
+                self.log.debug("controlSocket is polling")
+                self.controlSocket.recv()
+#                self.log.debug("Control signal received. Stopping.")
+                raise Exception("Control signal received. Stopping.")
+
+
+    def __reactOnMessage(self, multipartMessage):
+
+        if multipartMessage[0] == b"CLOSE_FILE":
+            id = multipartMessage[1]
+            self.recvdCloseFrom.append(id)
+            self.log.debug("Received close-file-signal from DataDispatcher-" + id)
+
+            # get number of signals to wait for
+            if not self.numberOfStreams:
+                self.numberOfStreams = int(id.split("/")[1])
+
+            # have all signals arrived?
+            self.log.debug("self.recvdCloseFrom=" + str(self.recvdCloseFrom) + ", self.numberOfStreams=" + str(self.numberOfStreams))
+            if len(self.recvdCloseFrom) == self.numberOfStreams:
+                self.log.info("All close-file-signals arrived")
+                self.allCloseRecvd = True
+                if self.replyToSignal:
+                    self.fileOpSocket.send(self.replyToSignal)
+                    self.log.debug("fileOpSocket send: " + self.replyToSignal)
+                    self.replyToSignal = False
+                    self.recvdCloseFrom = []
+                else:
+                    pass
+
+                self.closeCallback(self.callbackParams, multipartMessage)
+            else:
+                self.log.info("self.recvdCloseFrom=" + str(self.recvdCloseFrom) + ", self.numberOfStreams=" + str(self.numberOfStreams))
+
+        else:
+            #extract multipart message
+            try:
+                #TODO exchange cPickle with json
+                metadata = cPickle.loads(multipartMessage[0])
+            except:
+                self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
+                metadata = None
+
+            #TODO validate multipartMessage (like correct dict-values for metadata)
+
+            try:
+                payload = multipartMessage[1:]
+            except:
+                self.log.warning("An empty file was received within the multipart-message", exc_info=True)
+                payload = None
+
+            self.readCallback(self.callbackParams, [metadata, payload])
+
+
 
 
     ##
@@ -617,6 +794,23 @@ class dataTransfer():
                 self.log.info("closing requestSocket...")
                 self.requestSocket.close(linger=0)
                 self.requestSocket = None
+            if self.fileOpSocket:
+                self.log.info("closing fileOpSocket...")
+                self.fileOpSocket.close(linger=0)
+                self.fileOpSocket = None
+            if self.controlSocket:
+                self.log.info("closing controlRecvSocket...")
+                self.controlSocket.close(linger=0)
+                self.controlSocket = None
+
+                controlConStr = "{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="control_API")
+                try:
+                    os.remove(controlConStr)
+                    self.log.debug("Removed ipc socket: {p}".format(p=controlConStr))
+                except OSError:
+                    self.log.warning("Could not remove ipc socket: {p}".format(p=controlConStr))
+                except:
+                    self.log.warning("Could not remove ipc socket: {p}".format(p=controlConStr), exc_info=True)
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
