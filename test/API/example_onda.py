@@ -89,10 +89,10 @@ if __name__ == "__main__":
 #    signalHost = "lsdma-lab04.desy.de"
 #    signalHost = "asap3-bl-prx07.desy.de"
 
-#    transferType = "queryNext"
+    transferType = "queryNext"
 #    transferType = "stream"
 #    transferType = "streamMetadata"
-    transferType = "queryMetadata"
+#    transferType = "queryMetadata"
 
     basePath = BASE_PATH + os.sep + "data" + os.sep + "target"
 #    basePath = "/asap3/petra3/gpfs/p00/2016/commissioning/c20160205_000_smbtest/"

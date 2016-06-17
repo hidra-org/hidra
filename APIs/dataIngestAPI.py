@@ -8,6 +8,7 @@ import zmq
 import logging
 import cPickle
 import traceback
+import json
 
 class loggingFunction:
     def out (self, x, exc_info = None):
@@ -163,12 +164,12 @@ class dataIngest():
 
     def write (self, data):
         # send event to eventDet
-#        message = {
-#                "filename" : self.filename,
-#                "filePart" : self.filePart
-#                }
-#        message = "{ 'filename': " + self.filename + ", 'filePart': " + self.filePart + "}"
-        message = '{ "filePart": ' + str(self.filePart) + ', "filename": "' + self.filename + '" }'
+        message = {
+                "filename" : self.filename,
+                "filePart" : self.filePart
+                }
+#        message = '{ "filePart": ' + str(self.filePart) + ', "filename": "' + self.filename + '" }'
+        message = json.dumps(message)
         self.eventDetSocket.send(message)
 
         # send data to ZMQ-Queue

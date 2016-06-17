@@ -155,10 +155,11 @@ class Receiver (threading.Thread):
 
 context    = zmq.Context()
 
-receiverThread = Receiver(context)
-receiverThread.start()
+useTest = False
 
-
+if useTest:
+    receiverThread = Receiver(context)
+    receiverThread.start()
 
 obj = dataIngest(useLog = True, context = context)
 
@@ -181,7 +182,9 @@ except:
 
 logging.info("Stopping")
 
-receiverThread.stop()
+if useTest:
+    receiverThread.stop()
+
 obj.stop()
 
 print

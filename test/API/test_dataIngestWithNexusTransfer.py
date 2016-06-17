@@ -178,9 +178,12 @@ def runNexusTransfer(numbToRecv):
 
     nT.stop()
 
+useTest = True
+#useTest = False
 
-zmqDataManagerThread = ZmqDataManager()
-zmqDataManagerThread.start()
+if useTest:
+    zmqDataManagerThread = ZmqDataManager()
+    zmqDataManagerThread.start()
 
 number = 5
 
@@ -192,7 +195,9 @@ runNexusTransferThread.start()
 
 runDataIngestThread.join()
 runNexusTransferThread.join()
-zmqDataManagerThread.stop()
+
+if useTest:
+    zmqDataManagerThread.stop()
 
 print
 print "==== TEST END: data ingest together with nexus transfer ===="

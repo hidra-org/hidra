@@ -55,8 +55,7 @@ class Sender(threading.Thread):
 
 
     def run(self):
-        message = "OPEN_FILE"
-        self.signalSocket.send(message)
+        self.signalSocket.send("OPEN_FILE")
 
         recvMessage = self.signalSocket.recv()
 
@@ -67,6 +66,7 @@ class Sender(threading.Thread):
                 "filename"    : str(i) + ".cbf"
                 }
             metadata = cPickle.dumps(metadata)
+
             data     = "THISISTESTDATA-" + str(i)
 
             dataMessage = [metadata, data]
@@ -105,8 +105,6 @@ class Sender(threading.Thread):
 
 senderThread = Sender()
 senderThread.start()
-
-
 
 obj = nexusTransfer(useLog = True)
 
