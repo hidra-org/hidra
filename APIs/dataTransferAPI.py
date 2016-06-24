@@ -96,8 +96,8 @@ class dataTransfer():
         self.signalSocket          = None
         self.requestSocket         = None
         self.fileOpSocket          = None
-        self.controlRecv           = None
         self.dataSocket            = None
+        self.controlSocket         = None
 
         self.poller                = zmq.Poller()
 
@@ -119,6 +119,8 @@ class dataTransfer():
         self.recvdCloseFrom        = []
         self.replyToSignal         = False
         self.allCloseRecvd         = False
+
+        self.fileDescriptors       = dict()
 
         self.fileOpened            = False
         self.callbackParams        = None
@@ -656,67 +658,50 @@ class dataTransfer():
                 raise
 
             if payloadMetadata and payload:
-                #append to file
+
+                #generate target filepath
+                targetFilepath = self.generateTargetFilepath(targetBasePath, payloadMetadata)
+                self.log.debug("New chunk for file {f} received.".format(f=targetFilepath))
+
+                #append payload to file
+                #TODO: save message to file using a thread (avoids blocking)
                 try:
-                    self.log.debug("append to file based on multipart-message...")
-                    #TODO: save message to file using a thread (avoids blocking)
-                    #TODO: instead of open/close file for each chunk recyle the file-descriptor for all chunks opened
-                    self.__appendChunksToFile(targetBasePath, payloadMetadata, payload)
+                    self.fileDescriptors[targetFilepath].write(payload)
+                # File was not open
+                except KeyError:
+                    try:
+                        self.fileDescriptors[targetFilepath] = open(targetFilepath, "w")
+                    except IOError, e:
+                        # errno.ENOENT == "No such file or directory"
+                        if e.errno == errno.ENOENT:
+                            try:
+                                #TODO do not create commissioning, current, local
+                                targetPath = self.__generateTargetPath(targetBasePath, payloadMetadata)
+                                os.makedirs(targetPath)
+
+                                self.fileDescriptors[targetFilepath] = open(targetFilepath, "w")
+                                self.log.info("New target directory created: " + str(targetPath))
+                            except:
+                                self.log.error("Unable to save payload to file: '" + targetFilepath + "'", exc_info=True)
+                                self.log.debug("targetPath:" + str(targetPath))
+                        else:
+                            self.log.error("Failed to append payload to file: '" + targetFilepath + "'", exc_info=True)
                 except KeyboardInterrupt:
                     self.log.info("KeyboardInterrupt detected. Unable to append multipart-content to file.")
                     break
-                except Exception, e:
-                    self.log.error("Unable to append multipart-content to file.", exc_info=True)
-                    self.log.debug("Append to file based on multipart-message...failed.")
+                except:
+                    self.log.error("Failed to append payload to file: '" + targetFilepath + "'", exc_info=True)
 
                 if len(payload) < payloadMetadata["chunkSize"] :
                     #indicated end of file. Leave loop
                     filename    = self.generateTargetFilepath(targetBasePath, payloadMetadata)
                     fileModTime = payloadMetadata["fileModTime"]
 
+                    self.fileDescriptors[targetFilepath].close()
+                    del self.fileDescriptors[targetFilepath]
+
                     self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
                     break
-
-
-    def __appendChunksToFile (self, targetBasePath, configDict, payload):
-
-        #generate target filepath
-        targetFilepath = self.generateTargetFilepath(targetBasePath, configDict)
-        self.log.debug("new file is going to be created at: " + targetFilepath)
-
-
-        #append payload to file
-        try:
-            newFile = open(targetFilepath, "a")
-        except IOError, e:
-            # errno.ENOENT == "No such file or directory"
-            if e.errno == errno.ENOENT:
-                try:
-                    #TODO do not create commissioning, current, local
-                    targetPath = self.__generateTargetPath(targetBasePath, configDict)
-                    os.makedirs(targetPath)
-                    newFile = open(targetFilepath, "w")
-                    self.log.info("New target directory created: " + str(targetPath))
-                except:
-                    self.log.error("Unable to save payload to file: '" + targetFilepath + "'")
-                    self.log.debug("targetPath:" + str(targetPath))
-                    raise
-            else:
-                self.log.error("Failed to append payload to file: '" + targetFilepath + "'")
-                raise
-        except:
-            self.log.error("Failed to append payload to file: '" + targetFilepath + "'")
-#            self.log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
-            raise
-
-        #only write data if a payload exist
-        try:
-            if payload != None:
-                newFile.write(payload)
-            newFile.close()
-        except:
-            self.log.error("Unable to append data to file.")
-            raise
 
 
     def generateTargetFilepath (self, basePath, configDict):
@@ -799,7 +784,7 @@ class dataTransfer():
                 self.fileOpSocket.close(linger=0)
                 self.fileOpSocket = None
             if self.controlSocket:
-                self.log.info("closing controlRecvSocket...")
+                self.log.info("closing controlSocket...")
                 self.controlSocket.close(linger=0)
                 self.controlSocket = None
 
@@ -821,6 +806,13 @@ class dataTransfer():
                 self.log.info("Stopping authentication thread...done.")
             except:
                 self.log.error("Stopping authentication thread...done.", exc_info=True)
+
+        for target in self.fileDescriptors:
+            self.fileDescriptors[target].close()
+            self.log.warning("Not all chunks were received for file {t}".format(t=target))
+
+        if self.fileDescriptors:
+            self.fileDescriptors = dict()
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class
