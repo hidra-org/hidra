@@ -60,11 +60,14 @@ class ZmqDT():
     this class holds getter/setter for all parameters
     and function members that control the operation.
     '''
-    def __init__ (self, beamline):
+    def __init__ (self, beamline, log):
 
         # Beamline is read-only, determined by portNo
         self.beamline = beamline
         self.procname = "zeromq-data-transfer_" + self.beamline
+
+        # Set log handler
+        self.log   = log
 
         # TangoDevices to talk with
         self.detectorDevice = None
@@ -89,6 +92,17 @@ class ZmqDT():
 
         # List of hosts allowed to connect to the data distribution
         self.whitelist = None
+
+
+    def getLogger (self, queue):
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue) # Just the one handler needed
+        logger = logging.getLogger(self.procname)
+        logger.propagate = False
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
+
+        return logger
 
 
     def execMsg (self, msg):
@@ -255,6 +269,7 @@ class ZmqDT():
             # write configfile
             # /etc/zeromq-data-transfer/P01.conf
             configFile = CONFIGPATH + os.sep + self.beamline + ".conf"
+            self.log.info("Writing config file: {f}".format(f=configFile))
             with open(configFile, 'w') as f:
                 f.write("logfilePath        = " + LOGPATH                                       + "\n")
                 f.write("logfileName        = dataManager.log"                                  + "\n")
@@ -267,8 +282,7 @@ class ZmqDT():
                 f.write("eventDetectorType  = InotifyxDetector"                                 + "\n")
                 f.write('fixSubdirs         = ["commissioning", "current", "local"]'            + "\n")
                 f.write("monitoredDir       = " + BASEDIR + "/data/source"                      + "\n")
-                f.write("monitoredEventType = IN_CLOSE_WRITE"                                   + "\n")
-                f.write('monitoredFormats   = [".tif", ".cbf"]'                                 + "\n")
+                f.write('monitoredEvents    = {"IN_CLOSE_WRITE" : [".tif", ".cbf", ".nxs"]}'    + "\n")
                 f.write("useCleanUp         = False"                                            + "\n")
                 f.write("actionTime         = 150"                                              + "\n")
                 f.write("timeTillClosed     = 2"                                                + "\n")
@@ -304,6 +318,16 @@ class ZmqDT():
                 return "ERROR"
 
         else:
+            self.log.debug("Config file not written")
+            self.log.debug("detectorDevice: {d}".format(self.detectorDevice))
+            self.log.debug("filewriterDevice: {d}".format(self.filewriterDevice))
+            # TODO replace TangoDevices with the following
+            #self.log.debug("eigerIp: i{d}".format(self.eigerIp))
+            self.log.debug("historySize: {d}".format(self.historySize))
+            self.log.debug("localTarge: {d}".format(self.localTarget))
+            self.log.debug("storeData: {d}".format(self.storeData))
+            self.log.debug("removeData: {d}".format(self.removeData))
+            self.log.debug("whitelist: {d}".format(self.whitelist))
             return "ERROR"
 
 
@@ -419,7 +443,7 @@ class socketCom ():
 
         self.log   = self.getLogger(logQueue)
 
-        self.zmqDT = ZmqDT(bl)
+        self.zmqDT = ZmqDT(bl, self.log)
         self.conn  = conn
         self.addr  = addr
 

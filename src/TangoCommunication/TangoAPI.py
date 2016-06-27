@@ -95,8 +95,12 @@ class TangoAPI():
         self.log.debug("recv (len %2d): %s " % (len( reply), reply))
 
 
-    def set (self, attribute, value, timeout=None):
-        msg = 'set {a} {v}'.format(a = attribute, v = value)
+    def set (self, attribute, *value):
+        value = list(value)
+        if len(value) == 1:
+            msg = 'set {a} {v}'.format(a = attribute, v = value[0])
+        else:
+            msg = 'set {a} {v}'.format(a = attribute, v = value)
 
         self.signalSocket.send(msg)
         self.log.debug("sent (len %2d): %s" % (len(msg), msg))
@@ -106,7 +110,7 @@ class TangoAPI():
 
 
     def do (self, command, timeout=None):
-        msg = 'set {c}'.format(c = command)
+        msg = 'do {c}'.format(c = command)
 
         self.signalSocket.send(msg)
         self.log.debug("sent (len %2d): %s" % (len(msg), msg))
