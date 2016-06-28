@@ -439,7 +439,7 @@ class socketServer (object):
 
 class socketCom ():
     def __init__ (self, logQueue, bl, conn, addr):
-        self.id    = threading.current_thread()
+        self.id    = threading.current_thread().name
 
         self.log   = self.getLogger(logQueue)
 
