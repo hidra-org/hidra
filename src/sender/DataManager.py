@@ -124,11 +124,11 @@ def argumentParsing():
                                                 help    = "ZMQ port to get events from \
                                                            (only needed if eventDetectorType is ZmqDetector)")
 
-    parser.add_argument("--detectorDevice"    , type    = str,
-                                                help    = "Tango device proxy for the detector \
+    parser.add_argument("--eigerIp"           , type    = str,
+                                                help    = "IP of the Eiger detector \
                                                            (only needed if eventDetectorType is HttpDetector)")
-    parser.add_argument("--filewriterDevice"  , type    = str,
-                                                help    = "Tango device proxy for the filewriter \
+    parser.add_argument("--eigerApiVersion"   , type    = str,
+                                                help    = "API version of the Eiger detector \
                                                            (only needed if eventDetectorType is HttpDetector)")
 
     # DataFetcher config
@@ -240,9 +240,9 @@ def argumentParsing():
     if arguments.eventDetectorType == "ZmqDetector":
         arguments.eventPort          = arguments.eventPort          or config.get('asection', 'eventPort')
 
-    if arguments.eventDetectorType == "HttpGetDetector":
-        arguments.detectorDevice     = arguments.detectorDevice     or config.get('asection', 'detectorDevice')
-        arguments.filewriterDevice   = arguments.filewriterDevice   or config.get('asection', 'filewriterDevice')
+    if arguments.eventDetectorType == "HttpDetector":
+        arguments.eigerIp            = arguments.eigerIp            or config.get('asection', 'eigerIp')
+        arguments.eigerApiVersion    = arguments.eigerApiVersion    or config.get('asection', 'eigerApiVersion')
 
     arguments.dataFetcherType    = arguments.dataFetcherType        or config.get('asection', 'dataFetcherType')
 
@@ -441,8 +441,8 @@ class DataManager():
         elif arguments.eventDetectorType == "HttpDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
-                    "detectorDevice"    : arguments.detectorDevice,
-                    "filewriterDevice"  : arguments.filewriterDevice,
+                    "eigerIp"           : arguments.eigerIp,
+                    "eigerApiVersion"   : arguments.eigerApiVersion,
                     "historySize"       : arguments.historySize
                     }
 
