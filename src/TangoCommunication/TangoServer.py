@@ -287,8 +287,10 @@ class ZmqDT():
 
                 if self.beamline == "p00":
                     f.write("eventDetectorType  = InotifyxDetector"                             + "\n")
+                    self.log.debug("Started with eventDetector: InotifyxDetector")
                 else:
                     f.write("eventDetectorType  = HttpDetector"                                 + "\n")
+                    self.log.debug("Started with eventDetector: HttpDetector")
                 f.write('fixSubdirs         = ["commissioning", "current", "local"]'            + "\n")
                 f.write("monitoredDir       = " + BASEDIR + "/data/source"                      + "\n")
                 f.write('monitoredEvents    = {"IN_CLOSE_WRITE" : [".tif", ".cbf", ".nxs"]}'    + "\n")
@@ -298,8 +300,10 @@ class ZmqDT():
 
                 if self.beamline == "p00":
                     f.write("dataFetcherType    = getFromFile"                                  + "\n")
+                    self.log.debug("Started with dataFetcher: getFromFile")
                 else:
                     f.write("dataFetcherType    = getFromHttp"                                  + "\n")
+                    self.log.debug("Started with dataFetcher: getFromFile")
 
                 f.write("numberOfStreams    = 1"                                                + "\n")
                 f.write("useDataStream      = False"                                            + "\n")
