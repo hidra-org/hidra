@@ -1,6 +1,6 @@
 # API to communicate with a data transfer unit
 
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 import socket
 import logging
@@ -97,7 +97,7 @@ connectionList = {
     }
 
 
-class HidraEigerAPI():
+class HiDRAEigerAPI():
     def __init__ (self, beamline, useLog = False):
         global connectionList
 

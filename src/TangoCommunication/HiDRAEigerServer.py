@@ -86,7 +86,7 @@ class ZmqDT():
         # Target to move the files into
         # e.g. /beamline/p11/current/raw
         self.localTarget = None
-        self.supportedLocalTargets = ["current/raw", "current/processed", "current/shared", "current/scratch_bl", "commissioning/raw", "commissioning/processed", "commissioning/shared", "commissioning/scratch_bl", "local"]
+        self.supportedLocalTargets = ["current/raw", "current/scratch_bl", "commissioning/raw", "commissioning/scratch_bl", "local"]
 
         # Flag describing if the data should be stored in localTarget
         self.storeData = None
