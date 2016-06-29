@@ -279,7 +279,7 @@ class ZmqDT():
             self.log.info("Writing config file: {f}".format(f=configFile))
             with open(configFile, 'w') as f:
                 f.write("logfilePath        = " + LOGPATH                                       + "\n")
-                f.write("logfileName        = dataManager.log"                                  + "\n")
+                f.write("logfileName        = dataManager_" + self.beamline + ".log"            + "\n")
                 f.write("logfileSize        = 10485760"                                         + "\n")
                 f.write("procname           = " + self.procname                                 + "\n")
                 f.write("comPort            = 50000"                                            + "\n")
@@ -554,9 +554,13 @@ def argumentParsing():
 
 class TangoServer():
     def __init__(self):
+        arguments = argumentParsing()
+
+        self.beamline = arguments.beamline
+
         onScreen = "debug"
         verbose  = True
-        logfile  = BASE_PATH + os.sep + "logs" + os.sep + "tangoServer.log"
+        logfile  = BASE_PATH + os.sep + "logs" + os.sep + "tangoServer_" + self.beamline + ".log"
         logsize  = 10485760
 
         # Get queue
@@ -581,12 +585,10 @@ class TangoServer():
 
         self.log.info("Init")
 
-        arguments = argumentParsing()
-
         # waits for new accepts on the original socket,
         # receives the newly created socket and
         # creates threads to handle each client separatly
-        s = socketServer(self.logQueue, arguments.beamline)
+        s = socketServer(self.logQueue, self.beamline)
 
         s.run()
 
