@@ -548,7 +548,7 @@ def argumentParsing():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--beamline"          , type    = str,
-                                                help    = "Location of the configuration file")
+                                                help    = "Beamline for which the Tango Server should be started")
     return parser.parse_args()
 
 

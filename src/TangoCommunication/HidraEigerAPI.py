@@ -97,7 +97,7 @@ connectionList = {
     }
 
 
-class TangoAPI():
+class HidraEigerAPI():
     def __init__ (self, beamline, useLog = False):
         global connectionList
 

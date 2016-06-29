@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-import TangoAPI
+import HidraEigerAPI
 
-obj = TangoAPI.TangoAPI("p00")
+obj = HidraEigerAPI.HidraEigerAPI("p00")
 
 obj.set("localTarget", "/root/zeromq-data-transfer/data/target")
 #obj.set("localTarget", "/space/projects/zeromq-data-transfer/data/target")
