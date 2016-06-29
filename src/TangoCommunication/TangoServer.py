@@ -6,6 +6,7 @@ import sys
 import socket
 import subprocess
 import logging
+import argparse
 from multiprocessing import Queue
 
 try:
@@ -37,7 +38,7 @@ LOGPATH = "/root/zeromq-data-transfer/logs"
 #LOGPATH = "/space/projects/zeromq-data-transfer/logs"
 
 #
-# assume that the server listening to 7651 serves p09
+# assume that the server listening to 51000 serves p00
 #
 port2BL = {
     "51000": "p00",
@@ -52,6 +53,21 @@ port2BL = {
     "51009": "p09",
     "51010": "p10",
     "51011": "p11"
+    }
+
+bl2port = {
+    "p00": 51000,
+    "p01": 51001,
+    "p02": 51002,
+    "p03": 51003,
+    "p04": 51004,
+    "p05": 51005,
+    "p06": 51006,
+    "p07": 51007,
+    "p08": 51008,
+    "p09": 51009,
+    "p10": 51010,
+    "p11": 51011
     }
 
 
@@ -364,21 +380,23 @@ class socketServer (object):
     one socket for the port, accept() generates new sockets
     '''
 
-    def __init__ (self, logQueue):
+    def __init__ (self, logQueue, beamline):
+        global bl2port
+
         self.logQueue = logQueue
 
         self.log      = self.getLogger(logQueue)
 
+        self.bl       = beamline
+        self.log.debug('socketServer startet for beamline {bl}'.format(bl=self.bl))
+
         self.host     = socket.gethostname()
-        self.port     = PORT # TODO init variable
+        self.port     = bl2port[self.bl]
         self.conns    = []
-        self.bl       = port2BL[str(PORT)]
         self.socket   = None
 
-        if not str(PORT) in port2BL.keys():
-            raise Exception("Port {p} not identified".format(p=PORT))
-
         self.createSocket()
+
 
     def getLogger (self, queue):
         # Create log and set handler to queue handle
@@ -389,6 +407,7 @@ class socketServer (object):
         logger.setLevel(logging.DEBUG)
 
         return logger
+
 
     def createSocket (self):
 
@@ -531,6 +550,14 @@ class socketCom ():
         self.close()
 
 
+def argumentParsing():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--beamline"          , type    = str,
+                                                help    = "Location of the configuration file")
+    return parser.parse_args()
+
+
 class TangoServer():
     def __init__(self):
         onScreen = "debug"
@@ -560,10 +587,12 @@ class TangoServer():
 
         self.log.info("Init")
 
+        arguments = argumentParsing()
+
         # waits for new accepts on the original socket,
         # receives the newly created socket and
         # creates threads to handle each client separatly
-        s = socketServer(self.logQueue)
+        s = socketServer(self.logQueue, arguments.beamline)
 
         s.run()
 
