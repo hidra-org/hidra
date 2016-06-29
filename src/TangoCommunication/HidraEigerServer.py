@@ -338,13 +338,13 @@ class ZmqDT():
 
         else:
             self.log.debug("Config file not written")
-            self.log.debug("eigerIp: {d}".format(self.eigerIp))
-            self.log.debug("eigerApiVersion: {d}".format(self.eigerApiVersion))
-            self.log.debug("historySize: {d}".format(self.historySize))
-            self.log.debug("localTarge: {d}".format(self.localTarget))
-            self.log.debug("storeData: {d}".format(self.storeData))
-            self.log.debug("removeData: {d}".format(self.removeData))
-            self.log.debug("whitelist: {d}".format(self.whitelist))
+            self.log.debug("eigerIp: {d}".format(d=self.eigerIp))
+            self.log.debug("eigerApiVersion: {d}".format(d=self.eigerApiVersion))
+            self.log.debug("historySize: {d}".format(d=self.historySize))
+            self.log.debug("localTarge: {d}".format(d=self.localTarget))
+            self.log.debug("storeData: {d}".format(d=self.storeData))
+            self.log.debug("removeData: {d}".format(d=self.removeData))
+            self.log.debug("whitelist: {d}".format(d=self.whitelist))
             return "ERROR"
 
 
@@ -361,10 +361,14 @@ class ZmqDT():
 
     def restart (self):
         # stop service
-        self.stop()
+        reval = self.stop()
 
-        # start service
-        self.start()
+        if reval == "DONE":
+            # start service
+            return self.start()
+        else:
+            return "ERROR"
+
 
 
     def status (self):

@@ -48,7 +48,7 @@ if __name__ == '__main__':
             obj.do("start")
 
         elif arguments.restart:
-            obj.do("retart")
+            obj.do("restart")
 
         elif arguments.status:
             obj.do("status")
