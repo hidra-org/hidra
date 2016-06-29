@@ -285,8 +285,10 @@ class ZmqDT():
                 f.write("comPort            = 50000"                                            + "\n")
                 f.write("requestPort        = 50001"                                            + "\n")
 
-    #            f.write("eventDetectorType  = HttpDetector"                                     + "\n")
-                f.write("eventDetectorType  = InotifyxDetector"                                 + "\n")
+                if self.beamline == "p00":
+                    f.write("eventDetectorType  = InotifyxDetector"                             + "\n")
+                else:
+                    f.write("eventDetectorType  = HttpDetector"                                 + "\n")
                 f.write('fixSubdirs         = ["commissioning", "current", "local"]'            + "\n")
                 f.write("monitoredDir       = " + BASEDIR + "/data/source"                      + "\n")
                 f.write('monitoredEvents    = {"IN_CLOSE_WRITE" : [".tif", ".cbf", ".nxs"]}'    + "\n")
@@ -294,8 +296,10 @@ class ZmqDT():
                 f.write("actionTime         = 150"                                              + "\n")
                 f.write("timeTillClosed     = 2"                                                + "\n")
 
-    #            f.write("dataFetcherType    = getFromHttp"                                      + "\n")
-                f.write("dataFetcherType    = getFromFile"                                      + "\n")
+                if self.beamline == "p00":
+                    f.write("dataFetcherType    = getFromFile"                                  + "\n")
+                else:
+                    f.write("dataFetcherType    = getFromHttp"                                  + "\n")
 
                 f.write("numberOfStreams    = 1"                                                + "\n")
                 f.write("useDataStream      = False"                                            + "\n")
@@ -373,11 +377,11 @@ class socketServer (object):
 
         self.log      = self.getLogger(logQueue)
 
-        self.bl       = beamline
-        self.log.debug('socketServer startet for beamline {bl}'.format(bl=self.bl))
+        self.beamline = beamline
+        self.log.debug('socketServer startet for beamline {bl}'.format(bl=self.beamline))
 
         self.host     = socket.gethostname()
-        self.port     = bl2port[self.bl]
+        self.port     = bl2port[self.beamline]
         self.conns    = []
         self.socket   = None
 
@@ -419,7 +423,7 @@ class socketServer (object):
             try:
                 conn, addr = self.sckt.accept()
 
-                threading.Thread(target=socketCom, args=(self.logQueue, self.bl, conn, addr)).start()
+                threading.Thread(target=socketCom, args=(self.logQueue, self.beamline, conn, addr)).start()
             except KeyboardInterrupt:
                 break
             except Exception, e:
@@ -443,12 +447,12 @@ class socketServer (object):
 
 
 class socketCom ():
-    def __init__ (self, logQueue, bl, conn, addr):
+    def __init__ (self, logQueue, beamline, conn, addr):
         self.id    = threading.current_thread().name
 
         self.log   = self.getLogger(logQueue)
 
-        self.zmqDT = ZmqDT(bl, self.log)
+        self.zmqDT = ZmqDT(beamline, self.log)
         self.conn  = conn
         self.addr  = addr
 
