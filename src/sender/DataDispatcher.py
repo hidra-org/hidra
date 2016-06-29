@@ -92,6 +92,8 @@ class DataDispatcher():
         self.log.info("Loading dataFetcher: " + dataFetcher)
         self.dataFetcher = __import__(dataFetcher)
 
+        self.continueRun = True
+
         if self.dataFetcher.setup(self.log, dataFetcherProp):
             try:
                 self.__createSockets()
@@ -154,7 +156,7 @@ class DataDispatcher():
 
         fixedStreamId = [self.fixedStreamId, 0, [""], "data"]
 
-        while True:
+        while self.continueRun:
             self.log.debug("DataDispatcher-" + str(self.id) + ": waiting for new job")
             socks = dict(self.poller.poll())
 
@@ -289,6 +291,7 @@ class DataDispatcher():
 
 
     def stop (self):
+        self.continueRun = False
         self.log.debug("Closing sockets for DataDispatcher-" + str(self.id))
 
         for connection in self.openConnections:

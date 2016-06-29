@@ -85,6 +85,8 @@ class TaskProvider():
 
         self.eventDetector = self.eventDetectorModule.EventDetector(self.config, logQueue)
 
+        self.continueRun   = True
+
         try:
             self.createSockets()
 
@@ -152,7 +154,7 @@ class TaskProvider():
     def run (self):
         i = 0
 
-        while True:
+        while self.continueRun:
             try:
                 # the event for a file /tmp/test/source/local/file1.tif is of the form:
                 # {
@@ -233,6 +235,8 @@ class TaskProvider():
 
 
     def stop (self):
+        self.continueRun = False
+
         self.log.debug("Closing sockets for TaskProvider")
         if self.routerSocket:
             self.log.info("Closing routerSocket")
