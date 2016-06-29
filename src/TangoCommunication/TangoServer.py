@@ -56,18 +56,19 @@ port2BL = {
     }
 
 bl2port = {
-    "p00": 51000,
-    "p01": 51001,
-    "p02": 51002,
-    "p03": 51003,
-    "p04": 51004,
-    "p05": 51005,
-    "p06": 51006,
-    "p07": 51007,
-    "p08": 51008,
-    "p09": 51009,
-    "p10": 51010,
-    "p11": 51011
+    "p00"  : 51000,
+    "p01"  : 51001,
+    "p02.1": 51002,
+    "p02.2": 51003,
+    "p03"  : 51004,
+    "p04"  : 51005,
+    "p05"  : 51006,
+    "p06"  : 51007,
+    "p07"  : 51008,
+    "p08"  : 51009,
+    "p09"  : 51010,
+    "p10"  : 51011,
+    "p11"  : 51012
     }
 
 
@@ -85,13 +86,15 @@ class ZmqDT():
         # Set log handler
         self.log   = log
 
+        # TODO remove TangoDevices
         # TangoDevices to talk with
         self.detectorDevice = None
         self.filewriterDevice = None
 
-        # TODO replace TangoDevices with the following
         # IP of the EIGER Detector
-        # self.eigerIp = None
+        self.eigerIp = None
+        # API version of the EIGER Detector
+        self.eigerApiVersion = None
 
         # Number of events stored to look for doubles
         self.historySize = None
@@ -164,6 +167,7 @@ class ZmqDT():
 
         key = param.lower()
 
+#        TODO remove detectordevice and filewriterDevice
         if key == "detectordevice":
             self.detectorDevice = value
             return "DONE"
@@ -172,10 +176,13 @@ class ZmqDT():
             self.filewriterDevice = value
             return "DONE"
 
-#        TODO replace detectordevice and filewriterDevice with eigerIP
-#        elif key == "eigerIp":
-#            self.eigerIP = value
-#            return "DONE"
+        elif key == "eigerip":
+            self.eigerIp = value
+            return "DONE"
+
+        elif key == "eigerapiversion":
+            self.eigerApiVersion = value
+            return "DONE"
 
         elif key == "historysize":
             self.historySize = value
@@ -207,17 +214,20 @@ class ZmqDT():
         '''
         key = param.lower()
 
+#        TODO remove detectordevice and filewriterDevice
         if key == "detectordevice":
             self.detectorDevice   = value
-            return "DONE"
+            return self.detectorDevice
 
         elif key == "filewriterdevice":
             self.filewriterDevice = value
-            return "DONE"
+            return self.filewriterDevice
 
-#        TODO replace detectordevice and filewriterDevice with eigerIP
-#        elif key == "eigerIP":
-#            return self.eigerIp
+        elif key == "eigerIp":
+            return self.eigerIp
+
+        elif key == "eigerApiVersion":
+            return self.eigerApiVersion
 
         elif key == "historysize":
             return self.historySize
@@ -272,6 +282,7 @@ class ZmqDT():
             and self.filewriterDevice
             # TODO replace TangoDevices with the following
             #and self.eigerIp
+            #and self.eigerApiVersion
             and self.historySize
             and self.localTarget
             and self.storeData
@@ -310,16 +321,16 @@ class ZmqDT():
                 f.write("useDataStream      = False"                                            + "\n")
                 f.write("chunkSize          = 10485760"                                         + "\n")
 
-
-                f.write("detectorDevice     = " +  str(self.detectorDevice)                     + "\n")
-                f.write("filewriterDevice   = " +  str(self.filewriterDevice)                   + "\n")
-                # TODO replace TangoDevices with the following
-                #f.write("eigerIp            = " +  str(self.eigerIp)                            + "\n")
-                f.write("historySize        = " +  str(self.historySize)                        + "\n")
-                f.write("localTarget        = " +  str(self.localTarget)                        + "\n")
-                f.write("storeData          = " +  str(self.storeData)                          + "\n")
-                f.write("removeData         = " +  str(self.removeData)                         + "\n")
-                f.write("whitelist          = " +  str(self.whitelist)                          + "\n")
+                # TODO remove detectorDevice and filewriterDecive
+                f.write("detectorDevice     = " + str(self.detectorDevice)                      + "\n")
+                f.write("filewriterDevice   = " + str(self.filewriterDevice)                    + "\n")
+                f.write("eigerIp            = " + str(self.eigerIp)                             + "\n")
+                f.write("eigerApiVersion    = " + str(self.eigerApiVersion)                     + "\n")
+                f.write("historySize        = " + str(self.historySize)                         + "\n")
+                f.write("localTarget        = " + str(self.localTarget)                         + "\n")
+                f.write("storeData          = " + str(self.storeData)                           + "\n")
+                f.write("removeData         = " + str(self.removeData)                          + "\n")
+                f.write("whitelist          = " + str(self.whitelist)                           + "\n")
 
             # check if service is running
             if self.status() == "RUNNING":
@@ -335,10 +346,11 @@ class ZmqDT():
 
         else:
             self.log.debug("Config file not written")
+            #TODO remove detectorDevice and fielwriterDevice
             self.log.debug("detectorDevice: {d}".format(self.detectorDevice))
             self.log.debug("filewriterDevice: {d}".format(self.filewriterDevice))
-            # TODO replace TangoDevices with the following
-            #self.log.debug("eigerIp: i{d}".format(self.eigerIp))
+            self.log.debug("eigerIp: {d}".format(self.eigerIp))
+            self.log.debug("eigerApiVersion: {d}".format(self.eigerApiVersion))
             self.log.debug("historySize: {d}".format(self.historySize))
             self.log.debug("localTarge: {d}".format(self.localTarget))
             self.log.debug("storeData: {d}".format(self.storeData))

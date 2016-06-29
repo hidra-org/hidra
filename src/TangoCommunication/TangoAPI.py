@@ -54,8 +54,52 @@ class AuthenticationFailed(Exception):
 class CommunicationFailed(Exception):
     pass
 
+connectionList = {
+    "p00": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51000 },
+    "p01": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51001 },
+    "p02.1": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51002 },
+    "p02.2": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51003 },
+    "p03": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51004 },
+    "p04": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51005 },
+    "p05": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51006 },
+    "p06": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51007 },
+    "p07": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51008 },
+    "p08": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51009 },
+    "p09": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51010 },
+    "p10": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51011 },
+    "p11": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51012 },
+    }
+
+
 class TangoAPI():
-    def __init__ (self, signalHost, signalPort = None, useLog = False):
+    def __init__ (self, beamline, useLog = False):
+        global connectionList
 
         if useLog:
             self.log = logging.getLogger("TangoAPI")
@@ -64,12 +108,16 @@ class TangoAPI():
         else:
             self.log = loggingFunction()
 
-        self.currentPID            = os.getpid()
+        self.currentPID     = os.getpid()
 
-        self.signalHost            = signalHost
-        self.signalPort            = signalPort or "51000"
+        try:
+            self.signalHost = connectionList[beamline]["host"]
+            self.signalPort = connectionList[beamline]["port"]
+            self.log.info("Starting connection to {h} on port {p}".format(h=self.signalHost, p=self.signalPort))
+        except:
+            self.log.error("Beamline {bl} not supported".format(bl=beamline))
 
-        self.signalSocket          = None
+        self.signalSocket   = None
 
         self.__createSockets()
 
