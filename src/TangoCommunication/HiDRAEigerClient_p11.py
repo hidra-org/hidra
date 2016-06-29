@@ -9,8 +9,8 @@ def argumentParsing():
 
     parser.add_argument("--start"   , help    = "Starts the HiDRA Server for the Eiger detector",
                                       action = "store_true")
-    parser.add_argument("--restart" , help    = "Restarts the HiDRA Server for the Eiger detector",
-                                      action = "store_true")
+#    parser.add_argument("--restart" , help    = "Restarts the HiDRA Server for the Eiger detector",
+#                                      action = "store_true")
     parser.add_argument("--status"  , help    = "Displays the Status of the HiDRA Server for the Eiger detector",
                                       action = "store_true")
     parser.add_argument("--stop"    , help    = "Stops the HiDRA Server for the Eiger detector",
@@ -33,7 +33,8 @@ if __name__ == '__main__':
         print "ERROR: target not supported"
         sys.exit(1)
 
-    obj = HiDRAEigerAPI.HiDRAEigerAPI(beamline)
+#    obj = HiDRAEigerAPI.HiDRAEigerAPI(beamline)
+    obj = HiDRAEigerAPI.HiDRAEigerAPI(beamline, useLog=None)
 
     try:
         if arguments.start:
@@ -45,16 +46,16 @@ if __name__ == '__main__':
             obj.set("removeData", False)
             obj.set("whitelist", "localhost", "zitpcx19282")
 
-            obj.do("start")
+            print "Starting HiDRA for Eiger:", obj.do("start")
 
-        elif arguments.restart:
-            obj.do("restart")
+#        elif arguments.restart:
+#            print "restarting HiDRA for Eiger:", obj.do("restart")
 
         elif arguments.status:
-            obj.do("status")
+            print "Status of HiDRA for Eiger:", obj.do("status")
 
         elif arguments.stop:
-            obj.do("stop")
+            print "Stopping HiDRA for Eiger:", obj.do("stop")
 
     finally:
         obj.stop()
