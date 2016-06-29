@@ -60,6 +60,8 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
     else:
         targetFile = None
 
+    metadata[ "chunkSize" ]     = chunkSize
+
     if targets:
         try:
             log.debug("create metadata for source file...")
@@ -74,7 +76,6 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
             #        }
             metadata[ "fileModTime" ]   = time.time()
             metadata[ "fileCreateTime"] = time.time()
-            metadata[ "chunkSize" ]     = chunkSize
 
             log.debug("metadata = " + str(metadata))
         except:

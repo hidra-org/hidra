@@ -82,6 +82,7 @@ class EventDetector():
         try:
             response.raise_for_status()
             files_stored = response.json()
+#            self.log.debug("files_stored: {f}".format(f=files_stored))
         except:
             self.log.error("Getting file list...failed.", exc_info=True)
             # Wait till next try to prevent denial of service
