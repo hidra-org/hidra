@@ -1,44 +1,23 @@
 #!/usr/bin/env python
-import socket
-import sys
+import TangoAPI
 
-port = 51000
+obj = TangoAPI.TangoAPI("p00")
 
-msgs = [
-    'set localTarget /root/zeromq-data-transfer/data/target',
-#    'set localTarget /space/projects/zeromq-data-transfer/data/target',
-    'get localTarget',
-    'set detectorDevice haspp06:10000/p06/eigerdectris/exp.01',
-    'set filewriterDevice haspp06:10000/p06/eigerfilewriter/exp.01',
-    'set historySize 0',
-    'set storeData True',
-    'set removeData True',
-    'set whitelist ["localhost","zitpcx19282"]',
-    'do start',
-    'do status',
-    'do stop',
-#    'exit'
-    'bye'
-]
+obj.set("localTarget", "/root/zeromq-data-transfer/data/target")
+#obj.set("localTarget", "/space/projects/zeromq-data-transfer/data/target")
 
-#host = socket.gethostname()
-host = "asap3-bl-prx07"
+obj.get("localTarget")
 
-sckt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+obj.set("eigerIp", "192.168.138.52")
+obj.set("eigerApiVersion", "1.5.0")
+obj.set("historySize", 0)
+obj.set("storeData", True)
+obj.set("removeData", True)
+obj.set("whitelist", "localhost", "zitpcx19282")
 
-try:
-    sckt.connect((host, port))
-except Exception, e:
-    print "connect() failed", e
-    sckt.close()
-    sys.exit()
+obj.do("start")
+obj.do("status")
+obj.do("stop")
 
-try:
-    for msg in msgs:
-        sckt.send(msg)
-        print "sent (len %2d): %s" % (len(msg), msg)
-        reply = sckt.recv(1024)
-        print "recv (len %2d): %s " % (len( reply), reply)
-finally:
-    sckt.close()
+obj.stop()
 
