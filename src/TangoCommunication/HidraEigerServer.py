@@ -85,6 +85,7 @@ class ZmqDT():
         # Target to move the files into
         # e.g. /beamline/p11/current/raw
         self.localTarget = None
+        self.supportedLocalTargets = ["current/raw", "current/processed", "current/shared", "current/scratch_bl", "commissioning/raw", "commissioning/processed", "commissioning/shared", "commissioning/scratch_bl", "local"]
 
         # Flag describing if the data should be stored in localTarget
         self.storeData = None
@@ -171,8 +172,13 @@ class ZmqDT():
             self.historySize = value
             return "DONE"
 
-        elif key == "localtarget":
+        #TODO remove this after notified teresa
+        elif key == "localtarget" and self.beamline == "p00":
             self.localTarget = value
+            return "DONE"
+
+        elif key == "localtarget" and value in self.supportedLocalTargets:
+            self.localTarget = os.path.join("/beamline", self.beamline, value)
             return "DONE"
 
         elif key == "storedata":
