@@ -25,9 +25,6 @@ import helpers
 from logutils.queue import QueueHandler
 
 
-
-PORT = 51000
-
 BASEDIR = "/root/zeromq-data-transfer"
 #BASEDIR = "/space/projects/zeromq-data-transfer"
 
@@ -40,21 +37,6 @@ LOGPATH = "/root/zeromq-data-transfer/logs"
 #
 # assume that the server listening to 51000 serves p00
 #
-port2BL = {
-    "51000": "p00",
-    "51001": "p01",
-    "51002": "p02",
-    "51003": "p03",
-    "51004": "p04",
-    "51005": "p05",
-    "51006": "p06",
-    "51007": "p07",
-    "51008": "p08",
-    "51009": "p09",
-    "51010": "p10",
-    "51011": "p11"
-    }
-
 bl2port = {
     "p00"  : 51000,
     "p01"  : 51001,
@@ -91,10 +73,11 @@ class ZmqDT():
         self.detectorDevice = None
         self.filewriterDevice = None
 
+        #TODO after removal of detectorDevice and filewriterDevice: change default to None
         # IP of the EIGER Detector
-        self.eigerIp = None
+        self.eigerIp = "None"
         # API version of the EIGER Detector
-        self.eigerApiVersion = None
+        self.eigerApiVersion = "None"
 
         # Number of events stored to look for doubles
         self.historySize = None
@@ -278,11 +261,8 @@ class ZmqDT():
         # see, if all required params are there.
         #
 
-        if (self.detectorDevice
-            and self.filewriterDevice
-            # TODO replace TangoDevices with the following
-            #and self.eigerIp
-            #and self.eigerApiVersion
+        if (self.eigerIp
+            and self.eigerApiVersion
             and self.historySize
             and self.localTarget
             and self.storeData
@@ -321,9 +301,6 @@ class ZmqDT():
                 f.write("useDataStream      = False"                                            + "\n")
                 f.write("chunkSize          = 10485760"                                         + "\n")
 
-                # TODO remove detectorDevice and filewriterDecive
-                f.write("detectorDevice     = " + str(self.detectorDevice)                      + "\n")
-                f.write("filewriterDevice   = " + str(self.filewriterDevice)                    + "\n")
                 f.write("eigerIp            = " + str(self.eigerIp)                             + "\n")
                 f.write("eigerApiVersion    = " + str(self.eigerApiVersion)                     + "\n")
                 f.write("historySize        = " + str(self.historySize)                         + "\n")
@@ -346,9 +323,6 @@ class ZmqDT():
 
         else:
             self.log.debug("Config file not written")
-            #TODO remove detectorDevice and fielwriterDevice
-            self.log.debug("detectorDevice: {d}".format(self.detectorDevice))
-            self.log.debug("filewriterDevice: {d}".format(self.filewriterDevice))
             self.log.debug("eigerIp: {d}".format(self.eigerIp))
             self.log.debug("eigerApiVersion: {d}".format(self.eigerApiVersion))
             self.log.debug("historySize: {d}".format(self.historySize))
