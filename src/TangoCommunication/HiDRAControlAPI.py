@@ -97,12 +97,12 @@ connectionList = {
     }
 
 
-class HiDRAEigerAPI():
+class HiDRAControlAPI():
     def __init__ (self, beamline, useLog = False):
         global connectionList
 
         if useLog:
-            self.log = logging.getLogger("TangoAPI")
+            self.log = logging.getLogger("HiDRAControlAPI")
         elif useLog == None:
             self.log = noLoggingFunction()
         else:
