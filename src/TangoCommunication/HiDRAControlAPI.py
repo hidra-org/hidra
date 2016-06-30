@@ -1,6 +1,6 @@
 # API to communicate with a data transfer unit
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 import socket
 import logging

@@ -2,7 +2,7 @@
 import os
 import sys
 import argparse
-import HiDRAEigerAPI
+import HiDRAControlAPI
 
 def argumentParsing():
     parser = argparse.ArgumentParser()
@@ -33,8 +33,8 @@ if __name__ == '__main__':
         print "ERROR: target not supported"
         sys.exit(1)
 
-#    obj = HiDRAEigerAPI.HiDRAEigerAPI(beamline)
-    obj = HiDRAEigerAPI.HiDRAEigerAPI(beamline, useLog=None)
+#    obj = HiDRAControlAPI.HiDRAControlAPI(beamline)
+    obj = HiDRAControlAPI.HiDRAControlAPI(beamline, useLog=None)
 
     try:
         if arguments.start:

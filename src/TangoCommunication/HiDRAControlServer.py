@@ -559,22 +559,22 @@ def argumentParsing():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--beamline"          , type    = str,
-                                                help    = "Beamline for which the Hidra Server for the Eiger detector should be started")
+                                                help    = "Beamline for which the HiDRA Server for the Eiger detector should be started")
     return parser.parse_args()
 
 
-class HidraEigerServer():
+class HiDRAControlServer():
     def __init__(self):
         arguments = argumentParsing()
 
         self.beamline = arguments.beamline
 
-#        setproctitle.setproctitle("HidraEigerServer_" + self.beamline)
+        setproctitle.setproctitle("HiDRAControlServer_" + self.beamline)
 
         onScreen = False
 #        onScreen = "debug"
         verbose  = True
-        logfile  = BASE_PATH + os.sep + "logs" + os.sep + "HidraEigerServer_" + self.beamline + ".log"
+        logfile  = BASE_PATH + os.sep + "logs" + os.sep + "HiDRAControlServer_" + self.beamline + ".log"
         logsize  = 10485760
 
         # Get queue
@@ -610,7 +610,7 @@ class HidraEigerServer():
     def getLogger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("HidraEigerServer")
+        logger = logging.getLogger("HiDRAControlServer")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -619,5 +619,5 @@ class HidraEigerServer():
 
 
 if __name__ == '__main__':
-    t = HidraEigerServer()
+    t = HiDRAControlServer()
 
