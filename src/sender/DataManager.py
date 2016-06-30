@@ -316,7 +316,7 @@ class DataManager():
 
         self.localhost        = "127.0.0.1"
         self.extIp            = "0.0.0.0"
-        self.ipcPath          = "/tmp/zeromq-data-transfer"
+        self.ipcPath          = "/tmp/HiDRA"
 
         self.currentPID       = os.getpid()
 

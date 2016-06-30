@@ -26,13 +26,13 @@ import helpers
 from logutils.queue import QueueHandler
 
 
-BASEDIR = "/root/zeromq-data-transfer"
+BASEDIR = "/opt/HiDRA"
 #BASEDIR = "/space/projects/zeromq-data-transfer"
 
-CONFIGPATH = "/root/zeromq-data-transfer/conf"
+CONFIGPATH = "/opt/HiDRA/conf"
 #CONFIGPATH = "/space/projects/zeromq-data-transfer/conf"
 
-LOGPATH = "/root/zeromq-data-transfer/logs"
+LOGPATH = "/tmp/HiDRA/logs"
 #LOGPATH = "/space/projects/zeromq-data-transfer/logs"
 
 #
@@ -64,7 +64,7 @@ class ZmqDT():
 
         # Beamline is read-only, determined by portNo
         self.beamline = beamline
-        self.procname = "zeromq-data-transfer_" + self.beamline
+        self.procname = "HiDRA_" + self.beamline
 
         # Set log handler
         self.log   = log
@@ -147,7 +147,7 @@ class ZmqDT():
 
     def set (self, param, value):
         '''
-        set a parameter, e.g.: set filedir /gpfs/current/raw/
+        set a parameter, e.g.: set localTarget /beamline/p11/current/raw/
         '''
 
         key = param.lower()
@@ -281,7 +281,7 @@ class ZmqDT():
             #
 
             # write configfile
-            # /etc/zeromq-data-transfer/P01.conf
+            # /etc/hidra/P01.conf
             configFile = CONFIGPATH + os.sep + self.beamline + ".conf"
             self.log.info("Writing config file: {f}".format(f=configFile))
             with open(configFile, 'w') as f:
@@ -329,7 +329,7 @@ class ZmqDT():
                 return "ERROR"
 
             # start service
-            p = subprocess.call(["systemctl", "start", "zeromq-data-transfer@" + self.beamline + ".service"])
+            p = subprocess.call(["systemctl", "start", "hidra@" + self.beamline + ".service"])
 
             if p == 0:
                 return "DONE"
@@ -350,7 +350,7 @@ class ZmqDT():
 
     def stop (self):
         # stop service
-        p = subprocess.call(["systemctl", "stop", "zeromq-data-transfer@" + self.beamline + ".service"])
+        p = subprocess.call(["systemctl", "stop", "hidra@" + self.beamline + ".service"])
         return "DONE"
 
         if p == 0:
@@ -372,7 +372,7 @@ class ZmqDT():
 
 
     def status (self):
-        p = subprocess.call(["systemctl", "is-active", "zeromq-data-transfer@" + self.beamline + ".service"])
+        p = subprocess.call(["systemctl", "is-active", "hidra@" + self.beamline + ".service"])
 
         if p == 0:
             return "RUNNING"
@@ -571,8 +571,8 @@ class HidraEigerServer():
 
 #        setproctitle.setproctitle("HidraEigerServer_" + self.beamline)
 
-#        onScreen = False
-        onScreen = "debug"
+        onScreen = False
+#        onScreen = "debug"
         verbose  = True
         logfile  = BASE_PATH + os.sep + "logs" + os.sep + "HidraEigerServer_" + self.beamline + ".log"
         logsize  = 10485760

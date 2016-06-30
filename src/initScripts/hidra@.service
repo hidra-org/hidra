@@ -1,0 +1,13 @@
+[Unit]
+Description=ZMQ data transfer
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+TimeoutStartSec=0
+WorkingDirectory=/opt/HiDRA
+User=%iuser
+ExecStart=/opt/HiDRA/src/sender/DataManager.py --verbose --configFile /opt/HiDRA/conf/%i.conf
+
+[Install]
+WantedBy=multi-user.target

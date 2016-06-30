@@ -174,7 +174,7 @@ if __name__ == '__main__':
     receivingPort    = "6005"
     receivingPort2   = "6006"
     extIp            = "0.0.0.0"
-    dataFetchConStr  = "ipc://{path}/{id}".format(path="/tmp/zeromq-data-transfer", id="dataFetch")
+    dataFetchConStr  = "ipc://{path}/{id}".format(path="/tmp/HiDRA", id="dataFetch")
 
     context          = zmq.Context.instance()
 
