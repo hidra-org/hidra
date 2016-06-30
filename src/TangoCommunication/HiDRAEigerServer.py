@@ -213,10 +213,10 @@ class ZmqDT():
             self.filewriterDevice = value
             return self.filewriterDevice
 
-        elif key == "eigerIp":
+        elif key == "eigerip":
             return self.eigerIp
 
-        elif key == "eigerApiVersion":
+        elif key == "eigerapiversion":
             return self.eigerApiVersion
 
         elif key == "historysize":
