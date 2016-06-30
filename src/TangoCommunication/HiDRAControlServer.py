@@ -195,6 +195,7 @@ class ZmqDT():
             return "DONE"
 
         else:
+            self.log.debug("key={a}; value={v}".format(a=key, v=value))
             return "ERROR"
 
 
@@ -267,13 +268,12 @@ class ZmqDT():
         #
         # see, if all required params are there.
         #
-
         if (self.eigerIp
             and self.eigerApiVersion
             and self.historySize
             and self.localTarget
-            and self.storeData
-            and self.removeData
+            and self.storeData != None
+            and self.removeData != None
             and self.whitelist ):
 
             #

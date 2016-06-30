@@ -146,11 +146,11 @@ class HiDRAControlAPI():
 
 
     def set (self, attribute, *value):
-        value = list(value)
-        if len(value) == 1:
-            msg = 'set {a} {v}'.format(a = attribute, v = value[0])
+        value == list(value)
+        if attribute == "whitelist":
+            msg = 'set {a} {v}'.format(a = attribute, v = list(value))
         else:
-            msg = 'set {a} {v}'.format(a = attribute, v = value)
+            msg = 'set {a} {v}'.format(a = attribute, v = value[0])
 
         self.signalSocket.send(msg)
         self.log.debug("sent (len %2d): %s" % (len(msg), msg))

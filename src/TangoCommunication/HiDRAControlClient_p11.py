@@ -44,7 +44,7 @@ if __name__ == '__main__':
             obj.set("historySize", 2000)
             obj.set("storeData", False)
             obj.set("removeData", False)
-            obj.set("whitelist", "localhost", "zitpcx19282")
+            obj.set("whitelist", "localhost")
 
             print "Starting HiDRA for Eiger:", obj.do("start")
 
