@@ -407,6 +407,7 @@ class DataManager():
         self.chunkSize        = arguments.chunkSize
 
         self.localTarget      = arguments.localTarget
+        self.log.info("Configured localTarget: {t}".format(t=self.localTarget))
 
         # Assemble configuration for eventDetector.
         self.log.info("Configured type of eventDetector: " + arguments.eventDetectorType)

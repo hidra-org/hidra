@@ -142,6 +142,8 @@ class HiDRAEigerAPI():
         reply = self.signalSocket.recv(1024)
         self.log.debug("recv (len %2d): %s " % (len( reply), reply))
 
+        return reply
+
 
     def set (self, attribute, *value):
         value = list(value)
@@ -155,6 +157,8 @@ class HiDRAEigerAPI():
 
         reply = self.signalSocket.recv(1024)
         self.log.debug("recv (len %2d): %s " % (len( reply), reply))
+
+        return reply
 
 
     def do (self, command, timeout=None):

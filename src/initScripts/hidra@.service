@@ -1,5 +1,5 @@
 [Unit]
-Description=ZMQ data transfer
+Description=HiDRA for %i
 Wants=network-online.target
 After=network-online.target
 
