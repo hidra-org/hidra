@@ -120,7 +120,7 @@ def argumentParsing():
                                                            (only needed if eventDetectorType is InotifyxDetector (for clean up) or WatchdogDetector)")
 
 
-    parser.add_argument("--eventPort"         , type    = str,
+    parser.add_argument("--eventDetPort"      , type    = str,
                                                 help    = "ZMQ port to get events from \
                                                            (only needed if eventDetectorType is ZmqDetector)")
 
@@ -238,7 +238,7 @@ def argumentParsing():
         arguments.actionTime         = arguments.actionTime         or config.getfloat('asection', 'actionTime')
 
     if arguments.eventDetectorType == "ZmqDetector":
-        arguments.eventPort          = arguments.eventPort          or config.get('asection', 'eventPort')
+        arguments.eventDetPort       = arguments.eventDetPort          or config.get('asection', 'eventDetPort')
 
     if arguments.eventDetectorType == "HttpDetector":
         arguments.eigerIp            = arguments.eigerIp            or config.get('asection', 'eigerIp')
@@ -381,7 +381,7 @@ class DataManager():
             self.requestFwConId   = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.requestFwPort)
             self.routerConId      = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.routerPort)
 
-            eventDetConStr        = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.eventPort)
+            eventDetConStr        = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.eventDetPort)
             dataFetchConStr       = "tcp://{ip}:{port}".format(ip=self.extIp, port=arguments.dataFetcherPort)
         else:
             self.log.info("Using ipc for internal communication.")

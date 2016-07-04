@@ -76,9 +76,8 @@ class dataIngest():
         self.signalHost      = "zitpcx19282"
         self.signalPort      = "50050"
 
-        # has to be the same port as configured in dataManager.conf as dataFetchPort
+        # has to be the same port as configured in dataManager.conf as eventDetPort
         self.eventDetPort    = "50003"
-        #TODO add port in config
         # has to be the same port as configured in dataManager.conf as ...
         self.dataFetchPort   = "50010"
 
