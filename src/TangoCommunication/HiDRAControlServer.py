@@ -488,9 +488,13 @@ class socketCom ():
 
             msg = self.recv()
 
+            # These calls return the number of bytes received, or -1 if an error
+            # occurred.The return value will be 0 when the peer has performed an
+            # orderly shutdown.
+            # see: http://man7.org/linux/man-pages/man2/recv.2.html
             if len(msg) == 0:
                 self.log.debug("Received empty msg")
-                continue
+                break
 
             elif msg.lower().find('bye') == 0:
                 self.log.debug("Received 'bye'")
