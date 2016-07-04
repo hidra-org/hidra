@@ -35,7 +35,7 @@ def worker2(B):
     print "B"
     print B
 
-    f = open("/space/projects/zeromq-data-transfer/test_015_00001.cbf", "rb")
+    f = open("/opt/HiDRA/test_015_00001.cbf", "rb")
     fileObject = f.read()
 #    print len(fileObject)
     f.close()

@@ -30,7 +30,7 @@ int main () {
 
     int i = 0;
 //    char m[7];
-    std::string filename = "/space/projects/zeromq-data-transfer/data/source/local/5.cbf";
+    std::string filename = "/opt/HiDRA/data/source/local/5.cbf";
     std::string m;
 
     while (true) {

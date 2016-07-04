@@ -27,13 +27,10 @@ from logutils.queue import QueueHandler
 
 
 BASEDIR = "/opt/HiDRA"
-#BASEDIR = "/space/projects/zeromq-data-transfer"
 
 CONFIGPATH = "/opt/HiDRA/conf"
-#CONFIGPATH = "/space/projects/zeromq-data-transfer/conf"
 
 LOGPATH = "/tmp/HiDRA/logs"
-#LOGPATH = "/space/projects/zeromq-data-transfer/logs"
 
 #
 # assume that the server listening to 51000 serves p00

@@ -12,7 +12,7 @@ class th (threading.Thread):
 
 	def run (self):
 		for i in xrange(5000):
-                        fileDescriptor = open("/space/projects/zeromq-data-transfer/bf_00000.tif", "rb")
+                        fileDescriptor = open("/opt/HiDRA/bf_00000.tif", "rb")
                         data = fileDescriptor.read()
                         del fileDescriptor
                         del data
@@ -23,7 +23,7 @@ class pr (multiprocessing.Process):
 
 	def run (self):
 		for i in xrange(5000):
-                        fileDescriptor = open("/space/projects/zeromq-data-transfer/bf_00000.tif", "rb")
+                        fileDescriptor = open("/opt/HiDRA/bf_00000.tif", "rb")
                         data = fileDescriptor.read()
                         del fileDescriptor
                         del data

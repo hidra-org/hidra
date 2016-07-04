@@ -54,13 +54,13 @@ class Receiver (threading.Thread):
         logging.info("signalSocket started (bind) for '" + connectionStr + "'")
 
         self.eventSocket   = self.context.socket(zmq.PULL)
-        connectionStr = "ipc:///tmp/zeromq-data-transfer/eventDet"
+        connectionStr = "ipc:///tmp/HiDRA/eventDet"
 #        connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.eventPort)
         self.eventSocket.bind(connectionStr)
         logging.info("eventSocket started (bind) for '" + connectionStr + "'")
 
         self.dataSocket    = self.context.socket(zmq.PULL)
-        connectionStr = "ipc:///tmp/zeromq-data-transfer/dataFetch"
+        connectionStr = "ipc:///tmp/HiDRA/dataFetch"
 #        connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.dataPort)
         self.dataSocket.bind(connectionStr)
         logging.info("dataSocket started (bind) for '" + connectionStr + "'")

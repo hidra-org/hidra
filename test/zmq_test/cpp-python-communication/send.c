@@ -15,7 +15,7 @@ int main () {
 //    char* connectionStr;
     char connectionStr[128];
 
-    char* filename = "/space/projects/zeromq-data-transfer/data/source/local/5.cbf";
+    char* filename = "/opt/HiDRA/data/source/local/5.cbf";
     int i = 0;
 
 //    char* m;
@@ -44,7 +44,7 @@ int main () {
 
         //  Send reply back to client
         sprintf(m, "{ \"filePart\": %d, \"filename\": \"%s\" }", i, filename);
-//        sprintf(m, "{ \"filePart\": %d, \"filename\": \"/space/projects/zeromq-data-transfer/data/source/local/5.cbf\" }", i);
+//        sprintf(m, "{ \"filePart\": %d, \"filename\": \"/opt/HiDRA/data/source/local/5.cbf\" }", i);
         printf("Sender: Sending (%s)\n", m);
 
         int rc = zmq_send(socket, m, strlen(m), 0);

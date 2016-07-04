@@ -91,7 +91,7 @@ class dataTransfer():
         self.fileOpPort            = "50050"
         self.dataHost              = None
         self.dataPort              = None
-        self.ipcPath               = "/tmp/zeromq-data-transfer"
+        self.ipcPath               = "/tmp/HiDRA"
 
         self.signalSocket          = None
         self.requestSocket         = None

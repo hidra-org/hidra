@@ -2,7 +2,7 @@
 
 # LSB compliant init-script header.
 ### BEGIN INIT INFO
-# Provides:          zeromq-data-transfer
+# Provides:          HiDRA
 # Required-Start:    $syslog networking
 # Required-Stop:     $syslog networking
 # Default-Start:     2 3 4 5
@@ -13,17 +13,13 @@
 
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC="ZMQ data transfer"
+DESC="HiDRA"
 # Process name ( For display )
-NAME=zeromq-data-transfer
-#DAEMON=/home/kuhnm/Arbeit/zeromq-data-transfer/src/sender/DataManager.py
-DAEMON=/space/projects/zeromq-data-transfer/src/sender/DataManager.py
-#DAEMON=/home/kuhnm/zeromq-data-transfer/src/sender/DataManager.py
+NAME=HiDRA
+DAEMON=/opt/HiDRA/src/sender/DataManager.py
 DAEMON_ARGS="--verbose"
-#PIDFILE=/home/kuhnm/Arbeit/zeromq-data-transfer/$NAME.pid
-PIDFILE=/space/projects/zeromq-data-transfer/$NAME.pid
-#PIDFILE=/home/kuhnm/zeromq-data-transfer/$NAME.pid
-IPCPATH=/tmp/zeromq-data-transfer
+PIDFILE=/opt/HiDRA/$NAME.pid
+IPCPATH=/tmp/HiDRA
 PYTHON=/usr/bin/python
 
 SCRIPTNAME=/etc/init.d/$NAME
@@ -41,7 +37,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 	    ${DAEMON} ${DAEMON_ARGS} &
         echo $! > $PIDFILE
     	RETVAL=$?
-#	    [ "$RETVAL" = 0 ] && touch /var/lock/subsys/zeromq-data-transfer
+#	    [ "$RETVAL" = 0 ] && touch /var/lock/subsys/HiDRA
     	echo
     }
 
@@ -73,7 +69,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
         fi
         rm -f $PIDFILE
     	RETVAL=$?
-#    	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/zeromq-data-transfer
+#    	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/HiDRA
 	    echo
     }
 
