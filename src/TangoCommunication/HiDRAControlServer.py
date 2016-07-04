@@ -310,7 +310,7 @@ class ZmqDT():
                     self.log.debug("Started with dataFetcher: getFromFile")
                 else:
                     f.write("dataFetcherType    = getFromHttp"                                  + "\n")
-                    self.log.debug("Started with dataFetcher: getFromFile")
+                    self.log.debug("Started with dataFetcher: getFromHttp")
 
                 f.write("numberOfStreams    = 1"                                                + "\n")
                 f.write("useDataStream      = False"                                            + "\n")
