@@ -17,8 +17,7 @@ def argumentParsing():
                                       action = "store_true")
     parser.add_argument("--target"  , type    = str,
                                       help    = "Where to write the data to (default: current/raw; options are: current/raw, current/scratch_bl, commissioning/raw, commissioning/scratch_bl or local)",
-                                      default = "local")
-#                                      default = "current/scratch_bl")
+                                      default = "current/raw")
 
     return parser.parse_args()
 
