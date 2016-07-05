@@ -358,22 +358,17 @@ class ZmqDT():
         # start service
         p = subprocess.call(["systemctl", "start", "hidra@" + self.beamline + ".service"])
 
-        if p == 0:
+        if p != 0:
+            return "ERROR"
+
+        # Needed because status always returns "RUNNING" in the first second
+        time.sleep(1)
+
+        # check if really running before return
+        if self.status() == "RUNNING":
             return "DONE"
         else:
             return "ERROR"
-
-#        if p != 0:
-#            return "ERROR"
-
-        # Needed because status always returns "RUNNING" in the first second
-#        time.sleep(1)
-
-        # check if really running before return
-#        if self.status() == "RUNNING":
-#            return "DONE"
-#        else:
-#            return "ERROR"
 
 
     def stop (self):
