@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #
+import time
 import threading
 import os
 import sys
@@ -170,11 +171,6 @@ class ZmqDT():
             self.historySize = value
             return "DONE"
 
-        #TODO remove this after notified teresa
-        elif key == "localtarget" and self.beamline == "p00":
-            self.localTarget = value
-            return "DONE"
-
         elif key == "localtarget" and value in self.supportedLocalTargets:
             self.localTarget = os.path.join("/beamline", self.beamline, value)
             return "DONE"
@@ -257,11 +253,9 @@ class ZmqDT():
         else:
             return "ERROR"
 
+    def __writeConfig (self):
+        global CONFIGPATH
 
-    def start (self):
-        '''
-        start ...
-        '''
         #
         # see, if all required params are there.
         #
@@ -272,10 +266,6 @@ class ZmqDT():
             and self.storeData != None
             and self.removeData != None
             and self.whitelist ):
-
-            #
-            # execute the start action ...
-            #
 
             # write configfile
             # /etc/hidra/P01.conf
@@ -321,20 +311,7 @@ class ZmqDT():
                 f.write("removeData         = " + str(self.removeData)                          + "\n")
                 f.write("whitelist          = " + str(self.whitelist)                           + "\n")
 
-            # check if service is running
-            if self.status() == "RUNNING":
-                return "ERROR"
-
-            # start service
-            p = subprocess.call(["systemctl", "start", "hidra@" + self.beamline + ".service"])
-
-            if p == 0:
-                return "DONE"
-            else:
-                return "ERROR"
-
         else:
-            self.log.debug("Config file not written")
             self.log.debug("eigerIp: {d}".format(d=self.eigerIp))
             self.log.debug("eigerApiVersion: {d}".format(d=self.eigerApiVersion))
             self.log.debug("historySize: {d}".format(d=self.historySize))
@@ -342,7 +319,43 @@ class ZmqDT():
             self.log.debug("storeData: {d}".format(d=self.storeData))
             self.log.debug("removeData: {d}".format(d=self.removeData))
             self.log.debug("whitelist: {d}".format(d=self.whitelist))
+            raise Exception("Not all required parameters are specified")
+
+
+    def start (self):
+        '''
+        start ...
+        '''
+
+        try:
+            self.__writeConfig()
+        except:
+            self.log.error("ConfigFile not written", exc_info)
             return "ERROR"
+
+        # check if service is running
+        if self.status() == "RUNNING":
+            return "ERROR"
+
+        # start service
+        p = subprocess.call(["systemctl", "start", "hidra@" + self.beamline + ".service"])
+
+        if p == 0:
+            return "DONE"
+        else:
+            return "ERROR"
+
+#        if p != 0:
+#            return "ERROR"
+
+        # Needed because status always returns "RUNNING" in the first second
+#        time.sleep(1)
+
+        # check if really running before return
+#        if self.status() == "RUNNING":
+#            return "DONE"
+#        else:
+#            return "ERROR"
 
 
     def stop (self):
