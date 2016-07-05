@@ -276,6 +276,15 @@ class ZmqDT():
                 f.write("logfileName        = dataManager_" + self.beamline + ".log"            + "\n")
                 f.write("logfileSize        = 10485760"                                         + "\n")
                 f.write("procname           = " + self.procname                                 + "\n")
+                #TODO correct IP
+                if self.beamline == "p00"
+                    # asap3-p00
+                    f.write("extIp              = 131.169.251.55"                               + "\n")
+                    self.log.debug("Started with extIp: 131.169.251.55")
+                else:
+                    # asap3-bl-prx07
+                    f.write("extIp              = 131.169.251.38"                               + "\n")
+                    self.log.debug("Started with extIp: 131.169.251.38")
                 f.write("comPort            = 50000"                                            + "\n")
                 f.write("requestPort        = 50001"                                            + "\n")
 
