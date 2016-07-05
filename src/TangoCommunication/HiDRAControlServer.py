@@ -149,19 +149,19 @@ class ZmqDT():
             return "ERROR"
 
         if tokens[0].lower() == 'set':
-            if len( tokens) < 3:
+            if len(tokens) < 3:
                 return "ERROR"
 
             return self.set(tokens[1], tokens[2])
 
         elif tokens[0].lower() == 'get':
-            if len( tokens) != 2:
+            if len(tokens) != 2:
                 return "ERROR"
 
             return self.get(tokens[1])
 
         elif tokens[0].lower() == 'do':
-            if len( tokens) != 2:
+            if len(tokens) != 2:
                 return "ERROR"
 
             return self.do(tokens[1])

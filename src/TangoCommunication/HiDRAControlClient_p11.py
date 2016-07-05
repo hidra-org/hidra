@@ -39,7 +39,7 @@ if __name__ == '__main__':
         if arguments.start:
             obj.set("localTarget", arguments.target)
             obj.set("eigerIp", "192.168.138.52")
-            obj.set("eigerApiVersion", "1.5.0")
+            obj.set("eigerApiVersion", "1.6.0")
             obj.set("historySize", 2000)
             obj.set("storeData", False)
             obj.set("removeData", False)
