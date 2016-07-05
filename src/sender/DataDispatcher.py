@@ -38,19 +38,6 @@ class DataDispatcher():
     def __init__ (self, id, controlConId, routerConId, chunkSize, fixedStreamId, dataFetcherProp,
                 logQueue, localTarget = None, context = None):
 
-#        dataFetcherProp = {
-#                "type"       : "getFromFile",
-#                "removeFlag" : False
-#                }
-
-#        dataFetcherProp = {
-#                "type"       : "getFromZmq",
-#                "context"    : context,
-#                "extIp"      : "0.0.0.0",
-#                "port"       : "50010"
-#                }
-
-
         self.id              = id
         self.log             = self.__getLogger(logQueue)
 
@@ -364,7 +351,6 @@ if __name__ == '__main__':
     time.sleep(0.5)
 
     localhost      = "127.0.0.1"
-    extIp          = "0.0.0.0"
     controlPort    = "50005"
     routerPort     = "7000"
 
@@ -388,13 +374,6 @@ if __name__ == '__main__':
             "storeData"  : False,
             "removeFlag" : False
             }
-
-#    dataFetcherProp = {
-#            "type"       : "getFromZmq",
-#            "context"    : context,
-#            "extIp"      : "0.0.0.0",
-#            "port"       : "50010"
-#            }
 
     context       = zmq.Context.instance()
 

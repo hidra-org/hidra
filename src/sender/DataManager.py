@@ -68,6 +68,9 @@ def argumentParsing():
     parser.add_argument("--procname"          , type    = str,
                                                 help    = "Name with which the service should be running")
 
+    parser.add_argument("--extIp"             , type    = str,
+                                                help    = "IP of the interface to bind to for external communication")
+
     # SignalHandler config
 
     parser.add_argument("--comPort"           , type    = str,
@@ -187,6 +190,8 @@ def argumentParsing():
         arguments.logfileSize    = arguments.logfileSize        or config.getint('asection', 'logfileSize')
 
     arguments.procname           = arguments.procname           or config.get('asection', 'procname')
+
+    arguments.extIp              = arguments.extIp              or config.get('asection', 'extIp')
 
     arguments.comPort            = arguments.comPort            or config.get('asection', 'comPort')
     try:
@@ -315,7 +320,6 @@ class DataManager():
         self.logQueueListener = None
 
         self.localhost        = "127.0.0.1"
-        self.extIp            = "0.0.0.0"
         self.ipcPath          = "/tmp/HiDRA"
 
         self.currentPID       = os.getpid()
@@ -367,6 +371,8 @@ class DataManager():
 
         if not os.path.exists(self.ipcPath):
             os.makedirs(self.ipcPath)
+
+        self.extIp            = arguments.extIp
 
         self.comPort          = arguments.comPort
         self.requestPort      = arguments.requestPort

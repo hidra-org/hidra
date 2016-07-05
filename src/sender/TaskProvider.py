@@ -349,7 +349,6 @@ if __name__ == '__main__':
             }
 
     localhost       = "127.0.0.1"
-    extIp           = "0.0.0.0"
 
     controlPort     = "50005"
     requestFwPort   = "6001"
