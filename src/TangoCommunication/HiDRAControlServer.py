@@ -244,7 +244,7 @@ class ZmqDT():
             return self.historySize
 
         elif key == "localtarget":
-            return self.localTarget
+            return os.path.relpath(self.localTarget, os.path.join("/beamline", self.beamline))
 
         elif key == "storedata":
             return self.storeData
