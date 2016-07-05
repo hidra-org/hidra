@@ -36,21 +36,48 @@ LOGPATH = "/tmp/HiDRA/logs"
 #
 # assume that the server listening to 51000 serves p00
 #
-bl2port = {
-    "p00"  : 51000,
-    "p01"  : 51001,
-    "p02.1": 51002,
-    "p02.2": 51003,
-    "p03"  : 51004,
-    "p04"  : 51005,
-    "p05"  : 51006,
-    "p06"  : 51007,
-    "p07"  : 51008,
-    "p08"  : 51009,
-    "p09"  : 51010,
-    "p10"  : 51011,
-    "p11"  : 51012
+connectionList = {
+    "p00": {
+        "host" : "asap3-p00",
+        "port" : 51000 },
+    "p01": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51001 },
+    "p02.1": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51002 },
+    "p02.2": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51003 },
+    "p03": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51004 },
+    "p04": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51005 },
+    "p05": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51006 },
+    "p06": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51007 },
+    "p07": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51008 },
+    "p08": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51009 },
+    "p09": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51010 },
+    "p10": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51011 },
+    "p11": {
+        "host" : "asap3-bl-prx07",
+        "port" : 51012 },
     }
+
 
 
 class ZmqDT():
@@ -277,7 +304,7 @@ class ZmqDT():
                 f.write("logfileSize        = 10485760"                                         + "\n")
                 f.write("procname           = " + self.procname                                 + "\n")
                 #TODO correct IP
-                if self.beamline == "p00"
+                if self.beamline == "p00":
                     # asap3-p00
                     f.write("extIp              = 131.169.251.55"                               + "\n")
                     self.log.debug("Started with extIp: 131.169.251.55")
@@ -403,9 +430,10 @@ class socketServer (object):
     '''
     one socket for the port, accept() generates new sockets
     '''
+    global connectionList
 
     def __init__ (self, logQueue, beamline):
-        global bl2port
+        global connectionList
 
         self.logQueue = logQueue
 
@@ -414,8 +442,8 @@ class socketServer (object):
         self.beamline = beamline
         self.log.debug('socketServer startet for beamline {bl}'.format(bl=self.beamline))
 
-        self.host     = socket.gethostname()
-        self.port     = bl2port[self.beamline]
+        self.host     = connectionList[self.beamline]["host"]
+        self.port     = connectionList[self.beamline]["port"]
         self.conns    = []
         self.socket   = None
 
