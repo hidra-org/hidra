@@ -177,16 +177,7 @@ class ZmqDT():
 
         key = param.lower()
 
-#        TODO remove detectordevice and filewriterDevice
-        if key == "detectordevice":
-            self.detectorDevice = value
-            return "DONE"
-
-        elif key == "filewriterdevice":
-            self.filewriterDevice = value
-            return "DONE"
-
-        elif key == "eigerip":
+        if key == "eigerip":
             self.eigerIp = value
             return "DONE"
 
@@ -225,16 +216,7 @@ class ZmqDT():
         '''
         key = param.lower()
 
-#        TODO remove detectordevice and filewriterDevice
-        if key == "detectordevice":
-            self.detectorDevice   = value
-            return self.detectorDevice
-
-        elif key == "filewriterdevice":
-            self.filewriterDevice = value
-            return self.filewriterDevice
-
-        elif key == "eigerip":
+        if key == "eigerip":
             return self.eigerIp
 
         elif key == "eigerapiversion":
