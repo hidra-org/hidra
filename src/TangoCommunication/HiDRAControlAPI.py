@@ -1,6 +1,6 @@
 # API to communicate with a data transfer unit
 
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 import socket
 import logging
@@ -56,7 +56,7 @@ class CommunicationFailed(Exception):
 
 connectionList = {
     "p00": {
-        "host" : "asap3-bl-prx07",
+        "host" : "asap3-p00",
         "port" : 51000 },
     "p01": {
         "host" : "asap3-bl-prx07",
@@ -146,9 +146,14 @@ class HiDRAControlAPI():
 
 
     def set (self, attribute, *value):
-        value == list(value)
+        value = list(value)
+
+        # flatten list if entry was a list (resultin in a list of lists)
+        if type(value[0]) == list:
+            value = [item for sublist in value for item in sublist]
+
         if attribute == "whitelist":
-            msg = 'set {a} {v}'.format(a = attribute, v = list(value))
+            msg = 'set {a} {v}'.format(a = attribute, v = value)
         else:
             msg = 'set {a} {v}'.format(a = attribute, v = value[0])
 
