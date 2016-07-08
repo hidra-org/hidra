@@ -473,7 +473,7 @@ class dataTransfer():
 #                    return message
                 else:
                     self.fileOpSocket.send("ERROR")
-                    self.log.debug("fileOpSocket send: " + message)
+                    self.log.error("Not supported message received")
 
             if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
                 self.log.debug("dataSocket is polling")
@@ -499,7 +499,7 @@ class dataTransfer():
                     raise
                 except:
                     self.log.error("Unknown error while receiving files. Need to abort.", exc_info=True)
-                    return None, None
+#                    raise Exception("Unknown error while receiving files. Need to abort.")
 
             if self.controlSocket in socks and socks[self.controlSocket] == zmq.POLLIN:
                 self.log.debug("controlSocket is polling")
@@ -529,8 +529,6 @@ class dataTransfer():
                     self.log.debug("fileOpSocket send: " + self.replyToSignal)
                     self.replyToSignal = False
                     self.recvdCloseFrom = []
-                else:
-                    pass
 
                 self.closeCallback(self.callbackParams, multipartMessage)
             else:

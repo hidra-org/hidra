@@ -3,3 +3,6 @@ test: test_dataIngestAPI.cpp
 
 test_dataIngestAPI.x: test_dataIngestAPI.c
 	gcc -o test_dataIngestAPI.x test_dataIngestAPI.c ../../APIs/dataIngestAPI.c -lzmq -I../../APIs
+
+test_dataTransferAPI.x: test_dataTransferAPI_nexus.c
+	gcc -o test_dataTransferAPI_nexus.x test_dataTransferAPI_nexus.c ../../APIs/dataTransferAPI.c -lzmq -I../../APIs

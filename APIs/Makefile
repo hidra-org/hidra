@@ -6,3 +6,4 @@ dataIngest_c:
 
 dataTransfer_h:
 	gcc -o dataTransferAPI.o dataTransferAPI.h -lzmq -c
+

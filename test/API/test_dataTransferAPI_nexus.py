@@ -32,8 +32,8 @@ print
 print "==== TEST: nexus transfer ===="
 print
 
-class Sender(threading.Thread):
-    def __init__(self):
+class Sender (threading.Thread):
+    def __init__ (self):
         self.extHost    = "0.0.0.0"
         self.localhost  = "localhost"
         self.signalPort = "50050"
@@ -41,10 +41,10 @@ class Sender(threading.Thread):
 
         self.context       = zmq.Context()
 
-        self.signalSocket  = self.context.socket(zmq.REQ)
+        self.fileOpSocket  = self.context.socket(zmq.REQ)
         connectionStr = "tcp://" + str(self.localhost) + ":" + str(self.signalPort)
-        self.signalSocket.connect(connectionStr)
-        logging.info("signalSocket started (connect) for '" + connectionStr + "'")
+        self.fileOpSocket.connect(connectionStr)
+        logging.info("fileOpSocket started (connect) for '" + connectionStr + "'")
 
         self.dataSocket    = self.context.socket(zmq.PUSH)
         connectionStr = "tcp://" + str(self.localhost) + ":" + str(self.dataPort)
@@ -54,10 +54,10 @@ class Sender(threading.Thread):
         threading.Thread.__init__(self)
 
 
-    def run(self):
-        self.signalSocket.send("OPEN_FILE")
+    def run (self):
+        self.fileOpSocket.send("OPEN_FILE")
 
-        recvMessage = self.signalSocket.recv()
+        recvMessage = self.fileOpSocket.recv()
 
         for i in range(5):
             metadata = {
@@ -75,20 +75,20 @@ class Sender(threading.Thread):
 
         message = "CLOSE_FILE"
         logging.debug("Send " + message)
-        self.signalSocket.send(message)
+        self.fileOpSocket.send(message)
 
         self.dataSocket.send_multipart([message, "0/1"])
 
-        recvMessage = self.signalSocket.recv()
+        recvMessage = self.fileOpSocket.recv()
         logging.debug("Recv confirmation" + recvMessage)
 
 
-    def stop(self):
+    def stop (self):
         try:
-            if self.signalSocket:
-                logging.info("Closing signalSocket...")
-                self.signalSocket.close(linger=0)
-                self.signalSocket = None
+            if self.fileOpSocket:
+                logging.info("Closing fileOpSocket...")
+                self.fileOpSocket.close(linger=0)
+                self.fileOpSocket = None
             if self.dataSocket:
                 logging.info("Closing dataSocket...")
                 self.dataSocket.close(linger=0)
@@ -102,25 +102,36 @@ class Sender(threading.Thread):
             logging.error("Closing ZMQ Sockets...failed.", exc_info=True)
 
 
+    def __exit__ (self):
+        self.stop()
+
+
+    def __del__ (self):
+        self.stop()
+
+
 
 senderThread = Sender()
 senderThread.start()
 
-obj = nexusTransfer(useLog = True)
+#obj = nexusTransfer(useLog = True)
 
-while True:
-    try:
-        data = obj.read()
-        logging.debug("Retrieved: " + str(data))
+try:
+    while True:
+#        try:
+            pass
+    #        data = obj.read()
+    #        logging.debug("Retrieved: " + str(data))
 
-        if data == "CLOSE_FILE":
-            break
-    except:
-        logging.error("break", exc_info=True)
-        break
+    #        if data == "CLOSE_FILE":
+    #            break
+#        except:
+#            logging.error("break", exc_info=True)
+#            break
+finally:
 
-senderThread.stop()
-obj.stop()
+    senderThread.stop()
+#obj.stop()
 
 print
 print "==== TEST END: nexus transfer ===="
