@@ -343,14 +343,17 @@ class dataTransfer():
                     if len(ipFromHost) == 1:
                         ip = ipFromHost[0]
 
-            elif len(self.targets) == 1:
-                host, port = self.targets[0][0].split(":")
-                ipFromHost = socket.gethostbyaddr(host)[2]
-                if len(ipFromHost) == 1:
-                    ip = ipFromHost[0]
+            elif self.targets:
+                if len(self.targets) == 1:
+                    host, port = self.targets[0][0].split(":")
+                    ipFromHost = socket.gethostbyaddr(host)[2]
+                    if len(ipFromHost) == 1:
+                        ip = ipFromHost[0]
 
+                else:
+                    raise FormatError("Multipe possible ports. Please choose which one to use.")
             else:
-                raise FormatError("Multipe possible ports. Please choose which one to use.")
+                    raise FormatError("No target specified.")
 
             socketId = host + ":" + port
             socketIdToBind = ip + ":" + port
