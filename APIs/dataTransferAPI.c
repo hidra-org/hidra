@@ -124,7 +124,6 @@ struct dataTransfer {
 
 int dataTransfer_init (dataTransfer **out)
 {
-    printf("dataTransfer_init...");
     dataTransfer* dT = malloc(sizeof(dataTransfer));
 
     *out = NULL;
@@ -158,7 +157,7 @@ int dataTransfer_init (dataTransfer **out)
 
     if ( (dT->context = zmq_ctx_new ()) == NULL )
     {
-		perror("ERROR: Cannot create 0MQ context: ");
+		perror("ERROR: Cannot create 0MQ context.\n");
 		exit(9);
 	}
 
@@ -166,7 +165,6 @@ int dataTransfer_init (dataTransfer **out)
 
     *out = dT;
 
-    printf("dataTransfer_init successfull");
     return 0;
 
 }
@@ -187,7 +185,7 @@ int dataTransfer_start (dataTransfer *dT)
 
     char socketIdToBind[128];
     char connectionStr[128];
-
+/*
     if ( !dT->nexusStarted )
     {
         strcpy(socketIdToBind, dT->nexusStarted);
@@ -200,48 +198,46 @@ int dataTransfer_start (dataTransfer *dT)
     }
     else
     {
-        snprintf(socketIdToBind, sizeof(socketIdToBind), "%s:%s", dT->extIp, dT->dataPort);
-    }
+*/        snprintf(socketIdToBind, sizeof(socketIdToBind), "%s:%s", dT->extIp, dT->dataPort);
+//    }
 
     // Create data socket
     if ( (dT->dataSocket = zmq_socket (dT->context, ZMQ_PULL)) == NULL )
     {
-		perror("ERROR: Could not create 0MQ dataSocket: ");
+		perror("ERROR: Could not create 0MQ dataSocket.\n");
 		exit(9);
 	}
 
     snprintf(connectionStr, sizeof(connectionStr), "tcp://%s", socketIdToBind);
     if ( zmq_bind(dT->dataSocket, connectionStr) )
     {
-        printf("ERROR: Failed to start Socket of type %s (bind): '%s'", dT->connectionType, connectionStr);
+        printf("ERROR: Failed to start Socket of type %s (bind): '%s'\n", dT->connectionType, connectionStr);
 //        perror("ERROR: Failed to start Socket of type %s (bind): '%s'", dT->connectionType, connectionStr);
     }
     else
     {
-        printf("Data socket of type %s started (bind) for '%s'", dT->connectionType, connectionStr);
+        printf("Data socket of type %s started (bind) for '%s'\n", dT->connectionType, connectionStr);
     }
 
     // Create socket for file operation exchanging
     if ( (dT->fileOpSocket = zmq_socket (dT->context, ZMQ_REP)) == NULL )
     {
-        perror("ERROR: Could not create 0MQ fileOpSocket: ");
+        perror("ERROR: Could not create 0MQ fileOpSocket.\n");
         exit(9);
     }
 
     snprintf(connectionStr, sizeof(connectionStr), "tcp://%s:%s", dT->extIp, dT->fileOpPort);
     if ( zmq_bind(dT->fileOpSocket, connectionStr) )
     {
-        printf("ERROR: Failed to start Socket of type %s (bind): '%s'", dT->connectionType, connectionStr);
+        printf("ERROR: Failed to start Socket of type %s (bind): '%s'\n", dT->connectionType, connectionStr);
 //        perror("ERROR: Failed to start Socket of type %s (bind): '%s'", dT->connectionType, connectionStr);
     }
     else
     {
-        printf("File operation socket started (bind) for '%s'", connectionStr);
+        printf("File operation socket started (bind) for '%s'\n", connectionStr);
     }
 
     dT->nexusStarted = socketIdToBind;
-
-    printf("dataTransfer_start successfull");
 
     return 0;
 }
@@ -261,7 +257,7 @@ int dataTransfer_read (dataTransfer *dT, char *data, int size)
 
     while (1)
     {
-        printf ("polling");
+//        printf ("polling\n");
         zmq_poll (items, 2, -1);
 
         if (items [0].revents & ZMQ_POLLIN)
@@ -271,13 +267,12 @@ int dataTransfer_read (dataTransfer *dT, char *data, int size)
             message = s_recv (dT->fileOpSocket);
             printf ("fileOpSocket recv: '%s'\n", message);
 
-
-            if (message == "CLOSE_FILE")
+            if (strcmp(message,"CLOSE_FILE") == 0)
             {
                 if ( dT->allCloseRecvd )
                 {
                     rc = zmq_send (dT->fileOpSocket, message, strlen(message), 0);
-                    printf("fileOpSocket send: %s", message);
+                    printf("fileOpSocket send: %s\n", message);
                     dT->allCloseRecvd = 0;
                     break;
                 }
@@ -286,20 +281,20 @@ int dataTransfer_read (dataTransfer *dT, char *data, int size)
                     dT->replyToSignal = message;
                 }
             }
-            else if (message == "OPEN_FILE")
+            else if (strcmp(message,"OPEN_FILE") == 0)
             {
                 rc = zmq_send (dT->fileOpSocket, message, strlen(message), 0);
-                printf("fileOpSocket send: %s", message);
+                printf("fileOpSocket send: %s\n", message);
 
                 //TODO
 //                dT->openCallback(dT->callbackParams, message);
 //                dT->fileOpened = 1;
-                  dT->allCloseRecvd = 1;
+                dT->allCloseRecvd = 1;
             }
             else
             {
                 rc = zmq_send (dT->fileOpSocket, "ERROR", strlen("ERROR"), 0);
-                printf("Not supported message received");
+                printf("Not supported message received\n");
             }
         }
 /*
@@ -333,12 +328,12 @@ int dataTransfer_read (dataTransfer *dT, char *data, int size)
 //                self.log.error("Unknown error while receiving files. Need to abort.", exc_info=True)
 //                return None, None
 
-*/
+
             for (i = 0; i < 2; i++)
             {
                 free(multipartMessage[i]);
             };
-        }
+*/        }
 
 }
 

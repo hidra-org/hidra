@@ -80,7 +80,7 @@ class Sender (threading.Thread):
         self.dataSocket.send_multipart([message, "0/1"])
 
         recvMessage = self.fileOpSocket.recv()
-        logging.debug("Recv confirmation" + recvMessage)
+        logging.debug("Recv confirmation: " + recvMessage)
 
 
     def stop (self):
@@ -117,9 +117,10 @@ senderThread.start()
 #obj = nexusTransfer(useLog = True)
 
 try:
-    while True:
+    time.sleep(10)
+
+#    while True:
 #        try:
-            pass
     #        data = obj.read()
     #        logging.debug("Retrieved: " + str(data))
 
