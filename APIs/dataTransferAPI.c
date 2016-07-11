@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
+#include <glib.h>
 
 
 // helper functions for sending and receiving messages
@@ -41,7 +42,7 @@ static int s_send (void * socket, char* string)
 
 }
 
-/*
+
 int recv_multipartMessage (void *socket, char **multipartMessage, int *len)
 {
     int i = 0;
@@ -54,13 +55,13 @@ int recv_multipartMessage (void *socket, char **multipartMessage, int *len)
         //  Wait for next request from client
         zmq_msg_t message;
         zmq_msg_init (&message);
-        m_size = zmq_msg_recv (&message, socket, 0);
+        size = zmq_msg_recv (&message, socket, 0);
 
         //Process message
-        multipartMessage[i] = malloc (m_size + 1);
-        memcpy (multipartMessage[i], zmq_msg_data (&message), m_size);
-        printf("recieved string: %s\n", multipartMessage[i]);
-        multipartMessage[i] [m_size] = 0;
+        multipartMessage[i] = malloc (size + 1);
+        memcpy (multipartMessage[i], zmq_msg_data (&message), size);
+//        printf("recieved string: %s\n", multipartMessage[i]);
+        multipartMessage[i] [size] = 0;
 
         i++;
 
@@ -68,7 +69,7 @@ int recv_multipartMessage (void *socket, char **multipartMessage, int *len)
         zmq_getsockopt (socket, ZMQ_RCVMORE, &more, &more_size);
         if (more == 0)
         {
-            printf("last received\n");
+//            printf("last received\n");
             *len = i;
             break;
         };
@@ -78,7 +79,7 @@ int recv_multipartMessage (void *socket, char **multipartMessage, int *len)
     return 0;
 
 }
-*/
+
 
 struct dataTransfer {
 
@@ -96,9 +97,6 @@ struct dataTransfer {
     void *fileOpSocket;
     void *dataSocket;
 
-    //  Initialize poll set
-//    zmq::pollitem_t items [];
-
     char *nexusStarted;
 
     int socketResponseTimeout;
@@ -106,8 +104,9 @@ struct dataTransfer {
     int numberOfStreams;
     char **recvdCloseFrom;
     char *replyToSignal;
-//    int replyToSignal;
     int allCloseRecvd;
+
+    int runLoop;
 
 //    char **fileDescriptors;
 
@@ -142,11 +141,11 @@ int dataTransfer_init (dataTransfer **out)
     dT->socketResponseTimeout = 1000;
 
     dT->numberOfStreams  = 0;
-//    dT->recvdCloseFrom   = NULL;
+    dT->recvdCloseFrom   = NULL;
     dT->replyToSignal    = NULL;
-//    dT->replyToSignal = 0;
     dT->allCloseRecvd    = 0;
 
+    dT->runLoop          = 1;
 //    dT->fileDescriptors = NULL;
 
     dT->fileOpened       = 0;
@@ -255,7 +254,9 @@ int dataTransfer_read (dataTransfer *dT, char *data, int size)
     int i;
     int len;
 
-    while (1)
+    dT->runLoop = 1;
+
+    while (dT->runLoop)
     {
 //        printf ("polling\n");
         zmq_poll (items, 2, -1);
@@ -273,7 +274,7 @@ int dataTransfer_read (dataTransfer *dT, char *data, int size)
                 {
                     rc = zmq_send (dT->fileOpSocket, message, strlen(message), 0);
                     printf("fileOpSocket send: %s\n", message);
-                    dT->allCloseRecvd = 0;
+                    dT->runLoop = 0;
                     break;
                 }
                 else
@@ -286,10 +287,10 @@ int dataTransfer_read (dataTransfer *dT, char *data, int size)
                 rc = zmq_send (dT->fileOpSocket, message, strlen(message), 0);
                 printf("fileOpSocket send: %s\n", message);
 
+                dT->allCloseRecvd = 0;
                 //TODO
 //                dT->openCallback(dT->callbackParams, message);
 //                dT->fileOpened = 1;
-                dT->allCloseRecvd = 1;
             }
             else
             {
@@ -297,13 +298,12 @@ int dataTransfer_read (dataTransfer *dT, char *data, int size)
                 printf("Not supported message received\n");
             }
         }
-/*
+
         if (items [1].revents & ZMQ_POLLIN)
         {
             printf ("dataSocket is polling\n");
 
-            rc = getMultipartMessage(dI->dataSocket, multipartMessage)
-            rc = recv_multipartMessage (dI-dataSocket, multipartMessage, len);
+            rc = recv_multipartMessage (dT->dataSocket, multipartMessage, &len);
             printf ("multipartMessage[0]=%s\nmultipartMessage[1]=%s\n",
                     multipartMessage[0], multipartMessage[1]);
 
@@ -316,82 +316,95 @@ int dataTransfer_read (dataTransfer *dT, char *data, int size)
 
             if (multipartMessage[1] == "ALIVE_TEST")
             {
-                continue
+                continue;
             }
 
-//            try:
-//                self.__reactOnMessage(multipartMessage)
-//            except KeyboardInterrupt:
-//                self.log.debug("Keyboard interrupt detected. Stopping to receive.")
-//                raise
-//            except:
-//                self.log.error("Unknown error while receiving files. Need to abort.", exc_info=True)
-//                return None, None
 
+            rc = reactOnMessage (dT, multipartMessage);
 
             for (i = 0; i < 2; i++)
             {
                 free(multipartMessage[i]);
             };
-*/        }
 
+        }
+    }
 }
 
-/*
+
 int reactOnMessage (dataTransfer *dT, char **multipartMessage)
 {
-    char id[128];
+    char *id;
+    int rc;
+    int idNum;
+    char **splitRes;
+    int i;
+    int totalRecvd = 0;
 
-    if (multipartMessage[0] == "CLOSE_FILE")
+    if (strcmp(multipartMessage[0], "CLOSE_FILE") == 0)
     {
         id = multipartMessage[1];
 
+        splitRes = g_strsplit (id, "/", 2);
+        idNum = atoi(splitRes[0]);
+
         // get number of signals to wait for
-//        if (dT->numberOfStreams == 0)
-//        {
-            //TODO convert from python
-//            num = int(id.split("/")[1]);
-//            num = strchr(id, '/');
-//            if (num != NULL) num++;
-//            dT->numberOfStreams = (int)num;
-//            dT->recvdCloseFrom = malloc (dT->numberofStreams * sizeof(id));
-//        }
+        if (dT->numberOfStreams == 0)
+        {
+            dT->numberOfStreams = atoi(splitRes[1]);
 
-        //TODO convert from python
-//        dT->recvdCloseFrom.append(id);
-//        printf("Received close-file-signal from DataDispatcher-%s", id);
+            dT->recvdCloseFrom = malloc(sizeof(char*) * dT->numberOfStreams);
+            for (i = 0; i < dT->numberOfStreams; i++)
+            {
+                dT->recvdCloseFrom[i] = NULL;
+            }
+        }
 
-        // have all signals arrived?
-//        printf("numberOfStreams=%i", dT->numberOfStreams);
-//        for (i = 0; i <= numberOfStreams; i++)
-//        {
-//            printf("recvdCloseFrom[%i]=%s", i, dT->recvdCloseFrom);
-//        }
-//        if (len(dT->recvdCloseFrom) == dT->numberOfStreams)
-//        {
-//            printf("All close-file-signals arrived");
-//            dT->allCloseRecvd = 1;
-//            if (!dT->replyToSignal)
-//            {
+        dT->recvdCloseFrom[idNum] = strdup(id);
+        printf("Received close-file-signal from DataDispatcher-%s\n", id);
 
-                dT->fileOpSocket.send(dT->replyToSignal);
+        // have all been signals arrived?
+        printf("numberOfStreams=%i\n", dT->numberOfStreams);
+        for (i = 0; i < dT->numberOfStreams; i++)
+        {
+            printf("recvdCloseFrom[%i]=%s\n", i, dT->recvdCloseFrom[i]);
+            printf("something\n");
 
-//                printf("fileOpSocket send: %i", dT->replyToSignal)
-//                dT->replyToSignal = NULL
-//                free(dT->recvdCloseFrom);
-//            }
+            if (dT->recvdCloseFrom[i] != NULL)
+            {
+                totalRecvd++;
+                printf ("not NULL, totalRecvd=%i\n", totalRecvd);
+            }
+        }
+
+        printf ("before if\n");
+        if ( totalRecvd >= dT->numberOfStreams)
+        {
+            printf("All close-file-signals arrived\n");
+            dT->allCloseRecvd = 1;
+
+            printf("replyToSignal: %s\n", dT->replyToSignal);
+            if (dT->replyToSignal)
+            {
+                printf("replyToSignal not NULL\n");
+                rc = zmq_send (dT->fileOpSocket, dT->replyToSignal, strlen(dT->replyToSignal), 0);
+                printf("fileOpSocket send: %s\n", dT->replyToSignal);
+
+                dT->replyToSignal = NULL;
+                free(dT->recvdCloseFrom);
+                dT->runLoop = 0;
+            }
 
 //            dT->closeCallback(dT->callbackParams, dT->multipartMessage)
-
         }
         else
         {
-            printf("Still close events missing")
+            printf("Still close events missing\n");
         }
-
     }
     else
     {
+/*
         //TODO convert from python
         //extract multipart message
         try:
@@ -408,9 +421,12 @@ int reactOnMessage (dataTransfer *dT, char **multipartMessage)
             payload = None
 
         self.readCallback(self.callbackParams, [metadata, payload])
-    }
-}
 */
+    }
+
+    return 0;
+}
+
 
 int dataTransfer_stop (dataTransfer *dT)
 {

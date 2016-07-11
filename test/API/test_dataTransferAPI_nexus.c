@@ -22,16 +22,6 @@ int main ()
     rc = dataTransfer_read (obj, data, size);
     printf("Read data: %s, size: %d\n", data, size);
 
-/*
-    for (i=0; i < 5; i++)
-    {
-        rc = dataTransfer_read (obj, data, size);
-        printf("Read data: %s, size: %d\n", data, size);
-    };
-
-    rc = dataTransfer_read (obj, data, size);
-    printf("Read data: %s, size: %d\n", data, size);
-*/
     printf ("Stopping\n");
     rc = dataTransfer_stop(obj);
 
