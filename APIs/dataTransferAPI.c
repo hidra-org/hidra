@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <glib.h>
+#include <json.h>
 
 
 // helper functions for sending and receiving messages
@@ -22,28 +23,35 @@ static char* s_recv (void *socket)
         return NULL;
     char *string = malloc (size + 1);
     memcpy (string, zmq_msg_data (&message), size);
-    printf("recieved string: %s\n", string);
+//    printf("recieved string: %s\n", string);
     zmq_msg_close (&message);
     string [size] = 0;
     return string;
 }
 
 
-static int s_send (void * socket, char* string)
+static int s_send (char* socketName, void * socket, char* string)
 {
-    printf("Sending: %s\n", string);
+//    printf("Sending: %s\n", string);
     int size = zmq_send (socket, string, strlen (string), 0);
-    if (size == -1) {
-        printf("Sending failed\n");
+    if (size == -1)
+    {
+        fprintf(stderr, "Failed to send message via %s (message: '%s'): %s\n",
+                socketName, string, strerror( errno ));
 //        fprintf (stderr, "ERROR: Sending failed\n");
 //        perror("");
-    };
-    return size;
+    }
+    else
+    {
+        printf("%s send: %s\n", socketName, string);
+    }
 
+    return size;
 }
 
 
-int recv_multipartMessage (void *socket, char **multipartMessage, int *len)
+
+DATATRANSFERAPI_ERROR recv_multipartMessage (void *socket, char **multipartMessage, int *len)
 {
     int i = 0;
     int size;
@@ -51,7 +59,6 @@ int recv_multipartMessage (void *socket, char **multipartMessage, int *len)
     size_t more_size = sizeof(more);
     while (1)
     {
-
         //  Wait for next request from client
         zmq_msg_t message;
         zmq_msg_init (&message);
@@ -73,10 +80,9 @@ int recv_multipartMessage (void *socket, char **multipartMessage, int *len)
             *len = i;
             break;
         };
-
     }
 
-    return 0;
+    return SUCCESS;
 
 }
 
@@ -86,6 +92,8 @@ struct dataTransfer {
     char *localhost;
     char *extIp;
     char *ipcPath;
+
+    char *conType;
 
     char *signalHost;
     char *fileOpPort;
@@ -116,13 +124,19 @@ struct dataTransfer {
     int readCallback;
     int closeCallback;
 
-    char *connectionType;
-
 };
 
 
-int dataTransfer_init (dataTransfer **out)
+DATATRANSFERAPI_ERROR dataTransfer_init (dataTransfer **out, char *connectionType)
 {
+//    assert( strcmp(connectionType, "nexus") == 0 )
+//    printf("conType: %s, comparison: %i\n", connectionType, strcmp(connectionType, "nexus"));
+/*    if (strcmp(connectionType, "nexus") == 0 )
+    {
+        fprintf(stderr, "Chosen type of connection is not supported.\n");
+//        return NOTSUPPORTED;
+    }
+*/
     dataTransfer* dT = malloc(sizeof(dataTransfer));
 
     *out = NULL;
@@ -130,6 +144,8 @@ int dataTransfer_init (dataTransfer **out)
     dT->localhost   = "localhost";
     dT->extIp       = "0.0.0.0";
     dT->ipcPath     = "/tmp/HiDRA";
+
+    dT->conType     = connectionType;
 
     dT->signalHost  = "zitpcx19282";
     dT->fileOpPort  = "50050";
@@ -156,80 +172,84 @@ int dataTransfer_init (dataTransfer **out)
 
     if ( (dT->context = zmq_ctx_new ()) == NULL )
     {
-		perror("ERROR: Cannot create 0MQ context.\n");
-		exit(9);
+		perror("Cannot create 0MQ context");
+		return ZMQERROR;
 	}
 
     dT->allCloseRecvd = 0;
 
     *out = dT;
 
-    return 0;
+    return SUCCESS;
 
 }
 
 
-int dataTransfer_initiate (dataTransfer *dT, char **targets)
+DATATRANSFERAPI_ERROR dataTransfer_initiate (dataTransfer *dT, char **targets)
 {
     char *signal;
     char *signalPort;
     char signalConId[128];
 
-    return 0;
+    if (dT->conType == "nexus")
+    {
+        printf ("There is no need for a signal exchange for connection type 'nexus'");
+        return SUCCESS;
+    }
+
+    return SUCCESS;
 }
 
 
-int dataTransfer_start (dataTransfer *dT)
+DATATRANSFERAPI_ERROR dataTransfer_start (dataTransfer *dT)
 {
 
-    char socketIdToBind[128];
+    char *socketIdToBind = NULL;
     char connectionStr[128];
-/*
-    if ( !dT->nexusStarted )
-    {
-        strcpy(socketIdToBind, dT->nexusStarted);
-    }
 
-    if ( !socketIdToBind )
+    if ( dT->nexusStarted != NULL)
     {
-        printf ("Reopening already started connection.");
-        return 0;
+        socketIdToBind = dT->nexusStarted;
+        printf ("Reopening already started connection.\n");
     }
     else
     {
-*/        snprintf(socketIdToBind, sizeof(socketIdToBind), "%s:%s", dT->extIp, dT->dataPort);
-//    }
+        socketIdToBind = malloc(strlen(dT->extIp)+strlen(dT->dataPort)+1);
+        sprintf(socketIdToBind, "%s:%s", dT->extIp, dT->dataPort);
+    }
 
     // Create data socket
     if ( (dT->dataSocket = zmq_socket (dT->context, ZMQ_PULL)) == NULL )
     {
-		perror("ERROR: Could not create 0MQ dataSocket.\n");
-		exit(9);
+		perror("Could not create 0MQ dataSocket");
+		return ZMQERROR;
 	}
 
     snprintf(connectionStr, sizeof(connectionStr), "tcp://%s", socketIdToBind);
     if ( zmq_bind(dT->dataSocket, connectionStr) )
     {
-        printf("ERROR: Failed to start Socket of type %s (bind): '%s'\n", dT->connectionType, connectionStr);
-//        perror("ERROR: Failed to start Socket of type %s (bind): '%s'", dT->connectionType, connectionStr);
+        fprintf(stderr, "Failed to start data socket (bind) for '%s': %s\n",
+                connectionStr, strerror( errno ));
+        return ZMQERROR;
     }
     else
     {
-        printf("Data socket of type %s started (bind) for '%s'\n", dT->connectionType, connectionStr);
+        printf("Data socket of type %s started (bind) for '%s'\n", dT->conType, connectionStr);
     }
 
     // Create socket for file operation exchanging
     if ( (dT->fileOpSocket = zmq_socket (dT->context, ZMQ_REP)) == NULL )
     {
-        perror("ERROR: Could not create 0MQ fileOpSocket.\n");
-        exit(9);
+        perror("Could not create 0MQ fileOpSocket");
+        return ZMQERROR;
     }
 
     snprintf(connectionStr, sizeof(connectionStr), "tcp://%s:%s", dT->extIp, dT->fileOpPort);
     if ( zmq_bind(dT->fileOpSocket, connectionStr) )
     {
-        printf("ERROR: Failed to start Socket of type %s (bind): '%s'\n", dT->connectionType, connectionStr);
-//        perror("ERROR: Failed to start Socket of type %s (bind): '%s'", dT->connectionType, connectionStr);
+        fprintf(stderr, "Failed to start file operation socket (bind) for '%s': %s\n",
+                connectionStr, strerror( errno ));
+        return ZMQERROR;
     }
     else
     {
@@ -238,108 +258,19 @@ int dataTransfer_start (dataTransfer *dT)
 
     dT->nexusStarted = socketIdToBind;
 
-    return 0;
+    return SUCCESS;
 }
 
 
-int dataTransfer_read (dataTransfer *dT, char *data, int size)
+DATATRANSFERAPI_ERROR reactOnMessage (dataTransfer *dT, char **multipartMessage)
 {
-    zmq_pollitem_t items [] = {
-        { dT->fileOpSocket,   0, ZMQ_POLLIN, 0 },
-        { dT->dataSocket, 0, ZMQ_POLLIN, 0 }
-    };
-    char *message;
-    int rc;
-    char *multipartMessage[2];
-    int i;
-    int len;
-
-    dT->runLoop = 1;
-
-    while (dT->runLoop)
-    {
-//        printf ("polling\n");
-        zmq_poll (items, 2, -1);
-
-        if (items [0].revents & ZMQ_POLLIN)
-        {
-            printf ("fileOpSocket is polling\n");
-
-            message = s_recv (dT->fileOpSocket);
-            printf ("fileOpSocket recv: '%s'\n", message);
-
-            if (strcmp(message,"CLOSE_FILE") == 0)
-            {
-                if ( dT->allCloseRecvd )
-                {
-                    rc = zmq_send (dT->fileOpSocket, message, strlen(message), 0);
-                    printf("fileOpSocket send: %s\n", message);
-                    dT->runLoop = 0;
-                    break;
-                }
-                else
-                {
-                    dT->replyToSignal = message;
-                }
-            }
-            else if (strcmp(message,"OPEN_FILE") == 0)
-            {
-                rc = zmq_send (dT->fileOpSocket, message, strlen(message), 0);
-                printf("fileOpSocket send: %s\n", message);
-
-                dT->allCloseRecvd = 0;
-                //TODO
-//                dT->openCallback(dT->callbackParams, message);
-//                dT->fileOpened = 1;
-            }
-            else
-            {
-                rc = zmq_send (dT->fileOpSocket, "ERROR", strlen("ERROR"), 0);
-                printf("Not supported message received\n");
-            }
-        }
-
-        if (items [1].revents & ZMQ_POLLIN)
-        {
-            printf ("dataSocket is polling\n");
-
-            rc = recv_multipartMessage (dT->dataSocket, multipartMessage, &len);
-            printf ("multipartMessage[0]=%s\nmultipartMessage[1]=%s\n",
-                    multipartMessage[0], multipartMessage[1]);
-
-            if (len < 2)
-            {
-                perror ("Received mutipart-message is too short. Either config or file content is missing.");
-                //TODO correct errorcode
-                return -1;
-            }
-
-            if (multipartMessage[1] == "ALIVE_TEST")
-            {
-                continue;
-            }
-
-
-            rc = reactOnMessage (dT, multipartMessage);
-
-            for (i = 0; i < 2; i++)
-            {
-                free(multipartMessage[i]);
-            };
-
-        }
-    }
-}
-
-
-int reactOnMessage (dataTransfer *dT, char **multipartMessage)
-{
-    char *id;
-    int rc;
-    int idNum;
-    char **splitRes;
-    int i;
+    char *id = NULL;
+    int idNum = 0;
+    char **splitRes = NULL;
+    int i = 0;
+    int rc = 0;
     int totalRecvd = 0;
+    struct json_object *metadata = NULL;
 
     if (strcmp(multipartMessage[0], "CLOSE_FILE") == 0)
     {
@@ -368,30 +299,28 @@ int reactOnMessage (dataTransfer *dT, char **multipartMessage)
         for (i = 0; i < dT->numberOfStreams; i++)
         {
             printf("recvdCloseFrom[%i]=%s\n", i, dT->recvdCloseFrom[i]);
-            printf("something\n");
-
             if (dT->recvdCloseFrom[i] != NULL)
             {
                 totalRecvd++;
-                printf ("not NULL, totalRecvd=%i\n", totalRecvd);
             }
+            printf ("totalRecvd=%i\n", totalRecvd);
         }
 
-        printf ("before if\n");
         if ( totalRecvd >= dT->numberOfStreams)
         {
             printf("All close-file-signals arrived\n");
             dT->allCloseRecvd = 1;
 
             printf("replyToSignal: %s\n", dT->replyToSignal);
-            if (dT->replyToSignal)
+            if (dT->replyToSignal != NULL)
             {
-                printf("replyToSignal not NULL\n");
-                rc = zmq_send (dT->fileOpSocket, dT->replyToSignal, strlen(dT->replyToSignal), 0);
-                printf("fileOpSocket send: %s\n", dT->replyToSignal);
+                rc = s_send ("fileOpSocket", dT->fileOpSocket, dT->replyToSignal);
+                if (rc == -1) return COMMUNICATIONFAILED;
 
                 dT->replyToSignal = NULL;
-                free(dT->recvdCloseFrom);
+                if (dT->recvdCloseFrom) free(dT->recvdCloseFrom);
+                dT->recvdCloseFrom = NULL;
+                dT->allCloseRecvd = 0;
                 dT->runLoop = 0;
             }
 
@@ -404,31 +333,137 @@ int reactOnMessage (dataTransfer *dT, char **multipartMessage)
     }
     else
     {
-/*
-        //TODO convert from python
+
+//        printf("load JSON: %s\n", multipartMessage[0]);
+
         //extract multipart message
-        try:
-            //TODO exchange cPickle with json
-            metadata = cPickle.loads(multipartMessage[0])
-        except:
-            self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
-            metadata = None
+        metadata = json_tokener_parse(multipartMessage[0]);
+//        printf("metadata:\n%s\n", json_object_to_json_string_ext(metadata, JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY));
 
-        try:
-            payload = multipartMessage[1:]
-        except:
-            self.log.warning("An empty file was received within the multipart-message", exc_info=True)
-            payload = None
+//        perror("Could not extract metadata from the multipart-message.");
+//        metadata = NULL;
 
-        self.readCallback(self.callbackParams, [metadata, payload])
-*/
+        char *payload = multipartMessage[1];
+//        perror("An empty file was received within the multipart-message");
+//        payload = NULL;
+
+//        self.readCallback(self.callbackParams, [metadata, payload])
     }
 
-    return 0;
+    return SUCCESS;
 }
 
 
-int dataTransfer_stop (dataTransfer *dT)
+DATATRANSFERAPI_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
+{
+    zmq_pollitem_t items [] = {
+        { dT->fileOpSocket,   0, ZMQ_POLLIN, 0 },
+        { dT->dataSocket, 0, ZMQ_POLLIN, 0 }
+    };
+    char *message = NULL;
+    int rc = 0;
+    char *multipartMessage[2];
+    int i = 0;
+    int len = 0;
+
+    dT->runLoop = 1;
+
+    while (dT->runLoop)
+    {
+//        printf ("polling\n");
+        zmq_poll (items, 2, -1);
+
+        if (items [0].revents & ZMQ_POLLIN)
+        {
+            printf ("fileOpSocket is polling\n");
+
+            message = s_recv (dT->fileOpSocket);
+            printf ("fileOpSocket recv: '%s'\n", message);
+
+            if (strcmp(message,"CLOSE_FILE") == 0)
+            {
+                if ( dT->allCloseRecvd )
+                {
+                    rc = s_send ("fileOpSocket", dT->fileOpSocket, message);
+                    if (rc == -1) return COMMUNICATIONFAILED;
+
+                    dT->runLoop = 0;
+                    dT->allCloseRecvd = 0;
+                    break;
+                }
+                else
+                {
+                    dT->replyToSignal = message;
+                }
+            }
+            else if (strcmp(message,"OPEN_FILE") == 0)
+            {
+                rc = s_send ("fileOpSocket", dT->fileOpSocket, message);
+                if (rc == -1) return COMMUNICATIONFAILED;
+
+                dT->allCloseRecvd = 0;
+//                dT->openCallback(dT->callbackParams, message);
+//                dT->fileOpened = 1;
+            }
+            else
+            {
+                printf("Not supported message received\n");
+
+                rc = s_send ("fileOpSocket", dT->fileOpSocket, "ERROR");
+                if (rc == -1) return COMMUNICATIONFAILED;
+            }
+
+            free (message);
+        }
+
+        if (items [1].revents & ZMQ_POLLIN)
+        {
+            printf ("dataSocket is polling\n");
+
+            if (recv_multipartMessage (dT->dataSocket, multipartMessage, &len))
+            {
+                perror("Failed to receive data");
+                return COMMUNICATIONFAILED;
+            }
+            else
+            {
+                printf ("multipartMessage[0]=%s\nmultipartMessage[1]=%s\n",
+                        multipartMessage[0], multipartMessage[1]);
+            }
+
+            if (len < 2)
+            {
+                perror ("Received mutipart-message is too short");
+                return FORMATERROR;
+            }
+
+            if (multipartMessage[1] == "ALIVE_TEST")
+            {
+                continue;
+            }
+
+
+            rc = reactOnMessage (dT, multipartMessage);
+
+            for (i = 0; i < 2; i++)
+            {
+                free(multipartMessage[i]);
+            };
+
+            if (rc)
+            {
+                printf("reactOnMessage failed\n");
+//                return rc;
+            }
+
+        }
+    }
+
+    return SUCCESS;
+}
+
+
+DATATRANSFERAPI_ERROR dataTransfer_stop (dataTransfer *dT)
 {
 
     printf ("closing fileOpSocket...\n");
@@ -441,9 +476,11 @@ int dataTransfer_stop (dataTransfer *dT)
     zmq_ctx_destroy(dT->context);
 //                self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
-//    free (dT);
+    if (dT->nexusStarted) free (dT->nexusStarted);
+    if (dT->recvdCloseFrom != NULL) free (dT->recvdCloseFrom);
+    free (dT);
     printf ("Cleanup finished.\n");
 
-    return 0;
+    return SUCCESS;
 }
 

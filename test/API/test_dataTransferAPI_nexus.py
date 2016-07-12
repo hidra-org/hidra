@@ -131,9 +131,12 @@ class Sender ():
 
 
     def run (self):
-        self.fileOpSocket.send("OPEN_FILE")
+        message = "OPEN_FILE"
+        logging.debug("Send " + message)
+        self.fileOpSocket.send(message)
 
         recvMessage = self.fileOpSocket.recv()
+        logging.debug("Recv confirmation: " + recvMessage)
 
         for i in range(5):
             metadata = {

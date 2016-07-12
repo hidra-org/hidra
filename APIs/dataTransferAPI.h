@@ -7,12 +7,14 @@
 
 typedef struct dataTransfer dataTransfer;
 
-int dataTransfer_init (dataTransfer **nT);
+typedef enum { SUCCESS, NOTSUPPORTED, USAGEERROR, FORMATERROR, ZMQERROR, CONNECTIONFAILED, VERSIONERROR, AUTHENTICATIONFAILED, COMMUNICATIONFAILED, DATASAVINGERROR } DATATRANSFERAPI_ERROR;
 
-int dataTransfer_initiate (dataTransfer *nT, char **targets);
+DATATRANSFERAPI_ERROR dataTransfer_init (dataTransfer **dT, char *connectionType);
 
-int dataTransfer_read (dataTransfer *nT, char *data, int size);
+DATATRANSFERAPI_ERROR dataTransfer_initiate (dataTransfer *dT, char **targets);
 
-int dataTransfer_stop (dataTransfer *nT);
+DATATRANSFERAPI_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size);
+
+DATATRANSFERAPI_ERROR dataTransfer_stop (dataTransfer *dT);
 
 #endif

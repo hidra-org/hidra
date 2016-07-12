@@ -5,4 +5,4 @@ test_dataIngestAPI.x: test_dataIngestAPI.c
 	gcc -o test_dataIngestAPI.x test_dataIngestAPI.c ../../APIs/dataIngestAPI.c -lzmq -I../../APIs
 
 test_dataTransferAPI.x: test_dataTransferAPI_nexus.c
-	gcc -o test_dataTransferAPI_nexus.x `pkg-config --cflags glib-2.0` -ggdb test_dataTransferAPI_nexus.c ../../APIs/dataTransferAPI.c -lzmq -I../../APIs `pkg-config --libs glib-2.0`
+	gcc -o test_dataTransferAPI_nexus.x `pkg-config --cflags glib-2.0` -ggdb test_dataTransferAPI_nexus.c ../../APIs/dataTransferAPI.c -lzmq -ljson-c -I/usr/include/json-c/ -I../../APIs `pkg-config --libs glib-2.0`
