@@ -209,7 +209,7 @@ DATATRANSFERAPI_ERROR dataTransfer_start (dataTransfer *dT)
 
     if ( dT->nexusStarted != NULL)
     {
-        socketIdToBind = dT->nexusStarted;
+        socketIdToBind = strdup(dT->nexusStarted);
         printf ("Reopening already started connection.\n");
     }
     else
@@ -256,7 +256,8 @@ DATATRANSFERAPI_ERROR dataTransfer_start (dataTransfer *dT)
         printf("File operation socket started (bind) for '%s'\n", connectionStr);
     }
 
-    dT->nexusStarted = socketIdToBind;
+    dT->nexusStarted = strdup(socketIdToBind);
+    free(socketIdToBind);
 
     return SUCCESS;
 }
@@ -317,8 +318,9 @@ DATATRANSFERAPI_ERROR reactOnMessage (dataTransfer *dT, char **multipartMessage)
                 rc = s_send ("fileOpSocket", dT->fileOpSocket, dT->replyToSignal);
                 if (rc == -1) return COMMUNICATIONFAILED;
 
+                free (dT->replyToSignal);
                 dT->replyToSignal = NULL;
-                if (dT->recvdCloseFrom) free(dT->recvdCloseFrom);
+                if (dT->recvdCloseFrom != NULL) free (dT->recvdCloseFrom);
                 dT->recvdCloseFrom = NULL;
                 dT->allCloseRecvd = 0;
                 dT->runLoop = 0;
@@ -393,7 +395,8 @@ DATATRANSFERAPI_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
                 }
                 else
                 {
-                    dT->replyToSignal = message;
+                    dT->replyToSignal = strdup(message);
+                    printf("Set replyToSignal: %s\n", dT->replyToSignal);
                 }
             }
             else if (strcmp(message,"OPEN_FILE") == 0)
