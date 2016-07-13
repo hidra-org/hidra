@@ -431,17 +431,16 @@ DATATRANSFERAPI_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
                         multipartMessage[0], multipartMessage[1]);
             }
 
+            if (strcmp(multipartMessage[0],"ALIVE_TEST") == 0)
+            {
+                continue;
+            }
+
             if (len < 2)
             {
                 perror ("Received mutipart-message is too short");
                 return FORMATERROR;
             }
-
-            if (multipartMessage[1] == "ALIVE_TEST")
-            {
-                continue;
-            }
-
 
             rc = reactOnMessage (dT, multipartMessage);
 
