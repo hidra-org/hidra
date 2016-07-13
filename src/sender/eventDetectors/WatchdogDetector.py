@@ -87,6 +87,9 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
     def getLogger (self, queue):
+        # Suppress logging messages of watchdog observer
+        logging.getLogger("watchdog.observers.inotify_buffer").setLevel(logging.WARNING)
+
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("WatchdogEventHandler-" + str(self.id))

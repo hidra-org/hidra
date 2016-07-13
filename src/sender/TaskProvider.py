@@ -330,22 +330,16 @@ if __name__ == '__main__':
     logfile = BASE_PATH + os.sep + "logs" + os.sep + "taskProvider.log"
     logsize = 10485760
 
-#    eventDetectorConfig = {
-#            "eventDetectorType"   : "inotifyx",
-#            "monDir"              : BASE_PATH + os.sep + "data" + os.sep + "source",
-#            "monEventType"        : "IN_CLOSE_WRITE",
-#            "monSubdirs"          : ["commissioning", "current", "local"],
-#            "monSuffixes"         : [".tif", ".cbf"]
-#            }
-
     eventDetectorConfig = {
             "eventDetectorType" : "InotifyxDetector",
             "monDir"            : BASE_PATH + os.sep + "data" + os.sep + "source",
-            "monEventType"      : "IN_CLOSE_WRITE",
             "monSubdirs"        : ["commissioning", "current", "local"],
-            "monSuffixes"       : [".tif", ".cbf"],
+            "monEvents"         : {"IN_CLOSE_WRITE" : [".tif", ".cbf"], "IN_MOVED_TO" : [".log"]},
             "timeout"           : 0.1,
-            "historySize"       : 0
+            "historySize"       : 0,
+            "useCleanUp"        : False,
+            "cleanUpTime"       : 5,
+            "actionTime"        : 120
             }
 
     localhost       = "127.0.0.1"

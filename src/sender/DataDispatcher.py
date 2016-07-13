@@ -7,6 +7,7 @@ import time
 import logging
 import traceback
 import cPickle
+import json
 import shutil
 import signal
 from multiprocessing import Process
@@ -372,7 +373,7 @@ if __name__ == '__main__':
             "type"       : "getFromFile",
             "fixSubdirs" : ["commissioning", "current", "local"],
             "storeData"  : False,
-            "removeFlag" : False
+            "removeData" : False
             }
 
     context       = zmq.Context.instance()
@@ -403,7 +404,7 @@ if __name__ == '__main__':
             "relativePath": "local",
             "filename"    : "100.cbf"
             }
-    targets = [['localhost:6005', 1, "data"], ['localhost:6006', 0, "data"]]
+    targets = [['localhost:6005', 1, [".cbf"], "data"], ['localhost:6006', 0, [".cbf"], "data"]]
 
     message = [ cPickle.dumps(metadata), cPickle.dumps(targets) ]
 #    message = [ cPickle.dumps(metadata)]
@@ -415,9 +416,9 @@ if __name__ == '__main__':
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received: " + str(json.loads(recv_message[0])))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received 2: " + str(json.loads(recv_message[0])))
     except KeyboardInterrupt:
         pass
     finally:

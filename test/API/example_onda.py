@@ -56,14 +56,17 @@ class worker(multiprocessing.Process):
             except:
                 break
 
-            self.log.debug("worker-" + str(self.id) + ": metadata " + str(metadata["filename"]))
-            filepath = self.query.generateTargetFilepath(self.basePath, metadata)
-            self.log.debug("worker-" + str(self.id) + ": filepath " + filepath)
+            if transferType in ["queryMetadata", "streamMetadata"]:
+                self.log.debug("worker-" + str(self.id) + ": metadata " + str(metadata["filename"]))
+                filepath = self.query.generateTargetFilepath(self.basePath, metadata)
+                self.log.debug("worker-" + str(self.id) + ": filepath " + filepath)
 
-            with open(filepath, "r") as fileDescriptor:
-                content = fileDescriptor.read()
-                self.log.debug("worker-" + str(self.id) + ": file " + filepath + " read")
-#            print "metadata", str(metadata)
+                with open(filepath, "r") as fileDescriptor:
+                    content = fileDescriptor.read()
+                    self.log.debug("worker-" + str(self.id) + ": file " + filepath + " read")
+            else:
+                print "metadata", str(metadata)
+
             print "data", str(data)[:100]
 
 

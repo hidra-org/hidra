@@ -4,7 +4,7 @@ import zmq
 import os
 import sys
 import logging
-import cPickle
+import json
 import urllib
 import requests
 import re
@@ -158,7 +158,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
             metadataExtended["chunkNumber"] = chunkNumber
 
             payload = []
-            payload.append(cPickle.dumps(metadataExtended))
+            payload.append(json.dumps(metadataExtended))
             payload.append(data)
         except:
             log.error("Unable to pack multipart-message for file " + sourceFile, exc_info=True)
@@ -283,17 +283,17 @@ if __name__ == '__main__':
 #    os.system('scp "%s" "%s:%s"' % (localfile, remotehost, remotefile) )
     subprocess.call("scp " + prework_sourceFile + " root@lsdma-lab04:/var/www/html/test_httpget/data", shell=True)
 
-    workload = {
-            "sourcePath"  : "http://192.168.138.37/data",
-            "relativePath": "testp06",
-            "filename"    : "35_data_000170.h5"
-            }
 #    workload = {
-#            "sourcePath"  : "http://131.169.55.170/test_httpget/data",
+#            "sourcePath"  : "http://192.168.138.37/data",
 #            "relativePath": "",
-#            "filename"    : "test_file.cbf"
+#            "filename"    : "35_data_000170.h5"
 #            }
-    targets = [['localhost:' + receivingPort, 1, "data"], ['localhost:' + receivingPort2, 1, "data"]]
+    workload = {
+            "sourcePath"  : "http://131.169.55.170/test_httpget/data",
+            "relativePath": "",
+            "filename"    : "test_file.cbf"
+            }
+    targets = [['localhost:' + receivingPort, 1, [".cbf", ".tif"], "data"], ['localhost:' + receivingPort2, 1, [".cbf", ".tif"], "data"]]
 
     chunkSize       = 10485760 ; # = 1024*1024*10 = 10 MiB
     localTarget     = BASE_PATH + os.sep + "data" + os.sep + "target"
@@ -302,27 +302,28 @@ if __name__ == '__main__':
     dataFetcherProp = {
             "type"       : "getFromHttp",
             "session"    : None,
+            "fixSubdirs" : ["commissioning", "current", "local"],
             "storeData"  : True,
             "removeData" : False
             }
 
     setup(logging, dataFetcherProp)
 
-    sourceFile, targetFile, metadata = getMetadata (logging, workload, chunkSize, localTarget)
+    sourceFile, targetFile, metadata = getMetadata (logging, dataFetcherProp, targets, workload, chunkSize, localTarget)
 #    sourceFile = "http://131.169.55.170/test_httpget/data/test_file.cbf"
 
     sendData(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
-    finishDataHandling(logging, sourceFile, targetFile, dataFetcherProp)
+    finishDataHandling(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
     logging.debug("openConnections after function call: " + str(openConnections))
 
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received: " + str(json.loads(recv_message[0])))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])) + "\ndata-part: " + str(len(recv_message[1])))
+        logging.info("=== received 2: " + str(json.loads(recv_message[0])) + "\ndata-part: " + str(len(recv_message[1])))
     except KeyboardInterrupt:
         pass
     finally:

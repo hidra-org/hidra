@@ -491,7 +491,7 @@ class EventDetector():
                 try:
                     binding.rm_watch(self.fd, wd)
                 except:
-                    self.log.error("Unable to remove watch: " + wd, exc_info=True)
+                    self.log.error("Unable to remove watch: {wd}".format(wd=wd), exc_info=True)
         finally:
             os.close(self.fd)
 
@@ -535,7 +535,7 @@ if __name__ == '__main__':
             "eventDetectorType" : "inotifyx",
             "monDir"            : BASE_PATH + os.sep + "data" + os.sep + "source",
             "monSubdirs"        : ["commissioning", "current", "local"],
-            "monitoredEvents"   : {"IN_CLOSE_WRITE" : [".tif", ".cbf"], "IN_MOVED_TO" : [".log"]},
+            "monEvents"         : {"IN_CLOSE_WRITE" : [".tif", ".cbf"], "IN_MOVED_TO" : [".log"]},
             "timeout"           : 0.1,
             "historySize"       : 0,
             "useCleanUp"        : False,
@@ -543,10 +543,13 @@ if __name__ == '__main__':
             "actionTime"        : 120
             }
 
-    eventDetector = EventDetector(config, logQueue)
-
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
     targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
+
+    if not os.path.isdir(targetFileBase):
+        os.mkdir(targetFileBase)
+
+    eventDetector = EventDetector(config, logQueue)
 
     i = 100
     while i <= 110:

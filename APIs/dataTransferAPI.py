@@ -540,8 +540,7 @@ class dataTransfer():
         else:
             #extract multipart message
             try:
-                #TODO exchange cPickle with json
-                metadata = cPickle.loads(multipartMessage[0])
+                metadata = json.loads(multipartMessage[0])
             except:
                 self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
                 metadata = None
@@ -619,7 +618,7 @@ class dataTransfer():
 
                 # extract multipart message
                 try:
-                    metadata = cPickle.loads(multipartMessage[0])
+                    metadata = json.loads(multipartMessage[0])
                 except:
                     self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
                     metadata = None

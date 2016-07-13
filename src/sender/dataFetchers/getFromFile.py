@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 import traceback
-import cPickle
+import json
 import shutil
 import errno
 
@@ -137,7 +137,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
             chunkMetadata["chunkNumber"] = chunkNumber
 
             chunkPayload = []
-            chunkPayload.append(cPickle.dumps(chunkMetadata))
+            chunkPayload.append(json.dumps(chunkMetadata))
             chunkPayload.append(fileContent)
         except:
             log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
@@ -297,17 +297,17 @@ if __name__ == '__main__':
 
 
     prework_sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    prework_targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep + "100.cbf"
+    prework_targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "100.cbf"
 
     copyfile(prework_sourceFile, prework_targetFile)
     time.sleep(0.5)
 
     workload = {
             "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
-            "relativePath": os.sep + "local" + os.sep + "raw",
+            "relativePath": os.sep + "local",
             "filename"    : "100.cbf"
             }
-    targets = [['localhost:' + receivingPort, 1, "data"], ['localhost:' + receivingPort2, 0, "data"]]
+    targets = [['localhost:' + receivingPort, 1, [".cbf"], "data"], ['localhost:' + receivingPort2, 0, [".cbf"],  "data"]]
 
     chunkSize       = 10485760 ; # = 1024*1024*10 = 10 MiB
     localTarget     = BASE_PATH + os.sep + "data" + os.sep + "target"
@@ -316,26 +316,27 @@ if __name__ == '__main__':
     dataFetcherProp = {
             "type"       : "getFromFile",
             "fixSubdirs" : ["commissioning", "current", "local"],
-            "storeData"  : False
+            "storeData"  : False,
+            "removeData" : False
             }
 
     logging.debug("openConnections before function call: " + str(openConnections))
 
     setup(logging, dataFetcherProp)
 
-    sourceFile, targetFile, metadata = getMetadata (logging, workload, chunkSize, localTarget = None)
+    sourceFile, targetFile, metadata = getMetadata (logging, dataFetcherProp, targets, workload, chunkSize, localTarget = None)
     sendData(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
-    finishDataHandling(logging, sourceFile, targetFile, dataFetcherProp)
+    finishDataHandling(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
     logging.debug("openConnections after function call: " + str(openConnections))
 
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received: " + str(json.loads(recv_message[0])))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received 2: " + str(json.loads(recv_message[0])))
     except KeyboardInterrupt:
         pass
     finally:

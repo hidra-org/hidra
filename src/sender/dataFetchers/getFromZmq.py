@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 import traceback
-import cPickle
+import json
 import shutil
 import time
 
@@ -118,7 +118,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         metadataExtended["chunkNumber"] = chunkNumber
 
         payload = []
-        payload.append(cPickle.dumps(metadataExtended))
+        payload.append(json.dumps(metadataExtended))
         payload.append(data)
     except:
         log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
@@ -235,9 +235,9 @@ if __name__ == '__main__':
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received: " + str(json.loads(recv_message[0])))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received 2: " + str(json.loads(recv_message[0])))
     except KeyboardInterrupt:
         pass
     finally:
