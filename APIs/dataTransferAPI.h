@@ -7,14 +7,14 @@
 
 typedef struct dataTransfer dataTransfer;
 
-typedef enum { SUCCESS, NOTSUPPORTED, USAGEERROR, FORMATERROR, ZMQERROR, CONNECTIONFAILED, VERSIONERROR, AUTHENTICATIONFAILED, COMMUNICATIONFAILED, DATASAVINGERROR } DATATRANSFERAPI_ERROR;
+typedef enum { SUCCESS, NOTSUPPORTED, USAGEERROR, FORMATERROR, ZMQERROR, CONNECTIONFAILED, VERSIONERROR, AUTHENTICATIONFAILED, COMMUNICATIONFAILED, DATASAVINGERROR } HIDRA_ERROR;
 
-DATATRANSFERAPI_ERROR dataTransfer_init (dataTransfer **dT, char *connectionType);
+HIDRA_ERROR dataTransfer_init (dataTransfer **dT, char *connectionType);
 
-DATATRANSFERAPI_ERROR dataTransfer_initiate (dataTransfer *dT, char **targets);
+HIDRA_ERROR dataTransfer_initiate (dataTransfer *dT, char **targets);
 
-DATATRANSFERAPI_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size);
+HIDRA_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size);
 
-DATATRANSFERAPI_ERROR dataTransfer_stop (dataTransfer *dT);
+HIDRA_ERROR dataTransfer_stop (dataTransfer *dT);
 
 #endif

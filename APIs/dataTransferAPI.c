@@ -51,7 +51,7 @@ static int s_send (char* socketName, void * socket, char* string)
 
 
 
-DATATRANSFERAPI_ERROR recv_multipartMessage (void *socket, char **multipartMessage, int *len)
+HIDRA_ERROR recv_multipartMessage (void *socket, char **multipartMessage, int *len)
 {
     int i = 0;
     int size;
@@ -127,7 +127,7 @@ struct dataTransfer {
 };
 
 
-DATATRANSFERAPI_ERROR dataTransfer_init (dataTransfer **out, char *connectionType)
+HIDRA_ERROR dataTransfer_init (dataTransfer **out, char *connectionType)
 {
 //    assert( strcmp(connectionType, "nexus") == 0 )
 //    printf("conType: %s, comparison: %i\n", connectionType, strcmp(connectionType, "nexus"));
@@ -185,7 +185,7 @@ DATATRANSFERAPI_ERROR dataTransfer_init (dataTransfer **out, char *connectionTyp
 }
 
 
-DATATRANSFERAPI_ERROR dataTransfer_initiate (dataTransfer *dT, char **targets)
+HIDRA_ERROR dataTransfer_initiate (dataTransfer *dT, char **targets)
 {
     char *signal;
     char *signalPort;
@@ -201,7 +201,7 @@ DATATRANSFERAPI_ERROR dataTransfer_initiate (dataTransfer *dT, char **targets)
 }
 
 
-DATATRANSFERAPI_ERROR dataTransfer_start (dataTransfer *dT)
+HIDRA_ERROR dataTransfer_start (dataTransfer *dT)
 {
 
     char *socketIdToBind = NULL;
@@ -263,7 +263,7 @@ DATATRANSFERAPI_ERROR dataTransfer_start (dataTransfer *dT)
 }
 
 
-DATATRANSFERAPI_ERROR reactOnMessage (dataTransfer *dT, char **multipartMessage)
+HIDRA_ERROR reactOnMessage (dataTransfer *dT, char **multipartMessage)
 {
     char *id = NULL;
     int idNum = 0;
@@ -356,7 +356,7 @@ DATATRANSFERAPI_ERROR reactOnMessage (dataTransfer *dT, char **multipartMessage)
 }
 
 
-DATATRANSFERAPI_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
+HIDRA_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
 {
     zmq_pollitem_t items [] = {
         { dT->fileOpSocket,   0, ZMQ_POLLIN, 0 },
@@ -465,7 +465,7 @@ DATATRANSFERAPI_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
 }
 
 
-DATATRANSFERAPI_ERROR dataTransfer_stop (dataTransfer *dT)
+HIDRA_ERROR dataTransfer_stop (dataTransfer *dT)
 {
 
     printf ("closing fileOpSocket...\n");

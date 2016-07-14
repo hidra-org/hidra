@@ -7,14 +7,16 @@
 
 typedef struct dataIngest dataIngest;
 
-int dataIngest_init (dataIngest **dI);
+typedef enum { SUCCESS, NOTSUPPORTED, USAGEERROR, FORMATERROR, ZMQERROR, CONNECTIONFAILED, VERSIONERROR, AUTHENTICATIONFAILED, COMMUNICATIONFAILED, DATASAVINGERROR } HIDRA_ERROR;
 
-int dataIngest_createFile (dataIngest *dI, char *fileName);
+HIDRA_ERROR dataIngest_init (dataIngest **dI);
 
-int dataIngest_write (dataIngest *dI, char *data, int size);
+HIDRA_ERROR dataIngest_createFile (dataIngest *dI, char *fileName);
 
-int dataIngest_closeFile (dataIngest *dI);
+HIDRA_ERROR dataIngest_write (dataIngest *dI, char *data, int size);
 
-int dataIngest_stop (dataIngest *dI);
+HIDRA_ERROR dataIngest_closeFile (dataIngest *dI);
+
+HIDRA_ERROR dataIngest_stop (dataIngest *dI);
 
 #endif
