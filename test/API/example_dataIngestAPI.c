@@ -54,7 +54,6 @@ int main()
     rc = dataIngest_stop(obj);
 
     free (buffer);
-//    free (obj);
 
     return 0;
 

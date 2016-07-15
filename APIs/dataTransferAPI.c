@@ -119,15 +119,15 @@ struct dataTransfer {
 //    char **fileDescriptors;
 
     int fileOpened;
-    int callbackParams;
-    int openCallback;
-    int readCallback;
-    int closeCallback;
+    params_cb_t *cbParams;
+    open_cb_t openCb;
+    read_cb_t readCb;
+    close_cb_t closeCb;
 
 };
 
 
-HIDRA_ERROR dataTransfer_init (dataTransfer **out, char *connectionType)
+HIDRA_ERROR dataTransfer_init (dataTransfer_t **out, char *connectionType)
 {
 //    assert( strcmp(connectionType, "nexus") == 0 );
     if (strcmp(connectionType, "nexus") != 0 )
@@ -136,38 +136,37 @@ HIDRA_ERROR dataTransfer_init (dataTransfer **out, char *connectionType)
         return NOTSUPPORTED;
     }
 
-    dataTransfer* dT = malloc(sizeof(dataTransfer));
+    dataTransfer_t *dT = malloc(sizeof(dataTransfer_t));
 
     *out = NULL;
 
-    dT->localhost   = "localhost";
-    dT->extIp       = "0.0.0.0";
-    dT->ipcPath     = "/tmp/HiDRA";
+    dT->localhost    = "localhost";
+    dT->extIp        = "0.0.0.0";
+    dT->ipcPath      = "/tmp/HiDRA";
 
-    dT->conType     = connectionType;
+    dT->conType      = connectionType;
 
-    dT->signalHost  = "zitpcx19282";
-    dT->fileOpPort  = "50050";
-    dT->dataHost    = "zitpcx19282";
-    dT->dataPort    = "50100";
+    dT->signalHost   = "zitpcx19282";
+    dT->fileOpPort   = "50050";
+    dT->dataHost     = "zitpcx19282";
+    dT->dataPort     = "50100";
 
     dT->nexusStarted = NULL;
 
     dT->socketResponseTimeout = 1000;
 
-    dT->numberOfStreams  = 0;
-    dT->recvdCloseFrom   = NULL;
-    dT->replyToSignal    = NULL;
-    dT->allCloseRecvd    = 0;
+    dT->numberOfStreams = 0;
+    dT->recvdCloseFrom  = NULL;
+    dT->replyToSignal   = NULL;
+    dT->allCloseRecvd   = 0;
 
-    dT->runLoop          = 1;
-//    dT->fileDescriptors = NULL;
+    dT->runLoop         = 1;
 
-    dT->fileOpened       = 0;
-    dT->callbackParams   = 0;
-    dT->openCallback     = 0;
-    dT->readCallback     = 0;
-    dT->closeCallback    = 0;
+    dT->fileOpened      = 0;
+    dT->cbParams        = NULL;
+    dT->openCb          = NULL;
+    dT->readCb          = NULL;
+    dT->closeCb         = NULL;
 
     if ( (dT->context = zmq_ctx_new ()) == NULL )
     {
@@ -184,7 +183,7 @@ HIDRA_ERROR dataTransfer_init (dataTransfer **out, char *connectionType)
 }
 
 
-HIDRA_ERROR dataTransfer_initiate (dataTransfer *dT, char **targets)
+HIDRA_ERROR dataTransfer_initiate (dataTransfer_t *dT, char **targets)
 {
     char *signal;
     char *signalPort;
@@ -200,7 +199,7 @@ HIDRA_ERROR dataTransfer_initiate (dataTransfer *dT, char **targets)
 }
 
 
-HIDRA_ERROR dataTransfer_start (dataTransfer *dT)
+HIDRA_ERROR dataTransfer_start (dataTransfer_t *dT)
 {
 
     char *socketIdToBind = NULL;
@@ -262,7 +261,7 @@ HIDRA_ERROR dataTransfer_start (dataTransfer *dT)
 }
 
 
-HIDRA_ERROR reactOnMessage (dataTransfer *dT, char **multipartMessage)
+HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage)
 {
     char *id = NULL;
     int idNum = 0;
@@ -323,9 +322,9 @@ HIDRA_ERROR reactOnMessage (dataTransfer *dT, char **multipartMessage)
                 dT->recvdCloseFrom = NULL;
                 dT->allCloseRecvd = 0;
                 dT->runLoop = 0;
-            }
 
-//            dT->closeCallback(dT->callbackParams, dT->multipartMessage)
+                dT->closeCb(dT->cbParams, multipartMessage);
+            }
         }
         else
         {
@@ -348,14 +347,13 @@ HIDRA_ERROR reactOnMessage (dataTransfer *dT, char **multipartMessage)
 //        perror("An empty file was received within the multipart-message");
 //        payload = NULL;
 
-//        self.readCallback(self.callbackParams, [metadata, payload])
+        dT->readCb(dT->cbParams, metadata, payload);
     }
 
     return SUCCESS;
 }
 
-
-HIDRA_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
+HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t openFunc, read_cb_t readFunc, close_cb_t closeFunc)
 {
     zmq_pollitem_t items [] = {
         { dT->fileOpSocket,   0, ZMQ_POLLIN, 0 },
@@ -368,6 +366,11 @@ HIDRA_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
     int len = 0;
 
     dT->runLoop = 1;
+
+    dT->cbParams = cbp;
+    dT->openCb   = openFunc;
+    dT->readCb   = readFunc;
+    dT->closeCb  = closeFunc;
 
     while (dT->runLoop)
     {
@@ -390,6 +393,10 @@ HIDRA_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
 
                     dT->runLoop = 0;
                     dT->allCloseRecvd = 0;
+                    //TODO get rid of
+                    char **multipartMessage = NULL;
+
+                    dT->closeCb(dT->cbParams, multipartMessage);
                     break;
                 }
                 else
@@ -404,8 +411,9 @@ HIDRA_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
                 if (rc == -1) return COMMUNICATIONFAILED;
 
                 dT->allCloseRecvd = 0;
-//                dT->openCallback(dT->callbackParams, message);
 //                dT->fileOpened = 1;
+
+                dT->openCb(dT->cbParams, message);
             }
             else
             {
@@ -426,11 +434,6 @@ HIDRA_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
             {
                 perror("Failed to receive data");
                 return COMMUNICATIONFAILED;
-            }
-            else
-            {
-                printf ("multipartMessage[0]=%s\nmultipartMessage[1]=%s\n",
-                        multipartMessage[0], multipartMessage[1]);
             }
 
             if (strcmp(multipartMessage[0],"ALIVE_TEST") == 0)
@@ -464,18 +467,18 @@ HIDRA_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size)
 }
 
 
-HIDRA_ERROR dataTransfer_stop (dataTransfer *dT)
+HIDRA_ERROR dataTransfer_stop (dataTransfer_t *dT)
 {
 
     printf ("closing fileOpSocket...\n");
     zmq_close(dT->fileOpSocket);
     printf ("closing dataSocket...\n");
     zmq_close(dT->dataSocket);
-//            self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
+//  perror("closing ZMQ Sockets...failed")
 
     printf ("Closing ZMQ context...\n");
     zmq_ctx_destroy(dT->context);
-//                self.log.error("Closing ZMQ context...failed.", exc_info=True)
+//  perror("Closing ZMQ context...failed")
 
     if (dT->nexusStarted) free (dT->nexusStarted);
     if (dT->recvdCloseFrom != NULL) free (dT->recvdCloseFrom);

@@ -5,16 +5,24 @@
 
 #define version "0.0.1"
 
-typedef struct dataTransfer dataTransfer;
+#include <json.h>
+
+typedef struct dataTransfer dataTransfer_t;
+typedef struct params_cb params_cb_t;
+
+typedef int (*open_cb_t)(params_cb_t *cbp, char *message);
+typedef int (*read_cb_t)(params_cb_t *cbp, json_object *metadata, char *payload);
+typedef int (*close_cb_t)(params_cb_t *cbp, char **multipartMessage);
+
 
 typedef enum { SUCCESS, NOTSUPPORTED, USAGEERROR, FORMATERROR, ZMQERROR, CONNECTIONFAILED, VERSIONERROR, AUTHENTICATIONFAILED, COMMUNICATIONFAILED, DATASAVINGERROR } HIDRA_ERROR;
 
-HIDRA_ERROR dataTransfer_init (dataTransfer **dT, char *connectionType);
+HIDRA_ERROR dataTransfer_init (dataTransfer_t **dT, char *connectionType);
 
-HIDRA_ERROR dataTransfer_initiate (dataTransfer *dT, char **targets);
+HIDRA_ERROR dataTransfer_initiate (dataTransfer_t *dT, char **targets);
 
-HIDRA_ERROR dataTransfer_read (dataTransfer *dT, char *data, int size);
+HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t openFunc, read_cb_t readFunc, close_cb_t closeFunc);
 
-HIDRA_ERROR dataTransfer_stop (dataTransfer *dT);
+HIDRA_ERROR dataTransfer_stop (dataTransfer_t *dT);
 
 #endif
