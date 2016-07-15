@@ -129,14 +129,13 @@ struct dataTransfer {
 
 HIDRA_ERROR dataTransfer_init (dataTransfer **out, char *connectionType)
 {
-//    assert( strcmp(connectionType, "nexus") == 0 )
-//    printf("conType: %s, comparison: %i\n", connectionType, strcmp(connectionType, "nexus"));
-/*    if (strcmp(connectionType, "nexus") == 0 )
+//    assert( strcmp(connectionType, "nexus") == 0 );
+    if (strcmp(connectionType, "nexus") != 0 )
     {
         fprintf(stderr, "Chosen type of connection is not supported.\n");
-//        return NOTSUPPORTED;
+        return NOTSUPPORTED;
     }
-*/
+
     dataTransfer* dT = malloc(sizeof(dataTransfer));
 
     *out = NULL;

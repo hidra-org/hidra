@@ -141,6 +141,7 @@ HIDRA_ERROR dataIngest_init (dataIngest **out)
     {
         fprintf(stderr, "Failed to start signalSocket (connect) for '%s': %s\n",
                 signalConId, strerror( errno ));
+        //TODO stop socket
         return ZMQERROR;
     }
     else
@@ -152,6 +153,7 @@ HIDRA_ERROR dataIngest_init (dataIngest **out)
     {
         fprintf (stderr, "Failed to start eventDetSocket (connect) for '%s': %s\n",
                 eventDetConId, strerror( errno ));
+        //TODO stop socket
         return ZMQERROR;
     }
     else
@@ -163,8 +165,11 @@ HIDRA_ERROR dataIngest_init (dataIngest **out)
     {
         fprintf (stderr, "Failed to start dataFetchSocket (connect) for '%s': %s\n",
                 dataFetchConId, strerror( errno ));
+        //TODO stop socket
         return ZMQERROR;
-    } else {
+    }
+    else
+    {
         printf("dataFetchSocket started (connect) for '%s'\n", dataFetchConId);
     }
 
@@ -290,7 +295,7 @@ HIDRA_ERROR dataIngest_stop (dataIngest *dI)
     zmq_ctx_destroy(dI->context);
 //                self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
-//    free (dI);
+    free (dI);
     printf ("Cleanup finished.\n");
 
     return SUCCESS;

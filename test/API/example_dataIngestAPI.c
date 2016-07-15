@@ -8,29 +8,53 @@ int main()
 {
     dataIngest *obj;
 
-    char *data;
-    int i;
-    int size;
+    int chunksize=524288; //1024*512
     int rc;
+//    char ch;
+    char file_name[25] = "/opt/HiDRA/test_file.cbf";
+    FILE *fp;
+    char *buffer = malloc(chunksize);
+    int bytesRead;
 
     rc = dataIngest_init (&obj);
+    if (rc) exit(-9);
 
-    rc = dataIngest_createFile (obj, "1.h5");
+    fp = fopen(file_name,"r"); // read mode
 
-    for (i=0; i < 5; i++)
+    rc = dataIngest_createFile (obj, file_name);
+
+    if (fp != NULL)
     {
-        data = "asdfasdasdfasd";
-        size = strlen(data);
-        rc = dataIngest_write (obj, data, size);
-        printf ("write\n");
-    };
+        char *printBuf = malloc(100);
+        char c;
+        // read up to sizeof(buffer) bytes
+//        while( ( ch = fgetc(fp) ) != EOF )
+        while ((bytesRead = fread(buffer, 1, chunksize, fp)) > 0)
+        {
+
+            printf ("The content of file %s:\n", file_name);
+            memcpy(printBuf, buffer, 100);
+//            printf("%s\n",printBuf);
+//            printf("%c",ch);
+            rc = dataIngest_write (obj, buffer, chunksize);
+        }
+        free(printBuf);
+
+        fclose(fp);
+    }
+    else
+    {
+        perror ("Error while opening the file.\n");
+        exit(-9);
+    }
 
     rc = dataIngest_closeFile (obj);
 
     printf ("Stopping\n");
     rc = dataIngest_stop(obj);
 
-    free (obj);
+    free (buffer);
+//    free (obj);
 
     return 0;
 

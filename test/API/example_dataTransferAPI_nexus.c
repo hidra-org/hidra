@@ -16,6 +16,7 @@ int main ()
     int rc;
 
     rc = dataTransfer_init (&obj, "nexus");
+    if (rc) exit(-9);
     printf ("dataTransfer_init returned: %i\n", rc);
 
     rc = dataTransfer_start (obj);
