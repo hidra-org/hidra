@@ -81,7 +81,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
             metadata[ "filesize"    ]   = None
             metadata[ "fileModTime" ]   = time.time()
             metadata[ "fileCreateTime"] = time.time()
-            metadata[ "chunkSize"   ]   = chunkSize
+            # chunkSize is coming from ZMQDetector
 
             log.debug("metadata = " + str(metadata))
         except:

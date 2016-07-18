@@ -10,9 +10,21 @@
 typedef struct dataTransfer dataTransfer_t;
 typedef struct params_cb params_cb_t;
 
-typedef int (*open_cb_t)(params_cb_t *cbp, char *message);
-typedef int (*read_cb_t)(params_cb_t *cbp, json_object *metadata, char *payload);
-typedef int (*close_cb_t)(params_cb_t *cbp, char **multipartMessage);
+typedef struct metadata
+{
+    const char *filename;
+    int filePart;
+    int fileCreateTime;
+    int fileModTime;
+    int filesize;
+    int chunkSize;
+    int chunkNumber;
+} metadata_t;
+
+
+typedef int (*open_cb_t)(params_cb_t *cbp, char *filename);
+typedef int (*read_cb_t)(params_cb_t *cbp, metadata_t *metadata, char *payload);
+typedef int (*close_cb_t)(params_cb_t *cbp);
 
 
 typedef enum { SUCCESS, NOTSUPPORTED, USAGEERROR, FORMATERROR, ZMQERROR, CONNECTIONFAILED, VERSIONERROR, AUTHENTICATIONFAILED, COMMUNICATIONFAILED, DATASAVINGERROR } HIDRA_ERROR;

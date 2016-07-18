@@ -5,25 +5,63 @@
 #include <string.h>
 #include <stdlib.h>
 
-int open_cb (params_cb_t *cbp, char *message)
-{
-    printf("execute openCall_cb\n");
-}
-
-int read_cb (params_cb_t *cbp, struct json_object *metadata, char *payload)
-{
-    printf("execute readCall_cb\n");
-}
-
-int close_cb (params_cb_t *cbp, char **multipartMessage)
-{
-    printf("execute closeCall_cb\n");
-}
 
 struct params_cb
 {
     int num;
+    FILE *fp;
 };
+
+
+int open_cb (params_cb_t *cbp, char *filename)
+{
+    char *filepath = "/opt/HiDRA/data/target/local";
+    char abs_filename[128];
+    snprintf(abs_filename, sizeof(abs_filename), "%s/%s", filepath, filename);
+
+    printf ("abs_filename %s\n", abs_filename);
+    printf("execute openCall_cb for file: %s\n", filename);
+
+    cbp->fp = fopen(abs_filename,"w"); // read mode
+
+}
+
+
+int read_cb (params_cb_t *cbp, metadata_t *metadata, char *payload)
+{
+    printf("execute readCall_cb\n");
+
+    FILE *fp_local;
+    char *filepath = "/opt/HiDRA/data/target/local";
+    char abs_filename[128];
+    snprintf(abs_filename, sizeof(abs_filename), "%s/%s_%d", filepath, "test.cbf", metadata->filePart);
+    printf ("abs_filename %s\n", abs_filename);
+
+    fp_local = fopen(abs_filename,"w"); // read mode
+
+    fwrite(payload, metadata->chunkSize, 1, fp_local);
+/*
+    char *printBuf = malloc(100);
+    memcpy(printBuf, payload, 100);
+    printf("%s\n",printBuf);
+*/
+/*
+    printf ("filename: %s\n", metadata->filename);
+    printf ("filePart: %i\n", metadata->filePart);
+    printf ("fileCreateTime: %i\n", metadata->fileCreateTime);
+    printf ("fileModTime: %i\n", metadata->fileModTime);
+    printf ("filesize: %i\n", metadata->filesize);
+    printf ("chunkNumber: %i\n", metadata->chunkNumber);
+*/
+    fclose(fp_local);
+}
+
+
+int close_cb (params_cb_t *cbp)
+{
+    printf("execute closeCall_cb\n");
+    fclose(cbp->fp);
+}
 
 
 int main ()
@@ -34,7 +72,8 @@ int main ()
     int i;
     int size;
     int rc;
-    params_cb_t *cbp;
+    params_cb_t *cbp = malloc(sizeof(params_cb_t));
+
 
     rc = dataTransfer_init (&obj, "nexus");
     if (rc) exit(-9);

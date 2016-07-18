@@ -464,6 +464,8 @@ class dataTransfer():
                         self.fileOpSocket.send(message)
                         logging.debug("fileOpSocket send: " + message)
                         self.allCloseRecvd = False
+
+                        self.closeCallback(self.callbackParams, multipartMessage)
                         break
                     else:
                         self.replyToSignal = message

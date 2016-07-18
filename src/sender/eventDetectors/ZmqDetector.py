@@ -93,9 +93,7 @@ class EventDetector():
         if eventMessage == b"CLOSE_FILE":
             eventMessageList = [ eventMessage for i in range(self.numberOfStreams) ]
         else:
-
             eventMessageList = [ json.loads(eventMessage) ]
-#            eventMessageList = [ cPickle.loads(eventMessage) ]
 
         self.log.debug("eventMessage: " + str(eventMessageList))
 

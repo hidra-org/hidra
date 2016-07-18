@@ -118,7 +118,10 @@ struct dataTransfer {
 
 //    char **fileDescriptors;
 
+    char *filename;
+
     int fileOpened;
+    metadata_t *metadata;
     params_cb_t *cbParams;
     open_cb_t openCb;
     read_cb_t readCb;
@@ -162,7 +165,10 @@ HIDRA_ERROR dataTransfer_init (dataTransfer_t **out, char *connectionType)
 
     dT->runLoop         = 1;
 
+    dT->filename        = NULL;
+
     dT->fileOpened      = 0;
+    dT->metadata        = malloc(sizeof(metadata_t));
     dT->cbParams        = NULL;
     dT->openCb          = NULL;
     dT->readCb          = NULL;
@@ -269,11 +275,22 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage)
     int i = 0;
     int rc = 0;
     int totalRecvd = 0;
-    struct json_object *metadata = NULL;
+    struct json_object *metadata_json = NULL;
+    char *recv_filename;
 
     if (strcmp(multipartMessage[0], "CLOSE_FILE") == 0)
     {
         id = multipartMessage[1];
+
+        //TODO do this correctly
+        recv_filename = dT->filename;
+
+        // check if received close call belongs to the opened file
+        if (strcmp(recv_filename, dT->filename) != 0)
+        {
+            perror("Close event for different file received.");
+            //TODO react
+        }
 
         splitRes = g_strsplit (id, "/", 2);
         idNum = atoi(splitRes[0]);
@@ -323,7 +340,7 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage)
                 dT->allCloseRecvd = 0;
                 dT->runLoop = 0;
 
-                dT->closeCb(dT->cbParams, multipartMessage);
+                dT->closeCb(dT->cbParams);
             }
         }
         else
@@ -337,8 +354,31 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage)
 //        printf("load JSON: %s\n", multipartMessage[0]);
 
         //extract multipart message
-        metadata = json_tokener_parse(multipartMessage[0]);
-//        printf("metadata:\n%s\n", json_object_to_json_string_ext(metadata, JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY));
+        metadata_json = json_tokener_parse(multipartMessage[0]);
+//        printf("metadata:\n%s\n", json_object_to_json_string_ext(metadata_json, JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY));
+
+        json_object *val;
+
+        json_object_object_get_ex(metadata_json, "filename", &val);
+        dT->metadata->filename = json_object_get_string(val);
+
+        json_object_object_get_ex(metadata_json, "filePart", &val);
+        dT->metadata->filePart = json_object_get_int(val);
+
+        json_object_object_get_ex(metadata_json, "fileCreateTime", &val);
+        dT->metadata->fileCreateTime = json_object_get_int(val);
+
+        json_object_object_get_ex(metadata_json, "fileModTime", &val);
+        dT->metadata->fileModTime = json_object_get_int(val);
+
+        json_object_object_get_ex(metadata_json, "filesize", &val);
+        dT->metadata->filesize = json_object_get_int(val);
+
+        json_object_object_get_ex(metadata_json, "chunkSize", &val);
+        dT->metadata->chunkSize = json_object_get_int(val);
+
+        json_object_object_get_ex(metadata_json, "chunkNumber", &val);
+        dT->metadata->chunkNumber = json_object_get_int(val);
 
 //        perror("Could not extract metadata from the multipart-message.");
 //        metadata = NULL;
@@ -347,7 +387,7 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage)
 //        perror("An empty file was received within the multipart-message");
 //        payload = NULL;
 
-        dT->readCb(dT->cbParams, metadata, payload);
+        dT->readCb(dT->cbParams, dT->metadata, payload);
     }
 
     return SUCCESS;
@@ -393,10 +433,19 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
 
                     dT->runLoop = 0;
                     dT->allCloseRecvd = 0;
-                    //TODO get rid of
-                    char **multipartMessage = NULL;
+                    //TODO do this correctly
+                    char *recv_filename = dT->filename;
 
-                    dT->closeCb(dT->cbParams, multipartMessage);
+                    // check if received close call belongs to the opened file
+                    if (strcmp(recv_filename, dT->filename) == 0)
+                    {
+                        dT->closeCb(dT->cbParams);
+                    }
+                    else
+                    {
+                        perror("Close event for different file received.");
+                        //TODO react
+                    }
                     break;
                 }
                 else
@@ -410,10 +459,12 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
                 rc = s_send ("fileOpSocket", dT->fileOpSocket, message);
                 if (rc == -1) return COMMUNICATIONFAILED;
 
+                dT->filename = "test.cbf";
+
                 dT->allCloseRecvd = 0;
 //                dT->fileOpened = 1;
 
-                dT->openCb(dT->cbParams, message);
+                dT->openCb(dT->cbParams, dT->filename);
             }
             else
             {
@@ -482,6 +533,7 @@ HIDRA_ERROR dataTransfer_stop (dataTransfer_t *dT)
 
     if (dT->nexusStarted) free (dT->nexusStarted);
     if (dT->recvdCloseFrom != NULL) free (dT->recvdCloseFrom);
+    free(dT->metadata);
     free (dT);
     printf ("Cleanup finished.\n");
 

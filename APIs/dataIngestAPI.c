@@ -207,13 +207,12 @@ HIDRA_ERROR dataIngest_createFile (dataIngest *dI, char *fileName)
 
 
 HIDRA_ERROR dataIngest_write (dataIngest *dI, char *data, int size)
-//int dataIngest_write (dataIngest *dI, void *data, int &size)
 {
 
     char message[128];
     int rc;
 
-    snprintf(message, sizeof(message), "{ \"filePart\": %d, \"filename\": \"%s\" }", dI->filePart, dI->filename);
+    snprintf(message, sizeof(message), "{ \"filePart\": %d, \"chunkSize\": %d, \"filename\": \"%s\" }", dI->filePart, size, dI->filename);
 
     // Send event to eventDetector
     rc = s_send (dI->eventDetSocket, message);
