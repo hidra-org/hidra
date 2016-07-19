@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
-#include <glib.h>
 #include <json.h>
 
 
@@ -277,6 +276,9 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage)
     int totalRecvd = 0;
     struct json_object *metadata_json = NULL;
     char *recv_filename;
+    char delimiter[] = "/";
+    char *token;
+    int numStream;
 
     if (strcmp(multipartMessage[0], "CLOSE_FILE") == 0)
     {
@@ -292,13 +294,28 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage)
             //TODO react
         }
 
-        splitRes = g_strsplit (id, "/", 2);
-        idNum = atoi(splitRes[0]);
+        // initialisation and get the identifier of the DataDispatcher
+        token = strtok(id, delimiter);
+        idNum = atoi(token);
+
+        if (token != NULL)
+        {
+            //  get the number of total streams
+            token = strtok(NULL, delimiter);
+            numStream = atoi(token);
+        }
+
+        while (token != NULL)
+        {
+            printf("Additional unexpected information received with DataDispatcher id: %s\n", token);
+            // generate next token
+            token = strtok(NULL, delimiter);
+        }
 
         // get number of signals to wait for
         if (dT->numberOfStreams == 0)
         {
-            dT->numberOfStreams = atoi(splitRes[1]);
+            dT->numberOfStreams = numStream;
 
             dT->recvdCloseFrom = malloc(sizeof(char*) * dT->numberOfStreams);
             for (i = 0; i < dT->numberOfStreams; i++)
@@ -489,6 +506,10 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
 
             if (strcmp(multipartMessage[0],"ALIVE_TEST") == 0)
             {
+                for (i = 0; i < 2; i++)
+                {
+                    free(multipartMessage[i]);
+                };
                 continue;
             }
 
