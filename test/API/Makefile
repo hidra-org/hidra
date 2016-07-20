@@ -7,3 +7,6 @@ example_dataIngestAPI_c: example_dataIngestAPI.c
 example_dataTransferAPI_c: example_dataTransferAPI_nexus.c
 	gcc -o example_dataTransferAPI_nexus.x -ggdb example_dataTransferAPI_nexus.c ../../APIs/dataTransferAPI.c -lzmq -ljson-c -I/usr/include/json-c/ -I../../APIs
 #	gcc -o example_dataTransferAPI_nexus.x `pkg-config --cflags glib-2.0` -ggdb example_dataTransferAPI_nexus.c ../../APIs/dataTransferAPI.c -lzmq -ljson-c -I/usr/include/json-c/ -I../../APIs `pkg-config --libs glib-2.0`
+#
+test_dataTransferAPI_c: test_dataTransferAPI.c
+	gcc -o test_dataTransferAPI.x -ggdb test_dataTransferAPI.c -lzmq -ljson-c -I/usr/include/json-c/

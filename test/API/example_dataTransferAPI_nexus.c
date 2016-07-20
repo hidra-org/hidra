@@ -23,11 +23,10 @@ int open_cb (params_cb_t *cbp, char *filename)
     printf("execute openCall_cb for file: %s\n", filename);
 
     cbp->fp = fopen(abs_filename,"w"); // read mode
-
 }
 
 
-int read_cb (params_cb_t *cbp, metadata_t *metadata, char *payload)
+int read_cb (params_cb_t *cbp, metadata_t *metadata, char *payload, int payloadSize)
 {
     printf("execute readCall_cb\n");
 
@@ -39,7 +38,7 @@ int read_cb (params_cb_t *cbp, metadata_t *metadata, char *payload)
 
     fp_local = fopen(abs_filename,"w"); // read mode
 
-    fwrite(payload, metadata->chunkSize, 1, fp_local);
+    fwrite(payload, payloadSize, 1, fp_local);
 /*
     char *printBuf = malloc(100);
     memcpy(printBuf, payload, 100);
@@ -54,6 +53,8 @@ int read_cb (params_cb_t *cbp, metadata_t *metadata, char *payload)
     printf ("chunkNumber: %i\n", metadata->chunkNumber);
 */
     fclose(fp_local);
+
+    fwrite(payload, payloadSize, 1, cbp->fp);
 }
 
 
@@ -85,7 +86,6 @@ int main ()
 //    rc = dataTransfer_read (obj, data, size);
     rc = dataTransfer_read (obj, cbp, open_cb, read_cb, close_cb);
     printf ("dataTransfer_read returned: %i\n", rc);
-    printf("Read data: %s, size: %d\n", data, size);
 
     printf ("Stopping\n");
     rc = dataTransfer_stop(obj);

@@ -23,7 +23,7 @@ typedef struct metadata
 
 
 typedef int (*open_cb_t)(params_cb_t *cbp, char *filename);
-typedef int (*read_cb_t)(params_cb_t *cbp, metadata_t *metadata, char *payload);
+typedef int (*read_cb_t)(params_cb_t *cbp, metadata_t *metadata, char *payload, int payloadSize);
 typedef int (*close_cb_t)(params_cb_t *cbp);
 
 
