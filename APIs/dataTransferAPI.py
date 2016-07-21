@@ -672,7 +672,8 @@ class dataTransfer():
                 # File was not open
                 except KeyError:
                     try:
-                        self.fileDescriptors[targetFilepath] = open(targetFilepath, "w")
+                        self.fileDescriptors[targetFilepath] = open(targetFilepath, "wb")
+                        self.fileDescriptors[targetFilepath].write(payload)
                     except IOError, e:
                         # errno.ENOENT == "No such file or directory"
                         if e.errno == errno.ENOENT:
@@ -681,8 +682,9 @@ class dataTransfer():
                                 targetPath = self.__generateTargetPath(targetBasePath, payloadMetadata)
                                 os.makedirs(targetPath)
 
-                                self.fileDescriptors[targetFilepath] = open(targetFilepath, "w")
+                                self.fileDescriptors[targetFilepath] = open(targetFilepath, "wb")
                                 self.log.info("New target directory created: " + str(targetPath))
+                                self.fileDescriptors[targetFilepath].write(payload)
                             except:
                                 self.log.error("Unable to save payload to file: '" + targetFilepath + "'", exc_info=True)
                                 self.log.debug("targetPath:" + str(targetPath))

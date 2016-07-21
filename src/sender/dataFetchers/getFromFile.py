@@ -155,10 +155,10 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
 
     #close file
     try:
-        log.debug("Closing '" + str(targetFile) + "'...")
+        log.debug("Closing '" + str(sourceFile) + "'...")
         fileDescriptor.close()
     except:
-        log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
+        log.error("Unable to close target file '" + str(sourceFile) + "'.", exc_info=True)
         raise
 
     if not sendError:

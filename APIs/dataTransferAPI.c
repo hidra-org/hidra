@@ -63,7 +63,7 @@ HIDRA_ERROR recv_multipartMessage (void *socket, char **multipartMessage, int *l
         messageSize[i] = zmq_msg_recv (&message, socket, 0);
 
         //Process message
-        printf("Received message of size: %d\n", bytesRecvd);
+        printf("Received message of size: %d\n", messageSize[i]);
         multipartMessage[i] = malloc (messageSize[i] + 1);
 
         memcpy (multipartMessage[i], zmq_msg_data (&message), messageSize[i]);

@@ -127,12 +127,12 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
                     try:
                         targetPath, filename = os.path.split(targetFile)
                         os.makedirs(targetPath)
-                        fileDescriptor = open(targetFile, "w")
+                        fileDescriptor = open(targetFile, "wb")
                         log.info("New target directory created: " + targetPath)
                         fileOpened = True
                     except OSError, e:
                         log.info("Target directory creation failed, was already created in the meantime: " + targetPath)
-                        fileDescriptor = open(targetFile, "w")
+                        fileDescriptor = open(targetFile, "wb")
                         fileOpened = True
                     except:
                         log.error("Unable to open target file '" + targetFile + "'.", exc_info=True)
