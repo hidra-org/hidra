@@ -20,6 +20,7 @@ int open_cb (params_cb_t *cbp, char *filename)
     snprintf(abs_filename, sizeof(abs_filename), "%s/%s", filepath, filename);
 
     printf ("abs_filename %s\n", abs_filename);
+
     printf("execute openCall_cb for file: %s\n", filename);
 
     cbp->fp = fopen(abs_filename,"w"); // read mode
@@ -29,7 +30,7 @@ int open_cb (params_cb_t *cbp, char *filename)
 int read_cb (params_cb_t *cbp, metadata_t *metadata, char *payload, int payloadSize)
 {
     printf("execute readCall_cb\n");
-
+/*
     FILE *fp_local;
     char *filepath = "/opt/HiDRA/data/target/local";
     char abs_filename[128];
@@ -39,6 +40,7 @@ int read_cb (params_cb_t *cbp, metadata_t *metadata, char *payload, int payloadS
     fp_local = fopen(abs_filename,"w"); // read mode
 
     fwrite(payload, payloadSize, 1, fp_local);
+*/
 /*
     char *printBuf = malloc(100);
     memcpy(printBuf, payload, 100);
@@ -52,7 +54,7 @@ int read_cb (params_cb_t *cbp, metadata_t *metadata, char *payload, int payloadS
     printf ("filesize: %i\n", metadata->filesize);
     printf ("chunkNumber: %i\n", metadata->chunkNumber);
 */
-    fclose(fp_local);
+//    fclose(fp_local);
 
     fwrite(payload, payloadSize, 1, cbp->fp);
 }

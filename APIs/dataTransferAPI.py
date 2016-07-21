@@ -485,7 +485,7 @@ class dataTransfer():
 
                 try:
                     multipartMessage = self.dataSocket.recv_multipart()
-                    self.log.debug("multipartMessage=" + str(multipartMessage))
+#                    self.log.debug("multipartMessage=" + str(multipartMessage)[:100])
                 except:
                     self.log.error("Could not receive data due to unknown error.", exc_info=True)
 
@@ -494,7 +494,7 @@ class dataTransfer():
 
                 if len(multipartMessage) < 2:
                     self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
-                    self.log.debug("multipartMessage=" + str(multipartMessage))
+#                    self.log.debug("multipartMessage=" + str(multipartMessage)[:100])
                     #TODO return errorcode
 
                 try:
@@ -550,7 +550,7 @@ class dataTransfer():
             #TODO validate multipartMessage (like correct dict-values for metadata)
 
             try:
-                payload = multipartMessage[1:]
+                payload = multipartMessage[1]
             except:
                 self.log.warning("An empty file was received within the multipart-message", exc_info=True)
                 payload = None

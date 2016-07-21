@@ -166,18 +166,33 @@ class NexusReceiver:
         logger = logging.getLogger("NexusReceiver")
         return logger
 
-    def openCallback (self, params, retrievedParams):
-        print params, retrievedParams
+    def openCallback (self, params, data):
+        #TODO
+        try:
+            BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+        except:
+            BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
+        print BASE_PATH
 
-    def closeCallback (self, params, retrievedParams):
-        print params, retrievedParams
+        targetFile = os.path.join(BASE_PATH,"data","target","local","test.cbf")
 
-    def readCallback (self, params, retrievedParams):
-        print params, retrievedParams
+        params["target_fp"] = open(targetFile, "wb")
+        print params, data
+
+    def readCallback (self, params, receivedData):
+        metadata = receivedData[0]
+        data     = receivedData[1]
+        print params, metadata
+
+        params["target_fp"].write(data)
+
+    def closeCallback (self, params, data):
+        print params, data
+        params["target_fp"].close()
 
 
     def run(self):
-        callbackParams = None
+        callbackParams = {"target_fp" : None}
 
         try:
             self.dataTransfer.start([self.dataIp, self.dataPort], self.whitelist)
@@ -190,7 +205,7 @@ class NexusReceiver:
         while True:
             try:
                 data = self.dataTransfer.read(callbackParams, self.openCallback, self.readCallback, self.closeCallback)
-                logging.debug("Retrieved: " + str(data))
+                logging.debug("Retrieved: " + str(data)[:100])
 
 #                if data == "CLOSE_FILE":
 #                    break

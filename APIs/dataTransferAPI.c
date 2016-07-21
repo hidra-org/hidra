@@ -516,10 +516,7 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
 
             if (strcmp(multipartMessage[0],"ALIVE_TEST") == 0)
             {
-                for (i = 0; i < 2; i++)
-                {
-                    free(multipartMessage[i]);
-                };
+                free(multipartMessage[0]);
                 continue;
             }
 

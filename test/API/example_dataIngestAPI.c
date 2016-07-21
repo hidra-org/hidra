@@ -39,7 +39,7 @@ int main()
 //            printf("%s\n",printBuf);
 //            printf("%c",ch);
             rc = dataIngest_write (obj, buffer, chunksize);
-
+/*
             FILE *fp_local;
             char *filepath = "/opt/HiDRA/data/source/local";
             char abs_filename[128];
@@ -51,6 +51,7 @@ int main()
             fwrite(buffer, chunksize, 1, fp_local);
 
             fclose(fp_local);
+*/
             i++;
 
         }

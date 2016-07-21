@@ -29,14 +29,11 @@ logfile     = os.path.join(logfilePath, "testNexusTransferAPI.log")
 helpers.initLogging(logfile, True, "DEBUG")
 
 
-print
-print "==== TEST: nexus transfer ===="
-print
-
-class Sender_as_thread (threading.Thread):
+class Sender ():
     def __init__ (self):
         self.extHost    = "0.0.0.0"
-        self.localhost  = "localhost"
+        self.localhost  = "zitpcx19282"
+#        self.localhost  = "localhost"
         self.signalPort = "50050"
         self.dataPort   = "50100"
 
@@ -52,27 +49,77 @@ class Sender_as_thread (threading.Thread):
         self.dataSocket.connect(connectionStr)
         logging.info("dataSocket started (connect) for '" + connectionStr + "'")
 
-        threading.Thread.__init__(self)
-
 
     def run (self):
-        self.fileOpSocket.send("OPEN_FILE")
+
+        sourceFile = BASE_PATH + os.sep + "test_file.cbf"
+        chunkSize = 10485760 # 1024*1024*10 = 10MB
+        filepart = 0
+        timeout = 2
+
+        message = "OPEN_FILE"
+        logging.debug("Send " + message)
+        self.fileOpSocket.send(message)
 
         recvMessage = self.fileOpSocket.recv()
+        logging.debug("Recv confirmation: " + recvMessage)
 
-        for i in range(5):
-            metadata = {
-                "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
-                "relativePath": "local",
-                "filename"    : str(i) + ".cbf"
-                }
-            metadata = json.dumps(metadata)
+        metadata = {
+            "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
+            "relativePath": "local",
+            "filename"    : "test.cbf",
+            "filePart"    : filepart,
+            "chunkSize"   : chunkSize
+        }
 
-            data     = "THISISTESTDATA-" + str(i)
+        # Checking if receiver is alive
+#        self.dataSocket.send_multipart([b"ALIVE_TEST"])
+        tracker = self.dataSocket.send_multipart([b"ALIVE_TEST"], copy=False, track=True)
+        if not tracker.done:
+            tracker.wait(timeout)
+        logging.debug("tracker.done = {t}".format(t=tracker.done))
+        if not tracker.done:
+            logging.error("Failed to send ALIVE_TEST", exc_info=True)
+        else:
+            logging.info("Sending ALIVE_TEST...success")
 
-            dataMessage = [metadata, data]
-            self.dataSocket.send_multipart(dataMessage)
+
+        # Open file
+        source_fp = open(sourceFile, "rb")
+        logging.debug("Opened file: {s}".format(s=sourceFile))
+
+        while True:
+            # Read file content
+            content = source_fp.read(chunkSize)
+            logging.debug("Read file content")
+
+            if not content:
+                logging.debug("break")
+                break
+
+            # Build message
+            metadata["filePart"] = filepart
+
+            payload = []
+            payload.append(json.dumps(metadata))
+            payload.append(content)
+
+            # Send message over ZMQ
+            #self.dataSocket.send_multipart(payload)
+
+            tracker = self.dataSocket.send_multipart(payload, copy=False, track=True)
+            if not tracker.done:
+                    logging.debug("Message part from file " + str(sourceFile) +
+                             " has not been sent yet, waiting...")
+                    tracker.wait(timeout)
+                    logging.debug("Message part from file " + str(sourceFile) +
+                             " has not been sent yet, waiting...done")
+
+
             logging.debug("Send")
+
+            filepart += 1
+
 
         message = "CLOSE_FILE"
         logging.debug("Send " + message)
@@ -82,6 +129,10 @@ class Sender_as_thread (threading.Thread):
 
         recvMessage = self.fileOpSocket.recv()
         logging.debug("Recv confirmation: " + recvMessage)
+
+        # Close file
+        source_fp.close()
+        logging.debug("Closed file: {f}".format(f=sourceFile))
 
 
     def stop (self):
@@ -120,35 +171,8 @@ def closeCallback (params, retrievedParams):
 def readCallback (params, retrievedParams):
     print params, retrievedParams
 
-
-senderThread = Sender_as_thread()
-senderThread.start()
-
-obj = dataTransfer("nexus", useLog = True)
-obj.start(["zitpcx19282", "50100"])
-
-callbackParams = None
-
-try:
-    while True:
-        try:
-            data = obj.read(callbackParams, openCallback, readCallback, closeCallback)
-            logging.debug("Retrieved: " + str(data))
-
-            if data == "CLOSE_FILE":
-                break
-        except KeyboardInterrupt:
-            break
-        except:
-            logging.error("break", exc_info=True)
-            break
-finally:
-    senderThread.stop()
-    obj.stop()
-
-print
-print "==== TEST END: nexus transfer ===="
-print
-
-
+if __name__ == '__main__':
+    s = Sender()
+    s.run()
+    s.stop()
 

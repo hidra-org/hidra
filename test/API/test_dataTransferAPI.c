@@ -316,10 +316,10 @@ int main()
             printf ("abs_filename %s\n", abs_filename);
 
             //write controlling file
-            fp_local = fopen(abs_filename,"w");
+/*            fp_local = fopen(abs_filename,"w");
             fwrite(buffer, chunksize, 1, fp_local);
             fclose(fp_local);
-
+*/
             i++;
 
         }

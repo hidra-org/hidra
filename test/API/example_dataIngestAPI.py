@@ -27,153 +27,54 @@ logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
 logfile     = os.path.join(logfilePath, "testDataIngestAPI.log")
 helpers.initLogging(logfile, True, "DEBUG")
 
-del BASE_PATH
-
 
 print
 print "==== TEST: data ingest ===="
 print
 
-class Receiver (threading.Thread):
-    def __init__ (self, context = None):
-        self.extHost    = "0.0.0.0"
-        self.signalPort = "50050"
-        self.eventPort  = "50003"
-        self.dataPort   = "50010"
-
-        if context:
-            self.context    = context
-            self.extContext = True
-        else:
-            self.context    = zmq.Context()
-            self.extContext = False
-
-        self.signalSocket  = self.context.socket(zmq.REP)
-        connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.signalPort)
-        self.signalSocket.bind(connectionStr)
-        logging.info("signalSocket started (bind) for '" + connectionStr + "'")
-
-        self.eventSocket   = self.context.socket(zmq.PULL)
-        connectionStr = "ipc:///tmp/HiDRA/eventDet"
-#        connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.eventPort)
-        self.eventSocket.bind(connectionStr)
-        logging.info("eventSocket started (bind) for '" + connectionStr + "'")
-
-        self.dataSocket    = self.context.socket(zmq.PULL)
-        connectionStr = "ipc:///tmp/HiDRA/dataFetch"
-#        connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.dataPort)
-        self.dataSocket.bind(connectionStr)
-        logging.info("dataSocket started (bind) for '" + connectionStr + "'")
-
-        self.poller = zmq.Poller()
-        self.poller.register(self.signalSocket, zmq.POLLIN)
-        self.poller.register(self.eventSocket, zmq.POLLIN)
-        self.poller.register(self.dataSocket, zmq.POLLIN)
-
-        threading.Thread.__init__(self)
-
-
-    def run (self):
-        mark_as_close = False
-        all_closed = False
-        while True:
-            try:
-                socks = dict(self.poller.poll())
-
-                if socks and self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
-
-                    message = self.signalSocket.recv()
-                    logging.debug("signalSocket recv: " + message)
-
-                    if message == "CLOSE_FILE":
-                        if all_closed:
-                            self.signalSocket.send(message)
-                            logging.debug("signalSocket send: " + message)
-                            break
-                        else:
-                            mark_as_close = message
-                    else:
-                        self.signalSocket.send(message)
-                        logging.debug("signalSocket send: " + message)
-
-                if socks and self.eventSocket in socks and socks[self.eventSocket] == zmq.POLLIN:
-
-                    eventMessage = self.eventSocket.recv()
-#                    logging.debug("eventSocket recv: " + str(cPickle.loads(eventMessage)))
-                    logging.debug("eventSocket recv: " + eventMessage)
-
-                    if eventMessage == "CLOSE_FILE":
-                        if mark_as_close:
-                            self.signalSocket.send(message)
-                            logging.debug("signalSocket send: " + message)
-                            break
-                        else:
-                            all_closed = True
-
-                if socks and self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
-
-                    logging.debug("dataSocket recv: " + self.dataSocket.recv())
-            except:
-                logging.error("Exception in run", exc_info=True)
-                break
-
-
-    def stop (self):
-        try:
-            if self.signalSocket:
-                logging.info("closing signalSocket...")
-                self.signalSocket.close(linger=0)
-                self.signalSocket = None
-            if self.eventSocket:
-                logging.info("closing eventSocket...")
-                self.eventSocket.close(linger=0)
-                self.eventSocket = None
-            if self.dataSocket:
-                logging.info("closing dataSocket...")
-                self.dataSocket.close(linger=0)
-                self.dataSocket = None
-        except:
-            logging.error("closing ZMQ Sockets...failed.", exc_info=True)
-
-        if not self.extContext and self.context:
-            try:
-                self.log.info("Closing ZMQ context...")
-                self.context.destroy(0)
-                self.context = None
-                self.log.info("Closing ZMQ context...done.")
-            except:
-                self.log.error("Closing ZMQ context...failed.", exc_info=True)
-
-
-    def __del__ (self):
-        self.stop()
-
-
-    def __exit__ (self):
-        self.stop()
-
+sourceFile = BASE_PATH + os.sep + "test_file.cbf"
 
 context    = zmq.Context()
-
-useTest = False
-
-if useTest:
-    receiverThread = Receiver(context)
-    receiverThread.start()
 
 obj = dataIngest(useLog = True, context = context)
 
 obj.createFile("1.h5")
 
-for i in range(5):
+#for i in range(5):
+#    try:
+#        data = "asdfasdasdfasd"
+#        obj.write(data)
+#        print "write"
+
+#    except:
+#        logging.error("break", exc_info=True)
+#        break
+
+# Open file
+source_fp = open(sourceFile, "rb")
+print "Opened file:", sourceFile
+
+while True:
     try:
-        data = "asdfasdasdfasd"
-        obj.write(data)
-        print "write"
+        # Read file content
+        content = source_fp.read(chunkSize)
+        logging.debug("Read file content")
+
+        if not content:
+            logging.debug("break")
+            break
+
+        obj.write(content)
+        logging.debug("write")
 
     except:
         logging.error("break", exc_info=True)
         break
+
+# Close file
+source_fp.close()
+logging.debug("Closed file: {f}".format(f=sourceFile))
+
 
 try:
     obj.closeFile()
@@ -181,9 +82,6 @@ except:
     logging.error("Failed to close file", exc_info=True)
 
 logging.info("Stopping")
-
-if useTest:
-    receiverThread.stop()
 
 obj.stop()
 
