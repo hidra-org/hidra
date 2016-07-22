@@ -28,21 +28,23 @@ static char* s_recv (void *socket)
 };
 
 
-static int s_send (void * socket, char* string)
+static int s_send (void * socket, char* string, int len)
 {
     int bytesSent;
+    int rc;
 
     /* Create a new message, allocating bytes for message content */
     zmq_msg_t message;
-    int rc = zmq_msg_init_size (&message, strlen(string));
+    printf("Sent message of size: %i\n", len);
+    rc = zmq_msg_init_size (&message, len);
     assert (rc == 0);
 
     /* Fill in message content */
-    memcpy (zmq_msg_data (&message), string, strlen(string));
+    memcpy (zmq_msg_data (&message), string, len);
 
     /* Send the message to the socket */
     bytesSent = zmq_msg_send (&message, socket, 0);
-    assert (bytesSent == strlen(string));
+    assert (bytesSent == len);
 
     return bytesSent;
 }
@@ -211,7 +213,8 @@ HIDRA_ERROR dataIngest_createFile (dataIngest *dI, char *fileName)
     int rc;
 
     // Send notification to receiver
-    rc = s_send (dI->fileOpSocket, "OPEN_FILE");
+    message = "OPEN_FILE";
+    rc = s_send (dI->fileOpSocket, message, strlen(message));
     if (rc == -1) return COMMUNICATIONFAILED;
     printf ("Sending signal to open a new file.\n");
 
@@ -236,11 +239,11 @@ HIDRA_ERROR dataIngest_write (dataIngest *dI, char *data, int size)
     snprintf(message, sizeof(message), "{ \"filePart\": %d, \"chunkSize\": %d, \"filename\": \"%s\" }", dI->filePart, size, dI->filename);
 
     // Send event to eventDetector
-    rc = s_send (dI->eventDetSocket, message);
+    rc = s_send (dI->eventDetSocket, message, strlen(message));
     if (rc == -1) return COMMUNICATIONFAILED;
 
     // Send data to ZMQ-Queue
-    rc = s_send (dI->dataFetchSocket, data);
+    rc = s_send (dI->dataFetchSocket, data, size);
     if (rc == -1) return COMMUNICATIONFAILED;
 
     printf ("Writing: %s\n", message);
@@ -260,14 +263,14 @@ HIDRA_ERROR dataIngest_closeFile (dataIngest *dI)
     int rc;
 
     // Send close-signal to signal socket
-    rc = s_send (dI->fileOpSocket, message);
+    rc = s_send (dI->fileOpSocket, message, strlen(message));
     if (rc == -1) return COMMUNICATIONFAILED;
     printf ("Sending signal to close the file to fileOpSocket  (sendMessage=%s)\n", message);
     //        perror("Sending signal to close the file to fileOpSocket...failed.")
 
 
     // send close-signal to event Detector
-    rc = s_send (dI->eventDetSocket, message);
+    rc = s_send (dI->eventDetSocket, message, strlen(message));
     if (rc == -1) return COMMUNICATIONFAILED;
     printf ("Sending signal to close the file to eventDetSocket (sendMessage=%s)\n", message);
 //        perror("Sending signal to close the file to eventDetSocket...failed.)")

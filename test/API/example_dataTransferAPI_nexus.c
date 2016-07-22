@@ -93,6 +93,8 @@ int main ()
     rc = dataTransfer_stop(obj);
     printf ("dataTransfer_stop returned: %i\n", rc);
 
+    free (cbp);
+
     return 0;
 };
 

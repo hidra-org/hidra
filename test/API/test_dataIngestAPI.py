@@ -128,7 +128,7 @@ class Receiver ():
 
                     data = self.dataSocket.recv()
 
-                    logging.debug("dataSocket recv: {d}".format(d=data))
+                    logging.debug("dataSocket recv (len={s}): {d}".format(d=data[:100], s=len(data)))
 
                     fileDescriptor.write(data)
                     logging.debug("Write file content")

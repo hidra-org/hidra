@@ -528,14 +528,16 @@ class dataTransfer():
             self.log.debug("self.recvdCloseFrom=" + str(self.recvdCloseFrom) + ", self.numberOfStreams=" + str(self.numberOfStreams))
             if len(self.recvdCloseFrom) == self.numberOfStreams:
                 self.log.info("All close-file-signals arrived")
-                self.allCloseRecvd = True
                 if self.replyToSignal:
                     self.fileOpSocket.send(self.replyToSignal)
                     self.log.debug("fileOpSocket send: " + self.replyToSignal)
                     self.replyToSignal = False
                     self.recvdCloseFrom = []
 
-                self.closeCallback(self.callbackParams, multipartMessage)
+                    self.closeCallback(self.callbackParams, multipartMessage)
+                else:
+                    self.allCloseRecvd = True
+
             else:
                 self.log.info("self.recvdCloseFrom=" + str(self.recvdCloseFrom) + ", self.numberOfStreams=" + str(self.numberOfStreams))
 

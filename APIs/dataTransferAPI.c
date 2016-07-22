@@ -361,7 +361,13 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage, int *me
 
                 free (dT->replyToSignal);
                 dT->replyToSignal = NULL;
+                for (i = 0; i < dT->numberOfStreams; i++)
+                {
+                    if (dT->recvdCloseFrom[i] != NULL) free(dT->recvdCloseFrom[i]);
+                    dT->recvdCloseFrom[i] = NULL;
+                }
                 if (dT->recvdCloseFrom != NULL) free (dT->recvdCloseFrom);
+
                 dT->recvdCloseFrom = NULL;
                 dT->allCloseRecvd = 0;
                 dT->runLoop = 0;
@@ -409,11 +415,12 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage, int *me
 //        perror("Could not extract metadata from the multipart-message.");
 //        metadata = NULL;
 
-        char *payload = multipartMessage[1];
 //        perror("An empty file was received within the multipart-message");
 //        payload = NULL;
 
         dT->readCb(dT->cbParams, dT->metadata, multipartMessage[1], messageSize[1]);
+
+        json_object_put ( metadata_json );
     }
 
     return SUCCESS;

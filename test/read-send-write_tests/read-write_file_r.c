@@ -11,7 +11,8 @@
 int main()
 {
     char *sourceFile = "/opt/HiDRA/test_file.cbf";
-    int chunkSize = 10485760; // 1024*1024*10 = 10MB
+//    int chunkSize = 10485760; // 1024*1024*10 = 10MB
+    int chunkSize = 524288;
     int filepart = 0;
     FILE *source_fp;
     void *context;
