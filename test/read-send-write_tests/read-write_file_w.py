@@ -12,8 +12,8 @@ print BASE_PATH
 if __name__ == '__main__':
 
     targetFile = os.path.join(BASE_PATH, "data", "target", "local", "test.cbf")
-    connectionStr = "tcp://0.0.0.0:55555"
-#    connectionStr = "ipc:///tmp/HiDRA/file_sending_test"
+    connectionStr = "ipc:///tmp/HiDRA/file_sending_test"
+#    connectionStr = "tcp://0.0.0.0:55555"
 
     # Set up ZMQ
     context = zmq.Context()

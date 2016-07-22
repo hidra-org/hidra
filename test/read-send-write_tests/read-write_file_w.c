@@ -15,6 +15,7 @@ int main()
     FILE *target_fp;
     void *context;
     void *socket;
+    char connectionStr[128] = "ipc:///tmp/HiDRA/file_sending_test";
     int runLoop = 1;
     zmq_msg_t msg;
     int rc;
@@ -41,14 +42,14 @@ int main()
 		exit(-9);
 	}
 
-    if ( zmq_bind(socket, "ipc:///tmp/HiDRA/file_sending_test") )
+    if ( zmq_bind(socket, connectionStr) )
     {
-        fprintf(stderr, "Failed to socket (connect) : %s\n", strerror( errno ));
+        fprintf(stderr, "Failed to start socket (connect) for '%s': %s\n", connectionStr, strerror( errno ));
 		exit(-9);
     }
     else
     {
-        printf("Socket started (connect)\n");
+        printf("Socket started (connect) for '%s'\n", connectionStr);
     }
 
     // Open file

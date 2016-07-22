@@ -16,8 +16,8 @@ int main()
     FILE *source_fp;
     void *context;
     void *socket;
-//    char connectionStr[128] = "ipc:///tmp/HiDRA/file_sending_test";
-    char connectionStr[128] = "tcp://zitpcx19282:55555";
+    char connectionStr[128] = "ipc:///tmp/HiDRA/file_sending_test";
+//    char connectionStr[128] = "tcp://zitpcx19282:55555";
     char *buffer = malloc(chunkSize);
     int bytesRead;
     int bytesSent;
@@ -42,7 +42,7 @@ int main()
 
     if ( zmq_connect(socket, connectionStr) )
     {
-        fprintf(stderr, "Failed to socket for '%s'(connect) : %s\n", connectionStr, strerror( errno ));
+        fprintf(stderr, "Failed to start socket (connect) for '%s': %s\n", connectionStr, strerror( errno ));
 		exit(-9);
     }
     else
