@@ -270,7 +270,8 @@ int main()
 //            printf("sent string: %s\n", metadata_string);
             memcpy (zmq_msg_data (&msg), metadata_string2, strlen(metadata_string2));
 //            printf("sent string: %s, len=%zu\n", metadata_string2, strlen(metadata_string2));
-            // Send message part
+//
+            // Send metadata
             bytesSent = zmq_msg_send (&msg, dataSocket, ZMQ_SNDMORE);
             if (bytesSent == -1)
             {
@@ -307,8 +308,6 @@ int main()
             rc = zmq_msg_close(&msg);
             if (rc != 0) perror("ERROR when closing msg");
 
-
-            printf ("Writing: %s\n", message);
 
             filePart++;
 

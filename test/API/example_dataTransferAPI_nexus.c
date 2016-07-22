@@ -23,7 +23,7 @@ int open_cb (params_cb_t *cbp, char *filename)
 
     printf("execute openCall_cb for file: %s\n", filename);
 
-    cbp->fp = fopen(abs_filename,"w"); // read mode
+    cbp->fp = fopen(abs_filename,"wb"); // read mode
 }
 
 

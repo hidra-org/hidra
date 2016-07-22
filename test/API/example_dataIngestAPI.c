@@ -20,7 +20,7 @@ int main()
     rc = dataIngest_init (&obj);
     if (rc) exit(-9);
 
-    fp = fopen(file_name,"r"); // read mode
+    fp = fopen(file_name,"rb"); // read mode
 
     rc = dataIngest_createFile (obj, file_name);
 
