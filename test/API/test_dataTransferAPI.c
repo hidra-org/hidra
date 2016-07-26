@@ -227,6 +227,7 @@ int main()
     message = s_recv (fileOpSocket);
     printf ("Received responce: '%s'\n", message);
 
+    free (message);
     /*
      * Read file
      */
@@ -253,24 +254,27 @@ int main()
 
             metadata_string = json_object_to_json_string ( metadata_json );
 
-            char metadata_string2[128];
-            snprintf(metadata_string2, sizeof(metadata_string2), "{ \"filePart\": %d, \"chunkSize\": %d, \"filename\": \"%s\" }", filePart, chunksize, filename);
+//            char metadata_string2[128];
+//            snprintf(metadata_string2, sizeof(metadata_string2), "{ \"filePart\": %d, \"chunkSize\": %d, \"filename\": \"%s\" }", filePart, chunksize, filename);
 
 
-//            printf ("The json object created: %s\n", metadata_string);
-            printf ("The json object created: %s\n", metadata_string2);
+            printf ("The json object created: %s\n", metadata_string);
+//            printf ("The json object created: %s\n", metadata_string2);
 
             // Send event to eventDetector
 //            rc = send_multipartMessage (dataSocket, multipartMessage, 2, chunksize);
 
             //Process message
-            rc = zmq_msg_init_size (&msg, strlen(metadata_string2));
+            rc = zmq_msg_init_size (&msg, strlen(metadata_string));
+//            rc = zmq_msg_init_size (&msg, strlen(metadata_string2));
             if (rc != 0) perror("ERROR when init msg");
-//            memcpy (zmq_msg_data (&msg), metadata_string, strlen(metadata_string));
-//            printf("sent string: %s\n", metadata_string);
-            memcpy (zmq_msg_data (&msg), metadata_string2, strlen(metadata_string2));
+            memcpy (zmq_msg_data (&msg), metadata_string, strlen(metadata_string));
+            printf("sent string: %s, len=%zu\n", metadata_string, strlen(metadata_string));
+//            memcpy (zmq_msg_data (&msg), metadata_string2, strlen(metadata_string2));
 //            printf("sent string: %s, len=%zu\n", metadata_string2, strlen(metadata_string2));
-//
+
+            json_object_put ( metadata_json );
+
             // Send metadata
             bytesSent = zmq_msg_send (&msg, dataSocket, ZMQ_SNDMORE);
             if (bytesSent == -1)
@@ -323,6 +327,7 @@ int main()
 
         }
         free(printBuf);
+        free(buffer);
 
         fclose(fp);
 
@@ -371,6 +376,7 @@ int main()
     message = s_recv (fileOpSocket);
     printf ("Received responce: '%s'\n", message);
 
+    free (message);
 
     /*
      * Clean up ZMQ

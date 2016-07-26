@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
+#include <json.h>
 
 
 // helper functions for sending and receiving messages
@@ -28,7 +29,7 @@ static char* s_recv (void *socket)
 };
 
 
-static int s_send (void * socket, char* string, int len)
+static int s_send (void * socket, const char* string, int len)
 {
     int bytesSent;
     int rc;
@@ -235,12 +236,23 @@ HIDRA_ERROR dataIngest_write (dataIngest *dI, char *data, int size)
 
     char message[128];
     int rc;
+    json_object * metadata_json;
+    const char *metadata_string;
 
-    snprintf(message, sizeof(message), "{ \"filePart\": %d, \"chunkSize\": %d, \"filename\": \"%s\" }", dI->filePart, size, dI->filename);
+
+    metadata_json = json_object_new_object();
+
+    json_object_object_add(metadata_json,"filename", json_object_new_string(dI->filename));
+    json_object_object_add(metadata_json,"filePart", json_object_new_int(dI->filePart));
+    json_object_object_add(metadata_json,"chunkSize", json_object_new_int(size));
+
+    metadata_string = json_object_to_json_string ( metadata_json );
 
     // Send event to eventDetector
-    rc = s_send (dI->eventDetSocket, message, strlen(message));
+    rc = s_send (dI->eventDetSocket, metadata_string, strlen(metadata_string));
     if (rc == -1) return COMMUNICATIONFAILED;
+
+    json_object_put ( metadata_json );
 
     // Send data to ZMQ-Queue
     rc = s_send (dI->dataFetchSocket, data, size);
@@ -265,15 +277,15 @@ HIDRA_ERROR dataIngest_closeFile (dataIngest *dI)
     // Send close-signal to signal socket
     rc = s_send (dI->fileOpSocket, message, strlen(message));
     if (rc == -1) return COMMUNICATIONFAILED;
-    printf ("Sending signal to close the file to fileOpSocket  (sendMessage=%s)\n", message);
     //        perror("Sending signal to close the file to fileOpSocket...failed.")
+    printf ("Sending signal to close the file to fileOpSocket  (sendMessage=%s)\n", message);
 
 
     // send close-signal to event Detector
     rc = s_send (dI->eventDetSocket, message, strlen(message));
     if (rc == -1) return COMMUNICATIONFAILED;
-    printf ("Sending signal to close the file to eventDetSocket (sendMessage=%s)\n", message);
 //        perror("Sending signal to close the file to eventDetSocket...failed.)")
+    printf ("Sending signal to close the file to eventDetSocket (sendMessage=%s)\n", message);
 
 
 //    try:
@@ -312,11 +324,11 @@ HIDRA_ERROR dataIngest_stop (dataIngest *dI)
     zmq_close(dI->eventDetSocket);
     printf ("closing dataFetchSocket...\n");
     zmq_close(dI->dataFetchSocket);
-//            self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
+//    perror("closing ZMQ Sockets...failed.")
 
     printf ("Closing ZMQ context...\n");
     zmq_ctx_destroy(dI->context);
-//                self.log.error("Closing ZMQ context...failed.", exc_info=True)
+//    perror("Closing ZMQ context...failed.")
 
     free (dI);
     printf ("Cleanup finished.\n");
