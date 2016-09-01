@@ -680,17 +680,29 @@ class DataManager():
             os.remove(controlPubPath)
             self.log.debug("Removed ipc socket: {p}".format(p=controlPubPath))
         except OSError:
-            self.log.warning("Could not remove ipc socket: {p}".format(p=controlPubPath))
+            try:
+                self.log.warning("Could not remove ipc socket: {p}".format(p=controlPubPath))
+            except:
+                logging.warning("Could not remove ipc socket: {p}".format(p=controlPubPath))
         except:
-            self.log.warning("Could not remove ipc socket: {p}".format(p=controlPubPath), exc_info=True)
+            try:
+                self.log.warning("Could not remove ipc socket: {p}".format(p=controlPubPath), exc_info=True)
+            except:
+                logging.warning("Could not remove ipc socket: {p}".format(p=controlPubPath), exc_info=True)
 
         try:
             os.remove(controlSubPath)
             self.log.debug("Removed ipc socket: {s}".format(s=controlSubPath))
         except OSError:
-            self.log.warning("Could not remove ipc socket: {s}".format(s=controlSubPath))
+            try:
+                self.log.warning("Could not remove ipc socket: {s}".format(s=controlSubPath))
+            except:
+                logging.warning("Could not remove ipc socket: {s}".format(s=controlSubPath))
         except:
-            self.log.debug("Could not remove ipc socket: {s}".format(s=controlSubPath), exc_info=True)
+            try:
+                self.log.warning("Could not remove ipc socket: {s}".format(s=controlSubPath), exc_info=True)
+            except:
+                logging.warning("Could not remove ipc socket: {s}".format(s=controlSubPath), exc_info=True)
 
         if not self.extLogQueue and self.logQueueListener:
             self.log.info("Stopping logQueue")
