@@ -173,14 +173,15 @@ def __dataHandling(log, sourceFile, targetFile, actionFunction, metadata, prop):
         # errno.ENOENT == "No such file or directory"
         if e.errno == errno.ENOENT:
             subdir, tmp = os.path.split(metadata["relativePath"])
+            targetBasePath = os.path.join(targetFile.split(subdir + os.sep)[0], subdir)
 
             if metadata["relativePath"] in prop["fixSubdirs"]:
                 log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile +
-                          ": Directory " + metadata["relativePath"] + " is not available.", exc_info=True)
+                          ": Directory " + metadata["relativePath"] + " is not available.",)
                 raise
-            elif subdir in prop["fixSubdirs"] :
+            elif subdir in prop["fixSubdirs"] and not os.path.isdir(targetBasePath):
                 log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile +
-                          ": Directory " + subdir + " is not available.", exc_info=True)
+                          ": Directory " + subdir + " is not available.")
                 raise
             else:
                 try:
