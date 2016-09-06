@@ -34,7 +34,7 @@ class MyHandler(PatternMatchingEventHandler):
 
 if __name__ == '__main__':
     from shutil import copyfile
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
     print BASE_PATH
 
 
