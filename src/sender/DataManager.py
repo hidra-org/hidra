@@ -141,7 +141,7 @@ def argumentParsing():
     parser.add_argument("--dataFetcherPort"   , type    = str,
                                                 help    = "If 'getFromZmq is specified as dataFetcherType it needs a port to listen to)")
 
-    parser.add_argument("--useDataStream"     , type    = str,
+    parser.add_argument("--useDataStream"     , type    = bool,
                                                 help    = "Enable ZMQ pipe into storage system (if set to false: the file is moved \
                                                            into the localTarget)")
     parser.add_argument("--fixedStreamHost"   , type    = str,
