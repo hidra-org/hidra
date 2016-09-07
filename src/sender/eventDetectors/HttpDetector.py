@@ -81,6 +81,7 @@ class EventDetector():
 
         try:
             response.raise_for_status()
+#            self.log.debug("response: {r}".format(r=response.text))
             files_stored = response.json()
 #            self.log.debug("files_stored: {f}".format(f=files_stored))
         except:
@@ -157,13 +158,14 @@ if __name__ == '__main__':
 
 
 #    detectorDevice   = "haspp10lab:10000/p10/eigerdectris/lab.01"
-    detectorDevice   = "haspp06:10000/p06/eigerdectris/exp.01"
+#    detectorDevice   = "haspp06:10000/p06/eigerdectris/exp.01"
 #    filewriterDevice = "haspp10lab:10000/p10/eigerfilewriter/lab.01"
-    filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
-    eigerIp          = "192.168.138.52"
+#    filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
+#    eigerIp          = "192.168.138.52" #haspp11e1m
+    eigerIp          = "131.169.55.170" #lsdma-lab04
     eigerApiVersion  = "1.5.0"
     config = {
-            "eventDetectorType" : "httpget",
+            "eventDetectorType" : "HttpDetector",
             "eigerIp"           : eigerIp,
             "eigerApiVersion"   : eigerApiVersion,
             "historySize"       : 1000
