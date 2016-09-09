@@ -1,16 +1,22 @@
-oldfile=/opt/HiDRA/test_file.cbf
-newfile=/opt/HiDRA/data/source/local/test_file.cbf
-movedfile=/opt/HiDRA/data/target/local/test_file.cbf
+SCRIPTPATH=$(readlink -f $0)
+BASEPATH=${SCRIPTPATH%%/test/TransferTest1.sh}
+
+oldfile=$BASEPATH/test_file.cbf
+newfile=$BASEPATH/data/source/local/test_file.cbf
+movedfile=$BASEPATH/data/target/local/test_file.cbf
 
 procname=HiDRA_test1
 
 
-python /opt/HiDRA/src/sender/DataManager.py \
-    --configFile /opt/HiDRA/test/dataManager.conf \
-    --procname "$procname" \
-    --logfileName "${procname}.log" \
-    --eventDetectorType "InotifyxDetector" \
-    --dataFetcherType "getFromFile" \
+python $BASEPATH/src/sender/DataManager.py \
+    --configFile $BASEPATH/test/dataManager.conf \
+    --procname $procname \
+    --logfilePath $BASEPATH/logs \
+    --logfileName ${procname}.log \
+    --monitoredDir $BASEPATH/data/source \
+    --localTarget $BASEPATH/data/target \
+    --eventDetectorType InotifyxDetector \
+    --dataFetcherType getFromFile \
     --useDataStream '' \
     --storeData True \
     --removeData True \

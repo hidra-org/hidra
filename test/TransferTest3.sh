@@ -1,20 +1,27 @@
-oldfile=/opt/HiDRA/test_file.cbf
-newfile=/opt/HiDRA/data/source/local/test_file.cbf
-movedfile=/opt/HiDRA/data/target/local/test_file.cbf
+SCRIPTPATH=$(readlink -f $0)
+BASEPATH=${SCRIPTPATH%%/test/TransferTest3.sh}
+echo $BASEPATH
+
+
+oldfile=$BASEPATH/test_file.cbf
+newfile=$BASEPATH/data/source/local/test_file.cbf
+movedfile=$BASEPATH/data/target/local/test_file.cbf
 
 procname=HiDRA_test3
 
 
-python /opt/HiDRA/src/sender/DataManager.py \
-    --configFile /opt/HiDRA/test/dataManager.conf \
-    --procname "$procname" \
-    --logfileName "${procname}.log" \
-    --eventDetectorType "HttpDetector" \
-    --dataFetcherType "getFromHttp" \
-    --eigerIp "131.169.55.170" \
-    --eigerApiVersion "1.5.0" \
+python $BASEPATH/src/sender/DataManager.py \
+    --configFile $BASEPATH/test/dataManager.conf \
+    --procname $procname \
+    --logfilePath $BASEPATH/logs \
+    --logfileName ${procname}.log \
+    --monitoredDir $BASEPATH/data/source \
+    --localTarget $BASEPATH/data/target/local \
+    --eventDetectorType HttpDetector \
+    --dataFetcherType getFromHttp \
+    --eigerIp 131.169.55.170 \
+    --eigerApiVersion 1.5.0 \
     --historySize 2\
-    --localTarget "/opt/HiDRA/data/target/local" \
     --useDataStream '' \
     --storeData True \
     --removeData '' \
