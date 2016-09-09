@@ -320,6 +320,7 @@ class DataManager():
         self.logQueueListener = None
 
         self.localhost        = "127.0.0.1"
+        #TODO make ipcPath windows compatible
         self.ipcPath          = "/tmp/HiDRA"
 
         self.currentPID       = os.getpid()
@@ -363,9 +364,9 @@ class DataManager():
 
         procname              = arguments.procname
         setproctitle.setproctitle(procname)
-        self.log.info("Running as " + str(procname) )
+        self.log.info("Running as {p}".format(p=procname))
 
-        self.log.info("DataManager started (PID " + str(self.currentPID) + ").")
+        self.log.info("DataManager started (PID {p}).".format(p=self.currentPID))
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -416,7 +417,7 @@ class DataManager():
         self.log.info("Configured localTarget: {t}".format(t=self.localTarget))
 
         # Assemble configuration for eventDetector.
-        self.log.info("Configured type of eventDetector: " + arguments.eventDetectorType)
+        self.log.info("Configured type of eventDetector: {e}".format(e=arguments.eventDetectorType))
         if arguments.eventDetectorType == "InotifyxDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
@@ -455,7 +456,7 @@ class DataManager():
 
 
         # Assemble configuration for dataFetcher
-        self.log.info("Configured Type of dataFetcher: " + arguments.dataFetcherType)
+        self.log.info("Configured Type of dataFetcher: {d}".format(d=arguments.dataFetcherType))
         if arguments.dataFetcherType == "getFromFile":
             self.dataFetcherProp = {
                     "type"            : arguments.dataFetcherType,
@@ -483,7 +484,7 @@ class DataManager():
         self.taskProviderPr   = None
         self.dataDispatcherPr = []
 
-        self.log.info("Version: " + str(__version__))
+        self.log.info("Version: {v}".format(v=__version__))
 
         # IP and DNS name should be both in the whitelist
         helpers.extendWhitelist(self.whitelist, self.log)
@@ -531,9 +532,9 @@ class DataManager():
             self.device.bind_out(self.controlSubConId)
             self.device.setsockopt_in(zmq.SUBSCRIBE, b"")
             self.device.start()
-            self.log.info("Start thead device forwarding messages from '" + str(self.controlPubConId) + "' to '" + str(self.controlSubConId) + "'")
+            self.log.info("Start thead device forwarding messages from '{p}' to '{s}'".format(p=self.controlPubConId, s=self.controlSubConId))
         except:
-            self.log.error("Failed to start thead device forwarding messages from '" + str(self.controlPubConId) + "' to '" + str(self.controlSubConId) + "'", exc_info=True)
+            self.log.error("Failed to start thead device forwarding messages from '{p}' to '{s}'".format(p=self.controlPubConId, s=self.controlSubConId), exc_info=True)
             raise
 
 
@@ -541,9 +542,9 @@ class DataManager():
         try:
             self.controlPubSocket = self.context.socket(zmq.PUB)
             self.controlPubSocket.connect(self.controlPubConId)
-            self.log.info("Start controlPubSocket (connect): '" + str(self.controlPubConId) + "'")
+            self.log.info("Start controlPubSocket (connect): '{p}'".format(p=self.controlPubConId))
         except:
-            self.log.error("Failed to start controlPubSocket (connect): '" + self.controlPubConId + "'", exc_info=True)
+            self.log.error("Failed to start controlPubSocket (connect): '{p}'".format(p=self.controlPubConId), exc_info=True)
             raise
 
 
@@ -551,12 +552,12 @@ class DataManager():
         if self.useDataStream:
             try:
                 self.testSocket = self.context.socket(zmq.PUSH)
-                connectionStr   = "tcp://" + self.fixedStreamId
+                connectionStr   = "tcp://{s}".format(s=self.fixedStreamId)
 
                 self.testSocket.connect(connectionStr)
-                self.log.info("Start testSocket (connect): '" + str(connectionStr) + "'")
+                self.log.info("Start testSocket (connect): '{s}'".format(s=connectionStr))
             except:
-                self.log.error("Failed to start testSocket (connect): '" + str(connectionStr) + "'", exc_info=True)
+                self.log.error("Failed to start testSocket (connect): '{s}'".format(s=connectionStr), exc_info=True)
                 return False
 
             try:
@@ -734,24 +735,24 @@ class Test_Receiver_Stream():
         context = zmq.Context.instance()
 
         self.comSocket       = context.socket(zmq.REQ)
-        connectionStr   = "tcp://localhost:" + comPort
+        connectionStr   = "tcp://localhost:{p}".format(p=comPort)
         self.comSocket.connect(connectionStr)
-        self.log.info("=== comSocket connected to " + connectionStr)
+        self.log.info("=== comSocket connected to {s}".format(s=connectionStr))
 
         self.fixedRecvSocket = context.socket(zmq.PULL)
-        connectionStr   = "tcp://0.0.0.0:" + fixedRecvPort
+        connectionStr   = "tcp://0.0.0.0:{p}".format(p=fixedRecvPort)
         self.fixedRecvSocket.bind(connectionStr)
-        self.log.info("=== fixedRecvSocket connected to " + connectionStr)
+        self.log.info("=== fixedRecvSocket connected to {s}".format(s=connectionStr))
 
         self.receivingSocket = context.socket(zmq.PULL)
-        connectionStr   = "tcp://0.0.0.0:" + receivingPort
+        connectionStr   = "tcp://0.0.0.0:{p}".format(p=receivingPort)
         self.receivingSocket.bind(connectionStr)
-        self.log.info("=== receivingSocket connected to " + connectionStr)
+        self.log.info("=== receivingSocket connected to {s}".format(s=connectionStr))
 
         self.receivingSocket2 = context.socket(zmq.PULL)
         connectionStr   = "tcp://0.0.0.0:" + receivingPort2
         self.receivingSocket2.bind(connectionStr)
-        self.log.info("=== receivingSocket2 connected to " + connectionStr)
+        self.log.info("=== receivingSocket2 connected to {s}".format(s=connectionStr))
 
         self.sendSignal("START_STREAM", receivingPort, 1)
         self.sendSignal("START_STREAM", receivingPort2, 0)
@@ -775,30 +776,30 @@ class Test_Receiver_Stream():
 
 
     def sendSignal (self, signal, ports, prio = None):
-        self.log.info("=== sendSignal : " + signal + ", " + str(ports))
+        self.log.info("=== sendSignal : {s}, {p}".format(s=signal, p=ports))
         sendMessage = [__version__,  signal]
         targets = []
         if type(ports) == list:
             for port in ports:
-                targets.append(["localhost:" + port, prio])
+                targets.append(["localhost:{p}".format(p=port), prio])
         else:
-            targets.append(["localhost:" + ports, prio])
+            targets.append(["localhost:{p}".format(p=ports), prio])
 
         targets = cPickle.dumps(targets)
         sendMessage.append(targets)
         self.comSocket.send_multipart(sendMessage)
         receivedMessage = self.comSocket.recv()
-        self.log.info("=== Responce : " + receivedMessage )
+        self.log.info("=== Responce : {r}".format(r=receivedMessage))
 
     def run (self):
         try:
             while True:
                 recv_message = self.fixedRecvSocket.recv_multipart()
-                self.log.info("=== received fixed: " + str(cPickle.loads(recv_message[0])))
+                self.log.info("=== received fixed: {r}".format(r=cPickle.loads(recv_message[0])))
                 recv_message = self.receivingSocket.recv_multipart()
-                self.log.info("=== received: " + str(cPickle.loads(recv_message[0])))
+                self.log.info("=== received: {r}".format(r=cPickle.loads(recv_message[0])))
                 recv_message = self.receivingSocket2.recv_multipart()
-                self.log.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
+                self.log.info("=== received 2: {r}".format(r=cPickle.loads(recv_message[0])))
         except KeyboardInterrupt:
             pass
 
@@ -860,23 +861,23 @@ if __name__ == '__main__':
             i = 100
             try:
                 while i <= 105:
-                    targetFile = targetFileBase + str(i) + ".cbf"
-                    logging.debug("copy to " + targetFile)
+                    targetFile = "{b}{n}.cbf".format(b=targetFileBase, n=i)
+                    logging.debug("copy to {t}".format(t=targetFile))
                     copyfile(sourceFile, targetFile)
                     i += 1
 
                     time.sleep(1)
             except Exception as e:
-                logging.error("Exception detected: " + str(e), exc_info=True)
+                logging.error("Exception detected: {ex}".format(ex=e), exc_info=True)
             finally:
                 time.sleep(3)
                 testPr.terminate()
 
                 for number in range(100, i):
-                    targetFile = targetFileBase + str(number) + ".cbf"
+                    targetFile = "{t}{n}.cbf".format(t=targetFileBase, n=number)
                     try:
                         os.remove(targetFile)
-                        logging.debug("remove " + targetFile)
+                        logging.debug("remove {t}".format(t=targetFile))
                     except:
                         pass
 
