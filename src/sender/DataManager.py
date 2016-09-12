@@ -325,7 +325,11 @@ class DataManager():
 
         self.currentPID       = os.getpid()
 
-        arguments = argumentParsing()
+        try:
+            arguments = argumentParsing()
+        except:
+            self.log = logging
+            raise
 
         logfilePath           = arguments.logfilePath
         logfileName           = arguments.logfileName
