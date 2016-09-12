@@ -1,8 +1,15 @@
 HiDRA develop
 
+- Added functional tests
+- Fixing memory leaks
+- Minor bug fixing
+- Working C-API for data transfer (nexus use case only)
+- Working C-API for data ingest
+- Removed PyTango dependency
+- Fixed file opening (only open and close once and keep it open)
 - Example client (based on API) for controlling HiDRA remotely
-- The communication with the controlling-servercan be done with an API
-- HiDRA can be controlled (start, stop,...) via an addtional server
+- The communication with the controlling-server can be done with an API
+- HiDRA can be controlled (start, stop,...) via an addtional server (HiDRAControl...)
 - Working version of dataIngestAPI with dataTransferAPI (python)
 - Merged nexusTransferAPI into dataTranferAPI
 - Handling of open connections to known hosts with different send configurations
