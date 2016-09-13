@@ -178,7 +178,7 @@ class CleanUp (threading.Thread):
                 self.lock.acquire()
                 fileEventList += result
                 self.lock.release()
-#                self.log.debug("fileEventList: " + str(fileEventList))
+#                self.log.debug("fileEventList: {l}".format(l=fileEventList))
                 time.sleep(self.actionTime)
             except:
                 self.log.error("Stopping loop due to error", exc_info=True)
@@ -192,31 +192,31 @@ class CleanUp (threading.Thread):
         for root, directories, files in os.walk(dirname):
             for filename in files:
                 if not filename.endswith(self.monSuffixes):
-#                    self.log.debug("File ending not in monitored Suffixes: " + str(filename))
+#                    self.log.debug("File ending not in monitored Suffixes: {f}".format(f=filename))
                     continue
 
                 filepath = os.path.join(root, filename)
-                self.log.debug("filepath: " + filepath)
+                self.log.debug("filepath: {p}".format(filepath))
 
                 try:
                     timeLastModified = os.stat(filepath).st_mtime
                 except:
-                    self.log.error("Unable to get modification time for file: " + filepath, exc_info=True)
+                    self.log.error("Unable to get modification time for file: {p}".format(p=filepath), exc_info=True)
                     continue
 
                 try:
                     # get current time
                     timeCurrent = time.time()
                 except:
-                    self.log.error("Unable to get current time for file: " + filepath, exc_info=True)
+                    self.log.error("Unable to get current time for file: {p}".format(p=filepath), exc_info=True)
                     continue
 
                 if timeCurrent - timeLastModified >= self.cleanUpTime:
-                    self.log.debug("New closed file detected: " + str(filepath))
-#                    self.log.debug("modTime: " + str(timeLastModified) + "currentTime: " + str(timeCurrent))
-#                    self.log.debug("timeCurrent - timeLastModified: " + str(timeCurrent - timeLastModified) + ", cleanUpTime: " + str(self.cleanUpTime))
+                    self.log.debug("New closed file detected: {p}".format(p=filepath))
+#                    self.log.debug("modTime: {m}, currentTime: {c}".format(m=timeLastModified, c=timeCurrent))
+#                    self.log.debug("timeCurrent - timeLastModified: {d}, cleanUpTime: {c}".format(d=(timeCurrent - timeLastModified), c=self.cleanUpTime))
                     eventMessage = getEventMessage(root, filename, self.paths)
-                    self.log.debug("eventMessage: " + str(eventMessage))
+                    self.log.debug("eventMessage: {m}".format(m=eventMessage))
 
                     # add to result list
                     eventList.append(eventMessage)
@@ -245,7 +245,7 @@ class EventDetector():
                 not config.has_key("cleanUpTime") or
                 not config.has_key("actionTime") ):
             self.log.error ("Configuration of wrong format")
-            self.log.debug ("config="+ str(config))
+            self.log.debug ("config={c}".format(c=config))
             checkPassed = False
         else:
             checkPassed = True
@@ -321,16 +321,16 @@ class EventDetector():
             for path in dirsToRegister:
                 wd = binding.add_watch(self.fd, path)
                 self.wd_to_path[wd] = path
-                self.log.debug("Register watch for path:" + str(path) )
+                self.log.debug("Register watch for path: {p}".format(p=path) )
         except:
-            self.log.error("Could not register watch for path: " + str(path), exc_info=True)
+            self.log.error("Could not register watch for path: {p}".format(p=path), exc_info=True)
 
 
     def getDirectoryStructure (self):
         # Add the default subdirs
-        self.log.debug("paths:" + str(self.paths))
+        self.log.debug("paths: {p}".format(p=self.paths))
         dirsToWalk    = [os.path.normpath(self.paths[0] + os.sep + directory) for directory in self.monSubdirs]
-        self.log.debug("dirsToWalk:" + str(dirsToWalk))
+        self.log.debug("dirsToWalk: {d}".format(d=dirsToWalk))
         monitoredDirs = []
 
         # Walk the tree
@@ -341,9 +341,9 @@ class EventDetector():
                     # Add the found dirs to the list for the inotify-watch
                     if root not in monitoredDirs:
                         monitoredDirs.append(root)
-                        self.log.info("Add directory to monitor: " + str(root))
+                        self.log.info("Add directory to monitor: {r}".format(r=root))
             else:
-                self.log.info("Dir does not exist: " + str(directory))
+                self.log.info("Dir does not exist: {d}".format(d=directory))
 
         return monitoredDirs
 
@@ -360,7 +360,7 @@ class EventDetector():
             self.lock.release()
 
         if eventMessageList:
-            self.log.info("Added missed files: " + str(eventMessageList))
+            self.log.info("Added missed files: {l}".format(l=eventMessageList))
 
         eventMessage = {}
 
@@ -390,31 +390,31 @@ class EventDetector():
                     currentMonEvent = key
 
 #            if not is_dir:
-#                self.log.debug(path + " " + event.name + " " + parts)
-#                self.log.debug("currentMonEvent: " + str(currentMonEvent))
+#                self.log.debug("{p} {n} {ps}".format(p=path, n=event.name, ps=parts)
+#                self.log.debug("currentMonEvent: {e}".format(e=currentMonEvent))
 #            self.log.debug(event.name)
-#            self.log.debug("is_dir: " + str(is_dir))
-#            self.log.debug("is_created: " + str(is_created))
-#            self.log.debug("is_moved_from: " + str(is_moved_from))
-#            self.log.debug("is_moved_to: " + str(is_moved_to))
+#            self.log.debug("is_dir: {i}".format(i=is_dir))
+#            self.log.debug("is_created: {i}".format(i=is_created))
+#            self.log.debug("is_moved_from: {i}".format(i=is_moved_from))
+#            self.log.debug("is_moved_to: {i}".format(i=is_moved_to))
 
 
             # if a new directory is created or a directory is renamed inside the monitored one,
             # this one has to be monitored as well
             if is_dir and (is_created or is_moved_to):
 
-#                self.log.debug("is_dir and is created: " + str(is_created) + "
-#                self.log.debug(path + " " + event.name + " " + parts)
+#                self.log.debug("is_dir and is_created: {i} or is_moved_to: {m}".format(i=is_created, m=is_moved_to))
+#                self.log.debug("{p} {n} {ps}".format(p=path, n=event.name, ps=parts)
 #                self.log.debug(event.name)
 
                 dirname = os.path.join(path, event.name)
-                self.log.info("Directory event detected: " + str(dirname) + "," + str(parts))
+                self.log.info("Directory event detected: {d}, {p}".format(d=dirname, p=parts))
                 if dirname in self.paths:
-                    self.log.debug("Directory already contained in path list: " + str(dirname))
+                    self.log.debug("Directory already contained in path list: {d}".format(d=dirname))
                 else:
                     wd = binding.add_watch(self.fd, dirname)
                     self.wd_to_path[wd] = dirname
-                    self.log.info("Added new directory to watch:" + str(dirname))
+                    self.log.info("Added new directory to watch: {d}".format(d=dirname))
 
                     # because inotify misses subdirectory creations if they happen to fast,
                     # the newly created directory has to be walked to get catch this misses
@@ -426,25 +426,25 @@ class EventDetector():
                             traversedPath = os.path.join(traversedPath, dname)
                             wd = binding.add_watch(self.fd, traversedPath)
                             self.wd_to_path[wd] = traversedPath
-                            self.log.info("Added new subdirectory to watch:" + str(traversedPath))
-                        self.log.debug("files: " +str(files))
+                            self.log.info("Added new subdirectory to watch: {p}".format(p=traversedPath))
+                        self.log.debug("files: {f}".format(f=files))
                         for filename in files:
-#                            self.log.debug("filename: " + filename)
+#                            self.log.debug("filename: {f}".format(f=filename))
                             if not filename.endswith(self.monSuffixes):
-                                self.log.debug("File ending not in monitored Suffixes: " + str(filename))
-                                self.log.debug("detected events were: " + str(parts))
+                                self.log.debug("File ending not in monitored Suffixes: {f}".format(f=filename))
+                                self.log.debug("detected events were: {p}".format(p=parts))
                                 continue
                             eventMessage = self.getEventMessage(path, filename, self.paths)
-                            self.log.debug("eventMessage: " + str(eventMessage))
+                            self.log.debug("eventMessage: {e}".format(e=eventMessage))
                             eventMessageList.append(eventMessage)
-#                            self.log.debug("eventMessageList: " + str(eventMessageList))
+#                            self.log.debug("eventMessageList: {l}".format(l=eventMessageList))
                 continue
 
             # if a directory is renamed the old watch has to be removed
             if is_dir and is_moved_from:
 
 #                self.log.debug("is_dir and is_moved_from")
-#                self.log.debug(path + " " + event.name + " " + parts)
+#                self.log.debug("{p} {n} {ps}".format(p=path, n=event.name, ps=parts)
 #                self.log.debug(event.name)
 
                 dirname = os.path.join(path, event.name)
@@ -453,7 +453,7 @@ class EventDetector():
                         foundWatch = watch
                         break
                 binding.rm_watch(self.fd, foundWatch)
-                self.log.info("Removed directory from watch:" + str(dirname))
+                self.log.info("Removed directory from watch: {d}".format(d=dirname))
                 # the IN_MOVE_FROM event always apears before the IN_MOVE_TO (+ additional) events
                 # and thus has to be stored till loop is finished
                 removedWd = self.wd_to_path[foundWatch]
@@ -466,18 +466,18 @@ class EventDetector():
             if not is_dir and currentMonEvent and [path, event.name] not in self.history:
 
 #                self.log.debug("not is_dir")
-#                self.log.debug("currentMonEvent: " + currentMonEvent)
-#                self.log.debug(path + " " + event.name + " " + parts)
+#                self.log.debug("currentMonEvent: {c}".format(c=currentMonEvent))
+#                self.log.debug("{p} {n} {ps}".format(p=path, n=event.name, ps=parts)
 #                self.log.debug(event.name)
 
                 # only files ending with a suffix specified with the current event are monitored
                 if not event.name.endswith(tuple(self.monEvents[currentMonEvent])):
-#                    self.log.debug("File ending not in monitored Suffixes: " + str(event.name))
-#                    self.log.debug("detected events were: " + str(parts))
+#                    self.log.debug("File ending not in monitored Suffixes: {n}".format(n=event.name))
+#                    self.log.debug("detected events were: {p}".format(p=parts))
                     continue
 
                 eventMessage = getEventMessage(path, event.name, self.paths)
-                self.log.debug("eventMessage" + str(eventMessage))
+                self.log.debug("eventMessage {m}".format(m=eventMessage))
                 eventMessageList.append(eventMessage)
 
                 self.history.append([path, event.name])
@@ -555,7 +555,7 @@ if __name__ == '__main__':
     while i <= 110:
         try:
             logging.debug("copy")
-            targetFile = targetFileBase + str(i) + ".cbf"
+            targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=i)
             call(["cp", sourceFile, targetFile])
 #            copyfile(sourceFile, targetFile)
             i += 1
@@ -569,8 +569,8 @@ if __name__ == '__main__':
             break
 
     for number in range(100, i):
-        targetFile = targetFileBase + str(number) + ".cbf"
-        logging.debug("remove " + targetFile)
+        targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=number)
+        logging.debug("remove {t}".format(t=targetFile))
         os.remove(targetFile)
 
     logQueue.put_nowait(None)

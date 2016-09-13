@@ -104,7 +104,7 @@ def confirm (prompt=None, resp=False):
             logging.error("Keyboard Interruption detected.")
         except Exception as e:
             logging.error("Something went wrong with the confirmation.")
-            logging.debug("Error was: " + str(e))
+            logging.debug("Error was: {err}".format(err=e))
             break
 
         if not ans:
@@ -123,9 +123,9 @@ def checkEventDetectorType (eDType, supportedTypes):
     eDType = eDType.lower()
 
     if eDType in supportedTypes:
-        logging.debug("Event detector '" + eDType + "' is ok.")
+        logging.debug("Event detector '{t}' is ok.".format(t=eDType))
     else:
-        logging.error("Event detector '" + eDType + "' is not supported.")
+        logging.error("Event detector '{t}' is not supported.".format(t=eDType))
         sys.exit(1)
 
 
@@ -135,7 +135,7 @@ def checkDirEmpty (dirPath):
     #check if directory is empty
     if os.listdir(dirPath):
         logging.debug("Directory '%s' is not empty." % str(dirPath))
-        if confirm(prompt="Directory " + str(dirPath) + " is not empty.\nShould its content be removed?",
+        if confirm(prompt="Directory {p} is not empty.\nShould its content be removed?".format(d=dirPath),
                    resp = True):
             for element in os.listdir(dirPath):
                 path = dirPath + os.sep + element
@@ -146,7 +146,7 @@ def checkDirEmpty (dirPath):
                         shutil.rmtree(path)
                 else:
                     os.remove(path)
-            logging.info("All elements of directory " + str(dirPath) + " were removed.")
+            logging.info("All elements of directory {p} were removed.".format(p=dirPath))
 
 
 def checkAnySubDirExists (dirPath, subDirs):
@@ -162,7 +162,7 @@ def checkAnySubDirExists (dirPath, subDirs):
 
     if noSubdir:
         logging.error("There are none of the specified subdirectories inside '%s'. Abort." % str(dirPath))
-        logging.error("Checked paths: " + str(dirsToCheck))
+        logging.error("Checked paths: {d}".format(d=dirsToCheck))
         sys.exit(1)
 
 
@@ -201,13 +201,13 @@ def checkLogFileWritable (filepath, filename):
         logFile = open(logfullPath, "a")
         logFile.close()
     except:
-        logging.error("Unable to create the logfile " + str(logfullPath))
+        logging.error("Unable to create the logfile {p}".format(p=logfullPath))
         logging.error("Please specify a new target by setting the following arguments:\n--logfileName\n--logfilePath")
         sys.exit(1)
 
 
 def checkVersion (version, log):
-    log.debug("remote version: " + version + ", local version: " + __version__)
+    log.debug("remote version: {v}, local version: {v2}".format(v=version, v2=__version__))
     if version.rsplit(".", 1)[0] < __version__.rsplit(".", 1)[0]:
         log.info("Version of receiver is lower. Please update receiver.")
         return False
@@ -231,7 +231,7 @@ def checkHost (hostname, whiteList, log):
                     hostModified = host
 
                 if host not in whiteList and hostModified not in whiteList:
-                    log.info("Host " + str(host) + " is not allowed to connect")
+                    log.info("Host {h} is not allowed to connect".format(h=host))
                     temp = False
 
             return temp
@@ -251,18 +251,18 @@ def checkHost (hostname, whiteList, log):
 
 def checkPing(host, log = logging):
     if isWindows():
-        response = os.system("ping -n 1 -w 2 " + host)
+        response = os.system("ping -n 1 -w 2 {h}".format(h=host))
     else:
-        response = os.system("ping -c 1 -w 2 " + host + " > /dev/null 2>&1")
+        response = os.system("ping -c 1 -w 2 {h} > /dev/null 2>&1".format(h=host))
 
     if response != 0:
-        log.error(host + " is not pingable.")
+        log.error("{h} is not pingable.".format(h=host))
         sys.exit(1)
 
 
 # IP and DNS name should be both in the whitelist
 def extendWhitelist(whitelist, log):
-    log.info("Configured whitelist: " + str(whitelist))
+    log.info("Configured whitelist: {w}".format(w=whitelist))
     extendedWhitelist = []
 
     for host in whitelist:
@@ -290,7 +290,7 @@ def extendWhitelist(whitelist, log):
     for host in extendedWhitelist:
         whitelist.append(host)
 
-    log.debug("Extended whitelist: " + str(whitelist))
+    log.debug("Extended whitelist: {w}".format(w=whitelist))
 
 
 #class forwarderThread(threading.Thread):
@@ -312,14 +312,14 @@ def extendWhitelist(whitelist, log):
 #        # Socket facing clients
 #        self.frontend = context.socket(zmq.SUB)
 #        self.frontend.bind(controlPubConId)
-#        logging.info("=== [forwarder] frontend bind to: '" + controlPubConId + "'")
+#        logging.info("=== [forwarder] frontend bind to: '{id}'".format(id=controlPubConId))
 #
 #        self.frontend.setsockopt(zmq.SUBSCRIBE, "")
 #
 #        # Socket facing services
 #        self.backend = context.socket(zmq.PUB)
 #        self.backend.bind(controlSubConId)
-#        logging.info("=== [forwarder] backend bind to: '" + controlSubConId + "'")
+#        logging.info("=== [forwarder] backend bind to: '{id}'".format(id=controlSubConId))
 #
 #        zmq.device(zmq.FORWARDER, self.frontend, self.backend)
 #        logging.info("=== [forwarder] forwarder initiated")
@@ -436,7 +436,7 @@ def getLogHandlers (logfile, logsize, verbose, onScreenLogLevel = False):
 
             return h1, h2
         else:
-            logging.error("Logging on Screen: Option " + str(onScreenLogLevel) + " is not supported.")
+            logging.error("Logging on Screen: Option {l} is not supported.".format(l=onScreenLogLevel))
             exit(1)
 
     else:
@@ -501,6 +501,6 @@ def initLogging (filenameFullPath, verbose, onScreenLogLevel = False):
             console.setFormatter(screenHandlerFormat)
             logging.getLogger("").addHandler(console)
         else:
-            logging.error("Logging on Screen: Option " + str(onScreenLogLevel) + " is not supported.")
+            logging.error("Logging on Screen: Option {l} is not supported.".format(onScreenLogLevel))
 
 

@@ -19,11 +19,11 @@ class EventDetector():
                 not config.has_key("eigerApiVersion") or
                 not config.has_key("historySize") ):
             self.log.error("Configuration of wrong format")
-            self.log.debug("config="+ str(config))
+            self.log.debug("config={c}".format(c=config))
             checkPassed = False
         else:
             checkPassed = True
-            self.log.info("Event detector configuration" + str(config))
+            self.log.info("Event detector configuration {c}".format(c=config))
 
 
         if checkPassed:
@@ -99,11 +99,11 @@ class EventDetector():
             if file not in self.files_downloaded:
                 ( relativePath, filename ) = os.path.split(file)
                 eventMessage = {
-                        "sourcePath"  : "http://" + self.eigerIp + "/data",
+                        "sourcePath"  : "http://{ip}/data".format(ip=self.eigerIp),
                         "relativePath": relativePath,
                         "filename"    : filename
                         }
-                self.log.debug("eventMessage" + str(eventMessage))
+                self.log.debug("eventMessage {m}".format(m=eventMessage))
                 eventMessageList.append(eventMessage)
                 self.files_downloaded.append(file)
 

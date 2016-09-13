@@ -19,7 +19,7 @@ def setup (log, prop):
         not prop.has_key("removeData") ):
 
         log.error ("Configuration of wrong format")
-        log.debug ("dataFetcherProp="+ str(prop))
+        log.debug ("dataFetcherProp={p}".format(p=prop))
         return False
 
     else:
@@ -38,7 +38,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
         relativePath = metadata["relativePath"]
     except:
         log.error("Invalid fileEvent message received.", exc_info=True)
-        log.debug("metadata=" + str(metadata))
+        log.debug("metadata={m}".format(m=metadata))
         #skip all further instructions and continue with next iteration
         raise
 
@@ -59,7 +59,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
     if targets:
         try:
             # For quick testing set filesize of file as chunksize
-            log.debug("get filesize for '" + str(sourceFile) + "'...")
+            log.debug("get filesize for '{f}'...".format(f=sourceFile))
             filesize       = os.path.getsize(sourceFile)
             fileModTime    = os.stat(sourceFile).st_mtime
             fileCreateTime = os.stat(sourceFile).st_ctime
@@ -87,7 +87,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
             metadata[ "fileCreateTime"] = fileCreateTime
             metadata[ "chunkSize"   ]   = chunkSize
 
-            log.debug("metadata = " + str(metadata))
+            log.debug("metadata = {m}".format(m=metadata))
         except:
             log.error("Unable to assemble multi-part message.")
             raise
@@ -115,13 +115,13 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
 
     #reading source file into memory
     try:
-        log.debug("Opening '" + str(sourceFile) + "'...")
+        log.debug("Opening '{f}'...".format(m=sourceFile))
         fileDescriptor = open(str(sourceFile), "rb")
     except:
-        log.error("Unable to read source file '" + str(sourceFile) + "'.", exc_info=True)
+        log.error("Unable to read source file '{f}'.".format(f=sourceFile)), exc_info=True)
         raise
 
-    log.debug("Passing multipart-message for file " + str(sourceFile) + "...")
+    log.debug("Passing multipart-message for file '{f}'...".format(f=sourceFile))
     while True:
 
         #read next chunk from file
@@ -140,25 +140,25 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
             chunkPayload.append(json.dumps(chunkMetadata))
             chunkPayload.append(fileContent)
         except:
-            log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
+            log.error("Unable to pack multipart-message for file '{f}'".format(f=sourceFile), exc_info=True)
 
         #send message to data targets
         try:
             __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, None, chunkPayload, context)
         except DataHandlingError:
-            log.error("Unable to send multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")", exc_info=True)
+            log.error("Unable to send multipart-message for file '{f}' (chunk {c})".format(f=sourceFile, c=chunkNumber), exc_info=True)
             sendError = True
         except:
-            log.error("Unable to send multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")", exc_info=True)
+            log.error("Unable to send multipart-message for file '{f}' (chunk {c})".format(f=sourceFile, c=chunkNumber), exc_info=True)
 
         chunkNumber += 1
 
     #close file
     try:
-        log.debug("Closing '" + str(sourceFile) + "'...")
+        log.debug("Closing '{f}'...".format(f=sourceFile))
         fileDescriptor.close()
     except:
-        log.error("Unable to close target file '" + str(sourceFile) + "'.", exc_info=True)
+        log.error("Unable to close target file '{f}'.".format(f=sourceFile), exc_info=True)
         raise
 
     if not sendError:
@@ -176,30 +176,28 @@ def __dataHandling(log, sourceFile, targetFile, actionFunction, metadata, prop):
             targetBasePath = os.path.join(targetFile.split(subdir + os.sep)[0], subdir)
 
             if metadata["relativePath"] in prop["fixSubdirs"]:
-                log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile +
-                          ": Directory " + metadata["relativePath"] + " is not available.",)
+                log.error("Unable to copy/move file '{s}' to '{t}': Directory {m} is not available.".format(s=sourceFile, t=targetFile, m=metadata["relativePath"])
                 raise
             elif subdir in prop["fixSubdirs"] and not os.path.isdir(targetBasePath):
-                log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile +
-                          ": Directory " + subdir + " is not available.")
+                log.error("Unable to copy/move file '{s}' to '{t}': Directory {d} is not available.".format(s=sourceFile, t=targetFile, d=subdir))
                 raise
             else:
                 try:
                     targetPath, filename = os.path.split(targetFile)
                     os.makedirs(targetPath)
-                    log.info("New target directory created: " + str(targetPath))
+                    log.info("New target directory created: {p}".format(p=targetPath))
                     actionFunction(sourceFile, targetFile)
                 except OSError, e:
-                    log.info("Target directory creation failed, was already created in the meantime: " + targetPath)
+                    log.info("Target directory creation failed, was already created in the meantime: {p}".format(p=targetPath))
                     actionFunction(sourceFile, targetFile)
                 except:
-                    log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
-                    log.debug("targetPath:" + str(targetPath))
+                    log.error("Unable to copy/move file '{s}' to '{t}'".format(s=sourceFile, t=targetFile), exc_info=True)
+                    log.debug("targetPath: {p}".format(p=targetPath))
         else:
-            log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
+            log.error("Unable to copy/move file '{s}' to '{t}'".format(s=sourceFile, t=targetFile), exc_info=True)
             raise
     except:
-        log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile, exc_info=True)
+        log.error("Unable to copy/move file '{s}' to '{t}'".format(s=sourceFile, t=targetFile), exc_info=True)
         raise
 
 
@@ -212,7 +210,7 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
         # move file
         try:
             __dataHandling(log, sourceFile, targetFile, shutil.move, metadata, prop)
-            log.info("Moving file '" + str(sourceFile) + "' ...success.")
+            log.info("Moving file '{s}' ...success.".format(s=sourceFile))
         except:
             log.error("Could not move file {f} to {t}".format(f=sourceFile, t=targetFile), exc_info=True)
             return
@@ -223,7 +221,7 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
         # (does not preserve file owner, group or ACLs)
         try:
             __dataHandling(log, sourceFile, targetFile, shutil.copy, metadata, prop)
-            log.info("Copying file '" + str(sourceFile) + "' ...success.")
+            log.info("Copying file '{s}' ...success.".format(s=sourceFile))
         except:
             return
 
@@ -231,9 +229,9 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
         # remove file
         try:
             os.remove(sourceFile)
-            log.info("Removing file '" + str(sourceFile) + "' ...success.")
+            log.info("Removing file '{s}' ...success.".format(s=sourceFile))
         except:
-            log.error("Unable to remove file " + str(sourceFile), exc_info=True)
+            log.error("Unable to remove file {s}".format(s=sourceFile), exc_info=True)
 
         prop["removeFlag"] = False
 
@@ -241,10 +239,10 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConn
     if targets_metadata:
         try:
             __sendToTargets(log, targets_metadata, sourceFile, targetFile, openConnections, metadata, None, context, prop["timeout"] )
-            log.debug("Passing metadata multipart-message for file " + str(sourceFile) + "...done.")
+            log.debug("Passing metadata multipart-message for file {f}...done.".format(f=sourceFile))
 
         except:
-            log.error("Unable to send metadata multipart-message for file " + str(sourceFile) + " to " + str(targets_metadata), exc_info=True)
+            log.error("Unable to send metadata multipart-message for file '{s}' to '{t}'".format(s=sourceFile, t=targets_metadata), exc_info=True)
 
 
 def clean (prop):
@@ -289,12 +287,12 @@ if __name__ == '__main__':
     receivingSocket  = context.socket(zmq.PULL)
     connectionStr    = "tcp://{ip}:{port}".format( ip=extIp, port=receivingPort )
     receivingSocket.bind(connectionStr)
-    logging.info("=== receivingSocket connected to " + connectionStr)
+    logging.info("=== receivingSocket connected to {s}".format(s=connectionStr))
 
     receivingSocket2 = context.socket(zmq.PULL)
     connectionStr    = "tcp://{ip}:{port}".format( ip=extIp, port=receivingPort2 )
     receivingSocket2.bind(connectionStr)
-    logging.info("=== receivingSocket2 connected to " + connectionStr)
+    logging.info("=== receivingSocket2 connected to {s}".format(s=connectionStr))
 
 
     prework_sourceFile = BASE_PATH + os.sep + "test_file.cbf"
@@ -321,7 +319,7 @@ if __name__ == '__main__':
             "removeData" : False
             }
 
-    logging.debug("openConnections before function call: " + str(openConnections))
+    logging.debug("openConnections before function call: {s}".format(s=openConnections))
 
     setup(logging, dataFetcherProp)
 
@@ -330,14 +328,14 @@ if __name__ == '__main__':
 
     finishDataHandling(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
-    logging.debug("openConnections after function call: " + str(openConnections))
+    logging.debug("openConnections after function call: {s}".format(s=openConnections))
 
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: " + str(json.loads(recv_message[0])))
+        logging.info("=== received: {m}".format(m=json.loads(recv_message[0])))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: " + str(json.loads(recv_message[0])))
+        logging.info("=== received 2: {m}".format(m=json.loads(recv_message[0])))
     except KeyboardInterrupt:
         pass
     finally:

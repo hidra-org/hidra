@@ -50,13 +50,13 @@ class TaskProvider():
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         self.currentPID         = os.getpid()
-        self.log.debug("TaskProvider started (PID " + str(self.currentPID) + ").")
+        self.log.debug("TaskProvider started (PID {pid}).".format(pid=self.currentPID))
 
         self.dataDetectorModule = None
         self.eventDetector      = None
 
         self.config             = eventDetectorConfig
-        self.log.info("Configuration for event detector: " + str(self.config))
+        self.log.info("Configuration for event detector: {c}".format(c=self.config))
 
         eventDetectorModule     = self.config["eventDetectorType"]
 
@@ -80,7 +80,7 @@ class TaskProvider():
             self.extContext = False
 
 
-        self.log.info("Loading eventDetector: " + eventDetectorModule)
+        self.log.info("Loading eventDetector: {m}".format(m=eventDetectorModule))
         self.eventDetectorModule = __import__(eventDetectorModule)
 
         self.eventDetector = self.eventDetectorModule.EventDetector(self.config, logQueue)
@@ -122,9 +122,9 @@ class TaskProvider():
         try:
             self.controlSocket = self.context.socket(zmq.SUB)
             self.controlSocket.connect(self.controlConId)
-            self.log.info("Start controlSocket (connect): '" + self.controlConId + "'")
+            self.log.info("Start controlSocket (connect): '{id}'".format(id=self.controlConId))
         except:
-            self.log.error("Failed to start controlSocket (connect): '" + self.controlConId + "'", exc_info=True)
+            self.log.error("Failed to start controlSocket (connect): '{id}'".format(id=self.controlConId), exc_info=True)
             raise
 
         self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
@@ -133,18 +133,18 @@ class TaskProvider():
         try:
             self.requestFwSocket = self.context.socket(zmq.REQ)
             self.requestFwSocket.connect(self.requestFwConId)
-            self.log.info("Start requestFwSocket (connect): '" + self.requestFwConId + "'")
+            self.log.info("Start requestFwSocket (connect): '{id}'".format(id=self.requestFwConId))
         except:
-            self.log.error("Failed to start requestFwSocket (connect): '" + self.requestFwConId + "'", exc_info=True)
+            self.log.error("Failed to start requestFwSocket (connect): '{id}'".format(id=self.requestFwConId), exc_info=True)
             raise
 
         # socket to disribute the events to the worker
         try:
             self.routerSocket = self.context.socket(zmq.PUSH)
             self.routerSocket.bind(self.routerConId)
-            self.log.info("Start to router socket (bind): '" + self.routerConId + "'")
+            self.log.info("Start to router socket (bind): '{id}'".format(id=self.routerConId))
         except:
-            self.log.error("Failed to start router Socket (bind): '" + self.routerConId + "'", exc_info=True)
+            self.log.error("Failed to start router Socket (bind): '{id}'".format(id=self.routerConId), exc_info=True)
             raise
 
         self.poller = zmq.Poller()
@@ -183,7 +183,7 @@ class TaskProvider():
                     self.requestFwSocket.send_multipart(["GET_REQUESTS", cPickle.dumps(workload["filename"])])
 
                     requests = cPickle.loads(self.requestFwSocket.recv())
-                    self.log.debug("Requests: " + str(requests))
+                    self.log.debug("Requests: {r}".format(r=requests))
                 except TypeError:
                     # This happens when CLOSE_FILE is sent as workload
                     requests = ["None"]
@@ -218,7 +218,7 @@ class TaskProvider():
 
                 try:
                     message = self.controlSocket.recv_multipart()
-                    self.log.debug("Control signal received: message = " + str(message))
+                    self.log.debug("Control signal received: message = {r}".format(r=message))
                 except:
                     self.log.error("Waiting for control signal...failed", exc_info=True)
                     continue
@@ -230,7 +230,7 @@ class TaskProvider():
                     self.log.debug("Requested to shutdown.")
                     break
                 else:
-                    self.log.error("Unhandled control signal received: " + str(message))
+                    self.log.error("Unhandled control signal received: {r}".format(r=message))
 
 
 
@@ -281,9 +281,9 @@ class requestResponder():
 
         self.context         = context or zmq.Context.instance()
         self.requestFwSocket = self.context.socket(zmq.REP)
-        connectionStr   = "tcp://127.0.0.1:" + requestFwPort
+        connectionStr   = "tcp://127.0.0.1:{p}".format(p=requestFwPort)
         self.requestFwSocket.bind(connectionStr)
-        self.log.info("[requestResponder] requestFwSocket started (bind) for '" + connectionStr + "'")
+        self.log.info("[requestResponder] requestFwSocket started (bind) for '{s}'".format(s=connectionStr))
 
         self.run()
 
@@ -307,10 +307,10 @@ class requestResponder():
         openRequests = [[hostname + ':6003', 1, [".cbf"]], [hostname + ':6004', 0, [".cbf"]]]
         while True:
             request = self.requestFwSocket.recv_multipart()
-            self.log.debug("[requestResponder] Received request: " + str(request) )
+            self.log.debug("[requestResponder] Received request: {r}".format(r=request) )
 
             self.requestFwSocket.send(cPickle.dumps(openRequests))
-            self.log.debug("[requestResponder] Answer: " + str(openRequests) )
+            self.log.debug("[requestResponder] Answer: {r}".format(r=openRequests) )
 
 
     def __exit__(self):
@@ -377,9 +377,9 @@ if __name__ == '__main__':
     context       = zmq.Context.instance()
 
     routerSocket  = context.socket(zmq.PULL)
-    connectionStr = "tcp://localhost:" + routerPort
+    connectionStr = "tcp://localhost:{p}".format(p=routerPort)
     routerSocket.connect(connectionStr)
-    logging.info("=== routerSocket connected to " + connectionStr)
+    logging.info("=== routerSocket connected to {s}".format(s=connectionStr))
 
     sourceFile = BASE_PATH + os.sep + "test_file.cbf"
     targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
@@ -390,14 +390,14 @@ if __name__ == '__main__':
     try:
         while i <= 105:
             time.sleep(0.5)
-            targetFile = targetFileBase + str(i) + ".cbf"
-            logging.debug("copy to " + targetFile)
+            targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=i)
+            logging.debug("copy to {t}".format(t=targetFile))
             copyfile(sourceFile, targetFile)
 #            call(["cp", sourceFile, targetFile])
             i += 1
 
             workload = routerSocket.recv_multipart()
-            logging.info("=== next workload " + str(workload))
+            logging.info("=== next workload {w}".format(w=workload))
             time.sleep(1)
     except KeyboardInterrupt:
         pass
@@ -410,8 +410,8 @@ if __name__ == '__main__':
         context.destroy()
 
         for number in range(100, i):
-            targetFile = targetFileBase + str(number) + ".cbf"
-            logging.debug("remove " + targetFile)
+            targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=number)
+            logging.debug("remove {f}".format(f=targetFile))
             os.remove(targetFile)
 
         logQueue.put_nowait(None)

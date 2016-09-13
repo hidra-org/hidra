@@ -42,7 +42,7 @@ class SignalHandler():
         self.log = self.getLogger(logQueue)
 
         self.currentPID       = os.getpid()
-        self.log.debug("SignalHandler started (PID " + str(self.currentPID) + ").")
+        self.log.debug("SignalHandler started (PID {pid}).".format(pid=self.currentPID))
 
         self.controlPubConId  = controlPubConId
         self.controlSubConId  = controlSubConId
@@ -118,18 +118,18 @@ class SignalHandler():
         try:
             self.controlPubSocket = self.context.socket(zmq.PUB)
             self.controlPubSocket.connect(self.controlPubConId)
-            self.log.info("Start controlPubSocket (connect): '" + self.controlPubConId + "'")
+            self.log.info("Start controlPubSocket (connect): '{p}'".format(p=self.controlPubConId))
         except:
-            self.log.error("Failed to start controlPubSocket (connect): '" + self.controlPubConId + "'", exc_info=True)
+            self.log.error("Failed to start controlPubSocket (connect): '{p}'".format(p=self.controlPubConId), exc_info=True)
             raise
 
         # socket to get control signals from
         try:
             self.controlSubSocket = self.context.socket(zmq.SUB)
             self.controlSubSocket.connect(self.controlSubConId)
-            self.log.info("Start controlSubSocket (connect): '" + self.controlSubConId + "'")
+            self.log.info("Start controlSubSocket (connect): '{s}'".format(s=self.controlSubConId))
         except:
-            self.log.error("Failed to start controlSubSocket (connect): '" + self.controlSubConId + "'", exc_info=True)
+            self.log.error("Failed to start controlSubSocket (connect): '{s}'".format(s=self.controlSubConId), exc_info=True)
             raise
 
         self.controlSubSocket.setsockopt(zmq.SUBSCRIBE, "control")
@@ -138,9 +138,9 @@ class SignalHandler():
         try:
             self.comSocket = self.context.socket(zmq.REP)
             self.comSocket.bind(self.comConId)
-            self.log.info("Start comSocket (bind): '" + self.comConId + "'")
+            self.log.info("Start comSocket (bind): '{id}'".format(id=self.comConId))
         except:
-            self.log.error("Failed to start comSocket (bind): '" + self.comConId + "'", exc_info=True)
+            self.log.error("Failed to start comSocket (bind): '{id}'".format(self.comConId), exc_info=True)
             raise
 
         # setting up router for load-balancing worker-processes.
@@ -148,18 +148,18 @@ class SignalHandler():
         try:
             self.requestFwSocket = self.context.socket(zmq.REP)
             self.requestFwSocket.bind(self.requestFwConId)
-            self.log.info("Start requestFwSocket (bind): '" + self.requestFwConId + "'")
+            self.log.info("Start requestFwSocket (bind): '{id}'".format(id=self.requestFwConId))
         except:
-            self.log.error("Failed to start requestFwSocket (bind): '" + self.requestFwConId + "'", exc_info=True)
+            self.log.error("Failed to start requestFwSocket (bind): '{id}'".format(id=self.requestFwConId), exc_info=True)
             raise
 
         # create socket to receive requests
         try:
             self.requestSocket = self.context.socket(zmq.PULL)
             self.requestSocket.bind(self.requestConId)
-            self.log.info("requestSocket started (bind) for '" + self.requestConId + "'")
+            self.log.info("requestSocket started (bind) for '{id}'".format(id=self.requestConId))
         except:
-            self.log.error("Failed to start requestSocket (bind): '" + self.requestConId + "'", exc_info=True)
+            self.log.error("Failed to start requestSocket (bind): '{id}'".format(id=self.requestConId), exc_info=True)
             raise
 
         # Poller to distinguish between start/stop signals and queries for the next set of signals
@@ -206,15 +206,15 @@ class SignalHandler():
 
                         if openRequests:
                             self.requestFwSocket.send(cPickle.dumps(openRequests))
-                            self.log.debug("Answered to request: " + str(openRequests))
-                            self.log.debug("openRequVari: " + str(self.openRequVari))
-                            self.log.debug("allowedQueries: " + str(self.allowedQueries))
+                            self.log.debug("Answered to request: {r}".format(r=openRequests))
+                            self.log.debug("openRequVari: {r}".format(r=self.openRequVari))
+                            self.log.debug("allowedQueries: {r}".format(r=self.allowedQueries))
                         else:
                             openRequests = ["None"]
                             self.requestFwSocket.send(cPickle.dumps(openRequests))
-                            self.log.debug("Answered to request: " + str(openRequests))
-                            self.log.debug("openRequVari: " + str(self.openRequVari))
-                            self.log.debug("allowedQueries: " + str(self.allowedQueries))
+                            self.log.debug("Answered to request: {r}".format(r=openRequests))
+                            self.log.debug("openRequVari: {r}".format(r=self.openRequVari))
+                            self.log.debug("allowedQueries: {r}".format(r=self.allowedQueries))
 
                 except:
                     self.log.error("Failed to receive/answer new signal requests.", exc_info=True)
@@ -225,7 +225,7 @@ class SignalHandler():
             if self.comSocket in socks and socks[self.comSocket] == zmq.POLLIN:
 
                 incomingMessage = self.comSocket.recv_multipart()
-                self.log.debug("Received signal: " + str(incomingMessage) )
+                self.log.debug("Received signal: {m}".format(m=incomingMessage) )
 
                 checkFailed, signal, target = self.checkSignalInverted(incomingMessage)
                 if not checkFailed:
@@ -239,7 +239,7 @@ class SignalHandler():
             if self.requestSocket in socks and socks[self.requestSocket] == zmq.POLLIN:
 
                 incomingMessage = self.requestSocket.recv_multipart()
-                self.log.debug("Received request: " + str(incomingMessage) )
+                self.log.debug("Received request: {m}".format(m=incomingMessage) )
 
                 if incomingMessage[0] == "NEXT":
 
@@ -252,7 +252,7 @@ class SignalHandler():
                         for i in range(len(self.allowedQueries[index])):
                             if incomingSocketId == self.allowedQueries[index][i][0]:
                                 self.openRequVari[index].append(self.allowedQueries[index][i])
-                                self.log.info("Add to open requests: " + str(self.allowedQueries[index][i]) )
+                                self.log.info("Add to open requests: {r}".format(r=self.allowedQueries[index][i]) )
 
                 elif incomingMessage[0] == "CANCEL":
 
@@ -262,7 +262,7 @@ class SignalHandler():
                     incomingSocketId = incomingMessage[1]
 
                     self.openRequVari =  [ [ b for b in  self.openRequVari[a] if incomingSocketId != b[0] ] for a in range(len(self.openRequVari)) ]
-                    self.log.info("Remove all occurences from " + str(incomingSocketId) + " from variable request list.")
+                    self.log.info("Remove all occurences from {id} from variable request list.".format(id=incomingSocketId))
 
                 else:
                     self.log.info("Request not supported.")
@@ -287,7 +287,7 @@ class SignalHandler():
                     self.log.info("Requested to shutdown.")
                     break
                 else:
-                    self.log.error("Unhandled control signal received: " + str(message[0]))
+                    self.log.error("Unhandled control signal received: {m}".format(m=message[0]))
 
 
     def checkSignalInverted (self, incomingMessage):
@@ -295,7 +295,7 @@ class SignalHandler():
         if len(incomingMessage) != 3:
 
             self.log.warning("Received signal is of the wrong format")
-            self.log.debug("Received signal is too short or too long: " + str(incomingMessage))
+            self.log.debug("Received signal is too short or too long: {m}".format(m=incomingMessage))
             return "NO_VALID_SIGNAL", None, None
 
         else:
@@ -321,17 +321,17 @@ class SignalHandler():
                 self.log.debug("Check if host to send data to are in WhiteList...")
                 if helpers.checkHost(host, self.whiteList, self.log):
                     self.log.info("Hosts are allowed to connect.")
-                    self.log.debug("hosts: " + str(host))
+                    self.log.debug("hosts: {h}".format(h=host))
                 else:
                     self.log.warning("One of the hosts is not allowed to connect.")
-                    self.log.debug("hosts: " + str(host))
+                    self.log.debug("hosts: {h}".format(h=host))
                     return "NO_VALID_HOST", None, None
 
         return False, signal, target
 
 
     def sendResponse (self, signal):
-            self.log.debug("Send response back: " + str(signal))
+            self.log.debug("Send response back: {s}".format(s=signal))
             self.comSocket.send(signal, zmq.NOBLOCK)
 
 
@@ -390,7 +390,7 @@ class SignalHandler():
 #        connectionFound = False
 #        tmpAllowed = []
 #        flatlist = [ i[0] for i in [j for sublist in listToCheck for j in sublist]]
-#        self.log.debug("flatlist: " + str(flatlist))
+#        self.log.debug("flatlist: {l}".format(l=flatlist))
 
 #        for socketConf in socketIds:
 #
@@ -398,11 +398,11 @@ class SignalHandler():
 #                socketConf[0] = socketConf[0].replace(".desy.de:",":")
 #
 #            socketId = socketConf[0]
-#            self.log.debug("socketId: " + str(socketId))
+#            self.log.debug("socketId: {id}".format(id=socketId))
 #
 #            if socketId in flatlist:
 #                connectionFound = True
-#                self.log.info("Connection to " + str(socketId) + " is already open")
+#                self.log.info("Connection to {id} is already open".format(id=socketId))
 #            elif socketId not in [ i[0] for i in tmpAllowed]:
 #                tmpSocketConf = socketConf + [sendType]
 #                tmpAllowed.append(tmpSocketConf)
@@ -451,7 +451,7 @@ class SignalHandler():
 
         if connectionNotFound:
             self.sendResponse("NO_OPEN_CONNECTION_FOUND")
-            self.log.info("No connection to close was found for " + str(socketConf))
+            self.log.info("No connection to close was found for {c}".format(c=socketConf))
         else:
             # send signal back to receiver
             self.sendResponse(signal)
@@ -462,12 +462,12 @@ class SignalHandler():
 
                 if variList != None:
                     variList =  [ [ b for b in  variList[a] if socketId != b[0] ] for a in range(len(variList)) ]
-                    self.log.debug("Remove all occurences from " + str(socketId) + " from variable request list.")
+                    self.log.debug("Remove all occurences from {id} from variable request list.".format(id=socketId))
 
                 for i in range(len(listToCheck)):
                     if element in listToCheck[i]:
                         listToCheck[i].remove(element)
-                        self.log.debug("Remove " + str(socketId) + " from pemanent request/allowed list.")
+                        self.log.debug("Remove {id} from pemanent request/allowed list.".format(id=socketId))
 
                         if not listToCheck[i]:
                             tmpRemoveIndex.append(i)
@@ -494,7 +494,7 @@ class SignalHandler():
         ##      START_STREAM     ##
         ###########################
         if signal == "START_STREAM":
-            self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
+            self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
             self.__startSignal(signal, "data", socketIds, self.openRequPerm, None, self.nextRequNode)
 
@@ -504,7 +504,7 @@ class SignalHandler():
         ## START_STREAM_METADATA ##
         ###########################
         elif signal == "START_STREAM_METADATA":
-            self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
+            self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
             self.__startSignal(signal, "metadata", socketIds, self.openRequPerm, None, self.nextRequNode)
 
@@ -515,7 +515,7 @@ class SignalHandler():
         ## STOP_STREAM_METADATA  ##
         ###########################
         elif signal == "STOP_STREAM" or signal == "STOP_STREAM_METADATA":
-            self.log.info("Received signal: " + signal + " for host " + str(socketIds))
+            self.log.info("Received signal: {s} for host {h}".format(s=signal, h=socketIds))
 
             self.openRequPerm, nonetmp, self.nextRequNode = self.__stopSignal(signal, socketIds, self.openRequPerm, None, self.nextRequNode)
 
@@ -526,7 +526,7 @@ class SignalHandler():
         ##      START_QUERY      ##
         ###########################
         elif signal == "START_QUERY_NEXT":
-            self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
+            self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
             self.__startSignal(signal, "data", socketIds, self.allowedQueries, self.openRequVari, None)
 
@@ -536,7 +536,7 @@ class SignalHandler():
         ## START_QUERY_METADATA  ##
         ###########################
         elif signal == "START_QUERY_METADATA":
-            self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
+            self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
             self.__startSignal(signal, "metadata", socketIds, self.allowedQueries, self.openRequVari, None)
 
@@ -547,7 +547,7 @@ class SignalHandler():
         ## STOP_QUERY_METADATA   ##
         ###########################
         elif signal == "STOP_QUERY_NEXT" or signal == "STOP_QUERY_METADATA":
-            self.log.info("Received signal: " + signal + " for hosts " + str(socketIds))
+            self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
             self.allowedQueries, self.openRequVari, nonetmp = self.__stopSignal(signal, socketIds, self.allowedQueries, self.openRequVari, None)
 
@@ -555,7 +555,7 @@ class SignalHandler():
 
 
         else:
-            self.log.info("Received signal from host " + str(host) + " unkown: " + str(signal))
+            self.log.info("Received signal from host {h} unknown: {s}".format(h=host, s=signal))
             self.sendResponse("NO_VALID_SIGNAL")
 
 
@@ -610,7 +610,7 @@ class requestPuller():
         self.context         = context or zmq.Context.instance()
         self.requestFwSocket = self.context.socket(zmq.REQ)
         self.requestFwSocket.connect(requestFwConId)
-        self.log.info("[getRequests] requestFwSocket started (connect) for '" + requestFwConId + "'")
+        self.log.info("[getRequests] requestFwSocket started (connect) for '{r}'".format(r=requestFwConId))
 
         self.run()
 
@@ -635,7 +635,7 @@ class requestPuller():
                 self.requestFwSocket.send_multipart(["GET_REQUESTS"])
                 self.log.info("[getRequests] send")
                 requests = cPickle.loads(self.requestFwSocket.recv())
-                self.log.info("[getRequests] Requests: " + str(requests))
+                self.log.info("[getRequests] Requests: {r}".format(r=requests))
                 time.sleep(0.25)
             except Exception as e:
                 self.log.error(str(e), exc_info=True)
@@ -702,7 +702,7 @@ if __name__ == '__main__':
     # create control socket
     controlPubSocket = context.socket(zmq.PUB)
     controlPubSocket.connect(controlPubConId)
-    logging.info("=== controlPubSocket connect to: '" + controlPubConId + "'")
+    logging.info("=== controlPubSocket connect to: '{c}'".format(c=controlPubConId))
 
     signalHandlerPr = threading.Thread ( target = SignalHandler, args = (controlPubConId, controlSubConId, whiteList, comConId, requestFwConId, requestConId, logQueue, context) )
     signalHandlerPr.start()
@@ -712,7 +712,7 @@ if __name__ == '__main__':
 
 
     def sendSignal(socket, signal, ports, prio = None):
-        logging.info("=== sendSignal : " + signal + ", " + str(ports))
+        logging.info("=== sendSignal : {s}, {p}".format(s=signal, p=ports))
         sendMessage = [__version__,  signal]
         targets = []
         if type(ports) == list:
@@ -724,26 +724,26 @@ if __name__ == '__main__':
         sendMessage.append(targets)
         socket.send_multipart(sendMessage)
         receivedMessage = socket.recv()
-        logging.info("=== Responce : " + receivedMessage )
+        logging.info("=== Responce : {m}".format(m=receivedMessage))
 
     def sendRequest(socket, socketId):
         sendMessage = ["NEXT", socketId]
-        logging.info("=== sendRequest: " + str(sendMessage))
+        logging.info("=== sendRequest: {m}".format(m=sendMessage))
         socket.send_multipart(sendMessage)
-        logging.info("=== request sent: " + str(sendMessage))
+        logging.info("=== request sent: {m}".format(m=sendMessage))
 
 
     comSocket       = context.socket(zmq.REQ)
     comSocket.connect(comConId)
-    logging.info("=== comSocket connected to " + comConId)
+    logging.info("=== comSocket connected to {id}".format(id=comConId))
 
     requestSocket   = context.socket(zmq.PUSH)
     requestSocket.connect(requestConId)
-    logging.info("=== requestSocket connected to " + requestConId)
+    logging.info("=== requestSocket connected to {id}", format(id=requestConId))
 
     requestFwSocket = context.socket(zmq.REQ)
     requestFwSocket.connect(requestFwConId)
-    logging.info("=== requestFwSocket connected to " + requestFwConId)
+    logging.info("=== requestFwSocket connected to {id}".format(id=requestFwConId))
 
     time.sleep(1)
 

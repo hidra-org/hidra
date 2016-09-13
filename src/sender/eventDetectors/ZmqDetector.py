@@ -35,7 +35,7 @@ class EventDetector():
                 not config.has_key("eventDetConStr") or
                 not config.has_key("numberOfStreams") ):
             self.log.error ("Configuration of wrong format")
-            self.log.debug ("config="+ str(config))
+            self.log.debug ("config={c}".format(c=config))
             checkPassed = False
         else:
             checkPassed = True
@@ -80,9 +80,9 @@ class EventDetector():
         try:
             self.eventSocket = self.context.socket(zmq.PULL)
             self.eventSocket.bind(self.eventDetConStr)
-            self.log.info("Start eventSocket (bind): '" + self.eventDetConStr + "'")
+            self.log.info("Start eventSocket (bind): '{s}'".format(s=self.eventDetConStr))
         except:
-            self.log.error("Failed to start eventSocket (bind): '" + self.eventDetConStr + "'", exc_info=True)
+            self.log.error("Failed to start eventSocket (bind): '{s}'".format(s=self.eventDetConStr), exc_info=True)
             raise
 
 
@@ -95,7 +95,7 @@ class EventDetector():
         else:
             eventMessageList = [ json.loads(eventMessage) ]
 
-        self.log.debug("eventMessage: " + str(eventMessageList))
+        self.log.debug("eventMessage: {l}".format(l=eventMessageList))
 
         return eventMessageList
 
@@ -185,26 +185,26 @@ if __name__ == '__main__':
     # create zmq socket to send events
     eventSocket    = context.socket(zmq.PUSH)
     eventSocket.connect(eventDetConStr)
-    logging.info("Start eventSocket (connect): '" + eventDetConStr + "'")
+    logging.info("Start eventSocket (connect): '{s}'".format(s=eventDetConStr))
 
 
     i = 100
     while i <= 101:
         try:
             logging.debug("generate event")
-            targetFile = targetFileBase + str(i) + ".cbf"
+            targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=i)
 #            message = {
 #                    "filename" : targetFile,
 #                    "filepart" : 0
 #                    }
-            message = '{ "filePart": 0, "filename": "' + targetFile + '" }'
+            message = '{ "filePart": 0, "filename": "{f}" }'.format(f=targetFile)
 #            eventSocket.send(cPickle.dumps(message))
             eventSocket.send(message)
             i += 1
 
             eventList = eventDetector.getNewEvent()
             if eventList:
-                logging.debug("eventList: " + str(eventList))
+                logging.debug("eventList: {l}".format(l=eventList))
 
             time.sleep(1)
         except KeyboardInterrupt:
@@ -213,7 +213,7 @@ if __name__ == '__main__':
     eventSocket.send(b"CLOSE_FILE")
 
     eventList = eventDetector.getNewEvent()
-    logging.debug("eventList: " + str(eventList))
+    logging.debug("eventList: {l}".format(l=eventList))
 
     logQueue.put_nowait(None)
     logQueueListener.stop()

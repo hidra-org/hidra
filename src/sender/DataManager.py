@@ -626,7 +626,7 @@ class DataManager():
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):
-            id = str(i) + "/" + str(self.numberOfStreams)
+            id = "{i}/{n}".format(i=i, n=self.numberOfStreams)
             pr = Process ( target = DataDispatcher,
                            args   = (
                                id,
@@ -754,7 +754,7 @@ class Test_Receiver_Stream():
         self.log.info("=== receivingSocket connected to {s}".format(s=connectionStr))
 
         self.receivingSocket2 = context.socket(zmq.PULL)
-        connectionStr   = "tcp://0.0.0.0:" + receivingPort2
+        connectionStr   = "tcp://0.0.0.0:{p}".format(p=receivingPort2)
         self.receivingSocket2.bind(connectionStr)
         self.log.info("=== receivingSocket2 connected to {s}".format(s=connectionStr))
 
