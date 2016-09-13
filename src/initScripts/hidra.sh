@@ -15,7 +15,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="HiDRA"
 # Process name ( For display )
-NAME=HiDRA
+NAME=hidra
 DAEMON=/opt/HiDRA/src/sender/DataManager.py
 DAEMON_ARGS="--verbose"
 PIDFILE=/opt/HiDRA/$NAME.pid
