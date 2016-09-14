@@ -118,9 +118,9 @@ class dataIngest():
 #        self.signalSocket.RCVTIMEO = self.responseTimeout
         try:
             self.signalSocket.connect(self.signalConId)
-            self.log.info("signalSocket started (connect) for '" + self.signalConId + "'")
+            self.log.info("signalSocket started (connect) for '{id}'".format(id=self.signalConId))
         except Exception as e:
-            self.log.error("Failed to start signalSocket (connect): '" + self.signalConId + "'", exc_info=True)
+            self.log.error("Failed to start signalSocket (connect): '{id}'".format(id=self.signalConId), exc_info=True)
             raise
 
         # using a Poller to implement the signalSocket timeout (in older ZMQ version there is no option RCVTIMEO)
@@ -131,31 +131,31 @@ class dataIngest():
         self.eventDetSocket = self.context.socket(zmq.PUSH)
         try:
             self.eventDetSocket.connect(self.eventDetConId)
-            self.log.info("eventDetSocket started (connect) for '" + self.eventDetConId + "'")
+            self.log.info("eventDetSocket started (connect) for '{id}'".format(id=self.eventDetConId))
         except:
-            self.log.error("Failed to start eventDetSocket (connect): '" + self.eventDetConId + "'", exc_info=True)
+            self.log.error("Failed to start eventDetSocket (connect): '{id}'".format(id=self.eventDetConId), exc_info=True)
             raise
 
         self.dataFetchSocket  = self.context.socket(zmq.PUSH)
         try:
             self.dataFetchSocket.connect(self.dataFetchConId)
-            self.log.info("dataFetchSocket started (connect) for '" + self.dataFetchConId + "'")
+            self.log.info("dataFetchSocket started (connect) for '{id}'".format(id=self.dataFetchConId))
         except:
-            self.log.error("Failed to start dataFetchSocket (connect): '" + self.dataFetchConId + "'", exc_info=True)
+            self.log.error("Failed to start dataFetchSocket (connect): '{id}'".format(id=self.dataFetchConId), exc_info=True)
             raise
 
 
     # return error code
     def createFile (self, filename):
         if self.openFile and self.openFile != filename:
-            raise Exception("File " + str(filename) + " already opened.")
+            raise Exception("File {f} already opened.".format(f=filename))
 
         # send notification to receiver
         self.signalSocket.send("OPEN_FILE")
         self.log.info("Sending signal to open a new file.")
 
         message = self.signalSocket.recv()
-        self.log.debug("Received responce: " + str(message))
+        self.log.debug("Received responce: {m}".format(m=message))
 
         self.filename = filename
         self.filePart = 0
@@ -167,7 +167,7 @@ class dataIngest():
                 "filename" : self.filename,
                 "filePart" : self.filePart
                 }
-#        message = '{ "filePart": ' + str(self.filePart) + ', "filename": "' + self.filename + '" }'
+#        message = '{ "filePart": {p}, "filename": "{n}" }'.format(p=self.filePart, n=self.filename)
         message = json.dumps(message)
         self.eventDetSocket.send(message)
 
@@ -189,7 +189,7 @@ class dataIngest():
         # send close-signal to event Detector
         try:
             self.eventDetSocket.send(sendMessage)
-            self.log.debug("Sending signal to close the file to eventDetSocket. (sendMessage=" + sendMessage + ")")
+            self.log.debug("Sending signal to close the file to eventDetSocket. (sendMessage={m})".format(m=sendMessage))
         except:
             raise Exception("Sending signal to close the file to eventDetSocket...failed.")
 
@@ -204,13 +204,13 @@ class dataIngest():
             self.log.info("Received answer to signal...")
             #  Get the reply.
             recvMessage = self.signalSocket.recv()
-            self.log.info("Received answer to signal: " + str(recvMessage) )
+            self.log.info("Received answer to signal: {m}".format(m=recvMessage) )
         else:
             recvMessage = None
 
         if recvMessage != sendMessage:
-            self.log.debug("recieved message: " + str(recvMessage))
-            self.log.debug("send message: " + str(sendMessage))
+            self.log.debug("recieved message: {m}".format(m=recvMessage))
+            self.log.debug("send message: {m}".format(m=sendMessage))
             raise Exception("Something went wrong while notifying to close the file")
 
         self.openFile = None
