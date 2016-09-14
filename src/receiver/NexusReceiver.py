@@ -139,7 +139,7 @@ class NexusReceiver:
         try:
             arguments = argumentParsing()
         except:
-            self.log.getLogger()
+            self.log = self.getLogger()
             raise
 
         self.log          = self.getLogger()

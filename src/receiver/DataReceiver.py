@@ -136,7 +136,11 @@ class DataReceiver:
     def __init__(self):
         self.dataTransfer = None
 
-        arguments = argumentParsing()
+        try:
+            arguments = argumentParsing()
+        except:
+            self.log = self.getLogger()
+            raise
 
         self.log          = self.getLogger()
 
