@@ -33,6 +33,7 @@ print "==== TEST: data ingest ===="
 print
 
 sourceFile = BASE_PATH + os.sep + "test_file.cbf"
+chunksize = 524288
 
 context    = zmq.Context()
 
@@ -57,7 +58,7 @@ print "Opened file:", sourceFile
 while True:
     try:
         # Read file content
-        content = source_fp.read(chunkSize)
+        content = source_fp.read(chunksize)
         logging.debug("Read file content")
 
         if not content:

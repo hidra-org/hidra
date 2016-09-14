@@ -165,7 +165,8 @@ class dataIngest():
         # send event to eventDet
         message = {
                 "filename" : self.filename,
-                "filePart" : self.filePart
+                "filePart" : self.filePart,
+                "chunkSize": len(data)
                 }
 #        message = '{ "filePart": {p}, "filename": "{n}" }'.format(p=self.filePart, n=self.filename)
         message = json.dumps(message)
