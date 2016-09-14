@@ -27,8 +27,8 @@ try:
     BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
 except:
     BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
-CONFIG_PATH = BASE_PATH + os.sep + "conf"
+SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
+CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -40,7 +40,7 @@ from version import __version__
 
 
 def argumentParsing():
-    defaultConfig     = CONFIG_PATH + os.sep + "dataManager.conf"
+    defaultConfig     = os.path.join(CONFIG_PATH, "dataManager.conf")
     supportedEDTypes  = ["inotifyxdetector", "watchdogdetector", "zmqdetector", "httpdetector"]
     supportedDFTypes  = ["getfromfile", "getfromzmq", "getfromhttp"]
 
@@ -824,7 +824,7 @@ if __name__ == '__main__':
         from subprocess import call
 
 
-        logfile = BASE_PATH + os.sep + "logs" + os.sep + "dataManager_test.log"
+        logfile = os.path.join(BASE_PATH, "logs", "dataManager_test.log")
         logsize = 10485760
 
         logQueue = Queue(-1)
@@ -852,8 +852,8 @@ if __name__ == '__main__':
         testPr.start()
         logging.debug("test receiver started")
 
-        sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-        targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
+        sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
+        targetFileBase = os.path.join(BASE_PATH, "data", "source", "local", "raw") + os.sep
 
         try:
             sender = DataManager(logQueue)

@@ -78,6 +78,9 @@ class EventDetector():
             response = self.session.get(self.eigerUrl)
         except:
             self.log.error("Error in getting file list from {url}".format(url=self.eigerUrl), exc_info = True)
+            # Wait till next try to prevent denial of service
+            time.sleep(self.sleepTime)
+            return eventMessageList
 
         try:
             response.raise_for_status()
@@ -129,7 +132,7 @@ if __name__ == '__main__':
     from multiprocessing import Queue
 
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
-    SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+    SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
     print "SHARED", SHARED_PATH
 
     if not SHARED_PATH in sys.path:
@@ -138,7 +141,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "zmqDetector.log"
+    logfile  = os.path.join(BASE_PATH, "logs", "zmqDetector.log")
     logsize  = 10485760
 
     logQueue = Queue(-1)

@@ -18,7 +18,7 @@ try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
 except:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( sys.argv[0] ) ))))
-SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -367,7 +367,7 @@ class EventDetector():
             self.monDir          = self.config["monDir"]
             self.monSubdirs      = self.config["monSubdirs"]
 
-            self.paths           = [os.path.normpath(self.monDir + os.sep + directory) for directory in self.config["monSubdirs"]]
+            self.paths           = [os.path.normpath(os.path.join(self.monDir, directory)) for directory in self.config["monSubdirs"]]
             self.log.debug("paths: {p}".format(p=self.paths))
 
             self.timeTillClosed  = self.config["timeTillClosed"]
@@ -444,7 +444,7 @@ if __name__ == '__main__':
 
 #    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))))
-    SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+    SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
     print SHARED_PATH
 
     if not SHARED_PATH in sys.path:
@@ -453,7 +453,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "watchdogDetector.log"
+    logfile  = os.path.join(BASE_PATH, "logs", "watchdogDetector.log")
     logsize  = 10485760
 
     logQueue = Queue(-1)
@@ -474,15 +474,15 @@ if __name__ == '__main__':
 
     config = {
             #TODO normpath to make insensitive to "/" at the end
-            "monDir"         : BASE_PATH + os.sep + "data" + os.sep + "source",
+            "monDir"         : os.path.join(BASE_PATH, "data", "source"),
             "monSubdirs"     : ["commissioning", "current", "local"],
             "monEvents"      : {"IN_CLOSE_WRITE" : [".tif", ".cbf"], "IN_MOVED_TO" : [".log"]},
             "timeTillClosed" : 1, #s
             "actionTime"     : 2 #s
             }
 
-    sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep
+    sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
+    targetFileBase = os.path.join(BASE_PATH, "data", "source", "local") + os.sep
 
 #    eventDetector = WatchdogDetector(config, logQueue)
     eventDetector = EventDetector(config, logQueue)

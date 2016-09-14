@@ -16,7 +16,7 @@ try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
 except:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( sys.argv[0] ) ))))
-SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -167,7 +167,7 @@ class CleanUp (threading.Thread):
 
     def run (self):
         global fileEventList
-        dirsToWalk    = [os.path.normpath(self.paths[0] + os.sep + directory) for directory in self.monSubdirs]
+        dirsToWalk    = [os.path.normpath(os.path.join(self.paths[0], directory)) for directory in self.monSubdirs]
 
         while True:
             try:
@@ -329,7 +329,7 @@ class EventDetector():
     def getDirectoryStructure (self):
         # Add the default subdirs
         self.log.debug("paths: {p}".format(p=self.paths))
-        dirsToWalk    = [os.path.normpath(self.paths[0] + os.sep + directory) for directory in self.monSubdirs]
+        dirsToWalk    = [os.path.normpath(os.path.join(self.paths[0], directory)) for directory in self.monSubdirs]
         self.log.debug("dirsToWalk: {d}".format(d=dirsToWalk))
         monitoredDirs = []
 
@@ -512,7 +512,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "inotifyDetector.log"
+    logfile  = os.path.join(BASE_PATH, "logs", "inotifyDetector.log")
     logsize  = 10485760
 
     logQueue = Queue(-1)
@@ -533,7 +533,7 @@ if __name__ == '__main__':
 
     config = {
             "eventDetectorType" : "inotifyx",
-            "monDir"            : BASE_PATH + os.sep + "data" + os.sep + "source",
+            "monDir"            : os.path.join(BASE_PATH, "data", "source"),
             "monSubdirs"        : ["commissioning", "current", "local"],
             "monEvents"         : {"IN_CLOSE_WRITE" : [".tif", ".cbf"], "IN_MOVED_TO" : [".log"]},
             "timeout"           : 0.1,
@@ -543,8 +543,8 @@ if __name__ == '__main__':
             "actionTime"        : 120
             }
 
-    sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
+    sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
+    targetFileBase = os.path.join(BASE_PATH, "data", "source", "local", "raw") + os.sep
 
     if not os.path.isdir(targetFileBase):
         os.mkdir(targetFileBase)

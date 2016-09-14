@@ -16,7 +16,7 @@ try:
 except:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( '__file__' ) ))))
 #    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))))
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     except:
         BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))))
     print "BASE_PATH", BASE_PATH
-    SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+    SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
 
     if not SHARED_PATH in sys.path:
         sys.path.append ( SHARED_PATH )
@@ -159,7 +159,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile = BASE_PATH + os.sep + "logs" + os.sep + "getFromFile.log"
+    logfile = os.path.join(BASE_PATH, "logs", "getFromFile.log")
     logsize = 10485760
 
     # Get the log Configuration for the lisener
@@ -193,7 +193,7 @@ if __name__ == '__main__':
     logging.info("=== receivingSocket2 connected to {s}".format(s=connectionStr))
 
 
-    prework_sourceFile = BASE_PATH + os.sep + "test_file.cbf"
+    prework_sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
 
     #read file to send it in data pipe
     fileDescriptor = open(prework_sourceFile, "rb")
@@ -205,14 +205,14 @@ if __name__ == '__main__':
     logging.debug("=== File send")
 
     workload = {
-            "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
+            "sourcePath"  : os.path.join(BASE_PATH, "data", "source"),
             "relativePath": os.sep + "local" + os.sep + "raw",
             "filename"    : "100.cbf"
             }
-    targets = [['localhost:' + receivingPort, 1, [".cbf", ".tif"], "data"], ['localhost:' + receivingPort2, 0, [".cbf", ".tif"], "data"]]
+    targets = [['localhost:{p}'.format(p=receivingPort), 1, [".cbf", ".tif"], "data"], ['localhost:{p}'.format(p=receivingPort2), 0, [".cbf", ".tif"], "data"]]
 
     chunkSize       = 10485760 ; # = 1024*1024*10 = 10 MiB
-    localTarget     = BASE_PATH + os.sep + "data" + os.sep + "target"
+    localTarget     = os.path.join(BASE_PATH, "data", "target")
     openConnections = dict()
 
     dataFetcherProp = {

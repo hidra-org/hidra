@@ -14,13 +14,13 @@ try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
 except:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
 del SHARED_PATH
 
-EVENTDETECTOR_PATH = BASE_PATH + os.sep + "src" + os.sep + "sender" + os.sep + "eventDetectors"
+EVENTDETECTOR_PATH = os.path.join(BASE_PATH, "src", "sender", "eventDetectors")
 if not EVENTDETECTOR_PATH in sys.path:
     sys.path.append ( EVENTDETECTOR_PATH )
 del EVENTDETECTOR_PATH
@@ -304,7 +304,7 @@ class requestResponder():
     def run (self):
         hostname = socket.gethostname()
         self.log.info("[requestResponder] Start run")
-        openRequests = [[hostname + ':6003', 1, [".cbf"]], [hostname + ':6004', 0, [".cbf"]]]
+        openRequests = [['{h}:6003'.format(hostname), 1, [".cbf"]], ['{h}:6004'.format(h=hostname), 0, [".cbf"]]]
         while True:
             request = self.requestFwSocket.recv_multipart()
             self.log.debug("[requestResponder] Received request: {r}".format(r=request) )
@@ -327,12 +327,12 @@ if __name__ == '__main__':
 
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
 
-    logfile = BASE_PATH + os.sep + "logs" + os.sep + "taskProvider.log"
+    logfile = os.path.join(BASE_PATH, "logs", "taskProvider.log")
     logsize = 10485760
 
     eventDetectorConfig = {
             "eventDetectorType" : "InotifyxDetector",
-            "monDir"            : BASE_PATH + os.sep + "data" + os.sep + "source",
+            "monDir"            : os.path.join(BASE_PATH, "data", "source"),
             "monSubdirs"        : ["commissioning", "current", "local"],
             "monEvents"         : {"IN_CLOSE_WRITE" : [".tif", ".cbf"], "IN_MOVED_TO" : [".log"]},
             "timeout"           : 0.1,
@@ -381,8 +381,8 @@ if __name__ == '__main__':
     routerSocket.connect(connectionStr)
     logging.info("=== routerSocket connected to {s}".format(s=connectionStr))
 
-    sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
+    sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
+    targetFileBase = os.path.join(BASE_PATH, "data", "source", "local", "raw") + os.sep
     if not os.path.exists(targetFileBase):
         os.makedirs(targetFileBase)
 

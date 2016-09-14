@@ -18,7 +18,7 @@ try:
 except:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( '__file__' ) )))
 #    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -671,7 +671,7 @@ if __name__ == '__main__':
     requestFwConId  = "ipc://{pid}_{id}".format(pid=currentPID, id="requestFw")
     requestConId    = "tcp://{ip}:{port}".format(ip=extIp,     port=requestPort)
 
-    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "signalHandler.log"
+    logfile  = os.path.join(BASE_PATH, "logs", "signalHandler.log")
     logsize  = 10485760
 
     logQueue = Queue(-1)
@@ -717,9 +717,9 @@ if __name__ == '__main__':
         targets = []
         if type(ports) == list:
             for port in ports:
-                targets.append(["zitpcx19282:" + port, prio])
+                targets.append(["zitpcx19282:{p}".format(p=port), prio])
         else:
-            targets.append(["zitpcx19282:" + ports, prio])
+            targets.append(["zitpcx19282:{p}".format(p=ports), prio])
         targets = cPickle.dumps(targets)
         sendMessage.append(targets)
         socket.send_multipart(sendMessage)

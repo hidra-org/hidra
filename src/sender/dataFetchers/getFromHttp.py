@@ -50,12 +50,12 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
 
 
     # no normpath used because that would transform http://... into http:/...
-    sourceFilePath = sourcePath + os.sep + relativePath
+    sourceFilePath = os.path.join(sourcePath, relativePath)
     sourceFile     = os.path.join(sourceFilePath, filename)
 
     #TODO combine better with sourceFile... (for efficiency)
     if localTarget:
-        targetFilePath = os.path.normpath(localTarget + os.sep + relativePath)
+        targetFilePath = os.path.normpath(os.path.join(localTarget, relativePath))
         targetFile     = os.path.join(targetFilePath, filename)
     else:
         targetFile = None
@@ -182,7 +182,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
     if prop["storeData"]:
         try:
-            log.debug("Closing '{t}'...".format(f=targetFile))
+            log.debug("Closing '{f}'...".format(f=targetFile))
             fileDescriptor.close()
             fileClosed = True
         except:
@@ -235,7 +235,7 @@ if __name__ == '__main__':
     except:
         BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))))
     print "BASE_PATH", BASE_PATH
-    SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+    SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
 
     if not SHARED_PATH in sys.path:
         sys.path.append ( SHARED_PATH )
@@ -243,7 +243,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile = BASE_PATH + os.sep + "logs" + os.sep + "getFromHttp.log"
+    logfile = os.path.join(BASE_PATH, "logs", "getFromHttp.log")
     logsize = 10485760
 
     # Get the log Configuration for the lisener
@@ -273,8 +273,8 @@ if __name__ == '__main__':
     logging.info("=== receivingSocket2 connected to {s}".format(s=connectionStr))
 
 
-    prework_sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    localTarget        = BASE_PATH + os.sep + "data" + os.sep + "target"
+    prework_sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
+    localTarget        = os.path.join(BASE_PATH, "data", "target")
 
     #read file to send it in data pipe
     logging.debug("=== copy file to lsdma-lab04")
@@ -291,10 +291,11 @@ if __name__ == '__main__':
             "relativePath": "",
             "filename"    : "test_file.cbf"
             }
-    targets = [['localhost:' + receivingPort, 1, [".cbf", ".tif"], "data"], ['localhost:' + receivingPort2, 1, [".cbf", ".tif"], "data"]]
+    targets = [['localhost:{p}'.format(p=receivingPort), 1, [".cbf", ".tif"], "data"],
+            ['localhost:{p}'.format(p=receivingPort2), 1, [".cbf", ".tif"], "data"]]
 
     chunkSize       = 10485760 ; # = 1024*1024*10 = 10 MiB
-    localTarget     = BASE_PATH + os.sep + "data" + os.sep + "target"
+    localTarget     = os.path.join(BASE_PATH, "data", "target")
     openConnections = dict()
 
     dataFetcherProp = {

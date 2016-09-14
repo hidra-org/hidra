@@ -13,7 +13,7 @@ try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
 except:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( sys.argv[0] ) ))))
-SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     from multiprocessing import Queue
 
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
-    SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+    SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
     print "SHARED", SHARED_PATH
 
     if not SHARED_PATH in sys.path:
@@ -143,7 +143,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "zmqDetector.log"
+    logfile  = os.path.join(BASE_PATH, "logs", "zmqDetector.log")
     logsize  = 10485760
 
     logQueue = Queue(-1)
@@ -176,8 +176,8 @@ if __name__ == '__main__':
 #    eventDetector = ZmqDetector(config, logQueue)
     eventDetector = EventDetector(config, logQueue)
 
-    sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
+    sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
+    targetFileBase = os.path.join(BASE_PATH, "data", "source", "local", "raw") + os.sep
 
 
     context        = zmq.Context.instance()

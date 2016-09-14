@@ -726,7 +726,7 @@ class dataTransfer():
         if relativePath is '' or relativePath is None:
             targetPath = basePath
         else:
-            targetPath = os.path.normpath(basePath + os.sep + relativePath)
+            targetPath = os.path.normpath(os.path.join(basePath, relativePath))
 
         filepath =  os.path.join(targetPath, filename)
 

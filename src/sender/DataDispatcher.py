@@ -16,13 +16,13 @@ try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
 except:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
 del SHARED_PATH
 
-DATAFETCHER_PATH = BASE_PATH + os.sep + "src" + os.sep + "sender" + os.sep + "dataFetchers"
+DATAFETCHER_PATH = os.path.join(BASE_PATH, "src", "sender", "dataFetchers")
 if not DATAFETCHER_PATH in sys.path:
     sys.path.append ( DATAFETCHER_PATH )
 del DATAFETCHER_PATH
@@ -326,7 +326,7 @@ if __name__ == '__main__':
 
     freeze_support()    #see https://docs.python.org/2/library/multiprocessing.html#windows
 
-    logfile  = BASE_PATH + os.sep + "logs" + os.sep + "dataDispatcher.log"
+    logfile  = os.path.join(BASE_PATH, "logs", "dataDispatcher.log")
     logsize  = 10485760
 
     logQueue = Queue(-1)
@@ -345,8 +345,8 @@ if __name__ == '__main__':
     root.addHandler(qh)
 
 
-    sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + os.sep + "100.cbf"
+    sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
+    targetFile = os.path.join(BASE_PATH, "data", "source", "local", "100.cbf")
 
     copyfile(sourceFile, targetFile)
     time.sleep(0.5)
@@ -363,7 +363,7 @@ if __name__ == '__main__':
 
     chunkSize      = 10485760 ; # = 1024*1024*10 = 10 MiB
 
-    localTarget    = BASE_PATH + os.sep + "data" + os.sep + "target"
+    localTarget    = os.path.join(BASE_PATH, "data", "target")
     fixedStreamId  = False
     fixedStreamId  = "localhost:6006"
 
@@ -400,7 +400,7 @@ if __name__ == '__main__':
 
 
     metadata = {
-            "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
+            "sourcePath"  : os.path.join(BASE_PATH, "data", "source"),
             "relativePath": "local",
             "filename"    : "100.cbf"
             }

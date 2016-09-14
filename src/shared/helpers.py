@@ -12,7 +12,7 @@ try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
 except:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+SHARED_PATH = os.path.join(BASE_PATH,"src","shared")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -138,7 +138,7 @@ def checkDirEmpty (dirPath):
         if confirm(prompt="Directory {p} is not empty.\nShould its content be removed?".format(d=dirPath),
                    resp = True):
             for element in os.listdir(dirPath):
-                path = dirPath + os.sep + element
+                path = os.path.join(dirPath, element)
                 if os.path.isdir(path):
                    try:
                         os.rmdir(path)
@@ -152,7 +152,7 @@ def checkDirEmpty (dirPath):
 def checkAnySubDirExists (dirPath, subDirs):
 
     dirPath = os.path.normpath(dirPath)
-    dirsToCheck = [dirPath + os.sep + directory for directory in subDirs]
+    dirsToCheck = [os.path.join(dirPath, directory) for directory in subDirs]
     noSubdir = True
 
     for d in dirsToCheck:
@@ -169,7 +169,7 @@ def checkAnySubDirExists (dirPath, subDirs):
 def checkAllSubDirExist (dirPath, subDirs):
 
     dirPath = os.path.normpath(dirPath)
-    dirsToCheck = [dirPath + os.sep + directory for directory in subDirs]
+    dirsToCheck = [os.path.join(dirPath, directory) for directory in subDirs]
 
     for d in dirsToCheck:
         if not os.path.exists(d):

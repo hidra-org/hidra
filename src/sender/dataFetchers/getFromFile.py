@@ -46,12 +46,12 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
     # filepath = "C:\dir"
     #
     # -->  sourceFilePathFull = 'C:\\dir\img.tiff'
-    sourceFilePath = os.path.normpath(sourcePath + os.sep + relativePath)
+    sourceFilePath = os.path.normpath(os.path.join(sourcePath, relativePath))
     sourceFile     = os.path.join(sourceFilePath, filename)
 
     #TODO combine better with sourceFile... (for efficiency)
     if localTarget:
-        targetFilePath = os.path.normpath(localTarget + os.sep + relativePath)
+        targetFilePath = os.path.normpath(os.path.join(localTarget, relativePath))
         targetFile     = os.path.join(targetFilePath, filename)
     else:
         targetFile     = None
@@ -118,7 +118,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         log.debug("Opening '{f}'...".format(m=sourceFile))
         fileDescriptor = open(str(sourceFile), "rb")
     except:
-        log.error("Unable to read source file '{f}'.".format(f=sourceFile)), exc_info=True)
+        log.error("Unable to read source file '{f}'.".format(f=sourceFile), exc_info=True)
         raise
 
     log.debug("Passing multipart-message for file '{f}'...".format(f=sourceFile))
@@ -176,7 +176,7 @@ def __dataHandling(log, sourceFile, targetFile, actionFunction, metadata, prop):
             targetBasePath = os.path.join(targetFile.split(subdir + os.sep)[0], subdir)
 
             if metadata["relativePath"] in prop["fixSubdirs"]:
-                log.error("Unable to copy/move file '{s}' to '{t}': Directory {m} is not available.".format(s=sourceFile, t=targetFile, m=metadata["relativePath"])
+                log.error("Unable to copy/move file '{s}' to '{t}': Directory {m} is not available.".format(s=sourceFile, t=targetFile, m=metadata["relativePath"]))
                 raise
             elif subdir in prop["fixSubdirs"] and not os.path.isdir(targetBasePath):
                 log.error("Unable to copy/move file '{s}' to '{t}': Directory {d} is not available.".format(s=sourceFile, t=targetFile, d=subdir))
@@ -258,7 +258,7 @@ if __name__ == '__main__':
     except:
         BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))))
     print "BASE_PATH", BASE_PATH
-    SHARED_PATH  = BASE_PATH + os.sep + "src" + os.sep + "shared"
+    SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
 
     if not SHARED_PATH in sys.path:
         sys.path.append ( SHARED_PATH )
@@ -266,7 +266,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile = BASE_PATH + os.sep + "logs" + os.sep + "getFromFile.log"
+    logfile = os.path.join(BASE_PATH, "logs", "getFromFile.log")
     logsize = 10485760
 
     # Get the log Configuration for the lisener
@@ -295,21 +295,22 @@ if __name__ == '__main__':
     logging.info("=== receivingSocket2 connected to {s}".format(s=connectionStr))
 
 
-    prework_sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    prework_targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "100.cbf"
+    prework_sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
+    prework_targetFile = os.path.join(BASE_PATH, "data", "source", "local", "100.cbf")
 
     copyfile(prework_sourceFile, prework_targetFile)
     time.sleep(0.5)
 
     workload = {
-            "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
+            "sourcePath"  : os.path.join(BASE_PATH, "data", "source"),
             "relativePath": os.sep + "local",
             "filename"    : "100.cbf"
             }
-    targets = [['localhost:' + receivingPort, 1, [".cbf"], "data"], ['localhost:' + receivingPort2, 0, [".cbf"],  "data"]]
+    targets = [['localhost:{p}'.format(p=receivingPort), 1, [".cbf"], "data"],
+            ['localhost:{p}'.format(p=receivingPort2), 0, [".cbf"],  "data"]]
 
     chunkSize       = 10485760 ; # = 1024*1024*10 = 10 MiB
-    localTarget     = BASE_PATH + os.sep + "data" + os.sep + "target"
+    localTarget     = os.path.join(BASE_PATH, "data", "target")
     openConnections = dict()
 
     dataFetcherProp = {
