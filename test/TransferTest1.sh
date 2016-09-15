@@ -15,12 +15,14 @@ python $BASEPATH/src/sender/DataManager.py \
     --logfileName ${procname}.log \
     --monitoredDir $BASEPATH/data/source \
     --localTarget $BASEPATH/data/target \
+    --extIp 0.0.0.0 \
     --eventDetectorType InotifyxDetector \
     --dataFetcherType getFromFile \
     --useDataStream '' \
     --storeData True \
     --removeData True \
-    --verbose &
+    --verbose \
+    --onScreen debug &
 
 sleep 2
 

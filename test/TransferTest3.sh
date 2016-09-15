@@ -17,6 +17,7 @@ python $BASEPATH/src/sender/DataManager.py \
     --logfileName ${procname}.log \
     --monitoredDir $BASEPATH/data/source \
     --localTarget $BASEPATH/data/target/local \
+    --extIp 0.0.0.0 \
     --eventDetectorType HttpDetector \
     --dataFetcherType getFromHttp \
     --eigerIp 131.169.55.170 \
@@ -25,7 +26,8 @@ python $BASEPATH/src/sender/DataManager.py \
     --useDataStream '' \
     --storeData True \
     --removeData '' \
-    --verbose &
+    --verbose \
+    --onScreen debug &
 
 sleep 5
 

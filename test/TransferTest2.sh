@@ -15,6 +15,7 @@ python $BASEPATH/src/sender/DataManager.py \
     --logfileName ${procname}.log \
     --monitoredDir $BASEPATH/data/source \
     --localTarget $BASEPATH/data/target \
+    --extIp 0.0.0.0 \
     --eventDetectorType WatchdogDetector \
     --dataFetcherType getFromFile \
     --actionTime 2 \
@@ -22,7 +23,8 @@ python $BASEPATH/src/sender/DataManager.py \
     --useDataStream '' \
     --storeData True \
     --removeData True \
-    --verbose &
+    --verbose \
+    --onScreen debug &
 
 sleep 2
 
