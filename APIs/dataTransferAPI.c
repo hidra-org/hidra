@@ -276,18 +276,20 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage, int *me
     int rc = 0;
     int totalRecvd = 0;
     struct json_object *metadata_json = NULL;
-    char *recv_filename;
     char delimiter[] = "/";
     char *token;
     int numStream;
+
 
     if (strcmp(multipartMessage[0], "CLOSE_FILE") == 0)
     {
         id = multipartMessage[1];
         printf("id=%s\n", id);
+        printf("dT->filename=%s %zd\n", dT->filename, strlen(dT->filename));
 
         //TODO do this correctly
-        recv_filename = dT->filename;
+        char recv_filename[strlen(dT->filename)];
+        strcpy(recv_filename, dT->filename);
 
         // check if received close call belongs to the opened file
         if (strcmp(recv_filename, dT->filename) != 0)
@@ -296,8 +298,11 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage, int *me
             //TODO react
         }
 
+        char id_temp[strlen(id)];
+        strcpy(id_temp, id);
+
         // initialisation and get the identifier of the DataDispatcher
-        token = strtok(id, delimiter);
+        token = strtok(id_temp, delimiter);
         idNum = atoi(token);
         printf("idNum=%i\n", idNum);
 
@@ -367,7 +372,9 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage, int *me
                     dT->recvdCloseFrom[i] = NULL;
                 }
                 if (dT->recvdCloseFrom != NULL) free (dT->recvdCloseFrom);
+                if (dT->filename != NULL) free (dT->filename);
 
+                dT->filename = NULL;
                 dT->recvdCloseFrom = NULL;
                 dT->allCloseRecvd = 0;
                 dT->runLoop = 0;
@@ -458,6 +465,10 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
             if (s_recv_multipart (dT->fileOpSocket, multipartMessage, &len, messageSize))
             {
                 perror("Failed to receive data");
+                for (i = 0; i < len; i++)
+                {
+                    free(multipartMessage[i]);
+                };
                 return COMMUNICATIONFAILED;
             }
             printf ("fileOpSocket recv: '%s' for file '%s'\n", multipartMessage[0], multipartMessage[1]);
@@ -469,8 +480,6 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
                     rc = s_send ("fileOpSocket", dT->fileOpSocket, multipartMessage[0]);
                     if (rc == -1) return COMMUNICATIONFAILED;
 
-                    dT->runLoop = 0;
-                    dT->allCloseRecvd = 0;
                     char *recv_filename = multipartMessage[1];
 
                     // check if received close call belongs to the opened file
@@ -483,6 +492,22 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
                         perror("Close event for different file received.");
                         //TODO react
                     }
+
+                    free (dT->replyToSignal);
+                    dT->replyToSignal = NULL;
+                    for (i = 0; i < dT->numberOfStreams; i++)
+                    {
+                        if (dT->recvdCloseFrom[i] != NULL) free(dT->recvdCloseFrom[i]);
+                        dT->recvdCloseFrom[i] = NULL;
+                    }
+                    if (dT->recvdCloseFrom != NULL) free (dT->recvdCloseFrom);
+                    if (dT->filename != NULL) free (dT->filename);
+
+                    dT->filename = NULL;
+                    dT->recvdCloseFrom = NULL;
+                    dT->allCloseRecvd = 0;
+                    dT->runLoop = 0;
+
                     break;
                 }
                 else
@@ -496,7 +521,7 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
                 rc = s_send ("fileOpSocket", dT->fileOpSocket, multipartMessage[0]);
                 if (rc == -1) return COMMUNICATIONFAILED;
 
-                dT->filename = multipartMessage[1];
+                dT->filename = strdup(multipartMessage[1]);
 
                 dT->allCloseRecvd = 0;
 //                dT->fileOpened = 1;
@@ -511,7 +536,11 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
                 if (rc == -1) return COMMUNICATIONFAILED;
             }
 
-            free (multipartMessage[0]);
+
+            for (i = 0; i < len; i++)
+            {
+                free(multipartMessage[i]);
+            };
 
         }
 
@@ -539,7 +568,7 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
 
             rc = reactOnMessage (dT, multipartMessage, messageSize);
 
-            for (i = 0; i < 2; i++)
+            for (i = 0; i < len; i++)
             {
                 free(multipartMessage[i]);
             };

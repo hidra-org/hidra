@@ -243,7 +243,8 @@ HIDRA_ERROR dataIngest_createFile (dataIngest *dI, char *fileName)
     char *message;
     int rc;
     char *token;
-    char *filename;
+    char *openFile;
+    char filename[strlen(fileName)];
 
     strcpy(filename, fileName);
 
@@ -253,9 +254,10 @@ HIDRA_ERROR dataIngest_createFile (dataIngest *dI, char *fileName)
     /* walk through other tokens */
     while( token != NULL )
     {
-        dI->openFile = token;
+        openFile = token;
         token = strtok(NULL, PATH_SEPARATOR);
     }
+    dI->openFile = strdup(openFile);
     printf( "openFile %s\n", dI->openFile );
 
     // Send notification to receiver
@@ -281,7 +283,6 @@ HIDRA_ERROR dataIngest_createFile (dataIngest *dI, char *fileName)
 HIDRA_ERROR dataIngest_write (dataIngest *dI, char *data, int size)
 {
 
-    char message[128];
     int rc;
     json_object * metadata_json;
     const char *metadata_string;
@@ -299,13 +300,13 @@ HIDRA_ERROR dataIngest_write (dataIngest *dI, char *data, int size)
     rc = s_send (dI->eventDetSocket, metadata_string, strlen(metadata_string), 0);
     if (rc == -1) return COMMUNICATIONFAILED;
 
+    printf ("Writing: %s\n", metadata_string);
     json_object_put ( metadata_json );
 
     // Send data to ZMQ-Queue
     rc = s_send (dI->dataFetchSocket, data, size, 0);
     if (rc == -1) return COMMUNICATIONFAILED;
 
-    printf ("Writing: %s\n", message);
 
     dI->filePart += 1;
 
@@ -358,7 +359,7 @@ HIDRA_ERROR dataIngest_closeFile (dataIngest *dI)
 
     dI->filename = "";
     dI->filePart = 0;
-    dI->openFile = "";
+    free (dI->openFile);
 
     free (answer);
 
