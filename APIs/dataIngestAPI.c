@@ -11,6 +11,14 @@
 #include <json.h>
 
 
+const char* PATH_SEPARATOR =
+#ifdef _WIN32
+                            "\\";
+#else
+                            "/";
+#endif
+
+
 // helper functions for sending and receiving messages
 // source: Pieter Hintjens: ZeroMQ; O'Reilly
 static char* s_recv (void *socket)
@@ -26,10 +34,11 @@ static char* s_recv (void *socket)
     zmq_msg_close (&message);
     string [size] = 0;
     return string;
-};
+}
 
 
-static int s_send (void * socket, const char* string, int len)
+// flags could be 0 or ZMQ_SNDMORE
+static int s_send (void * socket, const char* string, int len, int flags)
 {
     int bytesSent;
     int rc;
@@ -44,29 +53,50 @@ static int s_send (void * socket, const char* string, int len)
     memcpy (zmq_msg_data (&message), string, len);
 
     /* Send the message to the socket */
-    bytesSent = zmq_msg_send (&message, socket, 0);
+    bytesSent = zmq_msg_send (&message, socket, flags);
     assert (bytesSent == len);
 
     return bytesSent;
 }
 
 
-/*
-static int s_send (void * socket, char* string)
+HIDRA_ERROR s_recv_multipart (void *socket, char **multipartMessage, int *len, int *messageSize)
 {
-//    printf("Sending: %s\n", string);
-    int size = zmq_send (socket, string, strlen (string), 0);
-    if (size == -1)
+    int i = 0;
+    int more;
+    size_t more_size = sizeof(more);
+    zmq_msg_t message;
+
+    while (1)
     {
-        fprintf(stderr, "Failed to send message (message: '%s'): %s\n",
-                string, strerror( errno ));
-//        fprintf (stderr, "ERROR: Sending failed\n");
-//        perror("");
+        //  Wait for next request from client
+        zmq_msg_init (&message);
+        messageSize[i] = zmq_msg_recv (&message, socket, 0);
+
+        //Process message
+        printf("Received message of size: %d\n", messageSize[i]);
+        multipartMessage[i] = malloc (messageSize[i] + 1);
+
+        memcpy (multipartMessage[i], zmq_msg_data (&message), messageSize[i]);
+        multipartMessage[i] [messageSize[i]] = 0;
+//        printf("recieved string: %s\n", multipartMessage[i]);
+
+        i++;
+
+        zmq_msg_close(&message);
+        zmq_getsockopt (socket, ZMQ_RCVMORE, &more, &more_size);
+        if (more == 0)
+        {
+//            printf("last received\n");
+            *len = i;
+            break;
+        };
     }
 
-    return size;
+    return SUCCESS;
+
 }
-*/
+
 
 struct dataIngest {
 
@@ -90,7 +120,7 @@ struct dataIngest {
 //    zmq::pollitem_t items [];
 
     char *filename;
-    int  openFile;
+    char *openFile;
     int  filePart;
 
     int  responseTimeout;
@@ -212,10 +242,27 @@ HIDRA_ERROR dataIngest_createFile (dataIngest *dI, char *fileName)
 
     char *message;
     int rc;
+    char *token;
+    char *filename;
+
+    strcpy(filename, fileName);
+
+    /* get the first token */
+    token = strtok(filename, PATH_SEPARATOR);
+
+    /* walk through other tokens */
+    while( token != NULL )
+    {
+        dI->openFile = token;
+        token = strtok(NULL, PATH_SEPARATOR);
+    }
+    printf( "openFile %s\n", dI->openFile );
 
     // Send notification to receiver
     message = "OPEN_FILE";
-    rc = s_send (dI->fileOpSocket, message, strlen(message));
+    rc = s_send (dI->fileOpSocket, message, strlen(message), ZMQ_SNDMORE);
+    if (rc == -1) return COMMUNICATIONFAILED;
+    rc = s_send (dI->fileOpSocket, dI->openFile, strlen(dI->openFile), 0);
     if (rc == -1) return COMMUNICATIONFAILED;
     printf ("Sending signal to open a new file.\n");
 
@@ -249,13 +296,13 @@ HIDRA_ERROR dataIngest_write (dataIngest *dI, char *data, int size)
     metadata_string = json_object_to_json_string ( metadata_json );
 
     // Send event to eventDetector
-    rc = s_send (dI->eventDetSocket, metadata_string, strlen(metadata_string));
+    rc = s_send (dI->eventDetSocket, metadata_string, strlen(metadata_string), 0);
     if (rc == -1) return COMMUNICATIONFAILED;
 
     json_object_put ( metadata_json );
 
     // Send data to ZMQ-Queue
-    rc = s_send (dI->dataFetchSocket, data, size);
+    rc = s_send (dI->dataFetchSocket, data, size, 0);
     if (rc == -1) return COMMUNICATIONFAILED;
 
     printf ("Writing: %s\n", message);
@@ -275,14 +322,16 @@ HIDRA_ERROR dataIngest_closeFile (dataIngest *dI)
     int rc;
 
     // Send close-signal to signal socket
-    rc = s_send (dI->fileOpSocket, message, strlen(message));
+    rc = s_send (dI->fileOpSocket, message, strlen(message), ZMQ_SNDMORE);
+    if (rc == -1) return COMMUNICATIONFAILED;
+    rc = s_send (dI->fileOpSocket, dI->openFile, strlen(dI->openFile), 0);
     if (rc == -1) return COMMUNICATIONFAILED;
     //        perror("Sending signal to close the file to fileOpSocket...failed.")
     printf ("Sending signal to close the file to fileOpSocket  (sendMessage=%s)\n", message);
 
 
     // send close-signal to event Detector
-    rc = s_send (dI->eventDetSocket, message, strlen(message));
+    rc = s_send (dI->eventDetSocket, message, strlen(message), 0);
     if (rc == -1) return COMMUNICATIONFAILED;
 //        perror("Sending signal to close the file to eventDetSocket...failed.)")
     printf ("Sending signal to close the file to eventDetSocket (sendMessage=%s)\n", message);
@@ -309,6 +358,7 @@ HIDRA_ERROR dataIngest_closeFile (dataIngest *dI)
 
     dI->filename = "";
     dI->filePart = 0;
+    dI->openFile = "";
 
     free (answer);
 

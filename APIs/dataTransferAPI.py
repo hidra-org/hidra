@@ -456,12 +456,12 @@ class dataTransfer():
             if self.fileOpSocket in socks and socks[self.fileOpSocket] == zmq.POLLIN:
                 self.log.debug("fileOpSocket is polling")
 
-                message = self.fileOpSocket.recv()
+                message = self.fileOpSocket.recv_multipart()
                 self.log.debug("fileOpSocket recv: {m}".format(m=message))
 
-                if message == b"CLOSE_FILE":
+                if message[0] == b"CLOSE_FILE":
                     if self.allCloseRecvd:
-                        self.fileOpSocket.send(message)
+                        self.fileOpSocket.send_multipart(message)
                         logging.debug("fileOpSocket send: {m}".format(m=message))
                         self.allCloseRecvd = False
 
@@ -469,8 +469,8 @@ class dataTransfer():
                         break
                     else:
                         self.replyToSignal = message
-                elif message == b"OPEN_FILE":
-                    self.fileOpSocket.send(message)
+                elif message[0] == b"OPEN_FILE":
+                    self.fileOpSocket.send_multipart(message)
                     self.log.debug("fileOpSocket send: {m}".format(m=message))
 
                     self.openCallback(self.callbackParams, message)
@@ -529,7 +529,7 @@ class dataTransfer():
             if len(self.recvdCloseFrom) == self.numberOfStreams:
                 self.log.info("All close-file-signals arrived")
                 if self.replyToSignal:
-                    self.fileOpSocket.send(self.replyToSignal)
+                    self.fileOpSocket.send_multipart(self.replyToSignal)
                     self.log.debug("fileOpSocket send: {m}".format(m=self.replyToSignal))
                     self.replyToSignal = False
                     self.recvdCloseFrom = []

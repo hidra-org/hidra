@@ -151,10 +151,10 @@ class dataIngest():
             raise Exception("File {f} already opened.".format(f=filename))
 
         # send notification to receiver
-        self.signalSocket.send("OPEN_FILE")
+        self.signalSocket.send_multipart(["OPEN_FILE", filename])
         self.log.info("Sending signal to open a new file.")
 
-        message = self.signalSocket.recv()
+        message = self.signalSocket.recv_multipart()
         self.log.debug("Received responce: {m}".format(m=message))
 
         self.filename = filename
@@ -180,16 +180,16 @@ class dataIngest():
     # return error code
     def closeFile (self):
         # send close-signal to signal socket
-        sendMessage = "CLOSE_FILE"
+        sendMessage = ["CLOSE_FILE", self.filename]
         try:
-            self.signalSocket.send(sendMessage)
+            self.signalSocket.send_multipart(sendMessage)
             self.log.info("Sending signal to close the file to signalSocket.")
         except:
             raise Exception("Sending signal to close the file to signalSocket...failed.")
 
         # send close-signal to event Detector
         try:
-            self.eventDetSocket.send(sendMessage)
+            self.eventDetSocket.send(sendMessage[0])
             self.log.debug("Sending signal to close the file to eventDetSocket. (sendMessage={m})".format(m=sendMessage))
         except:
             raise Exception("Sending signal to close the file to eventDetSocket...failed.")
@@ -204,7 +204,7 @@ class dataIngest():
         if socks and self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
             self.log.info("Received answer to signal...")
             #  Get the reply.
-            recvMessage = self.signalSocket.recv()
+            recvMessage = self.signalSocket.recv_multipart()
             self.log.info("Received answer to signal: {m}".format(m=recvMessage) )
         else:
             recvMessage = None

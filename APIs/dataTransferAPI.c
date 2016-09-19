@@ -49,7 +49,7 @@ static int s_send (char* socketName, void * socket, char* string)
 }
 
 
-HIDRA_ERROR recv_multipartMessage (void *socket, char **multipartMessage, int *len, int *messageSize)
+HIDRA_ERROR s_recv_multipart (void *socket, char **multipartMessage, int *len, int *messageSize)
 {
     int i = 0;
     int more;
@@ -455,20 +455,23 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
         {
             printf ("fileOpSocket is polling\n");
 
-            message = s_recv (dT->fileOpSocket);
-            printf ("fileOpSocket recv: '%s'\n", message);
+            if (s_recv_multipart (dT->fileOpSocket, multipartMessage, &len, messageSize))
+            {
+                perror("Failed to receive data");
+                return COMMUNICATIONFAILED;
+            }
+            printf ("fileOpSocket recv: '%s' for file '%s'\n", multipartMessage[0], multipartMessage[1]);
 
-            if (strcmp(message,"CLOSE_FILE") == 0)
+            if (strcmp(multipartMessage[0],"CLOSE_FILE") == 0)
             {
                 if ( dT->allCloseRecvd )
                 {
-                    rc = s_send ("fileOpSocket", dT->fileOpSocket, message);
+                    rc = s_send ("fileOpSocket", dT->fileOpSocket, multipartMessage[0]);
                     if (rc == -1) return COMMUNICATIONFAILED;
 
                     dT->runLoop = 0;
                     dT->allCloseRecvd = 0;
-                    //TODO do this correctly
-                    char *recv_filename = dT->filename;
+                    char *recv_filename = multipartMessage[1];
 
                     // check if received close call belongs to the opened file
                     if (strcmp(recv_filename, dT->filename) == 0)
@@ -484,16 +487,16 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
                 }
                 else
                 {
-                    dT->replyToSignal = strdup(message);
+                    dT->replyToSignal = strdup(multipartMessage[0]);
                     printf("Sent replyToSignal: %s\n", dT->replyToSignal);
                 }
             }
-            else if (strcmp(message,"OPEN_FILE") == 0)
+            else if (strcmp(multipartMessage[0],"OPEN_FILE") == 0)
             {
-                rc = s_send ("fileOpSocket", dT->fileOpSocket, message);
+                rc = s_send ("fileOpSocket", dT->fileOpSocket, multipartMessage[0]);
                 if (rc == -1) return COMMUNICATIONFAILED;
 
-                dT->filename = "test.cbf";
+                dT->filename = multipartMessage[1];
 
                 dT->allCloseRecvd = 0;
 //                dT->fileOpened = 1;
@@ -508,14 +511,15 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
                 if (rc == -1) return COMMUNICATIONFAILED;
             }
 
-            free (message);
+            free (multipartMessage[0]);
+
         }
 
         if (items [1].revents & ZMQ_POLLIN)
         {
             printf ("dataSocket is polling\n");
 
-            if (recv_multipartMessage (dT->dataSocket, multipartMessage, &len, messageSize))
+            if (s_recv_multipart (dT->dataSocket, multipartMessage, &len, messageSize))
             {
                 perror("Failed to receive data");
                 return COMMUNICATIONFAILED;
