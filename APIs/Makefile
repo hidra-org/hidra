@@ -1,8 +1,8 @@
-dataIngest_h:
-	gcc -o dataIngestAPI.o dataIngestAPI.h -lzmq -c
+hidraIngest_h:
+	gcc -o higraIngest.o hidraIngest.h -lzmq -c
 
-dataIngest_c:
-	gcc -o dataIngestAPI.o dataIngestAPI.c -lzmq
+hidraIngest_c:
+	gcc -o hidraIngest.o hidraIngest.c -lzmq
 
 dataTransfer_h:
 	gcc -o dataTransferAPI.o dataTransferAPI.h -lzmq -c

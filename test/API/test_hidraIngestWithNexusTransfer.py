@@ -14,7 +14,7 @@ if not API_PATH in sys.path:
     sys.path.append ( API_PATH )
 del API_PATH
 
-from dataIngestAPI import dataIngest
+from hidraIngest import HidraIngest
 from nexusTransferAPI import nexusTransfer
 
 if not SHARED_PATH in sys.path:
@@ -25,12 +25,12 @@ import helpers
 
 #enable logging
 logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfile     = os.path.join(logfilePath, "testDataIngestWithNexusTransfer.log")
+logfile     = os.path.join(logfilePath, "testHidraIngestWithNexusTransfer.log")
 helpers.initLogging(logfile, True, "DEBUG")
 
 
 print
-print "==== TEST: data ingest together with nexus transfer ===="
+print "==== TEST: hidraIngest together with nexus transfer ===="
 print
 
 
@@ -136,8 +136,8 @@ class ZmqDataManager(threading.Thread):
 
 
 
-def runDataIngest(numbToSend):
-    dI = dataIngest(useLog = True)
+def runHidraIngest(numbToSend):
+    dI = HidraIngest(useLog = True)
 
     dI.createFile("1.h5")
 
@@ -147,7 +147,7 @@ def runDataIngest(numbToSend):
             dI.write(data)
             logging.info("write")
         except:
-            logging.error("runDataIngest break", exc_info=True)
+            logging.error("runHidraIngest break", exc_info=True)
             break
 
 
@@ -187,20 +187,20 @@ if useTest:
 
 number = 5
 
-runDataIngestThread = threading.Thread(target=runDataIngest, args = (number, ))
+runHidraIngestThread = threading.Thread(target=runHidraIngest, args = (number, ))
 runNexusTransferThread = threading.Thread(target=runNexusTransfer, args = (number, ))
 
-runDataIngestThread.start()
+runHidraIngestThread.start()
 runNexusTransferThread.start()
 
-runDataIngestThread.join()
+runHidraIngestThread.join()
 runNexusTransferThread.join()
 
 if useTest:
     zmqDataManagerThread.stop()
 
 print
-print "==== TEST END: data ingest together with nexus transfer ===="
+print "==== TEST END: hidraIngest together with nexus transfer ===="
 print
 
 

@@ -1,5 +1,5 @@
 //
-#include "dataIngestAPI.h"
+#include "hidraIngest.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -8,7 +8,7 @@
 
 int main()
 {
-    dataIngest *obj;
+    hidraIngest *obj;
 
     int chunksize=524288; //1024*512
     int rc;
@@ -18,13 +18,13 @@ int main()
     char *buffer = malloc(chunksize);
     int bytesRead;
 
-    rc = dataIngest_init (&obj);
+    rc = hidraIngest_init (&obj);
     if (rc) exit(-9);
 
     fp = fopen(file_name,"rb"); // read mode
     assert(fp != NULL);
 
-    rc = dataIngest_createFile (obj, file_name);
+    rc = hidraIngest_createFile (obj, file_name);
 
     char *printBuf = malloc(100);
     char c;
@@ -39,7 +39,7 @@ int main()
 //        memcpy(printBuf, buffer, 100);
 //        printf("%s\n",printBuf);
 //        printf("%c",ch);
-        rc = dataIngest_write (obj, buffer, bytesRead);
+        rc = hidraIngest_write (obj, buffer, bytesRead);
 /*
         FILE *fp_local;
         char *filepath = "/opt/HiDRA/data/source/local";
@@ -61,10 +61,10 @@ int main()
     fclose(fp);
 
 //    sleep(5);
-    rc = dataIngest_closeFile (obj);
+    rc = hidraIngest_closeFile (obj);
 
     printf ("Stopping\n");
-    rc = dataIngest_stop(obj);
+    rc = hidraIngest_stop(obj);
 
     free (buffer);
 

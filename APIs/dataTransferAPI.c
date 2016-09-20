@@ -458,6 +458,7 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
 //        printf ("polling\n");
         zmq_poll (items, 2, -1);
 
+        // fileOpSocket is polling
         if (items [0].revents & ZMQ_POLLIN)
         {
             printf ("fileOpSocket is polling\n");
@@ -544,6 +545,7 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
 
         }
 
+        // dataSocket is polling
         if (items [1].revents & ZMQ_POLLIN)
         {
             printf ("dataSocket is polling\n");

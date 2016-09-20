@@ -14,7 +14,7 @@ if not API_PATH in sys.path:
     sys.path.append ( API_PATH )
 del API_PATH
 
-from dataIngestAPI import dataIngest
+from hidraIngest import HidraIngest
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -24,7 +24,7 @@ import helpers
 
 #enable logging
 logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfile     = os.path.join(logfilePath, "testDataIngestAPI.log")
+logfile     = os.path.join(logfilePath, "testHidraIngest.log")
 helpers.initLogging(logfile, True, "DEBUG")
 
 

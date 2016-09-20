@@ -46,12 +46,12 @@ def isWindows():
     return returnValue
 
 
-class dataIngest():
+class HidraIngest():
     # return error code
     def __init__ (self, useLog = False, context = None):
 
         if useLog:
-            self.log = logging.getLogger("dataIngestAPI")
+            self.log = logging.getLogger("HidraIngest")
         elif useLog == None:
             self.log = noLoggingFunction()
         else:

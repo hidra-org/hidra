@@ -1,6 +1,6 @@
-// API to ingest data into a data transfer unit
+// API to ingest data into a HiDRA unit
 
-#include <dataIngestAPI.h>
+#include <hidraIngest.h>
 #include <zmq.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -98,7 +98,7 @@ HIDRA_ERROR s_recv_multipart (void *socket, char **multipartMessage, int *len, i
 }
 
 
-struct dataIngest {
+struct hidraIngest {
 
     char *localhost;
     char *extIp;
@@ -128,9 +128,9 @@ struct dataIngest {
 };
 
 
-HIDRA_ERROR dataIngest_init (dataIngest **out)
+HIDRA_ERROR hidraIngest_init (hidraIngest **out)
 {
-    dataIngest* dI = malloc(sizeof(dataIngest));
+    hidraIngest* dI = malloc(sizeof(hidraIngest));
 
     *out = NULL;
 
@@ -234,7 +234,7 @@ HIDRA_ERROR dataIngest_init (dataIngest **out)
 }
 
 
-HIDRA_ERROR dataIngest_createFile (dataIngest *dI, char *fileName)
+HIDRA_ERROR hidraIngest_createFile (hidraIngest *dI, char *fileName)
 {
 
 //        if self.openFile and self.openFile != filename:
@@ -280,7 +280,7 @@ HIDRA_ERROR dataIngest_createFile (dataIngest *dI, char *fileName)
 }
 
 
-HIDRA_ERROR dataIngest_write (dataIngest *dI, char *data, int size)
+HIDRA_ERROR hidraIngest_write (hidraIngest *dI, char *data, int size)
 {
 
     int rc;
@@ -314,7 +314,7 @@ HIDRA_ERROR dataIngest_write (dataIngest *dI, char *data, int size)
 };
 
 
-HIDRA_ERROR dataIngest_closeFile (dataIngest *dI)
+HIDRA_ERROR hidraIngest_closeFile (hidraIngest *dI)
 {
 
     char *message = "CLOSE_FILE";
@@ -366,7 +366,7 @@ HIDRA_ERROR dataIngest_closeFile (dataIngest *dI)
     return SUCCESS;
 };
 
-HIDRA_ERROR dataIngest_stop (dataIngest *dI)
+HIDRA_ERROR hidraIngest_stop (hidraIngest *dI)
 {
 
     printf ("closing fileOpSocket...\n");
