@@ -29,7 +29,7 @@ static char* s_recv (void *socket)
 }
 
 
-static int s_send (char* socketName, void * socket, char* string)
+static int s_send_ (char* socketName, void * socket, char* string)
 {
 //    printf("Sending: %s\n", string);
     int bytesSent = zmq_send (socket, string, strlen (string), 0);
@@ -44,6 +44,29 @@ static int s_send (char* socketName, void * socket, char* string)
     {
         printf("%s send: %s\n", socketName, string);
     }
+
+    return bytesSent;
+}
+
+
+// flags could be 0 or ZMQ_SNDMORE
+static int s_send (void * socket, const char* string, int len, int flags)
+{
+    int bytesSent;
+    int rc;
+
+    /* Create a new message, allocating bytes for message content */
+    zmq_msg_t message;
+    printf("Sent message of size: %i\n", len);
+    rc = zmq_msg_init_size (&message, len);
+    assert (rc == 0);
+
+    /* Fill in message content */
+    memcpy (zmq_msg_data (&message), string, len);
+
+    /* Send the message to the socket */
+    bytesSent = zmq_msg_send (&message, socket, flags);
+    assert (bytesSent == len);
 
     return bytesSent;
 }
@@ -87,6 +110,40 @@ HIDRA_ERROR s_recv_multipart (void *socket, char **multipartMessage, int *len, i
 }
 
 
+inline void print_array (char **array, int *len)
+{
+    int i;
+
+    for ( i = 0; i < *len; i++)
+    {
+        printf("%s, ", array[i]);
+    }
+    printf("\n");
+}
+
+
+inline void free_array (char **array, int *len)
+{
+    int i;
+    printf("free_array\n");
+
+    if (array != NULL)
+    {
+        printf("free_array: in if\n");
+
+        for ( i = 0; i < *len; i++)
+        {
+            printf("free_array: in for\n");
+            if (array[i] != NULL) free(array[i]);
+            printf("free_array: in for2\n");
+        }
+        free (array);
+        array = NULL;
+
+    }
+}
+
+
 struct dataTransfer {
 
     char *localhost;
@@ -111,7 +168,8 @@ struct dataTransfer {
 
     int numberOfStreams;
     char **recvdCloseFrom;
-    char *replyToSignal;
+    char **replyToSignal;
+    int replyToSigLen;
     int allCloseRecvd;
 
     int runLoop;
@@ -161,6 +219,7 @@ HIDRA_ERROR dataTransfer_init (dataTransfer_t **out, char *connectionType)
     dT->numberOfStreams = 0;
     dT->recvdCloseFrom  = NULL;
     dT->replyToSignal   = NULL;
+    dT->replyToSigLen   = 0;
     dT->allCloseRecvd   = 0;
 
     dT->runLoop         = 1;
@@ -358,23 +417,21 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage, int *me
             printf("All close-file-signals arrived\n");
             dT->allCloseRecvd = 1;
 
-            printf("replyToSignal: %s\n", dT->replyToSignal);
             if (dT->replyToSignal != NULL)
             {
-                rc = s_send ("fileOpSocket", dT->fileOpSocket, dT->replyToSignal);
+                printf("replyToSignal: ");
+                print_array (dT->replyToSignal, &dT->replyToSigLen);
+
+                rc = s_send (dT->fileOpSocket, dT->replyToSignal[0], strlen(dT->replyToSignal[0]), ZMQ_SNDMORE);
+                rc = s_send (dT->fileOpSocket, dT->replyToSignal[1], strlen(dT->replyToSignal[1]), 0);
                 if (rc == -1) return COMMUNICATIONFAILED;
 
-                free (dT->replyToSignal);
-                dT->replyToSignal = NULL;
-                for (i = 0; i < dT->numberOfStreams; i++)
-                {
-                    if (dT->recvdCloseFrom[i] != NULL) free(dT->recvdCloseFrom[i]);
-                    dT->recvdCloseFrom[i] = NULL;
-                }
-                if (dT->recvdCloseFrom != NULL) free (dT->recvdCloseFrom);
                 if (dT->filename != NULL) free (dT->filename);
+                free_array (dT->replyToSignal, &dT->replyToSigLen);
+                free_array (dT->recvdCloseFrom, &dT->numberOfStreams);
 
                 dT->filename = NULL;
+                dT->replyToSignal = NULL;
                 dT->recvdCloseFrom = NULL;
                 dT->allCloseRecvd = 0;
                 dT->runLoop = 0;
@@ -455,7 +512,7 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
 
     while (dT->runLoop)
     {
-//        printf ("polling\n");
+        printf ("polling\n");
         zmq_poll (items, 2, -1);
 
         // fileOpSocket is polling
@@ -474,52 +531,11 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
             }
             printf ("fileOpSocket recv: '%s' for file '%s'\n", multipartMessage[0], multipartMessage[1]);
 
-            if (strcmp(multipartMessage[0],"CLOSE_FILE") == 0)
+            if (strcmp(multipartMessage[0],"OPEN_FILE") == 0)
             {
-                if ( dT->allCloseRecvd )
-                {
-                    rc = s_send ("fileOpSocket", dT->fileOpSocket, multipartMessage[0]);
-                    if (rc == -1) return COMMUNICATIONFAILED;
-
-                    char *recv_filename = multipartMessage[1];
-
-                    // check if received close call belongs to the opened file
-                    if (strcmp(recv_filename, dT->filename) == 0)
-                    {
-                        dT->closeCb(dT->cbParams);
-                    }
-                    else
-                    {
-                        perror("Close event for different file received.");
-                        //TODO react
-                    }
-
-                    free (dT->replyToSignal);
-                    dT->replyToSignal = NULL;
-                    for (i = 0; i < dT->numberOfStreams; i++)
-                    {
-                        if (dT->recvdCloseFrom[i] != NULL) free(dT->recvdCloseFrom[i]);
-                        dT->recvdCloseFrom[i] = NULL;
-                    }
-                    if (dT->recvdCloseFrom != NULL) free (dT->recvdCloseFrom);
-                    if (dT->filename != NULL) free (dT->filename);
-
-                    dT->filename = NULL;
-                    dT->recvdCloseFrom = NULL;
-                    dT->allCloseRecvd = 0;
-                    dT->runLoop = 0;
-
-                    break;
-                }
-                else
-                {
-                    dT->replyToSignal = strdup(multipartMessage[0]);
-                    printf("Sent replyToSignal: %s\n", dT->replyToSignal);
-                }
-            }
-            else if (strcmp(multipartMessage[0],"OPEN_FILE") == 0)
-            {
-                rc = s_send ("fileOpSocket", dT->fileOpSocket, multipartMessage[0]);
+                //TODO for loop over len
+                rc = s_send (dT->fileOpSocket, multipartMessage[0], strlen(multipartMessage[0]), ZMQ_SNDMORE);
+                rc = s_send (dT->fileOpSocket, multipartMessage[1], strlen(multipartMessage[1]), 0);
                 if (rc == -1) return COMMUNICATIONFAILED;
 
                 dT->filename = strdup(multipartMessage[1]);
@@ -529,11 +545,59 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
 
                 dT->openCb(dT->cbParams, dT->filename);
             }
+            else if (strcmp(multipartMessage[0],"CLOSE_FILE") == 0)
+            {
+                if ( dT->allCloseRecvd )
+                {
+                    //TODO for loop over len
+                    rc = s_send (dT->fileOpSocket, multipartMessage[0], strlen(multipartMessage[0]), ZMQ_SNDMORE);
+                    rc = s_send (dT->fileOpSocket, multipartMessage[1], strlen(multipartMessage[1]), 0);
+                    if (rc == -1) return COMMUNICATIONFAILED;
+
+                    // check if received close call belongs to the opened file
+                    if (strcmp(multipartMessage[1], dT->filename) == 0)
+                    {
+                        dT->closeCb(dT->cbParams);
+                    }
+                    else
+                    {
+                        perror("Close event for different file received.");
+                        //TODO react
+                    }
+
+                    if (dT->filename != NULL) free (dT->filename);
+                    free_array (dT->replyToSignal, &dT->replyToSigLen);
+                    free_array (dT->recvdCloseFrom, &dT->numberOfStreams);
+
+                    dT->filename = NULL;
+                    dT->replyToSignal = NULL;
+                    dT->recvdCloseFrom = NULL;
+                    dT->allCloseRecvd = 0;
+                    dT->runLoop = 0;
+
+                    break;
+                }
+                else
+                {
+                    dT->replyToSigLen = len;
+                    dT->replyToSignal = malloc(sizeof(char*) * len);
+
+                    printf("Set replyToSignal: ");
+                    for (i = 0; i < len; i++)
+                    {
+                        dT->replyToSignal[i] = strdup(multipartMessage[i]);
+                        printf("%s ", dT->replyToSignal[i]);
+                    }
+                    printf("\n");
+                }
+            }
             else
             {
                 printf("Not supported message received\n");
 
-                rc = s_send ("fileOpSocket", dT->fileOpSocket, "ERROR");
+                message = "ERROR";
+                rc = s_send (dT->fileOpSocket, message, strlen(message), ZMQ_SNDMORE);
+                rc = s_send (dT->fileOpSocket, multipartMessage[1], strlen(multipartMessage[1]), 0);
                 if (rc == -1) return COMMUNICATIONFAILED;
             }
 
@@ -602,7 +666,10 @@ HIDRA_ERROR dataTransfer_stop (dataTransfer_t *dT)
 //  perror("Closing ZMQ context...failed")
 
     if (dT->nexusStarted) free (dT->nexusStarted);
-    if (dT->recvdCloseFrom != NULL) free (dT->recvdCloseFrom);
+    free_array (dT->recvdCloseFrom, &dT->numberOfStreams);
+
+    if (dT->replyToSignal != NULL) dT->replyToSignal = NULL;
+    if (dT->recvdCloseFrom != NULL) dT->recvdCloseFrom = NULL;
     free(dT->metadata);
     free (dT);
     printf ("Cleanup finished.\n");

@@ -477,7 +477,7 @@ class dataTransfer():
                     self.fileOpened = True
 #                    return message
                 else:
-                    self.fileOpSocket.send("ERROR")
+                    self.fileOpSocket.send_multipart(["ERROR"])
                     self.log.error("Not supported message received")
 
             if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:

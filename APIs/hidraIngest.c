@@ -240,11 +240,15 @@ HIDRA_ERROR hidraIngest_createFile (hidraIngest *dI, char *fileName)
 //        if self.openFile and self.openFile != filename:
 //            raise Exception("File " + str(filename) + " already opened.")
 
-    char *message;
+    char *message = "OPEN_FILE";
     int rc;
     char *token;
     char *openFile;
     char filename[strlen(fileName)];
+    char *multipartMessage[2];
+    int messageSize[2];
+    int len = 0;
+    int i;
 
     strcpy(filename, fileName);
 
@@ -261,20 +265,24 @@ HIDRA_ERROR hidraIngest_createFile (hidraIngest *dI, char *fileName)
     printf( "openFile %s\n", dI->openFile );
 
     // Send notification to receiver
-    message = "OPEN_FILE";
     rc = s_send (dI->fileOpSocket, message, strlen(message), ZMQ_SNDMORE);
     if (rc == -1) return COMMUNICATIONFAILED;
     rc = s_send (dI->fileOpSocket, dI->openFile, strlen(dI->openFile), 0);
     if (rc == -1) return COMMUNICATIONFAILED;
     printf ("Sending signal to open a new file.\n");
 
-    message = s_recv (dI->fileOpSocket);
-    printf ("Received responce: '%s'\n", message);
+    s_recv_multipart (dI->fileOpSocket, multipartMessage, &len, messageSize);
+    printf ("Received responce: '%s' for file '%s'\n", multipartMessage[0], multipartMessage[1]);
+    //TODO check if received signal is correct
 
     dI->filename = fileName;
     dI->filePart = 0;
 
-    free (message);
+    for (i = 0; i < len; i++)
+    {
+        free(multipartMessage[i]);
+    };
+
 
     return SUCCESS;
 }
@@ -318,7 +326,10 @@ HIDRA_ERROR hidraIngest_closeFile (hidraIngest *dI)
 {
 
     char *message = "CLOSE_FILE";
-    char *answer;
+    char *multipartMessage[2];
+    int messageSize[2];
+    int len = 0;
+    int i;
 
     int rc;
 
@@ -347,13 +358,14 @@ HIDRA_ERROR hidraIngest_closeFile (hidraIngest *dI)
 //    // if there was a response
 //    if socks and self.fileOpSocket in socks and socks[self.fileOpSocket] == zmq.POLLIN:
     // Get the reply.
-    answer = s_recv (dI->fileOpSocket);
-    printf ("Received answer to signal: %s\n", answer);
+    s_recv_multipart (dI->fileOpSocket, multipartMessage, &len, messageSize);
+    printf ("Received answer to signal: '%s' for file '%s'\n", multipartMessage[0], multipartMessage[1]);
 
-    if ( strcmp(message,answer) != 0 )
+    //TODO compare whole message
+    if ( strcmp(message,multipartMessage[0]) != 0 )
     {
         perror ("Something went wrong while notifying to close the file");
-        printf ("recieved message: %s\n", answer);
+        printf ("recieved message: %s\n", multipartMessage[0]);
         printf ("send message: %s\n", message);
     };
 
@@ -361,7 +373,10 @@ HIDRA_ERROR hidraIngest_closeFile (hidraIngest *dI)
     dI->filePart = 0;
     free (dI->openFile);
 
-    free (answer);
+    for (i = 0; i < len; i++)
+    {
+        free(multipartMessage[i]);
+    };
 
     return SUCCESS;
 };
