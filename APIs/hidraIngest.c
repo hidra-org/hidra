@@ -19,6 +19,27 @@ const char* PATH_SEPARATOR =
 #endif
 
 
+inline void free_array (char ***array, int *len)
+{
+    int i;
+    printf("free_array\n");
+
+    if (*array != NULL)
+    {
+        printf("free_array: in if\n");
+
+        for ( i = 0; i < *len; i++)
+        {
+            printf ("free_array: in for\n");
+            if ((*array)[i] != NULL) free ((*array)[i]);
+            printf ("free_array: in for2\n");
+        }
+        free (*array);
+        *array = NULL;
+    }
+}
+
+
 // helper functions for sending and receiving messages
 // source: Pieter Hintjens: ZeroMQ; O'Reilly
 static char* s_recv (void *socket)
@@ -60,26 +81,35 @@ static int s_send (void * socket, const char* string, int len, int flags)
 }
 
 
-HIDRA_ERROR s_recv_multipart (void *socket, char **multipartMessage, int *len, int *messageSize)
+HIDRA_ERROR s_recv_multipart (void *socket, char ***multipartMessage, int *len, int **messageSize)
 {
     int i = 0;
+    int j;
     int more;
     size_t more_size = sizeof(more);
     zmq_msg_t message;
+
+    char **temp;
+    int *temp2;
+
+    *multipartMessage = malloc (sizeof(char*));
+    *messageSize = malloc (sizeof(int));
 
     while (1)
     {
         //  Wait for next request from client
         zmq_msg_init (&message);
-        messageSize[i] = zmq_msg_recv (&message, socket, 0);
+        (*messageSize)[i] = zmq_msg_recv (&message, socket, 0);
 
         //Process message
-        printf("Received message of size: %d\n", messageSize[i]);
-        multipartMessage[i] = malloc (messageSize[i] + 1);
+        printf("Received message of size: %d\n", (*messageSize)[i]);
+        (*multipartMessage)[i] = malloc ((*messageSize)[i] + 1);
 
-        memcpy (multipartMessage[i], zmq_msg_data (&message), messageSize[i]);
-        multipartMessage[i] [messageSize[i]] = 0;
-//        printf("recieved string: %s\n", multipartMessage[i]);
+
+
+        memcpy ((*multipartMessage)[i], zmq_msg_data (&message), (*messageSize)[i]);
+        (*multipartMessage)[i] [(*messageSize)[i]] = 0;
+//        printf("recieved string: %s\n", (*multipartMessage)[i]);
 
         i++;
 
@@ -90,11 +120,29 @@ HIDRA_ERROR s_recv_multipart (void *socket, char **multipartMessage, int *len, i
 //            printf("last received\n");
             *len = i;
             break;
-        };
+        }
+        else
+        {
+            temp=realloc((*multipartMessage),(i+2)*sizeof(char*)); // give the pointer some memory
+            temp2=realloc((*messageSize),(i+2)*sizeof(int)); // give the pointer some memory
+
+            if (temp != NULL && temp2 != NULL)
+            {
+                (*multipartMessage)=temp;
+                (*messageSize)=temp2;
+            }
+            else
+            {
+                free_array (multipartMessage, &i);
+                free (messageSize);
+
+                printf("Error allocating memory!\n");
+                return DATASAVINGERROR;
+            }
+        }
     }
 
     return SUCCESS;
-
 }
 
 
@@ -245,8 +293,8 @@ HIDRA_ERROR hidraIngest_createFile (hidraIngest *dI, char *fileName)
     char *token;
     char *openFile;
     char filename[strlen(fileName)];
-    char *multipartMessage[2];
-    int messageSize[2];
+    char **multipartMessage;
+    int *messageSize;
     int len = 0;
     int i;
 
@@ -271,18 +319,20 @@ HIDRA_ERROR hidraIngest_createFile (hidraIngest *dI, char *fileName)
     if (rc == -1) return COMMUNICATIONFAILED;
     printf ("Sending signal to open a new file.\n");
 
-    s_recv_multipart (dI->fileOpSocket, multipartMessage, &len, messageSize);
+    s_recv_multipart (dI->fileOpSocket, &multipartMessage, &len, &messageSize);
     printf ("Received responce: '%s' for file '%s'\n", multipartMessage[0], multipartMessage[1]);
     //TODO check if received signal is correct
 
     dI->filename = fileName;
     dI->filePart = 0;
 
-    for (i = 0; i < len; i++)
+/*    for (i = 0; i < len; i++)
     {
         free(multipartMessage[i]);
     };
-
+*/
+    free_array (&multipartMessage, &len);
+    free (messageSize);
 
     return SUCCESS;
 }
@@ -326,8 +376,8 @@ HIDRA_ERROR hidraIngest_closeFile (hidraIngest *dI)
 {
 
     char *message = "CLOSE_FILE";
-    char *multipartMessage[2];
-    int messageSize[2];
+    char **multipartMessage;
+    int *messageSize;
     int len = 0;
     int i;
 
@@ -358,7 +408,7 @@ HIDRA_ERROR hidraIngest_closeFile (hidraIngest *dI)
 //    // if there was a response
 //    if socks and self.fileOpSocket in socks and socks[self.fileOpSocket] == zmq.POLLIN:
     // Get the reply.
-    s_recv_multipart (dI->fileOpSocket, multipartMessage, &len, messageSize);
+    s_recv_multipart (dI->fileOpSocket, &multipartMessage, &len, &messageSize);
     printf ("Received answer to signal: '%s' for file '%s'\n", multipartMessage[0], multipartMessage[1]);
 
     //TODO compare whole message
@@ -373,10 +423,13 @@ HIDRA_ERROR hidraIngest_closeFile (hidraIngest *dI)
     dI->filePart = 0;
     free (dI->openFile);
 
-    for (i = 0; i < len; i++)
+/*    for (i = 0; i < len; i++)
     {
         free(multipartMessage[i]);
     };
+*/
+    free_array (&multipartMessage, &len);
+    free (messageSize);
 
     return SUCCESS;
 };

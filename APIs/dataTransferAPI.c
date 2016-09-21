@@ -11,6 +11,27 @@
 #include <json.h>
 
 
+inline void free_array (char ***array, int *len)
+{
+    int i;
+    printf("free_array\n");
+
+    if (*array != NULL)
+    {
+        printf("free_array: in if\n");
+
+        for ( i = 0; i < *len; i++)
+        {
+            printf("free_array: in for\n");
+            if ((*array)[i] != NULL) free((*array)[i]);
+            printf("free_array: in for2\n");
+        }
+        free (*array);
+        *array = NULL;
+    }
+}
+
+
 // helper functions for sending and receiving messages
 // source: Pieter Hintjens: ZeroMQ; O'Reilly
 static char* s_recv (void *socket)
@@ -72,26 +93,35 @@ static int s_send (void * socket, const char* string, int len, int flags)
 }
 
 
-HIDRA_ERROR s_recv_multipart (void *socket, char **multipartMessage, int *len, int *messageSize)
+HIDRA_ERROR s_recv_multipart (void *socket, char ***multipartMessage, int *len, int **messageSize)
 {
     int i = 0;
+    int j;
     int more;
     size_t more_size = sizeof(more);
     zmq_msg_t message;
+
+    char **temp;
+    int *temp2;
+
+    *multipartMessage = malloc (sizeof(char*));
+    *messageSize = malloc (sizeof(int));
 
     while (1)
     {
         //  Wait for next request from client
         zmq_msg_init (&message);
-        messageSize[i] = zmq_msg_recv (&message, socket, 0);
+        (*messageSize)[i] = zmq_msg_recv (&message, socket, 0);
 
         //Process message
-        printf("Received message of size: %d\n", messageSize[i]);
-        multipartMessage[i] = malloc (messageSize[i] + 1);
+        printf("Received message of size: %d\n", (*messageSize)[i]);
+        (*multipartMessage)[i] = malloc ((*messageSize)[i] + 1);
 
-        memcpy (multipartMessage[i], zmq_msg_data (&message), messageSize[i]);
-        multipartMessage[i] [messageSize[i]] = 0;
-//        printf("recieved string: %s\n", multipartMessage[i]);
+
+
+        memcpy ((*multipartMessage)[i], zmq_msg_data (&message), (*messageSize)[i]);
+        (*multipartMessage)[i] [(*messageSize)[i]] = 0;
+//        printf("recieved string: %s\n", (*multipartMessage)[i]);
 
         i++;
 
@@ -102,13 +132,30 @@ HIDRA_ERROR s_recv_multipart (void *socket, char **multipartMessage, int *len, i
 //            printf("last received\n");
             *len = i;
             break;
-        };
+        }
+        else
+        {
+            temp=realloc((*multipartMessage),(i+2)*sizeof(char*)); // give the pointer some memory
+            temp2=realloc((*messageSize),(i+2)*sizeof(int)); // give the pointer some memory
+
+            if (temp != NULL && temp2 != NULL)
+            {
+                (*multipartMessage)=temp;
+                (*messageSize)=temp2;
+            }
+            else
+            {
+                free_array (multipartMessage, &i);
+                free (messageSize);
+
+                printf("Error allocating memory!\n");
+                return DATASAVINGERROR;
+            }
+        }
     }
 
     return SUCCESS;
-
 }
-
 
 inline void print_array (char **array, int *len)
 {
@@ -119,28 +166,6 @@ inline void print_array (char **array, int *len)
         printf("%s, ", array[i]);
     }
     printf("\n");
-}
-
-
-inline void free_array (char **array, int *len)
-{
-    int i;
-    printf("free_array\n");
-
-    if (array != NULL)
-    {
-        printf("free_array: in if\n");
-
-        for ( i = 0; i < *len; i++)
-        {
-            printf("free_array: in for\n");
-            if (array[i] != NULL) free(array[i]);
-            printf("free_array: in for2\n");
-        }
-        free (array);
-        array = NULL;
-
-    }
 }
 
 
@@ -427,12 +452,10 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage, int *me
                 if (rc == -1) return COMMUNICATIONFAILED;
 
                 if (dT->filename != NULL) free (dT->filename);
-                free_array (dT->replyToSignal, &dT->replyToSigLen);
-                free_array (dT->recvdCloseFrom, &dT->numberOfStreams);
+                free_array (&dT->replyToSignal, &dT->replyToSigLen);
+                free_array (&dT->recvdCloseFrom, &dT->numberOfStreams);
 
                 dT->filename = NULL;
-                dT->replyToSignal = NULL;
-                dT->recvdCloseFrom = NULL;
                 dT->allCloseRecvd = 0;
                 dT->runLoop = 0;
 
@@ -498,8 +521,8 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
     };
     char *message = NULL;
     int rc = 0;
-    char *multipartMessage[2];
-    int messageSize[2];
+    char **multipartMessage;
+    int *messageSize;
     int i = 0;
     int len = 0;
 
@@ -520,7 +543,7 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
         {
             printf ("fileOpSocket is polling\n");
 
-            if (s_recv_multipart (dT->fileOpSocket, multipartMessage, &len, messageSize))
+            if (s_recv_multipart (dT->fileOpSocket, &multipartMessage, &len, &messageSize))
             {
                 perror("Failed to receive data");
                 for (i = 0; i < len; i++)
@@ -566,12 +589,10 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
                     }
 
                     if (dT->filename != NULL) free (dT->filename);
-                    free_array (dT->replyToSignal, &dT->replyToSigLen);
-                    free_array (dT->recvdCloseFrom, &dT->numberOfStreams);
+                    free_array (&dT->replyToSignal, &dT->replyToSigLen);
+                    free_array (&dT->recvdCloseFrom, &dT->numberOfStreams);
 
                     dT->filename = NULL;
-                    dT->replyToSignal = NULL;
-                    dT->recvdCloseFrom = NULL;
                     dT->allCloseRecvd = 0;
                     dT->runLoop = 0;
 
@@ -602,10 +623,8 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
             }
 
 
-            for (i = 0; i < len; i++)
-            {
-                free(multipartMessage[i]);
-            };
+            free_array (&multipartMessage, &len);
+            free (messageSize);
 
         }
 
@@ -614,7 +633,7 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
         {
             printf ("dataSocket is polling\n");
 
-            if (s_recv_multipart (dT->dataSocket, multipartMessage, &len, messageSize))
+            if (s_recv_multipart (dT->dataSocket, &multipartMessage, &len, &messageSize))
             {
                 perror("Failed to receive data");
                 return COMMUNICATIONFAILED;
@@ -634,10 +653,8 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
 
             rc = reactOnMessage (dT, multipartMessage, messageSize);
 
-            for (i = 0; i < len; i++)
-            {
-                free(multipartMessage[i]);
-            };
+            free_array (&multipartMessage, &len);
+            free (messageSize);
 
             if (rc)
             {
@@ -666,10 +683,8 @@ HIDRA_ERROR dataTransfer_stop (dataTransfer_t *dT)
 //  perror("Closing ZMQ context...failed")
 
     if (dT->nexusStarted) free (dT->nexusStarted);
-    free_array (dT->recvdCloseFrom, &dT->numberOfStreams);
+    free_array (&dT->recvdCloseFrom, &dT->numberOfStreams);
 
-    if (dT->replyToSignal != NULL) dT->replyToSignal = NULL;
-    if (dT->recvdCloseFrom != NULL) dT->recvdCloseFrom = NULL;
     free(dT->metadata);
     free (dT);
     printf ("Cleanup finished.\n");
