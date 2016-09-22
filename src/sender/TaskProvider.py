@@ -6,7 +6,7 @@ import os
 import logging
 import sys
 import trace
-import cPickle
+import json
 import signal
 import errno
 
@@ -180,9 +180,9 @@ class TaskProvider():
                 # get requests for this event
                 try:
                     self.log.debug("Get requests...")
-                    self.requestFwSocket.send_multipart(["GET_REQUESTS", cPickle.dumps(workload["filename"])])
+                    self.requestFwSocket.send_multipart(["GET_REQUESTS", json.dumps(workload["filename"])])
 
-                    requests = cPickle.loads(self.requestFwSocket.recv())
+                    requests = json.loads(self.requestFwSocket.recv())
                     self.log.debug("Requests: " + str(requests))
                 except TypeError:
                     # This happens when CLOSE_FILE is sent as workload
@@ -195,7 +195,7 @@ class TaskProvider():
                 # build message dict
                 try:
                     self.log.debug("Building message dict...")
-                    messageDict = cPickle.dumps(workload)  #sets correct escape characters
+                    messageDict = json.dumps(workload)  #sets correct escape characters
                 except:
                     self.log.error("Unable to assemble message dict.", exc_info=True)
                     continue
@@ -205,7 +205,7 @@ class TaskProvider():
                     self.log.debug("Sending message...")
                     message = [messageDict]
                     if requests != ["None"]:
-                        message.append(cPickle.dumps(requests))
+                        message.append(json.dumps(requests))
                     self.log.debug(str(message))
                     self.routerSocket.send_multipart(message)
                 except:
@@ -309,7 +309,7 @@ class requestResponder():
             request = self.requestFwSocket.recv_multipart()
             self.log.debug("[requestResponder] Received request: " + str(request) )
 
-            self.requestFwSocket.send(cPickle.dumps(openRequests))
+            self.requestFwSocket.send(json.dumps(openRequests))
             self.log.debug("[requestResponder] Answer: " + str(openRequests) )
 
 

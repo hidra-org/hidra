@@ -6,7 +6,6 @@ import sys
 import time
 import logging
 import traceback
-import cPickle
 import json
 import shutil
 import signal
@@ -164,8 +163,8 @@ class DataDispatcher():
 
                 if len(message) >= 2:
 
-                    workload = cPickle.loads(message[0])
-                    targets  = cPickle.loads(message[1])
+                    workload = json.loads(message[0])
+                    targets  = json.loads(message[1])
 
                     if self.fixedStreamId:
                         targets.insert(0,fixedStreamId)
@@ -176,7 +175,7 @@ class DataDispatcher():
 
                 else:
                     #TODO is this needed?
-                    workload = cPickle.loads(message[0])
+                    workload = json.loads(message[0])
 
                     if workload == b"CLOSE_FILE":
                         if self.fixedStreamId:
@@ -265,7 +264,7 @@ class DataDispatcher():
 
                 elif message[0] == b"CLOSE_SOCKETS":
 
-                    targets  = cPickle.loads(message[1])
+                    targets  = json.loads(message[1])
 
                     for socketId, prio, suffix in targets:
                         if self.openConnections.has_key(socketId):
@@ -406,8 +405,8 @@ if __name__ == '__main__':
             }
     targets = [['localhost:6005', 1, [".cbf"], "data"], ['localhost:6006', 0, [".cbf"], "data"]]
 
-    message = [ cPickle.dumps(metadata), cPickle.dumps(targets) ]
-#    message = [ cPickle.dumps(metadata)]
+    message = [ json.dumps(metadata), json.dumps(targets) ]
+#    message = [ json.dumps(metadata)]
 
     time.sleep(1)
 

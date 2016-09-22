@@ -6,7 +6,6 @@ import os
 import platform
 import zmq
 import logging
-import cPickle
 import traceback
 import json
 

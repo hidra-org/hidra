@@ -4,7 +4,6 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 import os
 import zmq
 import logging
-import cPickle
 import json
 import sys
 
@@ -198,7 +197,7 @@ if __name__ == '__main__':
 #                    "filepart" : 0
 #                    }
             message = '{ "filePart": 0, "filename": "' + targetFile + '" }'
-#            eventSocket.send(cPickle.dumps(message))
+#            eventSocket.send(json.dumps(message))
             eventSocket.send(message)
             i += 1
 

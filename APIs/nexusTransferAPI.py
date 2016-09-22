@@ -8,7 +8,6 @@ import logging
 import json
 import errno
 import os
-import cPickle
 import traceback
 import multiprocessing
 import time
@@ -296,8 +295,7 @@ class nexusTransfer():
         else:
             #extract multipart message
             try:
-                #TODO exchange cPickle with json
-                metadata = cPickle.loads(multipartMessage[0])
+                metadata = json.loads(multipartMessage[0])
             except:
                 self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
                 metadata = None
