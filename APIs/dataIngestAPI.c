@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
+#include <json.h>
 
 
 // helper functions for sending and receiving messages
@@ -21,41 +22,69 @@ static char* s_recv (void *socket)
         return NULL;
     char *string = malloc (size + 1);
     memcpy (string, zmq_msg_data (&message), size);
-    printf("recieved string: %s\n", string);
+//    printf("recieved string: %s\n", string);
     zmq_msg_close (&message);
     string [size] = 0;
     return string;
 };
 
 
+static int s_send (void * socket, const char* string, int len)
+{
+    int bytesSent;
+    int rc;
+
+    /* Create a new message, allocating bytes for message content */
+    zmq_msg_t message;
+    printf("Sent message of size: %i\n", len);
+    rc = zmq_msg_init_size (&message, len);
+    assert (rc == 0);
+
+    /* Fill in message content */
+    memcpy (zmq_msg_data (&message), string, len);
+
+    /* Send the message to the socket */
+    bytesSent = zmq_msg_send (&message, socket, 0);
+    assert (bytesSent == len);
+
+    return bytesSent;
+}
+
+
+/*
 static int s_send (void * socket, char* string)
 {
-    printf("Sending: %s\n", string);
+//    printf("Sending: %s\n", string);
     int size = zmq_send (socket, string, strlen (string), 0);
-    if (size == -1) {
-        printf("Sending failed\n");
+    if (size == -1)
+    {
+        fprintf(stderr, "Failed to send message (message: '%s'): %s\n",
+                string, strerror( errno ));
 //        fprintf (stderr, "ERROR: Sending failed\n");
 //        perror("");
-    };
+    }
+
     return size;
-
-};
-
+}
+*/
 
 struct dataIngest {
-    char *signalHost;
-    char *extHost;
 
+    char *localhost;
+    char *extIp;
+    char *ipcPath;
+
+    char *signalHost;
     char *signalPort;
-    // has to be the same port as configured in dataManager.conf as eventPort
-    char *eventPort;
-    char *dataPort;
+
+    char *eventDetPort;
+    char *dataFetchPort;
 
     //  Prepare our context and socket
     void *context;
-    void *signalSocket;
-    void *eventSocket;
-    void *dataSocket;
+    void *fileOpSocket;
+    void *eventDetSocket;
+    void *dataFetchSocket;
 
     //  Initialize poll set
 //    zmq::pollitem_t items [];
@@ -63,95 +92,119 @@ struct dataIngest {
     char *filename;
     int  openFile;
     int  filePart;
+
     int  responseTimeout;
+
 };
 
 
-int dataIngest_init (dataIngest **out)
+HIDRA_ERROR dataIngest_init (dataIngest **out)
 {
     dataIngest* dI = malloc(sizeof(dataIngest));
 
     *out = NULL;
 
-    dI->signalHost = "zitpcx19282";
-    dI->extHost    = "0.0.0.0";
+    dI->localhost       = "localhost";
+    dI->extIp           = "0.0.0.0";
+    dI->ipcPath         = "/tmp/HiDRA";
 
-    dI->signalPort = "50050";
-    dI->eventPort  = "50003";
-    dI->dataPort   = "50010";
+    dI->signalHost      = "zitpcx19282";
+    dI->signalPort      = "50050";
 
+    // has to be the same port as configured in dataManager.conf as eventDetPort
+    dI->eventDetPort    = "50003";
+    // has to be the same port as configured in dataManager.conf as dataFetchPort
+    dI->dataFetchPort   = "50010";
+
+    char signalConId[128];
+    char eventDetConId[128];
+    char dataFetchConId[128];
+
+    snprintf(signalConId, sizeof(signalConId), "tcp://%s:%s", dI->signalHost, dI->signalPort);
+
+    // if plattform is Windows:
+//    snprintf(eventDetConId, sizeof(eventDetConId), "tcp://%s:%s", dI->localhost, dI->eventDetPort);
+//    snprintf(dataFetchConId, sizeof(dataFetchConId), "tcp://%s:%s", dI->localhost, dI->dataFetchPort);
+    // else:
+    snprintf(eventDetConId, sizeof(eventDetConId), "ipc://%s/eventDet", dI->ipcPath);
+    snprintf(dataFetchConId, sizeof(dataFetchConId), "ipc://%s/dataFetch", dI->ipcPath);
+
+    // Initialize sockets
     if ( (dI->context = zmq_ctx_new ()) == NULL )
     {
-		perror("ERROR: Cannot create 0MQ context: ");
-		exit(9);
+		perror("Cannot create 0MQ context: ");
+        return ZMQERROR;
 	}
 
-	if ( (dI->signalSocket = zmq_socket (dI->context, ZMQ_REQ)) == NULL )
+	if ( (dI->fileOpSocket = zmq_socket (dI->context, ZMQ_REQ)) == NULL )
     {
-		perror("ERROR: Could not create 0MQ signalSocket: ");
-		exit(9);
+		perror("Could not create 0MQ fileOpSocket");
+        return ZMQERROR;
 	}
 
-	if ( (dI->eventSocket = zmq_socket (dI->context, ZMQ_PUSH)) == NULL )
+	if ( (dI->eventDetSocket = zmq_socket (dI->context, ZMQ_PUSH)) == NULL )
     {
-		perror("ERROR: Could not create 0MQ eventSocket: ");
-		exit(9);
+		perror("Could not create 0MQ eventDetSocket");
+        return ZMQERROR;
 	}
 
-    if ( (dI->dataSocket = zmq_socket (dI->context, ZMQ_PUSH)) == NULL )
+    if ( (dI->dataFetchSocket = zmq_socket (dI->context, ZMQ_PUSH)) == NULL )
     {
-		perror("ERROR: Could not create 0MQ dataSocket: ");
-		exit(9);
+		perror("Could not create 0MQ dataFetchSocket: ");
+        return ZMQERROR;
 	}
 
-    dI->filePart = 0;
+    dI->filePart        = 0;
     dI->responseTimeout = 1000;
 
     char connectionStr[128];
     int rc;
 
     // Create sockets
-    snprintf(connectionStr, sizeof(connectionStr), "tcp://%s:%s", dI->signalHost, dI->signalPort);
-//    rc = zmq_connect(dI->signalSocket, connectionStr);
-//    assert (rc == 0);
-    if ( zmq_connect(dI->signalSocket, connectionStr) )
+    if ( zmq_connect(dI->fileOpSocket, signalConId) )
     {
-        fprintf (stderr, "ERROR: Could not start signalSocket (connect) for '%s'\n", connectionStr);
-        perror("");
-    } else {
-        printf("signalSocket started (connect) for '%s'\n", connectionStr);
+        fprintf(stderr, "Failed to start fileOpSocket (connect) for '%s': %s\n",
+                signalConId, strerror( errno ));
+        //TODO stop socket
+        return ZMQERROR;
+    }
+    else
+    {
+        printf("fileOpSocket started (connect) for '%s'\n", signalConId);
     }
 
-    snprintf(connectionStr, sizeof(connectionStr), "tcp://localhost:%s", dI->eventPort);
-//    rc = zmq_connect(dI->eventSocket, connectionStr);
-//    assert (rc == 0);
-    if ( zmq_connect(dI->eventSocket, connectionStr) )
+    if ( zmq_connect(dI->eventDetSocket, eventDetConId) )
     {
-        fprintf (stderr, "ERROR: Could not start eventSocket (connect) for '%s'\n", connectionStr);
-        perror("");
-    } else {
-        printf("eventSocket started (connect) for '%s'\n", connectionStr);
+        fprintf (stderr, "Failed to start eventDetSocket (connect) for '%s': %s\n",
+                eventDetConId, strerror( errno ));
+        //TODO stop socket
+        return ZMQERROR;
+    }
+    else
+    {
+        printf("eventDetSocket started (connect) for '%s'\n", eventDetConId);
     }
 
-    snprintf(connectionStr, sizeof(connectionStr), "tcp://localhost:%s", dI->dataPort);
-//    rc = zmq_connect(dI->dataSocket, connectionStr);
-//    assert (rc == 0);
-    if ( zmq_connect(dI->dataSocket, connectionStr) )
+    if ( zmq_connect(dI->dataFetchSocket, dataFetchConId) )
     {
-        fprintf (stderr, "ERROR: Could not start dataSocket (connect) for '%s'\n", connectionStr);
-        perror("");
-    } else {
-        printf("dataSocket started (connect) for '%s'\n", connectionStr);
+        fprintf (stderr, "Failed to start dataFetchSocket (connect) for '%s': %s\n",
+                dataFetchConId, strerror( errno ));
+        //TODO stop socket
+        return ZMQERROR;
+    }
+    else
+    {
+        printf("dataFetchSocket started (connect) for '%s'\n", dataFetchConId);
     }
 
     *out = dI;
 
-    return 0;
+    return SUCCESS;
 
 }
 
 
-int dataIngest_createFile (dataIngest *dI, char *fileName)
+HIDRA_ERROR dataIngest_createFile (dataIngest *dI, char *fileName)
 {
 
 //        if self.openFile and self.openFile != filename:
@@ -161,11 +214,12 @@ int dataIngest_createFile (dataIngest *dI, char *fileName)
     int rc;
 
     // Send notification to receiver
-    rc = s_send (dI->signalSocket, "OPEN_FILE");
+    message = "OPEN_FILE";
+    rc = s_send (dI->fileOpSocket, message, strlen(message));
+    if (rc == -1) return COMMUNICATIONFAILED;
     printf ("Sending signal to open a new file.\n");
 
-//    s_recv (dI->signalSocket, message);
-    message = s_recv (dI->signalSocket);
+    message = s_recv (dI->fileOpSocket);
     printf ("Received responce: '%s'\n", message);
 
     dI->filename = fileName;
@@ -173,32 +227,46 @@ int dataIngest_createFile (dataIngest *dI, char *fileName)
 
     free (message);
 
-    return 0;
+    return SUCCESS;
 }
 
 
-int dataIngest_write (dataIngest *dI, char *data, int size)
-//int dataIngest_write (dataIngest *dI, void *data, int &size)
+HIDRA_ERROR dataIngest_write (dataIngest *dI, char *data, int size)
 {
 
     char message[128];
     int rc;
+    json_object * metadata_json;
+    const char *metadata_string;
 
-    snprintf(message, sizeof(message), "{ \"filePart\": %d, \"filename\": \"%s\" }", dI->filePart, dI->filename);
+
+    metadata_json = json_object_new_object();
+
+    json_object_object_add(metadata_json,"filename", json_object_new_string(dI->filename));
+    json_object_object_add(metadata_json,"filePart", json_object_new_int(dI->filePart));
+    json_object_object_add(metadata_json,"chunkSize", json_object_new_int(size));
+
+    metadata_string = json_object_to_json_string ( metadata_json );
 
     // Send event to eventDetector
-    rc = s_send (dI->eventSocket, message);
+    rc = s_send (dI->eventDetSocket, metadata_string, strlen(metadata_string));
+    if (rc == -1) return COMMUNICATIONFAILED;
+
+    json_object_put ( metadata_json );
 
     // Send data to ZMQ-Queue
-    rc = s_send (dI->dataSocket, data);
+    rc = s_send (dI->dataFetchSocket, data, size);
+    if (rc == -1) return COMMUNICATIONFAILED;
+
+    printf ("Writing: %s\n", message);
 
     dI->filePart += 1;
 
-    return 0;
+    return SUCCESS;
 };
 
 
-int dataIngest_closeFile (dataIngest *dI)
+HIDRA_ERROR dataIngest_closeFile (dataIngest *dI)
 {
 
     char *message = "CLOSE_FILE";
@@ -207,15 +275,17 @@ int dataIngest_closeFile (dataIngest *dI)
     int rc;
 
     // Send close-signal to signal socket
-    rc = s_send (dI->signalSocket, message);
-    printf ("Sending signal to close the file to signalSocket.\n");
-    //        self.log.error("Sending signal to close the file to signalSocket...failed.")
+    rc = s_send (dI->fileOpSocket, message, strlen(message));
+    if (rc == -1) return COMMUNICATIONFAILED;
+    //        perror("Sending signal to close the file to fileOpSocket...failed.")
+    printf ("Sending signal to close the file to fileOpSocket  (sendMessage=%s)\n", message);
 
 
     // send close-signal to event Detector
-    rc = s_send (dI->eventSocket, message);
-    printf ("Sending signal to close the file to eventSocket.(sendMessage=%s)\n", message);
-//        self.log.error("Sending signal to close the file to eventSocket...failed.)")
+    rc = s_send (dI->eventDetSocket, message, strlen(message));
+    if (rc == -1) return COMMUNICATIONFAILED;
+//        perror("Sending signal to close the file to eventDetSocket...failed.)")
+    printf ("Sending signal to close the file to eventDetSocket (sendMessage=%s)\n", message);
 
 
 //    try:
@@ -224,20 +294,17 @@ int dataIngest_closeFile (dataIngest *dI)
 //        socks = None
 //        self.log.error("Could not poll for signal", exc_info=True)
 //
-//    if socks and self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
-    //  Get the reply.
-//    s_recv (dI->signalSocket, answer);
-    answer = s_recv (dI->signalSocket);
+//    // if there was a response
+//    if socks and self.fileOpSocket in socks and socks[self.fileOpSocket] == zmq.POLLIN:
+    // Get the reply.
+    answer = s_recv (dI->fileOpSocket);
     printf ("Received answer to signal: %s\n", answer);
-//    else:
-//        recvMessage = None
 
-
-    if ( message != answer )
+    if ( strcmp(message,answer) != 0 )
     {
+        perror ("Something went wrong while notifying to close the file");
         printf ("recieved message: %s\n", answer);
         printf ("send message: %s\n", message);
-//            raise Exception("Something went wrong while notifying to close the file")
     };
 
     dI->filename = "";
@@ -245,26 +312,26 @@ int dataIngest_closeFile (dataIngest *dI)
 
     free (answer);
 
-    return 0;
+    return SUCCESS;
 };
 
-int dataIngest_stop (dataIngest *dI)
+HIDRA_ERROR dataIngest_stop (dataIngest *dI)
 {
 
-    printf ("closing signalSocket...\n");
-    zmq_close(dI->signalSocket);
-    printf ("closing eventSocket...\n");
-    zmq_close(dI->eventSocket);
-    printf ("closing dataSocket...\n");
-    zmq_close(dI->dataSocket);
-//            self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
+    printf ("closing fileOpSocket...\n");
+    zmq_close(dI->fileOpSocket);
+    printf ("closing eventDetSocket...\n");
+    zmq_close(dI->eventDetSocket);
+    printf ("closing dataFetchSocket...\n");
+    zmq_close(dI->dataFetchSocket);
+//    perror("closing ZMQ Sockets...failed.")
 
     printf ("Closing ZMQ context...\n");
     zmq_ctx_destroy(dI->context);
-//                self.log.error("Closing ZMQ context...failed.", exc_info=True)
+//    perror("Closing ZMQ context...failed.")
 
-//    free (dI);
+    free (dI);
     printf ("Cleanup finished.\n");
 
-    return 0;
+    return SUCCESS;
 };

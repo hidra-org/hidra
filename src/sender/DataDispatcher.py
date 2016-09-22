@@ -6,7 +6,7 @@ import sys
 import time
 import logging
 import traceback
-import cPickle
+import json
 import shutil
 import signal
 from multiprocessing import Process
@@ -37,19 +37,6 @@ class DataDispatcher():
 
     def __init__ (self, id, controlConId, routerConId, chunkSize, fixedStreamId, dataFetcherProp,
                 logQueue, localTarget = None, context = None):
-
-#        dataFetcherProp = {
-#                "type"       : "getFromFile",
-#                "removeFlag" : False
-#                }
-
-#        dataFetcherProp = {
-#                "type"       : "getFromZmq",
-#                "context"    : context,
-#                "extIp"      : "0.0.0.0",
-#                "port"       : "50010"
-#                }
-
 
         self.id              = id
         self.log             = self.__getLogger(logQueue)
@@ -91,6 +78,8 @@ class DataDispatcher():
 
         self.log.info("Loading dataFetcher: " + dataFetcher)
         self.dataFetcher = __import__(dataFetcher)
+
+        self.continueRun = True
 
         if self.dataFetcher.setup(self.log, dataFetcherProp):
             try:
@@ -152,7 +141,9 @@ class DataDispatcher():
 
     def run (self):
 
-        while True:
+        fixedStreamId = [self.fixedStreamId, 0, [""], "data"]
+
+        while self.continueRun:
             self.log.debug("DataDispatcher-" + str(self.id) + ": waiting for new job")
             socks = dict(self.poller.poll())
 
@@ -172,54 +163,60 @@ class DataDispatcher():
 
                 if len(message) >= 2:
 
-                    workload = cPickle.loads(message[0])
-                    targets  = cPickle.loads(message[1])
+                    workload = json.loads(message[0])
+                    targets  = json.loads(message[1])
 
                     if self.fixedStreamId:
-                        targets.insert(0,[self.fixedStreamId, 0, [""], "data"])
+                        targets.insert(0,fixedStreamId)
+                        self.log.debug("Added fixedStreamId {f} to targets {t}.".format(f=fixedStreamId, t=targets))
 
                     # sort the target list by the priority
                     targets = sorted(targets, key=lambda target: target[1])
 
                 else:
                     #TODO is this needed?
-                    workload = cPickle.loads(message[0])
+                    workload = json.loads(message[0])
 
                     if workload == b"CLOSE_FILE":
-                        self.log.debug("Router requested to send signal that file was closed.")
-                        payload = [ workload, self.id ]
+                        if self.fixedStreamId:
+                            self.log.debug("Router requested to send signal that file was closed.")
+                            payload = [ workload, self.id ]
 
-                        # socket already known
-                        if self.fixedStreamId in self.openConnections:
-                            tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
-                            self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0")
+                            # socket already known
+                            if self.fixedStreamId in self.openConnections:
+                                tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                                self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0")
+                            else:
+                                # open socket
+                                socket        = self.context.socket(zmq.PUSH)
+                                connectionStr = "tcp://" + str(self.fixedStreamId)
+
+                                socket.connect(connectionStr)
+                                self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
+
+                                # register socket
+                                self.openConnections[self.fixedStreamId] = socket
+
+                                # send data
+                                tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                                self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0" )
+
+                            # socket not known
+                            if not tracker.done:
+                                self.log.info("Close file signal has not been sent yet, waiting...")
+                                tracker.wait()
+                                self.log.info("Close file signal has not been sent yet, waiting...done")
+
+                            time.sleep(2)
+                            self.log.debug("Continue after sleeping.")
+                            continue
                         else:
-                            # open socket
-                            socket        = context.socket(zmq.PUSH)
-                            connectionStr = "tcp://" + str(self.fixedStreamId)
-
-                            socket.connect(connectionStr)
-                            self.log.info("Start socket (connect): '" + str(connectionStr) + "'")
-
-                            # register socket
-                            self.openConnections[self.fixedStreamId] = socket
-
-                            # send data
-                            tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
-                            self.log.info("Sending close file signal to '" + self.fixedStreamId + "' with priority 0" )
-
-                        # socket not known
-                        if not tracker.done:
-                            self.log.info("Close file signal has not been sent yet, waiting...")
-                            tracker.wait()
-                            self.log.info("Close file signal has not been sent yet, waiting...done")
-
-                        time.sleep(2)
-                        self.log.debug("Continue after sleeping.")
-                        continue
+                            self.log.warning("Router requested to send signal that file was closed, but no target specified.")
+                            continue
 
                     elif self.fixedStreamId:
-                        targets = [[self.fixedStreamId, 0, [""], "data"]]
+                        targets = [fixedStreamId]
+                        self.log.debug("Added fixedStreamId to targets {t}.".format(t=targets))
 
                     else:
                         targets = []
@@ -267,7 +264,7 @@ class DataDispatcher():
 
                 elif message[0] == b"CLOSE_SOCKETS":
 
-                    targets  = cPickle.loads(message[1])
+                    targets  = json.loads(message[1])
 
                     for socketId, prio, suffix in targets:
                         if self.openConnections.has_key(socketId):
@@ -281,6 +278,7 @@ class DataDispatcher():
 
 
     def stop (self):
+        self.continueRun = False
         self.log.debug("Closing sockets for DataDispatcher-" + str(self.id))
 
         for connection in self.openConnections:
@@ -353,7 +351,6 @@ if __name__ == '__main__':
     time.sleep(0.5)
 
     localhost      = "127.0.0.1"
-    extIp          = "0.0.0.0"
     controlPort    = "50005"
     routerPort     = "7000"
 
@@ -375,15 +372,8 @@ if __name__ == '__main__':
             "type"       : "getFromFile",
             "fixSubdirs" : ["commissioning", "current", "local"],
             "storeData"  : False,
-            "removeFlag" : False
+            "removeData" : False
             }
-
-#    dataFetcherProp = {
-#            "type"       : "getFromZmq",
-#            "context"    : context,
-#            "extIp"      : "0.0.0.0",
-#            "port"       : "50010"
-#            }
 
     context       = zmq.Context.instance()
 
@@ -413,10 +403,10 @@ if __name__ == '__main__':
             "relativePath": "local",
             "filename"    : "100.cbf"
             }
-    targets = [['localhost:6005', 1, "data"], ['localhost:6006', 0, "data"]]
+    targets = [['localhost:6005', 1, [".cbf"], "data"], ['localhost:6006', 0, [".cbf"], "data"]]
 
-    message = [ cPickle.dumps(metadata), cPickle.dumps(targets) ]
-#    message = [ cPickle.dumps(metadata)]
+    message = [ json.dumps(metadata), json.dumps(targets) ]
+#    message = [ json.dumps(metadata)]
 
     time.sleep(1)
 
@@ -425,9 +415,9 @@ if __name__ == '__main__':
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received: " + str(json.loads(recv_message[0])))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received 2: " + str(json.loads(recv_message[0])))
     except KeyboardInterrupt:
         pass
     finally:

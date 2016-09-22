@@ -6,7 +6,7 @@ import os
 import logging
 import sys
 import trace
-import cPickle
+import json
 import signal
 import errno
 
@@ -85,6 +85,8 @@ class TaskProvider():
 
         self.eventDetector = self.eventDetectorModule.EventDetector(self.config, logQueue)
 
+        self.continueRun   = True
+
         try:
             self.createSockets()
 
@@ -152,7 +154,7 @@ class TaskProvider():
     def run (self):
         i = 0
 
-        while True:
+        while self.continueRun:
             try:
                 # the event for a file /tmp/test/source/local/file1.tif is of the form:
                 # {
@@ -178,10 +180,13 @@ class TaskProvider():
                 # get requests for this event
                 try:
                     self.log.debug("Get requests...")
-                    self.requestFwSocket.send_multipart(["GET_REQUESTS", cPickle.dumps(workload["filename"])])
+                    self.requestFwSocket.send_multipart(["GET_REQUESTS", json.dumps(workload["filename"])])
 
-                    requests = cPickle.loads(self.requestFwSocket.recv())
+                    requests = json.loads(self.requestFwSocket.recv())
                     self.log.debug("Requests: " + str(requests))
+                except TypeError:
+                    # This happens when CLOSE_FILE is sent as workload
+                    requests = ["None"]
                 except:
                     self.log.error("Get Requests... failed.", exc_info=True)
                     requests = ["None"]
@@ -190,7 +195,7 @@ class TaskProvider():
                 # build message dict
                 try:
                     self.log.debug("Building message dict...")
-                    messageDict = cPickle.dumps(workload)  #sets correct escape characters
+                    messageDict = json.dumps(workload)  #sets correct escape characters
                 except:
                     self.log.error("Unable to assemble message dict.", exc_info=True)
                     continue
@@ -200,7 +205,7 @@ class TaskProvider():
                     self.log.debug("Sending message...")
                     message = [messageDict]
                     if requests != ["None"]:
-                        message.append(cPickle.dumps(requests))
+                        message.append(json.dumps(requests))
                     self.log.debug(str(message))
                     self.routerSocket.send_multipart(message)
                 except:
@@ -230,6 +235,8 @@ class TaskProvider():
 
 
     def stop (self):
+        self.continueRun = False
+
         self.log.debug("Closing sockets for TaskProvider")
         if self.routerSocket:
             self.log.info("Closing routerSocket")
@@ -302,7 +309,7 @@ class requestResponder():
             request = self.requestFwSocket.recv_multipart()
             self.log.debug("[requestResponder] Received request: " + str(request) )
 
-            self.requestFwSocket.send(cPickle.dumps(openRequests))
+            self.requestFwSocket.send(json.dumps(openRequests))
             self.log.debug("[requestResponder] Answer: " + str(openRequests) )
 
 
@@ -323,26 +330,19 @@ if __name__ == '__main__':
     logfile = BASE_PATH + os.sep + "logs" + os.sep + "taskProvider.log"
     logsize = 10485760
 
-#    eventDetectorConfig = {
-#            "eventDetectorType"   : "inotifyx",
-#            "monDir"              : BASE_PATH + os.sep + "data" + os.sep + "source",
-#            "monEventType"        : "IN_CLOSE_WRITE",
-#            "monSubdirs"          : ["commissioning", "current", "local"],
-#            "monSuffixes"         : [".tif", ".cbf"]
-#            }
-
     eventDetectorConfig = {
             "eventDetectorType" : "InotifyxDetector",
             "monDir"            : BASE_PATH + os.sep + "data" + os.sep + "source",
-            "monEventType"      : "IN_CLOSE_WRITE",
             "monSubdirs"        : ["commissioning", "current", "local"],
-            "monSuffixes"       : [".tif", ".cbf"],
+            "monEvents"         : {"IN_CLOSE_WRITE" : [".tif", ".cbf"], "IN_MOVED_TO" : [".log"]},
             "timeout"           : 0.1,
-            "historySize"       : 0
+            "historySize"       : 0,
+            "useCleanUp"        : False,
+            "cleanUpTime"       : 5,
+            "actionTime"        : 120
             }
 
     localhost       = "127.0.0.1"
-    extIp           = "0.0.0.0"
 
     controlPort     = "50005"
     requestFwPort   = "6001"

@@ -5,17 +5,30 @@ import os
 import sys
 import logging
 import traceback
-import cPickle
+import json
 import shutil
+import time
 
 from send_helpers import __sendToTargets
+
+try:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
+except:
+    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( '__file__' ) ))))
+#    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))))
+SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+
+if not SHARED_PATH in sys.path:
+    sys.path.append ( SHARED_PATH )
+del SHARED_PATH
+
+import helpers
 
 
 def setup (log, prop):
 
     if ( not prop.has_key("context") or
-        not prop.has_key("extIp") or
-        not prop.has_key("port") ):
+        not prop.has_key("dataFetchConStr") ):
 
         log.error ("Configuration of wrong format")
         log.debug ("dataFetcherProp="+ str(prop))
@@ -24,10 +37,13 @@ def setup (log, prop):
     else:
 
         # Create zmq socket
-        socket        = prop["context"].socket(zmq.PULL)
-        connectionStr = "tcp://{ip}:{port}".format( ip=prop["extIp"], port=prop["port"] )
-        socket.bind(connectionStr)
-        log.info("Start socket (bind): '" + str(connectionStr) + "'")
+        try:
+            socket        = prop["context"].socket(zmq.PULL)
+            socket.bind(prop["dataFetchConStr"])
+            log.info("Start socket (bind): '" + str(prop["dataFetchConStr"]) + "'")
+        except:
+            log.error("Failed to start comSocket (bind): '" + prop["dataFetchConStr"] + "'", exc_info=True)
+            raise
 
         # register socket
         prop["socket"] = socket
@@ -53,40 +69,32 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
     else:
         targetFile     = None
 
-    try:
-        # For quick testing set filesize of file as chunksize
-        log.debug("get filesize for '" + str(sourceFile) + "'...")
-#        filesize    = os.path.getsize(sourceFile)
-#        fileModTime = os.stat(sourceFile).st_mtime
-#        chunksize   = filesize    #can be used later on to split multipart message
-#        log.debug("filesize(%s) = %s" % (sourceFile, str(filesize)))
-#        log.debug("fileModTime(%s) = %s" % (sourceFile, str(fileModTime)))
+    if targets:
+        try:
+            log.debug("create metadata for source file...")
+            #metadata = {
+            #        "filename"       : ...,
+            #        "fileModTime"    : ...,
+            #        "fileCreateTime" : ...,
+            #        "chunkSize"      : ...
+            #        }
+            metadata[ "filesize"    ]   = None
+            metadata[ "fileModTime" ]   = time.time()
+            metadata[ "fileCreateTime"] = time.time()
+            # chunkSize is coming from ZMQDetector
 
-    except:
-        log.error("Unable to create metadata dictionary.", exc_info=True)
-        raise
-
-    try:
-        log.debug("create metadata for source file...")
-        #metadata = {
-        #        "filename"     : filename,
-        #        "filesize"     : filesize,
-        #        "fileModTime"  : fileModTime,
-        #        "chunkSize"    : self.zmqMessageChunkSize
-        #        }
-#        metadata[ "filesize"    ] = filesize
-#        metadata[ "fileModTime" ] = fileModTime
-        metadata[ "chunkSize"   ] = chunkSize
-
-        log.debug("metadata = " + str(metadata))
-    except:
-        log.error("Unable to assemble multi-part message.", exc_info=True)
-        raise
+            log.debug("metadata = " + str(metadata))
+        except:
+            log.error("Unable to assemble multi-part message.", exc_info=True)
+            raise
 
     return sourceFile, targetFile, metadata
 
 
-def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context):
+def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
+
+    if not targets:
+        return
 
     #reading source file into memory
     try:
@@ -110,7 +118,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         metadataExtended["chunkNumber"] = chunkNumber
 
         payload = []
-        payload.append(cPickle.dumps(metadataExtended))
+        payload.append(json.dumps(metadataExtended))
         payload.append(data)
     except:
         log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
@@ -166,14 +174,13 @@ if __name__ == '__main__':
     receivingPort    = "6005"
     receivingPort2   = "6006"
     extIp            = "0.0.0.0"
-    dataFwPort       = "50010"
+    dataFetchConStr  = "ipc://{path}/{id}".format(path="/tmp/HiDRA", id="dataFetch")
 
     context          = zmq.Context.instance()
 
     dataFwSocket     = context.socket(zmq.PUSH)
-    connectionStr    = "tcp://{ip}:{port}".format( ip=extIp, port=dataFwPort )
-    dataFwSocket.connect(connectionStr)
-    logging.info("=== Start dataFwsocket (connect): '" + str(connectionStr) + "'")
+    dataFwSocket.connect(dataFetchConStr)
+    logging.info("=== Start dataFwsocket (connect): '" + str(dataFetchConStr) + "'")
 
     receivingSocket  = context.socket(zmq.PULL)
     connectionStr    = "tcp://{ip}:{port}".format( ip=extIp, port=receivingPort )
@@ -202,36 +209,35 @@ if __name__ == '__main__':
             "relativePath": os.sep + "local" + os.sep + "raw",
             "filename"    : "100.cbf"
             }
-    targets = [['localhost:' + receivingPort, 1, "data"], ['localhost:' + receivingPort2, 0, "data"]]
+    targets = [['localhost:' + receivingPort, 1, [".cbf", ".tif"], "data"], ['localhost:' + receivingPort2, 0, [".cbf", ".tif"], "data"]]
 
     chunkSize       = 10485760 ; # = 1024*1024*10 = 10 MiB
     localTarget     = BASE_PATH + os.sep + "data" + os.sep + "target"
     openConnections = dict()
 
     dataFetcherProp = {
-            "type"       : "getFromZmq",
-            "context"    : context,
-            "extIp"      : extIp,
-            "port"       : dataFwPort
+            "type"            : "getFromZmq",
+            "context"         : context,
+            "dataFetchConStr" : dataFetchConStr
             }
 
     logging.debug("openConnections before function call: " + str(openConnections))
 
     setup(logging, dataFetcherProp)
 
-    sourceFile, targetFile, metadata = getMetadata (logging, workload, chunkSize, localTarget = None)
+    sourceFile, targetFile, metadata = getMetadata (logging, dataFetcherProp, targets, workload, chunkSize, localTarget = None)
     sendData(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
-    finishDataHandling(logging, sourceFile, targetFile, dataFetcherProp)
+    finishDataHandling(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
     logging.debug("openConnections after function call: " + str(openConnections))
 
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received: " + str(json.loads(recv_message[0])))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received 2: " + str(json.loads(recv_message[0])))
     except KeyboardInterrupt:
         pass
     finally:

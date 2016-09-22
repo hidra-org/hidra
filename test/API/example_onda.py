@@ -40,7 +40,9 @@ class worker(multiprocessing.Process):
         self.basePath = basePath
 
         self.log.debug("start dataTransfer on port " +str(port))
-        self.query.start(port)
+        # targets are locally
+        self.query.start([signalHost, port])
+#        self.query.start(port)
 
         self.run()
 
@@ -54,14 +56,17 @@ class worker(multiprocessing.Process):
             except:
                 break
 
-            self.log.debug("worker-" + str(self.id) + ": metadata " + str(metadata["filename"]))
-            filepath = self.query.generateTargetFilepath(self.basePath, metadata)
-            self.log.debug("worker-" + str(self.id) + ": filepath " + filepath)
+            if transferType in ["queryMetadata", "streamMetadata"]:
+                self.log.debug("worker-" + str(self.id) + ": metadata " + str(metadata["filename"]))
+                filepath = self.query.generateTargetFilepath(self.basePath, metadata)
+                self.log.debug("worker-" + str(self.id) + ": filepath " + filepath)
 
-            with open(filepath, "r") as fileDescriptor:
-                content = fileDescriptor.read()
-                self.log.debug("worker-" + str(self.id) + ": file " + filepath + " read")
-#            print "metadata", str(metadata)
+                with open(filepath, "r") as fileDescriptor:
+                    content = fileDescriptor.read()
+                    self.log.debug("worker-" + str(self.id) + ": file " + filepath + " read")
+            else:
+                print "metadata", str(metadata)
+
             print "data", str(data)[:100]
 
 
@@ -81,34 +86,42 @@ class worker(multiprocessing.Process):
 
 if __name__ == "__main__":
 
+#    signalHost = "zitpcx22614.fritz.box"
+#    signalHost = "zitpcx22614w.desy.de"
     signalHost = "zitpcx19282.desy.de"
 #    signalHost = "lsdma-lab04.desy.de"
 #    signalHost = "asap3-bl-prx07.desy.de"
 
-#    targets = [["asap3-bl-prx07.desy.de", "50101", 1, [".cbf"]], ["asap3-bl-prx07.desy.de", "50102", 1, [".cbf"]], ["asap3-bl-prx07.desy.de", "50103", 1, [".cbf"]]]
-#    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]]]
-    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]], ["zitpcx19282.desy.de", "50102", 1, [".cbf"]], ["zitpcx19282.desy.de", "50103", 1, [".cbf"]]]
-#    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1]]
-#    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]], ["zitpcx19282.desy.de", "50102", 1, [".cbf"]], ["zitpcx19282.desy.de", "50103", 1, [".cbf"]], ["lsdma-lab04.desy.de", "50104", 1, [".cbf"]]]
-
-#    transferType = "queryNext"
+    transferType = "queryNext"
 #    transferType = "stream"
 #    transferType = "streamMetadata"
-    transferType = "queryMetadata"
+#    transferType = "queryMetadata"
 
     basePath = BASE_PATH + os.sep + "data" + os.sep + "target"
 #    basePath = "/asap3/petra3/gpfs/p00/2016/commissioning/c20160205_000_smbtest/"
 
-    w1 = multiprocessing.Process(target=worker, args=(0, transferType, basePath, signalHost, "50101"))
-    w2 = multiprocessing.Process(target=worker, args=(1, transferType, basePath, signalHost, "50102"))
-    w3 = multiprocessing.Process(target=worker, args=(2, transferType, basePath, signalHost, "50103"))
+    numberOfWorker = 3
+    workers = []
+
+    targets = []
+
+    for n in range(numberOfWorker):
+        p = str(50100 + n)
+
+        targets.append([signalHost, p, 1, [".cbf"]])
+
+        w = multiprocessing.Process(target=worker, args=(n, transferType, basePath, signalHost, p))
+        workers.append(w)
+
+#    targets = [[signalHost, "50101", 1, [".cbf"]]]
+#    targets = [[signalHost, "50101", 1], [signalHost, "50102", 1], [signalHost, "50103", 1]]
+#    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]], ["zitpcx19282.desy.de", "50102", 1, [".cbf"]], ["zitpcx19282.desy.de", "50103", 1, [".cbf"]], ["lsdma-lab04.desy.de", "50104", 1, [".cbf"]]]
 
     query = dataTransfer(transferType, signalHost, useLog = True)
     query.initiate(targets)
 
-    w1.start()
-    w2.start()
-    w3.start()
+    for w in workers:
+        w.start()
 
     try:
         while True:
@@ -116,9 +129,8 @@ if __name__ == "__main__":
     except:
         pass
     finally:
-        w1.terminate()
-        w2.terminate()
-        w3.terminate()
+        for w in workers:
+            w.terminate()
 
         query.stop()
 

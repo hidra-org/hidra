@@ -4,7 +4,7 @@ import time
 import zmq
 import logging
 import threading
-import cPickle
+import json
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
 API_PATH    = BASE_PATH + os.sep + "APIs"
@@ -27,15 +27,9 @@ logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
 logfile     = os.path.join(logfilePath, "testDataIngestAPI.log")
 helpers.initLogging(logfile, True, "DEBUG")
 
-del BASE_PATH
 
-
-print
-print "==== TEST: data ingest ===="
-print
-
-class Receiver(threading.Thread):
-    def __init__(self, context = None):
+class Receiver ():
+    def __init__ (self, context = None):
         self.extHost    = "0.0.0.0"
         self.signalPort = "50050"
         self.eventPort  = "50003"
@@ -54,41 +48,97 @@ class Receiver(threading.Thread):
         logging.info("signalSocket started (bind) for '" + connectionStr + "'")
 
         self.eventSocket   = self.context.socket(zmq.PULL)
-        connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.eventPort)
+        connectionStr = "ipc:///tmp/HiDRA/eventDet"
         self.eventSocket.bind(connectionStr)
         logging.info("eventSocket started (bind) for '" + connectionStr + "'")
 
         self.dataSocket    = self.context.socket(zmq.PULL)
-        connectionStr = "tcp://" + str(self.extHost) + ":" + str(self.dataPort)
+        connectionStr = "ipc:///tmp/HiDRA/dataFetch"
         self.dataSocket.bind(connectionStr)
         logging.info("dataSocket started (bind) for '" + connectionStr + "'")
 
-        threading.Thread.__init__(self)
+        self.poller = zmq.Poller()
+        self.poller.register(self.signalSocket, zmq.POLLIN)
+        self.poller.register(self.eventSocket, zmq.POLLIN)
+        self.poller.register(self.dataSocket, zmq.POLLIN)
 
 
-    def run(self):
-        message = self.signalSocket.recv()
-        logging.debug("signalSocket recv: " + message)
+    def run (self):
+        fileDescriptor = None
+        filename = os.path.join(BASE_PATH, "data", "target", "local", "test.cbf")
 
-        self.signalSocket.send(message)
-        logging.debug("signalSocket send: " + message)
+        mark_as_close = False
+        all_closed = False
+        while True:
+            try:
+                socks = dict(self.poller.poll())
+
+                if socks and self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
+
+                    message = self.signalSocket.recv()
+                    logging.debug("signalSocket recv: " + message)
+
+                    if message == "OPEN_FILE":
+                        targetFile = filename
+                        # Open file
+                        fileDescriptor = open(targetFile, "wb")
+                        logging.debug("Opened file")
+
+                        self.signalSocket.send(message)
+                        logging.debug("signalSocket send: " + message)
+
+                    elif message == "CLOSE_FILE":
+                        if all_closed:
+                            self.signalSocket.send(message)
+                            logging.debug("signalSocket send: " + message)
+                            all_close = None
+
+                            # Close file
+                            fileDescriptor.close()
+                            logging.debug("Closed file")
+
+                            break
+                        else:
+                            mark_as_close = message
+                    else:
+                        self.signalSocket.send(message)
+                        logging.debug("signalSocket send: " + message)
+
+                if socks and self.eventSocket in socks and socks[self.eventSocket] == zmq.POLLIN:
+
+                    eventMessage = self.eventSocket.recv()
+#                    logging.debug("eventSocket recv: " + str(json.loads(eventMessage)))
+                    logging.debug("eventSocket recv: " + eventMessage)
+
+                    if eventMessage == "CLOSE_FILE":
+                        if mark_as_close:
+                            self.signalSocket.send(mark_as_close)
+                            logging.debug("signalSocket send: " + mark_as_close)
+                            mark_as_close = None
+
+                            # Close file
+                            fileDescriptor.close()
+                            logging.debug("Closed file")
+
+                            break
+                        else:
+                            all_closed = True
+
+                if socks and self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
+
+                    data = self.dataSocket.recv()
+
+                    logging.debug("dataSocket recv (len={s}): {d}".format(d=data[:100], s=len(data)))
+
+                    fileDescriptor.write(data)
+                    logging.debug("Write file content")
+
+            except:
+                logging.error("Exception in run", exc_info=True)
+                break
 
 
-        for i in range(5):
-#            logging.debug("eventSocket recv: " + str(cPickle.loads(self.eventSocket.recv())))
-            logging.debug("eventSocket recv: " + self.eventSocket.recv())
-            logging.debug("dataSocket recv: " + self.dataSocket.recv())
-
-
-        message = self.signalSocket.recv()
-        logging.debug("signalSocket recv: " + message)
-        self.signalSocket.send(message)
-        logging.debug("signalSocket send: " + message)
-
-        logging.debug("eventSocket recv: " + self.eventSocket.recv())
-
-
-    def stop(self):
+    def stop (self):
         try:
             if self.signalSocket:
                 logging.info("closing signalSocket...")
@@ -102,57 +152,30 @@ class Receiver(threading.Thread):
                 logging.info("closing dataSocket...")
                 self.dataSocket.close(linger=0)
                 self.dataSocket = None
-            if self.context:
-                logging.info("destroying context...")
-                self.context.destroy()
-                self.context = None
         except:
             logging.error("closing ZMQ Sockets...failed.", exc_info=True)
 
         if not self.extContext and self.context:
             try:
-                self.log.info("Closing ZMQ context...")
+                logging.info("Closing ZMQ context...")
                 self.context.destroy(0)
                 self.context = None
-                self.log.info("Closing ZMQ context...done.")
+                logging.info("Closing ZMQ context...done.")
             except:
-                self.log.error("Closing ZMQ context...failed.", exc_info=True)
+                logging.error("Closing ZMQ context...failed.", exc_info=True)
 
 
-context    = zmq.Context()
-
-receiverThread = Receiver(context)
-receiverThread.start()
+    def __del__ (self):
+        self.stop()
 
 
+    def __exit__ (self):
+        self.stop()
 
-obj = dataIngest(useLog = True, context = context)
 
-obj.createFile("1.h5")
-
-for i in range(5):
-    try:
-        data = "asdfasdasdfasd"
-        obj.write(data)
-        print "write"
-
-    except:
-        logging.error("break", exc_info=True)
-        break
-
-try:
-    obj.closeFile()
-except:
-    logging.error("Failed to close file", exc_info=True)
-
-logging.info("Stopping")
-
-receiverThread.stop()
-obj.stop()
-
-print
-print "==== TEST END: data Ingest ===="
-print
-
+if __name__ == '__main__':
+    r = Receiver()
+    r.run()
+    r.stop()
 
 

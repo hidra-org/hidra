@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 import traceback
-import cPickle
+import json
 import shutil
 import errno
 
@@ -74,12 +74,13 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
         try:
             log.debug("create metadata for source file...")
             #metadata = {
-            #        "filename"     : filename,
-            #        "sourcePath"   : sourcePath,
-            #        "relativePath" : relativePath,
-            #        "filesize"     : filesize,
-            #        "fileModTime"  : fileModTime,
-            #        "chunkSize"    : self.zmqMessageChunkSize
+            #        "filename"       : ...,
+            #        "sourcePath"     : ...,
+            #        "relativePath"   : ...,
+            #        "filesize"       : ...,
+            #        "fileModTime"    : ...,
+            #        "fileCreateTime" : ...,
+            #        "chunkSize"      : ...
             #        }
             metadata[ "filesize"    ]   = filesize
             metadata[ "fileModTime" ]   = fileModTime
@@ -91,9 +92,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
             log.error("Unable to assemble multi-part message.")
             raise
 
-        return sourceFile, targetFile, metadata
-    else:
-        return sourceFile, targetFile, metadata
+    return sourceFile, targetFile, metadata
 
 
 def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
@@ -103,6 +102,10 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         return
 
     targets_data       = [i for i in targets if i[3] == "data"]
+
+    if not targets_data:
+        prop["removeFlag"] = True
+        return
 
     prop["removeFlag"] = False
     chunkSize          = metadata[ "chunkSize" ]
@@ -134,7 +137,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
             chunkMetadata["chunkNumber"] = chunkNumber
 
             chunkPayload = []
-            chunkPayload.append(cPickle.dumps(chunkMetadata))
+            chunkPayload.append(json.dumps(chunkMetadata))
             chunkPayload.append(fileContent)
         except:
             log.error("Unable to pack multipart-message for file " + str(sourceFile), exc_info=True)
@@ -142,8 +145,6 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         #send message to data targets
         try:
             __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, None, chunkPayload, context)
-            log.debug("Passing multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")...done.")
-
         except DataHandlingError:
             log.error("Unable to send multipart-message for file " + str(sourceFile) + " (chunk " + str(chunkNumber) + ")", exc_info=True)
             sendError = True
@@ -154,10 +155,10 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
 
     #close file
     try:
-        log.debug("Closing '" + str(targetFile) + "'...")
+        log.debug("Closing '" + str(sourceFile) + "'...")
         fileDescriptor.close()
     except:
-        log.error("Unable to close target file '" + str(targetFile) + "'.", exc_info=True)
+        log.error("Unable to close target file '" + str(sourceFile) + "'.", exc_info=True)
         raise
 
     if not sendError:
@@ -172,14 +173,15 @@ def __dataHandling(log, sourceFile, targetFile, actionFunction, metadata, prop):
         # errno.ENOENT == "No such file or directory"
         if e.errno == errno.ENOENT:
             subdir, tmp = os.path.split(metadata["relativePath"])
+            targetBasePath = os.path.join(targetFile.split(subdir + os.sep)[0], subdir)
 
             if metadata["relativePath"] in prop["fixSubdirs"]:
                 log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile +
-                          ": Directory " + metadata["relativePath"] + " is not available.", exc_info=True)
+                          ": Directory " + metadata["relativePath"] + " is not available.",)
                 raise
-            elif subdir in prop["fixSubdirs"] :
+            elif subdir in prop["fixSubdirs"] and not os.path.isdir(targetBasePath):
                 log.error("Unable to copy/move file '" + sourceFile + "' to '" + targetFile +
-                          ": Directory " + subdir + " is not available.", exc_info=True)
+                          ": Directory " + subdir + " is not available.")
                 raise
             else:
                 try:
@@ -296,17 +298,17 @@ if __name__ == '__main__':
 
 
     prework_sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    prework_targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep + "100.cbf"
+    prework_targetFile = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "100.cbf"
 
     copyfile(prework_sourceFile, prework_targetFile)
     time.sleep(0.5)
 
     workload = {
             "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
-            "relativePath": os.sep + "local" + os.sep + "raw",
+            "relativePath": os.sep + "local",
             "filename"    : "100.cbf"
             }
-    targets = [['localhost:' + receivingPort, 1, "data"], ['localhost:' + receivingPort2, 0, "data"]]
+    targets = [['localhost:' + receivingPort, 1, [".cbf"], "data"], ['localhost:' + receivingPort2, 0, [".cbf"],  "data"]]
 
     chunkSize       = 10485760 ; # = 1024*1024*10 = 10 MiB
     localTarget     = BASE_PATH + os.sep + "data" + os.sep + "target"
@@ -315,26 +317,27 @@ if __name__ == '__main__':
     dataFetcherProp = {
             "type"       : "getFromFile",
             "fixSubdirs" : ["commissioning", "current", "local"],
-            "storeData"  : False
+            "storeData"  : False,
+            "removeData" : False
             }
 
     logging.debug("openConnections before function call: " + str(openConnections))
 
     setup(logging, dataFetcherProp)
 
-    sourceFile, targetFile, metadata = getMetadata (logging, workload, chunkSize, localTarget = None)
+    sourceFile, targetFile, metadata = getMetadata (logging, dataFetcherProp, targets, workload, chunkSize, localTarget = None)
     sendData(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
-    finishDataHandling(logging, sourceFile, targetFile, dataFetcherProp)
+    finishDataHandling(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
     logging.debug("openConnections after function call: " + str(openConnections))
 
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received: " + str(json.loads(recv_message[0])))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: " + str(cPickle.loads(recv_message[0])))
+        logging.info("=== received 2: " + str(json.loads(recv_message[0])))
     except KeyboardInterrupt:
         pass
     finally:

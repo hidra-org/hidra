@@ -1,0 +1,12 @@
+[Unit]
+Description=HiDRA Control Server for %i
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+TimeoutStartSec=0
+WorkingDirectory=/opt/HiDRA
+ExecStart=/opt/HiDRA/src/TangoCommunication/HiDRAControlServer.py --beamline %i
+
+[Install]
+WantedBy=multi-user.target

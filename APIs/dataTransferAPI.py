@@ -1,6 +1,6 @@
 # API to communicate with a data transfer unit
 
-__version__ = '2.3.2'
+__version__ = '2.4.0'
 
 import zmq
 import socket
@@ -8,7 +8,6 @@ import logging
 import json
 import errno
 import os
-import cPickle
 import traceback
 from zmq.auth.thread import ThreadAuthenticator
 
@@ -39,6 +38,9 @@ class noLoggingFunction:
 
 
 class NotSupported(Exception):
+    pass
+
+class UsageError(Exception):
     pass
 
 class FormatError(Exception):
@@ -80,16 +82,21 @@ class dataTransfer():
             self.context    = zmq.Context()
             self.extContext = False
 
+        self.currentPID            = os.getpid()
 
         self.signalHost            = signalHost
         self.signalPort            = "50000"
         self.requestPort           = "50001"
+        self.fileOpPort            = "50050"
         self.dataHost              = None
         self.dataPort              = None
+        self.ipcPath               = "/tmp/HiDRA"
 
         self.signalSocket          = None
-        self.dataSocket            = None
         self.requestSocket         = None
+        self.fileOpSocket          = None
+        self.dataSocket            = None
+        self.controlSocket         = None
 
         self.poller                = zmq.Poller()
 
@@ -97,14 +104,28 @@ class dataTransfer():
 
         self.targets               = None
 
-        self.supportedConnections = ["stream", "streamMetadata", "queryNext", "queryMetadata"]
+        self.supportedConnections = ["stream", "streamMetadata", "queryNext", "queryMetadata", "nexus"]
 
         self.signalExchanged       = None
 
         self.streamStarted         = None
         self.queryNextStarted      = None
+        self.nexusStarted          = None
 
         self.socketResponseTimeout = 1000
+
+        self.numberOfStreams       = None
+        self.recvdCloseFrom        = []
+        self.replyToSignal         = False
+        self.allCloseRecvd         = False
+
+        self.fileDescriptors       = dict()
+
+        self.fileOpened            = False
+        self.callbackParams        = None
+        self.openCallback          = None
+        self.readCallback          = None
+        self.closeCallback         = None
 
         if connectionType in self.supportedConnections:
             self.connectionType = connectionType
@@ -114,6 +135,9 @@ class dataTransfer():
 
     # targets: [host, port, prio] or [[host, port, prio], ...]
     def initiate (self, targets):
+        if self.connectionType == "nexus":
+            self.log.info("There is no need for a signal exchange for connection type 'nexus'")
+            return
 
         if type(targets) != list:
             self.stop()
@@ -146,6 +170,7 @@ class dataTransfer():
         else:
             self.stop()
             raise ConnectionFailed("No host to send signal to specified." )
+
 
         self.__setTargets (targets)
 
@@ -234,7 +259,7 @@ class dataTransfer():
 
         sendMessage = [__version__,  signal]
 
-        trg = cPickle.dumps(self.targets)
+        trg = json.dumps(self.targets)
         sendMessage.append(trg)
 
 #        sendMessage = [__version__, signal, self.dataHost, self.dataPort]
@@ -291,9 +316,9 @@ class dataTransfer():
                 raise FormatError("Whitelist has to be a list of IPs")
 
 
-        socketIdToConnect = self.streamStarted or self.queryNextStarted
+        socketIdToBind = self.streamStarted or self.queryNextStarted or self.nexusStarted
 
-        if socketIdToConnect:
+        if socketIdToBind:
             self.log.info("Reopening already started connection.")
         else:
 
@@ -304,7 +329,7 @@ class dataTransfer():
 
             if dataSocket:
                 if type(dataSocket) == list:
-                    socketIdToConnect = dataSocket[0] + ":" + dataSocket[1]
+                    socketIdToBind = dataSocket[0] + ":" + dataSocket[1]
                     host = dataSocket[0]
                     ip   = socket.gethostbyaddr(host)[2][0]
                     port = dataSocket[1]
@@ -317,28 +342,45 @@ class dataTransfer():
                     if len(ipFromHost) == 1:
                         ip = ipFromHost[0]
 
-            elif len(self.targets) == 1:
-                host, port = self.targets[0][0].split(":")
-                ipFromHost = socket.gethostbyaddr(host)[2]
-                if len(ipFromHost) == 1:
-                    ip = ipFromHost[0]
+            elif self.targets:
+                if len(self.targets) == 1:
+                    host, port = self.targets[0][0].split(":")
+                    ipFromHost = socket.gethostbyaddr(host)[2]
+                    if len(ipFromHost) == 1:
+                        ip = ipFromHost[0]
 
+                else:
+                    raise FormatError("Multipe possible ports. Please choose which one to use.")
             else:
-                raise FormatError("Multipe possible ports. Please choose which one to use.")
+                    raise FormatError("No target specified.")
 
             socketId = host + ":" + port
-            socketIdToConnect = ip + ":" + port
-#            socketIdToConnect = "[" + ip + "]:" + port
+            socketIdToBind = ip + ":" + port
 
+#            try:
+#                socket.inet_aton(ip)
+#                self.log.info("IPv4 address detected ({ip}).".format(ip=ip))
+#                socketIdToBind = ip + ":" + port
+#                isIPv6 = False
+#            except socket.error:
+#                self.log.info("Not a IPv4 address ({ip}), asume it's an IPv6 address.".format(ip=ip))
+#                socketIdToBind = "[" + ip + "]:" + port
+#                isIPv6 = True
+
+#            socketIdToBind = "192.168.178.25:" + port
 
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
-        connectionStr = "tcp://" + socketIdToConnect
+        connectionStr = "tcp://" + socketIdToBind
+
         if whitelist:
             self.dataSocket.zap_domain = b'global'
 
-        try:
+#        if isIPv6:
 #            self.dataSocket.ipv6 = True
+#            self.log.debug("Enabling IPv6 socket")
+
+        try:
             self.dataSocket.bind(connectionStr)
 #            self.dataSocket.bind("tcp://[2003:ce:5bc0:a600:fa16:54ff:fef4:9fc0]:50102")
             self.log.info("Data socket of type " + self.connectionType + " started (bind) for '" + connectionStr + "'")
@@ -361,8 +403,162 @@ class dataTransfer():
                 raise
 
             self.queryNextStarted = socketId
+
+        elif self.connectionType in ["nexus"]:
+
+            self.fileOpSocket = self.context.socket(zmq.REP)
+            # An additional socket is needed to get signals to open and close nexus files
+            connectionStr     = "tcp://" + ip + ":" + self.fileOpPort
+            try:
+                self.fileOpSocket.bind(connectionStr)
+                self.log.info("File operation socket started (bind) for '" + connectionStr + "'")
+            except:
+                self.log.error("Failed to start Socket of type " + self.connectionType + " (bind): '" + connectionStr + "'", exc_info=True)
+
+            if not os.path.exists(self.ipcPath):
+                os.makedirs(self.ipcPath)
+
+            self.controlSocket   = self.context.socket(zmq.PULL)
+            controlConStr        = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="control_API")
+            try:
+                self.controlSocket.bind(controlConStr)
+                self.log.info("Internal controlling socket started (bind) for '" + controlConStr + "'")
+            except:
+                self.log.error("Failed to start internal controlling socket (bind): '" + controlConStr + "'", exc_info=True)
+
+            self.poller.register(self.fileOpSocket, zmq.POLLIN)
+            self.poller.register(self.controlSocket, zmq.POLLIN)
+
+            self.nexusStarted = socketId
         else:
             self.streamStarted    = socketId
+
+
+    def read(self, callbackParams, openCallback, readCallback, closeCallback):
+
+        if not self.connectionType == "nexus" or not self.nexusStarted:
+            raise UsageError("Wrong connection type (current: {conType}) or session not started.".format(conType=self.connectionType))
+
+        self.callbackParams = callbackParams
+        self.openCallback   = openCallback
+        self.readCallback   = readCallback
+        self.closeCallback  = closeCallback
+
+        while True:
+            self.log.debug("polling")
+            try:
+                socks = dict(self.poller.poll())
+            except:
+                self.log.error("Could not poll for new message")
+                raise
+
+            if self.fileOpSocket in socks and socks[self.fileOpSocket] == zmq.POLLIN:
+                self.log.debug("fileOpSocket is polling")
+
+                message = self.fileOpSocket.recv()
+                self.log.debug("fileOpSocket recv: " + message)
+
+                if message == b"CLOSE_FILE":
+                    if self.allCloseRecvd:
+                        self.fileOpSocket.send(message)
+                        logging.debug("fileOpSocket send: " + message)
+                        self.allCloseRecvd = False
+
+                        self.closeCallback(self.callbackParams, multipartMessage)
+                        break
+                    else:
+                        self.replyToSignal = message
+                elif message == b"OPEN_FILE":
+                    self.fileOpSocket.send(message)
+                    self.log.debug("fileOpSocket send: " + message)
+
+                    self.openCallback(self.callbackParams, message)
+                    self.fileOpened = True
+#                    return message
+                else:
+                    self.fileOpSocket.send("ERROR")
+                    self.log.error("Not supported message received")
+
+            if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
+                self.log.debug("dataSocket is polling")
+
+                try:
+                    multipartMessage = self.dataSocket.recv_multipart()
+#                    self.log.debug("multipartMessage=" + str(multipartMessage)[:100])
+                except:
+                    self.log.error("Could not receive data due to unknown error.", exc_info=True)
+
+                if multipartMessage[0] == b"ALIVE_TEST":
+                    continue
+
+                if len(multipartMessage) < 2:
+                    self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
+#                    self.log.debug("multipartMessage=" + str(multipartMessage)[:100])
+                    #TODO return errorcode
+
+                try:
+                    self.__reactOnMessage(multipartMessage)
+                except KeyboardInterrupt:
+                    self.log.debug("Keyboard interrupt detected. Stopping to receive.")
+                    raise
+                except:
+                    self.log.error("Unknown error while receiving files. Need to abort.", exc_info=True)
+#                    raise Exception("Unknown error while receiving files. Need to abort.")
+
+            if self.controlSocket in socks and socks[self.controlSocket] == zmq.POLLIN:
+                self.log.debug("controlSocket is polling")
+                self.controlSocket.recv()
+#                self.log.debug("Control signal received. Stopping.")
+                raise Exception("Control signal received. Stopping.")
+
+
+    def __reactOnMessage(self, multipartMessage):
+
+        if multipartMessage[0] == b"CLOSE_FILE":
+            id = multipartMessage[1]
+            self.recvdCloseFrom.append(id)
+            self.log.debug("Received close-file-signal from DataDispatcher-" + id)
+
+            # get number of signals to wait for
+            if not self.numberOfStreams:
+                self.numberOfStreams = int(id.split("/")[1])
+
+            # have all signals arrived?
+            self.log.debug("self.recvdCloseFrom=" + str(self.recvdCloseFrom) + ", self.numberOfStreams=" + str(self.numberOfStreams))
+            if len(self.recvdCloseFrom) == self.numberOfStreams:
+                self.log.info("All close-file-signals arrived")
+                if self.replyToSignal:
+                    self.fileOpSocket.send(self.replyToSignal)
+                    self.log.debug("fileOpSocket send: " + self.replyToSignal)
+                    self.replyToSignal = False
+                    self.recvdCloseFrom = []
+
+                    self.closeCallback(self.callbackParams, multipartMessage)
+                else:
+                    self.allCloseRecvd = True
+
+            else:
+                self.log.info("self.recvdCloseFrom=" + str(self.recvdCloseFrom) + ", self.numberOfStreams=" + str(self.numberOfStreams))
+
+        else:
+            #extract multipart message
+            try:
+                metadata = json.loads(multipartMessage[0])
+            except:
+                self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
+                metadata = None
+
+            #TODO validate multipartMessage (like correct dict-values for metadata)
+
+            try:
+                payload = multipartMessage[1]
+            except:
+                self.log.warning("An empty file was received within the multipart-message", exc_info=True)
+                payload = None
+
+            self.readCallback(self.callbackParams, [metadata, payload])
+
+
 
 
     ##
@@ -425,7 +621,7 @@ class dataTransfer():
 
                 # extract multipart message
                 try:
-                    metadata = cPickle.loads(multipartMessage[0])
+                    metadata = json.loads(multipartMessage[0])
                 except:
                     self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
                     metadata = None
@@ -440,7 +636,7 @@ class dataTransfer():
 
                 return [metadata, payload]
             else:
-                self.log.warning("Could not receive data in the given time.")
+#                self.log.warning("Could not receive data in the given time.")
 
                 if self.queryNextStarted :
                     try:
@@ -451,91 +647,66 @@ class dataTransfer():
                 return [None, None]
 
 
-    def store (self, targetBasePath, dataObject):
-
-        if type(dataObject) is not list and len(dataObject) != 2:
-            raise FormatError("Wrong input type for 'store'")
-
-        payloadMetadata   = dataObject[0]
-        payload           = dataObject[1]
-
-
-        if type(payloadMetadata) is not dict:
-            raise FormatError("payload: Wrong input format in 'store'")
+    def store (self, targetBasePath):
 
         #save all chunks to file
         while True:
 
-            #TODO check if payload != cPickle.dumps(None) ?
+            try:
+                [payloadMetadata, payload] = self.get()
+            except KeyboardInterrupt:
+                raise
+            except:
+                self.log.error("Getting data failed.", exc_info=True)
+                raise
+
             if payloadMetadata and payload:
-                #append to file
+
+                #generate target filepath
+                targetFilepath = self.generateTargetFilepath(targetBasePath, payloadMetadata)
+                self.log.debug("New chunk for file {f} received.".format(f=targetFilepath))
+
+                #append payload to file
+                #TODO: save message to file using a thread (avoids blocking)
                 try:
-                    self.log.debug("append to file based on multipart-message...")
-                    #TODO: save message to file using a thread (avoids blocking)
-                    #TODO: instead of open/close file for each chunk recyle the file-descriptor for all chunks opened
-                    self.__appendChunksToFile(targetBasePath, payloadMetadata, payload)
-                    self.log.debug("append to file based on multipart-message...success.")
+                    self.fileDescriptors[targetFilepath].write(payload)
+                # File was not open
+                except KeyError:
+                    try:
+                        self.fileDescriptors[targetFilepath] = open(targetFilepath, "wb")
+                        self.fileDescriptors[targetFilepath].write(payload)
+                    except IOError, e:
+                        # errno.ENOENT == "No such file or directory"
+                        if e.errno == errno.ENOENT:
+                            try:
+                                #TODO do not create commissioning, current, local
+                                targetPath = self.__generateTargetPath(targetBasePath, payloadMetadata)
+                                os.makedirs(targetPath)
+
+                                self.fileDescriptors[targetFilepath] = open(targetFilepath, "wb")
+                                self.log.info("New target directory created: " + str(targetPath))
+                                self.fileDescriptors[targetFilepath].write(payload)
+                            except:
+                                self.log.error("Unable to save payload to file: '" + targetFilepath + "'", exc_info=True)
+                                self.log.debug("targetPath:" + str(targetPath))
+                        else:
+                            self.log.error("Failed to append payload to file: '" + targetFilepath + "'", exc_info=True)
                 except KeyboardInterrupt:
                     self.log.info("KeyboardInterrupt detected. Unable to append multipart-content to file.")
                     break
-                except Exception, e:
-                    self.log.error("Unable to append multipart-content to file.", exc_info=True)
-                    self.log.debug("Append to file based on multipart-message...failed.")
+                except:
+                    self.log.error("Failed to append payload to file: '" + targetFilepath + "'", exc_info=True)
 
                 if len(payload) < payloadMetadata["chunkSize"] :
                     #indicated end of file. Leave loop
                     filename    = self.generateTargetFilepath(targetBasePath, payloadMetadata)
                     fileModTime = payloadMetadata["fileModTime"]
 
+                    self.fileDescriptors[targetFilepath].close()
+                    del self.fileDescriptors[targetFilepath]
+
                     self.log.info("New file with modification time " + str(fileModTime) + " received and saved: " + str(filename))
                     break
-
-            try:
-                [payloadMetadata, payload] = self.get()
-            except:
-                self.log.error("Getting data failed.", exc_info=True)
-                break
-
-
-    def __appendChunksToFile (self, targetBasePath, configDict, payload):
-
-        #generate target filepath
-        targetFilepath = self.generateTargetFilepath(targetBasePath, configDict)
-        self.log.debug("new file is going to be created at: " + targetFilepath)
-
-
-        #append payload to file
-        try:
-            newFile = open(targetFilepath, "a")
-        except IOError, e:
-            # errno.ENOENT == "No such file or directory"
-            if e.errno == errno.ENOENT:
-                try:
-                    #TODO do not create commissioning, current, local
-                    targetPath = self.__generateTargetPath(targetBasePath, configDict)
-                    os.makedirs(targetPath)
-                    newFile = open(targetFilepath, "w")
-                    self.log.info("New target directory created: " + str(targetPath))
-                except:
-                    self.log.error("Unable to save payload to file: '" + targetFilepath + "'")
-                    self.log.debug("targetPath:" + str(targetPath))
-                    raise
-            else:
-                self.log.error("Failed to append payload to file: '" + targetFilepath + "'")
-                raise
-        except:
-            self.log.error("Failed to append payload to file: '" + targetFilepath + "'")
-#            self.log.debug("e.errno = " + str(e.errno) + "        errno.EEXIST==" + str(errno.EEXIST))
-            raise
-
-        #only write data if a payload exist
-        try:
-            if payload != None:
-                newFile.write(payload)
-            newFile.close()
-        except:
-            self.log.error("Unable to append data to file.")
-            raise
 
 
     def generateTargetFilepath (self, basePath, configDict):
@@ -613,6 +784,23 @@ class dataTransfer():
                 self.log.info("closing requestSocket...")
                 self.requestSocket.close(linger=0)
                 self.requestSocket = None
+            if self.fileOpSocket:
+                self.log.info("closing fileOpSocket...")
+                self.fileOpSocket.close(linger=0)
+                self.fileOpSocket = None
+            if self.controlSocket:
+                self.log.info("closing controlSocket...")
+                self.controlSocket.close(linger=0)
+                self.controlSocket = None
+
+                controlConStr = "{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="control_API")
+                try:
+                    os.remove(controlConStr)
+                    self.log.debug("Removed ipc socket: {p}".format(p=controlConStr))
+                except OSError:
+                    self.log.warning("Could not remove ipc socket: {p}".format(p=controlConStr))
+                except:
+                    self.log.warning("Could not remove ipc socket: {p}".format(p=controlConStr), exc_info=True)
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
@@ -623,6 +811,13 @@ class dataTransfer():
                 self.log.info("Stopping authentication thread...done.")
             except:
                 self.log.error("Stopping authentication thread...done.", exc_info=True)
+
+        for target in self.fileDescriptors:
+            self.fileDescriptors[target].close()
+            self.log.warning("Not all chunks were received for file {t}".format(t=target))
+
+        if self.fileDescriptors:
+            self.fileDescriptors = dict()
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class

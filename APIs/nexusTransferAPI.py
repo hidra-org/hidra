@@ -8,19 +8,29 @@ import logging
 import json
 import errno
 import os
-import cPickle
 import traceback
 import multiprocessing
 import time
 
 
-class loggingFunction():
-    def out(self, x, exc_info = None):
+class loggingFunction:
+    def out (self, x, exc_info = None):
         if exc_info:
             print x, traceback.format_exc()
         else:
             print x
-    def __init__(self):
+    def __init__ (self):
+        self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.info     = lambda x, exc_info=None: self.out(x, exc_info)
+        self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
+        self.error    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+
+
+class noLoggingFunction:
+    def out (self, x, exc_info = None):
+        pass
+    def __init__ (self):
         self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
         self.info     = lambda x, exc_info=None: self.out(x, exc_info)
         self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
@@ -33,6 +43,8 @@ class StopPolling():
 
         if useLog:
             self.log = logging.getLogger("nexusTransferAPI")
+        elif useLog == None:
+            self.log = noLoggingFunction()
         else:
             self.log = loggingFunction()
 
@@ -102,13 +114,13 @@ class StopPolling():
 
 
 
-
-
 class nexusTransfer():
     def __init__(self, signalHost = None, useLog = False, context = None):
 
         if useLog:
             self.log = logging.getLogger("nexusTransferAPI")
+        elif useLog == None:
+            self.log = noLoggingFunction()
         else:
             self.log = loggingFunction()
 
@@ -126,10 +138,10 @@ class nexusTransfer():
         self.extHost         = "0.0.0.0"
         self.localhost       = "localhost"
 
-        self.signalPort      = "50050"
+        self.fileSignalPort  = "50050"
         self.dataPort        = "50100"
 
-        self.signalSocket    = None
+        self.fileSignalSocket = None
         self.dataSocket      = None
 
         self.numberOfStreams = None
@@ -139,21 +151,27 @@ class nexusTransfer():
 
         self.controlPort     = "50200"
 
-        self.StopPollingThread = multiprocessing.Process (target = StopPolling, args = (self.controlPort, useLog, context))
-        self.StopPollingThread.start()
+        self.fileOpened      = False
+        self.callbackParams  = None
+        self.openCallback    = None
+        self.readCallback    = None
+        self.closeCallback   = None
+
+#        self.StopPollingThread = multiprocessing.Process (target = StopPolling, args = (self.controlPort, useLog, context))
+#        self.StopPollingThread.start()
 
         self.__createSockets()
 
 
     def __createSockets(self):
 
-        self.signalSocket = self.context.socket(zmq.REP)
-        connectionStr     = "tcp://" + str(self.extHost) + ":" + str(self.signalPort)
+        self.fileSignalSocket = self.context.socket(zmq.REP)
+        connectionStr     = "tcp://" + str(self.extHost) + ":" + str(self.fileSignalPort)
         try:
-            self.signalSocket.bind(connectionStr)
-            self.log.info("signalSocket started (bind) for '" + connectionStr + "'")
+            self.fileSignalSocket.bind(connectionStr)
+            self.log.info("fileSignalSocket started (bind) for '" + connectionStr + "'")
         except:
-            self.log.error("Failed to start signalSocket (bind): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start fileSignalSocket (bind): '" + connectionStr + "'", exc_info=True)
 
         self.dataSocket   = self.context.socket(zmq.PULL)
         connectionStr     = "tcp://" + str(self.extHost) + ":" + str(self.dataPort)
@@ -173,35 +191,65 @@ class nexusTransfer():
             self.log.error("Failed to start controlRecv (bind): '" + connectionStr + "'", exc_info=True)
 
         self.poller = zmq.Poller()
-        self.poller.register(self.signalSocket, zmq.POLLIN)
+        self.poller.register(self.fileSignalSocket, zmq.POLLIN)
         self.poller.register(self.dataSocket, zmq.POLLIN)
         self.poller.register(self.controlRecv, zmq.POLLIN)
 
 
-    def read(self):
+    def read(self, callbackParams, openCallback, readCallback, closeCallback):
+        self.callbackParams = callbackParams
+        self.openCallback   = openCallback
+        self.readCallback   = readCallback
+        self.closeCallback  = closeCallback
+
         while True:
             self.log.debug("polling")
             socks = dict(self.poller.poll())
 
-            if self.signalSocket in socks and socks[self.signalSocket] == zmq.POLLIN:
-                self.log.debug("signalSocket is polling")
+            if self.fileSignalSocket in socks and socks[self.fileSignalSocket] == zmq.POLLIN:
+                self.log.debug("fileSignalSocket is polling")
 
-                message = self.signalSocket.recv()
-                self.log.debug("signalSocket recv: " + message)
+                message = self.fileSignalSocket.recv()
+                self.log.debug("fileSignalSocket recv: " + message)
 
-                if message == b"CLOSE_FILE" and not self.allCloseRecvd:
-                    self.replyToSignal = message
+                if message == b"CLOSE_FILE":
+                    if self.allCloseRecvd:
+                        self.fileSignalSocket.send(message)
+                        logging.debug("fileSignalSocket send: " + message)
+                        self.allCloseRecvd = False
+                        break
+                    else:
+                        self.replyToSignal = message
+                elif message == b"OPEN_FILE":
+                    self.fileSignalSocket.send(message)
+                    self.log.debug("fileSignalSocket send: " + message)
+
+                    self.openCallback(self.callbackParams, message)
+                    self.fileOpened = True
+#                    return message
                 else:
-                    self.signalSocket.send(message)
-                    self.log.debug("signalSocket send: " + message)
-
-                    return message
+                    self.fileSignalSocket.send("ERROR")
+                    self.log.debug("fileSignalSocket send: " + message)
 
             if self.dataSocket in socks and socks[self.dataSocket] == zmq.POLLIN:
                 self.log.debug("dataSocket is polling")
 
                 try:
-                    return self.__getMultipartMessage()
+                    multipartMessage = self.dataSocket.recv_multipart()
+                    self.log.debug("multipartMessage=" + str(multipartMessage))
+                except:
+                    self.log.error("Could not receive data due to unknown error.", exc_info=True)
+
+                if multipartMessage[0] == b"ALIVE_TEST":
+                    continue
+
+                if len(multipartMessage) < 2:
+                    self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
+                    self.log.debug("multipartMessage=" + str(multipartMessage))
+                    #TODO return errorcode
+
+                try:
+                    self.__reactOnMessage(multipartMessage)
                 except KeyboardInterrupt:
                     self.log.debug("Keyboard interrupt detected. Stopping to receive.")
                     raise
@@ -216,19 +264,7 @@ class nexusTransfer():
                 raise Exception("Control signal received. Stopping.")
 
 
-    def __getMultipartMessage(self):
-
-        try:
-            multipartMessage = self.dataSocket.recv_multipart()
-            self.log.debug("multipartMessage=" + str(multipartMessage))
-        except:
-            self.log.error("Could not receive data due to unknown error.", exc_info=True)
-
-
-        if len(multipartMessage) < 2:
-            self.log.error("Received mutipart-message is too short. Either config or file content is missing.")
-            self.log.debug("multipartMessage=" + str(mutipartMessage))
-            #TODO return errorcode
+    def __reactOnMessage(self, multipartMessage):
 
         if multipartMessage[0] == b"CLOSE_FILE":
             id = multipartMessage[1]
@@ -240,23 +276,26 @@ class nexusTransfer():
                 self.numberOfStreams = int(id.split("/")[1])
 
             # have all signals arrived?
+            self.log.debug("self.recvdCloseFrom=" + str(self.recvdCloseFrom) + ", self.numberOfStreams=" + str(self.numberOfStreams))
             if len(self.recvdCloseFrom) == self.numberOfStreams:
                 self.log.info("All close-file-signals arrived")
                 self.allCloseRecvd = True
                 if self.replyToSignal:
-                    self.signalSocket.send(self.replyToSignal)
-                    self.log.debug("signalSocket send: " + self.replyToSignal)
+                    self.fileSignalSocket.send(self.replyToSignal)
+                    self.log.debug("fileSignalSocket send: " + self.replyToSignal)
                     self.replyToSignal = False
+                    self.recvdCloseFrom = []
                 else:
                     pass
 
-                return "CLOSE_FILE"
-
+                self.closeCallback(self.callbackParams, multipartMessage)
+            else:
+                self.log.info("self.recvdCloseFrom=" + str(self.recvdCloseFrom) + ", self.numberOfStreams=" + str(self.numberOfStreams))
 
         else:
             #extract multipart message
             try:
-                metadata = cPickle.loads(multipartMessage[0])
+                metadata = json.loads(multipartMessage[0])
             except:
                 self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
                 metadata = None
@@ -269,7 +308,7 @@ class nexusTransfer():
                 self.log.warning("An empty file was received within the multipart-message", exc_info=True)
                 payload = None
 
-            return [metadata, payload]
+            self.readCallback(self.callbackParams, [metadata, payload])
 
 
     ##
@@ -282,10 +321,10 @@ class nexusTransfer():
 
         self.log.debug("closing sockets...")
         try:
-            if self.signalSocket:
-                self.log.info("closing signalSocket...")
-                self.signalSocket.close(linger=0)
-                self.signalSocket = None
+            if self.fileSignalSocket:
+                self.log.info("closing fileSignalSocket...")
+                self.fileSignalSocket.close(linger=0)
+                self.fileSignalSocket = None
             if self.dataSocket:
                 self.log.info("closing dataSocket...")
                 self.dataSocket.close(linger=0)

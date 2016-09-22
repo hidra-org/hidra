@@ -4,13 +4,8 @@ import os
 import logging
 import time
 from logutils.queue import QueueHandler
+import requests
 import collections
-try:
-    import PyTango
-except:
-    import sys
-    sys.path.insert(0, "/usr/local/lib64/python2.6/site-packages")
-    import PyTango
 
 
 class EventDetector():
@@ -20,8 +15,8 @@ class EventDetector():
         self.log = self.getLogger(logQueue)
 
         # check format of config
-        if ( not config.has_key("detectorDevice") or
-                not config.has_key("filewriterDevice") or
+        if ( not config.has_key("eigerIp") or
+                not config.has_key("eigerApiVersion") or
                 not config.has_key("historySize") ):
             self.log.error("Configuration of wrong format")
             self.log.debug("config="+ str(config))
@@ -32,25 +27,13 @@ class EventDetector():
 
 
         if checkPassed:
-            self.detectorDevice_conf   = config["detectorDevice"]
-            self.fileWriterDevice_conf = config["filewriterDevice"]
+            self.session          = requests.session()
 
-            try:
-                self.eigerdevice      = PyTango.DeviceProxy (self.detectorDevice_conf)
-                self.log.info("Starting the detector device server '" + self.detectorDevice_conf + "'.")
-            except:
-                self.log.error("Starting the detector device server '" + self.detectorDevice_conf + "'...failed.", exc_info=True)
-
-            try:
-                self.filewriterdevice = PyTango.DeviceProxy (self.fileWriterDevice_conf)
-                self.log.info("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'.")
-            except:
-                self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
-
-            try:
-                self.EigerIP          = self.eigerdevice.get_property('Host').get('Host')[0]
-            except:
-                self.log.error("Getting EigerIP...failed.", exc_info=True)
+            self.eigerIp          = config["eigerIp"]
+            self.eigerApiVersion  = config["eigerApiVersion"]
+            self.eigerUrl         = "http://{ip}/filewriter/api/{api}/files".format(ip=self.eigerIp, api=self.eigerApiVersion)
+            self.log.debug("Getting files from: {url}".format(url=self.eigerUrl))
+#            http://192.168.138.37/filewriter/api/1.6.0/files
 
             # time to sleep after detector returned emtpy file list
             self.sleepTime        = 0.5
@@ -80,46 +63,43 @@ class EventDetector():
 
         files_stored = []
 
-        try:
+#        try:
             # returns a tuble of the form:
             # ('testp06/37_data_000001.h5', 'testp06/37_master.h5',
             #  'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5',
             #  'testp06/36_data_000001.h5', 'testp06/36_master.h5')
-            files_stored = self.eigerdevice.read_attribute("FilesInBuffer", timeout=3).value
-#            http://192.168.138.37/filewriter/api/1.6.0/files
-
-#        except PyTango.CommunicationFailed:
-#            self.log.info("Getting 'FilesInBuffer'...failed due to PyTango.CommunicationFailed.", exc_info=True)
-
-            # I don't think I need this
-#            try:
-#                self.eigerdevice      = PyTango.DeviceProxy (self.detectorDevice_conf)
-#                self.log.info("Starting the detector device server '" + self.detectorDevice_conf + "'.")
-#            except:
-#                self.log.error("Starting the detector device server '" + self.detectorDevice_conf + "'...failed.", exc_info=True)
-
-#            try:
-#                self.filewriterdevice = PyTango.DeviceProxy (self.fileWriterDevice_conf)
-#                self.log.info("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'.")
-#            except:
-#                self.log.error("Starting the filewriter device server '" + self.fileWriterDevice_conf + "'...failed.", exc_info=True)
+#            files_stored = self.eigerdevice.read_attribute("FilesInBuffer", timeout=3).value
+#        except Exception as e:
+#            self.log.error("Getting 'FilesInBuffer'...failed." + str(e))
 #            time.sleep(0.2)
 #            return eventMessageList
 
-        except Exception as e:
-            self.log.error("Getting 'FilesInBuffer'...failed." + str(e))
-            time.sleep(0.2)
+        try:
+            response = self.session.get(self.eigerUrl)
+        except:
+            self.log.error("Error in getting file list from {url}".format(url=self.eigerUrl), exc_info = True)
+
+        try:
+            response.raise_for_status()
+#            self.log.debug("response: {r}".format(r=response.text))
+            files_stored = response.json()
+#            self.log.debug("files_stored: {f}".format(f=files_stored))
+        except:
+            self.log.error("Getting file list...failed.", exc_info=True)
+            # Wait till next try to prevent denial of service
+            time.sleep(self.sleepTime)
             return eventMessageList
+
 
         if not files_stored or set(files_stored).issubset(self.files_downloaded):
             # no new files received
-            time.sleep(self.sleep_time)
+            time.sleep(self.sleepTime)
 
         for file in files_stored:
             if file not in self.files_downloaded:
                 ( relativePath, filename ) = os.path.split(file)
                 eventMessage = {
-                        "sourcePath"  : "http://" + self.EigerIP + "/data",
+                        "sourcePath"  : "http://" + self.eigerIp + "/data",
                         "relativePath": relativePath,
                         "filename"    : filename
                         }
@@ -178,13 +158,16 @@ if __name__ == '__main__':
 
 
 #    detectorDevice   = "haspp10lab:10000/p10/eigerdectris/lab.01"
-    detectorDevice   = "haspp06:10000/p06/eigerdectris/exp.01"
+#    detectorDevice   = "haspp06:10000/p06/eigerdectris/exp.01"
 #    filewriterDevice = "haspp10lab:10000/p10/eigerfilewriter/lab.01"
-    filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
+#    filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
+#    eigerIp          = "192.168.138.52" #haspp11e1m
+    eigerIp          = "131.169.55.170" #lsdma-lab04
+    eigerApiVersion  = "1.5.0"
     config = {
-            "eventDetectorType" : "httpget",
-            "detectorDevice"    : detectorDevice,
-            "filewriterDevice"  : filewriterDevice,
+            "eventDetectorType" : "HttpDetector",
+            "eigerIp"           : eigerIp,
+            "eigerApiVersion"   : eigerApiVersion,
             "historySize"       : 1000
             }
 
@@ -192,10 +175,6 @@ if __name__ == '__main__':
 
 #    eventDetector = ZmqDetector(config, logQueue)
     eventDetector = EventDetector(config, logQueue)
-
-    sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-    targetFileBase = BASE_PATH + os.sep + "data" + os.sep + "source" + os.sep + "local" + os.sep + "raw" + os.sep
-
 
     for i in range(5):
         try:

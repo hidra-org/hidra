@@ -8,7 +8,7 @@ import os
 import sys
 import traceback
 import copy
-import cPickle
+import json
 import threading
 
 
@@ -18,7 +18,6 @@ try:
 except:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( '__file__' ) )))
 #    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-#SHARED_PATH = os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) + os.sep + "shared"
 SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
 
 if not SHARED_PATH in sys.path:
@@ -89,7 +88,7 @@ class SignalHandler():
 
             self.run()
         except zmq.ZMQError:
-            pass
+            self.log.error("Stopping signalHandler due to ZMQError.", exc_info=True)
         except KeyboardInterrupt:
             pass
         except:
@@ -186,7 +185,7 @@ class SignalHandler():
                     incomingMessage = self.requestFwSocket.recv_multipart()
                     if incomingMessage[0] == "GET_REQUESTS":
                         self.log.debug("New request for signals received.")
-                        filename = cPickle.loads(incomingMessage[1])
+                        filename = json.loads(incomingMessage[1])
                         openRequests = []
 
                         for requestSet in self.openRequPerm:
@@ -206,12 +205,16 @@ class SignalHandler():
                                 openRequests.append(tmp)
 
                         if openRequests:
-                            self.requestFwSocket.send(cPickle.dumps(openRequests))
+                            self.requestFwSocket.send(json.dumps(openRequests))
                             self.log.debug("Answered to request: " + str(openRequests))
+                            self.log.debug("openRequVari: " + str(self.openRequVari))
+                            self.log.debug("allowedQueries: " + str(self.allowedQueries))
                         else:
                             openRequests = ["None"]
-                            self.requestFwSocket.send(cPickle.dumps(openRequests))
+                            self.requestFwSocket.send(json.dumps(openRequests))
                             self.log.debug("Answered to request: " + str(openRequests))
+                            self.log.debug("openRequVari: " + str(self.openRequVari))
+                            self.log.debug("allowedQueries: " + str(self.allowedQueries))
 
                 except:
                     self.log.error("Failed to receive/answer new signal requests.", exc_info=True)
@@ -298,7 +301,7 @@ class SignalHandler():
         else:
 
             version, signal, target = incomingMessage
-            target = cPickle.loads(target)
+            target = json.loads(target)
 
             try:
                 host = [t[0].split(":")[0] for t in target]
@@ -334,45 +337,94 @@ class SignalHandler():
 
     def __startSignal(self, signal, sendType, socketIds, listToCheck, variList, correspList):
 
-        connectionFound = False
-        tmpAllowed = []
-
+        # make host nameing consistent
         for socketConf in socketIds:
+            socketConf[0] = socketConf[0].replace(".desy.de:",":") if ".desy.de:" in socketConf[0] else socketConf[0]
 
-            if ".desy.de:" in socketConf[0]:
-                socketConf[0] = socketConf[0].replace(".desy.de:",":")
+        overwrite_index = None
+        flatlist_nested = [ set([j[0]  for j in sublist ]) for sublist in listToCheck ]
+        socketIds_flatlist = set([ socketConf[0] for socketConf in socketIds])
 
-            socketId = socketConf[0]
+        for i in flatlist_nested:
+            # Check if socketIds is sublist of one entry of listToCheck
+            if socketIds_flatlist.issubset(i):
+                self.log.debug("socketIds already contained, override")
+                overwrite_index = flatlist_nested.index(i)
+            # Check if one entry of listToCheck is sublist in socketIds
+            elif i.issubset(socketIds_flatlist):
+                self.log.debug("socketIds is superset of already contained set, override")
+                overwrite_index = flatlist_nested.index(i)
+            # TODO Mixture ?
+            elif not socketIds_flatlist.isdisjoint(i):
+                self.log.debug("socketIds is neither a subset nor superset of already contained set")
+                self.log.debug("Currently: no idea what to do with this.")
+                self.log.debug("socketIds={s}".format(s=socketIds_flatlist))
+                self.log.debug("flatlist_nested[i]={f}".format(f=i))
 
-            self.log.debug("socketId: " + str(socketId))
-            flatlist = [ i[0] for i in [j for sublist in listToCheck for j in sublist]]
-            self.log.debug("flatlist: " + str(flatlist))
+        if overwrite_index != None:
+            # overriding is necessary because the new request may contain different
+            # parameters like monitored file suffix, priority or connection type
+            # also this means the old socketId set should be replaced in total and not only partially
+            self.log.debug("overwrite_index={o}".format(o=overwrite_index))
 
-            if socketId in flatlist:
-                connectionFound = True
-                self.log.info("Connection to " + str(socketId) + " is already open")
-            elif socketId not in [ i[0] for i in tmpAllowed]:
-                tmpSocketConf = socketConf + [sendType]
-                tmpAllowed.append(tmpSocketConf)
-            else:
-                #TODO send notification (double entries in START_QUERY_NEXT) back?
-                pass
-
-        if not connectionFound:
-            # send signal back to receiver
-            self.sendResponse(signal)
-            listToCheck.append(copy.deepcopy(sorted(tmpAllowed)))
+            listToCheck[overwrite_index]=copy.deepcopy(sorted([i + [sendType] for i in socketIds]))
             if correspList != None:
-                correspList.append(0)
-            del tmpAllowed
+                correspList[overwrite_index] = 0
 
             if variList != None:
-                variList.append([])
+                variList[overwrite_index] = []
         else:
-            # send error back to receiver
-#            self.sendResponse("CONNECTION_ALREADY_OPEN")
-            # "reopen" the connection and confirm to receiver
-            self.sendResponse(signal)
+            listToCheck.append(copy.deepcopy(sorted([i + [sendType] for i in socketIds])))
+            if correspList != None:
+                correspList.append(0)
+
+            if variList != None:
+
+                variList.append([])
+
+        self.log.debug("after start handling: listToCheck={l}".format(l=listToCheck))
+
+        # send signal back to receiver
+        self.sendResponse(signal)
+
+#        connectionFound = False
+#        tmpAllowed = []
+#        flatlist = [ i[0] for i in [j for sublist in listToCheck for j in sublist]]
+#        self.log.debug("flatlist: " + str(flatlist))
+
+#        for socketConf in socketIds:
+#
+#            if ".desy.de:" in socketConf[0]:
+#                socketConf[0] = socketConf[0].replace(".desy.de:",":")
+#
+#            socketId = socketConf[0]
+#            self.log.debug("socketId: " + str(socketId))
+#
+#            if socketId in flatlist:
+#                connectionFound = True
+#                self.log.info("Connection to " + str(socketId) + " is already open")
+#            elif socketId not in [ i[0] for i in tmpAllowed]:
+#                tmpSocketConf = socketConf + [sendType]
+#                tmpAllowed.append(tmpSocketConf)
+#            else:
+#                #TODO send notification (double entries in START_QUERY_NEXT) back?
+#                pass
+
+#        if not connectionFound:
+#            # send signal back to receiver
+#            self.sendResponse(signal)
+#            listToCheck.append(copy.deepcopy(sorted(tmpAllowed)))
+#            if correspList != None:
+#                correspList.append(0)
+#            del tmpAllowed
+#
+#            if variList != None:
+#                variList.append([])
+#        else:
+#            # send error back to receiver
+##            self.sendResponse("CONNECTION_ALREADY_OPEN")
+#            # "reopen" the connection and confirm to receiver
+#            self.sendResponse(signal)
 
 
     def __stopSignal(self, signal, socketIds, listToCheck, variList, correspList):
@@ -431,7 +483,7 @@ class SignalHandler():
                     del listToCheck[index]
 
             # send signal to TaskManager
-            self.controlPubSocket.send_multipart(["signal", "CLOSE_SOCKETS", cPickle.dumps(socketIds)])
+            self.controlPubSocket.send_multipart(["signal", "CLOSE_SOCKETS", json.dumps(socketIds)])
 
         return listToCheck, variList, correspList
 
@@ -582,7 +634,7 @@ class requestPuller():
             try:
                 self.requestFwSocket.send_multipart(["GET_REQUESTS"])
                 self.log.info("[getRequests] send")
-                requests = cPickle.loads(self.requestFwSocket.recv())
+                requests = json.loads(self.requestFwSocket.recv())
                 self.log.info("[getRequests] Requests: " + str(requests))
                 time.sleep(0.25)
             except Exception as e:
@@ -668,7 +720,7 @@ if __name__ == '__main__':
                 targets.append(["zitpcx19282:" + port, prio])
         else:
             targets.append(["zitpcx19282:" + ports, prio])
-        targets = cPickle.dumps(targets)
+        targets = json.dumps(targets)
         sendMessage.append(targets)
         socket.send_multipart(sendMessage)
         receivedMessage = socket.recv()

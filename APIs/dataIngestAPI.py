@@ -2,10 +2,47 @@
 
 __version__ = '0.0.1'
 
+import os
+import platform
 import zmq
 import logging
-import cPickle
 import traceback
+import json
+
+class loggingFunction:
+    def out (self, x, exc_info = None):
+        if exc_info:
+            print x, traceback.format_exc()
+        else:
+            print x
+    def __init__ (self):
+        self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.info     = lambda x, exc_info=None: self.out(x, exc_info)
+        self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
+        self.error    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+
+
+class noLoggingFunction:
+    def out (self, x, exc_info = None):
+        pass
+    def __init__ (self):
+        self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.info     = lambda x, exc_info=None: self.out(x, exc_info)
+        self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
+        self.error    = lambda x, exc_info=None: self.out(x, exc_info)
+        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+
+
+def isWindows():
+    returnValue = False
+    windowsName = "Windows"
+    platformName = platform.system()
+
+    if platformName == windowsName:
+        returnValue = True
+
+    return returnValue
 
 
 class dataIngest():
@@ -14,20 +51,9 @@ class dataIngest():
 
         if useLog:
             self.log = logging.getLogger("dataIngestAPI")
+        elif useLog == None:
+            self.log = noLoggingFunction()
         else:
-            class loggingFunction:
-                def out(self, x, exc_info = None):
-                    if exc_info:
-                        print x, traceback.format_exc()
-                    else:
-                        print x
-                def __init__(self):
-                    self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.info     = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.error    = lambda x, exc_info=None: self.out(x, exc_info)
-                    self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-
             self.log = loggingFunction()
 
         # ZMQ applications always start by creating a context,
@@ -40,27 +66,44 @@ class dataIngest():
             self.context    = zmq.Context()
             self.extContext = False
 
+        self.currentPID      = os.getpid()
 
-        self.signalHost   = "zitpcx19282"
-        self.signalPort   = "50050"
+        self.localhost       = "127.0.0.1"
+        self.extIp           = "0.0.0.0"
+        self.ipcPath         = "/tmp/HiDRA"
 
-        # has to be the same port as configured in dataManager.conf as eventPort
-        self.eventPort    = "50003"
-        #TODO add port in config
+        self.signalHost      = "zitpcx19282"
+        self.signalPort      = "50050"
+
+        # has to be the same port as configured in dataManager.conf as eventDetPort
+        self.eventDetPort    = "50003"
         # has to be the same port as configured in dataManager.conf as ...
-        self.dataPort     = "50010"
+        self.dataFetchPort   = "50010"
 
-        self.signalSocket = None
-        self.eventSocket  = None
-        self.dataSocket   = None
+        self.signalConId     = "tcp://{ip}:{port}".format(ip=self.signalHost, port=self.signalPort)
 
-        self.poller       = zmq.Poller()
+        if isWindows():
+            self.log.info("Using tcp for internal communication.")
+            self.eventDetConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=self.eventDetPort)
+            self.dataFetchConId = "tcp://{ip}:{port}".format(ip=self.localhost, port=self.dataFetchPort)
+        else:
+            self.log.info("Using ipc for internal communication.")
+            self.eventDetConId  = "ipc://{path}/{id}".format(path=self.ipcPath, id="eventDet")
+            self.dataFetchConId = "ipc://{path}/{id}".format(path=self.ipcPath, id="dataFetch")
+#            self.eventDetConId   = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="eventDet")
+#            self.dataFetchConId  = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="dataFetch")
 
-        self.filename     = False
-        self.openFile     = False
-        self.filePart     = None
+        self.signalSocket    = None
+        self.eventDetSocket  = None
+        self.dataFetchSocket = None
 
-        self.responseTimeout = 1000
+        self.poller              = zmq.Poller()
+
+        self.filename            = False
+        self.openFile            = False
+        self.filePart            = None
+
+        self.responseTimeout     = 1000
 
         self.__createSocket()
 
@@ -72,12 +115,11 @@ class dataIngest():
 
         # time to wait for the sender to give a confirmation of the signal
 #        self.signalSocket.RCVTIMEO = self.responseTimeout
-        connectionStr = "tcp://" + str(self.signalHost) + ":" + str(self.signalPort)
         try:
-            self.signalSocket.connect(connectionStr)
-            self.log.info("signalSocket started (connect) for '" + connectionStr + "'")
+            self.signalSocket.connect(self.signalConId)
+            self.log.info("signalSocket started (connect) for '" + self.signalConId + "'")
         except Exception as e:
-            self.log.error("Failed to start signalSocket (connect): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start signalSocket (connect): '" + self.signalConId + "'", exc_info=True)
             raise
 
         # using a Poller to implement the signalSocket timeout (in older ZMQ version there is no option RCVTIMEO)
@@ -85,22 +127,20 @@ class dataIngest():
         self.poller.register(self.signalSocket, zmq.POLLIN)
 
 
-        self.eventSocket = self.context.socket(zmq.PUSH)
-        connectionStr = "tcp://localhost:" + str(self.eventPort)
+        self.eventDetSocket = self.context.socket(zmq.PUSH)
         try:
-            self.eventSocket.connect(connectionStr)
-            self.log.info("eventSocket started (connect) for '" + connectionStr + "'")
+            self.eventDetSocket.connect(self.eventDetConId)
+            self.log.info("eventDetSocket started (connect) for '" + self.eventDetConId + "'")
         except:
-            self.log.error("Failed to start eventSocket (connect): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start eventDetSocket (connect): '" + self.eventDetConId + "'", exc_info=True)
             raise
 
-        self.dataSocket  = self.context.socket(zmq.PUSH)
-        connectionStr = "tcp://localhost:" + str(self.dataPort)
+        self.dataFetchSocket  = self.context.socket(zmq.PUSH)
         try:
-            self.dataSocket.connect(connectionStr)
-            self.log.info("dataSocket started (connect) for '" + connectionStr + "'")
+            self.dataFetchSocket.connect(self.dataFetchConId)
+            self.log.info("dataFetchSocket started (connect) for '" + self.dataFetchConId + "'")
         except:
-            self.log.error("Failed to start dataSocket (connect): '" + connectionStr + "'", exc_info=True)
+            self.log.error("Failed to start dataFetchSocket (connect): '" + self.dataFetchConId + "'", exc_info=True)
             raise
 
 
@@ -121,17 +161,17 @@ class dataIngest():
 
 
     def write (self, data):
-        # send event to eventDetector
-#        message = {
-#                "filename" : self.filename,
-#                "filePart" : self.filePart
-#                }
-#        message = "{ 'filename': " + self.filename + ", 'filePart': " + self.filePart + "}"
-        message = '{ "filePart": ' + str(self.filePart) + ', "filename": "' + self.filename + '" }'
-        self.eventSocket.send(message)
+        # send event to eventDet
+        message = {
+                "filename" : self.filename,
+                "filePart" : self.filePart
+                }
+#        message = '{ "filePart": ' + str(self.filePart) + ', "filename": "' + self.filename + '" }'
+        message = json.dumps(message)
+        self.eventDetSocket.send(message)
 
         # send data to ZMQ-Queue
-        self.dataSocket.send(data)
+        self.dataFetchSocket.send(data)
         self.filePart += 1
 
 
@@ -147,10 +187,10 @@ class dataIngest():
 
         # send close-signal to event Detector
         try:
-            self.eventSocket.send(sendMessage)
-            self.log.debug("Sending signal to close the file to eventSocket. (sendMessage=" + sendMessage + ")")
+            self.eventDetSocket.send(sendMessage)
+            self.log.debug("Sending signal to close the file to eventDetSocket. (sendMessage=" + sendMessage + ")")
         except:
-            raise Exception("Sending signal to close the file to eventSocket...failed.")
+            raise Exception("Sending signal to close the file to eventDetSocket...failed.")
 
         try:
             socks = dict(self.poller.poll(10000)) # in ms
@@ -187,14 +227,14 @@ class dataIngest():
                 self.log.info("closing signalSocket...")
                 self.signalSocket.close(linger=0)
                 self.signalSocket = None
-            if self.eventSocket:
-                self.log.info("closing eventSocket...")
-                self.eventSocket.close(linger=0)
-                self.eventSocket = None
-            if self.dataSocket:
-                self.log.info("closing dataSocket...")
-                self.dataSocket.close(linger=0)
-                self.dataSocket = None
+            if self.eventDetSocket:
+                self.log.info("closing eventDetSocket...")
+                self.eventDetSocket.close(linger=0)
+                self.eventDetSocket = None
+            if self.dataFetchSocket:
+                self.log.info("closing dataFetchSocket...")
+                self.dataFetchSocket.close(linger=0)
+                self.dataFetchSocket = None
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
