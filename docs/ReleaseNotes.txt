@@ -1,3 +1,7 @@
+HiDRA develop
+
+- Renamed APIs for data ingest
+
 HiDRA 2.4.0
 
 - exchanged all cPickle calls with json calls

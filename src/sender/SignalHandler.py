@@ -337,7 +337,7 @@ class SignalHandler():
 
     def __startSignal(self, signal, sendType, socketIds, listToCheck, variList, correspList):
 
-        # make host nameing consistent
+        # make host naming consistent
         for socketConf in socketIds:
             socketConf[0] = socketConf[0].replace(".desy.de:",":") if ".desy.de:" in socketConf[0] else socketConf[0]
 

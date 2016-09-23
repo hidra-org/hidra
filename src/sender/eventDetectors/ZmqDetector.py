@@ -87,12 +87,12 @@ class EventDetector():
 
     def getNewEvent (self):
 
-        eventMessage = self.eventSocket.recv()
+        eventMessage = self.eventSocket.recv_multipart()
 
-        if eventMessage == b"CLOSE_FILE":
+        if eventMessage[0] == b"CLOSE_FILE":
             eventMessageList = [ eventMessage for i in range(self.numberOfStreams) ]
         else:
-            eventMessageList = [ json.loads(eventMessage) ]
+            eventMessageList = [ json.loads(eventMessage[0]) ]
 
         self.log.debug("eventMessage: {l}".format(l=eventMessageList))
 
@@ -192,13 +192,13 @@ if __name__ == '__main__':
         try:
             logging.debug("generate event")
             targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=i)
-#            message = {
-#                    "filename" : targetFile,
-#                    "filepart" : 0
-#                    }
-            message = '{ "filePart": 0, "filename": "' + targetFile + '" }'
-#            eventSocket.send(json.dumps(message))
-            eventSocket.send(message)
+            message = {
+                "filename" : targetFile,
+                "filePart" : 0,
+                "chunkSize": 10
+                }
+
+            eventSocket.send_multipart([json.dumps(message)])
             i += 1
 
             eventList = eventDetector.getNewEvent()
@@ -209,7 +209,7 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             break
 
-    eventSocket.send(b"CLOSE_FILE")
+    eventSocket.send_multipart([b"CLOSE_FILE", "test_file.cbf"])
 
     eventList = eventDetector.getNewEvent()
     logging.debug("eventList: {l}".format(l=eventList))

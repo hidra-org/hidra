@@ -14,17 +14,12 @@
 inline void free_array (char ***array, int *len)
 {
     int i;
-    printf("free_array\n");
 
     if (*array != NULL)
     {
-        printf("free_array: in if\n");
-
         for ( i = 0; i < *len; i++)
         {
-            printf("free_array: in for\n");
             if ((*array)[i] != NULL) free((*array)[i]);
-            printf("free_array: in for2\n");
         }
         free (*array);
         *array = NULL;
@@ -353,6 +348,7 @@ HIDRA_ERROR dataTransfer_start (dataTransfer_t *dT)
 
 HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage, int *messageSize)
 {
+    char *filename = NULL;
     char *id = NULL;
     int idNum = 0;
     char **splitRes = NULL;
@@ -367,9 +363,8 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage, int *me
 
     if (strcmp(multipartMessage[0], "CLOSE_FILE") == 0)
     {
-        id = multipartMessage[1];
-        printf("id=%s\n", id);
-        printf("dT->filename=%s %zd\n", dT->filename, strlen(dT->filename));
+        filename = multipartMessage[1];
+        id = multipartMessage[2];
 
         //TODO do this correctly
         char recv_filename[strlen(dT->filename)];
@@ -636,21 +631,27 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
             if (s_recv_multipart (dT->dataSocket, &multipartMessage, &len, &messageSize))
             {
                 perror("Failed to receive data");
+                free_array (&multipartMessage, &len);
+                free (messageSize);
                 return COMMUNICATIONFAILED;
             }
 
             if (strcmp(multipartMessage[0],"ALIVE_TEST") == 0)
             {
-                free(multipartMessage[0]);
+                free_array (&multipartMessage, &len);
+                free (messageSize);
                 continue;
             }
 
             if (len < 2)
             {
                 perror ("Received mutipart-message is too short");
+                free_array (&multipartMessage, &len);
+                free (messageSize);
                 return FORMATERROR;
             }
 
+            print_array (multipartMessage, &len);
             rc = reactOnMessage (dT, multipartMessage, messageSize);
 
             free_array (&multipartMessage, &len);

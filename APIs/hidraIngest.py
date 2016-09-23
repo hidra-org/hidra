@@ -169,7 +169,7 @@ class HidraIngest():
                 }
 #        message = '{ "filePart": {p}, "filename": "{n}" }'.format(p=self.filePart, n=self.filename)
         message = json.dumps(message)
-        self.eventDetSocket.send(message)
+        self.eventDetSocket.send_multipart([message])
 
         # send data to ZMQ-Queue
         self.dataFetchSocket.send(data)
@@ -188,7 +188,7 @@ class HidraIngest():
 
         # send close-signal to event Detector
         try:
-            self.eventDetSocket.send(sendMessage[0])
+            self.eventDetSocket.send_multipart(sendMessage)
             self.log.debug("Sending signal to close the file to eventDetSocket. (sendMessage={m})".format(m=sendMessage))
         except:
             raise Exception("Sending signal to close the file to eventDetSocket...failed.")

@@ -515,7 +515,8 @@ class dataTransfer():
     def __reactOnMessage(self, multipartMessage):
 
         if multipartMessage[0] == b"CLOSE_FILE":
-            id = multipartMessage[1]
+            filename = multipartMessage[1]
+            id = multipartMessage[2]
             self.recvdCloseFrom.append(id)
             self.log.debug("Received close-file-signal from DataDispatcher-{id}".format(id=id))
 

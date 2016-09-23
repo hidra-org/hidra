@@ -22,17 +22,12 @@ const char* PATH_SEPARATOR =
 inline void free_array (char ***array, int *len)
 {
     int i;
-    printf("free_array\n");
 
     if (*array != NULL)
     {
-        printf("free_array: in if\n");
-
         for ( i = 0; i < *len; i++)
         {
-            printf ("free_array: in for\n");
             if ((*array)[i] != NULL) free ((*array)[i]);
-            printf ("free_array: in for2\n");
         }
         free (*array);
         *array = NULL;
@@ -393,7 +388,9 @@ HIDRA_ERROR hidraIngest_closeFile (hidraIngest *dI)
 
 
     // send close-signal to event Detector
-    rc = s_send (dI->eventDetSocket, message, strlen(message), 0);
+    rc = s_send (dI->eventDetSocket, message, strlen(message), ZMQ_SNDMORE);
+    if (rc == -1) return COMMUNICATIONFAILED;
+    rc = s_send (dI->eventDetSocket, dI->openFile, strlen(dI->openFile), 0);
     if (rc == -1) return COMMUNICATIONFAILED;
 //        perror("Sending signal to close the file to eventDetSocket...failed.)")
     printf ("Sending signal to close the file to eventDetSocket (sendMessage=%s)\n", message);

@@ -174,17 +174,22 @@ class DataDispatcher():
                     targets = sorted(targets, key=lambda target: target[1])
 
                 else:
-                    #TODO is this needed?
                     workload = json.loads(message[0])
 
-                    if workload == b"CLOSE_FILE":
+                    if type(workload) == list and workload[0] == b"CLOSE_FILE":
+
+                        #woraround for error "TypeError: Frame 0 (u'CLOSE_FILE') does not support the buffer interface."
+                        workload[0] = b"CLOSE_FILE"
+                        for i in range(1, len(workload)):
+                            workload[i] = json.dumps(workload[i])
+
                         if self.fixedStreamId:
                             self.log.debug("Router requested to send signal that file was closed.")
-                            payload = [ workload, self.id ]
+                            workload.append(self.id)
 
                             # socket already known
                             if self.fixedStreamId in self.openConnections:
-                                tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                                tracker = self.openConnections[self.fixedStreamId].send_multipart(workload, copy=False, track=True)
                                 self.log.info("Sending close file signal to '{id}' with priority 0". format(id=self.fixedStreamId))
                             else:
                                 # open socket
@@ -198,7 +203,7 @@ class DataDispatcher():
                                 self.openConnections[self.fixedStreamId] = socket
 
                                 # send data
-                                tracker = self.openConnections[self.fixedStreamId].send_multipart(payload, copy=False, track=True)
+                                tracker = self.openConnections[self.fixedStreamId].send_multipart(workload, copy=False, track=True)
                                 self.log.info("Sending close file signal to '{id}' with priority 0".format(id=fixedStreamId))
 
                             # socket not known
