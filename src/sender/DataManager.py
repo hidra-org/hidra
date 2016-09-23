@@ -12,7 +12,6 @@ import errno
 import sys
 import json
 import time
-import cPickle
 from multiprocessing import Process, freeze_support, Queue
 import ConfigParser
 import threading
@@ -789,7 +788,7 @@ class Test_Receiver_Stream():
         else:
             targets.append(["localhost:{p}".format(p=ports), prio])
 
-        targets = cPickle.dumps(targets)
+        targets = json.dumps(targets)
         sendMessage.append(targets)
         self.comSocket.send_multipart(sendMessage)
         receivedMessage = self.comSocket.recv()
@@ -799,11 +798,11 @@ class Test_Receiver_Stream():
         try:
             while True:
                 recv_message = self.fixedRecvSocket.recv_multipart()
-                self.log.info("=== received fixed: {r}".format(r=cPickle.loads(recv_message[0])))
+                self.log.info("=== received fixed: {r}".format(r=json.loads(recv_message[0])))
                 recv_message = self.receivingSocket.recv_multipart()
-                self.log.info("=== received: {r}".format(r=cPickle.loads(recv_message[0])))
+                self.log.info("=== received: {r}".format(r=json.loads(recv_message[0])))
                 recv_message = self.receivingSocket2.recv_multipart()
-                self.log.info("=== received 2: {r}".format(r=cPickle.loads(recv_message[0])))
+                self.log.info("=== received 2: {r}".format(r=json.loads(recv_message[0])))
         except KeyboardInterrupt:
             pass
 

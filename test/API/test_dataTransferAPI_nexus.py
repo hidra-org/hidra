@@ -5,7 +5,6 @@ import zmq
 import logging
 import threading
 import json
-#import cPickle
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
 API_PATH    = BASE_PATH + os.sep + "APIs"

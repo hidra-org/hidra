@@ -4,7 +4,7 @@ import time
 import zmq
 import logging
 import threading
-import cPickle
+import json
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
 API_PATH    = BASE_PATH + os.sep + "APIs"
@@ -93,7 +93,7 @@ class ZmqDataManager(threading.Thread):
                     data = self.dataInSocket.recv()
                     self.log.debug("dataSocket recv: " + str(data))
 
-                    dataMessage = [cPickle.dumps(metadata), data]
+                    dataMessage = [json.dumps(metadata), data]
 
                     self.dataOutSocket.send_multipart(dataMessage)
                     self.log.debug("Send")

@@ -1,6 +1,6 @@
 # API to communicate with a data transfer unit
 
-__version__ = '2.3.2'
+__version__ = '2.4.0'
 
 import zmq
 import socket
@@ -8,7 +8,6 @@ import logging
 import json
 import errno
 import os
-import cPickle
 import traceback
 from zmq.auth.thread import ThreadAuthenticator
 
@@ -260,7 +259,7 @@ class dataTransfer():
 
         sendMessage = [__version__,  signal]
 
-        trg = cPickle.dumps(self.targets)
+        trg = json.dumps(self.targets)
         sendMessage.append(trg)
 
 #        sendMessage = [__version__, signal, self.dataHost, self.dataPort]

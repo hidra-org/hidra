@@ -1,5 +1,7 @@
-HiDRA develop
+HiDRA 2.4.0
 
+- exchanged all cPickle calls with json calls
+- renamed init script to hidra.sh
 - Added functional tests
 - Fixing memory leaks
 - Minor bug fixing

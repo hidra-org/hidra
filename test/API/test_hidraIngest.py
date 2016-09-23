@@ -4,7 +4,7 @@ import time
 import zmq
 import logging
 import threading
-import cPickle
+import json
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
 API_PATH    = BASE_PATH + os.sep + "APIs"
@@ -107,7 +107,7 @@ class Receiver ():
                 if socks and self.eventSocket in socks and socks[self.eventSocket] == zmq.POLLIN:
 
                     eventMessage = self.eventSocket.recv()
-#                    logging.debug("eventSocket recv: " + str(cPickle.loads(eventMessage)))
+#                    logging.debug("eventSocket recv: " + str(json.loads(eventMessage)))
                     logging.debug("eventSocket recv: " + eventMessage)
 
                     if eventMessage == "CLOSE_FILE":

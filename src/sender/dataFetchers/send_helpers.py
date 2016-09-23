@@ -1,7 +1,7 @@
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import zmq
-import cPickle
+import json
 
 
 class DataHandlingError(Exception):
@@ -36,8 +36,8 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
                     log.info("Sending message part from file '{s}' to '{t}' with priority {p}".format(s=sourceFile, t=target, p=prio))
 
                 elif sendType == "metadata":
-                    #cPickle.dumps(None) is 'N.'
-                    tracker = openConnections[target].send_multipart([cPickle.dumps(metadata), cPickle.dumps(None)], copy=False, track=True)
+                    #json.dumps(None) is 'N.'
+                    tracker = openConnections[target].send_multipart([json.dumps(metadata), json.dumps(None)], copy=False, track=True)
                     log.info("Sending metadata of message part from file '{s}' to '{t}' with priority {p}".format(s=sourceFile, t=target, p=prio))
                     log.debug("metadata={m}".format(m=metadata))
 
@@ -69,7 +69,7 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
                 log.info("Sending message part from file '{s}' to '{t}' with priority {p}".format(s=sourceFile, t=target, p=prio))
 
             elif sendType == "metadata":
-                openConnections[target].send_multipart([cPickle.dumps(metadata), cPickle.dumps(None)], zmq.NOBLOCK)
+                openConnections[target].send_multipart([json.dumps(metadata), json.dumps(None)], zmq.NOBLOCK)
                 log.info("Sending metadata of message part from file '{s}' to '{t}' with priority {p}".format(s=sourceFile, t=target, p=prio) )
                 log.debug("metadata={m}".format(m=metadata))
 

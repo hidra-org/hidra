@@ -8,7 +8,7 @@ import os
 import sys
 import traceback
 import copy
-import cPickle
+import json
 import threading
 
 
@@ -185,7 +185,7 @@ class SignalHandler():
                     incomingMessage = self.requestFwSocket.recv_multipart()
                     if incomingMessage[0] == "GET_REQUESTS":
                         self.log.debug("New request for signals received.")
-                        filename = cPickle.loads(incomingMessage[1])
+                        filename = json.loads(incomingMessage[1])
                         openRequests = []
 
                         for requestSet in self.openRequPerm:
@@ -205,13 +205,13 @@ class SignalHandler():
                                 openRequests.append(tmp)
 
                         if openRequests:
-                            self.requestFwSocket.send(cPickle.dumps(openRequests))
+                            self.requestFwSocket.send(json.dumps(openRequests))
                             self.log.debug("Answered to request: {r}".format(r=openRequests))
                             self.log.debug("openRequVari: {r}".format(r=self.openRequVari))
                             self.log.debug("allowedQueries: {r}".format(r=self.allowedQueries))
                         else:
                             openRequests = ["None"]
-                            self.requestFwSocket.send(cPickle.dumps(openRequests))
+                            self.requestFwSocket.send(json.dumps(openRequests))
                             self.log.debug("Answered to request: {r}".format(r=openRequests))
                             self.log.debug("openRequVari: {r}".format(r=self.openRequVari))
                             self.log.debug("allowedQueries: {r}".format(r=self.allowedQueries))
@@ -301,7 +301,7 @@ class SignalHandler():
         else:
 
             version, signal, target = incomingMessage
-            target = cPickle.loads(target)
+            target = json.loads(target)
 
             try:
                 host = [t[0].split(":")[0] for t in target]
@@ -483,7 +483,7 @@ class SignalHandler():
                     del listToCheck[index]
 
             # send signal to TaskManager
-            self.controlPubSocket.send_multipart(["signal", "CLOSE_SOCKETS", cPickle.dumps(socketIds)])
+            self.controlPubSocket.send_multipart(["signal", "CLOSE_SOCKETS", json.dumps(socketIds)])
 
         return listToCheck, variList, correspList
 
@@ -634,7 +634,7 @@ class requestPuller():
             try:
                 self.requestFwSocket.send_multipart(["GET_REQUESTS"])
                 self.log.info("[getRequests] send")
-                requests = cPickle.loads(self.requestFwSocket.recv())
+                requests = json.loads(self.requestFwSocket.recv())
                 self.log.info("[getRequests] Requests: {r}".format(r=requests))
                 time.sleep(0.25)
             except Exception as e:
@@ -720,7 +720,7 @@ if __name__ == '__main__':
                 targets.append(["zitpcx19282:{p}".format(p=port), prio])
         else:
             targets.append(["zitpcx19282:{p}".format(p=ports), prio])
-        targets = cPickle.dumps(targets)
+        targets = json.dumps(targets)
         sendMessage.append(targets)
         socket.send_multipart(sendMessage)
         receivedMessage = socket.recv()
