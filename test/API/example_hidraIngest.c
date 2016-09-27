@@ -13,18 +13,21 @@ int main()
     int chunksize=524288; //1024*512
     int rc;
 //    char ch;
-    char file_name[25] = "/opt/HiDRA/test_file.cbf";
+    char source_file[25] = "/opt/HiDRA/test_file.cbf";
     FILE *fp;
     char *buffer = malloc(chunksize);
     int bytesRead;
 
+    printf ("source_file %s\n", source_file);
+
+
     rc = hidraIngest_init (&obj);
     if (rc) exit(-9);
 
-    fp = fopen(file_name,"rb"); // read mode
+    fp = fopen(source_file,"rb"); // read mode
     assert(fp != NULL);
 
-    rc = hidraIngest_createFile (obj, file_name);
+    rc = hidraIngest_createFile (obj, "test/test_file.cbf");
 
     char *printBuf = malloc(100);
     char c;
@@ -34,25 +37,12 @@ int main()
     while ((bytesRead = fread(buffer, 1, chunksize, fp)) > 0)
     {
 
-        printf ("The content of file %s:\n", file_name);
+        printf ("The content of file %s:\n", source_file);
         printf ("Read file content of size: %i\n", bytesRead);
 //        memcpy(printBuf, buffer, 100);
 //        printf("%s\n",printBuf);
 //        printf("%c",ch);
         rc = hidraIngest_write (obj, buffer, bytesRead);
-/*
-        FILE *fp_local;
-        char *filepath = "/opt/HiDRA/data/source/local";
-        char abs_filename[128];
-        snprintf(abs_filename, sizeof(abs_filename), "%s/%s_%d", filepath, "test.cbf", i);
-        printf ("abs_filename %s\n", abs_filename);
-
-        fp_local = fopen(abs_filename,"w");
-
-        fwrite(buffer, chunksize, 1, fp_local);
-
-        fclose(fp_local);
-*/
         i++;
 
     }

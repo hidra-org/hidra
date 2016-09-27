@@ -9,6 +9,7 @@ import ConfigParser
 import json
 import subprocess
 import re
+import errno
 
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -170,7 +171,7 @@ class NexusReceiver:
         logger = logging.getLogger("NexusReceiver")
         return logger
 
-    def openCallback (self, params, data):
+    def openCallback (self, params, filename):
         #TODO
         try:
             BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -178,10 +179,25 @@ class NexusReceiver:
             BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
         print BASE_PATH
 
-        targetFile = os.path.join(BASE_PATH,"data","target","local","test.cbf")
+        targetFile = os.path.join(BASE_PATH,"data","target","local", filename)
 
-        params["target_fp"] = open(targetFile, "wb")
-        print params, data
+        try:
+            params["target_fp"] = open(targetFile, "wb")
+        except IOError, e:
+            # errno.ENOENT == "No such file or directory"
+            if e.errno == errno.ENOENT:
+                try:
+                    targetPath = os.path.split(targetFile)[0]
+                    print "targetPath", targetPath
+                    os.makedirs(targetPath)
+
+                    params["target_fp"] = open(targetFile, "wb")
+                    print "New target directory created: {0}".format(targetPath)
+                except:
+                    raise
+            else:
+                    raise
+        print params, filename
 
     def readCallback (self, params, receivedData):
         metadata = receivedData[0]

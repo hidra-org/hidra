@@ -293,18 +293,7 @@ HIDRA_ERROR hidraIngest_createFile (hidraIngest *dI, char *fileName)
     int len = 0;
     int i;
 
-    strcpy(filename, fileName);
-
-    /* get the first token */
-    token = strtok(filename, PATH_SEPARATOR);
-
-    /* walk through other tokens */
-    while( token != NULL )
-    {
-        openFile = token;
-        token = strtok(NULL, PATH_SEPARATOR);
-    }
-    dI->openFile = strdup(openFile);
+    dI->openFile = strdup(fileName);
     printf( "openFile %s\n", dI->openFile );
 
     // Send notification to receiver

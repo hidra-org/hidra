@@ -351,7 +351,6 @@ HIDRA_ERROR reactOnMessage (dataTransfer_t *dT, char **multipartMessage, int *me
     char *filename = NULL;
     char *id = NULL;
     int idNum = 0;
-    char **splitRes = NULL;
     int i = 0;
     int rc = 0;
     int totalRecvd = 0;

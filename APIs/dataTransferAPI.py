@@ -472,7 +472,7 @@ class dataTransfer():
                     self.fileOpSocket.send_multipart(message)
                     self.log.debug("fileOpSocket send: {m}".format(m=message))
 
-                    self.openCallback(self.callbackParams, message)
+                    self.openCallback(self.callbackParams, message[1])
                     self.fileOpened = True
 #                    return message
                 else:

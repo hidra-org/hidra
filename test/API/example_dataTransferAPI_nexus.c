@@ -4,7 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
 
 struct params_cb
 {
@@ -17,13 +20,37 @@ int open_cb (params_cb_t *cbp, char *filename)
 {
     char *filepath = "/opt/HiDRA/data/target/local";
     char abs_filename[128];
+    char *lastSlash = NULL;
+    char *parent = NULL;
+    struct stat st = {0};
+    int rc;
+
     snprintf(abs_filename, sizeof(abs_filename), "%s/%s", filepath, filename);
 
     printf ("abs_filename %s\n", abs_filename);
 
-    printf("execute openCall_cb for file: %s\n", filename);
+
+    lastSlash = strrchr(abs_filename, '/'); // you need escape character
+    //lastSlash = strrchr(abs_filename, '\\'); // you need escape character
+    printf("lastSlash= %s\n", lastSlash);
+    parent = strndup(abs_filename, strlen(abs_filename) - (strlen(lastSlash)));
+    printf ("filepath = %s\n", parent);
+
+
+    if (stat(parent, &st) == -1)
+    {
+        printf ("Create directory %s\n", parent);
+        if (mkdir(parent, 0700))
+        {
+            fprintf(stderr, "Failed to create directory '%s': %s\n", parent, strerror(errno));
+        }
+    }
+
+    printf ("execute openCall_cb for file: %s\n", filename);
 
     cbp->fp = fopen(abs_filename,"wb"); // read mode
+
+    free (parent);
 }
 
 

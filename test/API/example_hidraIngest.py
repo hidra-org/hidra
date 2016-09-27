@@ -38,7 +38,7 @@ context    = zmq.Context()
 
 obj = HidraIngest(useLog = True, context = context)
 
-obj.createFile("1.h5")
+obj.createFile("test/1.h5")
 
 #for i in range(5):
 #    try:
