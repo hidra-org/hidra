@@ -100,7 +100,6 @@ class HidraIngest():
         self.poller              = zmq.Poller()
 
         self.filename            = False
-        self.openFile            = False
         self.filePart            = None
 
         self.responseTimeout     = 1000
@@ -146,18 +145,24 @@ class HidraIngest():
 
     # return error code
     def createFile (self, filename):
-        if self.openFile and self.openFile != filename:
-            raise Exception("File {f} already opened.".format(f=filename))
+        signal = "OPEN_FILE"
+
+        if self.filename and self.filename != filename:
+            raise Exception("File {0} already opened.".format(filename))
 
         # send notification to receiver
-        self.signalSocket.send_multipart(["OPEN_FILE", filename])
+        self.signalSocket.send_multipart([signal, filename])
         self.log.info("Sending signal to open a new file.")
 
         message = self.signalSocket.recv_multipart()
-        self.log.debug("Received responce: {m}".format(m=message))
+        self.log.debug("Received responce: {0}".format(message))
 
-        self.filename = filename
-        self.filePart = 0
+        if signal == message[0] and filename == message[1]:
+            self.filename = filename
+            self.filePart = 0
+        else:
+            self.log.debug("signal={s} and filename={f}".format(s=signal, f=filename))
+            raise Exception("Wrong responce received: {0}".format(message))
 
 
     def write (self, data):
@@ -213,7 +218,7 @@ class HidraIngest():
             self.log.debug("send message: {m}".format(m=sendMessage))
             raise Exception("Something went wrong while notifying to close the file")
 
-        self.openFile = None
+        self.filename = None
         self.filePart = None
 
 

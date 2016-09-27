@@ -163,7 +163,6 @@ struct hidraIngest {
 //    zmq::pollitem_t items [];
 
     char *filename;
-    char *openFile;
     int  filePart;
 
     int  responseTimeout;
@@ -286,35 +285,39 @@ HIDRA_ERROR hidraIngest_createFile (hidraIngest *dI, char *fileName)
     char *message = "OPEN_FILE";
     int rc;
     char *token;
-    char *openFile;
-    char filename[strlen(fileName)];
     char **multipartMessage;
     int *messageSize;
     int len = 0;
     int i;
 
-    dI->openFile = strdup(fileName);
-    printf( "openFile %s\n", dI->openFile );
-
     // Send notification to receiver
     rc = s_send (dI->fileOpSocket, message, strlen(message), ZMQ_SNDMORE);
     if (rc == -1) return COMMUNICATIONFAILED;
-    rc = s_send (dI->fileOpSocket, dI->openFile, strlen(dI->openFile), 0);
+    rc = s_send (dI->fileOpSocket, fileName, strlen(fileName), 0);
     if (rc == -1) return COMMUNICATIONFAILED;
     printf ("Sending signal to open a new file.\n");
 
     s_recv_multipart (dI->fileOpSocket, &multipartMessage, &len, &messageSize);
     printf ("Received responce: '%s' for file '%s'\n", multipartMessage[0], multipartMessage[1]);
-    //TODO check if received signal is correct
 
-    dI->filename = fileName;
-    dI->filePart = 0;
-
-/*    for (i = 0; i < len; i++)
+    if (strcmp(message, multipartMessage[0]) != 0 || strcmp(fileName, multipartMessage[1]) != 0)
     {
-        free(multipartMessage[i]);
-    };
-*/
+        printf ("signal=%s and filename=%s\n", message, fileName);
+        fprintf (stderr, "Wrong responce received: %s, %s\n", multipartMessage[0], multipartMessage[1]);
+
+        free_array (&multipartMessage, &len);
+        free (messageSize);
+
+        return COMMUNICATIONFAILED;
+    }
+    else
+    {
+        dI->filename = strdup(fileName);
+        printf( "filename %s\n", dI->filename );
+
+        dI->filePart = 0;
+    }
+
     free_array (&multipartMessage, &len);
     free (messageSize);
 
@@ -370,7 +373,7 @@ HIDRA_ERROR hidraIngest_closeFile (hidraIngest *dI)
     // Send close-signal to signal socket
     rc = s_send (dI->fileOpSocket, message, strlen(message), ZMQ_SNDMORE);
     if (rc == -1) return COMMUNICATIONFAILED;
-    rc = s_send (dI->fileOpSocket, dI->openFile, strlen(dI->openFile), 0);
+    rc = s_send (dI->fileOpSocket, dI->filename, strlen(dI->filename), 0);
     if (rc == -1) return COMMUNICATIONFAILED;
     //        perror("Sending signal to close the file to fileOpSocket...failed.")
     printf ("Sending signal to close the file to fileOpSocket  (sendMessage=%s)\n", message);
@@ -379,7 +382,7 @@ HIDRA_ERROR hidraIngest_closeFile (hidraIngest *dI)
     // send close-signal to event Detector
     rc = s_send (dI->eventDetSocket, message, strlen(message), ZMQ_SNDMORE);
     if (rc == -1) return COMMUNICATIONFAILED;
-    rc = s_send (dI->eventDetSocket, dI->openFile, strlen(dI->openFile), 0);
+    rc = s_send (dI->eventDetSocket, dI->filename, strlen(dI->filename), 0);
     if (rc == -1) return COMMUNICATIONFAILED;
 //        perror("Sending signal to close the file to eventDetSocket...failed.)")
     printf ("Sending signal to close the file to eventDetSocket (sendMessage=%s)\n", message);
@@ -397,23 +400,22 @@ HIDRA_ERROR hidraIngest_closeFile (hidraIngest *dI)
     s_recv_multipart (dI->fileOpSocket, &multipartMessage, &len, &messageSize);
     printf ("Received answer to signal: '%s' for file '%s'\n", multipartMessage[0], multipartMessage[1]);
 
-    //TODO compare whole message
-    if ( strcmp(message,multipartMessage[0]) != 0 )
+    if (strcmp(message, multipartMessage[0]) != 0 || strcmp(dI->filename, multipartMessage[1]) != 0)
     {
         perror ("Something went wrong while notifying to close the file");
-        printf ("recieved message: %s\n", multipartMessage[0]);
-        printf ("send message: %s\n", message);
+        printf ("recieved message: %s, %s\n", multipartMessage[0], multipartMessage[1]);
+        printf ("send message: %s, %s\n", message, dI->filename);
+
+        free_array (&multipartMessage, &len);
+        free (messageSize);
+
+        return COMMUNICATIONFAILED;
     };
 
-    dI->filename = "";
+    free (dI->filename);
+    dI->filename = NULL;
     dI->filePart = 0;
-    free (dI->openFile);
 
-/*    for (i = 0; i < len; i++)
-    {
-        free(multipartMessage[i]);
-    };
-*/
     free_array (&multipartMessage, &len);
     free (messageSize);
 
