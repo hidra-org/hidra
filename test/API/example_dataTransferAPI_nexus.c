@@ -51,6 +51,8 @@ int open_cb (params_cb_t *cbp, char *filename)
     cbp->fp = fopen(abs_filename,"wb"); // read mode
 
     free (parent);
+
+    return 0;
 }
 
 
@@ -84,13 +86,21 @@ int read_cb (params_cb_t *cbp, metadata_t *metadata, char *payload, int payloadS
 //    fclose(fp_local);
 
     fwrite(payload, payloadSize, 1, cbp->fp);
+
+    return 0;
 }
 
 
 int close_cb (params_cb_t *cbp)
 {
     printf("execute closeCall_cb\n");
-    fclose(cbp->fp);
+    if ( fclose(cbp->fp) )
+    {
+        perror ("Closing file failed");
+        return 1;
+    }
+
+    return 0;
 }
 
 

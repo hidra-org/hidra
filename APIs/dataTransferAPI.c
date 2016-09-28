@@ -519,6 +519,7 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
     int *messageSize;
     int i = 0;
     int len = 0;
+    int returnValue = SUCCESS;
 
     dT->runLoop = 1;
 
@@ -540,25 +541,20 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
             if (s_recv_multipart (dT->fileOpSocket, &multipartMessage, &len, &messageSize))
             {
                 perror("Failed to receive data");
-                for (i = 0; i < len; i++)
-                {
-                    free(multipartMessage[i]);
-                };
-                return COMMUNICATIONFAILED;
+                returnValue = COMMUNICATIONFAILED;
+                break;
             }
             printf ("fileOpSocket recv: '%s' for file '%s'\n", multipartMessage[0], multipartMessage[1]);
 
             if (strcmp(multipartMessage[0],"OPEN_FILE") == 0)
             {
-                //TODO for loop over len
                 rc = s_send (dT->fileOpSocket, multipartMessage[0], strlen(multipartMessage[0]), ZMQ_SNDMORE);
                 rc = s_send (dT->fileOpSocket, multipartMessage[1], strlen(multipartMessage[1]), 0);
-                if (rc == -1) return COMMUNICATIONFAILED;
+                if (rc == -1) { perror("Failed to send responce"); returnValue = COMMUNICATIONFAILED; break; }
 
                 dT->filename = strdup(multipartMessage[1]);
 
                 dT->allCloseRecvd = 0;
-//                dT->fileOpened = 1;
 
                 dT->openCb(dT->cbParams, dT->filename);
             }
@@ -566,19 +562,27 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
             {
                 if ( dT->allCloseRecvd )
                 {
-                    //TODO for loop over len
-                    rc = s_send (dT->fileOpSocket, multipartMessage[0], strlen(multipartMessage[0]), ZMQ_SNDMORE);
-                    rc = s_send (dT->fileOpSocket, multipartMessage[1], strlen(multipartMessage[1]), 0);
-                    if (rc == -1) return COMMUNICATIONFAILED;
-
                     // check if received close call belongs to the opened file
                     if (strcmp(multipartMessage[1], dT->filename) == 0)
                     {
-                        dT->closeCb(dT->cbParams);
+                        rc = dT->closeCb(dT->cbParams);
                     }
                     else
                     {
                         perror("Close event for different file received.");
+                        //TODO react
+                    }
+
+                    // send close signal only if close was successfull
+                    if (rc)
+                    {
+                        rc = s_send (dT->fileOpSocket, multipartMessage[0], strlen(multipartMessage[0]), ZMQ_SNDMORE);
+                        rc = s_send (dT->fileOpSocket, multipartMessage[1], strlen(multipartMessage[1]), 0);
+                        if (rc == -1) { perror("Failed to send responce"); returnValue = COMMUNICATIONFAILED; break; }
+                    }
+                    else
+                    {
+                        perror("Close signal was not sent due to not successfull close operation.");
                         //TODO react
                     }
 
@@ -613,13 +617,11 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
                 message = "ERROR";
                 rc = s_send (dT->fileOpSocket, message, strlen(message), ZMQ_SNDMORE);
                 rc = s_send (dT->fileOpSocket, multipartMessage[1], strlen(multipartMessage[1]), 0);
-                if (rc == -1) return COMMUNICATIONFAILED;
+                if (rc == -1) { perror("Failed to send responce"); returnValue = COMMUNICATIONFAILED; break; }
             }
 
-
             free_array (&multipartMessage, &len);
-            free (messageSize);
-
+            if (messageSize) { free (messageSize); messageSize = NULL; }
         }
 
         // dataSocket is polling
@@ -630,31 +632,26 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
             if (s_recv_multipart (dT->dataSocket, &multipartMessage, &len, &messageSize))
             {
                 perror("Failed to receive data");
-                free_array (&multipartMessage, &len);
-                free (messageSize);
-                return COMMUNICATIONFAILED;
+                returnValue = COMMUNICATIONFAILED;
+                break;
             }
 
             if (strcmp(multipartMessage[0],"ALIVE_TEST") == 0)
             {
                 free_array (&multipartMessage, &len);
-                free (messageSize);
+                if (messageSize) { free (messageSize); messageSize = NULL; }
                 continue;
             }
 
             if (len < 2)
             {
                 perror ("Received mutipart-message is too short");
-                free_array (&multipartMessage, &len);
-                free (messageSize);
-                return FORMATERROR;
+                returnValue = FORMATERROR;
+                break;
             }
 
             print_array (multipartMessage, &len);
             rc = reactOnMessage (dT, multipartMessage, messageSize);
-
-            free_array (&multipartMessage, &len);
-            free (messageSize);
 
             if (rc)
             {
@@ -662,10 +659,15 @@ HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t o
 //                return rc;
             }
 
+            free_array (&multipartMessage, &len);
+            if (messageSize) { free (messageSize); messageSize = NULL; }
         }
     }
 
-    return SUCCESS;
+    free_array (&multipartMessage, &len);
+    if (messageSize) { free (messageSize); messageSize = NULL; }
+
+    return returnValue;
 }
 
 
