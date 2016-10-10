@@ -181,6 +181,7 @@ HIDRA_ERROR hidraIngest_init (hidraIngest **out)
     dI->ipcPath         = "/tmp/HiDRA";
 
     dI->signalHost      = "zitpcx19282";
+//    dI->signalHost      = "zitpcx22614w";
     dI->signalPort      = "50050";
 
     // has to be the same port as configured in dataManager.conf as eventDetPort

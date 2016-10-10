@@ -228,8 +228,10 @@ HIDRA_ERROR dataTransfer_init (dataTransfer_t **out, char *connectionType)
     dT->conType      = connectionType;
 
     dT->signalHost   = "zitpcx19282";
+//    dT->signalHost   = "zitpcx22614";
     dT->fileOpPort   = "50050";
     dT->dataHost     = "zitpcx19282";
+//    dT->dataHost     = "zitpcx22614";
     dT->dataPort     = "50100";
 
     dT->nexusStarted = NULL;

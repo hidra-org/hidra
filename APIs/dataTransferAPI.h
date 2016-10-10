@@ -33,6 +33,8 @@ HIDRA_ERROR dataTransfer_init (dataTransfer_t **dT, char *connectionType);
 
 HIDRA_ERROR dataTransfer_initiate (dataTransfer_t *dT, char **targets);
 
+HIDRA_ERROR dataTransfer_start (dataTransfer_t *dT);
+
 HIDRA_ERROR dataTransfer_read (dataTransfer_t *dT, params_cb_t *cbp, open_cb_t openFunc, read_cb_t readFunc, close_cb_t closeFunc);
 
 HIDRA_ERROR dataTransfer_stop (dataTransfer_t *dT);
