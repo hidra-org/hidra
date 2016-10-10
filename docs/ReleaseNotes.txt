@@ -2,6 +2,10 @@ HiDRA develop
 
 - Renamed APIs for data ingest
 
+HiDRA 2.4.1
+
+- Changed config file to use file mode by default
+
 HiDRA 2.4.0
 
 - exchanged all cPickle calls with json calls
