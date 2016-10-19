@@ -5,7 +5,6 @@ import zmq
 import os
 import logging
 import sys
-import trace
 import json
 import signal
 import errno
