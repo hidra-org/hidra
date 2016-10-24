@@ -8,9 +8,9 @@ libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
 
 
 basepath = "/opt/hidra"
-senderpath = "{0}/src/sender".format(basepath)
-sharedpath = "{0}/src/shared".format(basepath)
-confpath = "{0}/conf".format(basepath)
+senderpath = os.path.join(basepath, "src", "sender")
+sharedpath = os.path.join(basepath, "src", "shared")
+confpath = os.path.join(basepath, "conf")
 
 # Dependencies are automatically detected, but it might need
 # fine tuning.
@@ -22,26 +22,26 @@ buildOptions = {
     "include_files": [
 #        libzmq_lib,
         libzmq_path,
-        "{0}/SignalHandler.py".format(senderpath),
-        "{0}/TaskProvider.py".format(senderpath),
-        "{0}/DataDispatcher.py".format(senderpath),
-        "{0}/eventDetectors/InotifyxDetector.py".format(senderpath),
-        "{0}/eventDetectors/WatchdogDetector.py".format(senderpath),
-        "{0}/eventDetectors/HttpDetector.py".format(senderpath),
-        "{0}/eventDetectors/ZmqDetector.py".format(senderpath),
-        "{0}/dataFetchers/getFromFile.py".format(senderpath),
-        "{0}/dataFetchers/getFromHttp.py".format(senderpath),
-        "{0}/dataFetchers/getFromZmq.py".format(senderpath),
-        "{0}/dataFetchers/send_helpers.py".format(senderpath),
-        "{0}/logutils/".format(sharedpath),
-        "{0}/helpers.py".format(sharedpath),
-        "{0}/version.py".format(sharedpath),
-        "{0}/".format(confpath),
+        os.path.join(senderpath, "SignalHandler.py"),
+        os.path.join(senderpath, "TaskProvider.py"),
+        os.path.join(senderpath, "DataDispatcher.py"),
+        os.path.join(senderpath, "eventDetectors", "InotifyxDetector.py"),
+        os.path.join(senderpath, "eventDetectors", "WatchdogDetector.py"),
+        os.path.join(senderpath, "eventDetectors", "HttpDetector.py"),
+        os.path.join(senderpath, "eventDetectors", "ZmqDetector.py"),
+        os.path.join(senderpath, "dataFetchers", "getFromFile.py"),
+        os.path.join(senderpath, "dataFetchers", "getFromHttp.py"),
+        os.path.join(senderpath, "dataFetchers", "getFromZmq.py"),
+        os.path.join(senderpath, "dataFetchers", "send_helpers.py"),
+        os.path.join(sharedpath, "logutils") + "/",
+        os.path.join(sharedpath, "helpers.py"),
+        os.path.join(sharedpath, "version.py"),
+        confpath + "/",
         ],
 }
 
 executables = [
-    Executable("{0}/DataManager.py".format(senderpath))
+    Executable(os.path.join(senderpath, "DataManager.py"))
 ]
 
 copyDependentFiles=True
