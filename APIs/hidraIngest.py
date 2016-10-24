@@ -70,7 +70,7 @@ class HidraIngest():
 
         self.localhost       = "127.0.0.1"
         self.extIp           = "0.0.0.0"
-        self.ipcPath         = "/tmp/HiDRA"
+        self.ipcPath         = "/tmp/hidra"
 
         self.signalHost      = "zitpcx19282"
         self.signalPort      = "50050"

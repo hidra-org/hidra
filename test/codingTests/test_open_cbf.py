@@ -29,10 +29,10 @@ def initLogging(filenameFullPath, verbose):
 
 
 #enable logging
-initLogging("/opt/HiDRA/test/cbf_test.log", True)
+initLogging("/opt/hidra/test/cbf_test.log", True)
 logging.info("Test")
 
-#path = "/opt/HiDRA/jan_015_00001.cbf"
+#path = "/opt/hidra/jan_015_00001.cbf"
 #fileFormat           = path.rsplit(".", 2)[1]
 #print fileFormat
 

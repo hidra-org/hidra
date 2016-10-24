@@ -1,6 +1,6 @@
 #/bin/sh
 
-SOURCE=/opt/HiDRA
+SOURCE=/opt/hidra
 
 TARGET=${SOURCE}/data/source/local
 LIMIT=10

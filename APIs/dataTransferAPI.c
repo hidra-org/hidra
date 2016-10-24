@@ -223,7 +223,7 @@ HIDRA_ERROR dataTransfer_init (dataTransfer_t **out, char *connectionType)
 
     dT->localhost    = "localhost";
     dT->extIp        = "0.0.0.0";
-    dT->ipcPath      = "/tmp/HiDRA";
+    dT->ipcPath      = "/tmp/hidra";
 
     dT->conType      = connectionType;
 

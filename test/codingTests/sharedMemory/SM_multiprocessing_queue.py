@@ -3,7 +3,7 @@ import time
 
 def f1(q):
     for i in range(1,11):
-        filename = "/opt/HiDRA/data/source/local/raw/" + str(i) + ".cbf"
+        filename = "/opt/hidra/data/source/local/raw/" + str(i) + ".cbf"
 #        print "f1:", filename
         time.sleep(0.2)
         f = open(filename, "rb")
@@ -15,7 +15,7 @@ def f1(q):
 
 def f2(q):
     for j in range(11,21):
-        filename = "/opt/HiDRA/data/source/local/raw/" + str(j) + ".cbf"
+        filename = "/opt/hidra/data/source/local/raw/" + str(j) + ".cbf"
 #        print "f2: ", filename
         time.sleep(0.1)
         f = open(filename, "rb")

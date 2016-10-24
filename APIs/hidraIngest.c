@@ -178,7 +178,7 @@ HIDRA_ERROR hidraIngest_init (hidraIngest **out)
 
     dI->localhost       = "localhost";
     dI->extIp           = "0.0.0.0";
-    dI->ipcPath         = "/tmp/HiDRA";
+    dI->ipcPath         = "/tmp/hidra";
 
     dI->signalHost      = "zitpcx19282";
 //    dI->signalHost      = "zitpcx22614w";

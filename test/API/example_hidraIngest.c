@@ -12,7 +12,7 @@ int main()
 
     int chunksize=524288; //1024*512
     int rc;
-    char source_file[25] = "/opt/HiDRA/test_file.cbf";
+    char source_file[25] = "/opt/hidra/test_file.cbf";
     FILE *fp;
     char *buffer = malloc(chunksize);
     int bytesRead;

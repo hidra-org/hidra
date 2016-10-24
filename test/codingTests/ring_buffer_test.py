@@ -9,7 +9,7 @@ import bisect
 RING_BUFFER_SIZE = 5
 
 # path to the directory (relative or absolute)
-dirpath = "/opt/HiDRA/target/local"
+dirpath = "/opt/hidra/target/local"
 
 # get all entries in the directory
 entries = (os.path.join(dirpath, fn) for fn in os.listdir(dirpath))
@@ -27,12 +27,12 @@ print entries
 #print entries
 #print len_entries
 
-#targetFilepath = "/opt/HiDRA/test.tif"
+#targetFilepath = "/opt/hidra/test.tif"
 #entries[:0] = [[os.stat(path)[ST_MTIME], targetFilepath]]
 #print "after prepend"
 #print entries
 
-filename    = "/opt/HiDRA/test.tif"
+filename    = "/opt/hidra/test.tif"
 #fileModTime = os.stat(filename)[ST_MTIME]
 fileModTime = 1436956680
 

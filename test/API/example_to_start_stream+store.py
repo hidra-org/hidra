@@ -57,7 +57,7 @@ while True:
         break
 
     try:
-        query.store("/opt/HiDRA/data/target/testStore", result)
+        query.store("/opt/hidra/data/target/testStore", result)
     except Exception as e:
         print "Storing data failed."
         print "Error was:", e

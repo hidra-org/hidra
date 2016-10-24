@@ -320,7 +320,7 @@ class DataManager():
 
         self.localhost        = "127.0.0.1"
         #TODO make ipcPath windows compatible
-        self.ipcPath          = "/tmp/HiDRA"
+        self.ipcPath          = "/tmp/hidra"
 
         self.currentPID       = os.getpid()
 

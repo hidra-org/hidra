@@ -27,11 +27,11 @@ import helpers
 from logutils.queue import QueueHandler
 
 
-BASEDIR = "/opt/HiDRA"
+BASEDIR = "/opt/hidra"
 
-CONFIGPATH = "/opt/HiDRA/conf"
+CONFIGPATH = "/opt/hidra/conf"
 
-LOGPATH = "/tmp/HiDRA/logs"
+LOGPATH = "/tmp/hidra/logs"
 
 #
 # assume that the server listening to 51000 serves p00
@@ -89,7 +89,7 @@ class ZmqDT():
 
         # Beamline is read-only, determined by portNo
         self.beamline = beamline
-        self.procname = "HiDRA_" + self.beamline
+        self.procname = "hidra_" + self.beamline
 
         # Set log handler
         self.log   = log

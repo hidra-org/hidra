@@ -48,12 +48,12 @@ class Receiver ():
         logging.info("signalSocket started (bind) for '" + connectionStr + "'")
 
         self.eventSocket   = self.context.socket(zmq.PULL)
-        connectionStr = "ipc:///tmp/HiDRA/eventDet"
+        connectionStr = "ipc:///tmp/hidra/eventDet"
         self.eventSocket.bind(connectionStr)
         logging.info("eventSocket started (bind) for '" + connectionStr + "'")
 
         self.dataSocket    = self.context.socket(zmq.PULL)
-        connectionStr = "ipc:///tmp/HiDRA/dataFetch"
+        connectionStr = "ipc:///tmp/hidra/dataFetch"
         self.dataSocket.bind(connectionStr)
         logging.info("dataSocket started (bind) for '" + connectionStr + "'")
 

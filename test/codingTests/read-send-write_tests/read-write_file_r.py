@@ -14,7 +14,7 @@ if __name__ == '__main__':
     sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
     chunkSize = 10485760 # 1024*1024*10 = 10MB
     filepart = 0
-    connectionStr = "ipc:///tmp/HiDRA/file_sending_test"
+    connectionStr = "ipc:///tmp/hidra/file_sending_test"
 
 
     # Set up ZMQ

@@ -7,7 +7,7 @@ import os
 libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
 
 
-basepath = "/opt/HiDRA"
+basepath = "/opt/hidra"
 senderpath = "{0}/src/sender".format(basepath)
 sharedpath = "{0}/src/shared".format(basepath)
 confpath = "{0}/conf".format(basepath)

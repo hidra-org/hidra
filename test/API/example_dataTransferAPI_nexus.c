@@ -18,7 +18,7 @@ struct params_cb
 
 int open_cb (params_cb_t *cbp, char *filename)
 {
-    char *filepath = "/opt/HiDRA/data/target/local";
+    char *filepath = "/opt/Hidra/data/target/local";
     char abs_filename[128];
     char *lastSlash = NULL;
     char *parent = NULL;
@@ -61,7 +61,7 @@ int read_cb (params_cb_t *cbp, metadata_t *metadata, char *payload, int payloadS
     printf("execute readCall_cb\n");
 /*
     FILE *fp_local;
-    char *filepath = "/opt/HiDRA/data/target/local";
+    char *filepath = "/opt/hidra/data/target/local";
     char abs_filename[128];
     snprintf(abs_filename, sizeof(abs_filename), "%s/%s_%d", filepath, "test.cbf", metadata->filePart);
     printf ("abs_filename %s\n", abs_filename);

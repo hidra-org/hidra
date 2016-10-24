@@ -90,7 +90,7 @@ class dataTransfer():
         self.fileOpPort            = "50050"
         self.dataHost              = None
         self.dataPort              = None
-        self.ipcPath               = "/tmp/HiDRA"
+        self.ipcPath               = "/tmp/hidra"
 
         self.signalSocket          = None
         self.requestSocket         = None

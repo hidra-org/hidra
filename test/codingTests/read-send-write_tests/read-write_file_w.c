@@ -11,11 +11,11 @@
 int main()
 {
 
-    char *targetFile = "/opt/HiDRA/data/target/local/test.cbf";
+    char *targetFile = "/opt/hidra/data/target/local/test.cbf";
     FILE *target_fp;
     void *context;
     void *socket;
-    char connectionStr[128] = "ipc:///tmp/HiDRA/file_sending_test";
+    char connectionStr[128] = "ipc:///tmp/hidra/file_sending_test";
     int runLoop = 1;
     zmq_msg_t msg;
     int rc;

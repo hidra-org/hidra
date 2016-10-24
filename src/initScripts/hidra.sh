@@ -16,10 +16,10 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="HiDRA"
 # Process name ( For display )
 NAME=hidra
-DAEMON=/opt/HiDRA/src/sender/DataManager.py
+DAEMON=/opt/hidra/src/sender/DataManager.py
 DAEMON_ARGS="--verbose"
-PIDFILE=/opt/HiDRA/$NAME.pid
-IPCPATH=/tmp/HiDRA
+PIDFILE=/opt/hidra/$NAME.pid
+IPCPATH=/tmp/hidra
 PYTHON=/usr/bin/python
 
 SCRIPTNAME=/etc/init.d/$NAME
@@ -37,7 +37,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 	    ${DAEMON} ${DAEMON_ARGS} &
         echo $! > $PIDFILE
     	RETVAL=$?
-#	    [ "$RETVAL" = 0 ] && touch /var/lock/subsys/HiDRA
+#	    [ "$RETVAL" = 0 ] && touch /var/lock/subsys/hidra
     	echo
     }
 
@@ -69,7 +69,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
         fi
         rm -f $PIDFILE
     	RETVAL=$?
-#    	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/HiDRA
+#    	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/hidra
 	    echo
     }
 

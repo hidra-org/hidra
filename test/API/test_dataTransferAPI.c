@@ -144,13 +144,13 @@ int main()
 
     int chunksize=524288; //1024*512
     int rc;
-    char file_name[25] = "/opt/HiDRA/test_file.cbf";
+    char file_name[25] = "/opt/hidra/test_file.cbf";
     FILE *fp;
     char *buffer = malloc(chunksize);
     int bytesRead;
 
     FILE *fp_local;
-    char *filepath = "/opt/HiDRA/data/source/local";
+    char *filepath = "/opt/hidra/data/source/local";
     char *filename = "test.cbf";
     int filePart = 0;
     char abs_filename[128];

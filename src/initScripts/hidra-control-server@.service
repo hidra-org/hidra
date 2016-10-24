@@ -5,8 +5,8 @@ After=network-online.target
 
 [Service]
 TimeoutStartSec=0
-WorkingDirectory=/opt/HiDRA
-ExecStart=/opt/HiDRA/src/TangoCommunication/HiDRAControlServer.py --beamline %i
+WorkingDirectory=/opt/hidra
+ExecStart=/opt/hidra/src/TangoCommunication/HiDRAControlServer.py --beamline %i
 
 [Install]
 WantedBy=multi-user.target

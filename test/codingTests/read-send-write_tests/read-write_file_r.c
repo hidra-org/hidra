@@ -10,14 +10,14 @@
 
 int main()
 {
-    char *sourceFile = "/opt/HiDRA/test_file.cbf";
+    char *sourceFile = "/opt/hidra/test_file.cbf";
 //    int chunkSize = 10485760; // 1024*1024*10 = 10MB
     int chunkSize = 524288;
     int filepart = 0;
     FILE *source_fp;
     void *context;
     void *socket;
-    char connectionStr[128] = "ipc:///tmp/HiDRA/file_sending_test";
+    char connectionStr[128] = "ipc:///tmp/hidra/file_sending_test";
 //    char connectionStr[128] = "tcp://zitpcx19282:55555";
     char *buffer = malloc(chunkSize);
     int bytesRead;

@@ -5,9 +5,9 @@ After=network-online.target
 
 [Service]
 TimeoutStartSec=0
-WorkingDirectory=/opt/HiDRA
+WorkingDirectory=/opt/hidra
 User=%iuser
-ExecStart=/opt/HiDRA/src/sender/DataManager.py --verbose --configFile /opt/HiDRA/conf/%i.conf
+ExecStart=/opt/hidra/src/sender/DataManager.py --verbose --configFile /opt/hidra/conf/%i.conf
 
 [Install]
 WantedBy=multi-user.target

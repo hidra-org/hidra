@@ -50,13 +50,13 @@ class ZmqDataManager(threading.Thread):
             self.extContext = False
 
         self.eventSocket  = self.context.socket(zmq.PULL)
-        connectionStr     = "ipc:///tmp/HiDRA/eventDet"
+        connectionStr     = "ipc:///tmp/hidra/eventDet"
 #        connectionStr     = "tcp://" + str(self.extHost) + ":" + str(self.eventPort)
         self.eventSocket.bind(connectionStr)
         self.log.info("eventSocket started (bind) for '" + connectionStr + "'")
 
         self.dataInSocket  = self.context.socket(zmq.PULL)
-        connectionStr      = "ipc:///tmp/HiDRA/dataFetch"
+        connectionStr      = "ipc:///tmp/hidra/dataFetch"
 #        connectionStr      = "tcp://" + str(self.extHost) + ":" + str(self.dataInPort)
         self.dataInSocket.bind(connectionStr)
         self.log.info("dataInSocket started (bind) for '" + connectionStr + "'")

@@ -1,4 +1,4 @@
-$source = "D:\HiDRA"
+$source = "D:\hidra"
 
 $target = {$source\data\source\local}
 $limit  = 10

@@ -161,7 +161,7 @@ if __name__ == '__main__':
     root.addHandler(qh)
 
 
-    eventDetConStr  = "ipc://{ip}/{port}".format(ip="/tmp/HiDRA", port="eventDet")
+    eventDetConStr  = "ipc://{ip}/{port}".format(ip="/tmp/hidra", port="eventDet")
     print "eventDetConStr", eventDetConStr
     numberOfStreams = 1
     config = {
