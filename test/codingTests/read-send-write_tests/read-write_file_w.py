@@ -1,6 +1,7 @@
 import os
 import json
 import zmq
+import tempfile
 
 try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -12,7 +13,7 @@ print BASE_PATH
 if __name__ == '__main__':
 
     targetFile = os.path.join(BASE_PATH, "data", "target", "local", "test.cbf")
-    connectionStr = "ipc:///tmp/hidra/file_sending_test"
+    connectionStr = "ipc://{0}".format(os.path.join(tempfile.gettempdir(), "hidra", "file_sending_test")
 #    connectionStr = "tcp://0.0.0.0:55555"
 
     # Set up ZMQ

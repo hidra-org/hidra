@@ -8,6 +8,7 @@ import zmq
 import logging
 import traceback
 import json
+import tempfile
 
 class loggingFunction:
     def out (self, x, exc_info = None):
@@ -70,7 +71,7 @@ class HidraIngest():
 
         self.localhost       = "127.0.0.1"
         self.extIp           = "0.0.0.0"
-        self.ipcPath         = "/tmp/hidra"
+        self.ipcPath         = os.path.join(tempfile.gettempdir(), "hidra")
 
         self.signalHost      = "zitpcx19282"
         self.signalPort      = "50050"

@@ -6,6 +6,7 @@ import zmq
 import logging
 import json
 import sys
+import tempfile
 
 
 try:
@@ -161,7 +162,7 @@ if __name__ == '__main__':
     root.addHandler(qh)
 
 
-    eventDetConStr  = "ipc://{ip}/{port}".format(ip="/tmp/hidra", port="eventDet")
+    eventDetConStr  = "ipc://{ip}/{port}".format(ip=os.path.join(tempfile.gettempdir(), "hidra"), port="eventDet")
     print "eventDetConStr", eventDetConStr
     numberOfStreams = 1
     config = {

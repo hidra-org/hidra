@@ -10,6 +10,7 @@ import errno
 import os
 import traceback
 from zmq.auth.thread import ThreadAuthenticator
+import tempfile
 
 
 class loggingFunction:
@@ -90,7 +91,7 @@ class dataTransfer():
         self.fileOpPort            = "50050"
         self.dataHost              = None
         self.dataPort              = None
-        self.ipcPath               = "/tmp/hidra"
+        self.ipcPath               = os.path.join(tempfile.gettempdir(), "hidra")
 
         self.signalSocket          = None
         self.requestSocket         = None

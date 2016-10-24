@@ -1,6 +1,7 @@
 import os
 import zmq
 import json
+import tempfile
 
 try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -14,7 +15,7 @@ if __name__ == '__main__':
     sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
     chunkSize = 10485760 # 1024*1024*10 = 10MB
     filepart = 0
-    connectionStr = "ipc:///tmp/hidra/file_sending_test"
+    connectionStr = "ipc://{0}".format(os.path.join(tempfile.gettempdir(), "hidra", "file_sending_test")
 
 
     # Set up ZMQ

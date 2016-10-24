@@ -145,6 +145,7 @@ def clean (prop):
 if __name__ == '__main__':
     import time
     from shutil import copyfile
+    import tempfile
 
     try:
         BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
@@ -174,7 +175,7 @@ if __name__ == '__main__':
     receivingPort    = "6005"
     receivingPort2   = "6006"
     extIp            = "0.0.0.0"
-    dataFetchConStr  = "ipc://{path}/{id}".format(path="/tmp/hidra", id="dataFetch")
+    dataFetchConStr  = "ipc://{path}/{id}".format(path= os.path.join(tempfile.gettempdir(), "hidra"), id="dataFetch")
 
     context          = zmq.Context.instance()
 

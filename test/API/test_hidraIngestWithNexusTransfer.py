@@ -5,6 +5,7 @@ import zmq
 import logging
 import threading
 import json
+import tempfile
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
 API_PATH    = BASE_PATH + os.sep + "APIs"
@@ -50,19 +51,19 @@ class ZmqDataManager(threading.Thread):
             self.extContext = False
 
         self.eventSocket  = self.context.socket(zmq.PULL)
-        connectionStr     = "ipc:///tmp/hidra/eventDet"
-#        connectionStr     = "tcp://" + str(self.extHost) + ":" + str(self.eventPort)
+        connectionStr     = "ipc://{0}".format(os.path.join(tempfile.gettempdir(), "hidra", "eventDet"))
+#        connectionStr     = "tcp://{h}:{p}".format(h=self.extHost, p=self.eventPort)
         self.eventSocket.bind(connectionStr)
         self.log.info("eventSocket started (bind) for '" + connectionStr + "'")
 
         self.dataInSocket  = self.context.socket(zmq.PULL)
-        connectionStr      = "ipc:///tmp/hidra/dataFetch"
-#        connectionStr      = "tcp://" + str(self.extHost) + ":" + str(self.dataInPort)
+        connectionStr      = "ipc://{0}".format(os.path.join(tempfile.gettempdir(), "hidra", "dataFetch"))
+#        connectionStr      = "tcp://{h}:{p}".format(h=self.extHost, p=self.dataInPort)
         self.dataInSocket.bind(connectionStr)
         self.log.info("dataInSocket started (bind) for '" + connectionStr + "'")
 
         self.dataOutSocket = self.context.socket(zmq.PUSH)
-        connectionStr      = "tcp://" + str(self.localhost) + ":" + str(self.dataOutPort)
+        connectionStr      = "tcp://{h}:{p}".format(h=self.localhost, p=self.dataOutPort)
         self.dataOutSocket.connect(connectionStr)
         self.log.info("dataOutSocket started (connect) for '" + connectionStr + "'")
 

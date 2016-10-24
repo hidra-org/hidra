@@ -10,6 +10,7 @@ import logging
 import argparse
 import setproctitle
 from multiprocessing import Queue
+import tempfile
 
 try:
     BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
@@ -31,7 +32,7 @@ BASEDIR = "/opt/hidra"
 
 CONFIGPATH = "/opt/hidra/conf"
 
-LOGPATH = "/tmp/hidra/logs"
+LOGPATH = os.path.join(tempfile.gettempdir(), "hidra", "logs")
 
 #
 # assume that the server listening to 51000 serves p00

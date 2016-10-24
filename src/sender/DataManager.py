@@ -17,6 +17,7 @@ import ConfigParser
 import threading
 import signal
 import setproctitle
+import tempfile
 
 from SignalHandler import SignalHandler
 from TaskProvider import TaskProvider
@@ -320,7 +321,7 @@ class DataManager():
 
         self.localhost        = "127.0.0.1"
         #TODO make ipcPath windows compatible
-        self.ipcPath          = "/tmp/hidra"
+        self.ipcPath          = os.path.join(tempfile.gettempdir(), "hidra")
 
         self.currentPID       = os.getpid()
 
