@@ -320,8 +320,6 @@ class DataManager():
         self.logQueueListener = None
 
         self.localhost        = "127.0.0.1"
-        #TODO make ipcPath windows compatible
-        self.ipcPath          = os.path.join(tempfile.gettempdir(), "hidra")
 
         self.currentPID       = os.getpid()
 
@@ -366,11 +364,14 @@ class DataManager():
         # Create log and set handler to queue handle
         self.log = self.getLogger(self.logQueue)
 
+        self.ipcPath          = os.path.join(tempfile.gettempdir(), "hidra")
+        self.log.info("Configured ipcPath: {0}".format(self.ipcPath))
+
         procname              = arguments.procname
         setproctitle.setproctitle(procname)
-        self.log.info("Running as {p}".format(p=procname))
+        self.log.info("Running as {0}".format(procname))
 
-        self.log.info("DataManager started (PID {p}).".format(p=self.currentPID))
+        self.log.info("DataManager started (PID {0}).".format(self.currentPID))
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -418,10 +419,10 @@ class DataManager():
         self.chunkSize        = arguments.chunkSize
 
         self.localTarget      = arguments.localTarget
-        self.log.info("Configured localTarget: {t}".format(t=self.localTarget))
+        self.log.info("Configured localTarget: {0}".format(self.localTarget))
 
         # Assemble configuration for eventDetector.
-        self.log.info("Configured type of eventDetector: {e}".format(e=arguments.eventDetectorType))
+        self.log.info("Configured type of eventDetector: {0}".format(arguments.eventDetectorType))
         if arguments.eventDetectorType == "InotifyxDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
@@ -460,7 +461,7 @@ class DataManager():
 
 
         # Assemble configuration for dataFetcher
-        self.log.info("Configured Type of dataFetcher: {d}".format(d=arguments.dataFetcherType))
+        self.log.info("Configured Type of dataFetcher: {0}".format(arguments.dataFetcherType))
         if arguments.dataFetcherType == "getFromFile":
             self.dataFetcherProp = {
                     "type"            : arguments.dataFetcherType,
@@ -488,7 +489,7 @@ class DataManager():
         self.taskProviderPr   = None
         self.dataDispatcherPr = []
 
-        self.log.info("Version: {v}".format(v=__version__))
+        self.log.info("Version: {0}".format(__version__))
 
         # IP and DNS name should be both in the whitelist
         helpers.extendWhitelist(self.whitelist, self.log)
@@ -546,9 +547,9 @@ class DataManager():
         try:
             self.controlPubSocket = self.context.socket(zmq.PUB)
             self.controlPubSocket.connect(self.controlPubConId)
-            self.log.info("Start controlPubSocket (connect): '{p}'".format(p=self.controlPubConId))
+            self.log.info("Start controlPubSocket (connect): '{0}'".format(self.controlPubConId))
         except:
-            self.log.error("Failed to start controlPubSocket (connect): '{p}'".format(p=self.controlPubConId), exc_info=True)
+            self.log.error("Failed to start controlPubSocket (connect): '{0}'".format(self.controlPubConId), exc_info=True)
             raise
 
 
@@ -559,13 +560,13 @@ class DataManager():
                 connectionStr   = "tcp://{s}".format(s=self.fixedStreamId)
 
                 self.testSocket.connect(connectionStr)
-                self.log.info("Start testSocket (connect): '{s}'".format(s=connectionStr))
+                self.log.info("Start testSocket (connect): '{0}'".format(connectionStr))
             except:
-                self.log.error("Failed to start testSocket (connect): '{s}'".format(s=connectionStr), exc_info=True)
+                self.log.error("Failed to start testSocket (connect): '{0}'".format(connectionStr), exc_info=True)
                 return False
 
             try:
-                self.log.debug("ZMQ version used: {v}".format(v=zmq.__version__))
+                self.log.debug("ZMQ version used: {0}".format(zmq.__version__))
 
                 # With older ZMQ versions the tracker results in an ZMQError in
                 # the DataDispatchers when an event is processed
@@ -573,21 +574,21 @@ class DataManager():
                 if zmq.__version__ <= "14.5.0":
 
                     self.testSocket.send_multipart([b"ALIVE_TEST"])
-                    self.log.info("Sending test message to fixed streaming host {id} ... success".format(id=self.fixedStreamId))
+                    self.log.info("Sending test message to fixed streaming host {0} ... success".format(self.fixedStreamId))
 
                 else:
 
                     tracker = self.testSocket.send_multipart([b"ALIVE_TEST"], copy=False, track=True)
                     if not tracker.done:
                         tracker.wait(2)
-                    self.log.debug("tracker.done = {t}".format(t=tracker.done))
+                    self.log.debug("tracker.done = {0}".format(tracker.done))
                     if not tracker.done:
-                        self.log.error("Failed to send test message to fixed streaming host {id}".format(id=self.fixedStreamId), exc_info=True)
+                        self.log.error("Failed to send test message to fixed streaming host {0}".format(self.fixedStreamId), exc_info=True)
                         return False
                     else:
-                        self.log.info("Sending test message to fixed streaming host {id} ... success".format(id=self.fixedStreamId))
+                        self.log.info("Sending test message to fixed streaming host {0} ... success".format(self.fixedStreamId))
             except:
-                self.log.error("Failed to send test message to fixed streaming host {id}".format(id=self.fixedStreamId), exc_info=True)
+                self.log.error("Failed to send test message to fixed streaming host {0}".format(self.fixedStreamId), exc_info=True)
                 return False
 
         return True
@@ -626,7 +627,7 @@ class DataManager():
         self.taskProviderPr.start()
 
         for i in range(self.numberOfStreams):
-            id = "{i}/{n}".format(i=i, n=self.numberOfStreams)
+            id = "{0}/{1}".format(i, self.numberOfStreams)
             pr = Process ( target = DataDispatcher,
                            args   = (
                                id,
@@ -683,31 +684,31 @@ class DataManager():
         controlSubPath = "{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="controlSub")
         try:
             os.remove(controlPubPath)
-            self.log.debug("Removed ipc socket: {p}".format(p=controlPubPath))
+            self.log.debug("Removed ipc socket: {0}".format(controlPubPath))
         except OSError:
             try:
-                self.log.warning("Could not remove ipc socket: {p}".format(p=controlPubPath))
+                self.log.warning("Could not remove ipc socket: {0}".format(controlPubPath))
             except:
-                logging.warning("Could not remove ipc socket: {p}".format(p=controlPubPath))
+                logging.warning("Could not remove ipc socket: {0}".format(controlPubPath))
         except:
             try:
-                self.log.warning("Could not remove ipc socket: {p}".format(p=controlPubPath), exc_info=True)
+                self.log.warning("Could not remove ipc socket: {0}".format(controlPubPath), exc_info=True)
             except:
-                logging.warning("Could not remove ipc socket: {p}".format(p=controlPubPath), exc_info=True)
+                logging.warning("Could not remove ipc socket: {0}".format(controlPubPath), exc_info=True)
 
         try:
             os.remove(controlSubPath)
-            self.log.debug("Removed ipc socket: {s}".format(s=controlSubPath))
+            self.log.debug("Removed ipc socket: {0}".format(controlSubPath))
         except OSError:
             try:
-                self.log.warning("Could not remove ipc socket: {s}".format(s=controlSubPath))
+                self.log.warning("Could not remove ipc socket: {0}".format(controlSubPath))
             except:
-                logging.warning("Could not remove ipc socket: {s}".format(s=controlSubPath))
+                logging.warning("Could not remove ipc socket: {0}".format(controlSubPath))
         except:
             try:
-                self.log.warning("Could not remove ipc socket: {s}".format(s=controlSubPath), exc_info=True)
+                self.log.warning("Could not remove ipc socket: {0}".format(controlSubPath), exc_info=True)
             except:
-                logging.warning("Could not remove ipc socket: {s}".format(s=controlSubPath), exc_info=True)
+                logging.warning("Could not remove ipc socket: {0}".format(controlSubPath), exc_info=True)
 
         if not self.extLogQueue and self.logQueueListener:
             self.log.info("Stopping logQueue")
@@ -739,24 +740,24 @@ class Test_Receiver_Stream():
         context = zmq.Context.instance()
 
         self.comSocket       = context.socket(zmq.REQ)
-        connectionStr   = "tcp://localhost:{p}".format(p=comPort)
+        connectionStr   = "tcp://localhost:{0}".format(comPort)
         self.comSocket.connect(connectionStr)
-        self.log.info("=== comSocket connected to {s}".format(s=connectionStr))
+        self.log.info("=== comSocket connected to {0}".format(connectionStr))
 
         self.fixedRecvSocket = context.socket(zmq.PULL)
-        connectionStr   = "tcp://0.0.0.0:{p}".format(p=fixedRecvPort)
+        connectionStr   = "tcp://0.0.0.0:{0}".format(fixedRecvPort)
         self.fixedRecvSocket.bind(connectionStr)
-        self.log.info("=== fixedRecvSocket connected to {s}".format(s=connectionStr))
+        self.log.info("=== fixedRecvSocket connected to {0}".format(connectionStr))
 
         self.receivingSocket = context.socket(zmq.PULL)
-        connectionStr   = "tcp://0.0.0.0:{p}".format(p=receivingPort)
+        connectionStr   = "tcp://0.0.0.0:{0}".format(receivingPort)
         self.receivingSocket.bind(connectionStr)
-        self.log.info("=== receivingSocket connected to {s}".format(s=connectionStr))
+        self.log.info("=== receivingSocket connected to {0}".format(connectionStr))
 
         self.receivingSocket2 = context.socket(zmq.PULL)
-        connectionStr   = "tcp://0.0.0.0:{p}".format(p=receivingPort2)
+        connectionStr   = "tcp://0.0.0.0:{0}".format(receivingPort2)
         self.receivingSocket2.bind(connectionStr)
-        self.log.info("=== receivingSocket2 connected to {s}".format(s=connectionStr))
+        self.log.info("=== receivingSocket2 connected to {0}".format(connectionStr))
 
         self.sendSignal("START_STREAM", receivingPort, 1)
         self.sendSignal("START_STREAM", receivingPort2, 0)
@@ -793,17 +794,17 @@ class Test_Receiver_Stream():
         sendMessage.append(targets)
         self.comSocket.send_multipart(sendMessage)
         receivedMessage = self.comSocket.recv()
-        self.log.info("=== Responce : {r}".format(r=receivedMessage))
+        self.log.info("=== Responce : {0}".format(receivedMessage))
 
     def run (self):
         try:
             while True:
                 recv_message = self.fixedRecvSocket.recv_multipart()
-                self.log.info("=== received fixed: {r}".format(r=json.loads(recv_message[0])))
+                self.log.info("=== received fixed: {0}".format(json.loads(recv_message[0])))
                 recv_message = self.receivingSocket.recv_multipart()
-                self.log.info("=== received: {r}".format(r=json.loads(recv_message[0])))
+                self.log.info("=== received: {0}".format(json.loads(recv_message[0])))
                 recv_message = self.receivingSocket2.recv_multipart()
-                self.log.info("=== received 2: {r}".format(r=json.loads(recv_message[0])))
+                self.log.info("=== received 2: {0}".format(json.loads(recv_message[0])))
         except KeyboardInterrupt:
             pass
 
@@ -865,23 +866,23 @@ if __name__ == '__main__':
             i = 100
             try:
                 while i <= 105:
-                    targetFile = "{b}{n}.cbf".format(b=targetFileBase, n=i)
-                    logging.debug("copy to {t}".format(t=targetFile))
+                    targetFile = "{0}{1}.cbf".format(targetFileBase, i)
+                    logging.debug("copy to {0}".format(targetFile))
                     copyfile(sourceFile, targetFile)
                     i += 1
 
                     time.sleep(1)
             except Exception as e:
-                logging.error("Exception detected: {ex}".format(ex=e), exc_info=True)
+                logging.error("Exception detected: {0}".format(e), exc_info=True)
             finally:
                 time.sleep(3)
                 testPr.terminate()
 
                 for number in range(100, i):
-                    targetFile = "{t}{n}.cbf".format(t=targetFileBase, n=number)
+                    targetFile = "{0}{1}.cbf".format(targetFileBase, number)
                     try:
                         os.remove(targetFile)
-                        logging.debug("remove {t}".format(t=targetFile))
+                        logging.debug("remove {0}".format(targetFile))
                     except:
                         pass
 

@@ -38,7 +38,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
         relativePath = metadata["relativePath"]
     except:
         log.error("Invalid fileEvent message received.", exc_info=True)
-        log.debug("metadata={m}".format(m=metadata))
+        log.debug("metadata={0}".format(metadata))
         #skip all further instructions and continue with next iteration
         raise
 
@@ -87,7 +87,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
             metadata[ "fileCreateTime"] = fileCreateTime
             metadata[ "chunkSize"   ]   = chunkSize
 
-            log.debug("metadata = {m}".format(m=metadata))
+            log.debug("metadata = {0}".format(metadata))
         except:
             log.error("Unable to assemble multi-part message.")
             raise
@@ -115,7 +115,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
 
     #reading source file into memory
     try:
-        log.debug("Opening '{f}'...".format(m=sourceFile))
+        log.debug("Opening '{0}'...".format(sourceFile))
         fileDescriptor = open(str(sourceFile), "rb")
     except:
         log.error("Unable to read source file '{f}'.".format(f=sourceFile), exc_info=True)
@@ -334,9 +334,9 @@ if __name__ == '__main__':
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: {m}".format(m=json.loads(recv_message[0])))
+        logging.info("=== received: {0}".format(json.loads(recv_message[0])))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: {m}".format(m=json.loads(recv_message[0])))
+        logging.info("=== received 2: {0}".format(json.loads(recv_message[0])))
     except KeyboardInterrupt:
         pass
     finally:
