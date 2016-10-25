@@ -398,7 +398,7 @@ class dataTransfer():
             connectionStr = "tcp://{h}:{p}".format(h=self.signalHost, p=self.requestPort)
             try:
                 self.requestSocket.connect(connectionStr)
-                self.log.info("Request socket started (connect) for '{s]'".format(s=connectionStr))
+                self.log.info("Request socket started (connect) for '{0}'".format(connectionStr))
             except:
                 self.log.error("Failed to start Socket of type {t} (connect): '{s}'".format(t=self.connectionType, s=connectionStr), exc_info=True)
                 raise
@@ -412,7 +412,7 @@ class dataTransfer():
             connectionStr     = "tcp://{h}:{p}".format(h=ip, p=self.fileOpPort)
             try:
                 self.fileOpSocket.bind(connectionStr)
-                self.log.info("File operation socket started (bind) for '{s}'".format(s=connectionStr))
+                self.log.info("File operation socket started (bind) for '{0}'".format(connectionStr))
             except:
                 self.log.error("Failed to start Socket of type {t} (bind): '{s}'".format(t=self.connectionType, s=connectionStr), exc_info=True)
 
@@ -423,7 +423,7 @@ class dataTransfer():
             controlConStr        = "ipc://{path}/{pid}_{id}".format(path=self.ipcPath, pid=self.currentPID, id="control_API")
             try:
                 self.controlSocket.bind(controlConStr)
-                self.log.info("Internal controlling socket started (bind) for '{s}'".format(s=controlConStr))
+                self.log.info("Internal controlling socket started (bind) for '{0}'".format(controlConStr))
             except:
                 self.log.error("Failed to start internal controlling socket (bind): '{s}'".format(s=controlConStr), exc_info=True)
 

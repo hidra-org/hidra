@@ -33,14 +33,14 @@ if __name__ == "__main__":
 #    signalHost = "asap3-bl-prx07.desy.de"
 
 #    targets = [["asap3-bl-prx07.desy.de", "50101", 1, [".cbf"]], ["asap3-bl-prx07.desy.de", "50102", 1, [".cbf"]], ["asap3-bl-prx07.desy.de", "50103", 1, [".cbf"]]]
-    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]]]
-#    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]], ["zitpcx19282.desy.de", "50102", 1, [".cbf"]], ["zitpcx19282.desy.de", "50103", 1, [".cbf"]]]
+#    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]]]
+    targets = [["zitpcx19282.desy.de", "50100", 1, [".cbf"]], ["zitpcx19282.desy.de", "50101", 1, [".cbf"]], ["zitpcx19282.desy.de", "50102", 1, [".cbf"]]]
 #    targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1]]
 #    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]], ["zitpcx19282.desy.de", "50102", 1, [".cbf"]], ["zitpcx19282.desy.de", "50103", 1, [".cbf"]], ["lsdma-lab04.desy.de", "50104", 1, [".cbf"]]]
 
-#    transferType = "queryNext"
+    transferType = "queryNext"
 #    transferType = "stream"
-    transferType = "streamMetadata"
+#    transferType = "streamMetadata"
 #    transferType = "queryMetadata"
 
     basePath = BASE_PATH + os.sep + "data" + os.sep + "target"
