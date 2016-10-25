@@ -1,3 +1,4 @@
+# Tested with cx_Freeze 4.3.3 installed with pip
 from cx_Freeze import setup, Executable
 import zmq
 from distutils.sysconfig import get_python_lib
@@ -12,15 +13,13 @@ senderpath = os.path.join(basepath, "src", "sender")
 sharedpath = os.path.join(basepath, "src", "shared")
 confpath = os.path.join(basepath, "conf")
 
-# Dependencies are automatically detected, but it might need
-# fine tuning.
+# Dependencies are automatically detected, but it might need fine tuning.
 buildOptions = {
     # zmq.backend.cython seems to be left out by default
     "packages": ["zmq", "zmq.backend.cython", "logging.handlers", "watchdog", "setproctitle"],
     # libzmq.pyd is a vital dependency
 #    "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
-#        libzmq_lib,
         (libzmq_path, "zmq"),
         (os.path.join(senderpath, "SignalHandler.py"), "SignalHandler.py"),
         (os.path.join(senderpath, "TaskProvider.py"), "TaskProvider.py"),

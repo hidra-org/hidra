@@ -1,43 +1,87 @@
+# For Linux:
+# Tested with cx_Freeze 4.3.4 after fixing the this installation bug:
+# http://stackoverflow.com/questions/25107697/compiling-cx-freeze-under-ubuntu
+# For Windows:
+# Tested with cx_Freeze 4.3.3 installed with pip
+
 from cx_Freeze import setup, Executable
 import zmq
 from distutils.sysconfig import get_python_lib
 import os
+import platform
 
-#libzmq_path = os.path.join(get_python_lib(), "zmq", "libzmq.so")
-libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
+if platform.system() == "Windows":
+    #libzmq_path = os.path.join(get_python_lib(), "zmq", "libzmq.so")
+    libzmq_path = "C:\Python27\Lib\site-packages\zmq"
+    basepath = "D:\hidra"
+    senderpath = os.path.join(basepath, "src", "sender")
+
+    platform_specific_packages = ["watchdog"]
+    platform_specific_files = [
+        (os.path.join(senderpath, "eventDetectors", "InotifyxDetector.py"),
+            os.path.join("eventDetectors", "InotifyxDetector.py")),
+        (os.path.join(senderpath, "eventDetectors", "WatchdogDetector.py"),
+            os.path.join("eventDetectors", "WatchdogDetector.py")),
+        (os.path.join(senderpath, "eventDetectors", "HttpDetector.py"),
+            os.path.join("eventDetectors", "HttpDetector.py")),
+        (os.path.join(senderpath, "eventDetectors", "ZmqDetector.py"),
+            os.path.join("eventDetectors", "ZmqDetector.py")),
+        (os.path.join(senderpath, "dataFetchers", "getFromFile.py"),
+            os.path.join("dataFetchers", "getFromFile.py")),
+        (os.path.join(senderpath, "dataFetchers", "getFromHttp.py"),
+            os.path.join("dataFetchers", "getFromHttp.py")),
+        (os.path.join(senderpath, "dataFetchers", "getFromZmq.py"),
+            os.path.join("dataFetchers", "getFromZmq.py")),
+        (os.path.join(senderpath, "dataFetchers", "send_helpers.py"),
+            os.path.join("dataFetchers", "send_helpers.py"))
+        ]
+
+else:
+    #libzmq_path = os.path.join(get_python_lib(), "zmq", "libzmq.so")
+    libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
+    basepath = "/opt/hidra"
+    senderpath = os.path.join(basepath, "src", "sender")
+
+    platform_specific_packages = ["inotifyx"]
+    platform_specific_files = [
+            (os.path.join(senderpath, "eventDetectors", "InotifyxDetector.py"),
+                "InotifyxDetector.py"),
+            (os.path.join(senderpath, "eventDetectors", "WatchdogDetector.py"),
+                "WatchdogDetector.py"),
+            (os.path.join(senderpath, "eventDetectors", "HttpDetector.py"),
+                "HttpDetector.py"),
+            (os.path.join(senderpath, "eventDetectors", "ZmqDetector.py"),
+                "ZmqDetector.py"),
+            (os.path.join(senderpath, "dataFetchers", "getFromFile.py"),
+                "getFromFile.py"),
+            (os.path.join(senderpath, "dataFetchers", "getFromHttp.py"),
+                "getFromHttp.py"),
+            (os.path.join(senderpath, "dataFetchers", "getFromZmq.py"),
+                "getFromZmq.py"),
+            (os.path.join(senderpath, "dataFetchers", "send_helpers.py"),
+                "send_helpers.py")
+            ]
 
 
-basepath = "/opt/hidra"
-senderpath = os.path.join(basepath, "src", "sender")
 sharedpath = os.path.join(basepath, "src", "shared")
 confpath = os.path.join(basepath, "conf")
 
-# Dependencies are automatically detected, but it might need
-# fine tuning.
+# Dependencies are automatically detected, but it might need fine tuning.
 buildOptions = {
     # zmq.backend.cython seems to be left out by default
-    "packages": ["zmq", "zmq.backend.cython", "logging.handlers", "inotifyx", "setproctitle"],
+    "packages": ["zmq", "zmq.backend.cython", "logging.handlers", "setproctitle"] + platform_specific_packages,
     # libzmq.pyd is a vital dependency
 #    "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
-#        libzmq_lib,
-        libzmq_path,
-        os.path.join(senderpath, "SignalHandler.py"),
-        os.path.join(senderpath, "TaskProvider.py"),
-        os.path.join(senderpath, "DataDispatcher.py"),
-        os.path.join(senderpath, "eventDetectors", "InotifyxDetector.py"),
-        os.path.join(senderpath, "eventDetectors", "WatchdogDetector.py"),
-        os.path.join(senderpath, "eventDetectors", "HttpDetector.py"),
-        os.path.join(senderpath, "eventDetectors", "ZmqDetector.py"),
-        os.path.join(senderpath, "dataFetchers", "getFromFile.py"),
-        os.path.join(senderpath, "dataFetchers", "getFromHttp.py"),
-        os.path.join(senderpath, "dataFetchers", "getFromZmq.py"),
-        os.path.join(senderpath, "dataFetchers", "send_helpers.py"),
-        os.path.join(sharedpath, "logutils") + "/",
-        os.path.join(sharedpath, "helpers.py"),
-        os.path.join(sharedpath, "version.py"),
-        confpath + "/",
-        ],
+        (libzmq_path, "zmq"),
+        (os.path.join(senderpath, "SignalHandler.py"), "SignalHandler.py"),
+        (os.path.join(senderpath, "TaskProvider.py"), "TaskProvider.py"),
+        (os.path.join(senderpath, "DataDispatcher.py"), "DataDispatcher.py"),
+        (os.path.join(sharedpath, "logutils"), "logutils"),
+        (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
+        (os.path.join(sharedpath, "version.py"), "version.py"),
+        (confpath, "conf"),
+        ] + platform_specific_files,
 }
 
 executables = [
