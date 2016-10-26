@@ -1,3 +1,5 @@
+# tests file moving on basis of watchdog
+
 SCRIPTPATH=$(readlink -f $0)
 BASEPATH=${SCRIPTPATH%%/test/TransferTest2.sh}
 

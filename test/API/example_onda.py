@@ -3,7 +3,9 @@ import sys
 import time
 import multiprocessing
 import logging
-
+import setproctitle
+import socket
+import argparse
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
 API_PATH    = BASE_PATH + os.sep + "APIs"
@@ -86,9 +88,25 @@ class worker(multiprocessing.Process):
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--signalHost"        , type    = str,
+                                                default = socket.gethostname(),
+                                                help    = "Host where HiDRA is runnning")
+    parser.add_argument("--procname"          , type    = str,
+                                                default = "example_onda",
+                                                help    = "Name with which the service should be running")
+
+    arguments                    = parser.parse_args()
+
+
+    setproctitle.setproctitle(arguments.procname)
+
+
+    signalHost = arguments.signalHost
 #    signalHost = "zitpcx22614.fritz.box"
 #    signalHost = "zitpcx22614w.desy.de"
-    signalHost = "zitpcx19282.desy.de"
+#    signalHost = "zitpcx19282.desy.de"
 #    signalHost = "lsdma-lab04.desy.de"
 #    signalHost = "asap3-bl-prx07.desy.de"
 

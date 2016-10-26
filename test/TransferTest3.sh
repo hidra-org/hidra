@@ -1,3 +1,5 @@
+# tests moving files gotten via HTTP
+
 SCRIPTPATH=$(readlink -f $0)
 BASEPATH=${SCRIPTPATH%%/test/TransferTest3.sh}
 echo $BASEPATH
