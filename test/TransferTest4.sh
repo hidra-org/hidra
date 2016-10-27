@@ -61,6 +61,9 @@ rm $movedfile
 
 killall $procname
 killall $onda_procname
+rm $BASEPATH/logs/${procname}.log*
+
+sleep 1
 
 if [ $exitstatus != 0 ]; then
     exit $exitstatus

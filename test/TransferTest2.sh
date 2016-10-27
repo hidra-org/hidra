@@ -42,5 +42,6 @@ else
 fi
 
 rm $movedfile
+rm $BASEPATH/logs/${procname}.log*
 
 killall $procname
