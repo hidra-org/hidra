@@ -374,7 +374,11 @@ class DataManager():
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         if not os.path.exists(self.ipcPath):
-            os.makedirs(self.ipcPath)
+            os.mkdir(self.ipcPath)
+            # the permission have to changed explicitly because
+            # on some platform they are ignored when called within mkdir
+            os.chmod(self.ipcPath, 0777)
+            self.log.info("Creating directory for IPC communication: {0}".format(self.ipcPath))
 
         self.extIp            = arguments.extIp
 
