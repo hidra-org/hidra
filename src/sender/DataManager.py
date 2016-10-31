@@ -712,6 +712,23 @@ class DataManager():
             except:
                 logging.warning("Could not remove ipc socket: {s}".format(s=controlSubPath), exc_info=True)
 
+        # Remove temp directory (if empty)
+        try:
+            os.rmdir(self.ipcPath)
+            self.log.debug("Removed IPC direcory: {0}".format(self.ipcPath))
+        except OSError, e:
+            try:
+                self.log.warning("Could not remove IPC directory: {0}".format(self.ipcPath))
+                self.log.debug("Error was {0}".format(e))
+            except:
+                logging.warning("Could not remove IPC directory: {0}".format(self.ipcPath))
+                logging.debug("Error was:  {0}".format(e))
+        except:
+            try:
+                self.log.warning("Could not remove IPC directory: {0}".format(self.ipcPath), exc_info=True)
+            except:
+                logging.warning("Could not remove IPC directory: {0}".format(self.ipcPath), exc_info=True)
+
         if not self.extLogQueue and self.logQueueListener:
             self.log.info("Stopping logQueue")
             self.logQueue.put_nowait(None)
