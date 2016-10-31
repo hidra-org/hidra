@@ -1,3 +1,10 @@
+HiDRA 2.4.2
+
+- Changed process name in initScript
+- IPC directory is set to world/write readable when created
+- IPC directory is removed (if empty) when HiDRA is stopped
+
+
 HiDRA 2.4.1
 
 - Changed config file to use file mode by default
