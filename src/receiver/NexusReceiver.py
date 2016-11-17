@@ -183,7 +183,7 @@ class NexusReceiver:
 
         try:
             params["target_fp"] = open(targetFile, "wb")
-        except IOError, e:
+        except IOError as e:
             # errno.ENOENT == "No such file or directory"
             if e.errno == errno.ENOENT:
                 try:

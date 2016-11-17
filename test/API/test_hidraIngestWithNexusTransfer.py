@@ -99,7 +99,7 @@ class ZmqDataManager(threading.Thread):
                     self.dataOutSocket.send_multipart(dataMessage)
                     self.log.debug("Send")
 
-            except zmq.ZMQError, e:
+            except zmq.ZMQError as e:
                 if not str(e) == "Socket operation on non-socket":
                     self.log.error("Error in run", exc_info=True)
                 break

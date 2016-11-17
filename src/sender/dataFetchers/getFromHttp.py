@@ -110,7 +110,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
             log.debug("Opening '{f}'...".format(f=targetFile))
             fileDescriptor = open(targetFile, "wb")
             fileOpened = True
-        except IOError, e:
+        except IOError as e:
             # errno.ENOENT == "No such file or directory"
             if e.errno == errno.ENOENT:
 
@@ -128,7 +128,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
                         fileDescriptor = open(targetFile, "wb")
                         log.info("New target directory created: {p}".format(p=targetPath))
                         fileOpened = True
-                    except OSError, e:
+                    except OSError as e:
                         log.info("Target directory creation failed, was already created in the meantime: {p}".format(p=targetPath))
                         fileDescriptor = open(targetFile, "wb")
                         fileOpened = True

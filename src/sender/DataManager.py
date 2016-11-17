@@ -718,7 +718,7 @@ class DataManager():
         try:
             os.rmdir(self.ipcPath)
             self.log.debug("Removed IPC direcory: {0}".format(self.ipcPath))
-        except OSError, e:
+        except OSError as e:
             try:
                 self.log.warning("Could not remove IPC directory: {0}".format(self.ipcPath))
                 self.log.debug("Error was {0}".format(e))

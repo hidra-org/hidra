@@ -187,7 +187,7 @@ def __dataHandling(log, sourceFile, targetFile, actionFunction, metadata, prop):
                     os.makedirs(targetPath)
                     log.info("New target directory created: {p}".format(p=targetPath))
                     actionFunction(sourceFile, targetFile)
-                except OSError, e:
+                except OSError as e:
                     log.info("Target directory creation failed, was already created in the meantime: {p}".format(p=targetPath))
                     actionFunction(sourceFile, targetFile)
                 except:

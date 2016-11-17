@@ -466,7 +466,7 @@ class socketServer (object):
                 threading.Thread(target=socketCom, args=(self.logQueue, self.beamline, conn, addr)).start()
             except KeyboardInterrupt:
                 break
-            except Exception, e:
+            except Exception as e:
                 self.log.error("Stopped due to unknown error", exc_info=True)
                 break
 
@@ -545,7 +545,7 @@ class socketCom ():
         argout = None
         try:
             argout = self.conn.recv(1024)
-        except Exception, e:
+        except Exception as e:
             print e
             argout = None
 

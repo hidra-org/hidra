@@ -127,7 +127,7 @@ class HiDRAControlAPI():
 
         try:
             self.signalSocket.connect((self.signalHost, self.signalPort))
-        except Exception, e:
+        except Exception as e:
             self.log.error("connect() failed", exc_info=True)
             self.signalSocket.close()
             sys.exit()

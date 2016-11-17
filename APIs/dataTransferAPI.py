@@ -1,5 +1,8 @@
 # API to communicate with a data transfer unit
 
+from __future__ import print_function
+#from __future__ import unicode_literals
+
 __version__ = '2.4.2'
 
 import zmq
@@ -16,9 +19,9 @@ import tempfile
 class loggingFunction:
     def out (self, x, exc_info = None):
         if exc_info:
-            print x, traceback.format_exc()
+            print (x, traceback.format_exc())
         else:
-            print x
+            print (x)
     def __init__ (self):
         self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
         self.info     = lambda x, exc_info=None: self.out(x, exc_info)
@@ -677,7 +680,7 @@ class dataTransfer():
                     try:
                         self.fileDescriptors[targetFilepath] = open(targetFilepath, "wb")
                         self.fileDescriptors[targetFilepath].write(payload)
-                    except IOError, e:
+                    except IOError as e:
                         # errno.ENOENT == "No such file or directory"
                         if e.errno == errno.ENOENT:
                             try:
