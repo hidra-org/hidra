@@ -327,6 +327,7 @@ class DataManager():
             arguments = argumentParsing()
         except:
             self.log = logging
+            self.ipcPath = os.path.join(tempfile.gettempdir(), "hidra")
             raise
 
         logfilePath           = arguments.logfilePath
