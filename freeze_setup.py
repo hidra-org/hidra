@@ -10,10 +10,11 @@ from distutils.sysconfig import get_python_lib
 import os
 import platform
 
+basepath = os.path.dirname(os.path.abspath(__file__))
+
 if platform.system() == "Windows":
-    #libzmq_path = os.path.join(get_python_lib(), "zmq", "libzmq.so")
     libzmq_path = "C:\Python27\Lib\site-packages\zmq"
-    basepath = "D:\hidra"
+#    basepath = "D:\hidra"
     senderpath = os.path.join(basepath, "src", "sender")
 
     platform_specific_packages = ["watchdog"]
@@ -37,34 +38,40 @@ if platform.system() == "Windows":
         ]
 
 else:
-    #libzmq_path = os.path.join(get_python_lib(), "zmq", "libzmq.so")
     libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
-    basepath = "/opt/hidra"
+#    basepath = "/opt/hidra"
     senderpath = os.path.join(basepath, "src", "sender")
 
     platform_specific_packages = ["inotifyx"]
     platform_specific_files = [
-            (os.path.join(senderpath, "eventDetectors", "InotifyxDetector.py"),
-                "InotifyxDetector.py"),
-            (os.path.join(senderpath, "eventDetectors", "WatchdogDetector.py"),
-                "WatchdogDetector.py"),
-            (os.path.join(senderpath, "eventDetectors", "HttpDetector.py"),
-                "HttpDetector.py"),
-            (os.path.join(senderpath, "eventDetectors", "ZmqDetector.py"),
-                "ZmqDetector.py"),
-            (os.path.join(senderpath, "dataFetchers", "getFromFile.py"),
-                "getFromFile.py"),
-            (os.path.join(senderpath, "dataFetchers", "getFromHttp.py"),
-                "getFromHttp.py"),
-            (os.path.join(senderpath, "dataFetchers", "getFromZmq.py"),
-                "getFromZmq.py"),
-            (os.path.join(senderpath, "dataFetchers", "send_helpers.py"),
-                "send_helpers.py")
-            ]
+        (os.path.join(senderpath, "eventDetectors", "InotifyxDetector.py"),
+            "InotifyxDetector.py"),
+        (os.path.join(senderpath, "eventDetectors", "WatchdogDetector.py"),
+            "WatchdogDetector.py"),
+        (os.path.join(senderpath, "eventDetectors", "HttpDetector.py"),
+            "HttpDetector.py"),
+        (os.path.join(senderpath, "eventDetectors", "ZmqDetector.py"),
+            "ZmqDetector.py"),
+        (os.path.join(senderpath, "dataFetchers", "getFromFile.py"),
+            "getFromFile.py"),
+        (os.path.join(senderpath, "dataFetchers", "getFromHttp.py"),
+            "getFromHttp.py"),
+        (os.path.join(senderpath, "dataFetchers", "getFromZmq.py"),
+            "getFromZmq.py"),
+        (os.path.join(senderpath, "dataFetchers", "send_helpers.py"),
+            "send_helpers.py")
+        ]
+
+    dist = platform.dist()
+    if dist[0].lower() == "suse" and dist[1].startswith("10"):
+        setproctitle_egg_path = os.path.join(os.path.expanduser("~"), ".cache/Python-Eggs/setproctitle-1.1.10-py2.7-linux-i686.egg-tmp/setproctitle.so")
+        platform_specific_files += [(setproctitle_egg_path, "setproctitle.so")]
+
 
 
 sharedpath = os.path.join(basepath, "src", "shared")
 confpath = os.path.join(basepath, "conf")
+#libzmq_path = os.path.join(get_python_lib(), "zmq")
 
 # Dependencies are automatically detected, but it might need fine tuning.
 buildOptions = {
