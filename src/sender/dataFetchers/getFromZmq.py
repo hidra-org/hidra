@@ -1,3 +1,6 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import zmq
@@ -118,7 +121,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         metadataExtended["chunkNumber"] = chunkNumber
 
         payload = []
-        payload.append(json.dumps(metadataExtended))
+        payload.append(json.dumps(metadataExtended).encode("utf-8"))
         payload.append(data)
     except:
         log.error("Unable to pack multipart-message for file '{f}'".format(f=sourceFile), exc_info=True)
@@ -151,7 +154,7 @@ if __name__ == '__main__':
         BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
     except:
         BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))))
-    print "BASE_PATH", BASE_PATH
+    print ("BASE_PATH", BASE_PATH)
     SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
 
     if not SHARED_PATH in sys.path:
@@ -236,9 +239,9 @@ if __name__ == '__main__':
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: {m}".format(m=json.loads(recv_message[0])))
+        logging.info("=== received: {0}".format(json.loads(recv_message[0].decode("utf-8"))))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: {m}".format(m=json.loads(recv_message[0])))
+        logging.info("=== received 2: {0}".format(json.loads(recv_message[0].decode("utf-8"))))
     except KeyboardInterrupt:
         pass
     finally:

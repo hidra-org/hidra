@@ -1,3 +1,6 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import zmq
@@ -14,12 +17,12 @@ from send_helpers import __sendToTargets, DataHandlingError
 
 def setup (log, prop):
 
-    if ( not prop.has_key("fixSubdirs") or
-        not prop.has_key("storeData")  or
-        not prop.has_key("removeData") ):
+    if ( "fixSubdirs" not in prop or
+        "storeData" not in prop  or
+        "removeData" not in prop ):
 
         log.error ("Configuration of wrong format")
-        log.debug ("dataFetcherProp={p}".format(p=prop))
+        log.debug ("dataFetcherProp={0}".format(prop))
         return False
 
     else:
@@ -137,7 +140,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
             chunkMetadata["chunkNumber"] = chunkNumber
 
             chunkPayload = []
-            chunkPayload.append(json.dumps(chunkMetadata))
+            chunkPayload.append(json.dumps(chunkMetadata).encode("utf-8"))
             chunkPayload.append(fileContent)
         except:
             log.error("Unable to pack multipart-message for file '{f}'".format(f=sourceFile), exc_info=True)
@@ -257,7 +260,7 @@ if __name__ == '__main__':
         BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
     except:
         BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))))
-    print "BASE_PATH", BASE_PATH
+    print ("BASE_PATH", BASE_PATH)
     SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
 
     if not SHARED_PATH in sys.path:
@@ -334,9 +337,9 @@ if __name__ == '__main__':
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: {0}".format(json.loads(recv_message[0])))
+        logging.info("=== received: {0}".format(json.loads(recv_message[0].decode("utf-8"))))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: {0}".format(json.loads(recv_message[0])))
+        logging.info("=== received 2: {0}".format(json.loads(recv_message[0].decode("utf-8"))))
     except KeyboardInterrupt:
         pass
     finally:

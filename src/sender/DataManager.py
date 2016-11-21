@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+from __future__ import unicode_literals
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import argparse
 import zmq
@@ -13,11 +14,14 @@ import sys
 import json
 import time
 from multiprocessing import Process, freeze_support, Queue
-import ConfigParser
 import threading
 import signal
 import setproctitle
 import tempfile
+try:
+    import ConfigParser
+except:
+    import configparser as ConfigParser
 
 from SignalHandler import SignalHandler
 from TaskProvider import TaskProvider
@@ -180,7 +184,12 @@ def argumentParsing():
     ##################################
 
     config = ConfigParser.RawConfigParser()
-    config.readfp(helpers.FakeSecHead(open(arguments.configFile)))
+    try:
+        config.readfp(helpers.FakeSecHead(open(arguments.configFile)))
+    except:
+        with open(arguments.configFile, 'r') as f:
+            config_string = '[asection]\n' + f.read()
+        config.read_string(config_string)
 
     # Configure logfile
     arguments.logfilePath        = arguments.logfilePath        or config.get('asection', 'logfilePath')
@@ -380,7 +389,7 @@ class DataManager():
             os.mkdir(self.ipcPath)
             # the permission have to changed explicitly because
             # on some platform they are ignored when called within mkdir
-            os.chmod(self.ipcPath, 0777)
+            os.chmod(self.ipcPath, 0o777)
             self.log.info("Creating directory for IPC communication: {0}".format(self.ipcPath))
 
         self.extIp            = arguments.extIp
@@ -665,7 +674,7 @@ class DataManager():
 
         if self.controlPubSocket:
             self.log.info("Sending 'Exit' signal")
-            self.controlPubSocket.send_multipart(["control", "EXIT"])
+            self.controlPubSocket.send_multipart([b"control", b"EXIT"])
 
         # waiting till the other processes are finished
         time.sleep(0.5)
@@ -812,7 +821,7 @@ class Test_Receiver_Stream():
         else:
             targets.append(["localhost:{p}".format(p=ports), prio])
 
-        targets = json.dumps(targets)
+        targets = json.dumps(targets).encode("utf-8")
         sendMessage.append(targets)
         self.comSocket.send_multipart(sendMessage)
         receivedMessage = self.comSocket.recv()

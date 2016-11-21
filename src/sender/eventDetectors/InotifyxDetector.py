@@ -1,5 +1,8 @@
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+from __future__ import print_function
+from __future__ import unicode_literals
+from six import iteritems
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import os
 import logging
@@ -236,16 +239,16 @@ class EventDetector():
         self.log = self.getLogger(logQueue)
 
         # check format of config
-        if ( not config.has_key("monDir") or
-                not config.has_key("monSubdirs") or
-                not config.has_key("monEvents") or
-                not config.has_key("timeout") or
-                not config.has_key("historySize") or
-                not config.has_key("useCleanUp") or
-                not config.has_key("cleanUpTime") or
-                not config.has_key("actionTime") ):
+        if ( "monDir" not in config or
+                "monSubdirs" not in config or
+                "monEvents" not in config or
+                "timeout" not in config or
+                "historySize" not in config or
+                "useCleanUp" not in config or
+                "cleanUpTime" not in config or
+                "actionTime" not in config ):
             self.log.error ("Configuration of wrong format")
-            self.log.debug ("config={c}".format(c=config))
+            self.log.debug ("config={0}".format(config))
             checkPassed = False
         else:
             checkPassed = True
@@ -261,7 +264,7 @@ class EventDetector():
             self.monSubdirs   = config["monSubdirs"]
 
             suffixList = []
-            for key, value in config["monEvents"].iteritems():
+            for key, value in iteritems(config["monEvents"]):
                 suffixList += value
             self.monSuffixes = tuple(suffixList)
 
@@ -385,7 +388,7 @@ class EventDetector():
             is_moved_to   = ("IN_MOVED_TO" in parts_array)
 
             currentMonEvent = None
-            for key, value in self.monEvents.iteritems():
+            for key, value in iteritems(self.monEvents):
                 if key in parts_array:
                     currentMonEvent = key
 
@@ -448,7 +451,7 @@ class EventDetector():
 #                self.log.debug(event.name)
 
                 dirname = os.path.join(path, event.name)
-                for watch, watchPath in self.wd_to_path.iteritems():
+                for watch, watchPath in iteritems(self.wd_to_path):
                     if watchPath == dirname:
                         foundWatch = watch
                         break
@@ -562,7 +565,7 @@ if __name__ == '__main__':
 
             eventList = eventDetector.getNewEvent()
             if eventList:
-                print "eventList:", eventList
+                print ("eventList:", eventList)
 
             time.sleep(1)
         except KeyboardInterrupt:

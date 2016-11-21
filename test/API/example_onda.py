@@ -1,3 +1,6 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+#
 import os
 import sys
 import time
@@ -67,9 +70,9 @@ class worker(multiprocessing.Process):
                     content = fileDescriptor.read()
                     self.log.debug("worker-" + str(self.id) + ": file " + filepath + " read")
             else:
-                print "metadata", str(metadata)
+                print ("metadata", str(metadata))
 
-            print "data", str(data)[:100]
+            print ("data", str(data)[:100])
 
 
 

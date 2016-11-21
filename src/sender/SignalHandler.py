@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import time
@@ -92,7 +94,7 @@ class SignalHandler():
         except KeyboardInterrupt:
             pass
         except:
-            self.log.error("Stopping signalHandler due to unknown error condition.", exc_info=True)
+            self.log.error("Stopping SignalHandler due to unknown error condition.", exc_info=True)
         finally:
             self.stop()
 
@@ -132,7 +134,7 @@ class SignalHandler():
             self.log.error("Failed to start controlSubSocket (connect): '{0}'".format(self.controlSubConId), exc_info=True)
             raise
 
-        self.controlSubSocket.setsockopt(zmq.SUBSCRIBE, "control")
+        self.controlSubSocket.setsockopt_string(zmq.SUBSCRIBE, u"control")
 
         # create zmq socket for signal communication with receiver
         try:
@@ -183,9 +185,9 @@ class SignalHandler():
 
                 try:
                     incomingMessage = self.requestFwSocket.recv_multipart()
-                    if incomingMessage[0] == "GET_REQUESTS":
+                    if incomingMessage[0] == b"GET_REQUESTS":
                         self.log.debug("New request for signals received.")
-                        filename = json.loads(incomingMessage[1])
+                        filename = json.loads(incomingMessage[1].decode("utf-8"))
                         openRequests = []
 
                         for requestSet in self.openRequPerm:
@@ -205,13 +207,13 @@ class SignalHandler():
                                 openRequests.append(tmp)
 
                         if openRequests:
-                            self.requestFwSocket.send(json.dumps(openRequests))
+                            self.requestFwSocket.send_string(json.dumps(openRequests))
                             self.log.debug("Answered to request: {0}".format(openRequests))
                             self.log.debug("openRequVari: {0}".format(self.openRequVari))
                             self.log.debug("allowedQueries: {0}".format(self.allowedQueries))
                         else:
                             openRequests = ["None"]
-                            self.requestFwSocket.send(json.dumps(openRequests))
+                            self.requestFwSocket.send_string(json.dumps(openRequests))
                             self.log.debug("Answered to request: {0}".format(openRequests))
                             self.log.debug("openRequVari: {0}".format(self.openRequVari))
                             self.log.debug("allowedQueries: {0}".format(self.allowedQueries))
@@ -241,12 +243,8 @@ class SignalHandler():
                 incomingMessage = self.requestSocket.recv_multipart()
                 self.log.debug("Received request: {0}".format(incomingMessage) )
 
-                if incomingMessage[0] == "NEXT":
-
-                    if ".desy.de:" in incomingMessage[1]:
-                        incomingMessage[1] = incomingMessage[1].replace(".desy.de:", ":")
-
-                    incomingSocketId = incomingMessage[1]
+                if incomingMessage[0] == b"NEXT":
+                    incomingSocketId = incomingMessage[1].decode("utf-8").replace(".desy.de:", ":")
 
                     for index in range(len(self.allowedQueries)):
                         for i in range(len(self.allowedQueries[index])):
@@ -254,12 +252,8 @@ class SignalHandler():
                                 self.openRequVari[index].append(self.allowedQueries[index][i])
                                 self.log.info("Add to open requests: {0}".format(self.allowedQueries[index][i]) )
 
-                elif incomingMessage[0] == "CANCEL":
-
-                    if ".desy.de:" in incomingMessage[1]:
-                        incomingMessage[1] = incomingMessage[1].replace(".desy.de:", ":")
-
-                    incomingSocketId = incomingMessage[1]
+                elif incomingMessage[0] == b"CANCEL":
+                    incomingSocketId = incomingMessage[1].decode("utf-8").replace(".desy.de:", ":")
 
                     self.openRequVari =  [ [ b for b in  self.openRequVari[a] if incomingSocketId != b[0] ] for a in range(len(self.openRequVari)) ]
                     self.log.info("Remove all occurences from {0} from variable request list.".format(incomingSocketId))
@@ -296,24 +290,24 @@ class SignalHandler():
 
             self.log.warning("Received signal is of the wrong format")
             self.log.debug("Received signal is too short or too long: {0}".format(incomingMessage))
-            return "NO_VALID_SIGNAL", None, None
+            return b"NO_VALID_SIGNAL", None, None
 
         else:
 
-            version, signal, target = incomingMessage
+            version, signal, target = incomingMessage[0].decode("utf-8"), incomingMessage[1], incomingMessage[2].decode("utf-8")
             target = json.loads(target)
 
             try:
                 host = [t[0].split(":")[0] for t in target]
             except:
-                return "NO_VALID_SIGNAL", None, None
+                return b"NO_VALID_SIGNAL", None, None
 
             if version:
                 if helpers.checkVersion(version, self.log):
                     self.log.info("Versions are compatible")
                 else:
                     self.log.warning("Version are not compatible")
-                    return "VERSION_CONFLICT", None, None
+                    return b"VERSION_CONFLICT", None, None
 
             if signal and host:
 
@@ -325,7 +319,7 @@ class SignalHandler():
                 else:
                     self.log.warning("One of the hosts is not allowed to connect.")
                     self.log.debug("hosts: {0}".format(host))
-                    return "NO_VALID_HOST", None, None
+                    return b"NO_VALID_HOST", None, None
 
         return False, signal, target
 
@@ -436,10 +430,7 @@ class SignalHandler():
 
         for socketConf in socketIds:
 
-            if ".desy.de:" in socketConf[0]:
-                socketConf[0] = socketConf[0].replace(".desy.de:",":")
-
-            socketId = socketConf[0]
+            socketId = socketConf[0].replace(".desy.de:",":")
 
             for sublist in listToCheck:
                 for element in sublist:
@@ -450,7 +441,7 @@ class SignalHandler():
                 connectionNotFound = True
 
         if connectionNotFound:
-            self.sendResponse("NO_OPEN_CONNECTION_FOUND")
+            self.sendResponse(b"NO_OPEN_CONNECTION_FOUND")
             self.log.info("No connection to close was found for {0}".format(socketConf))
         else:
             # send signal back to receiver
@@ -483,7 +474,7 @@ class SignalHandler():
                     del listToCheck[index]
 
             # send signal to TaskManager
-            self.controlPubSocket.send_multipart(["signal", "CLOSE_SOCKETS", json.dumps(socketIds)])
+            self.controlPubSocket.send_multipart([b"signal", b"CLOSE_SOCKETS", json.dumps(socketIds).encode("utf-8")])
 
         return listToCheck, variList, correspList
 
@@ -493,7 +484,7 @@ class SignalHandler():
         ###########################
         ##      START_STREAM     ##
         ###########################
-        if signal == "START_STREAM":
+        if signal == b"START_STREAM":
             self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
             self.__startSignal(signal, "data", socketIds, self.openRequPerm, None, self.nextRequNode)
@@ -503,7 +494,7 @@ class SignalHandler():
         ###########################
         ## START_STREAM_METADATA ##
         ###########################
-        elif signal == "START_STREAM_METADATA":
+        elif signal == b"START_STREAM_METADATA":
             self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
             self.__startSignal(signal, "metadata", socketIds, self.openRequPerm, None, self.nextRequNode)
@@ -514,7 +505,7 @@ class SignalHandler():
         ##      STOP_STREAM      ##
         ## STOP_STREAM_METADATA  ##
         ###########################
-        elif signal == "STOP_STREAM" or signal == "STOP_STREAM_METADATA":
+        elif signal == b"STOP_STREAM" or signal == b"STOP_STREAM_METADATA":
             self.log.info("Received signal: {s} for host {h}".format(s=signal, h=socketIds))
 
             self.openRequPerm, nonetmp, self.nextRequNode = self.__stopSignal(signal, socketIds, self.openRequPerm, None, self.nextRequNode)
@@ -525,7 +516,7 @@ class SignalHandler():
         ###########################
         ##      START_QUERY      ##
         ###########################
-        elif signal == "START_QUERY_NEXT":
+        elif signal == b"START_QUERY_NEXT":
             self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
             self.__startSignal(signal, "data", socketIds, self.allowedQueries, self.openRequVari, None)
@@ -535,7 +526,7 @@ class SignalHandler():
         ###########################
         ## START_QUERY_METADATA  ##
         ###########################
-        elif signal == "START_QUERY_METADATA":
+        elif signal == b"START_QUERY_METADATA":
             self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
             self.__startSignal(signal, "metadata", socketIds, self.allowedQueries, self.openRequVari, None)
@@ -546,7 +537,7 @@ class SignalHandler():
         ##      STOP_QUERY       ##
         ## STOP_QUERY_METADATA   ##
         ###########################
-        elif signal == "STOP_QUERY_NEXT" or signal == "STOP_QUERY_METADATA":
+        elif signal == b"STOP_QUERY_NEXT" or signal == b"STOP_QUERY_METADATA":
             self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
             self.allowedQueries, self.openRequVari, nonetmp = self.__stopSignal(signal, socketIds, self.allowedQueries, self.openRequVari, None)
@@ -555,8 +546,8 @@ class SignalHandler():
 
 
         else:
-            self.log.info("Received signal from host {h} unknown: {s}".format(h=host, s=signal))
-            self.sendResponse("NO_VALID_SIGNAL")
+            self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
+            self.sendResponse(b"NO_VALID_SIGNAL")
 
 
     def stop (self):
@@ -632,9 +623,9 @@ class requestPuller():
         self.log.info("[getRequests] Start run")
         while True:
             try:
-                self.requestFwSocket.send_multipart(["GET_REQUESTS"])
+                self.requestFwSocket.send_multipart([b"GET_REQUESTS"])
                 self.log.info("[getRequests] send")
-                requests = json.loads(self.requestFwSocket.recv())
+                requests = json.loads(self.requestFwSocket.recv().decode("utf-8"))
                 self.log.info("[getRequests] Requests: {0}".format(requests))
                 time.sleep(0.25)
             except Exception as e:
@@ -720,14 +711,14 @@ if __name__ == '__main__':
                 targets.append(["zitpcx19282:{p}".format(p=port), prio])
         else:
             targets.append(["zitpcx19282:{p}".format(p=ports), prio])
-        targets = json.dumps(targets)
+        targets = json.dumps(targets).encode("utf-8")
         sendMessage.append(targets)
         socket.send_multipart(sendMessage)
         receivedMessage = socket.recv()
         logging.info("=== Responce : {0}".format(receivedMessage))
 
     def sendRequest(socket, socketId):
-        sendMessage = ["NEXT", socketId]
+        sendMessage = [b"NEXT", socketId]
         logging.info("=== sendRequest: {0}".format(sendMessage))
         socket.send_multipart(sendMessage)
         logging.info("=== request sent: {0}".format(sendMessage))
@@ -747,30 +738,30 @@ if __name__ == '__main__':
 
     time.sleep(1)
 
-    sendSignal(comSocket, "START_STREAM", "6003", 1)
+    sendSignal(comSocket, b"START_STREAM", "6003", 1)
 
-    sendSignal(comSocket, "START_STREAM", "6004", 0)
+    sendSignal(comSocket, b"START_STREAM", "6004", 0)
 
-    sendSignal(comSocket, "STOP_STREAM", "6003")
+    sendSignal(comSocket, b"STOP_STREAM", "6003")
 
     sendRequest(requestSocket, "zitpcx19282:6006")
 
-    sendSignal(comSocket, "START_QUERY_NEXT", ["6005", "6006"], 2)
+    sendSignal(comSocket, b"START_QUERY_NEXT", ["6005", "6006"], 2)
 
-    sendRequest(requestSocket, "zitpcx19282:6005")
-    sendRequest(requestSocket, "zitpcx19282:6005")
-    sendRequest(requestSocket, "zitpcx19282:6006")
+    sendRequest(requestSocket, b"zitpcx19282:6005")
+    sendRequest(requestSocket, b"zitpcx19282:6005")
+    sendRequest(requestSocket, b"zitpcx19282:6006")
 
     time.sleep(0.5)
 
 
     sendRequest(requestSocket, "zitpcx19282:6005")
-    sendSignal(comSocket, "STOP_QUERY_NEXT", "6005", 2)
+    sendSignal(comSocket, b"STOP_QUERY_NEXT", "6005", 2)
 
     time.sleep(1)
 
 
-    controlPubSocket.send_multipart(["control", "EXIT"])
+    controlPubSocket.send_multipart(["control", b"EXIT"])
     logging.debug("=== EXIT")
 
     signalHandlerPr.join()

@@ -2,6 +2,9 @@
 
 __version__ = '0.0.4'
 
+from __future__ import print_function
+#from __future__ import unicode_literals
+
 import socket
 import logging
 import os
@@ -11,9 +14,9 @@ import sys
 class loggingFunction:
     def out (self, x, exc_info = None):
         if exc_info:
-            print x, traceback.format_exc()
+            print (x, traceback.format_exc())
         else:
-            print x
+            print (x)
     def __init__ (self):
         self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
         self.info     = lambda x, exc_info=None: self.out(x, exc_info)

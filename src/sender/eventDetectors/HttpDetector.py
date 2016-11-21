@@ -1,3 +1,6 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>', 'Jan Garrevoet <jan,garrevoet@desy.de>'
 
 import os
@@ -15,15 +18,15 @@ class EventDetector():
         self.log = self.getLogger(logQueue)
 
         # check format of config
-        if ( not config.has_key("eigerIp") or
-                not config.has_key("eigerApiVersion") or
-                not config.has_key("historySize") ):
+        if ( "eigerIp" not in config or
+                "eigerApiVersion" not in config or
+                "historySize" not in config ):
             self.log.error("Configuration of wrong format")
-            self.log.debug("config={c}".format(c=config))
+            self.log.debug("config={0}".format(config))
             checkPassed = False
         else:
             checkPassed = True
-            self.log.info("Event detector configuration {c}".format(c=config))
+            self.log.info("Event detector configuration {0}".format(config))
 
 
         if checkPassed:
@@ -133,7 +136,7 @@ if __name__ == '__main__':
 
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
     SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
-    print "SHARED", SHARED_PATH
+    print ("SHARED", SHARED_PATH)
 
     if not SHARED_PATH in sys.path:
         sys.path.append ( SHARED_PATH )
@@ -183,7 +186,7 @@ if __name__ == '__main__':
         try:
             eventList = eventDetector.getNewEvent()
             if eventList:
-                print "eventList:", eventList
+                print ("eventList:", eventList)
 
             time.sleep(1)
         except KeyboardInterrupt:

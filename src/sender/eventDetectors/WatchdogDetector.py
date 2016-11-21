@@ -1,5 +1,8 @@
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+from __future__ import print_function
+from __future__ import unicode_literals
+from six import iteritems
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import os
 import logging
@@ -41,7 +44,7 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
         self.paths        = [ config["monDir"] ]
 
         patterns = []
-        for event, suffix in config["monEvents"].iteritems():
+        for event, suffix in iteritems(config["monEvents"]):
             for s in suffix:
                 #TODO check format
                 patterns.append("*" + s)
@@ -59,7 +62,7 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
         self.detect_move   = False
         self.detect_close  = False
 
-        for event, suffix in config["monEvents"].iteritems():
+        for event, suffix in iteritems(config["monEvents"]):
             if "all" in event.lower():
                 self.log.info("Activate all event types")
                 self.detect_all    = tuple(suffix)
@@ -350,11 +353,11 @@ class EventDetector():
         self.log = self.getLogger(logQueue)
 
         # check format of config
-        if ( not config.has_key("monDir") or
-                not config.has_key("monSubdirs") or
-                not config.has_key("monEvents") or
-                not config.has_key("timeTillClosed") or
-                not config.has_key("actionTime") ):
+        if ( "monDir" not in config or
+                "monSubdirs" not in config or
+                "monEvents" not in config or
+                "timeTillClosed" not in config or
+                "actionTime" not in config ):
             self.log.error ("Configuration of wrong format")
             self.log.debug ("config={c}".format(c=config))
             checkPassed = False
@@ -445,7 +448,7 @@ if __name__ == '__main__':
 #    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))))
     SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
-    print SHARED_PATH
+    print (SHARED_PATH)
 
     if not SHARED_PATH in sys.path:
         sys.path.append ( SHARED_PATH )
@@ -494,7 +497,7 @@ if __name__ == '__main__':
         try:
             eventList = eventDetector.getNewEvent()
             if eventList:
-                print "eventList:", eventList
+                print ("eventList:", eventList)
             if copyFlag:
                 targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=i)
                 logging.debug("copy to {t}".format(t=targetFile))

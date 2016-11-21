@@ -5,10 +5,13 @@ import sys
 import argparse
 import logging
 import os
-import ConfigParser
 import json
 import subprocess
 import re
+try:
+    import ConfigParser
+except:
+    import configparser as ConfigParser
 
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))

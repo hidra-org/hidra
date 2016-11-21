@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import zmq
@@ -37,7 +39,7 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
 
                 elif sendType == "metadata":
                     #json.dumps(None) is 'N.'
-                    tracker = openConnections[target].send_multipart([json.dumps(metadata), json.dumps(None)], copy=False, track=True)
+                    tracker = openConnections[target].send_multipart([json.dumps(metadata).encode("utf-8"), json.dumps(None).encode("utf-8")], copy=False, track=True)
                     log.info("Sending metadata of message part from file '{s}' to '{t}' with priority {p}".format(s=sourceFile, t=target, p=prio))
                     log.debug("metadata={m}".format(m=metadata))
 
@@ -69,7 +71,7 @@ def __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metad
                 log.info("Sending message part from file '{s}' to '{t}' with priority {p}".format(s=sourceFile, t=target, p=prio))
 
             elif sendType == "metadata":
-                openConnections[target].send_multipart([json.dumps(metadata), json.dumps(None)], zmq.NOBLOCK)
+                openConnections[target].send_multipart([json.dumps(metadata).encode("utf-8"), json.dumps(None).encode("utf-8")], zmq.NOBLOCK)
                 log.info("Sending metadata of message part from file '{s}' to '{t}' with priority {p}".format(s=sourceFile, t=target, p=prio) )
                 log.debug("metadata={m}".format(m=metadata))
 

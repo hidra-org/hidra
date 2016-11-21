@@ -1,5 +1,8 @@
 # API to ingest data into a data transfer unit
 
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __version__ = '0.0.1'
 
 import os
@@ -13,9 +16,9 @@ import tempfile
 class loggingFunction:
     def out (self, x, exc_info = None):
         if exc_info:
-            print x, traceback.format_exc()
+            print (x, traceback.format_exc())
         else:
-            print x
+            print (x)
     def __init__ (self):
         self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
         self.info     = lambda x, exc_info=None: self.out(x, exc_info)
@@ -174,7 +177,7 @@ class HidraIngest():
                 "chunkSize": len(data)
                 }
 #        message = '{ "filePart": {p}, "filename": "{n}" }'.format(p=self.filePart, n=self.filename)
-        message = json.dumps(message)
+        message = json.dumps(message).encode("utf-8")
         self.eventDetSocket.send_multipart([message])
 
         # send data to ZMQ-Queue

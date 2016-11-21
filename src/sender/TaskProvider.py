@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import socket
@@ -126,7 +128,7 @@ class TaskProvider():
             self.log.error("Failed to start controlSocket (connect): '{id}'".format(id=self.controlConId), exc_info=True)
             raise
 
-        self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
+        self.controlSocket.setsockopt_string(zmq.SUBSCRIBE, "control")
 
         # socket to get requests
         try:
@@ -179,10 +181,10 @@ class TaskProvider():
                 # get requests for this event
                 try:
                     self.log.debug("Get requests...")
-                    self.requestFwSocket.send_multipart(["GET_REQUESTS", json.dumps(workload["filename"])])
+                    self.requestFwSocket.send_multipart([b"GET_REQUESTS", json.dumps(workload["filename"]).encode("utf-8")])
 
-                    requests = json.loads(self.requestFwSocket.recv())
-                    self.log.debug("Requests: {r}".format(r=requests))
+                    requests = json.loads(self.requestFwSocket.recv_string())
+                    self.log.debug("Requests: {0}".format(requests))
                 except TypeError:
                     # This happens when CLOSE_FILE is sent as workload
                     requests = ["None"]
@@ -194,7 +196,7 @@ class TaskProvider():
                 # build message dict
                 try:
                     self.log.debug("Building message dict...")
-                    messageDict = json.dumps(workload)  #sets correct escape characters
+                    messageDict = json.dumps(workload).encode("utf-8")  #sets correct escape characters
                 except:
                     self.log.error("Unable to assemble message dict.", exc_info=True)
                     continue
@@ -204,7 +206,7 @@ class TaskProvider():
                     self.log.debug("Sending message...")
                     message = [messageDict]
                     if requests != ["None"]:
-                        message.append(json.dumps(requests))
+                        message.append(json.dumps(requests).encode("utf-8"))
                     self.log.debug(str(message))
                     self.routerSocket.send_multipart(message)
                 except:
@@ -217,7 +219,7 @@ class TaskProvider():
 
                 try:
                     message = self.controlSocket.recv_multipart()
-                    self.log.debug("Control signal received: message = {r}".format(r=message))
+                    self.log.debug("Control signal received: message = {0}".format(message))
                 except:
                     self.log.error("Waiting for control signal...failed", exc_info=True)
                     continue
@@ -308,7 +310,7 @@ class requestResponder():
             request = self.requestFwSocket.recv_multipart()
             self.log.debug("[requestResponder] Received request: {r}".format(r=request) )
 
-            self.requestFwSocket.send(json.dumps(openRequests))
+            self.requestFwSocket.send(json.dumps(openRequests).encode("utf-8"))
             self.log.debug("[requestResponder] Answer: {r}".format(r=openRequests) )
 
     def __exit__(self):

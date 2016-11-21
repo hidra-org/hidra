@@ -65,7 +65,7 @@ class Sender_as_thread (threading.Thread):
                 "relativePath": "local",
                 "filename"    : str(i) + ".cbf"
                 }
-            metadata = json.dumps(metadata)
+            metadata = json.dumps(metadata).encode("utf-8")
 
             data     = "THISISTESTDATA-" + str(i)
 

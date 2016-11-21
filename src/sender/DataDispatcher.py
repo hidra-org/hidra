@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import zmq
@@ -73,7 +75,7 @@ class DataDispatcher():
         else:
             self.context    = zmq.Context()
             self.extContext = False
-            if self.dataFetcherProp.has_key("context") and not self.dataFetcherProp["context"]:
+            if "context" in self.dataFetcherProp and not self.dataFetcherProp["context"]:
                 self.dataFetcherProp["context"] = self.context
 
         self.log.info("Loading dataFetcher: {d}".format(d=dataFetcher))
@@ -107,8 +109,8 @@ class DataDispatcher():
             self.log.error("Failed to start controlSocket (connect): '{id}'".format(id=self.controlConId), exc_info=True)
             raise
 
-        self.controlSocket.setsockopt(zmq.SUBSCRIBE, "control")
-        self.controlSocket.setsockopt(zmq.SUBSCRIBE, "signal")
+        self.controlSocket.setsockopt_string(zmq.SUBSCRIBE, "control")
+        self.controlSocket.setsockopt_string(zmq.SUBSCRIBE, "signal")
 
         # socket to get new workloads from
         try:
@@ -163,8 +165,8 @@ class DataDispatcher():
 
                 if len(message) >= 2:
 
-                    workload = json.loads(message[0])
-                    targets  = json.loads(message[1])
+                    workload = json.loads(message[0].decode("utf-8"))
+                    targets  = json.loads(message[1].decode("utf-8"))
 
                     if self.fixedStreamId:
                         targets.insert(0,fixedStreamId)
@@ -174,14 +176,14 @@ class DataDispatcher():
                     targets = sorted(targets, key=lambda target: target[1])
 
                 else:
-                    workload = json.loads(message[0])
+                    workload = json.loads(message[0].decode("utf-8"))
 
                     if type(workload) == list and workload[0] == b"CLOSE_FILE":
 
                         #woraround for error "TypeError: Frame 0 (u'CLOSE_FILE') does not support the buffer interface."
                         workload[0] = b"CLOSE_FILE"
                         for i in range(1, len(workload)):
-                            workload[i] = json.dumps(workload[i])
+                            workload[i] = json.dumps(workload[i]).encode("utf-8")
 
                         if self.fixedStreamId:
                             self.log.debug("Router requested to send signal that file was closed.")
@@ -269,10 +271,10 @@ class DataDispatcher():
 
                 elif message[0] == b"CLOSE_SOCKETS":
 
-                    targets  = json.loads(message[1])
+                    targets  = json.loads(message[1].decode("utf-8"))
 
                     for socketId, prio, suffix in targets:
-                        if self.openConnections.has_key(socketId):
+                        if socketId in self.openConnections:
                             self.log.info("Closing socket {id}".format(id=socketId))
                             if self.openConnections[socketId]:
                                 self.openConnections[socketId].close(0)
@@ -410,8 +412,8 @@ if __name__ == '__main__':
             }
     targets = [['localhost:6005', 1, [".cbf"], "data"], ['localhost:6006', 0, [".cbf"], "data"]]
 
-    message = [ json.dumps(metadata), json.dumps(targets) ]
-#    message = [ json.dumps(metadata)]
+    message = [ json.dumps(metadata).encode("utf-8"), json.dumps(targets).encode("utf-8") ]
+#    message = [ json.dumps(metadata).encode("utf-8")]
 
     time.sleep(1)
 
@@ -420,9 +422,9 @@ if __name__ == '__main__':
 
     try:
         recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: {m}".format(m=json.loads(recv_message[0])))
+        logging.info("=== received: {0}".format(json.loads(recv_message[0].decode("utf-8"))))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: {m}".format(m=json.loads(recv_message[0])))
+        logging.info("=== received 2: {0}".format(json.loads(recv_message[0].decode("utf-8"))))
     except KeyboardInterrupt:
         pass
     finally:

@@ -295,7 +295,7 @@ class nexusTransfer():
         else:
             #extract multipart message
             try:
-                metadata = json.loads(multipartMessage[0])
+                metadata = json.loads(multipartMessage[0]).decode("utf-8")
             except:
                 self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
                 metadata = None

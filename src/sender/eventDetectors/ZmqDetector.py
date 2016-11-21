@@ -1,5 +1,7 @@
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+from __future__ import print_function
+from __future__ import unicode_literals
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 import os
 import zmq
@@ -93,7 +95,7 @@ class EventDetector():
         if eventMessage[0] == b"CLOSE_FILE":
             eventMessageList = [ eventMessage for i in range(self.numberOfStreams) ]
         else:
-            eventMessageList = [ json.loads(eventMessage[0]) ]
+            eventMessageList = [ json.loads(eventMessage[0].decode("utf-8")) ]
 
         self.log.debug("eventMessage: {l}".format(l=eventMessageList))
 
@@ -135,7 +137,7 @@ if __name__ == '__main__':
 
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
     SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
-    print "SHARED", SHARED_PATH
+    print ("SHARED", SHARED_PATH)
 
     if not SHARED_PATH in sys.path:
         sys.path.append ( SHARED_PATH )
@@ -163,7 +165,7 @@ if __name__ == '__main__':
 
 
     eventDetConStr  = "ipc://{ip}/{port}".format(ip=os.path.join(tempfile.gettempdir(), "hidra"), port="eventDet")
-    print "eventDetConStr", eventDetConStr
+    print ("eventDetConStr", eventDetConStr)
     numberOfStreams = 1
     config = {
             "eventDetectorType" : "ZmqDetector",
@@ -199,7 +201,7 @@ if __name__ == '__main__':
                 "chunkSize": 10
                 }
 
-            eventSocket.send_multipart([json.dumps(message)])
+            eventSocket.send_multipart([json.dumps(message).encode("utf-8")])
             i += 1
 
             eventList = eventDetector.getNewEvent()
