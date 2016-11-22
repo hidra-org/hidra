@@ -1,9 +1,9 @@
 # API to communicate with a data transfer unit
 
-__version__ = '0.0.4'
-
 from __future__ import print_function
 #from __future__ import unicode_literals
+
+__version__ = '0.0.4'
 
 import socket
 import logging
