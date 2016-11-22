@@ -396,7 +396,10 @@ class ZmqDT():
 
 
     def status (self):
-        p = subprocess.call(["systemctl", "is-active", "hidra@" + self.beamline + ".service"])
+        try:
+            p = subprocess.call(["systemctl", "is-active", "hidra@" + self.beamline + ".service"])
+        except:
+            return "ERROR"
 
         if p == 0:
             return "RUNNING"
@@ -588,7 +591,8 @@ def argumentParsing():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--beamline"          , type    = str,
-                                                help    = "Beamline for which the HiDRA Server for the Eiger detector should be started")
+                                                help    = "Beamline for which the HiDRA Server for the Eiger detector should be started",
+                                                default = "p00")
     return parser.parse_args()
 
 

@@ -118,7 +118,7 @@ class HiDRAControlAPI():
             self.signalPort = connectionList[beamline]["port"]
             self.log.info("Starting connection to {h} on port {p}".format(h=self.signalHost, p=self.signalPort))
         except:
-            self.log.error("Beamline {bl} not supported".format(bl=beamline))
+            self.log.error("Beamline {0} not supported".format(beamline))
 
         self.signalSocket   = None
 
@@ -137,7 +137,7 @@ class HiDRAControlAPI():
 
 
     def get (self, attribute, timeout=None):
-        msg = 'get {a}'.format(a = attribute)
+        msg = 'get {0}'.format(attribute)
 
         self.signalSocket.send(msg)
         self.log.debug("sent (len %2d): %s" % (len(msg), msg))
@@ -170,7 +170,7 @@ class HiDRAControlAPI():
 
 
     def do (self, command, timeout=None):
-        msg = 'do {c}'.format(c = command)
+        msg = 'do {0}'.format(command)
 
         self.signalSocket.send(msg)
         self.log.debug("sent (len %2d): %s" % (len(msg), msg))
