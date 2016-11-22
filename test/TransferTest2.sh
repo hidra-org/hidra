@@ -22,7 +22,7 @@ python $BASEPATH/src/sender/DataManager.py \
     --dataFetcherType getFromFile \
     --actionTime 2 \
     --timeTillClosed 1 \
-    --useDataStream '' \
+    --useDataStream False \
     --storeData True \
     --removeData True \
     --verbose \
@@ -45,3 +45,5 @@ rm $movedfile
 rm $BASEPATH/logs/${procname}.log*
 
 killall $procname
+
+sleep 1

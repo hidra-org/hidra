@@ -43,6 +43,10 @@ import helpers
 from version import __version__
 
 
+def str2bool(v):
+    return v.lower() == "true"
+
+
 def argumentParsing():
     defaultConfig     = os.path.join(CONFIG_PATH, "dataManager.conf")
     supportedEDTypes  = ["inotifyxdetector", "watchdogdetector", "zmqdetector", "httpdetector"]
@@ -113,10 +117,10 @@ def argumentParsing():
                                                 help    = "Number of events stored to look for doubles \
                                                            (needed if eventDetector is InotifyxDetector)")
 
-    parser.add_argument("--useCleanUp"        , type    = bool,
-                                                help    = "Flag describing if a clean up thread which regularly checks \
+    parser.add_argument("--useCleanUp"        , help    = "Flag describing if a clean up thread which regularly checks \
                                                            if some files were missed should be activated \
-                                                           (needed if eventDetector is InotifyxDetector)")
+                                                           (needed if eventDetector is InotifyxDetector)",
+                                                choices = ["True", "False"])
 
     parser.add_argument("--actionTime"        , type    = float,
                                                 help    = "Intervall time (in seconds) used for clea nup \
@@ -145,9 +149,9 @@ def argumentParsing():
     parser.add_argument("--dataFetcherPort"   , type    = str,
                                                 help    = "If 'getFromZmq is specified as dataFetcherType it needs a port to listen to)")
 
-    parser.add_argument("--useDataStream"     , type    = bool,
-                                                help    = "Enable ZMQ pipe into storage system (if set to false: the file is moved \
-                                                           into the localTarget)")
+    parser.add_argument("--useDataStream"     , help    = "Enable ZMQ pipe into storage system (if set to false: the file is moved \
+                                                           into the localTarget)",
+                                                choices = ["True", "False"])
     parser.add_argument("--fixedStreamHost"   , type    = str,
                                                 help    = "Fixed host to send the data to with highest priority \
                                                            (only active if useDataStream is set)")
@@ -166,12 +170,12 @@ def argumentParsing():
     parser.add_argument("--localTarget"       , type    = str,
                                                 help    = "Target to move the files into)")
 
-    parser.add_argument("--storeData"         , type    = bool,
-                                                help    = "Flag describing if the data should be stored in localTarget \
-                                                           (needed if dataFetcherType is getFromFile or getFromHttp)")
-    parser.add_argument("--removeData"        , type    = bool,
-                                                help    = "Flag describing if the files should be removed from the source \
-                                                           (needed if dataFetcherType is getFromHttp)")
+    parser.add_argument("--storeData"         , help    = "Flag describing if the data should be stored in localTarget \
+                                                           (needed if dataFetcherType is getFromFile or getFromHttp)",
+                                                choices = ["True", "False"])
+    parser.add_argument("--removeData"        , help    = "Flag describing if the files should be removed from the source \
+                                                           (needed if dataFetcherType is getFromHttp)",
+                                                choices = ["True", "False"])
 
     arguments                    = parser.parse_args()
     arguments.configFile         = arguments.configFile or defaultConfig
@@ -192,99 +196,138 @@ def argumentParsing():
         config.read_string(config_string)
 
     # Configure logfile
-    arguments.logfilePath        = arguments.logfilePath        or config.get('asection', 'logfilePath')
-    arguments.logfileName        = arguments.logfileName        or config.get('asection', 'logfileName')
+    arguments.logfilePath             = arguments.logfilePath \
+                                        or config.get('asection', 'logfilePath')
+    arguments.logfileName             = arguments.logfileName \
+                                        or config.get('asection', 'logfileName')
 
     if not helpers.isWindows():
-        arguments.logfileSize    = arguments.logfileSize        or config.getint('asection', 'logfileSize')
+        arguments.logfileSize         = arguments.logfileSize \
+                                        or config.getint('asection', 'logfileSize')
 
-    arguments.procname           = arguments.procname           or config.get('asection', 'procname')
+    arguments.procname                = arguments.procname \
+                                        or config.get('asection', 'procname')
 
-    arguments.extIp              = arguments.extIp              or config.get('asection', 'extIp')
+    arguments.extIp                   = arguments.extIp \
+                                        or config.get('asection', 'extIp')
 
-    arguments.comPort            = arguments.comPort            or config.get('asection', 'comPort')
+    arguments.comPort                 = arguments.comPort \
+                                        or config.get('asection', 'comPort')
     try:
-        arguments.whitelist      = arguments.whitelist          or json.loads(config.get('asection', 'whitelist'))
+        arguments.whitelist           = arguments.whitelist \
+                                        or json.loads(config.get('asection', 'whitelist'))
     except:
-        arguments.whitelist      = json.loads(config.get('asection', 'whitelist').replace("'", '"'))
+        arguments.whitelist           = json.loads(config.get('asection', 'whitelist').replace("'", '"'))
 
-    arguments.requestPort        = arguments.requestPort        or config.get('asection', 'requestPort')
+    arguments.requestPort             = arguments.requestPort \
+                                        or config.get('asection', 'requestPort')
 
     if helpers.isWindows():
-        arguments.requestFwPort  = arguments.requestFwPort      or config.get('asection', 'requestFwPort')
+        arguments.requestFwPort       = arguments.requestFwPort \
+                                        or config.get('asection', 'requestFwPort')
 
-        arguments.controlPubPort = arguments.controlPubPort     or config.get('asection', 'controlPubPort')
-        arguments.controlSubPort = arguments.controlSubPort     or config.get('asection', 'controlSubPort')
+        arguments.controlPubPort      = arguments.controlPubPort \
+                                        or config.get('asection', 'controlPubPort')
+        arguments.controlSubPort      = arguments.controlSubPort \
+                                        or config.get('asection', 'controlSubPort')
+        arguments.routerPort          = arguments.routerPort \
+                                        or config.get('asection', 'routerPort')
 
-        arguments.routerPort     = arguments.routerPort         or config.get('asection', 'routerPort')
 
-
-    arguments.eventDetectorType  = arguments.eventDetectorType  or config.get('asection', 'eventDetectorType')
+    arguments.eventDetectorType       = arguments.eventDetectorType \
+                                        or config.get('asection', 'eventDetectorType')
 
     if arguments.eventDetectorType == "InotifyxDetector":
         # for InotifyxDetector and WatchdogDetector and getFromFile:
         try:
-            arguments.fixSubdirs         = arguments.fixSubdirs     or json.loads(config.get('asection', 'fixSubdirs'))
+            arguments.fixSubdirs      = arguments.fixSubdirs \
+                                        or json.loads(config.get('asection', 'fixSubdirs'))
         except:
-            arguments.fixSubdirs     = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
-        arguments.monitoredDir       = arguments.monitoredDir       or config.get('asection', 'monitoredDir')
+            arguments.fixSubdirs      = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
+        arguments.monitoredDir        = arguments.monitoredDir \
+                                        or config.get('asection', 'monitoredDir')
         try:
-            arguments.monitoredEvents = arguments.monitoredEvents   or json.loads(config.get('asection', 'monitoredEvents'))
+            arguments.monitoredEvents = arguments.monitoredEvents \
+                                        or json.loads(config.get('asection', 'monitoredEvents'))
         except:
             arguments.monitoredEvents = json.loads(config.get('asection', 'monitoredEvents').replace("'", '"'))
-        arguments.historySize        = arguments.historySize        or config.getint('asection', 'historySize')
-        arguments.useCleanUp         = arguments.useCleanUp         or config.getboolean('asection', 'useCleanUp')
+        arguments.historySize         = arguments.historySize \
+                                        or config.getint('asection', 'historySize')
+        arguments.useCleanUp          = str2bool(arguments.useCleanUp) if arguments.useCleanUp is not None  \
+                                        else config.getboolean('asection', 'useCleanUp')
         if arguments.useCleanUp:
-            arguments.actionTime         = arguments.actionTime     or config.getfloat('asection', 'actionTime')
-            arguments.timeTillClosed     = arguments.timeTillClosed or config.getfloat('asection', 'timeTillClosed')
+            arguments.actionTime      = arguments.actionTime \
+                                        or config.getfloat('asection', 'actionTime')
+            arguments.timeTillClosed  = arguments.timeTillClosed \
+                                        or config.getfloat('asection', 'timeTillClosed')
 
     if arguments.eventDetectorType == "WatchdogDetector":
         try:
-            arguments.fixSubdirs         = arguments.fixSubdirs     or json.loads(config.get('asection', 'fixSubdirs'))
+            arguments.fixSubdirs      = arguments.fixSubdirs \
+                                        or json.loads(config.get('asection', 'fixSubdirs'))
         except:
-            arguments.fixSubdirs     = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
-        arguments.monitoredDir       = arguments.monitoredDir       or config.get('asection', 'monitoredDir')
+            arguments.fixSubdirs      = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
+        arguments.monitoredDir        = arguments.monitoredDir \
+                                        or config.get('asection', 'monitoredDir')
         try:
-            arguments.monitoredEvents = arguments.monitoredEvents   or json.loads(config.get('asection', 'monitoredEvents'))
+            arguments.monitoredEvents = arguments.monitoredEvents \
+                                        or json.loads(config.get('asection', 'monitoredEvents'))
         except:
             arguments.monitoredEvents = json.loads(config.get('asection', 'monitoredEvents').replace("'", '"'))
-        arguments.timeTillClosed     = arguments.timeTillClosed     or config.getfloat('asection', 'timeTillClosed')
-        arguments.actionTime         = arguments.actionTime         or config.getfloat('asection', 'actionTime')
+        arguments.timeTillClosed      = arguments.timeTillClosed \
+                                        or config.getfloat('asection', 'timeTillClosed')
+        arguments.actionTime          = arguments.actionTime \
+                                        or config.getfloat('asection', 'actionTime')
 
     if arguments.eventDetectorType == "ZmqDetector":
-        arguments.eventDetPort       = arguments.eventDetPort          or config.get('asection', 'eventDetPort')
+        arguments.eventDetPort        = arguments.eventDetPort \
+                                        or config.get('asection', 'eventDetPort')
 
     if arguments.eventDetectorType == "HttpDetector":
-        arguments.eigerIp            = arguments.eigerIp            or config.get('asection', 'eigerIp')
-        arguments.eigerApiVersion    = arguments.eigerApiVersion    or config.get('asection', 'eigerApiVersion')
+        arguments.eigerIp             = arguments.eigerIp \
+                                        or config.get('asection', 'eigerIp')
+        arguments.eigerApiVersion     = arguments.eigerApiVersion \
+                                        or config.get('asection', 'eigerApiVersion')
 
-    arguments.dataFetcherType    = arguments.dataFetcherType        or config.get('asection', 'dataFetcherType')
+    arguments.dataFetcherType         = arguments.dataFetcherType \
+                                        or config.get('asection', 'dataFetcherType')
 
     if arguments.dataFetcherType == "getFromFile":
-        arguments.fixSubdirs         = arguments.fixSubdirs         or json.loads(config.get('asection', 'fixSubdirs'))
+        arguments.fixSubdirs          = arguments.fixSubdirs \
+                                        or json.loads(config.get('asection', 'fixSubdirs'))
 
     if arguments.dataFetcherType == "getFromZMQ":
-        arguments.dataFetcherPort    = arguments.dataFetcherPort    or config.get('asection', 'dataFetcherPort')
+        arguments.dataFetcherPort     = arguments.dataFetcherPort \
+                                        or config.get('asection', 'dataFetcherPort')
 
-    arguments.useDataStream      = arguments.useDataStream          or config.getboolean('asection', 'useDataStream')
+    arguments.useDataStream           = str2bool(arguments.useDataStream) if arguments.useDataStream is not None \
+                                        else config.getboolean('asection', 'useDataStream')
 
     if arguments.useDataStream:
-        arguments.fixedStreamHost    = arguments.fixedStreamHost    or config.get('asection', 'fixedStreamHost')
-        arguments.fixedStreamPort    = arguments.fixedStreamPort    or config.get('asection', 'fixedStreamPort')
+        arguments.fixedStreamHost     = arguments.fixedStreamHost \
+                                        or config.get('asection', 'fixedStreamHost')
+        arguments.fixedStreamPort     = arguments.fixedStreamPort \
+                                        or config.get('asection', 'fixedStreamPort')
 
-    arguments.numberOfStreams    = arguments.numberOfStreams        or config.getint('asection', 'numberOfStreams')
-    arguments.chunkSize          = arguments.chunkSize              or config.getint('asection', 'chunkSize')
+    arguments.numberOfStreams         = arguments.numberOfStreams \
+                                        or config.getint('asection', 'numberOfStreams')
+    arguments.chunkSize               = arguments.chunkSize \
+                                        or config.getint('asection', 'chunkSize')
 
-    arguments.storeData          = arguments.storeData              or config.getboolean('asection', 'storeData')
+    arguments.storeData               = str2bool(arguments.storeData) if arguments.storeData is not None \
+                                        else config.getboolean('asection', 'storeData')
 
     if arguments.storeData:
         try:
-            arguments.fixSubdirs         = arguments.fixSubdirs     or json.loads(config.get('asection', 'fixSubdirs'))
+            arguments.fixSubdirs      = arguments.fixSubdirs \
+                                        or json.loads(config.get('asection', 'fixSubdirs'))
         except:
-            arguments.fixSubdirs     = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
-        arguments.localTarget        = arguments.localTarget        or config.get('asection', 'localTarget')
+            arguments.fixSubdirs      = json.loads(config.get('asection', 'fixSubdirs').replace("'", '"'))
+        arguments.localTarget         = arguments.localTarget \
+                                        or config.get('asection', 'localTarget')
 
-    arguments.removeData         = arguments.removeData             or config.getboolean('asection', 'removeData')
+    arguments.removeData              = str2bool(arguments.removeData) if arguments.removeData is not None \
+                                        else config.getboolean('asection', 'removeData')
 
 
 
@@ -423,6 +466,7 @@ class DataManager():
         self.whitelist        = arguments.whitelist
 
         self.useDataStream    = arguments.useDataStream
+        self.log.info("Usage of data stream set to '{0}'".format(self.useDataStream))
 
         if self.useDataStream:
             self.fixedStreamId = "{host}:{port}".format( host=arguments.fixedStreamHost, port=arguments.fixedStreamPort )

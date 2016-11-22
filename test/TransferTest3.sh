@@ -25,9 +25,9 @@ python $BASEPATH/src/sender/DataManager.py \
     --eigerIp 131.169.55.170 \
     --eigerApiVersion 1.5.0 \
     --historySize 2\
-    --useDataStream '' \
+    --useDataStream False \
     --storeData True \
-    --removeData '' \
+    --removeData False \
     --verbose \
     --onScreen debug &
 
@@ -43,3 +43,5 @@ rm $movedfile
 rm $BASEPATH/logs/${procname}.log*
 
 killall $procname
+
+sleep 1

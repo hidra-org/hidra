@@ -21,7 +21,7 @@ python $BASEPATH/src/sender/DataManager.py \
     --extIp 0.0.0.0 \
     --eventDetectorType InotifyxDetector \
     --dataFetcherType getFromFile \
-    --useDataStream '' \
+    --useDataStream False \
     --storeData True \
     --removeData True \
     --verbose \
