@@ -17,6 +17,7 @@ Requires:	python-logutils
 Requires:	python-zmq >= 14.1.0
 Requires:	python-inotifyx
 Requires:	python-setproctitle
+Requires:	python-six
 
 %description
 HiDRA is a generic tool set for high performance data multiplexing with different qualities of service and is based on Python and ZeroMQ. It can be used to directly store the data in the storage system but also to send it to some kind of online monitoring or analysis framework. Together with OnDA, data can be analyzed with a delay of seconds resulting in an increase of the quality of the generated scientific data by 20 %. The modular architecture of the tool (divided into event detectors, data fetchers and receivers) makes it easily extendible and even gives the possibility to adapt the software to specific detectors directly (for example, Eiger and Lambda detector).
@@ -50,6 +51,9 @@ cp conf/dataManager.conf conf/dataReceiver.conf conf/nexusReceiver.conf %{buildr
 mkdir -p %{buildroot}/%{_unitdir}
 cp src/initScripts/*.service %{buildroot}/%{_unitdir}/
 
+# log directory
+mkdir -p %{buildroot}/opt/%{name}/logs
+
 #%{__python} setup.py install -O1 --skip-build --root %{buildroot}
 
 %post
@@ -72,6 +76,7 @@ cp src/initScripts/*.service %{buildroot}/%{_unitdir}/
 /opt/%{name}/src/TangoCommunication/*
 %{_unitdir}/*.service
 %config(noreplace) /opt/%{name}/conf/*
+/opt/%{name}/logs
 
 %changelog
 * Tue Nov 22 2016 Stefan Dietrich <stefan.dietrich@desy.de> - 2.4.2-1
