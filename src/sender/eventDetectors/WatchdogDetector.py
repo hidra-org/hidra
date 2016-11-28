@@ -18,16 +18,22 @@ import sys
 import bisect
 
 try:
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
+    # try to use the system module
+    from logutils.queue import QueueHandler
 except:
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( sys.argv[0] ) ))))
-SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
+    # there is no module logutils installed, fallback on the one in shared
 
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
-del SHARED_PATH
+    try:
+        BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
+    except:
+        BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( sys.argv[0] ) ))))
+    SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
 
-from logutils.queue import QueueHandler
+    if not SHARED_PATH in sys.path:
+        sys.path.append ( SHARED_PATH )
+    del SHARED_PATH
+
+    from logutils.queue import QueueHandler
 
 eventMessageList = []
 eventListToObserve = []
@@ -445,10 +451,12 @@ if __name__ == '__main__':
     from subprocess import call
     from multiprocessing import Queue
 
-#    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) ))))
+    try:
+        BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
+    except:
+        BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( sys.argv[0] ) ))))
     SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
-    print (SHARED_PATH)
+    print ("SHARED", SHARED_PATH)
 
     if not SHARED_PATH in sys.path:
         sys.path.append ( SHARED_PATH )
