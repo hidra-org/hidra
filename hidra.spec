@@ -76,7 +76,7 @@ mkdir -p %{buildroot}/opt/%{name}/logs
 /opt/%{name}/src/TangoCommunication/*
 %{_unitdir}/*.service
 %config(noreplace) /opt/%{name}/conf/*
-/opt/%{name}/logs
+%attr(1777,root,root) /opt/%{name}/logs
 
 %changelog
 * Tue Nov 22 2016 Stefan Dietrich <stefan.dietrich@desy.de> - 2.4.2-1
