@@ -216,7 +216,7 @@ def argumentParsing():
                                         or config.get('asection', 'comPort')
 
     if config.get('asection', 'whitelist') == "None":
-        arguments.whitelist           = arguments.whitelist \
+        arguments.whitelist           = arguments.whitelist
     else:
         try:
             arguments.whitelist       = arguments.whitelist \

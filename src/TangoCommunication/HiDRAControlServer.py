@@ -277,67 +277,67 @@ class ZmqDT():
             and self.removeData != None
             and self.whitelist ):
 
+            #TODO correct IP
+            if self.beamline == "p00":
+                externalIp    = "asap3-p00"
+#                externalIp    = "131.169.251.55" # asap3-p00
+                eventDetector = "InotifyxDetector"
+                dataFetcher   = "getFromFile"
+            else:
+                externalIp    = "asap3-bl-prx07"
+#                externalIp    = "131.169.251.38" # asap3-bl-prx07
+                eventDetector = "HttpDetector"
+                dataFetcher   = "getFromHttp"
+
             # write configfile
             # /etc/hidra/P01.conf
             configFile = CONFIGPATH + os.sep + self.beamline + ".conf"
-            self.log.info("Writing config file: {f}".format(f=configFile))
+            self.log.info("Writing config file: {0}".format(configFile))
+
             with open(configFile, 'w') as f:
-                f.write("logfilePath        = " + LOGPATH                                       + "\n")
-                f.write("logfileName        = dataManager_" + self.beamline + ".log"            + "\n")
-                f.write("logfileSize        = 10485760"                                         + "\n")
-                f.write("procname           = " + self.procname                                 + "\n")
-                #TODO correct IP
-                if self.beamline == "p00":
-                    # asap3-p00
-                    f.write("extIp              = 131.169.251.55"                               + "\n")
-                    self.log.debug("Started with extIp: 131.169.251.55")
-                else:
-                    # asap3-bl-prx07
-                    f.write("extIp              = 131.169.251.38"                               + "\n")
-                    self.log.debug("Started with extIp: 131.169.251.38")
-                f.write("comPort            = 50000"                                            + "\n")
-                f.write("requestPort        = 50001"                                            + "\n")
+                f.write("logfilePath        = {0}\n".format(LOGPATH))
+                f.write("logfileName        = dataManager_{0}.log\n".format(self.beamline))
+                f.write("logfileSize        = 10485760\n")
+                f.write("procname           = {0}\n".format(self.procname))
+                f.write("extIp              = {0}\n".format(externalIp))
+                f.write("comPort            = 50000\n")
+                f.write("requestPort        = 50001\n")
 
-                if self.beamline == "p00":
-                    f.write("eventDetectorType  = InotifyxDetector"                             + "\n")
-                    self.log.debug("Started with eventDetector: InotifyxDetector")
-                else:
-                    f.write("eventDetectorType  = HttpDetector"                                 + "\n")
-                    self.log.debug("Started with eventDetector: HttpDetector")
-                f.write('fixSubdirs         = ["commissioning", "current", "local"]'            + "\n")
-                f.write("monitoredDir       = " + BASEDIR + "/data/source"                      + "\n")
-                f.write('monitoredEvents    = {"IN_CLOSE_WRITE" : [".tif", ".cbf", ".nxs"]}'    + "\n")
-                f.write("useCleanUp         = False"                                            + "\n")
-                f.write("actionTime         = 150"                                              + "\n")
-                f.write("timeTillClosed     = 2"                                                + "\n")
+                f.write("eventDetectorType  = {0}\n".format(eventDetector))
+                f.write('fixSubdirs         = ["commissioning", "current", "local"]\n')
+                f.write("monitoredDir       = {0}/data/source\n".format(BASEDIR))
+                f.write('monitoredEvents    = {"IN_CLOSE_WRITE" : [".tif", ".cbf", ".nxs"]}\n')
+                f.write("useCleanUp         = False\n")
+                f.write("actionTime         = 150\n")
+                f.write("timeTillClosed     = 2\n")
 
-                if self.beamline == "p00":
-                    f.write("dataFetcherType    = getFromFile"                                  + "\n")
-                    self.log.debug("Started with dataFetcher: getFromFile")
-                else:
-                    f.write("dataFetcherType    = getFromHttp"                                  + "\n")
-                    self.log.debug("Started with dataFetcher: getFromHttp")
+                f.write("dataFetcherType    = {0}\n".format(dataFetcher))
 
-                f.write("numberOfStreams    = 1"                                                + "\n")
-                f.write("useDataStream      = False"                                            + "\n")
-                f.write("chunkSize          = 10485760"                                         + "\n")
+                f.write("numberOfStreams    = 1\n")
+                f.write("useDataStream      = False\n")
+                f.write("chunkSize          = 10485760\n")
 
-                f.write("eigerIp            = " + str(self.eigerIp)                             + "\n")
-                f.write("eigerApiVersion    = " + str(self.eigerApiVersion)                     + "\n")
-                f.write("historySize        = " + str(self.historySize)                         + "\n")
-                f.write("localTarget        = " + str(self.localTarget)                         + "\n")
-                f.write("storeData          = " + str(self.storeData)                           + "\n")
-                f.write("removeData         = " + str(self.removeData)                          + "\n")
-                f.write("whitelist          = " + str(self.whitelist)                           + "\n")
+                f.write("eigerIp            = {0}\n".format(self.eigerIp))
+                f.write("eigerApiVersion    = {0}\n".format(self.eigerApiVersion))
+                f.write("historySize        = {0}\n".format(self.historySize))
+                f.write("localTarget        = {0}\n".format(self.localTarget))
+                f.write("storeData          = {0}\n".format(self.storeData))
+                f.write("removeData         = {0}\n".format(self.removeData))
+                f.write("whitelist          = {0}\n".format(self.whitelist))
+
+                self.log.debug("Started with extIp: {0}".format(externalIp))
+                self.log.debug("Started with eventDetector: {0}".format(eventDetector))
+                self.log.debug("Started with dataFetcher: {0}".format(dataFetcher))
+
 
         else:
-            self.log.debug("eigerIp: {d}".format(d=self.eigerIp))
-            self.log.debug("eigerApiVersion: {d}".format(d=self.eigerApiVersion))
-            self.log.debug("historySize: {d}".format(d=self.historySize))
-            self.log.debug("localTarge: {d}".format(d=self.localTarget))
-            self.log.debug("storeData: {d}".format(d=self.storeData))
-            self.log.debug("removeData: {d}".format(d=self.removeData))
-            self.log.debug("whitelist: {d}".format(d=self.whitelist))
+            self.log.debug("eigerIp: {0}".format(self.eigerIp))
+            self.log.debug("eigerApiVersion: {0}".format(self.eigerApiVersion))
+            self.log.debug("historySize: {0}".format(self.historySize))
+            self.log.debug("localTarge: {0}".format(self.localTarget))
+            self.log.debug("storeData: {0}".format(self.storeData))
+            self.log.debug("removeData: {0}".format(self.removeData))
+            self.log.debug("whitelist: {0}".format(self.whitelist))
             raise Exception("Not all required parameters are specified")
 
 
@@ -505,7 +505,7 @@ class socketCom ():
     def getLogger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("socketCom_" + str(self.id))
+        logger = logging.getLogger("socketCom_{0}".format(self.id))
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -602,12 +602,12 @@ class HiDRAControlServer():
 
         self.beamline = arguments.beamline
 
-        setproctitle.setproctitle("HiDRAControlServer_" + self.beamline)
+        setproctitle.setproctitle("HiDRAControlServer_{0}".format(self.beamline))
 
         onScreen = False
 #        onScreen = "debug"
         verbose  = True
-        logfile  = BASE_PATH + os.sep + "logs" + os.sep + "HiDRAControlServer_" + self.beamline + ".log"
+        logfile  = os.path.join(BASE_PATH, "logs", "HiDRAControlServer_{0}.log".format(self.beamline))
         logsize  = 10485760
 
         # Get queue
