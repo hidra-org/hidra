@@ -18,6 +18,7 @@ import threading
 import signal
 import setproctitle
 import tempfile
+import socket
 try:
     import ConfigParser
 except:
@@ -435,7 +436,14 @@ class DataManager():
             os.chmod(self.ipcPath, 0o777)
             self.log.info("Creating directory for IPC communication: {0}".format(self.ipcPath))
 
-        self.extIp            = arguments.extIp
+        # Enable specification via IP and DNS name
+        print "extIP: ", arguments.extIp
+        if arguments.extIp == "0.0.0.0":
+            self.extIp            = arguments.extIp
+        else:
+            self.extIp            = socket.gethostbyaddr(arguments.extIp)[2][0]
+            print "gethostbyaddr: ", socket.gethostbyaddr(arguments.extIp)
+        print "self.extIp", self.extIp
 
         self.comPort          = arguments.comPort
         self.requestPort      = arguments.requestPort
