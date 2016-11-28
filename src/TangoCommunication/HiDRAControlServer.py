@@ -16,8 +16,8 @@ try:
     BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
 except:
     BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
-CONFIG_PATH = BASE_PATH + os.sep + "conf"
+SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
+CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )

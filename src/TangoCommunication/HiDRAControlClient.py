@@ -1,9 +1,21 @@
 #!/usr/bin/env python
-import HiDRAControlAPI
 import time
 
-obj = HiDRAControlAPI.HiDRAControlAPI("p00", useLog = None)
-#obj = HiDRAControlAPI.HiDRAControlAPI("p00")
+try:
+    import hidra.control
+except:
+    BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
+    API_PATH    = BASE_PATH + os.sep + "APIs"
+
+    if not API_PATH in sys.path:
+        sys.path.append ( API_PATH )
+    del API_PATH
+
+    import hidra.control
+
+
+obj = hidra.control.HiDRAControlAPI("p00", useLog = None)
+#obj = hidra.control.HiDRAControlAPI("p00")
 
 # where the data should be stored inside the beamline filesystem
 # only the relative path is needed because the absolute path can be reconstucted with the beamline name

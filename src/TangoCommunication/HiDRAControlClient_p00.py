@@ -37,7 +37,7 @@ def argumentParsing():
 if __name__ == '__main__':
     arguments = argumentParsing()
 
-    beamline = "p11"
+    beamline = "p00"
     supportedLocalTargets = ["current/raw", "current/scratch_bl", "commissioning/raw", "commissioning/scratch_bl", "local"]
 
     if arguments.target and os.path.normpath(arguments.target) not in supportedLocalTargets:
@@ -50,8 +50,8 @@ if __name__ == '__main__':
     try:
         if arguments.start:
             obj.set("localTarget", arguments.target)
-            obj.set("eigerIp", "192.168.138.52")
-            obj.set("eigerApiVersion", "1.6.0")
+            obj.set("eigerIp", "131.169.55.170") # lsdma-lab04
+            obj.set("eigerApiVersion", "1.5.0")
             obj.set("historySize", 2000)
             obj.set("storeData", False)
             obj.set("removeData", False)
