@@ -84,8 +84,8 @@ def argumentParsing():
 
     parser.add_argument("--comPort"           , type    = str,
                                                 help    = "Port number to receive signals")
-    parser.add_argument("--whitelist"         , type    = str,
-                                                help    = "List of hosts allowed to connec")
+    parser.add_argument("--whitelist"         , nargs='+',
+                                                help    = "List of hosts allowed to connect")
 
     parser.add_argument("--requestPort"       , type    = str,
                                                 help    = "ZMQ port to get new requests")
@@ -214,11 +214,15 @@ def argumentParsing():
 
     arguments.comPort                 = arguments.comPort \
                                         or config.get('asection', 'comPort')
-    try:
+
+    if config.get('asection', 'whitelist') == "None":
         arguments.whitelist           = arguments.whitelist \
+    else:
+        try:
+            arguments.whitelist       = arguments.whitelist \
                                         or json.loads(config.get('asection', 'whitelist'))
-    except:
-        arguments.whitelist           = json.loads(config.get('asection', 'whitelist').replace("'", '"'))
+        except:
+            arguments.whitelist       = json.loads(config.get('asection', 'whitelist').replace("'", '"'))
 
     arguments.requestPort             = arguments.requestPort \
                                         or config.get('asection', 'requestPort')
@@ -437,13 +441,10 @@ class DataManager():
             self.log.info("Creating directory for IPC communication: {0}".format(self.ipcPath))
 
         # Enable specification via IP and DNS name
-        print "extIP: ", arguments.extIp
         if arguments.extIp == "0.0.0.0":
             self.extIp            = arguments.extIp
         else:
             self.extIp            = socket.gethostbyaddr(arguments.extIp)[2][0]
-            print "gethostbyaddr: ", socket.gethostbyaddr(arguments.extIp)
-        print "self.extIp", self.extIp
 
         self.comPort          = arguments.comPort
         self.requestPort      = arguments.requestPort
