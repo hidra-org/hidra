@@ -100,12 +100,12 @@ connectionList = {
     }
 
 
-class HiDRAControlAPI():
+class controller():
     def __init__ (self, beamline, useLog = False):
         global connectionList
 
         if useLog:
-            self.log = logging.getLogger("HiDRAControlAPI")
+            self.log = logging.getLogger("controller")
         elif useLog == None:
             self.log = noLoggingFunction()
         else:

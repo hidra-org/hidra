@@ -2,7 +2,19 @@
 import os
 import sys
 import argparse
-import HiDRAControlAPI
+
+try:
+    import hidra.control
+except:
+    BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
+    API_PATH    = BASE_PATH + os.sep + "APIs"
+
+    if not API_PATH in sys.path:
+        sys.path.append ( API_PATH )
+    del API_PATH
+
+    import hidra.control
+
 
 def argumentParsing():
     parser = argparse.ArgumentParser()
@@ -32,8 +44,8 @@ if __name__ == '__main__':
         print "ERROR: target not supported"
         sys.exit(1)
 
-#    obj = HiDRAControlAPI.HiDRAControlAPI(beamline)
-    obj = HiDRAControlAPI.HiDRAControlAPI(beamline, useLog=None)
+#    obj = hidra.control.controller(beamline)
+    obj = hidra.control.controller(beamline, useLog=None)
 
     try:
         if arguments.start:

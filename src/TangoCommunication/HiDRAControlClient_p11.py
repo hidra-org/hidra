@@ -44,8 +44,8 @@ if __name__ == '__main__':
         print "ERROR: target not supported"
         sys.exit(1)
 
-#    obj = hidra.control.HiDRAControlAPI(beamline)
-    obj = hidra.control.HiDRAControlAPI(beamline, useLog=None)
+#    obj = hidra.control.controller(beamline)
+    obj = hidra.control.controller(beamline, useLog=None)
 
     try:
         if arguments.start:
