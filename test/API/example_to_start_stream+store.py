@@ -4,17 +4,10 @@ import time
 
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = BASE_PATH + os.sep + "APIs"
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+API_PATH    = os.path.join(BASE_PATH, "APIs")
+SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
 print BASE_PATH
-
-if not API_PATH in sys.path:
-    sys.path.append ( API_PATH )
-del API_PATH
-
-from dataTransferAPI import dataTransfer
-
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -22,8 +15,20 @@ del SHARED_PATH
 
 import helpers
 
+try:
+    # search in global python modules first
+    from hidra.transfer import dataTransfer
+except:
+    # then search in local modules
+    if not API_PATH in sys.path:
+        sys.path.append ( API_PATH )
+    del API_PATH
+
+    from hidra.transfer import dataTransfer
+
+
 #enable logging
-logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
+logfilePath = os.path.join(BASE_PATH, "logs")
 logfile     = os.path.join(logfilePath, "testAPI.log")
 helpers.initLogging(logfile, True, "DEBUG")
 

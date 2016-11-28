@@ -9,12 +9,17 @@ from PyQt4.QtCore import SIGNAL, QThread, QMutex
 BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ))
 API_PATH  = BASE_PATH + os.sep + "APIs"
 
+try:
+    # search in global python modules first
+    from hidra.transfer import dataTransfer
+except:
+    # then search in local modules
+    if not API_PATH in sys.path:
+        sys.path.append ( API_PATH )
+    del API_PATH
 
-if not API_PATH in sys.path:
-    sys.path.append ( API_PATH )
-del API_PATH
+    from hidra.transfer import dataTransfer
 
-from dataTransferAPI import dataTransfer
 #from dectris import albula
 
 

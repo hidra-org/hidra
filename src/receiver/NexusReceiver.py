@@ -23,15 +23,20 @@ CONFIG_PATH = BASE_PATH + os.sep + "conf"
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
 del SHARED_PATH
+del BASE_PATH
 
 import helpers
 
-if not API_PATH in sys.path:
-    sys.path.append ( API_PATH )
-del API_PATH
-del BASE_PATH
+try:
+    # search in global python modules first
+    from hidra.transfer import dataTransfer
+except:
+    # then search in local modules
+    if not API_PATH in sys.path:
+        sys.path.append ( API_PATH )
+    del API_PATH
 
-from dataTransferAPI import dataTransfer
+    from hidra.transfer import dataTransfer
 
 
 def argumentParsing():

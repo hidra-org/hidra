@@ -4,20 +4,25 @@ import time
 
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = BASE_PATH + os.sep + "APIs"
+API_PATH    = os.path.join(BASE_PATH, "APIs")
 
-if not API_PATH in sys.path:
-    sys.path.append ( API_PATH )
-del API_PATH
+try:
+    # search in global python modules first
+    from hidra.transfer import dataTransfer
+except:
+    # then search in local modules
+    if not API_PATH in sys.path:
+        sys.path.append ( API_PATH )
+    del API_PATH
 
-from dataTransferAPI import dataTransfer
+    from hidra.transfer import dataTransfer
 
 
 signalHost   = "zitpcx19282.desy.de"
 #signalHost   = "zitpcx22614w.desy.de"
 targets = ["zitpcx19282.desy.de", "50101", 0]
 #targets = ["zitpcx22614w.desy.de", "50101", 0]
-baseTargetPath = BASE_PATH + os.sep + "data" + os.sep + "target"
+baseTargetPath = os.path.join(BASE_PATH, "data", "target")
 del BASE_PATH
 
 print

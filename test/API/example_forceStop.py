@@ -4,16 +4,20 @@ import time
 import multiprocessing
 import logging
 
-
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
 API_PATH    = BASE_PATH + os.sep + "APIs"
 SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
 
-if not API_PATH in sys.path:
-    sys.path.append ( API_PATH )
-del API_PATH
+try:
+    # search in global python modules first
+    from hidra.transfer import dataTransfer
+except:
+    # then search in local modules
+    if not API_PATH in sys.path:
+        sys.path.append ( API_PATH )
+    del API_PATH
 
-from dataTransferAPI import dataTransfer
+    from hidra.transfer import dataTransfer
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -22,7 +26,7 @@ del SHARED_PATH
 import helpers
 
 #enable logging
-logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
+logfilePath = os.path.join(BASE_PATH, "logs")
 logfile     = os.path.join(logfilePath, "test_force_stop.log")
 helpers.initLogging(logfile, True, "DEBUG")
 
@@ -43,7 +47,7 @@ if __name__ == "__main__":
 #    transferType = "streamMetadata"
 #    transferType = "queryMetadata"
 
-    basePath = BASE_PATH + os.sep + "data" + os.sep + "target"
+    basePath = os.path.join(BASE_PATH, "data", "target")
 #    basePath = "/asap3/petra3/gpfs/p00/2016/commissioning/c20160205_000_smbtest/"
 
     query = dataTransfer(transferType, signalHost, useLog = True)

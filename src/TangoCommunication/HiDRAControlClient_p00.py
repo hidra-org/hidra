@@ -4,8 +4,10 @@ import sys
 import argparse
 
 try:
+    # search in global python modules first
     import hidra.control
 except:
+    # then search in local modules
     BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
     API_PATH    = BASE_PATH + os.sep + "APIs"
 

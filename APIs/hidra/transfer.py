@@ -12,8 +12,8 @@ import json
 import errno
 import os
 import traceback
-from zmq.auth.thread import ThreadAuthenticator
 import tempfile
+from zmq.auth.thread import ThreadAuthenticator
 
 
 class loggingFunction:
@@ -70,7 +70,7 @@ class dataTransfer():
     def __init__ (self, connectionType, signalHost = None, useLog = False, context = None):
 
         if useLog:
-            self.log = logging.getLogger("dataTransferAPI")
+            self.log = logging.getLogger("dataTransfer")
         elif useLog == None:
             self.log = noLoggingFunction()
         else:
