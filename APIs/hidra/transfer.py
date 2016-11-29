@@ -448,7 +448,9 @@ class dataTransfer():
         self.readCallback   = readCallback
         self.closeCallback  = closeCallback
 
-        while True:
+        runLoop = True
+
+        while runLoop:
             self.log.debug("polling")
             try:
                 socks = dict(self.poller.poll())
@@ -501,7 +503,7 @@ class dataTransfer():
                     #TODO return errorcode
 
                 try:
-                    self.__reactOnMessage(multipartMessage)
+                    runLoop = self.__reactOnMessage(multipartMessage)
                 except KeyboardInterrupt:
                     self.log.debug("Keyboard interrupt detected. Stopping to receive.")
                     raise
@@ -539,6 +541,7 @@ class dataTransfer():
                     self.recvdCloseFrom = []
 
                     self.closeCallback(self.callbackParams, multipartMessage)
+                    return False
                 else:
                     self.allCloseRecvd = True
 
@@ -550,7 +553,10 @@ class dataTransfer():
             try:
                 metadata = json.loads(multipartMessage[0]).decode("utf-8")
             except:
-                self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
+                #json.dumps of None results in 'null'
+                if multipartMessage[0] != 'null':
+                    self.log.error("Could not extract metadata from the multipart-message.", exc_info=True)
+                    self.log.debug("multipartmessage[0] = {0}".format(multipartMessage[0]), exc_info=True)
                 metadata = None
 
             #TODO validate multipartMessage (like correct dict-values for metadata)
@@ -563,6 +569,7 @@ class dataTransfer():
 
             self.readCallback(self.callbackParams, [metadata, payload])
 
+        return True
 
 
 

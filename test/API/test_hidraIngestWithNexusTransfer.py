@@ -8,15 +8,8 @@ import json
 import tempfile
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = BASE_PATH + os.sep + "APIs"
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
-
-if not API_PATH in sys.path:
-    sys.path.append ( API_PATH )
-del API_PATH
-
-from hidraIngest import HidraIngest
-from nexusTransferAPI import nexusTransfer
+API_PATH    = os.path.join(BASE_PATH, "APIs")
+SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -24,11 +17,34 @@ del SHARED_PATH
 
 import helpers
 
+try:
+    # search in global python modules first
+    from hidra.transfer import dataTransfer
+except:
+    # then search in local modules
+    if not API_PATH in sys.path:
+        sys.path.append ( API_PATH )
+
+    from hidra.transfer import dataTransfer
+
+try:
+    # search in global python modules first
+    from hidra.ingest import dataIngest
+except:
+    # then search in local modules
+    if not API_PATH in sys.path:
+        sys.path.append ( API_PATH )
+    del API_PATH
+
+    from hidra.ingest import dataIngest
+
+
 #enable logging
-logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfile     = os.path.join(logfilePath, "testHidraIngestWithNexusTransfer.log")
+logfilePath = os.path.join(BASE_PATH, "logs")
+logfile     = os.path.join(logfilePath, "testHidraIngestWithDataTransfer.log")
 helpers.initLogging(logfile, True, "DEBUG")
 
+del BASE_PATH
 
 print
 print "==== TEST: hidraIngest together with nexus transfer ===="
@@ -38,7 +54,8 @@ print
 class ZmqDataManager(threading.Thread):
     def __init__(self, context = None):
         self.extHost      = "0.0.0.0"
-        self.localhost    = "localhost"
+        self.localhost    = "zitpcx19282"
+#        self.localhost    = "localhost"
         self.dataOutPort  = "50100"
 
         self.log          = logging.getLogger("ZmqDataManager")
@@ -75,6 +92,8 @@ class ZmqDataManager(threading.Thread):
 
 
     def run(self):
+        filename = "1.h5"
+
         while True:
             try:
                 socks = dict(self.poller.poll())
@@ -87,7 +106,7 @@ class ZmqDataManager(threading.Thread):
                     self.log.debug("eventSocket recv: " + metadata)
 
                     if metadata == b"CLOSE_FILE":
-                        self.dataOutSocket.send_multipart([metadata, "0/1"])
+                        self.dataOutSocket.send_multipart([metadata, filename, "0/1"])
 
                 if socks and self.dataInSocket in socks and socks[self.dataInSocket] == zmq.POLLIN:
 
@@ -138,7 +157,7 @@ class ZmqDataManager(threading.Thread):
 
 
 def runHidraIngest(numbToSend):
-    dI = HidraIngest(useLog = True)
+    dI = dataIngest(useLog = True)
 
     dI.createFile("1.h5")
 
@@ -151,7 +170,6 @@ def runHidraIngest(numbToSend):
             logging.error("runHidraIngest break", exc_info=True)
             break
 
-
     try:
         dI.closeFile()
     except:
@@ -160,24 +178,39 @@ def runHidraIngest(numbToSend):
     dI.stop()
 
 
+def openCallback (params, retrievedParams):
+    print "openCallback", params, retrievedParams
+
+def closeCallback (params, retrievedParams):
+    params["runLoop"] = False
+    print "closeCallback",  params, retrievedParams
+
+def readCallback (params, retrievedParams):
+    print "readCallback", params, retrievedParams
+
 
 
 def runNexusTransfer(numbToRecv):
-    nT = nexusTransfer(useLog = True)
+    dT = dataTransfer("nexus", useLog = True)
+    dT.start(["zitpcx19282", "50100"])
+#    dT.start(["localhost", "50100"])
+
+    callbackParams = {
+            "runLoop" : True
+            }
 
     # number to receive + open signal + close signal
-    for i in range(numbToRecv + 2):
-        try:
-            data = nT.read()
-            logging.info("Retrieved: " + str(data))
-
-            if data == "CLOSE_FILE":
+    try:
+        while callbackParams["runLoop"]:
+            try:
+                dT.read(callbackParams, openCallback, readCallback, closeCallback)
+            except KeyboardInterrupt:
                 break
-        except:
-            logging.error("runNexusTransfer break", exc_info=True)
-            break
-
-    nT.stop()
+            except:
+                logging.error("runNexusTransfer break", exc_info=True)
+                break
+    finally:
+        dT.stop()
 
 useTest = True
 #useTest = False

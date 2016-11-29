@@ -12,6 +12,7 @@ import logging
 import traceback
 import json
 import tempfile
+import socket
 
 class loggingFunction:
     def out (self, x, exc_info = None):
@@ -49,12 +50,12 @@ def isWindows():
     return returnValue
 
 
-class HidraIngest():
+class dataIngest():
     # return error code
     def __init__ (self, useLog = False, context = None):
 
         if useLog:
-            self.log = logging.getLogger("HidraIngest")
+            self.log = logging.getLogger("dataIngest")
         elif useLog == None:
             self.log = noLoggingFunction()
         else:
@@ -120,9 +121,9 @@ class HidraIngest():
 #        self.signalSocket.RCVTIMEO = self.responseTimeout
         try:
             self.signalSocket.connect(self.signalConId)
-            self.log.info("signalSocket started (connect) for '{id}'".format(id=self.signalConId))
+            self.log.info("signalSocket started (connect) for '{0}'".format(self.signalConId))
         except Exception as e:
-            self.log.error("Failed to start signalSocket (connect): '{id}'".format(id=self.signalConId), exc_info=True)
+            self.log.error("Failed to start signalSocket (connect): '{0}'".format(self.signalConId), exc_info=True)
             raise
 
         # using a Poller to implement the signalSocket timeout (in older ZMQ version there is no option RCVTIMEO)
@@ -131,25 +132,26 @@ class HidraIngest():
 
 
         self.eventDetSocket = self.context.socket(zmq.PUSH)
+        self.dataFetchSocket  = self.context.socket(zmq.PUSH)
+
         try:
             self.eventDetSocket.connect(self.eventDetConId)
-            self.log.info("eventDetSocket started (connect) for '{id}'".format(id=self.eventDetConId))
+            self.log.info("eventDetSocket started (connect) for '{0}'".format(self.eventDetConId))
         except:
-            self.log.error("Failed to start eventDetSocket (connect): '{id}'".format(id=self.eventDetConId), exc_info=True)
+            self.log.error("Failed to start eventDetSocket (connect): '{0}'".format(self.eventDetConId), exc_info=True)
             raise
 
-        self.dataFetchSocket  = self.context.socket(zmq.PUSH)
         try:
             self.dataFetchSocket.connect(self.dataFetchConId)
-            self.log.info("dataFetchSocket started (connect) for '{id}'".format(id=self.dataFetchConId))
+            self.log.info("dataFetchSocket started (connect) for '{0}'".format(self.dataFetchConId))
         except:
-            self.log.error("Failed to start dataFetchSocket (connect): '{id}'".format(id=self.dataFetchConId), exc_info=True)
+            self.log.error("Failed to start dataFetchSocket (connect): '{0}'".format(self.dataFetchConId), exc_info=True)
             raise
 
 
     # return error code
     def createFile (self, filename):
-        signal = "OPEN_FILE"
+        signal = b"OPEN_FILE"
 
         if self.filename and self.filename != filename:
             raise Exception("File {0} already opened.".format(filename))
@@ -188,7 +190,7 @@ class HidraIngest():
     # return error code
     def closeFile (self):
         # send close-signal to signal socket
-        sendMessage = ["CLOSE_FILE", self.filename]
+        sendMessage = [b"CLOSE_FILE", self.filename]
         try:
             self.signalSocket.send_multipart(sendMessage)
             self.log.info("Sending signal to close the file to signalSocket.")
@@ -198,7 +200,7 @@ class HidraIngest():
         # send close-signal to event Detector
         try:
             self.eventDetSocket.send_multipart(sendMessage)
-            self.log.debug("Sending signal to close the file to eventDetSocket. (sendMessage={m})".format(m=sendMessage))
+            self.log.debug("Sending signal to close the file to eventDetSocket. (sendMessage={0})".format(sendMessage))
         except:
             raise Exception("Sending signal to close the file to eventDetSocket...failed.")
 
@@ -213,13 +215,13 @@ class HidraIngest():
             self.log.info("Received answer to signal...")
             #  Get the reply.
             recvMessage = self.signalSocket.recv_multipart()
-            self.log.info("Received answer to signal: {m}".format(m=recvMessage) )
+            self.log.info("Received answer to signal: {0}".format(recvMessage) )
         else:
             recvMessage = None
 
         if recvMessage != sendMessage:
-            self.log.debug("recieved message: {m}".format(m=recvMessage))
-            self.log.debug("send message: {m}".format(m=sendMessage))
+            self.log.debug("recieved message: {0}".format(recvMessage))
+            self.log.debug("send message: {0}".format(sendMessage))
             raise Exception("Something went wrong while notifying to close the file")
 
         self.filename = None
