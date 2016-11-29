@@ -332,8 +332,10 @@ class dataTransfer():
             port = ""
 
             if dataSocket:
+                self.log.debug("Specified dataSocket: {0}".format(dataSocket))
+
                 if type(dataSocket) == list:
-                    socketIdToBind = "{h}:{p}".format(h=dataSocket[0], p=dataSocket[1])
+#                    socketIdToBind = "{h}:{p}".format(h=dataSocket[0], p=dataSocket[1])
                     host = dataSocket[0]
                     ip   = socket.gethostbyaddr(host)[2][0]
                     port = dataSocket[1]
@@ -359,19 +361,25 @@ class dataTransfer():
                     raise FormatError("No target specified.")
 
             socketId = "{h}:{p}".format(h=host, p=port).encode("utf-8")
-            socketIdToBind = "{h}:{p}".format(h=ip, p=port)
 
-#            try:
-#                socket.inet_aton(ip)
-#                self.log.info("IPv4 address detected ({ip}).".format(ip=ip))
-#                socketIdToBind = "{h}:{p}".format(h=ip, p=port)
-#                isIPv6 = False
-#            except socket.error:
-#                self.log.info("Not a IPv4 address ({ip}), asume it's an IPv6 address.".format(ip=ip))
-#                socketIdToBind = "[{h}]:{p}".format(h=ip, p=port)
-#                isIPv6 = True
+            try:
+                socket.inet_aton(ip)
+                self.log.info("IPv4 address detected: {0}.".format(ip))
+                socketIdToBind = "{h}:{p}".format(h=ip, p=port)
+                fileOp_conStr = "tcp://{h}:{p}".format(h=ip, p=self.fileOpPort)
+                isIPv6 = False
+            except socket.error:
+                self.log.info("Address '{0}' is not a IPv4 address, asume it is an IPv6 address.".format(ip))
+#                socketIdToBind = "0.0.0.0:{0}".format(port)
+                socketIdToBind = "[{h}]:{p}".format(h=ip, p=port)
+#                fileOp_conStr= "tcp://0.0.0.0:{0}".format(self.fileOpPort)
+                fileOp_conStr= "tcp://[{h}]:{p}".format(h=ip, p=self.fileOpPort)
+                isIPv6 = True
 
-#            socketIdToBind = "192.168.178.25:{p}".format(p=port)
+            self.log.debug("socketIdToBind={0}".format(socketIdToBind))
+            self.log.debug("fileOp_conStr={0}".format(fileOp_conStr))
+
+#            socketIdToBind = "192.168.178.25:{0}".format(port)
 
         self.dataSocket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving mechanism
@@ -380,9 +388,9 @@ class dataTransfer():
         if whitelist:
             self.dataSocket.zap_domain = b'global'
 
-#        if isIPv6:
-#            self.dataSocket.ipv6 = True
-#            self.log.debug("Enabling IPv6 socket")
+        if isIPv6:
+            self.dataSocket.ipv6 = True
+            self.log.debug("Enabling IPv6 socket")
 
         try:
             self.dataSocket.bind(connectionStr)
@@ -410,14 +418,18 @@ class dataTransfer():
 
         elif self.connectionType in ["nexus"]:
 
-            self.fileOpSocket = self.context.socket(zmq.REP)
             # An additional socket is needed to get signals to open and close nexus files
-            connectionStr     = "tcp://{h}:{p}".format(h=ip, p=self.fileOpPort)
+            self.fileOpSocket = self.context.socket(zmq.REP)
+
+            if isIPv6:
+                self.fileOpSocket.ipv6 = True
+                self.log.debug("Enabling IPv6 socket for fileOpSocket")
+
             try:
-                self.fileOpSocket.bind(connectionStr)
-                self.log.info("File operation socket started (bind) for '{0}'".format(connectionStr))
+                self.fileOpSocket.bind(fileOp_conStr)
+                self.log.info("File operation socket started (bind) for '{0}'".format(fileOp_conStr))
             except:
-                self.log.error("Failed to start Socket of type {t} (bind): '{s}'".format(t=self.connectionType, s=connectionStr), exc_info=True)
+                self.log.error("Failed to start Socket of type {t} (bind): '{s}'".format(t=self.connectionType, s=fileOp_conStr), exc_info=True)
 
             if not os.path.exists(self.ipcPath):
                 os.makedirs(self.ipcPath)
@@ -435,7 +447,7 @@ class dataTransfer():
 
             self.nexusStarted = socketId
         else:
-            self.streamStarted    = socketId
+            self.streamStarted = socketId
 
 
     def read(self, callbackParams, openCallback, readCallback, closeCallback):

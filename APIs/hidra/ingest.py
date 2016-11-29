@@ -73,7 +73,15 @@ class dataIngest():
 
         self.currentPID      = os.getpid()
 
-        self.localhost       = "127.0.0.1"
+        self.localhost = socket.gethostbyaddr("localhost")[2][0]
+        try:
+            socket.inet_aton(self.localhost)
+            self.log.info("IPv4 address detected for localhost: {0}.".format(self.localhost))
+            self.localhost_isIPv6 = False
+        except socket.error:
+            self.log.info("Address '{0}' is not a IPv4 address, asume it is an IPv6 address.".format(self.localhost))
+            self.localhost_isIPv6 = True
+
         self.extIp           = "0.0.0.0"
         self.ipcPath         = os.path.join(tempfile.gettempdir(), "hidra")
 
@@ -133,6 +141,13 @@ class dataIngest():
 
         self.eventDetSocket = self.context.socket(zmq.PUSH)
         self.dataFetchSocket  = self.context.socket(zmq.PUSH)
+
+        if isWindows() and self.localhost_isIPv6:
+            self.eventDetSocket.ipv6 = True
+            self.log.debug("Enabling IPv6 socket eventDetSocket")
+
+            self.dataFetchSocket.ipv6 = True
+            self.log.debug("Enabling IPv6 socket dataFetchSocket")
 
         try:
             self.eventDetSocket.connect(self.eventDetConId)
