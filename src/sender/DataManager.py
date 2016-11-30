@@ -441,6 +441,7 @@ class DataManager():
             self.log.info("Creating directory for IPC communication: {0}".format(self.ipcPath))
 
         # Enable specification via IP and DNS name
+        #TODO make this IPv6 compatible
         if arguments.extIp == "0.0.0.0":
             self.extIp            = arguments.extIp
         else:
@@ -521,7 +522,8 @@ class DataManager():
         elif arguments.eventDetectorType == "HttpDetector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
-                    "eigerIp"           : arguments.eigerIp,
+                    # Enable specification via IP and DNS name
+                    "eigerIp"           : socket.gethostbyaddr(arguments.eigerIp)[2][0],
                     "eigerApiVersion"   : arguments.eigerApiVersion,
                     "historySize"       : arguments.historySize
                     }
