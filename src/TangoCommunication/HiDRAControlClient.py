@@ -3,7 +3,7 @@ import time
 
 try:
     # search in global python modules first
-    import hidra.control
+    import hidra
 except:
     # then search in local modules
     BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
@@ -13,10 +13,10 @@ except:
         sys.path.append ( API_PATH )
     del API_PATH
 
-    import hidra.control
+    import hidra
 
 
-obj = hidra.control.controller("p00", useLog = None)
+obj = hidra.controller("p00", useLog = None)
 #obj = hidra.control.controller("p00")
 
 # where the data should be stored inside the beamline filesystem

@@ -5,7 +5,7 @@ import argparse
 
 try:
     # search in global python modules first
-    import hidra.control
+    import hidra
 except:
     # then search in local modules
     BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
@@ -15,7 +15,7 @@ except:
         sys.path.append ( API_PATH )
     del API_PATH
 
-    import hidra.control
+    import hidra
 
 
 def argumentParsing():
@@ -47,7 +47,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
 #    obj = hidra.control.controller(beamline)
-    obj = hidra.control.controller(beamline, useLog=None)
+    obj = hidra.controller(beamline, useLog=None)
 
     try:
         if arguments.start:

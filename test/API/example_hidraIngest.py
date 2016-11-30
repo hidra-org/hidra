@@ -17,14 +17,14 @@ import helpers
 
 try:
     # search in global python modules first
-    from hidra.ingest import dataIngest
+    from hidra import dataIngest
 except:
     # then search in local modules
     if not API_PATH in sys.path:
         sys.path.append ( API_PATH )
     del API_PATH
 
-    from hidra.ingest import dataIngest
+    from hidra import dataIngest
 
 
 #enable logging
