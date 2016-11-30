@@ -7,7 +7,7 @@ from PyQt4 import QtCore
 from PyQt4.QtCore import SIGNAL, QThread, QMutex
 
 BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ))
-API_PATH  = BASE_PATH + os.sep + "APIs"
+API_PATH  = os.path.join(BASE_PATH, "src", "APIs")
 
 try:
     # search in global python modules first

@@ -4,7 +4,7 @@ import time
 
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = os.path.join(BASE_PATH, "APIs")
+API_PATH    = os.path.join(BASE_PATH, "src", "APIs")
 
 try:
     # search in global python modules first

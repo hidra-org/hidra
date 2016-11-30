@@ -7,8 +7,8 @@ import threading
 import json
 
 BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = BASE_PATH + os.sep + "APIs"
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+API_PATH    = os.poath.join(BASE_PATH, "APIs")
+SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
