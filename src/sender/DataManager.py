@@ -48,7 +48,7 @@ def str2bool(v):
     return v.lower() == "true"
 
 
-def argumentParsing():
+def argument_parsing():
     defaultConfig     = os.path.join(CONFIG_PATH, "dataManager.conf")
     supportedEDTypes  = ["inotifyxdetector", "watchdogdetector", "zmqdetector", "httpdetector"]
     supportedDFTypes  = ["getfromfile", "getfromzmq", "getfromhttp"]
@@ -182,7 +182,7 @@ def argumentParsing():
     arguments.configFile         = arguments.configFile or defaultConfig
 
     # check if configFile exist
-    helpers.checkFileExistance(arguments.configFile)
+    helpers.check_file_existance(arguments.configFile)
 
     ##################################
     # Get arguments from config file #
@@ -202,7 +202,7 @@ def argumentParsing():
     arguments.logfileName             = arguments.logfileName \
                                         or config.get('asection', 'logfileName')
 
-    if not helpers.isWindows():
+    if not helpers.is_windows():
         arguments.logfileSize         = arguments.logfileSize \
                                         or config.getint('asection', 'logfileSize')
 
@@ -227,7 +227,7 @@ def argumentParsing():
     arguments.requestPort             = arguments.requestPort \
                                         or config.get('asection', 'requestPort')
 
-    if helpers.isWindows():
+    if helpers.is_windows():
         arguments.requestFwPort       = arguments.requestFwPort \
                                         or config.get('asection', 'requestFwPort')
 
@@ -341,27 +341,27 @@ def argumentParsing():
     ##################################
 
     # check if logfile is writable
-    helpers.checkLogFileWritable(arguments.logfilePath, arguments.logfileName)
+    helpers.check_log_file_writable(arguments.logfilePath, arguments.logfileName)
 
 
     # check if the eventDetectorType is supported
-    helpers.checkEventDetectorType(arguments.eventDetectorType, supportedEDTypes)
+    helpers.check_event_detector_type(arguments.eventDetectorType, supportedEDTypes)
 
     # check if the dataFetcherType is supported
 #    helpers.checkDataFetcherType(arguments.dataFetcherType, supportedDFTypes)
 
     # check if directories exist
-    helpers.checkDirExistance(arguments.logfilePath)
+    helpers.check_dir_existance(arguments.logfilePath)
     if arguments.monitoredDir:
-        helpers.checkDirExistance(arguments.monitoredDir)
-        helpers.checkAnySubDirExists(arguments.monitoredDir, arguments.fixSubdirs)
+        helpers.check_dir_existance(arguments.monitoredDir)
+        helpers.check_any_sub_dir_exists(arguments.monitoredDir, arguments.fixSubdirs)
     if arguments.storeData:
-        helpers.checkDirExistance(arguments.localTarget)
-        helpers.checkAllSubDirExist(arguments.localTarget, arguments.fixSubdirs)
+        helpers.check_dir_existance(arguments.localTarget)
+        helpers.check_all_sub_dir_exist(arguments.localTarget, arguments.fixSubdirs)
 
 
     if arguments.useDataStream:
-        helpers.checkPing(arguments.fixedStreamHost)
+        helpers.check_ping(arguments.fixedStreamHost)
 
     return arguments
 
@@ -381,7 +381,7 @@ class DataManager():
         self.currentPID       = os.getpid()
 
         try:
-            arguments = argumentParsing()
+            arguments = argument_parsing()
         except:
             self.log = logging
             self.ipcPath = os.path.join(tempfile.gettempdir(), "hidra")
@@ -406,12 +406,12 @@ class DataManager():
 
             # Get the log Configuration for the lisener
             if onScreen:
-                h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
+                h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose, onScreen)
 
                 # Start queue listener using the stream handler above.
                 self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1, h2)
             else:
-                h1 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
+                h1 = helpers.get_log_handlers(logfile, logsize, verbose, onScreen)
 
                 # Start queue listener using the stream handler above
                 self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1)
@@ -420,7 +420,7 @@ class DataManager():
 
 
         # Create log and set handler to queue handle
-        self.log = self.getLogger(self.logQueue)
+        self.log = self.get_logger(self.logQueue)
 
         self.ipcPath          = os.path.join(tempfile.gettempdir(), "hidra")
         self.log.info("Configured ipcPath: {0}".format(self.ipcPath))
@@ -452,7 +452,7 @@ class DataManager():
         self.comConId         = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.comPort)
         self.requestConId     = "tcp://{ip}:{port}".format(ip=self.extIp,     port=arguments.requestPort)
 
-        if helpers.isWindows():
+        if helpers.is_windows():
             self.log.info("Using tcp for internal communication.")
             self.controlPubConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlPubPort)
             self.controlSubConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=arguments.controlSubPort)
@@ -559,7 +559,7 @@ class DataManager():
         self.log.info("Version: {0}".format(__version__))
 
         # IP and DNS name should be both in the whitelist
-        helpers.extendWhitelist(self.whitelist, self.log)
+        helpers.extend_whitelist(self.whitelist, self.log)
 
         # Create zmq context
         # there should be only one context in one process
@@ -568,8 +568,8 @@ class DataManager():
         self.log.debug("Registering global ZMQ context")
 
         try:
-            if self.testFixedStreamingHost():
-                self.createSockets()
+            if self.test_fixed_streaming_host():
+                self.create_sockets()
 
                 self.run()
         except KeyboardInterrupt:
@@ -584,7 +584,7 @@ class DataManager():
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("DataManager")
@@ -595,7 +595,7 @@ class DataManager():
         return logger
 
 
-    def createSockets(self):
+    def create_sockets(self):
 
         # initiate forwarder for control signals (multiple pub, multiple sub)
         try:
@@ -620,7 +620,7 @@ class DataManager():
             raise
 
 
-    def testFixedStreamingHost(self):
+    def test_fixed_streaming_host(self):
         if self.useDataStream:
             try:
                 self.testSocket = self.context.socket(zmq.PUSH)
@@ -816,10 +816,10 @@ class DataManager():
 
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
-class Test_Receiver_Stream():
+class TestReceiverStream():
     def __init__(self, comPort, fixedRecvPort, receivingPort, receivingPort2, logQueue):
 
-        self.log = self.getLogger(logQueue)
+        self.log = self.get_logger(logQueue)
 
         context = zmq.Context.instance()
 
@@ -843,8 +843,8 @@ class Test_Receiver_Stream():
         self.receivingSocket2.bind(connectionStr)
         self.log.info("=== receivingSocket2 connected to {0}".format(connectionStr))
 
-        self.sendSignal("START_STREAM", receivingPort, 1)
-        self.sendSignal("START_STREAM", receivingPort2, 0)
+        self.send_signal("START_STREAM", receivingPort, 1)
+        self.send_signal("START_STREAM", receivingPort2, 0)
 
         self.run()
 
@@ -853,10 +853,10 @@ class Test_Receiver_Stream():
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("Test_Receiver_Stream")
+        logger = logging.getLogger("TestReceiverStream")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -864,8 +864,8 @@ class Test_Receiver_Stream():
         return logger
 
 
-    def sendSignal (self, signal, ports, prio = None):
-        self.log.info("=== sendSignal : {s}, {p}".format(s=signal, p=ports))
+    def send_signal (self, signal, ports, prio = None):
+        self.log.info("=== send_signal : {s}, {p}".format(s=signal, p=ports))
         sendMessage = [__version__,  signal]
         targets = []
         if type(ports) == list:
@@ -915,7 +915,7 @@ if __name__ == '__main__':
         logQueue = Queue(-1)
 
         # Get the log Configuration for the lisener
-        h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
+        h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
 
         # Start queue listener using the stream handler above
         logQueueListener = helpers.CustomQueueListener(logQueue, h1, h2)
@@ -933,7 +933,7 @@ if __name__ == '__main__':
         receivingPort  = "50101"
         receivingPort2 = "50102"
 
-        testPr = Process ( target = Test_Receiver_Stream, args = (comPort, fixedRecvPort, receivingPort, receivingPort2, logQueue))
+        testPr = Process ( target = TestReceiverStream, args = (comPort, fixedRecvPort, receivingPort, receivingPort2, logQueue))
         testPr.start()
         logging.debug("test receiver started")
 

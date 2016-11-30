@@ -42,7 +42,7 @@ class SignalHandler():
         log                  = None
 
         # Send all logs to the main process
-        self.log = self.getLogger(logQueue)
+        self.log = self.get_logger(logQueue)
 
         self.currentPID       = os.getpid()
         self.log.debug("SignalHandler started (PID {pid}).".format(pid=self.currentPID))
@@ -87,7 +87,7 @@ class SignalHandler():
             self.extContext = False
 
         try:
-            self.createSockets()
+            self.create_sockets()
 
             self.run()
         except zmq.ZMQError:
@@ -104,7 +104,7 @@ class SignalHandler():
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("SignalHandler")
@@ -115,7 +115,7 @@ class SignalHandler():
         return logger
 
 
-    def createSockets (self):
+    def create_sockets (self):
 
         # socket to send control signals to
         try:
@@ -230,11 +230,11 @@ class SignalHandler():
                 incomingMessage = self.comSocket.recv_multipart()
                 self.log.debug("Received signal: {0}".format(incomingMessage) )
 
-                checkFailed, signal, target = self.checkSignalInverted(incomingMessage)
+                checkFailed, signal, target = self.check_signal_inverted(incomingMessage)
                 if not checkFailed:
-                    self.reactToSignal(signal, target)
+                    self.react_to_signal(signal, target)
                 else:
-                    self.sendResponse(checkFailed)
+                    self.send_response(checkFailed)
 
             ######################################
             #        request from external       #
@@ -285,7 +285,7 @@ class SignalHandler():
                     self.log.error("Unhandled control signal received: {0}".format(message[0]))
 
 
-    def checkSignalInverted (self, incomingMessage):
+    def check_signal_inverted (self, incomingMessage):
 
         if len(incomingMessage) != 3:
 
@@ -304,7 +304,7 @@ class SignalHandler():
                 return b"NO_VALID_SIGNAL", None, None
 
             if version:
-                if helpers.checkVersion(version, self.log):
+                if helpers.check_version(version, self.log):
                     self.log.info("Versions are compatible")
                 else:
                     self.log.warning("Version are not compatible")
@@ -314,7 +314,7 @@ class SignalHandler():
 
                 # Checking signal sending host
                 self.log.debug("Check if host to send data to are in WhiteList...")
-                if helpers.checkHost(host, self.whiteList, self.log):
+                if helpers.check_host(host, self.whiteList, self.log):
                     self.log.info("Hosts are allowed to connect.")
                     self.log.debug("hosts: {0}".format(host))
                 else:
@@ -325,12 +325,12 @@ class SignalHandler():
         return False, signal, target
 
 
-    def sendResponse (self, signal):
+    def send_response (self, signal):
             self.log.debug("Send response back: {0}".format(signal))
             self.comSocket.send(signal, zmq.NOBLOCK)
 
 
-    def __startSignal(self, signal, sendType, socketIds, listToCheck, variList, correspList):
+    def __start_signal(self, signal, sendType, socketIds, listToCheck, variList, correspList):
 
         # make host naming consistent
         for socketConf in socketIds:
@@ -380,7 +380,7 @@ class SignalHandler():
         self.log.debug("after start handling: listToCheck={0}".format(listToCheck))
 
         # send signal back to receiver
-        self.sendResponse(signal)
+        self.send_response(signal)
 
 #        connectionFound = False
 #        tmpAllowed = []
@@ -407,7 +407,7 @@ class SignalHandler():
 
 #        if not connectionFound:
 #            # send signal back to receiver
-#            self.sendResponse(signal)
+#            self.send_response(signal)
 #            listToCheck.append(copy.deepcopy(sorted(tmpAllowed)))
 #            if correspList != None:
 #                correspList.append(0)
@@ -417,12 +417,12 @@ class SignalHandler():
 #                variList.append([])
 #        else:
 #            # send error back to receiver
-##            self.sendResponse("CONNECTION_ALREADY_OPEN")
+##            self.send_response("CONNECTION_ALREADY_OPEN")
 #            # "reopen" the connection and confirm to receiver
-#            self.sendResponse(signal)
+#            self.send_response(signal)
 
 
-    def __stopSignal(self, signal, socketIds, listToCheck, variList, correspList):
+    def __stop_signal(self, signal, socketIds, listToCheck, variList, correspList):
 
         connectionNotFound = False
         tmpRemoveIndex = []
@@ -442,11 +442,11 @@ class SignalHandler():
                 connectionNotFound = True
 
         if connectionNotFound:
-            self.sendResponse(b"NO_OPEN_CONNECTION_FOUND")
+            self.send_response(b"NO_OPEN_CONNECTION_FOUND")
             self.log.info("No connection to close was found for {0}".format(socketConf))
         else:
             # send signal back to receiver
-            self.sendResponse(signal)
+            self.send_response(signal)
 
             for element in tmpRemoveElement:
 
@@ -480,7 +480,7 @@ class SignalHandler():
         return listToCheck, variList, correspList
 
 
-    def reactToSignal (self, signal, socketIds):
+    def react_to_signal (self, signal, socketIds):
 
         ###########################
         ##      START_STREAM     ##
@@ -488,7 +488,7 @@ class SignalHandler():
         if signal == b"START_STREAM":
             self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
-            self.__startSignal(signal, "data", socketIds, self.openRequPerm, None, self.nextRequNode)
+            self.__start_signal(signal, "data", socketIds, self.openRequPerm, None, self.nextRequNode)
 
             return
 
@@ -498,7 +498,7 @@ class SignalHandler():
         elif signal == b"START_STREAM_METADATA":
             self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
-            self.__startSignal(signal, "metadata", socketIds, self.openRequPerm, None, self.nextRequNode)
+            self.__start_signal(signal, "metadata", socketIds, self.openRequPerm, None, self.nextRequNode)
 
             return
 
@@ -509,7 +509,7 @@ class SignalHandler():
         elif signal == b"STOP_STREAM" or signal == b"STOP_STREAM_METADATA":
             self.log.info("Received signal: {s} for host {h}".format(s=signal, h=socketIds))
 
-            self.openRequPerm, nonetmp, self.nextRequNode = self.__stopSignal(signal, socketIds, self.openRequPerm, None, self.nextRequNode)
+            self.openRequPerm, nonetmp, self.nextRequNode = self.__stop_signal(signal, socketIds, self.openRequPerm, None, self.nextRequNode)
 
             return
 
@@ -520,7 +520,7 @@ class SignalHandler():
         elif signal == b"START_QUERY_NEXT":
             self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
-            self.__startSignal(signal, "data", socketIds, self.allowedQueries, self.openRequVari, None)
+            self.__start_signal(signal, "data", socketIds, self.allowedQueries, self.openRequVari, None)
 
             return
 
@@ -530,7 +530,7 @@ class SignalHandler():
         elif signal == b"START_QUERY_METADATA":
             self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
-            self.__startSignal(signal, "metadata", socketIds, self.allowedQueries, self.openRequVari, None)
+            self.__start_signal(signal, "metadata", socketIds, self.allowedQueries, self.openRequVari, None)
 
             return
 
@@ -541,14 +541,14 @@ class SignalHandler():
         elif signal == b"STOP_QUERY_NEXT" or signal == b"STOP_QUERY_METADATA":
             self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
 
-            self.allowedQueries, self.openRequVari, nonetmp = self.__stopSignal(signal, socketIds, self.allowedQueries, self.openRequVari, None)
+            self.allowedQueries, self.openRequVari, nonetmp = self.__stop_signal(signal, socketIds, self.allowedQueries, self.openRequVari, None)
 
             return
 
 
         else:
             self.log.info("Received signal: {s} for hosts {h}".format(s=signal, h=socketIds))
-            self.sendResponse(b"NO_VALID_SIGNAL")
+            self.send_response(b"NO_VALID_SIGNAL")
 
 
     def stop (self):
@@ -594,10 +594,10 @@ class SignalHandler():
 
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
-class requestPuller():
+class RequestPuller():
     def __init__ (self, requestFwConId, logQueue, context = None):
 
-        self.log = self.getLogger(logQueue)
+        self.log = self.get_logger(logQueue)
 
         self.context         = context or zmq.Context.instance()
         self.requestFwSocket = self.context.socket(zmq.REQ)
@@ -610,10 +610,10 @@ class requestPuller():
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("requestPuller")
+        logger = logging.getLogger("RequestPuller")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -669,7 +669,7 @@ if __name__ == '__main__':
     logQueue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
+    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
 
     # Start queue listener using the stream handler above
     logQueueListener    = helpers.CustomQueueListener(logQueue, h1, h2)
@@ -699,19 +699,19 @@ if __name__ == '__main__':
     signalHandlerPr = threading.Thread ( target = SignalHandler, args = (controlPubConId, controlSubConId, whiteList, comConId, requestFwConId, requestConId, logQueue, context) )
     signalHandlerPr.start()
 
-    requestPullerPr = Process ( target = requestPuller, args = (requestFwConId, logQueue) )
+    requestPullerPr = Process ( target = RequestPuller, args = (requestFwConId, logQueue) )
     requestPullerPr.start()
 
 
-    def sendSignal(socket, signal, ports, prio = None):
-        logging.info("=== sendSignal : {s}, {p}".format(s=signal, p=ports))
+    def send_signal(socket, signal, ports, prio = None):
+        logging.info("=== send_signal : {s}, {p}".format(s=signal, p=ports))
         sendMessage = [__version__,  signal]
         targets = []
         if type(ports) == list:
             for port in ports:
-                targets.append(["zitpcx19282:{p}".format(p=port), prio])
+                targets.append(["zitpcx19282:{0}".format(port), prio])
         else:
-            targets.append(["zitpcx19282:{p}".format(p=ports), prio])
+            targets.append(["zitpcx19282:{0}".format(ports), prio])
         targets = json.dumps(targets).encode("utf-8")
         sendMessage.append(targets)
         socket.send_multipart(sendMessage)
@@ -739,15 +739,15 @@ if __name__ == '__main__':
 
     time.sleep(1)
 
-    sendSignal(comSocket, b"START_STREAM", "6003", 1)
+    send_signal(comSocket, b"START_STREAM", "6003", 1)
 
-    sendSignal(comSocket, b"START_STREAM", "6004", 0)
+    send_signal(comSocket, b"START_STREAM", "6004", 0)
 
-    sendSignal(comSocket, b"STOP_STREAM", "6003")
+    send_signal(comSocket, b"STOP_STREAM", "6003")
 
     sendRequest(requestSocket, "zitpcx19282:6006")
 
-    sendSignal(comSocket, b"START_QUERY_NEXT", ["6005", "6006"], 2)
+    send_signal(comSocket, b"START_QUERY_NEXT", ["6005", "6006"], 2)
 
     sendRequest(requestSocket, b"zitpcx19282:6005")
     sendRequest(requestSocket, b"zitpcx19282:6005")
@@ -757,7 +757,7 @@ if __name__ == '__main__':
 
 
     sendRequest(requestSocket, "zitpcx19282:6005")
-    sendSignal(comSocket, b"STOP_QUERY_NEXT", "6005", 2)
+    send_signal(comSocket, b"STOP_QUERY_NEXT", "6005", 2)
 
     time.sleep(1)
 

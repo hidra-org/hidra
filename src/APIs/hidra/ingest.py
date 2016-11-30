@@ -14,7 +14,7 @@ import json
 import tempfile
 import socket
 
-class loggingFunction:
+class LoggingFunction:
     def out (self, x, exc_info = None):
         if exc_info:
             print (x, traceback.format_exc())
@@ -28,7 +28,7 @@ class loggingFunction:
         self.critical = lambda x, exc_info=None: self.out(x, exc_info)
 
 
-class noLoggingFunction:
+class NoLoggingFunction:
     def out (self, x, exc_info = None):
         pass
     def __init__ (self):
@@ -39,7 +39,7 @@ class noLoggingFunction:
         self.critical = lambda x, exc_info=None: self.out(x, exc_info)
 
 
-def isWindows():
+def is_windows():
     returnValue = False
     windowsName = "Windows"
     platformName = platform.system()
@@ -50,16 +50,16 @@ def isWindows():
     return returnValue
 
 
-class dataIngest():
+class Ingest():
     # return error code
     def __init__ (self, useLog = False, context = None):
 
         if useLog:
-            self.log = logging.getLogger("dataIngest")
+            self.log = logging.getLogger("Ingest")
         elif useLog == None:
-            self.log = noLoggingFunction()
+            self.log = NoLoggingFunction()
         else:
-            self.log = loggingFunction()
+            self.log = LoggingFunction()
 
         # ZMQ applications always start by creating a context,
         # and then using that for creating sockets
@@ -95,7 +95,7 @@ class dataIngest():
 
         self.signalConId     = "tcp://{ip}:{port}".format(ip=self.signalHost, port=self.signalPort)
 
-        if isWindows():
+        if is_windows():
             self.log.info("Using tcp for internal communication.")
             self.eventDetConId  = "tcp://{ip}:{port}".format(ip=self.localhost, port=self.eventDetPort)
             self.dataFetchConId = "tcp://{ip}:{port}".format(ip=self.localhost, port=self.dataFetchPort)
@@ -117,10 +117,10 @@ class dataIngest():
 
         self.responseTimeout     = 1000
 
-        self.__createSocket()
+        self.__create_socket()
 
 
-    def __createSocket (self):
+    def __create_socket (self):
 
         # To send file open and file close notification, a communication socket is needed
         self.signalSocket = self.context.socket(zmq.REQ)
@@ -142,7 +142,7 @@ class dataIngest():
         self.eventDetSocket = self.context.socket(zmq.PUSH)
         self.dataFetchSocket  = self.context.socket(zmq.PUSH)
 
-        if isWindows() and self.localhost_isIPv6:
+        if is_windows() and self.localhost_isIPv6:
             self.eventDetSocket.ipv6 = True
             self.log.debug("Enabling IPv6 socket eventDetSocket")
 
@@ -165,7 +165,7 @@ class dataIngest():
 
 
     # return error code
-    def createFile (self, filename):
+    def create_file (self, filename):
         signal = b"OPEN_FILE"
 
         if self.filename and self.filename != filename:
@@ -203,7 +203,7 @@ class dataIngest():
 
 
     # return error code
-    def closeFile (self):
+    def close_file (self):
         # send close-signal to signal socket
         sendMessage = [b"CLOSE_FILE", self.filename]
         try:

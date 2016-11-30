@@ -17,20 +17,20 @@ import helpers
 
 try:
     # search in global python modules first
-    from hidra import dataTransfer
+    from hidra import Transfer
 except:
     # then search in local modules
     if not API_PATH in sys.path:
         sys.path.append ( API_PATH )
     del API_PATH
 
-    from hidra import dataTransfer
+    from hidra import Transfer
 
 
 #enable logging
 logfilePath = os.path.join(BASE_PATH, "logs")
 logfile     = os.path.join(logfilePath, "test_onda.log")
-helpers.initLogging(logfile, True, "DEBUG")
+helpers.init_logging(logfile, True, "DEBUG")
 
 del BASE_PATH
 
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     targets = [["zitpcx19282.desy.de", "50101", 1], ["zitpcx19282.desy.de", "50102", 1], ["zitpcx19282.desy.de", "50103", 1], ["lsdma-lab04.desy.de", "50104", 1]]
 
 
-    query = dataTransfer("queryNext", signalHost, useLog = True)
+    query = Transfer("queryNext", signalHost, useLog = True)
     query.initiate(targets)
 
     try:

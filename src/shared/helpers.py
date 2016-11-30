@@ -30,7 +30,7 @@ except:
     from logutils.queue import QueueHandler, QueueListener
 
 
-def isWindows():
+def is_windows():
     returnValue = False
     windowsName = "Windows"
     platformName = platform.system()
@@ -45,7 +45,7 @@ def isWindows():
     return returnValue
 
 
-def isLinux():
+def is_linux():
     returnValue = False
     linuxName = "Linux"
     platformName = platform.system()
@@ -54,10 +54,6 @@ def isLinux():
         returnValue = True
 
     return returnValue
-
-
-class globalObjects (object):
-    controlFlag   = True
 
 
 # This function is needed because configParser always needs a section name
@@ -113,7 +109,7 @@ def confirm (prompt=None, resp=False):
             logging.error("Keyboard Interruption detected.")
         except Exception as e:
             logging.error("Something went wrong with the confirmation.")
-            logging.debug("Error was: {err}".format(err=e))
+            logging.debug("Error was: {0}".format(e))
             break
 
         if not ans:
@@ -127,24 +123,24 @@ def confirm (prompt=None, resp=False):
             return False
 
 
-def checkEventDetectorType (eDType, supportedTypes):
+def check_event_detector_type (eDType, supportedTypes):
 
     eDType = eDType.lower()
 
     if eDType in supportedTypes:
-        logging.debug("Event detector '{t}' is ok.".format(t=eDType))
+        logging.debug("Event detector '{0}' is ok.".format(eDType))
     else:
-        logging.error("Event detector '{t}' is not supported.".format(t=eDType))
+        logging.error("Event detector '{0}' is not supported.".format(eDType))
         sys.exit(1)
 
 
 
-def checkDirEmpty (dirPath):
+def check_dir_empty (dirPath):
 
     #check if directory is empty
     if os.listdir(dirPath):
-        logging.debug("Directory '%s' is not empty." % str(dirPath))
-        if confirm(prompt="Directory {p} is not empty.\nShould its content be removed?".format(d=dirPath),
+        logging.debug("Directory '{0}' is not empty.".format(dirPath))
+        if confirm(prompt="Directory {0} is not empty.\nShould its content be removed?".format(dirPath),
                    resp = True):
             for element in os.listdir(dirPath):
                 path = os.path.join(dirPath, element)
@@ -155,10 +151,10 @@ def checkDirEmpty (dirPath):
                         shutil.rmtree(path)
                 else:
                     os.remove(path)
-            logging.info("All elements of directory {p} were removed.".format(p=dirPath))
+            logging.info("All elements of directory {0} were removed.".format(dirPath))
 
 
-def checkAnySubDirExists (dirPath, subDirs):
+def check_any_sub_dir_exists (dirPath, subDirs):
 
     dirPath = os.path.normpath(dirPath)
     dirsToCheck = [os.path.join(dirPath, directory) for directory in subDirs]
@@ -170,52 +166,52 @@ def checkAnySubDirExists (dirPath, subDirs):
             noSubdir = False
 
     if noSubdir:
-        logging.error("There are none of the specified subdirectories inside '%s'. Abort." % str(dirPath))
-        logging.error("Checked paths: {d}".format(d=dirsToCheck))
+        logging.error("There are none of the specified subdirectories inside '{0}'. Abort.".format(dirPath))
+        logging.error("Checked paths: {0}".format(dirsToCheck))
         sys.exit(1)
 
 
-def checkAllSubDirExist (dirPath, subDirs):
+def check_all_sub_dir_exist (dirPath, subDirs):
 
     dirPath = os.path.normpath(dirPath)
     dirsToCheck = [os.path.join(dirPath, directory) for directory in subDirs]
 
     for d in dirsToCheck:
         if not os.path.exists(d):
-            logging.warning("Dir '%s' does not exist." % str(d))
+            logging.warning("Dir '{0}' does not exist.".format(d))
 
 
-def checkFileExistance (filePath):
+def check_file_existance (filePath):
     # Check file for existance.
     # Exits if it does not exist
 
     if not os.path.exists(filePath):
-        logging.error("File '%s' does not exist. Abort." % str(filePath))
+        logging.error("File '{0}' does not exist. Abort.".format(filePath))
         sys.exit(1)
 
 
-def checkDirExistance (dirPath):
+def check_dir_existance (dirPath):
     # Check directory path for existance.
     # Exits if it does not exist
 
     if not os.path.exists(dirPath):
-        logging.error("Dir '%s' does not exist. Abort." % str(dirPath))
+        logging.error("Dir '{0}' does not exist. Abort.".format(dirPath))
         sys.exit(1)
 
 
-def checkLogFileWritable (filepath, filename):
+def check_log_file_writable (filepath, filename):
     # Exits if logfile cannot be written
     try:
         logfullPath = os.path.join(filepath, filename)
         logFile = open(logfullPath, "a")
         logFile.close()
     except:
-        logging.error("Unable to create the logfile {p}".format(p=logfullPath))
+        logging.error("Unable to create the logfile {0}".format(logfullPath))
         logging.error("Please specify a new target by setting the following arguments:\n--logfileName\n--logfilePath")
         sys.exit(1)
 
 
-def checkVersion (version, log):
+def check_version (version, log):
     log.debug("remote version: {v}, local version: {v2}".format(v=version, v2=__version__))
     if version.rsplit(".", 1)[0] < __version__.rsplit(".", 1)[0]:
         log.info("Version of receiver is lower. Please update receiver.")
@@ -227,7 +223,7 @@ def checkVersion (version, log):
         return True
 
 
-def checkHost (hostname, whiteList, log):
+def check_host (hostname, whiteList, log):
 
     if hostname and whiteList:
 
@@ -240,7 +236,7 @@ def checkHost (hostname, whiteList, log):
                     hostModified = host
 
                 if host not in whiteList and hostModified not in whiteList:
-                    log.info("Host {h} is not allowed to connect".format(h=host))
+                    log.info("Host {0} is not allowed to connect".format(host))
                     temp = False
 
             return temp
@@ -258,19 +254,19 @@ def checkHost (hostname, whiteList, log):
     return False
 
 
-def checkPing(host, log = logging):
-    if isWindows():
-        response = os.system("ping -n 1 -w 2 {h}".format(h=host))
+def check_ping(host, log = logging):
+    if is_windows():
+        response = os.system("ping -n 1 -w 2 {0}".format(host))
     else:
-        response = os.system("ping -c 1 -w 2 {h} > /dev/null 2>&1".format(h=host))
+        response = os.system("ping -c 1 -w 2 {0} > /dev/null 2>&1".format(host))
 
     if response != 0:
-        log.error("{h} is not pingable.".format(h=host))
+        log.error("{0} is not pingable.".format(host))
         sys.exit(1)
 
 
 # IP and DNS name should be both in the whitelist
-def extendWhitelist(whitelist, log):
+def extend_whitelist(whitelist, log):
     log.info("Configured whitelist: {w}".format(w=whitelist))
     extendedWhitelist = []
 
@@ -299,10 +295,10 @@ def extendWhitelist(whitelist, log):
     for host in extendedWhitelist:
         whitelist.append(host)
 
-    log.debug("Extended whitelist: {w}".format(w=whitelist))
+    log.debug("Extended whitelist: {0}".format(whitelist))
 
 
-#class forwarderThread(threading.Thread):
+#class ForwarderThread(threading.Thread):
 #    def __init__ (self, controlPubConId, controlSubConId, context):
 #
 #        threading.Thread.__init__(self)
@@ -395,7 +391,7 @@ class CustomQueueListener (QueueListener):
 
 
 # Get the log Configuration for the lisener
-def getLogHandlers (logfile, logsize, verbose, onScreenLogLevel = False):
+def get_log_handlers (logfile, logsize, verbose, onScreenLogLevel = False):
     # Enable more detailed logging if verbose-option has been set
     logLevel = logging.INFO
     if verbose:
@@ -408,7 +404,7 @@ def getLogHandlers (logfile, logsize, verbose, onScreenLogLevel = False):
     # Setup file handler to output to file
     # argument for RotatingFileHandler: filename, mode, maxBytes, backupCount)
     # 1048576 = 1MB
-    if isWindows():
+    if is_windows():
         h1 = logging.FileHandler(logfile, 'a')
     else:
         h1 = logging.handlers.RotatingFileHandler(logfile, 'a', logsize, 5)
@@ -445,14 +441,14 @@ def getLogHandlers (logfile, logsize, verbose, onScreenLogLevel = False):
 
             return h1, h2
         else:
-            logging.error("Logging on Screen: Option {l} is not supported.".format(l=onScreenLogLevel))
+            logging.error("Logging on Screen: Option {0} is not supported.".format(onScreenLogLevel))
             exit(1)
 
     else:
         return h1
 
 
-def initLogging (filenameFullPath, verbose, onScreenLogLevel = False):
+def init_logging (filenameFullPath, verbose, onScreenLogLevel = False):
     #@see https://docs.python.org/2/howto/logging-cookbook.html
 
     #more detailed logging if verbose-option has been set
@@ -510,6 +506,6 @@ def initLogging (filenameFullPath, verbose, onScreenLogLevel = False):
             console.setFormatter(screenHandlerFormat)
             logging.getLogger("").addHandler(console)
         else:
-            logging.error("Logging on Screen: Option {l} is not supported.".format(onScreenLogLevel))
+            logging.error("Logging on Screen: Option {0} is not supported.".format(onScreenLogLevel))
 
 

@@ -11,14 +11,14 @@ API_PATH  = os.path.join(BASE_PATH, "src", "APIs")
 
 try:
     # search in global python modules first
-    from hidra import dataTransfer
+    from hidra import Transfer
 except:
     # then search in local modules
     if not API_PATH in sys.path:
         sys.path.append ( API_PATH )
     del API_PATH
 
-    from hidra import dataTransfer
+    from hidra import Transfer
 
 #from dectris import albula
 
@@ -56,7 +56,7 @@ class LiveView(QThread):
         if interval is not None:
             self.interval = interval
 
-        self.zmqQuery = dataTransfer( "queryMetadata", self.zmqSignalIp )
+        self.zmqQuery = Transfer( "queryMetadata", self.zmqSignalIp )
         self.zmqQuery.initiate([socket.gethostname(), self.zmqDataPort, "1"])
         self.zmqQuery.start(self.zmqDataPort)
 #        self.zmqQuery.initiate(["zitpcx22614w", self.zmqDataPort, "1"])
@@ -102,7 +102,7 @@ class LiveView(QThread):
                 # get latest file from reveiver
                 [metadata, data] = self.zmqQuery.get(2000)
 
-                receivedFile = self.zmqQuery.generateTargetFilepath(self.basePath, metadata)
+                receivedFile = self.zmqQuery.generate_target_filepath(self.basePath, metadata)
                 print "Next file: ", receivedFile
 
 

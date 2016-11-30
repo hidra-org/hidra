@@ -124,7 +124,7 @@ class ZmqDT():
         self.whitelist = None
 
 
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger(self.procname)
@@ -418,7 +418,7 @@ class socketServer (object):
 
         self.logQueue = logQueue
 
-        self.log      = self.getLogger(logQueue)
+        self.log      = self.get_logger(logQueue)
 
         self.beamline = beamline
         self.log.debug('socketServer startet for beamline {bl}'.format(bl=self.beamline))
@@ -428,10 +428,10 @@ class socketServer (object):
         self.conns    = []
         self.socket   = None
 
-        self.createSocket()
+        self.create_socket()
 
 
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("socketServer")
@@ -442,7 +442,7 @@ class socketServer (object):
         return logger
 
 
-    def createSocket (self):
+    def create_socket (self):
 
         try:
             self.sckt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -493,7 +493,7 @@ class socketCom ():
     def __init__ (self, logQueue, beamline, conn, addr):
         self.id    = threading.current_thread().name
 
-        self.log   = self.getLogger(logQueue)
+        self.log   = self.get_logger(logQueue)
 
         self.zmqDT = ZmqDT(beamline, self.log)
         self.conn  = conn
@@ -502,7 +502,7 @@ class socketCom ():
         self.run()
 
 
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("socketCom_{0}".format(self.id))
@@ -587,7 +587,7 @@ class socketCom ():
         self.close()
 
 
-def argumentParsing():
+def argument_parsing():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--beamline"          , type    = str,
@@ -598,7 +598,7 @@ def argumentParsing():
 
 class HiDRAControlServer():
     def __init__(self):
-        arguments = argumentParsing()
+        arguments = argument_parsing()
 
         self.beamline = arguments.beamline
 
@@ -615,12 +615,12 @@ class HiDRAControlServer():
 
         # Get the log Configuration for the lisener
         if onScreen:
-            h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
+            h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose, onScreen)
 
             # Start queue listener using the stream handler above.
             self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1, h2)
         else:
-            h1 = helpers.getLogHandlers(logfile, logsize, verbose, onScreen)
+            h1 = helpers.get_log_handlers(logfile, logsize, verbose, onScreen)
 
             # Start queue listener using the stream handler above
             self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1)
@@ -628,7 +628,7 @@ class HiDRAControlServer():
         self.logQueueListener.start()
 
         # Create log and set handler to queue handle
-        self.log = self.getLogger(self.logQueue)
+        self.log = self.get_logger(self.logQueue)
 
         self.log.info("Init")
 
@@ -640,7 +640,7 @@ class HiDRAControlServer():
         s.run()
 
 
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("HiDRAControlServer")

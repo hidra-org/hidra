@@ -18,7 +18,7 @@ except:
     import hidra
 
 
-def argumentParsing():
+def argument_parsing():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--start"   , help    = "Starts the HiDRA Server for the Eiger detector",
@@ -37,7 +37,7 @@ def argumentParsing():
 
 
 if __name__ == '__main__':
-    arguments = argumentParsing()
+    arguments = argument_parsing()
 
     beamline = "p10"
     supportedLocalTargets = ["current/raw", "current/scratch_bl", "commissioning/raw", "commissioning/scratch_bl", "local"]
@@ -46,8 +46,8 @@ if __name__ == '__main__':
         print "ERROR: target not supported"
         sys.exit(1)
 
-#    obj = hidra.controller(beamline)
-    obj = hidra.controller(beamline, useLog=None)
+#    obj = hidra.Control(beamline)
+    obj = hidra.Control(beamline, useLog=None)
 
     try:
         if arguments.start:

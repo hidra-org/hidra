@@ -12,7 +12,7 @@ import json
 import shutil
 import time
 
-from send_helpers import __sendToTargets
+from send_helpers import __send_to_targets
 
 try:
     BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ))))
@@ -34,7 +34,7 @@ def setup (log, prop):
         not prop.has_key("dataFetchConStr") ):
 
         log.error ("Configuration of wrong format")
-        log.debug ("dataFetcherProp={p}".format(p=prop))
+        log.debug ("dataFetcherProp={0}".format(prop))
         return False
 
     else:
@@ -43,9 +43,9 @@ def setup (log, prop):
         try:
             socket        = prop["context"].socket(zmq.PULL)
             socket.bind(prop["dataFetchConStr"])
-            log.info("Start socket (bind): '{p}'".format(p=prop["dataFetchConStr"]))
+            log.info("Start socket (bind): '{0}'".format(prop["dataFetchConStr"]))
         except:
-            log.error("Failed to start comSocket (bind): '{p}'".format(p=prop["dataFetchConStr"]), exc_info=True)
+            log.error("Failed to start comSocket (bind): '{0}'".format(prop["dataFetchConStr"]), exc_info=True)
             raise
 
         # register socket
@@ -54,7 +54,7 @@ def setup (log, prop):
         return True
 
 
-def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
+def get_metadata (log, prop, targets, metadata, chunkSize, localTarget = None):
 
     #extract fileEvent metadata
     try:
@@ -62,7 +62,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
         sourceFile = metadata["filename"]
     except:
         log.error("Invalid fileEvent message received.", exc_info=True)
-        log.debug("metadata={m}".format(m=metadata))
+        log.debug("metadata={0}".format(metadata))
         #skip all further instructions and continue with next iteration
         raise
 
@@ -86,7 +86,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
             metadata[ "fileCreateTime"] = time.time()
             # chunkSize is coming from ZMQDetector
 
-            log.debug("metadata = {m}".format(m=metadata))
+            log.debug("metadata = {0}".format(metadata))
         except:
             log.error("Unable to assemble multi-part message.", exc_info=True)
             raise
@@ -94,17 +94,17 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
     return sourceFile, targetFile, metadata
 
 
-def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
+def send_data (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
 
     if not targets:
         return
 
     #reading source file into memory
     try:
-        log.debug("Getting data out of queue for file '{f}'...".format(f=sourceFile))
+        log.debug("Getting data out of queue for file '{0}'...".format(sourceFile))
         data = prop["socket"].recv()
     except:
-        log.error("Unable to get data out of queue for file '{f}'".format(f=sourceFile), exc_info=True)
+        log.error("Unable to get data out of queue for file '{0}'".format(sourceFile), exc_info=True)
         raise
 
     try:
@@ -113,7 +113,7 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         log.error("Unable to get chunkSize", exc_info=True)
 
     try:
-        log.debug("Packing multipart-message for file {f}...".format(f=sourceFile))
+        log.debug("Packing multipart-message for file {0}...".format(sourceFile))
         chunkNumber = 0
 
         #assemble metadata for zmq-message
@@ -124,17 +124,17 @@ def sendData (log, targets, sourceFile, targetFile, metadata, openConnections, c
         payload.append(json.dumps(metadataExtended).encode("utf-8"))
         payload.append(data)
     except:
-        log.error("Unable to pack multipart-message for file '{f}'".format(f=sourceFile), exc_info=True)
+        log.error("Unable to pack multipart-message for file '{0}'".format(sourceFile), exc_info=True)
 
     #send message
     try:
-        __sendToTargets(log, targets, sourceFile, targetFile, openConnections, metadataExtended, payload, context)
-        log.debug("Passing multipart-message for file '{f}'...done.".format(f=sourceFile))
+        __send_to_targets(log, targets, sourceFile, targetFile, openConnections, metadataExtended, payload, context)
+        log.debug("Passing multipart-message for file '{0}'...done.".format(sourceFile))
     except:
-        log.error("Unable to send multipart-message for file '{f}'".format(f=sourceFile), exc_info=True)
+        log.error("Unable to send multipart-message for file '{0}'".format(sourceFile), exc_info=True)
 
 
-def finishDataHandling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
+def finish_data_handling (log, targets, sourceFile, targetFile, metadata, openConnections, context, prop):
     pass
 
 
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     logsize = 10485760
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
+    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
 
     # Create log and set handler to queue handle
     root = logging.getLogger()
@@ -184,17 +184,17 @@ if __name__ == '__main__':
 
     dataFwSocket     = context.socket(zmq.PUSH)
     dataFwSocket.connect(dataFetchConStr)
-    logging.info("=== Start dataFwsocket (connect): '{s}'".format(s=dataFetchConStr))
+    logging.info("=== Start dataFwsocket (connect): '{0}'".format(dataFetchConStr))
 
     receivingSocket  = context.socket(zmq.PULL)
     connectionStr    = "tcp://{ip}:{port}".format( ip=extIp, port=receivingPort )
     receivingSocket.bind(connectionStr)
-    logging.info("=== receivingSocket connected to {s}".format(s=connectionStr))
+    logging.info("=== receivingSocket connected to {0}".format(connectionStr))
 
     receivingSocket2 = context.socket(zmq.PULL)
     connectionStr    = "tcp://{ip}:{port}".format( ip=extIp, port=receivingPort2 )
     receivingSocket2.bind(connectionStr)
-    logging.info("=== receivingSocket2 connected to {s}".format(s=connectionStr))
+    logging.info("=== receivingSocket2 connected to {0}".format(connectionStr))
 
 
     prework_sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
@@ -213,7 +213,7 @@ if __name__ == '__main__':
             "relativePath": os.sep + "local" + os.sep + "raw",
             "filename"    : "100.cbf"
             }
-    targets = [['localhost:{p}'.format(p=receivingPort), 1, [".cbf", ".tif"], "data"], ['localhost:{p}'.format(p=receivingPort2), 0, [".cbf", ".tif"], "data"]]
+    targets = [['localhost:{0}'.format(receivingPort), 1, [".cbf", ".tif"], "data"], ['localhost:{0}'.format(receivingPort2), 0, [".cbf", ".tif"], "data"]]
 
     chunkSize       = 10485760 ; # = 1024*1024*10 = 10 MiB
     localTarget     = os.path.join(BASE_PATH, "data", "target")
@@ -225,16 +225,16 @@ if __name__ == '__main__':
             "dataFetchConStr" : dataFetchConStr
             }
 
-    logging.debug("openConnections before function call: {c}".format(c=openConnections))
+    logging.debug("openConnections before function call: {0}".format(openConnections))
 
     setup(logging, dataFetcherProp)
 
-    sourceFile, targetFile, metadata = getMetadata (logging, dataFetcherProp, targets, workload, chunkSize, localTarget = None)
-    sendData(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
+    sourceFile, targetFile, metadata = get_metadata (logging, dataFetcherProp, targets, workload, chunkSize, localTarget = None)
+    send_data(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
-    finishDataHandling(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
+    finish_data_handling(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
-    logging.debug("openConnections after function call: {c}".format(c=openConnections))
+    logging.debug("openConnections after function call: {0}".format(openConnections))
 
 
     try:

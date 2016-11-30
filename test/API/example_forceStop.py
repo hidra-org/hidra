@@ -10,14 +10,14 @@ SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
 try:
     # search in global python modules first
-    from hidra import dataTransfer
+    from hidra import Transfer
 except:
     # then search in local modules
     if not API_PATH in sys.path:
         sys.path.append ( API_PATH )
     del API_PATH
 
-    from hidra import dataTransfer
+    from hidra import Transfer
 
 if not SHARED_PATH in sys.path:
     sys.path.append ( SHARED_PATH )
@@ -28,7 +28,7 @@ import helpers
 #enable logging
 logfilePath = os.path.join(BASE_PATH, "logs")
 logfile     = os.path.join(logfilePath, "test_force_stop.log")
-helpers.initLogging(logfile, True, "DEBUG")
+helpers.init_logging(logfile, True, "DEBUG")
 
 if __name__ == "__main__":
 
@@ -50,6 +50,6 @@ if __name__ == "__main__":
     basePath = os.path.join(BASE_PATH, "data", "target")
 #    basePath = "/asap3/petra3/gpfs/p00/2016/commissioning/c20160205_000_smbtest/"
 
-    query = dataTransfer(transferType, signalHost, useLog = True)
-    query.forceStop(targets)
+    query = Transfer(transferType, signalHost, useLog = True)
+    query.force_stop(targets)
 

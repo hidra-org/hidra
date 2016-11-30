@@ -1,5 +1,5 @@
-from transfer import dataTransfer
-from ingest import dataIngest
-from control import controller
+from transfer import Transfer
+from ingest import Ingest
+from control import Control
 
 __all__ = ['transfer', 'control', "ingest"]

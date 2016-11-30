@@ -15,7 +15,7 @@ import urllib2
 import time
 import errno
 
-from send_helpers import __sendToTargets
+from send_helpers import __send_to_targets
 
 
 def setup (log, prop):
@@ -26,7 +26,7 @@ def setup (log, prop):
         not prop.has_key("fixSubdirs")):
 
         log.error ("Configuration of wrong format")
-        log.debug ("dataFetcherProp={p}".format(prop))
+        log.debug ("dataFetcherProp={0}".format(prop))
         return False
 
     else:
@@ -37,7 +37,7 @@ def setup (log, prop):
         return True
 
 
-def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
+def get_metadata (log, prop, targets, metadata, chunkSize, localTarget = None):
 
     #extract fileEvent metadata
     try:
@@ -47,7 +47,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
         relativePath = metadata["relativePath"]
     except:
         log.error("Invalid fileEvent message received.", exc_info=True)
-        log.debug("metadata={m}".format(m=metadata))
+        log.debug("metadata={0}".format(metadata))
         #skip all further instructions and continue with next iteration
         raise
 
@@ -80,7 +80,7 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
             metadata[ "fileModTime" ]   = time.time()
             metadata[ "fileCreateTime"] = time.time()
 
-            log.debug("metadata = {m}".format(m=metadata))
+            log.debug("metadata = {0}".format(metadata))
         except:
             log.error("Unable to assemble multi-part message.", exc_info=True)
             raise
@@ -88,14 +88,14 @@ def getMetadata (log, prop, targets, metadata, chunkSize, localTarget = None):
     return sourceFile, targetFile, metadata
 
 
-def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, context, prop):
+def send_data (log, targets, sourceFile, targetFile,  metadata, openConnections, context, prop):
 
     response = prop["session"].get(sourceFile)
     try:
         response.raise_for_status()
-        log.debug("Initiating http get for file '{f}' succeeded.".format(f=sourceFile))
+        log.debug("Initiating http get for file '{0}' succeeded.".format(sourceFile))
     except:
-        log.error("Initiating http get for file '{f}' failed.".format(f=sourceFile), exc_info=True)
+        log.error("Initiating http get for file '{0}' failed.".format(sourceFile), exc_info=True)
         return
 
     try:
@@ -110,7 +110,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
     if prop["storeData"]:
         try:
-            log.debug("Opening '{f}'...".format(f=targetFile))
+            log.debug("Opening '{0}'...".format(targetFile))
             fileDescriptor = open(targetFile, "wb")
             fileOpened = True
         except IOError as e:
@@ -120,38 +120,38 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
                 subdir, tmp = os.path.split(metadata["relativePath"])
 
                 if metadata["relativePath"] in prop["fixSubdirs"]:
-                    log.error("Unable to move file '{s}' to '{t}': Directory {d} is not available.".format(s=sourceFile, t=targetFile, d=metadata["relativePath"]), exc_info=True)
+                    log.error("Unable to move file '{0}' to '{1}': Directory {2} is not available.".format(sourceFile, targetFile, metadata["relativePath"]), exc_info=True)
 
                 elif subdir in prop["fixSubdirs"] :
-                    log.error("Unable to move file '{s}' to '{t}': Directory {d} is not available.".format(s=sourceFile, t=targetFile, d=subdir), exc_info=True)
+                    log.error("Unable to move file '{0}' to '{1}': Directory {2} is not available.".format(sourceFile, targetFile, subdir), exc_info=True)
                 else:
                     try:
                         targetPath, filename = os.path.split(targetFile)
                         os.makedirs(targetPath)
                         fileDescriptor = open(targetFile, "wb")
-                        log.info("New target directory created: {p}".format(p=targetPath))
+                        log.info("New target directory created: {0}".format(targetPath))
                         fileOpened = True
                     except OSError as e:
-                        log.info("Target directory creation failed, was already created in the meantime: {p}".format(p=targetPath))
+                        log.info("Target directory creation failed, was already created in the meantime: {0}".format(targetPath))
                         fileDescriptor = open(targetFile, "wb")
                         fileOpened = True
                     except:
-                        log.error("Unable to open target file '{f]'.".format(f=targetFile), exc_info=True)
-                        log.debug("targetPath: {f}".format(f=targetPath))
+                        log.error("Unable to open target file '{0}'.".format(targetFile), exc_info=True)
+                        log.debug("targetPath: {0}".format(targetPath))
                         raise
             else:
-                log.error("Unable to open target file '{f}'.".format(f=targetFile), exc_info=True)
+                log.error("Unable to open target file '{0}'.".format(targetFile), exc_info=True)
         except:
-            log.error("Unable to open target file '{f}'.".format(f=targetFile), exc_info=True)
+            log.error("Unable to open target file '{0}'.".format(targetFile), exc_info=True)
 
     targets_data     = [i for i in targets if i[3] == "data"]
     targets_metadata = [i for i in targets if i[3] == "metadata"]
     chunkNumber      = 0
 
-    log.debug("Getting data for file '{f}'...".format(f=sourceFile))
+    log.debug("Getting data for file '{0}'...".format(sourceFile))
     #reading source file into memory
     for data in response.iter_content(chunk_size=chunkSize):
-        log.debug("Packing multipart-message for file '{f}'...".format(f=sourceFile))
+        log.debug("Packing multipart-message for file '{0}'...".format(sourceFile))
 
         try:
             #assemble metadata for zmq-message
@@ -162,34 +162,34 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
             payload.append(json.dumps(metadataExtended).encode("utf-8"))
             payload.append(data)
         except:
-            log.error("Unable to pack multipart-message for file '{f}'".format(s=sourceFile), exc_info=True)
+            log.error("Unable to pack multipart-message for file '{0}'".format(sourceFile), exc_info=True)
 
         if prop["storeData"]:
             try:
                 fileDescriptor.write(data)
             except:
-                log.error("Unable write data for file '{f}'".format(f=sourceFile), exc_info=True)
+                log.error("Unable write data for file '{0}'".format(sourceFile), exc_info=True)
                 fileWritten = False
 
 
         #send message to data targets
         try:
-            __sendToTargets(log, targets_data, sourceFile, targetFile, openConnections, metadataExtended, payload, context)
-            log.debug("Passing multipart-message for file {f}...done.".format(f=sourceFile))
+            __send_to_targets(log, targets_data, sourceFile, targetFile, openConnections, metadataExtended, payload, context)
+            log.debug("Passing multipart-message for file {0}...done.".format(sourceFile))
 
         except:
-            log.error("Unable to send multipart-message for file {f}".format(f=sourceFile), exc_info=True)
+            log.error("Unable to send multipart-message for file {0}".format(sourceFile), exc_info=True)
             fileSend = False
 
         chunkNumber += 1
 
     if prop["storeData"]:
         try:
-            log.debug("Closing '{f}'...".format(f=targetFile))
+            log.debug("Closing '{0}'...".format(targetFile))
             fileDescriptor.close()
             fileClosed = True
         except:
-            log.error("Unable to close target file '{f}'.".format(f=targetFile), exc_info=True)
+            log.error("Unable to close target file '{0}'.".format(targetFile), exc_info=True)
             raise
 
         # update the creation and modification time
@@ -198,13 +198,13 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
         #send message to metadata targets
         try:
-            __sendToTargets(log, targets_metadata, sourceFile, targetFile,
+            __send_to_targets(log, targets_metadata, sourceFile, targetFile,
                             openConnections, metadataExtended, payload,
                             context)
-            log.debug("Passing metadata multipart-message for file '{f}'...done.".format(f=sourceFile))
+            log.debug("Passing metadata multipart-message for file '{0}'...done.".format(sourceFile))
 
         except:
-            log.error("Unable to send metadata multipart-message for file '{f}'".format(f=sourceFile), exc_info=True)
+            log.error("Unable to send metadata multipart-message for file '{0}'".format(sourceFile), exc_info=True)
 
         prop["removeFlag"] = fileOpened and fileWritten and fileClosed
     else:
@@ -212,7 +212,7 @@ def sendData (log, targets, sourceFile, targetFile,  metadata, openConnections, 
 
 
 
-def finishDataHandling (log, targets, sourceFile, targetFile, metadata,
+def finish_data_handling (log, targets, sourceFile, targetFile, metadata,
                         openConnections, context, prop):
 
     if prop["removeData"] and prop["removeFlag"]:
@@ -220,9 +220,9 @@ def finishDataHandling (log, targets, sourceFile, targetFile, metadata,
 
         try:
 	    responce.raise_for_status()
-	    log.debug("Deleting file '{f}' succeeded.".format(f=sourceFile))
+	    log.debug("Deleting file '{0}' succeeded.".format(sourceFile))
         except:
-            log.error("Deleting file '{f}' failed.".format(f=sourceFile), exc_info=True)
+            log.error("Deleting file '{0}' failed.".format(sourceFile), exc_info=True)
 
 
 def clean (prop):
@@ -250,7 +250,7 @@ if __name__ == '__main__':
     logsize = 10485760
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
+    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
 
     # Create log and set handler to queue handle
     root = logging.getLogger()
@@ -268,12 +268,12 @@ if __name__ == '__main__':
     receivingSocket  = context.socket(zmq.PULL)
     connectionStr    = "tcp://{ip}:{port}".format( ip=extIp, port=receivingPort )
     receivingSocket.bind(connectionStr)
-    logging.info("=== receivingSocket connected to {s}".format(s=connectionStr))
+    logging.info("=== receivingSocket connected to {0}".format(connectionStr))
 
     receivingSocket2 = context.socket(zmq.PULL)
     connectionStr    = "tcp://{ip}:{port}".format( ip=extIp, port=receivingPort2 )
     receivingSocket2.bind(connectionStr)
-    logging.info("=== receivingSocket2 connected to {s}".format(s=connectionStr))
+    logging.info("=== receivingSocket2 connected to {0}".format(connectionStr))
 
 
     prework_sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
@@ -282,7 +282,7 @@ if __name__ == '__main__':
     #read file to send it in data pipe
     logging.debug("=== copy file to lsdma-lab04")
 #    os.system('scp "%s" "%s:%s"' % (localfile, remotehost, remotefile) )
-    subprocess.call("scp {f} root@lsdma-lab04:/var/www/html/test_httpget/data".format(f=prework_sourceFile), shell=True)
+    subprocess.call("scp {0} root@lsdma-lab04:/var/www/html/test_httpget/data".format(prework_sourceFile), shell=True)
 
 #    workload = {
 #            "sourcePath"  : "http://192.168.138.37/data",
@@ -294,8 +294,8 @@ if __name__ == '__main__':
             "relativePath": "",
             "filename"    : "test_file.cbf"
             }
-    targets = [['localhost:{p}'.format(p=receivingPort), 1, [".cbf", ".tif"], "data"],
-            ['localhost:{p}'.format(p=receivingPort2), 1, [".cbf", ".tif"], "data"]]
+    targets = [['localhost:{0}'.format(receivingPort), 1, [".cbf", ".tif"], "data"],
+            ['localhost:{0}'.format(receivingPort2), 1, [".cbf", ".tif"], "data"]]
 
     chunkSize       = 10485760 ; # = 1024*1024*10 = 10 MiB
     localTarget     = os.path.join(BASE_PATH, "data", "target")
@@ -311,21 +311,21 @@ if __name__ == '__main__':
 
     setup(logging, dataFetcherProp)
 
-    sourceFile, targetFile, metadata = getMetadata (logging, dataFetcherProp, targets, workload, chunkSize, localTarget)
+    sourceFile, targetFile, metadata = get_metadata (logging, dataFetcherProp, targets, workload, chunkSize, localTarget)
 #    sourceFile = "http://131.169.55.170/test_httpget/data/test_file.cbf"
 
-    sendData(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
+    send_data(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
-    finishDataHandling(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
+    finish_data_handling(logging, targets, sourceFile, targetFile, metadata, openConnections, context, dataFetcherProp)
 
-    logging.debug("openConnections after function call: {c}".format(c=openConnections))
+    logging.debug("openConnections after function call: {0}".format(openConnections))
 
 
     try:
         recv_message = receivingSocket.recv_multipart()
         logging.info("=== received: {0}".format(json.loads(recv_message[0].decode("utf-8"))))
         recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: {m}\ndata-part: {m2}".format(m=json.loads(recv_message[0].decode("utf-8")), m2=len(recv_message[1])))
+        logging.info("=== received 2: {0}\ndata-part: {0}".format(json.loads(recv_message[0].decode("utf-8")), len(recv_message[1])))
     except KeyboardInterrupt:
         pass
     finally:

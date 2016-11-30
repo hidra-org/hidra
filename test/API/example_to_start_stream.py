@@ -8,7 +8,7 @@ API_PATH    = os.path.join(BASE_PATH, "src", "APIs")
 
 try:
     # search in global python modules first
-    from hidra import dataTransfer
+    from hidra import Transfer
 except:
     # then search in local modules
     if not API_PATH in sys.path:
@@ -16,7 +16,7 @@ except:
     del API_PATH
     del BASE_PATH
 
-    from hidra import dataTransfer
+    from hidra import Transfer
 
 
 signalHost = "zitpcx19282.desy.de"
@@ -28,7 +28,7 @@ print "==== TEST: Stream all files ===="
 print
 
 
-query = dataTransfer("stream", signalHost)
+query = Transfer("stream", signalHost)
 
 query.initiate(targets)
 

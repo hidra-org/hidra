@@ -16,7 +16,7 @@ import tempfile
 from zmq.auth.thread import ThreadAuthenticator
 
 
-class loggingFunction:
+class LoggingFunction:
     def out (self, x, exc_info = None):
         if exc_info:
             print (x, traceback.format_exc())
@@ -30,7 +30,7 @@ class loggingFunction:
         self.critical = lambda x, exc_info=None: self.out(x, exc_info)
 
 
-class noLoggingFunction:
+class NoLoggingFunction:
     def out (self, x, exc_info = None):
         pass
     def __init__ (self):
@@ -66,15 +66,15 @@ class DataSavingError(Exception):
     pass
 
 
-class dataTransfer():
+class Transfer():
     def __init__ (self, connectionType, signalHost = None, useLog = False, context = None):
 
         if useLog:
-            self.log = logging.getLogger("dataTransfer")
+            self.log = logging.getLogger("Transfer")
         elif useLog == None:
-            self.log = noLoggingFunction()
+            self.log = NoLoggingFunction()
         else:
-            self.log = loggingFunction()
+            self.log = LoggingFunction()
 
         # ZMQ applications always start by creating a context,
         # and then using that for creating sockets
@@ -170,15 +170,15 @@ class dataTransfer():
 
 
         if self.signalHost:
-            self.__createSignalSocket(signalPort)
+            self.__create_signal_socket(signalPort)
         else:
             self.stop()
             raise ConnectionFailed("No host to send signal to specified." )
 
 
-        self.__setTargets (targets)
+        self.__set_targets (targets)
 
-        message = self.__sendSignal(signal)
+        message = self.__send_signal(signal)
 
         if message and message == b"VERSION_CONFLICT":
             self.stop()
@@ -205,7 +205,7 @@ class dataTransfer():
             raise CommunicationFailed("Sending start signal ...failed.")
 
 
-    def __createSignalSocket (self, signalPort):
+    def __create_signal_socket (self, signalPort):
 
         # To send a notification that a Displayer is up and running, a communication socket is needed
         # create socket to exchange signals with Sender
@@ -225,7 +225,7 @@ class dataTransfer():
         self.poller.register(self.signalSocket, zmq.POLLIN)
 
 
-    def __setTargets (self, targets):
+    def __set_targets (self, targets):
         self.targets = []
 
         # [host, port, prio]
@@ -253,7 +253,7 @@ class dataTransfer():
                     raise FormatError("Argument 'targets' is of wrong format.")
 
 
-    def __sendSignal (self, signal):
+    def __send_signal (self, signal):
 
         if not signal:
             return
@@ -450,7 +450,7 @@ class dataTransfer():
             self.streamStarted = socketId
 
 
-    def read(self, callbackParams, openCallback, readCallback, closeCallback):
+    def read (self, callbackParams, openCallback, readCallback, closeCallback):
 
         if not self.connectionType == "nexus" or not self.nexusStarted:
             raise UsageError("Wrong connection type (current: {0}) or session not started.".format(self.connectionType))
@@ -515,7 +515,7 @@ class dataTransfer():
                     #TODO return errorcode
 
                 try:
-                    runLoop = self.__reactOnMessage(multipartMessage)
+                    runLoop = self.__react_on_message(multipartMessage)
                 except KeyboardInterrupt:
                     self.log.debug("Keyboard interrupt detected. Stopping to receive.")
                     raise
@@ -530,7 +530,7 @@ class dataTransfer():
                 raise Exception("Control signal received. Stopping.")
 
 
-    def __reactOnMessage(self, multipartMessage):
+    def __react_on_message (self, multipartMessage):
 
         if multipartMessage[0] == b"CLOSE_FILE":
             filename = multipartMessage[1]
@@ -687,7 +687,7 @@ class dataTransfer():
             if payloadMetadata and payload:
 
                 #generate target filepath
-                targetFilepath = self.generateTargetFilepath(targetBasePath, payloadMetadata)
+                targetFilepath = self.generate_target_filepath(targetBasePath, payloadMetadata)
                 self.log.debug("New chunk for file {0} received.".format(targetFilepath))
 
                 #append payload to file
@@ -704,7 +704,7 @@ class dataTransfer():
                         if e.errno == errno.ENOENT:
                             try:
                                 #TODO do not create commissioning, current, local
-                                targetPath = self.__generateTargetPath(targetBasePath, payloadMetadata)
+                                targetPath = self.__generate_target_path(targetBasePath, payloadMetadata)
                                 os.makedirs(targetPath)
 
                                 self.fileDescriptors[targetFilepath] = open(targetFilepath, "wb")
@@ -723,7 +723,7 @@ class dataTransfer():
 
                 if len(payload) < payloadMetadata["chunkSize"] :
                     #indicated end of file. Leave loop
-                    filename    = self.generateTargetFilepath(targetBasePath, payloadMetadata)
+                    filename    = self.generate_target_filepath(targetBasePath, payloadMetadata)
                     fileModTime = payloadMetadata["fileModTime"]
 
                     self.fileDescriptors[targetFilepath].close()
@@ -733,7 +733,7 @@ class dataTransfer():
                     break
 
 
-    def generateTargetFilepath (self, basePath, configDict):
+    def generate_target_filepath (self, basePath, configDict):
         """
         generates full path where target file will saved to.
 
@@ -756,7 +756,7 @@ class dataTransfer():
         return filepath
 
 
-    def __generateTargetPath (self, basePath, configDict):
+    def __generate_target_path (self, basePath, configDict):
         """
         generates path where target file will saved to.
 
@@ -789,7 +789,7 @@ class dataTransfer():
                 signal = b"STOP_QUERY_NEXT"
 
 
-            message = self.__sendSignal(signal)
+            message = self.__send_signal(signal)
             #TODO need to check correctness of signal?
 
             self.streamStarted    = None
@@ -855,7 +855,7 @@ class dataTransfer():
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
-    def forceStop (self, targets):
+    def force_stop (self, targets):
 
         if type(targets) != list:
             self.stop()
@@ -884,14 +884,14 @@ class dataTransfer():
 
 
         if self.signalHost and not self.signalSocket:
-            self.__createSignalSocket(signalPort)
+            self.__create_signal_socket(signalPort)
         elif not self.signalHost:
             self.stop()
             raise ConnectionFailed("No host to send signal to specified." )
 
-        self.__setTargets (targets)
+        self.__set_targets (targets)
 
-        message = self.__sendSignal(signal)
+        message = self.__send_signal(signal)
 
         if message and message == b"VERSION_CONFLICT":
             self.stop()

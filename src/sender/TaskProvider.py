@@ -46,18 +46,18 @@ class TaskProvider():
         #        monSuffixes  : ... ,
         #}
 
-        self.log                = self.getLogger(logQueue)
+        self.log                = self.get_logger(logQueue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         self.currentPID         = os.getpid()
-        self.log.debug("TaskProvider started (PID {pid}).".format(pid=self.currentPID))
+        self.log.debug("TaskProvider started (PID {0}).".format(self.currentPID))
 
         self.dataDetectorModule = None
         self.eventDetector      = None
 
         self.config             = eventDetectorConfig
-        self.log.info("Configuration for event detector: {c}".format(c=self.config))
+        self.log.info("Configuration for event detector: {0}".format(self.config))
 
         eventDetectorModule     = self.config["eventDetectorType"]
 
@@ -81,7 +81,7 @@ class TaskProvider():
             self.extContext = False
 
 
-        self.log.info("Loading eventDetector: {m}".format(m=eventDetectorModule))
+        self.log.info("Loading eventDetector: {0}".format(eventDetectorModule))
         self.eventDetectorModule = __import__(eventDetectorModule)
 
         self.eventDetector = self.eventDetectorModule.EventDetector(self.config, logQueue)
@@ -89,7 +89,7 @@ class TaskProvider():
         self.continueRun   = True
 
         try:
-            self.createSockets()
+            self.create_sockets()
 
             self.run()
         except zmq.ZMQError:
@@ -106,7 +106,7 @@ class TaskProvider():
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("TaskProvider")
@@ -117,15 +117,15 @@ class TaskProvider():
         return logger
 
 
-    def createSockets (self):
+    def create_sockets (self):
 
         # socket to get control signals from
         try:
             self.controlSocket = self.context.socket(zmq.SUB)
             self.controlSocket.connect(self.controlConId)
-            self.log.info("Start controlSocket (connect): '{id}'".format(id=self.controlConId))
+            self.log.info("Start controlSocket (connect): '{0}'".format(self.controlConId))
         except:
-            self.log.error("Failed to start controlSocket (connect): '{id}'".format(id=self.controlConId), exc_info=True)
+            self.log.error("Failed to start controlSocket (connect): '{0}'".format(self.controlConId), exc_info=True)
             raise
 
         self.controlSocket.setsockopt_string(zmq.SUBSCRIBE, "control")
@@ -134,18 +134,18 @@ class TaskProvider():
         try:
             self.requestFwSocket = self.context.socket(zmq.REQ)
             self.requestFwSocket.connect(self.requestFwConId)
-            self.log.info("Start requestFwSocket (connect): '{id}'".format(id=self.requestFwConId))
+            self.log.info("Start requestFwSocket (connect): '{0}'".format(self.requestFwConId))
         except:
-            self.log.error("Failed to start requestFwSocket (connect): '{id}'".format(id=self.requestFwConId), exc_info=True)
+            self.log.error("Failed to start requestFwSocket (connect): '{0}'".format(self.requestFwConId), exc_info=True)
             raise
 
         # socket to disribute the events to the worker
         try:
             self.routerSocket = self.context.socket(zmq.PUSH)
             self.routerSocket.bind(self.routerConId)
-            self.log.info("Start to router socket (bind): '{id}'".format(id=self.routerConId))
+            self.log.info("Start to router socket (bind): '{0}'".format(self.routerConId))
         except:
-            self.log.error("Failed to start router Socket (bind): '{id}'".format(id=self.routerConId), exc_info=True)
+            self.log.error("Failed to start router Socket (bind): '{0}'".format(self.routerConId), exc_info=True)
             raise
 
         self.poller = zmq.Poller()
@@ -163,7 +163,7 @@ class TaskProvider():
                 #   "relativePath": "local"
                 #   "filename"   : "file1.tif"
                 # }
-                workloadList = self.eventDetector.getNewEvent()
+                workloadList = self.eventDetector.get_new_event()
             except KeyboardInterrupt:
                 break
             except IOError as e:
@@ -231,7 +231,7 @@ class TaskProvider():
                     self.log.debug("Requested to shutdown.")
                     break
                 else:
-                    self.log.error("Unhandled control signal received: {r}".format(r=message))
+                    self.log.error("Unhandled control signal received: {0}".format(message))
 
 
 
@@ -275,16 +275,16 @@ class TaskProvider():
 
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
-class requestResponder():
+class RequestResponder():
     def __init__ (self, requestFwPort, logQueue, context = None):
         # Send all logs to the main process
-        self.log = self.getLogger(logQueue)
+        self.log = self.get_logger(logQueue)
 
         self.context         = context or zmq.Context.instance()
         self.requestFwSocket = self.context.socket(zmq.REP)
-        connectionStr   = "tcp://127.0.0.1:{p}".format(p=requestFwPort)
+        connectionStr   = "tcp://127.0.0.1:{0}".format(requestFwPort)
         self.requestFwSocket.bind(connectionStr)
-        self.log.info("[requestResponder] requestFwSocket started (bind) for '{s}'".format(s=connectionStr))
+        self.log.info("[RequestResponder] requestFwSocket started (bind) for '{0}'".format(connectionStr))
 
         self.run()
 
@@ -292,10 +292,10 @@ class requestResponder():
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("requestResponder")
+        logger = logging.getLogger("RequestResponder")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -304,14 +304,14 @@ class requestResponder():
 
     def run (self):
         hostname = socket.gethostname()
-        self.log.info("[requestResponder] Start run")
-        openRequests = [['{h}:6003'.format(hostname), 1, [".cbf"]], ['{h}:6004'.format(h=hostname), 0, [".cbf"]]]
+        self.log.info("[RequestResponder] Start run")
+        openRequests = [['{0}:6003'.format(hostname), 1, [".cbf"]], ['{0}:6004'.format(hostname), 0, [".cbf"]]]
         while True:
             request = self.requestFwSocket.recv_multipart()
-            self.log.debug("[requestResponder] Received request: {r}".format(r=request) )
+            self.log.debug("[RequestResponder] Received request: {0}".format(request) )
 
             self.requestFwSocket.send(json.dumps(openRequests).encode("utf-8"))
-            self.log.debug("[requestResponder] Answer: {r}".format(r=openRequests) )
+            self.log.debug("[RequestResponder] Answer: {0}".format(openRequests) )
 
     def __exit__(self):
         self.requestFwSocket.close(0)
@@ -355,7 +355,7 @@ if __name__ == '__main__':
     logQueue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
+    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
 
     # Start queue listener using the stream handler above
     logQueueListener    = helpers.CustomQueueListener(logQueue, h1, h2)
@@ -371,15 +371,15 @@ if __name__ == '__main__':
     taskProviderPr = Process ( target = TaskProvider, args = (eventDetectorConfig, controlConId, requestFwConId, routerConId, logQueue) )
     taskProviderPr.start()
 
-    requestResponderPr = Process ( target = requestResponder, args = ( requestFwPort, logQueue) )
+    requestResponderPr = Process ( target = RequestResponder, args = ( requestFwPort, logQueue) )
     requestResponderPr.start()
 
     context       = zmq.Context.instance()
 
     routerSocket  = context.socket(zmq.PULL)
-    connectionStr = "tcp://localhost:{p}".format(p=routerPort)
+    connectionStr = "tcp://localhost:{0}".format(routerPort)
     routerSocket.connect(connectionStr)
-    logging.info("=== routerSocket connected to {s}".format(s=connectionStr))
+    logging.info("=== routerSocket connected to {0}".format(connectionStr))
 
     sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
     targetFileBase = os.path.join(BASE_PATH, "data", "source", "local", "raw") + os.sep
@@ -390,14 +390,14 @@ if __name__ == '__main__':
     try:
         while i <= 105:
             time.sleep(0.5)
-            targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=i)
-            logging.debug("copy to {t}".format(t=targetFile))
+            targetFile = "{0}{1}.cbf".format(targetFileBase, i)
+            logging.debug("copy to {0}".format(targetFile))
             copyfile(sourceFile, targetFile)
 #            call(["cp", sourceFile, targetFile])
             i += 1
 
             workload = routerSocket.recv_multipart()
-            logging.info("=== next workload {w}".format(w=workload))
+            logging.info("=== next workload {0}".format(workload))
             time.sleep(1)
     except KeyboardInterrupt:
         pass
@@ -410,8 +410,8 @@ if __name__ == '__main__':
         context.destroy()
 
         for number in range(100, i):
-            targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=number)
-            logging.debug("remove {f}".format(f=targetFile))
+            targetFile = "{0}{1}.cbf".format(targetFileBase, number)
+            logging.debug("remove {0}".format(targetFile))
             os.remove(targetFile)
 
         logQueue.put_nowait(None)

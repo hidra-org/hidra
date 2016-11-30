@@ -17,34 +17,34 @@ import helpers
 
 try:
     # search in global python modules first
-    from hidra import dataIngest
+    from hidra import Ingest
 except:
     # then search in local modules
     if not API_PATH in sys.path:
         sys.path.append ( API_PATH )
     del API_PATH
 
-    from hidra import dataIngest
+    from hidra import Ingest
 
 
 #enable logging
 logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfile     = os.path.join(logfilePath, "test_dataIngest.log")
-helpers.initLogging(logfile, True, "DEBUG")
+logfile     = os.path.join(logfilePath, "test_Ingest.log")
+helpers.init_logging(logfile, True, "DEBUG")
 
 
 print
-print "==== TEST: dataIngest ===="
+print "==== TEST: Ingest ===="
 print
 
-sourceFile = BASE_PATH + os.sep + "test_file.cbf"
+sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
 chunksize = 524288
 
 context    = zmq.Context()
 
-obj = dataIngest(useLog = True, context = context)
+obj = Ingest(useLog = True, context = context)
 
-obj.createFile("test/1.h5")
+obj.create_file("test" + os.sep + "1.h5")
 
 #for i in range(5):
 #    try:
@@ -79,11 +79,11 @@ while True:
 
 # Close file
 source_fp.close()
-logging.debug("Closed file: {f}".format(f=sourceFile))
+logging.debug("Closed file: {0}".format(sourceFile))
 
 
 try:
-    obj.closeFile()
+    obj.close_file()
 except:
     logging.error("Failed to close file", exc_info=True)
 
@@ -92,7 +92,7 @@ logging.info("Stopping")
 obj.stop()
 
 print
-print "==== TEST END: dataIngest ===="
+print "==== TEST END: Ingest ===="
 print
 
 

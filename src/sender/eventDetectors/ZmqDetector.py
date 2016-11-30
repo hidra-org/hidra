@@ -35,14 +35,14 @@ class EventDetector():
 
     def __init__ (self, config, logQueue):
 
-        self.log = self.getLogger(logQueue)
+        self.log = self.get_logger(logQueue)
 
         # check format of config
         if ( not config.has_key("context") or
                 not config.has_key("eventDetConStr") or
                 not config.has_key("numberOfStreams") ):
             self.log.error ("Configuration of wrong format")
-            self.log.debug ("config={c}".format(c=config))
+            self.log.debug ("config={0}".format(config))
             checkPassed = False
         else:
             checkPassed = True
@@ -63,14 +63,14 @@ class EventDetector():
                 self.context    = zmq.Context()
                 self.extContext = False
 
-            self.createSockets()
+            self.create_sockets()
 
 
     # Send all logs to the main process
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("ZmqDetector")
@@ -81,19 +81,19 @@ class EventDetector():
         return logger
 
 
-    def createSockets (self):
+    def create_sockets (self):
 
         # Create zmq socket to get events
         try:
             self.eventSocket = self.context.socket(zmq.PULL)
             self.eventSocket.bind(self.eventDetConStr)
-            self.log.info("Start eventSocket (bind): '{s}'".format(s=self.eventDetConStr))
+            self.log.info("Start eventSocket (bind): '{0}'".format(self.eventDetConStr))
         except:
-            self.log.error("Failed to start eventSocket (bind): '{s}'".format(s=self.eventDetConStr), exc_info=True)
+            self.log.error("Failed to start eventSocket (bind): '{0}'".format(self.eventDetConStr), exc_info=True)
             raise
 
 
-    def getNewEvent (self):
+    def get_new_event (self):
 
         eventMessage = self.eventSocket.recv_multipart()
 
@@ -102,7 +102,7 @@ class EventDetector():
         else:
             eventMessageList = [ json.loads(eventMessage[0].decode("utf-8")) ]
 
-        self.log.debug("eventMessage: {l}".format(l=eventMessageList))
+        self.log.debug("eventMessage: {0}".format(eventMessageList))
 
         return eventMessageList
 
@@ -159,7 +159,7 @@ if __name__ == '__main__':
     logQueue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
+    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
 
     # Start queue listener using the stream handler above
     logQueueListener = helpers.CustomQueueListener(logQueue, h1, h2)
@@ -195,14 +195,14 @@ if __name__ == '__main__':
     # create zmq socket to send events
     eventSocket    = context.socket(zmq.PUSH)
     eventSocket.connect(eventDetConStr)
-    logging.info("Start eventSocket (connect): '{s}'".format(s=eventDetConStr))
+    logging.info("Start eventSocket (connect): '{0}'".format(eventDetConStr))
 
 
     i = 100
     while i <= 101:
         try:
             logging.debug("generate event")
-            targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=i)
+            targetFile = "{0}{1}.cbf".format(targetFileBase, i)
             message = {
                 "filename" : targetFile,
                 "filePart" : 0,
@@ -212,9 +212,9 @@ if __name__ == '__main__':
             eventSocket.send_multipart([json.dumps(message).encode("utf-8")])
             i += 1
 
-            eventList = eventDetector.getNewEvent()
+            eventList = eventDetector.get_new_event()
             if eventList:
-                logging.debug("eventList: {l}".format(l=eventList))
+                logging.debug("eventList: {0}".format(eventList))
 
             time.sleep(1)
         except KeyboardInterrupt:
@@ -222,8 +222,8 @@ if __name__ == '__main__':
 
     eventSocket.send_multipart([b"CLOSE_FILE", "test_file.cbf"])
 
-    eventList = eventDetector.getNewEvent()
-    logging.debug("eventList: {l}".format(l=eventList))
+    eventList = eventDetector.get_new_event()
+    logging.debug("eventList: {0}".format(eventList))
 
     logQueue.put_nowait(None)
     logQueueListener.stop()

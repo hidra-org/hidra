@@ -8,7 +8,7 @@ API_PATH    = os.path.join(BASE_PATH, "src", "APIs")
 
 try:
     # search in global python modules first
-    from hidra import dataTransfer
+    from hidra import Transfer
 except:
     # then search in local modules
     if not API_PATH in sys.path:
@@ -16,19 +16,19 @@ except:
     del API_PATH
     del BASE_PATH
 
-    from hidra import dataTransfer
+    from hidra import Transfer
 
 
-class worker():
+class Worker():
     def __init__(self, id, signalHost, port):
 
         self.id    = id
         self.port  = port
 
-        self.query = dataTransfer("stream", signalHost)
-#        self.query = dataTransfer("queryNext", signalHost)
+        self.query = Transfer("stream", signalHost)
+#        self.query = Transfer("queryNext", signalHost)
 
-        print "start dataTransfer on port", str(port)
+        print "start Transfer on port", str(port)
         self.query.start(port)
 
 
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     signalHost = "zitpcx19282.desy.de"
     port = "50104"
 
-    w = worker(4, signalHost, port)
+    w = Worker(4, signalHost, port)
 
     try:
         w.run()

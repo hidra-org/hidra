@@ -16,20 +16,20 @@ import helpers
 
 try:
     # search in global python modules first
-    from hidra import dataTransfer
+    from hidra import Transfer
 except:
     # then search in local modules
     if not API_PATH in sys.path:
         sys.path.append ( API_PATH )
     del API_PATH
 
-    from hidra import dataTransfer
+    from hidra import Transfer
 
 
 #enable logging
 logfilePath = os.path.join(BASE_PATH, "logs")
 logfile     = os.path.join(logfilePath, "test_fixedStream.log")
-helpers.initLogging(logfile, True, "DEBUG")
+helpers.init_logging(logfile, True, "DEBUG")
 
 del BASE_PATH
 
@@ -40,7 +40,7 @@ print
 print "==== TEST: Fixed stream ===="
 print
 
-query = dataTransfer("stream", useLog = True)
+query = Transfer("stream", useLog = True)
 
 query.start(dataPort)
 

@@ -16,8 +16,8 @@ except:
     import hidra
 
 
-obj = hidra.controller("p00", useLog = None)
-#obj = hidra.control.controller("p00")
+obj = hidra.Control("p00", useLog = None)
+#obj = hidra.Control("p00")
 
 # where the data should be stored inside the beamline filesystem
 # only the relative path is needed because the absolute path can be reconstucted with the beamline name

@@ -43,7 +43,7 @@ eventListToObserveTmp = []
 class WatchdogEventHandler (PatternMatchingEventHandler):
     def __init__ (self, id, config, logQueue):
         self.id = id
-        self.log = self.getLogger(logQueue)
+        self.log = self.get_logger(logQueue)
 
         self.log.debug("init")
 
@@ -88,20 +88,20 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
                 self.log.info("Activate on close event types")
                 self.detect_close  = tuple(suffix)
 
-        self.log.debug("self.detect_close={c}, self.detect_move={m}".format(c=self.detect_close, m=self.detect_move))
+        self.log.debug("self.detect_close={0}, self.detect_move={1}".format(self.detect_close, self.detect_move))
 
 
     # Send all logs to the main process
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Suppress logging messages of watchdog observer
         logging.getLogger("watchdog.observers.inotify_buffer").setLevel(logging.WARNING)
 
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("WatchdogEventHandler-{id}".format(id=self.id))
+        logger = logging.getLogger("WatchdogEventHandler-{0}".format(self.id))
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -117,7 +117,7 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
         # Directories will be skipped
         if not event.is_directory:
 
-            eventMessage = splitFilePath(event.src_path, self.paths)
+            eventMessage = split_file_path(event.src_path, self.paths)
 
             eventMessageList.append(eventMessage)
 
@@ -137,9 +137,9 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
             self.process(event)
         if self.detect_close and event.src_path.endswith(self.detect_close):
             self.log.debug("On close event detected (from create)")
-            self.log.debug("event.src_path={p}".format(p=event.src_path))
+            self.log.debug("event.src_path={0}".format(event.src_path))
             if ( not event.is_directory ):
-                self.log.debug("Append event to eventListToObserve: {p}".format(p=event.src_path))
+                self.log.debug("Append event to eventListToObserve: {0}".format(event.src_path))
 #                eventListToObserve.append(event.src_path)
                 bisect.insort_left(eventListToObserve, event.src_path)
 
@@ -169,7 +169,7 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
             self.process(event)
 
 
-def splitFilePath (filepath, paths):
+def split_file_path (filepath, paths):
 
     (parentDir,filename) = os.path.split(filepath)
     relativePath = ""
@@ -214,9 +214,9 @@ def splitFilePath (filepath, paths):
     return eventMessage
 
 
-class checkModTime (threading.Thread):
+class CheckModTime (threading.Thread):
     def __init__ (self, NumberOfThreads, timeTillClosed, monDir, actionTime, lock, logQueue):
-        self.log = self.getLogger(logQueue)
+        self.log = self.get_logger(logQueue)
 
         self.log.debug("init")
         #Make the Pool of workers
@@ -236,10 +236,10 @@ class checkModTime (threading.Thread):
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("checkModTime")
+        logger = logging.getLogger("CheckModTime")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -257,37 +257,37 @@ class checkModTime (threading.Thread):
                 self.lock.release()
 
                 # Open the urls in their own threads
-#                self.log.debug("List to observe: {l}".format(l=eventListToObserve))
-#                self.log.debug("eventMessageList: {l}".format(l=eventMessageList))
+#                self.log.debug("List to observe: {0}".format(eventListToObserve))
+#                self.log.debug("eventMessageList: {0}".format(eventMessageList))
                 if self._poolRunning:
-                    self.pool.map(self.checkLastModified, eventListToObserveCopy)
+                    self.pool.map(self.check_last_modified, eventListToObserveCopy)
                 else:
                     self.log.info("Pool was already closed")
                     break
-#                self.log.debug("eventMessageList: {l}".format(l=eventMessageList))
+#                self.log.debug("eventMessageList: {0}".format(eventMessageList))
 
-#                self.log.debug("List to observe tmp: {l}".format(l=eventListToObserveTmp))
+#                self.log.debug("List to observe tmp: {0}".format(eventListToObserveTmp))
 
                 self.lock.acquire()
                 for event in eventListToObserveTmp:
                     try:
                         eventListToObserve.remove(event)
-                        self.log.debug("Removing event: {e}".format(e=event))
+                        self.log.debug("Removing event: {0}".format(event))
                     except:
-                        self.log.error("Removing event failed: {e}".format(e=event), exc_info=True)
-                        self.log.debug("eventListToObserveTmp={l}".format(l=eventListToObserveTmp))
-                        self.log.debug("eventListToObserve={l}".format(l=eventListToObserve))
+                        self.log.error("Removing event failed: {0}".format(event), exc_info=True)
+                        self.log.debug("eventListToObserveTmp={0}".format(eventListToObserveTmp))
+                        self.log.debug("eventListToObserve={0}".format(eventListToObserve))
                 eventListToObserveTmp = []
                 self.lock.release()
 
-#                self.log.debug("List to observe after map-function: {l}".format(l=eventListToObserve))
+#                self.log.debug("List to observe after map-function: {0}".format(eventListToObserve))
                 time.sleep(self.actionTime)
             except:
                 self.log.error("Stopping loop due to error", exc_info=True)
                 break
 
 
-    def checkLastModified (self, filepath):
+    def check_last_modified (self, filepath):
         global eventMessageList
         global eventListToObserveTmp
 
@@ -297,36 +297,36 @@ class checkModTime (threading.Thread):
             # check modification time
             timeLastModified = os.stat(filepath).st_mtime
         except WindowsError:
-            self.log.error("Unable to get modification time for file: {p}".format(p=filepath), exc_info=True)
+            self.log.error("Unable to get modification time for file: {0}".format(filepath), exc_info=True)
             # remove the file from the observing list
             self.lock.acquire()
             eventListToObserveTmp.append(filepath)
             self.lock.release()
             return
         except:
-            self.log.error("Unable to get modification time for file: {p}".format(p=filepath), exc_info=True)
+            self.log.error("Unable to get modification time for file: {0}".format(filepath), exc_info=True)
             return
 
         try:
             # get current time
             timeCurrent = time.time()
         except:
-            self.log.error("Unable to get current time for file: {p}".format(p=filepath), exc_info=True)
+            self.log.error("Unable to get current time for file: {0}".format(filepath), exc_info=True)
 
         # compare ( >= limit)
         if timeCurrent - timeLastModified >= self.timeTillClosed:
-            self.log.debug("New closed file detected: {p}".format(p=filepath))
+            self.log.debug("New closed file detected: {0}".format(filepath))
 
-            eventMessage = splitFilePath(filepath, self.monDir)
-            self.log.debug("eventMessage: {m}".format(m=eventMessage))
+            eventMessage = split_file_path(filepath, self.monDir)
+            self.log.debug("eventMessage: {0}".format(eventMessage))
 
             # add to result list
             self.lock.acquire()
-            self.log.debug("checkLastModified-{n} eventMessageList {l}".format(n=threadName, l=eventMessageList))
+            self.log.debug("check_last_modified-{n} eventMessageList {l}".format(n=threadName, l=eventMessageList))
             eventMessageList.append(eventMessage)
             eventListToObserveTmp.append(filepath)
-            self.log.debug("checkLastModified-{n} eventMessageList {l}".format(n=threadName, l=eventMessageList))
-#            self.log.debug("checkLastModified-{n} eventListToObserveTmp {l}".format(n=threadName, l=eventListToObserveTmp))
+            self.log.debug("check_last_modified-{n} eventMessageList {l}".format(n=threadName, l=eventMessageList))
+#            self.log.debug("check_last_modified-{n} eventListToObserveTmp {l}".format(n=threadName, l=eventListToObserveTmp))
             self.lock.release()
         else:
             self.log.debug("File was last modified {d} sec ago: {p}".format(d=(timeCurrent - timeLastModified), p=filepath))
@@ -356,7 +356,7 @@ class checkModTime (threading.Thread):
 class EventDetector():
     def __init__(self, config, logQueue):
 
-        self.log = self.getLogger(logQueue)
+        self.log = self.get_logger(logQueue)
 
         # check format of config
         if ( "monDir" not in config or
@@ -365,7 +365,7 @@ class EventDetector():
                 "timeTillClosed" not in config or
                 "actionTime" not in config ):
             self.log.error ("Configuration of wrong format")
-            self.log.debug ("config={c}".format(c=config))
+            self.log.debug ("config={0}".format(config))
             checkPassed = False
         else:
             checkPassed = True
@@ -377,7 +377,7 @@ class EventDetector():
             self.monSubdirs      = self.config["monSubdirs"]
 
             self.paths           = [os.path.normpath(os.path.join(self.monDir, directory)) for directory in self.config["monSubdirs"]]
-            self.log.debug("paths: {p}".format(p=self.paths))
+            self.log.debug("paths: {0}".format(self.paths))
 
             self.timeTillClosed  = self.config["timeTillClosed"]
             self.actionTime      = self.config["actionTime"]
@@ -391,12 +391,12 @@ class EventDetector():
                 observer = Observer()
                 observer.schedule(WatchdogEventHandler(observerId, self.config, logQueue), path, recursive=True)
                 observer.start()
-                self.log.info("Started observer for directory: {p}".format(p=path))
+                self.log.info("Started observer for directory: {0}".format(path))
 
                 self.observerThreads.append(observer)
                 observerId += 1
 
-            self.checkingThread = checkModTime(4, self.timeTillClosed, self.monDir, self.actionTime, self.lock, logQueue)
+            self.checkingThread = CheckModTime(4, self.timeTillClosed, self.monDir, self.actionTime, self.lock, logQueue)
             self.checkingThread.start()
 
 
@@ -404,7 +404,7 @@ class EventDetector():
     # The worker configuration is done at the start of the worker process run.
     # Note that on Windows you can't rely on fork semantics, so each process
     # will run the logging configuration code when it starts.
-    def getLogger (self, queue):
+    def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
         logger = logging.getLogger("WatchdogDetector")
@@ -415,7 +415,7 @@ class EventDetector():
         return logger
 
 
-    def getNewEvent(self):
+    def get_new_event(self):
         global eventMessageList
 
         self.lock.acquire()
@@ -470,7 +470,7 @@ if __name__ == '__main__':
     logQueue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.getLogHandlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
+    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True, onScreenLogLevel="debug")
 
     # Start queue listener using the stream handler above
     logQueueListener = helpers.CustomQueueListener(logQueue, h1, h2)
@@ -503,12 +503,12 @@ if __name__ == '__main__':
     i = 100
     while i <= 105:
         try:
-            eventList = eventDetector.getNewEvent()
+            eventList = eventDetector.get_new_event()
             if eventList:
                 print ("eventList:", eventList)
             if copyFlag:
-                targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=i)
-                logging.debug("copy to {t}".format(t=targetFile))
+                targetFile = "{0}{1}.cbf".format(targetFileBase, i)
+                logging.debug("copy to {0}".format(targetFile))
 #                call(["cp", sourceFile, targetFile])
                 copyfile(sourceFile, targetFile)
                 i += 1
@@ -523,8 +523,8 @@ if __name__ == '__main__':
     time.sleep(2)
     eventDetector.stop()
     for number in range(100, i):
-        targetFile = "{t}{i}.cbf".format(t=targetFileBase, i=number)
-        logging.debug("remove {t}".format(t=targetFile))
+        targetFile = "{0}{1}.cbf".format(targetFileBase, number)
+        logging.debug("remove {0}".format(targetFile))
         os.remove(targetFile)
 
     logQueue.put_nowait(None)

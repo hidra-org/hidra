@@ -3,7 +3,7 @@ import logging
 #import fabio.cbfimage
 #from fabio.cbfimage import cbfimage
 
-def initLogging(filenameFullPath, verbose):
+def init_logging(filenameFullPath, verbose):
     #@see https://docs.python.org/2/howto/logging-cookbook.html
 
     #more detailed logging if verbose-option has been set
@@ -29,7 +29,7 @@ def initLogging(filenameFullPath, verbose):
 
 
 #enable logging
-initLogging("/opt/hidra/test/cbf_test.log", True)
+init_logging("/opt/hidra/test/cbf_test.log", True)
 logging.info("Test")
 
 #path = "/opt/hidra/jan_015_00001.cbf"

@@ -19,20 +19,20 @@ import helpers
 
 try:
     # search in global python modules first
-    from hidra import DataIngest
+    from hidra import Ingest
 except:
     # then search in local modules
     if not API_PATH in sys.path:
         sys.path.append ( API_PATH )
     del API_PATH
 
-    from hidra import DataIngest
+    from hidra import Ingest
 
 
 #enable logging
 logfilePath = os.path.join(BASE_PATH, "logs")
 logfile     = os.path.join(logfilePath, "testHidraIngest.log")
-helpers.initLogging(logfile, True, "DEBUG")
+helpers.init_logging(logfile, True, "DEBUG")
 
 
 class Receiver ():

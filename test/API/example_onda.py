@@ -22,35 +22,35 @@ import helpers
 
 try:
     # search in global python modules first
-    from hidra import dataTransfer
+    from hidra import Transfer
 except:
     # then search in local modules
     if not API_PATH in sys.path:
         sys.path.append ( API_PATH )
     del API_PATH
 
-    from hidra import dataTransfer
+    from hidra import Transfer
 
 
 #enable logging
 logfilePath = os.path.join(BASE_PATH, "logs")
 logfile     = os.path.join(logfilePath, "test_onda.log")
-helpers.initLogging(logfile, True, "DEBUG")
+helpers.init_logging(logfile, True, "DEBUG")
 
 
-class worker(multiprocessing.Process):
+class Worker(multiprocessing.Process):
     def __init__(self, id, transferType, basePath, signalHost, port):
 
         self.id    = id
         self.port  = port
 
-        self.log   = logging.getLogger("worker-"+str(self.id))
+        self.log   = logging.getLogger("Worker-"+str(self.id))
 
-        self.query = dataTransfer(transferType, signalHost, useLog = True)
+        self.query = Transfer(transferType, signalHost, useLog = True)
 
         self.basePath = basePath
 
-        self.log.debug("start dataTransfer on port " +str(port))
+        self.log.debug("start Transfer on port " +str(port))
         # targets are locally
         self.query.start([signalHost, port])
 #        self.query.start(port)
@@ -61,20 +61,20 @@ class worker(multiprocessing.Process):
     def run(self):
         while True:
             try:
-                self.log.debug("worker-" + str(self.id) + ": waiting")
+                self.log.debug("Worker-" + str(self.id) + ": waiting")
                 [metadata, data] = self.query.get()
                 time.sleep(0.1)
             except:
                 break
 
             if transferType in ["queryMetadata", "streamMetadata"]:
-                self.log.debug("worker-" + str(self.id) + ": metadata " + str(metadata["filename"]))
-                filepath = self.query.generateTargetFilepath(self.basePath, metadata)
-                self.log.debug("worker-" + str(self.id) + ": filepath " + filepath)
+                self.log.debug("Worker-" + str(self.id) + ": metadata " + str(metadata["filename"]))
+                filepath = self.query.generate_target_filepath(self.basePath, metadata)
+                self.log.debug("Worker-" + str(self.id) + ": filepath " + filepath)
 
                 with open(filepath, "r") as fileDescriptor:
                     content = fileDescriptor.read()
-                    self.log.debug("worker-" + str(self.id) + ": file " + filepath + " read")
+                    self.log.debug("Worker-" + str(self.id) + ": file " + filepath + " read")
             else:
                 print ("metadata", str(metadata))
 
@@ -137,14 +137,14 @@ if __name__ == "__main__":
 
         targets.append([signalHost, p, 1, [".cbf"]])
 
-        w = multiprocessing.Process(target=worker, args=(n, transferType, basePath, signalHost, p))
+        w = multiprocessing.Process(target=Worker, args=(n, transferType, basePath, signalHost, p))
         workers.append(w)
 
 #    targets = [[signalHost, "50101", 1, [".cbf"]]]
 #    targets = [[signalHost, "50101", 1], [signalHost, "50102", 1], [signalHost, "50103", 1]]
 #    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]], ["zitpcx19282.desy.de", "50102", 1, [".cbf"]], ["zitpcx19282.desy.de", "50103", 1, [".cbf"]], ["lsdma-lab04.desy.de", "50104", 1, [".cbf"]]]
 
-    query = dataTransfer(transferType, signalHost, useLog = True)
+    query = Transfer(transferType, signalHost, useLog = True)
     query.initiate(targets)
 
     for w in workers:

@@ -29,17 +29,17 @@ import helpers
 
 try:
     # search in global python modules first
-    from hidra import dataTransfer
+    from hidra import Transfer
 except:
     # then search in local modules
     if not API_PATH in sys.path:
         sys.path.append ( API_PATH )
     del API_PATH
 
-    from hidra import dataTransfer
+    from hidra import Transfer
 
 
-def argumentParsing():
+def argument_parsing():
     defaultConfig = CONFIG_PATH + os.sep + "nexusReceiver.conf"
 
     ##################################
@@ -76,7 +76,7 @@ def argumentParsing():
     arguments.configFile         = arguments.configFile or defaultConfig
 
     # check if configFile exist
-    helpers.checkFileExistance(arguments.configFile)
+    helpers.check_file_existance(arguments.configFile)
 
     ##################################
     # Get arguments from config file #
@@ -88,7 +88,7 @@ def argumentParsing():
     arguments.logfilePath        = arguments.logfilePath        or config.get('asection', 'logfilePath')
     arguments.logfileName        = arguments.logfileName        or config.get('asection', 'logfileName')
 
-    if not helpers.isWindows():
+    if not helpers.is_windows():
         arguments.logfileSize    = arguments.logfileSize        or config.get('asection', 'logfileSize')
 
     try:
@@ -124,7 +124,7 @@ def argumentParsing():
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
 
-    handlers = helpers.getLogHandlers(logfile, arguments.logfileSize, arguments.verbose, arguments.onScreen)
+    handlers = helpers.get_log_handlers(logfile, arguments.logfileSize, arguments.verbose, arguments.onScreen)
 
     if type(handlers) == tuple:
         for h in handlers:
@@ -133,25 +133,25 @@ def argumentParsing():
         root.addHandler(handlers)
 
     # check target directory for existance
-    helpers.checkDirExistance(arguments.targetDir)
+    helpers.check_dir_existance(arguments.targetDir)
 
     # check if logfile is writable
-    helpers.checkLogFileWritable(arguments.logfilePath, arguments.logfileName)
+    helpers.check_log_file_writable(arguments.logfilePath, arguments.logfileName)
 
     return arguments
 
 
 class NexusReceiver:
     def __init__(self):
-        self.dataTransfer = None
+        self.transfer = None
 
         try:
-            arguments = argumentParsing()
+            arguments = argument_parsing()
         except:
-            self.log = self.getLogger()
+            self.log = self.get_logger()
             raise
 
-        self.log          = self.getLogger()
+        self.log          = self.get_logger()
 
         self.whitelist    = arguments.whitelist
 
@@ -163,7 +163,7 @@ class NexusReceiver:
 
         self.log.info("Writing to directory '" + self.targetDir + "'.")
 
-        self.dataTransfer = dataTransfer("nexus", useLog = True)
+        self.transfer = transfer("nexus", useLog = True)
 
         try:
             self.run()
@@ -175,7 +175,7 @@ class NexusReceiver:
             self.stop()
 
 
-    def getLogger(self):
+    def get_logger(self):
         logger = logging.getLogger("NexusReceiver")
         return logger
 
@@ -223,8 +223,8 @@ class NexusReceiver:
         callbackParams = {"target_fp" : None}
 
         try:
-            self.dataTransfer.start([self.dataIp, self.dataPort], self.whitelist)
-#            self.dataTransfer.start(self.dataPort)
+            self.transfer.start([self.dataIp, self.dataPort], self.whitelist)
+#            self.transfer.start(self.dataPort)
         except:
             self.log.error("Could not initiate stream", exc_info=True)
             raise
@@ -232,7 +232,7 @@ class NexusReceiver:
         #run loop, and wait for incoming messages
         while True:
             try:
-                data = self.dataTransfer.read(callbackParams, self.openCallback, self.readCallback, self.closeCallback)
+                data = self.transfer.read(callbackParams, self.openCallback, self.readCallback, self.closeCallback)
                 logging.debug("Retrieved: " + str(data)[:100])
 
 #                if data == "CLOSE_FILE":
@@ -245,10 +245,10 @@ class NexusReceiver:
 
 
     def stop(self):
-        if self.dataTransfer:
+        if self.transfer:
             self.log.info("Shutting down receiver...")
-            self.dataTransfer.stop()
-            self.dataTransfer = None
+            self.transfer.stop()
+            self.transfer = None
 
 
     def __exit__(self):

@@ -11,7 +11,7 @@ import os
 import sys
 
 
-class loggingFunction:
+class LoggingFunction:
     def out (self, x, exc_info = None):
         if exc_info:
             print (x, traceback.format_exc())
@@ -25,7 +25,7 @@ class loggingFunction:
         self.critical = lambda x, exc_info=None: self.out(x, exc_info)
 
 
-class noLoggingFunction:
+class NoLoggingFunction:
     def out (self, x, exc_info = None):
         pass
     def __init__ (self):
@@ -100,16 +100,16 @@ connectionList = {
     }
 
 
-class controller():
+class Control():
     def __init__ (self, beamline, useLog = False):
         global connectionList
 
         if useLog:
-            self.log = logging.getLogger("controller")
+            self.log = logging.getLogger("Control")
         elif useLog == None:
-            self.log = noLoggingFunction()
+            self.log = NoLoggingFunction()
         else:
-            self.log = loggingFunction()
+            self.log = LoggingFunction()
 
         self.currentPID     = os.getpid()
 
@@ -122,10 +122,10 @@ class controller():
 
         self.signalSocket   = None
 
-        self.__createSockets()
+        self.__create_sockets()
 
 
-    def __createSockets (self):
+    def __create_sockets (self):
         self.signalSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         try:
