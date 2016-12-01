@@ -20,8 +20,8 @@ python $BASEPATH/src/sender/DataManager.py \
     --monitoredDir $BASEPATH/data/source \
     --localTarget $BASEPATH/data/target/local \
     --extIp 0.0.0.0 \
-    --eventDetectorType HttpDetector \
-    --dataFetcherType getFromHttp \
+    --eventDetectorType http_detector \
+    --dataFetcherType http_fetcher \
     --eigerIp 131.169.55.170 \
     --eigerApiVersion 1.5.0 \
     --historySize 2\

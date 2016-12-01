@@ -18,8 +18,8 @@ python $BASEPATH/src/sender/DataManager.py \
     --monitoredDir $BASEPATH/data/source \
     --localTarget $BASEPATH/data/target \
     --extIp 0.0.0.0 \
-    --eventDetectorType InotifyxDetector \
-    --dataFetcherType getFromFile \
+    --eventDetectorType inotifyx_detector \
+    --dataFetcherType file_fetcher \
     --useDataStream False \
     --storeData True \
     --removeData True \

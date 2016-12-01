@@ -331,7 +331,7 @@ if __name__ == '__main__':
     logsize = 10485760
 
     eventDetectorConfig = {
-            "eventDetectorType" : "InotifyxDetector",
+            "eventDetectorType" : "inotifyx_detector",
             "monDir"            : os.path.join(BASE_PATH, "data", "source"),
             "monSubdirs"        : ["commissioning", "current", "local"],
             "monEvents"         : {"IN_CLOSE_WRITE" : [".tif", ".cbf"], "IN_MOVED_TO" : [".log"]},

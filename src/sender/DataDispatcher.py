@@ -376,7 +376,7 @@ if __name__ == '__main__':
     logConfig = "test"
 
     dataFetcherProp = {
-            "type"       : "getFromFile",
+            "type"       : "file_fetcher",
             "fixSubdirs" : ["commissioning", "current", "local"],
             "storeData"  : False,
             "removeData" : False

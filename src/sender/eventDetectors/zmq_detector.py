@@ -30,7 +30,6 @@ except:
 
 
 
-#class ZmqDetector():
 class EventDetector():
 
     def __init__ (self, config, logQueue):
@@ -73,7 +72,7 @@ class EventDetector():
     def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("ZmqDetector")
+        logger = logging.getLogger("zmq_detector")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)

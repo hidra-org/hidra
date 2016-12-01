@@ -18,8 +18,8 @@ python $BASEPATH/src/sender/DataManager.py \
     --monitoredDir $BASEPATH/data/source \
     --localTarget $BASEPATH/data/target \
     --extIp 0.0.0.0 \
-    --eventDetectorType WatchdogDetector \
-    --dataFetcherType getFromFile \
+    --eventDetectorType watchdog_detector \
+    --dataFetcherType file_fetcher \
     --actionTime 2 \
     --timeTillClosed 1 \
     --useDataStream False \

@@ -144,7 +144,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile  = os.path.join(BASE_PATH, "logs", "zmqDetector.log")
+    logfile  = os.path.join(BASE_PATH, "logs", "http_detector.log")
     logsize  = 10485760
 
     logQueue = Queue(-1)
@@ -171,7 +171,7 @@ if __name__ == '__main__':
     eigerIp          = "131.169.55.170" #lsdma-lab04
     eigerApiVersion  = "1.5.0"
     config = {
-            "eventDetectorType" : "HttpDetector",
+            "eventDetectorType" : "http_detector",
             "eigerIp"           : eigerIp,
             "eigerApiVersion"   : eigerApiVersion,
             "historySize"       : 1000

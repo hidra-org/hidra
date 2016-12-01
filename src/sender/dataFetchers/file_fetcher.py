@@ -269,7 +269,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile = os.path.join(BASE_PATH, "logs", "getFromFile.log")
+    logfile = os.path.join(BASE_PATH, "logs", "file_fetcher.log")
     logsize = 10485760
 
     # Get the log Configuration for the lisener
@@ -317,7 +317,7 @@ if __name__ == '__main__':
     openConnections = dict()
 
     dataFetcherProp = {
-            "type"       : "getFromFile",
+            "type"       : "file_fetcher",
             "fixSubdirs" : ["commissioning", "current", "local"],
             "storeData"  : False,
             "removeData" : False

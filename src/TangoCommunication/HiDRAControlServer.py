@@ -281,13 +281,13 @@ class ZmqDT():
             if self.beamline == "p00":
                 externalIp    = "asap3-p00"
 #                externalIp    = "131.169.251.55" # asap3-p00
-                eventDetector = "InotifyxDetector"
-                dataFetcher   = "getFromFile"
+                eventDetector = "inotifyx_detector"
+                dataFetcher   = "file_fetcher"
             else:
                 externalIp    = "asap3-bl-prx07"
 #                externalIp    = "131.169.251.38" # asap3-bl-prx07
-                eventDetector = "HttpDetector"
-                dataFetcher   = "getFromHttp"
+                eventDetector = "http_detector"
+                dataFetcher   = "http_fetcher"
 
             # write configfile
             # /etc/hidra/P01.conf

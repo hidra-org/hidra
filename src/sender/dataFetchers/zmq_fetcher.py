@@ -84,7 +84,7 @@ def get_metadata (log, prop, targets, metadata, chunkSize, localTarget = None):
             metadata[ "filesize"    ]   = None
             metadata[ "fileModTime" ]   = time.time()
             metadata[ "fileCreateTime"] = time.time()
-            # chunkSize is coming from ZMQDetector
+            # chunkSize is coming from zmq_detector
 
             log.debug("metadata = {0}".format(metadata))
         except:
@@ -163,7 +163,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile = os.path.join(BASE_PATH, "logs", "getFromFile.log")
+    logfile = os.path.join(BASE_PATH, "logs", "zmq_fetcher.log")
     logsize = 10485760
 
     # Get the log Configuration for the lisener

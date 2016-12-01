@@ -315,7 +315,7 @@ class EventDetector():
     def get_logger (self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue) # Just the one handler needed
-        logger = logging.getLogger("InotifyxDetector")
+        logger = logging.getLogger("inotifyx_detector")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -532,7 +532,7 @@ if __name__ == '__main__':
 
     import helpers
 
-    logfile  = os.path.join(BASE_PATH, "logs", "inotifyDetector.log")
+    logfile  = os.path.join(BASE_PATH, "logs", "inotifyx_detector.log")
     logsize  = 10485760
 
     logQueue = Queue(-1)

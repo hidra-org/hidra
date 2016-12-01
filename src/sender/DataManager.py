@@ -50,8 +50,8 @@ def str2bool(v):
 
 def argument_parsing():
     defaultConfig     = os.path.join(CONFIG_PATH, "dataManager.conf")
-    supportedEDTypes  = ["inotifyxdetector", "watchdogdetector", "zmqdetector", "httpdetector"]
-    supportedDFTypes  = ["getfromfile", "getfromzmq", "getfromhttp"]
+    supportedEDTypes  = ["inotifyx_detector", "watchdog_detector", "zmq_detector", "http_detector"]
+    supportedDFTypes  = ["file_fetcher", "zmq_fetcher", "http_fetcher"]
 
     ##################################
     #   Get command line arguments   #
@@ -102,46 +102,46 @@ def argument_parsing():
                                                 help    = "Type of event detector to use")
     parser.add_argument("--fixSubdirs"        , type    = str,
                                                 help    = "Subdirectories to be monitored and to store data to \
-                                                           (only needed if eventDetector is InotifyxDetector or WatchdogDetector \
-                                                           and dataFetcher is getFromFile)")
+                                                           (only needed if eventDetector is inotifyx_detector or watchdog_detector \
+                                                           and dataFetcher is file_fetcher)")
 
     parser.add_argument("--monitoredDir"      , type    = str,
                                                 help    = "Directory to be monitor for changes; inside this directory only the specified \
-                                                           subdirectories are monitred (only needed if eventDetector is InotifyxDetector \
-                                                           or WatchdogDetector)")
+                                                           subdirectories are monitred (only needed if eventDetector is inotifyx_detector \
+                                                           or watchdog_detector)")
     parser.add_argument("--monitoredEvents"   , type    = str,
                                                 help    = "Event type of files (options are: IN_CLOSE_WRITE, IN_MOVED_TO, ...) and \
                                                            the formats to be monitored, files in an other format will be be neglected \
-                                                           (needed if eventDetector is InotifyxDetector or WatchdogDetector)")
+                                                           (needed if eventDetector is inotifyx_detector or watchdog_detector)")
 
     parser.add_argument("--historySize"       , type    = int,
                                                 help    = "Number of events stored to look for doubles \
-                                                           (needed if eventDetector is InotifyxDetector)")
+                                                           (needed if eventDetector is inotifyx_detector)")
 
     parser.add_argument("--useCleanUp"        , help    = "Flag describing if a clean up thread which regularly checks \
                                                            if some files were missed should be activated \
-                                                           (needed if eventDetector is InotifyxDetector)",
+                                                           (needed if eventDetector is inotifyx_detector)",
                                                 choices = ["True", "False"])
 
     parser.add_argument("--actionTime"        , type    = float,
                                                 help    = "Intervall time (in seconds) used for clea nup \
-                                                           (only needed if eventDetectorType is InotifyxDetector)")
+                                                           (only needed if eventDetectorType is inotifyx_detector)")
 
     parser.add_argument("--timeTillClosed"    , type    = float,
                                                 help    = "Time (in seconds) since last modification after which a file will be seen as closed \
-                                                           (only needed if eventDetectorType is InotifyxDetector (for clean up) or WatchdogDetector)")
+                                                           (only needed if eventDetectorType is inotifyx_detector (for clean up) or watchdog_detector)")
 
 
     parser.add_argument("--eventDetPort"      , type    = str,
                                                 help    = "ZMQ port to get events from \
-                                                           (only needed if eventDetectorType is ZmqDetector)")
+                                                           (only needed if eventDetectorType is zmq_detector)")
 
     parser.add_argument("--eigerIp"           , type    = str,
                                                 help    = "IP of the Eiger detector \
-                                                           (only needed if eventDetectorType is HttpDetector)")
+                                                           (only needed if eventDetectorType is http_detector)")
     parser.add_argument("--eigerApiVersion"   , type    = str,
                                                 help    = "API version of the Eiger detector \
-                                                           (only needed if eventDetectorType is HttpDetector)")
+                                                           (only needed if eventDetectorType is http_detector)")
 
     # DataFetcher config
 
@@ -172,10 +172,10 @@ def argument_parsing():
                                                 help    = "Target to move the files into)")
 
     parser.add_argument("--storeData"         , help    = "Flag describing if the data should be stored in localTarget \
-                                                           (needed if dataFetcherType is getFromFile or getFromHttp)",
+                                                           (needed if dataFetcherType is file_fetcher or http_fetcher)",
                                                 choices = ["True", "False"])
     parser.add_argument("--removeData"        , help    = "Flag describing if the files should be removed from the source \
-                                                           (needed if dataFetcherType is getFromHttp)",
+                                                           (needed if dataFetcherType is http_fetcher)",
                                                 choices = ["True", "False"])
 
     arguments                    = parser.parse_args()
@@ -242,8 +242,8 @@ def argument_parsing():
     arguments.eventDetectorType       = arguments.eventDetectorType \
                                         or config.get('asection', 'eventDetectorType')
 
-    if arguments.eventDetectorType == "InotifyxDetector":
-        # for InotifyxDetector and WatchdogDetector and getFromFile:
+    if arguments.eventDetectorType == "inotifyx_detector":
+        # for inotifyx_detector and watchdog_detector and file_fetcher:
         try:
             arguments.fixSubdirs      = arguments.fixSubdirs \
                                         or json.loads(config.get('asection', 'fixSubdirs'))
@@ -266,7 +266,7 @@ def argument_parsing():
             arguments.timeTillClosed  = arguments.timeTillClosed \
                                         or config.getfloat('asection', 'timeTillClosed')
 
-    if arguments.eventDetectorType == "WatchdogDetector":
+    if arguments.eventDetectorType == "watchdog_detector":
         try:
             arguments.fixSubdirs      = arguments.fixSubdirs \
                                         or json.loads(config.get('asection', 'fixSubdirs'))
@@ -284,11 +284,11 @@ def argument_parsing():
         arguments.actionTime          = arguments.actionTime \
                                         or config.getfloat('asection', 'actionTime')
 
-    if arguments.eventDetectorType == "ZmqDetector":
+    if arguments.eventDetectorType == "zmq_detector":
         arguments.eventDetPort        = arguments.eventDetPort \
                                         or config.get('asection', 'eventDetPort')
 
-    if arguments.eventDetectorType == "HttpDetector":
+    if arguments.eventDetectorType == "http_detector":
         arguments.eigerIp             = arguments.eigerIp \
                                         or config.get('asection', 'eigerIp')
         arguments.eigerApiVersion     = arguments.eigerApiVersion \
@@ -297,7 +297,7 @@ def argument_parsing():
     arguments.dataFetcherType         = arguments.dataFetcherType \
                                         or config.get('asection', 'dataFetcherType')
 
-    if arguments.dataFetcherType == "getFromFile":
+    if arguments.dataFetcherType == "file_fetcher":
         arguments.fixSubdirs          = arguments.fixSubdirs \
                                         or json.loads(config.get('asection', 'fixSubdirs'))
 
@@ -491,7 +491,7 @@ class DataManager():
 
         # Assemble configuration for eventDetector.
         self.log.info("Configured type of eventDetector: {0}".format(arguments.eventDetectorType))
-        if arguments.eventDetectorType == "InotifyxDetector":
+        if arguments.eventDetectorType == "inotifyx_detector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "monDir"            : arguments.monitoredDir,
@@ -503,7 +503,7 @@ class DataManager():
                     "cleanUpTime"       : arguments.timeTillClosed,
                     "actionTime"        : arguments.actionTime
                     }
-        elif arguments.eventDetectorType == "WatchdogDetector":
+        elif arguments.eventDetectorType == "watchdog_detector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "monDir"            : arguments.monitoredDir,
@@ -512,14 +512,14 @@ class DataManager():
                     "timeTillClosed"    : arguments.timeTillClosed,
                     "actionTime"        : arguments.actionTime
                     }
-        elif arguments.eventDetectorType == "ZmqDetector":
+        elif arguments.eventDetectorType == "zmq_detector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     "context"           : None,
                     "eventDetConStr"    : eventDetConStr,
                     "numberOfStreams"   : self.numberOfStreams
                     }
-        elif arguments.eventDetectorType == "HttpDetector":
+        elif arguments.eventDetectorType == "http_detector":
             self.eventDetectorConfig = {
                     "eventDetectorType" : arguments.eventDetectorType,
                     # Enable specification via IP and DNS name
@@ -531,7 +531,7 @@ class DataManager():
 
         # Assemble configuration for dataFetcher
         self.log.info("Configured Type of dataFetcher: {0}".format(arguments.dataFetcherType))
-        if arguments.dataFetcherType == "getFromFile":
+        if arguments.dataFetcherType == "file_fetcher":
             self.dataFetcherProp = {
                     "type"            : arguments.dataFetcherType,
                     "fixSubdirs"      : arguments.fixSubdirs,
@@ -544,7 +544,7 @@ class DataManager():
                     "context"         : None,
                     "dataFetchConStr" : dataFetchConStr
                     }
-        elif arguments.dataFetcherType == "getFromHttp":
+        elif arguments.dataFetcherType == "http_fetcher":
             self.dataFetcherProp = {
                     "type"            : arguments.dataFetcherType,
                     "session"         : None,
