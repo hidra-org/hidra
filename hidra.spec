@@ -31,7 +31,7 @@ HiDRA is a generic tool set for high performance data multiplexing with differen
 %install
 # Packaging Python API
 mkdir -p %{buildroot}/%{python_sitelib}/%{name}
-cp -r APIs/*.py %{buildroot}/%{python_sitelib}/%{name}/
+cp -r src/APIs/hidra/*.py %{buildroot}/%{python_sitelib}/%{name}/
 
 # src receiver/sender and shared
 mkdir -p %{buildroot}/opt/%{name}/src
@@ -49,7 +49,7 @@ cp conf/dataManager.conf conf/dataReceiver.conf conf/nexusReceiver.conf %{buildr
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
-cp src/initScripts/*.service %{buildroot}/%{_unitdir}/
+cp initScripts/*.service %{buildroot}/%{_unitdir}/
 
 # log directory
 mkdir -p %{buildroot}/opt/%{name}/logs
