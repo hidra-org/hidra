@@ -3,185 +3,204 @@
 from __future__ import print_function
 #from __future__ import unicode_literals
 
-__version__ = '0.0.4'
-
 import socket
 import logging
 import os
 import sys
+import traceback
+
+__version__ = '0.0.4'
 
 
 class LoggingFunction:
-    def out (self, x, exc_info = None):
+    def out(self, x, exc_info=None):
         if exc_info:
             print (x, traceback.format_exc())
         else:
             print (x)
-    def __init__ (self):
-        self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
-        self.info     = lambda x, exc_info=None: self.out(x, exc_info)
-        self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
-        self.error    = lambda x, exc_info=None: self.out(x, exc_info)
+
+    def __init__(self):
+        self.debug = lambda x, exc_info=None: self.out(x, exc_info)
+        self.info = lambda x, exc_info=None: self.out(x, exc_info)
+        self.warning = lambda x, exc_info=None: self.out(x, exc_info)
+        self.error = lambda x, exc_info=None: self.out(x, exc_info)
         self.critical = lambda x, exc_info=None: self.out(x, exc_info)
 
 
 class NoLoggingFunction:
-    def out (self, x, exc_info = None):
+    def out(self, x, exc_info=None):
         pass
-    def __init__ (self):
-        self.debug    = lambda x, exc_info=None: self.out(x, exc_info)
-        self.info     = lambda x, exc_info=None: self.out(x, exc_info)
-        self.warning  = lambda x, exc_info=None: self.out(x, exc_info)
-        self.error    = lambda x, exc_info=None: self.out(x, exc_info)
+
+    def __init__(self):
+        self.debug = lambda x, exc_info=None: self.out(x, exc_info)
+        self.info = lambda x, exc_info=None: self.out(x, exc_info)
+        self.warning = lambda x, exc_info=None: self.out(x, exc_info)
+        self.error = lambda x, exc_info=None: self.out(x, exc_info)
         self.critical = lambda x, exc_info=None: self.out(x, exc_info)
 
 
 class NotSupported(Exception):
     pass
 
+
 class UsageError(Exception):
     pass
+
 
 class FormatError(Exception):
     pass
 
+
 class ConnectionFailed(Exception):
     pass
+
 
 class VersionError(Exception):
     pass
 
+
 class AuthenticationFailed(Exception):
     pass
+
 
 class CommunicationFailed(Exception):
     pass
 
+
 connectionList = {
     "p00": {
-        "host" : "asap3-p00",
-        "port" : 51000 },
+        "host": "asap3-p00",
+        "port": 51000
+        },
     "p01": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51001 },
+        "host": "asap3-bl-prx07",
+        "port": 51001
+        },
     "p02.1": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51002 },
+        "host": "asap3-bl-prx07",
+        "port": 51002
+        },
     "p02.2": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51003 },
+        "host": "asap3-bl-prx07",
+        "port": 51003
+        },
     "p03": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51004 },
+        "host": "asap3-bl-prx07",
+        "port": 51004
+        },
     "p04": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51005 },
+        "host": "asap3-bl-prx07",
+        "port": 51005
+        },
     "p05": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51006 },
+        "host": "asap3-bl-prx07",
+        "port": 51006
+        },
     "p06": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51007 },
+        "host": "asap3-bl-prx07",
+        "port": 51007
+        },
     "p07": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51008 },
+        "host": "asap3-bl-prx07",
+        "port": 51008
+        },
     "p08": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51009 },
+        "host": "asap3-bl-prx07",
+        "port": 51009
+        },
     "p09": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51010 },
+        "host": "asap3-bl-prx07",
+        "port": 51010
+        },
     "p10": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51011 },
+        "host": "asap3-bl-prx07",
+        "port": 51011
+        },
     "p11": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51012 },
+        "host": "asap3-bl-prx07",
+        "port": 51012
+        },
     }
 
 
 class Control():
-    def __init__ (self, beamline, useLog = False):
+    def __init__(self, beamline, useLog=False):
         global connectionList
 
         if useLog:
             self.log = logging.getLogger("Control")
-        elif useLog == None:
+        elif useLog is None:
             self.log = NoLoggingFunction()
         else:
             self.log = LoggingFunction()
 
-        self.currentPID     = os.getpid()
+        self.currentPID = os.getpid()
 
         try:
             self.signalHost = connectionList[beamline]["host"]
             self.signalPort = connectionList[beamline]["port"]
-            self.log.info("Starting connection to {h} on port {p}".format(h=self.signalHost, p=self.signalPort))
+            self.log.info("Starting connection to {0} on port {1}"
+                          .format(self.signalHost, self.signalPort))
         except:
             self.log.error("Beamline {0} not supported".format(beamline))
 
-        self.signalSocket   = None
+        self.signalSocket = None
 
         self.__create_sockets()
 
-
-    def __create_sockets (self):
+    def __create_sockets(self):
         self.signalSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         try:
             self.signalSocket.connect((self.signalHost, self.signalPort))
-        except Exception as e:
+        except Exception:
             self.log.error("connect() failed", exc_info=True)
             self.signalSocket.close()
             sys.exit()
 
-
-    def get (self, attribute, timeout=None):
+    def get(self, attribute, timeout=None):
         msg = 'get {0}'.format(attribute)
 
         self.signalSocket.send(msg)
         self.log.debug("sent (len %2d): %s" % (len(msg), msg))
 
         reply = self.signalSocket.recv(1024)
-        self.log.debug("recv (len %2d): %s " % (len( reply), reply))
+        self.log.debug("recv (len %2d): %s " % (len(reply), reply))
 
         return reply
 
-
-    def set (self, attribute, *value):
+    def set(self, attribute, *value):
         value = list(value)
 
-        # flatten list if entry was a list (resultin in a list of lists)
+        # flatten list if entry was a list (result: list of lists)
         if type(value[0]) == list:
             value = [item for sublist in value for item in sublist]
 
         if attribute == "whitelist":
-            msg = 'set {a} {v}'.format(a = attribute, v = value)
+            msg = 'set {0} {1}'.format(attribute, value)
         else:
-            msg = 'set {a} {v}'.format(a = attribute, v = value[0])
+            msg = 'set {0} {1}'.format(attribute, value[0])
 
         self.signalSocket.send(msg)
         self.log.debug("sent (len %2d): %s" % (len(msg), msg))
 
         reply = self.signalSocket.recv(1024)
-        self.log.debug("recv (len %2d): %s " % (len( reply), reply))
+        self.log.debug("recv (len %2d): %s " % (len(reply), reply))
 
         return reply
 
-
-    def do (self, command, timeout=None):
+    def do(self, command, timeout=None):
         msg = 'do {0}'.format(command)
 
         self.signalSocket.send(msg)
         self.log.debug("sent (len %2d): %s" % (len(msg), msg))
 
         reply = self.signalSocket.recv(1024)
-        self.log.debug("recv (len %2d): %s " % (len( reply), reply))
+        self.log.debug("recv (len %2d): %s " % (len(reply), reply))
 
         return reply
 
-
-    def stop (self):
+    def stop(self):
         if self.signalSocket:
             self.log.info("Sending close signal")
             msg = 'bye'
@@ -190,7 +209,7 @@ class Control():
             self.log.debug("sent (len %2d): %s" % (len(msg), msg))
 
             reply = self.signalSocket.recv(1024)
-            self.log.debug("recv (len %2d): %s " % (len( reply), reply))
+            self.log.debug("recv (len %2d): %s " % (len(reply), reply))
 
             try:
                 self.log.info("closing signalSocket...")
@@ -199,12 +218,8 @@ class Control():
             except:
                 self.log.error("closing sockets...failed.", exc_info=True)
 
-
-    def __exit__ (self):
+    def __exit__(self):
         self.stop()
 
-
-    def __del__ (self):
+    def __del__(self):
         self.stop()
-
-

@@ -13,20 +13,25 @@ from multiprocessing import Queue
 import tempfile
 
 try:
-    BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+    BASE_PATH = os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(
+                os.path.realpath(__file__))))
 except:
-    BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
+    BASE_PATH = os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(
+                os.path.abspath(sys.argv[0]))))
 SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
+if SHARED_PATH not in sys.path:
+    sys.path.append(SHARED_PATH)
 del SHARED_PATH
 del CONFIG_PATH
 
 import helpers
 from logutils.queue import QueueHandler
-
 
 BASEDIR = "/opt/hidra"
 
@@ -34,51 +39,64 @@ CONFIGPATH = "/opt/hidra/conf"
 
 LOGPATH = os.path.join(tempfile.gettempdir(), "hidra", "logs")
 
+
 #
 # assume that the server listening to 51000 serves p00
 #
 connectionList = {
     "p00": {
-        "host" : "asap3-p00",
-        "port" : 51000 },
+        "host": "asap3-p00",
+        "port": 51000
+        },
     "p01": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51001 },
+        "host": "asap3-bl-prx07",
+        "port": 51001
+        },
     "p02.1": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51002 },
+        "host": "asap3-bl-prx07",
+        "port": 51002
+        },
     "p02.2": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51003 },
+        "host": "asap3-bl-prx07",
+        "port": 51003
+        },
     "p03": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51004 },
+        "host": "asap3-bl-prx07",
+        "port": 51004
+        },
     "p04": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51005 },
+        "host": "asap3-bl-prx07",
+        "port": 51005
+        },
     "p05": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51006 },
+        "host": "asap3-bl-prx07",
+        "port": 51006
+        },
     "p06": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51007 },
+        "host": "asap3-bl-prx07",
+        "port": 51007
+        },
     "p07": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51008 },
+        "host": "asap3-bl-prx07",
+        "port": 51008
+        },
     "p08": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51009 },
+        "host": "asap3-bl-prx07",
+        "port": 51009
+        },
     "p09": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51010 },
+        "host": "asap3-bl-prx07",
+        "port": 51010
+        },
     "p10": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51011 },
+        "host": "asap3-bl-prx07",
+        "port": 51011
+        },
     "p11": {
-        "host" : "asap3-bl-prx07",
-        "port" : 51012 },
+        "host": "asap3-bl-prx07",
+        "port": 51012
+        },
     }
-
 
 
 class ZmqDT():
@@ -86,21 +104,22 @@ class ZmqDT():
     this class holds getter/setter for all parameters
     and function members that control the operation.
     '''
-    def __init__ (self, beamline, log):
+    def __init__(self, beamline, log):
 
         # Beamline is read-only, determined by portNo
         self.beamline = beamline
-        self.procname = "hidra_" + self.beamline
+        self.procname = "hidra_{0}".format(self.beamline)
 
         # Set log handler
-        self.log   = log
+        self.log = log
 
         # TODO remove TangoDevices
         # TangoDevices to talk with
         self.detectorDevice = None
         self.filewriterDevice = None
 
-        #TODO after removal of detectorDevice and filewriterDevice: change default to None
+        # TODO after removal of detectorDevice and filewriterDevice:
+        # change default to None
         # IP of the EIGER Detector
         self.eigerIp = "None"
         # API version of the EIGER Detector
@@ -112,7 +131,11 @@ class ZmqDT():
         # Target to move the files into
         # e.g. /beamline/p11/current/raw
         self.localTarget = None
-        self.supportedLocalTargets = ["current/raw", "current/scratch_bl", "commissioning/raw", "commissioning/scratch_bl", "local"]
+        self.supportedLocalTargets = ["current/raw",
+                                      "current/scratch_bl",
+                                      "commissioning/raw",
+                                      "commissioning/scratch_bl",
+                                      "local"]
 
         # Flag describing if the data should be stored in localTarget
         self.storeData = None
@@ -123,10 +146,9 @@ class ZmqDT():
         # List of hosts allowed to connect to the data distribution
         self.whitelist = None
 
-
-    def get_logger (self, queue):
+    def get_logger(self, queue):
         # Create log and set handler to queue handle
-        h = QueueHandler(queue) # Just the one handler needed
+        h = QueueHandler(queue)  # Just the one handler needed
         logger = logging.getLogger(self.procname)
         logger.propagate = False
         logger.addHandler(h)
@@ -134,8 +156,7 @@ class ZmqDT():
 
         return logger
 
-
-    def execMsg (self, msg):
+    def execMsg(self, msg):
         '''
         set filedir /gpfs/current/raw
           returns DONE
@@ -170,8 +191,7 @@ class ZmqDT():
         else:
             return "ERROR"
 
-
-    def set (self, param, value):
+    def set(self, param, value):
         '''
         set a parameter, e.g.: set localTarget /beamline/p11/current/raw/
         '''
@@ -210,8 +230,7 @@ class ZmqDT():
             self.log.debug("key={a}; value={v}".format(a=key, v=value))
             return "ERROR"
 
-
-    def get (self, param):
+    def get(self, param):
         '''
         return the value of a parameter, e.g.: get localtarget
         '''
@@ -227,7 +246,8 @@ class ZmqDT():
             return self.historySize
 
         elif key == "localtarget":
-            return os.path.relpath(self.localTarget, os.path.join("/beamline", self.beamline))
+            return os.path.relpath(self.localTarget,
+                                   os.path.join("/beamline", self.beamline))
 
         elif key == "storedata":
             return self.storeData
@@ -241,8 +261,7 @@ class ZmqDT():
         else:
             return "ERROR"
 
-
-    def do (self, cmd):
+    def do(self, cmd):
         '''
         executes commands
         '''
@@ -263,31 +282,31 @@ class ZmqDT():
         else:
             return "ERROR"
 
-    def __writeConfig (self):
+    def __writeConfig(self):
         global CONFIGPATH
 
         #
         # see, if all required params are there.
         #
         if (self.eigerIp
-            and self.eigerApiVersion
-            and self.historySize
-            and self.localTarget
-            and self.storeData != None
-            and self.removeData != None
-            and self.whitelist ):
+                and self.eigerApiVersion
+                and self.historySize
+                and self.localTarget
+                and self.storeData is not None
+                and self.removeData is not None
+                and self.whitelist):
 
-            #TODO correct IP
+            # TODO correct IP
             if self.beamline == "p00":
-                externalIp    = "asap3-p00"
-#                externalIp    = "131.169.251.55" # asap3-p00
+                externalIp = "asap3-p00"
+#                externalIp = "131.169.251.55" # asap3-p00
                 eventDetector = "inotifyx_detector"
-                dataFetcher   = "file_fetcher"
+                dataFetcher = "file_fetcher"
             else:
-                externalIp    = "asap3-bl-prx07"
-#                externalIp    = "131.169.251.38" # asap3-bl-prx07
+                externalIp = "asap3-bl-prx07"
+#                externalIp = "131.169.251.38" # asap3-bl-prx07
                 eventDetector = "http_detector"
-                dataFetcher   = "http_fetcher"
+                dataFetcher = "http_fetcher"
 
             # write configfile
             # /etc/hidra/P01.conf
@@ -296,7 +315,8 @@ class ZmqDT():
 
             with open(configFile, 'w') as f:
                 f.write("logfilePath        = {0}\n".format(LOGPATH))
-                f.write("logfileName        = dataManager_{0}.log\n".format(self.beamline))
+                f.write("logfileName        = dataManager_{0}.log\n"
+                        .format(self.beamline))
                 f.write("logfileSize        = 10485760\n")
                 f.write("procname           = {0}\n".format(self.procname))
                 f.write("extIp              = {0}\n".format(externalIp))
@@ -304,9 +324,12 @@ class ZmqDT():
                 f.write("requestPort        = 50001\n")
 
                 f.write("eventDetectorType  = {0}\n".format(eventDetector))
-                f.write('fixSubdirs         = ["commissioning", "current", "local"]\n')
-                f.write("monitoredDir       = {0}/data/source\n".format(BASEDIR))
-                f.write('monitoredEvents    = {"IN_CLOSE_WRITE" : [".tif", ".cbf", ".nxs"]}\n')
+                f.write('fixSubdirs         = ["commissioning", "current", '
+                        '"local"]\n')
+                f.write("monitoredDir       = {0}/data/source\n"
+                        .format(BASEDIR))
+                f.write('monitoredEvents    = {"IN_CLOSE_WRITE" : [".tif", '
+                        '".cbf", ".nxs"]}\n')
                 f.write("useCleanUp         = False\n")
                 f.write("actionTime         = 150\n")
                 f.write("timeTillClosed     = 2\n")
@@ -318,7 +341,8 @@ class ZmqDT():
                 f.write("chunkSize          = 10485760\n")
 
                 f.write("eigerIp            = {0}\n".format(self.eigerIp))
-                f.write("eigerApiVersion    = {0}\n".format(self.eigerApiVersion))
+                f.write("eigerApiVersion    = {0}\n"
+                        .format(self.eigerApiVersion))
                 f.write("historySize        = {0}\n".format(self.historySize))
                 f.write("localTarget        = {0}\n".format(self.localTarget))
                 f.write("storeData          = {0}\n".format(self.storeData))
@@ -326,13 +350,15 @@ class ZmqDT():
                 f.write("whitelist          = {0}\n".format(self.whitelist))
 
                 self.log.debug("Started with extIp: {0}".format(externalIp))
-                self.log.debug("Started with eventDetector: {0}".format(eventDetector))
-                self.log.debug("Started with dataFetcher: {0}".format(dataFetcher))
-
+                self.log.debug("Started with eventDetector: {0}"
+                               .format(eventDetector))
+                self.log.debug("Started with dataFetcher: {0}"
+                               .format(dataFetcher))
 
         else:
             self.log.debug("eigerIp: {0}".format(self.eigerIp))
-            self.log.debug("eigerApiVersion: {0}".format(self.eigerApiVersion))
+            self.log.debug("eigerApiVersion: {0}"
+                           .format(self.eigerApiVersion))
             self.log.debug("historySize: {0}".format(self.historySize))
             self.log.debug("localTarge: {0}".format(self.localTarget))
             self.log.debug("storeData: {0}".format(self.storeData))
@@ -340,8 +366,7 @@ class ZmqDT():
             self.log.debug("whitelist: {0}".format(self.whitelist))
             raise Exception("Not all required parameters are specified")
 
-
-    def start (self):
+    def start(self):
         '''
         start ...
         '''
@@ -349,7 +374,7 @@ class ZmqDT():
         try:
             self.__writeConfig()
         except:
-            self.log.error("ConfigFile not written", exc_info)
+            self.log.error("ConfigFile not written", exc_info=True)
             return "ERROR"
 
         # check if service is running
@@ -357,7 +382,8 @@ class ZmqDT():
             return "ERROR"
 
         # start service
-        p = subprocess.call(["systemctl", "start", "hidra@" + self.beamline + ".service"])
+        p = subprocess.call(["systemctl", "start",
+                             "hidra@{0}.service".format(self.beamline)])
 
         if p != 0:
             return "ERROR"
@@ -371,10 +397,10 @@ class ZmqDT():
         else:
             return "ERROR"
 
-
-    def stop (self):
+    def stop(self):
         # stop service
-        p = subprocess.call(["systemctl", "stop", "hidra@" + self.beamline + ".service"])
+        p = subprocess.call(["systemctl", "stop",
+                             "hidra@{0}.service".format(self.beamline)])
         return "DONE"
 
         if p == 0:
@@ -382,8 +408,7 @@ class ZmqDT():
         else:
             return "ERROR"
 
-
-    def restart (self):
+    def restart(self):
         # stop service
         reval = self.stop()
 
@@ -393,11 +418,10 @@ class ZmqDT():
         else:
             return "ERROR"
 
-
-
-    def status (self):
+    def status(self):
         try:
-            p = subprocess.call(["systemctl", "is-active", "hidra@" + self.beamline + ".service"])
+            p = subprocess.call(["systemctl", "is-active",
+                                 "hidra@{0}.service".format(self.beamline)])
         except:
             return "ERROR"
 
@@ -407,33 +431,33 @@ class ZmqDT():
             return "NOT RUNNING"
 
 
-class socketServer (object):
+class socketServer(object):
     '''
     one socket for the port, accept() generates new sockets
     '''
     global connectionList
 
-    def __init__ (self, logQueue, beamline):
+    def __init__(self, logQueue, beamline):
         global connectionList
 
         self.logQueue = logQueue
 
-        self.log      = self.get_logger(logQueue)
+        self.log = self.get_logger(logQueue)
 
         self.beamline = beamline
-        self.log.debug('socketServer startet for beamline {bl}'.format(bl=self.beamline))
+        self.log.debug("socketServer startet for beamline {0}"
+                       .format(self.beamline))
 
-        self.host     = connectionList[self.beamline]["host"]
-        self.port     = connectionList[self.beamline]["port"]
-        self.conns    = []
-        self.socket   = None
+        self.host = connectionList[self.beamline]["host"]
+        self.port = connectionList[self.beamline]["port"]
+        self.conns = []
+        self.socket = None
 
         self.create_socket()
 
-
-    def get_logger (self, queue):
+    def get_logger(self, queue):
         # Create log and set handler to queue handle
-        h = QueueHandler(queue) # Just the one handler needed
+        h = QueueHandler(queue)  # Just the one handler needed
         logger = logging.getLogger("socketServer")
         logger.propagate = False
         logger.addHandler(h)
@@ -441,8 +465,7 @@ class socketServer (object):
 
         return logger
 
-
-    def create_socket (self):
+    def create_socket(self):
 
         try:
             self.sckt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -452,59 +475,57 @@ class socketServer (object):
             sys.exit()
 
         try:
-            self.sckt.bind( (self.host, self.port))
-            self.log.info("Start socket (bind):  {h}, {p}".format(h=self.host, p=self.port))
+            self.sckt.bind((self.host, self.port))
+            self.log.info("Start socket (bind):  {0}, {1}"
+                          .format(self.host, self.port))
         except Exception:
             self.log.error("Failed to start socket (bind).", exc_info=True)
             raise
 
         self.sckt.listen(5)
 
-
-    def run (self):
+    def run(self):
         while True:
             try:
                 conn, addr = self.sckt.accept()
 
-                threading.Thread(target=socketCom, args=(self.logQueue, self.beamline, conn, addr)).start()
+                threading.Thread(
+                    target=socketCom,
+                    args=(self.logQueue, self.beamline, conn, addr)).start()
             except KeyboardInterrupt:
                 break
-            except Exception as e:
+            except Exception:
                 self.log.error("Stopped due to unknown error", exc_info=True)
                 break
 
-
-    def finish (self):
+    def finish(self):
         if self.sckt:
             self.log.info("Closing Socket")
             self.sckt.close()
             self.sckt = None
 
-
-    def __exit__ (self):
+    def __exit__(self):
         self.finish()
 
-
-    def __del__ (self):
+    def __del__(self):
         self.finish()
 
 
 class socketCom ():
-    def __init__ (self, logQueue, beamline, conn, addr):
-        self.id    = threading.current_thread().name
+    def __init__(self, logQueue, beamline, conn, addr):
+        self.id = threading.current_thread().name
 
-        self.log   = self.get_logger(logQueue)
+        self.log = self.get_logger(logQueue)
 
         self.zmqDT = ZmqDT(beamline, self.log)
-        self.conn  = conn
-        self.addr  = addr
+        self.conn = conn
+        self.addr = addr
 
         self.run()
 
-
-    def get_logger (self, queue):
+    def get_logger(self, queue):
         # Create log and set handler to queue handle
-        h = QueueHandler(queue) # Just the one handler needed
+        h = QueueHandler(queue)  # Just the one handler needed
         logger = logging.getLogger("socketCom_{0}".format(self.id))
         logger.propagate = False
         logger.addHandler(h)
@@ -512,16 +533,15 @@ class socketCom ():
 
         return logger
 
-
-    def run (self):
+    def run(self):
 
         while True:
 
             msg = self.recv()
 
-            # These calls return the number of bytes received, or -1 if an error
-            # occurred.The return value will be 0 when the peer has performed an
-            # orderly shutdown.
+            # These calls return the number of bytes received, or -1 if an
+            # error occurred.The return value will be 0 when the peer has
+            # performed an orderly shutdown.
             # see: http://man7.org/linux/man-pages/man2/recv.2.html
             if len(msg) == 0:
                 self.log.debug("Received empty msg")
@@ -537,14 +557,13 @@ class socketCom ():
                 self.close()
                 sys.exit(1)
 
-            reply = self.zmqDT.execMsg (msg)
+            reply = self.zmqDT.execMsg(msg)
 
-            if self.send (reply) == 0:
+            if self.send(reply) == 0:
                 self.close()
                 break
 
-
-    def recv (self):
+    def recv(self):
         argout = None
         try:
             argout = self.conn.recv(1024)
@@ -552,23 +571,22 @@ class socketCom ():
             print e
             argout = None
 
-        self.log.debug("Recv (len {l: <2}): {m}".format(l=len(argout.strip()), m=argout.strip()))
+        self.log.debug("Recv (len {0: <2}): {1}"
+                       .format(len(argout.strip()), argout.strip()))
 
         return argout.strip()
 
-
-    def send (self, msg):
+    def send(self, msg):
         try:
             argout = self.conn.send(msg)
         except:
             argout = ""
 
-        self.log.debug("Send (len {l: <2}): {m}".format(l=argout, m=msg))
+        self.log.debug("Send (len {0: <2}): {1}".format(argout, msg))
 
         return argout
 
-
-    def close (self):
+    def close(self):
         #
         # close the 'accepted' socket only, not the main socket
         # because it may still be in use by another client
@@ -578,21 +596,21 @@ class socketCom ():
             self.conn.close()
             self.conn = None
 
-
-    def __exit__ (self):
+    def __exit__(self):
         self.close()
 
-
-    def __del__ (self):
+    def __del__(self):
         self.close()
 
 
 def argument_parsing():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--beamline"          , type    = str,
-                                                help    = "Beamline for which the HiDRA Server for the Eiger detector should be started",
-                                                default = "p00")
+    parser.add_argument("--beamline",
+                        type=str,
+                        help="Beamline for which the HiDRA Server for the "
+                             "Eiger detector should be started",
+                        default="p00")
     return parser.parse_args()
 
 
@@ -602,28 +620,35 @@ class HiDRAControlServer():
 
         self.beamline = arguments.beamline
 
-        setproctitle.setproctitle("HiDRAControlServer_{0}".format(self.beamline))
+        setproctitle.setproctitle("HiDRAControlServer_{0}"
+                                  .format(self.beamline))
 
         onScreen = False
 #        onScreen = "debug"
-        verbose  = True
-        logfile  = os.path.join(BASE_PATH, "logs", "HiDRAControlServer_{0}.log".format(self.beamline))
-        logsize  = 10485760
+        verbose = True
+        logfile = os.path.join(BASE_PATH, "logs",
+                               "HiDRAControlServer_{0}.log"
+                               .format(self.beamline))
+        logsize = 10485760
 
         # Get queue
-        self.logQueue    = Queue(-1)
+        self.logQueue = Queue(-1)
 
         # Get the log Configuration for the lisener
         if onScreen:
-            h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose, onScreen)
+            h1, h2 = helpers.get_log_handlers(logfile, logsize,
+                                              verbose, onScreen)
 
             # Start queue listener using the stream handler above.
-            self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1, h2)
+            self.logQueueListener = (
+                helpers.CustomQueueListener(self.logQueue, h1, h2))
         else:
-            h1 = helpers.get_log_handlers(logfile, logsize, verbose, onScreen)
+            h1 = helpers.get_log_handlers(logfile, logsize,
+                                          verbose, onScreen)
 
             # Start queue listener using the stream handler above
-            self.logQueueListener = helpers.CustomQueueListener(self.logQueue, h1)
+            self.logQueueListener = (
+                helpers.CustomQueueListener(self.logQueue, h1))
 
         self.logQueueListener.start()
 
@@ -639,10 +664,9 @@ class HiDRAControlServer():
 
         s.run()
 
-
-    def get_logger (self, queue):
+    def get_logger(self, queue):
         # Create log and set handler to queue handle
-        h = QueueHandler(queue) # Just the one handler needed
+        h = QueueHandler(queue)  # Just the one handler needed
         logger = logging.getLogger("HiDRAControlServer")
         logger.propagate = False
         logger.addHandler(h)
@@ -653,4 +677,3 @@ class HiDRAControlServer():
 
 if __name__ == '__main__':
     t = HiDRAControlServer()
-

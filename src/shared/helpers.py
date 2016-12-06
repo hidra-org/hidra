@@ -6,28 +6,36 @@ import logging
 import logging.handlers
 import sys
 import shutil
-import zmq
 import socket
 from version import __version__
 
 try:
     # try to use the system module
-    from logutils.queue import QueueHandler, QueueListener
+    from logutils.queue import QueueListener
 except:
     # there is no module logutils installed, fallback on the one in shared
 
     try:
-        BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+        BASE_PATH = os.path.dirname(
+            os.path.dirname(
+                os.path.dirname(
+                    os.path.realpath(__file__))))
     except:
-        BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-#        BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( sys.argv[0] ) ))))
-    SHARED_PATH  = os.path.join(BASE_PATH, "src", "shared")
+        BASE_PATH = os.path.dirname(
+            os.path.dirname(
+                os.path.dirname(
+                    os.path.abspath(sys.argv[0]))))
+#        BASE_PATH = os.path.dirname(
+#            os.path.dirname(
+#                os.path.dirname(
+#                    os.path.realpath(sys.argv[0])))))
+    SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
     if not SHARED_PATH in sys.path:
-        sys.path.append ( SHARED_PATH )
+        sys.path.append(SHARED_PATH)
     del SHARED_PATH
 
-    from logutils.queue import QueueHandler, QueueListener
+    from logutils.queue import QueueListener
 
 
 def is_windows():
@@ -58,9 +66,10 @@ def is_linux():
 
 # This function is needed because configParser always needs a section name
 # the used config file consists of key-value pairs only
-# source: http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788
+# source: http://stackoverflow.com/questions/2819696/
+#                parsing-properties-file-in-python/2819788#2819788
 class FakeSecHead (object):
-    def __init__ (self, fp):
+    def __init__(self, fp):
         self.fp = fp
         self.sechead = '[asection]\n'
 
@@ -75,7 +84,7 @@ class FakeSecHead (object):
 
 
 # http://code.activestate.com/recipes/541096-prompt-the-user-for-confirmation/
-def confirm (prompt=None, resp=False):
+def confirm(prompt=None, resp=False):
     """prompts for yes or no response from the user. Returns True for yes and
     False for no.
 
@@ -123,7 +132,7 @@ def confirm (prompt=None, resp=False):
             return False
 
 
-def check_event_detector_type (eDType, supportedTypes):
+def check_event_detector_type(eDType, supportedTypes):
 
     eDType = eDType.lower()
 
@@ -134,27 +143,28 @@ def check_event_detector_type (eDType, supportedTypes):
         sys.exit(1)
 
 
-
-def check_dir_empty (dirPath):
+def check_dir_empty(dirPath):
 
     #check if directory is empty
     if os.listdir(dirPath):
         logging.debug("Directory '{0}' is not empty.".format(dirPath))
-        if confirm(prompt="Directory {0} is not empty.\nShould its content be removed?".format(dirPath),
-                   resp = True):
+        if confirm(prompt="Directory {0} is not empty.\n"
+                          "Should its content be removed?".format(dirPath),
+                   resp=True):
             for element in os.listdir(dirPath):
                 path = os.path.join(dirPath, element)
                 if os.path.isdir(path):
-                   try:
+                    try:
                         os.rmdir(path)
-                   except OSError:
+                    except OSError:
                         shutil.rmtree(path)
                 else:
                     os.remove(path)
-            logging.info("All elements of directory {0} were removed.".format(dirPath))
+            logging.info("All elements of directory {0} were removed."
+                         .format(dirPath))
 
 
-def check_any_sub_dir_exists (dirPath, subDirs):
+def check_any_sub_dir_exists(dirPath, subDirs):
 
     dirPath = os.path.normpath(dirPath)
     dirsToCheck = [os.path.join(dirPath, directory) for directory in subDirs]
@@ -166,12 +176,13 @@ def check_any_sub_dir_exists (dirPath, subDirs):
             noSubdir = False
 
     if noSubdir:
-        logging.error("There are none of the specified subdirectories inside '{0}'. Abort.".format(dirPath))
+        logging.error("There are none of the specified subdirectories inside "
+                      "'{0}'. Abort.".format(dirPath))
         logging.error("Checked paths: {0}".format(dirsToCheck))
         sys.exit(1)
 
 
-def check_all_sub_dir_exist (dirPath, subDirs):
+def check_all_sub_dir_exist(dirPath, subDirs):
 
     dirPath = os.path.normpath(dirPath)
     dirsToCheck = [os.path.join(dirPath, directory) for directory in subDirs]
@@ -181,7 +192,7 @@ def check_all_sub_dir_exist (dirPath, subDirs):
             logging.warning("Dir '{0}' does not exist.".format(d))
 
 
-def check_file_existance (filePath):
+def check_file_existance(filePath):
     # Check file for existance.
     # Exits if it does not exist
 
@@ -190,7 +201,7 @@ def check_file_existance (filePath):
         sys.exit(1)
 
 
-def check_dir_existance (dirPath):
+def check_dir_existance(dirPath):
     # Check directory path for existance.
     # Exits if it does not exist
 
@@ -199,7 +210,7 @@ def check_dir_existance (dirPath):
         sys.exit(1)
 
 
-def check_log_file_writable (filepath, filename):
+def check_log_file_writable(filepath, filename):
     # Exits if logfile cannot be written
     try:
         logfullPath = os.path.join(filepath, filename)
@@ -207,12 +218,15 @@ def check_log_file_writable (filepath, filename):
         logFile.close()
     except:
         logging.error("Unable to create the logfile {0}".format(logfullPath))
-        logging.error("Please specify a new target by setting the following arguments:\n--logfileName\n--logfilePath")
+        logging.error("Please specify a new target by setting the following "
+                      "arguments:\n--logfileName\n--logfilePath")
         sys.exit(1)
 
 
-def check_version (version, log):
-    log.debug("remote version: {v}, local version: {v2}".format(v=version, v2=__version__))
+def check_version(version, log):
+    log.debug("remote version: {0}, local version: {1}"
+              .format(version, __version__))
+
     if version.rsplit(".", 1)[0] < __version__.rsplit(".", 1)[0]:
         log.info("Version of receiver is lower. Please update receiver.")
         return False
@@ -223,42 +237,39 @@ def check_version (version, log):
         return True
 
 
-def check_host (hostname, whiteList, log):
+def check_host(host, whiteList, log):
 
-    if hostname and whiteList:
+    if host and whiteList:
 
-        if type(hostname) == list:
-            temp = True
-            for host in hostname:
-                if host.endswith(".desy.de"):
-                    hostModified = host[:-8]
-                else:
-                    hostModified = host
+        if type(host) == list:
+            return_val = True
+            for hostname in host:
+                hostModified = hostname.replace(".desy.de", "")
 
-                if host not in whiteList and hostModified not in whiteList:
-                    log.info("Host {0} is not allowed to connect".format(host))
-                    temp = False
+                if hostname not in whiteList and hostModified not in whiteList:
+                    log.info("Host {0} is not allowed to connect"
+                             .format(hostname))
+                    return_val = False
 
-            return temp
-
+            return return_val
 
         else:
-            if hostname.endswith(".desy.de"):
-                hostnameModified = hostname[:-8]
-            else:
-                hostnameModified = hostname
+            hostModified = host.replace(".desy.de", "")
 
-            if hostname in whiteList or hostnameModified in whiteList:
+            if host in whiteList or hostModified in whiteList:
                 return True
+            else:
+                log.info("Host {0} is not allowed to connect".format(host))
 
     return False
 
 
-def check_ping(host, log = logging):
+def check_ping(host, log=logging):
     if is_windows():
         response = os.system("ping -n 1 -w 2 {0}".format(host))
     else:
-        response = os.system("ping -c 1 -w 2 {0} > /dev/null 2>&1".format(host))
+        response = os.system("ping -c 1 -w 2 {0} > /dev/null 2>&1"
+                             .format(host))
 
     if response != 0:
         log.error("{0} is not pingable.".format(host))
@@ -267,22 +278,18 @@ def check_ping(host, log = logging):
 
 # IP and DNS name should be both in the whitelist
 def extend_whitelist(whitelist, log):
-    log.info("Configured whitelist: {w}".format(w=whitelist))
+    log.info("Configured whitelist: {0}".format(whitelist))
     extendedWhitelist = []
 
     for host in whitelist:
 
         if host == "localhost":
-            elementToAdd = socket.gethostbyname(host)
+            extendedWhitelist.append(socket.gethostbyname(host))
         else:
             try:
                 hostname, tmp, ip = socket.gethostbyaddr(host)
 
-                if hostname.endswith(".desy.de"):
-                    hostModified = hostname[:-8]
-                else:
-                    hostModified = hostname
-
+                hostModified = hostname.replace(".desy.de", "")
 
                 if hostModified not in whitelist:
                     extendedWhitelist.append(hostModified)
@@ -298,60 +305,10 @@ def extend_whitelist(whitelist, log):
     log.debug("Extended whitelist: {0}".format(whitelist))
 
 
-#class ForwarderThread(threading.Thread):
-#    def __init__ (self, controlPubConId, controlSubConId, context):
-#
-#        threading.Thread.__init__(self)
-#
-#        self.controlPubConId = controlPubConId
-#        self.controlSubConId = controlSubConId
-#        self.context         = context
-#
-#        self.frontend        = None
-#        self.backend         = None
-#
-#
-#    def run (self):
-#        # initiate XPUB/XSUB for control signals
-#
-#        # Socket facing clients
-#        self.frontend = context.socket(zmq.SUB)
-#        self.frontend.bind(controlPubConId)
-#        logging.info("=== [forwarder] frontend bind to: '{id}'".format(id=controlPubConId))
-#
-#        self.frontend.setsockopt(zmq.SUBSCRIBE, "")
-#
-#        # Socket facing services
-#        self.backend = context.socket(zmq.PUB)
-#        self.backend.bind(controlSubConId)
-#        logging.info("=== [forwarder] backend bind to: '{id}'".format(id=controlSubConId))
-#
-#        zmq.device(zmq.FORWARDER, self.frontend, self.backend)
-#        logging.info("=== [forwarder] forwarder initiated")
-#
-#
-#    def stop (self):
-#        if self.frontend:
-#            logging.info("=== [forwarder] close frontend")
-#            self.frontend.close()
-#            self.frontend = None
-#        if self.backend:
-#            logging.info("=== [forwarder] close backend")
-#            self.backend.close()
-#            self.backend = None
-#
-#
-#    def __exit (self):
-#        self.stop()
-#
-#
-#    def __del__ (self):
-#        self.stop()
-
-
-# http://stackoverflow.com/questions/25585518/python-logging-logutils-with-queuehandler-and-queuelistener#25594270
+# http://stackoverflow.com/questions/25585518/
+#        python-logging-logutils-with-queuehandler-and-queuelistener#25594270
 class CustomQueueListener (QueueListener):
-    def __init__ (self, queue, *handlers):
+    def __init__(self, queue, *handlers):
         super(CustomQueueListener, self).__init__(queue, *handlers)
         """
         Initialise an instance with the specified queue and
@@ -360,7 +317,7 @@ class CustomQueueListener (QueueListener):
         # Changing this to a list from tuple in the parent class
         self.handlers = list(handlers)
 
-    def handle (self, record):
+    def handle(self, record):
         """
         Override handle a record.
 
@@ -371,17 +328,18 @@ class CustomQueueListener (QueueListener):
         """
         record = self.prepare(record)
         for handler in self.handlers:
-            if record.levelno >= handler.level: # This check is not in the parent class
+            # This check is not in the parent class
+            if record.levelno >= handler.level:
                 handler.handle(record)
 
-    def addHandler (self, hdlr):
+    def addHandler(self, hdlr):
         """
         Add the specified handler to this logger.
         """
         if not (hdlr in self.handlers):
             self.handlers.append(hdlr)
 
-    def removeHandler (self, hdlr):
+    def removeHandler(self, hdlr):
         """
         Remove the specified handler from this logger.
         """
@@ -391,15 +349,16 @@ class CustomQueueListener (QueueListener):
 
 
 # Get the log Configuration for the lisener
-def get_log_handlers (logfile, logsize, verbose, onScreenLogLevel = False):
+def get_log_handlers(logfile, logsize, verbose, onScreenLogLevel=False):
     # Enable more detailed logging if verbose-option has been set
     logLevel = logging.INFO
     if verbose:
         logLevel = logging.DEBUG
 
     # Set format
-    datef='%Y-%m-%d %H:%M:%S'
-    f = '[%(asctime)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s'
+    datef = "%Y-%m-%d %H:%M:%S"
+    f = ("[%(asctime)s] [%(module)s:%(funcName)s:%(lineno)d] "
+         "[%(name)s] [%(levelname)s] %(message)s")
 
     # Setup file handler to output to file
     # argument for RotatingFileHandler: filename, mode, maxBytes, backupCount)
@@ -408,23 +367,26 @@ def get_log_handlers (logfile, logsize, verbose, onScreenLogLevel = False):
         h1 = logging.FileHandler(logfile, 'a')
     else:
         h1 = logging.handlers.RotatingFileHandler(logfile, 'a', logsize, 5)
-    f1 = logging.Formatter(datefmt=datef,fmt=f)
+    f1 = logging.Formatter(datefmt=datef, fmt=f)
     h1.setFormatter(f1)
     h1.setLevel(logLevel)
 
     # Setup stream handler to output to console
     if onScreenLogLevel:
         onScreenLogLevelLower = onScreenLogLevel.lower()
-        if onScreenLogLevelLower in ["debug", "info", "warning", "error", "critical"]:
+        if (onScreenLogLevelLower in ["debug", "info", "warning",
+                                      "error", "critical"]):
 
-            f  = "[%(asctime)s] > %(message)s"
+            f = "[%(asctime)s] > %(message)s"
 
             if onScreenLogLevelLower == "debug":
                 screenLogLevel = logging.DEBUG
                 f = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s"
 
                 if not verbose:
-                    logging.error("Logging on Screen: Option DEBUG in only active when using verbose option as well (Fallback to INFO).")
+                    logging.error("Logging on Screen: Option DEBUG in only "
+                                  "active when using verbose option as well "
+                                  "(Fallback to INFO).")
             elif onScreenLogLevelLower == "info":
                 screenLogLevel = logging.INFO
             elif onScreenLogLevelLower == "warning":
@@ -441,55 +403,74 @@ def get_log_handlers (logfile, logsize, verbose, onScreenLogLevel = False):
 
             return h1, h2
         else:
-            logging.error("Logging on Screen: Option {0} is not supported.".format(onScreenLogLevel))
+            logging.error("Logging on Screen: Option {0} is not supported."
+                          .format(onScreenLogLevel))
             exit(1)
 
     else:
         return h1
 
 
-def init_logging (filenameFullPath, verbose, onScreenLogLevel = False):
-    #@see https://docs.python.org/2/howto/logging-cookbook.html
+def init_logging(filenameFullPath, verbose, onScreenLogLevel=False):
+    # see https://docs.python.org/2/howto/logging-cookbook.html
 
-    #more detailed logging if verbose-option has been set
+    # more detailed logging if verbose-option has been set
     loggingLevel = logging.INFO
     if verbose:
         loggingLevel = logging.DEBUG
 
-    #log everything to file
+    # log everything to file
+#                        format=("[%(asctime)s] [PID %(process)d] "
+#                                "[%(filename)s] "
+#                                "[%(module)s:%(funcName)s:%(lineno)d] "
+#                                "[%(name)s] [%(levelname)s] %(message)s"),
     logging.basicConfig(level=loggingLevel,
-#                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
-                        format='%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s',
-                        datefmt='%Y-%m-%d_%H:%M:%S',
+                        format=("%(asctime)s %(processName)-10s %(name)s "
+                                "%(levelname)-8s %(message)s"),
+                        datefmt="%Y-%m-%d_%H:%M:%S",
                         filename=filenameFullPath,
                         filemode="a")
 
 #        fileHandler = logging.FileHandler(filename=filenameFullPath,
 #                                          mode="a")
-#        fileHandlerFormat = logging.Formatter(datefmt='%Y-%m-%d_%H:%M:%S',
-#                                              fmt='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s] [%(name)s] [%(levelname)s] %(message)s')
+#        fileHandlerFormat = logging.Formatter(
+#            datefmt="%Y-%m-%d_%H:%M:%S,
+#            fmt=("[%(asctime)s] "
+#                 "[PID %(process)d] "
+#                 "[%(filename)s] "
+#                 "[%(module)s:%(funcName)s] "
+#                 "[%(name)s] "
+#                 "[%(levelname)s] "
+#                 "%(message)s"))
 #        fileHandler.setFormatter(fileHandlerFormat)
 #        fileHandler.setLevel(loggingLevel)
 #        logging.getLogger("").addHandler(fileHandler)
 
-    #log info to stdout, display messages with different format than the file output
+    # log info to stdout, display messages with different format than the
+    # file output
     if onScreenLogLevel:
         onScreenLogLevelLower = onScreenLogLevel.lower()
-        if onScreenLogLevelLower in ["debug", "info", "warning", "error", "critical"]:
+        if (onScreenLogLevelLower in ["debug", "info", "warning",
+                                      "error", "critical"]):
 
             console = logging.StreamHandler()
-            screenHandlerFormat = logging.Formatter(datefmt = "%Y-%m-%d_%H:%M:%S",
-                                                    fmt     = "[%(asctime)s] > %(message)s")
+            screenHandlerFormat = logging.Formatter(
+                datefmt="%Y-%m-%d_%H:%M:%S",
+                fmt="[%(asctime)s] > %(message)s")
 
             if onScreenLogLevelLower == "debug":
                 screenLoggingLevel = logging.DEBUG
                 console.setLevel(screenLoggingLevel)
 
-                screenHandlerFormat = logging.Formatter(datefmt = "%Y-%m-%d_%H:%M:%S",
-                                                        fmt     = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s")
+                screenHandlerFormat = logging.Formatter(
+                    datefmt="%Y-%m-%d_%H:%M:%S",
+                    fmt=("[%(asctime)s] > [%(filename)s:%(lineno)d] "
+                         "%(message)s"))
 
                 if not verbose:
-                    logging.error("Logging on Screen: Option DEBUG in only active when using verbose option as well (Fallback to INFO).")
+                    logging.error("Logging on Screen: Option DEBUG in only "
+                                  "active when using verbose option as well "
+                                  "(Fallback to INFO).")
             elif onScreenLogLevelLower == "info":
                 screenLoggingLevel = logging.INFO
                 console.setLevel(screenLoggingLevel)
@@ -506,6 +487,5 @@ def init_logging (filenameFullPath, verbose, onScreenLogLevel = False):
             console.setFormatter(screenHandlerFormat)
             logging.getLogger("").addHandler(console)
         else:
-            logging.error("Logging on Screen: Option {0} is not supported.".format(onScreenLogLevel))
-
-
+            logging.error("Logging on Screen: Option {0} is not supported."
+                          .format(onScreenLogLevel))

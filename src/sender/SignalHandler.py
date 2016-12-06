@@ -66,9 +66,7 @@ class SignalHandler():
         self.whiteList = []
 
         for host in whiteList:
-            # remove .desy.de from hostnames
-            host.replace(".desy.de", "")
-            self.whiteList.append(host)
+            self.whiteList.append(host.replace(".desy.de", ""))
 
         # sockets
         self.controlPubSocket = None
@@ -407,11 +405,7 @@ class SignalHandler():
 
         # make host naming consistent
         for socketConf in socketIds:
-            socketConf[0] = (
-                socketConf[0].replace(".desy.de:", ":")
-                if ".desy.de:" in socketConf[0]
-                else socketConf[0]
-                )
+            socketConf[0] = socketConf[0].replace(".desy.de:", ":")
 
         overwrite_index = None
         flatlist_nested = [set([j[0] for j in sublist])
@@ -474,8 +468,7 @@ class SignalHandler():
 
 #        for socketConf in socketIds:
 #
-#            if ".desy.de:" in socketConf[0]:
-#                socketConf[0] = socketConf[0].replace(".desy.de:",":")
+#            socketConf[0] = socketConf[0].replace(".desy.de:",":")
 #
 #            socketId = socketConf[0]
 #            self.log.debug("socketId: {0}".format(socketId))
@@ -580,8 +573,8 @@ class SignalHandler():
         #       START_STREAM      #
         ###########################
         if signal == b"START_STREAM":
-            self.log.info("Received signal: {s} for hosts {h}"
-                          .format(s=signal, h=socketIds))
+            self.log.info("Received signal: {0} for hosts {1}"
+                          .format(signal, socketIds))
 
             self.__start_signal(signal, "data", socketIds, self.openRequPerm,
                                 None, self.nextRequNode)
@@ -592,8 +585,8 @@ class SignalHandler():
         #  START_STREAM_METADATA  #
         ###########################
         elif signal == b"START_STREAM_METADATA":
-            self.log.info("Received signal: {s} for hosts {h}"
-                          .format(s=signal, h=socketIds))
+            self.log.info("Received signal: {0} for hosts {1}"
+                          .format(signal, socketIds))
 
             self.__start_signal(signal, "metadata", socketIds,
                                 self.openRequPerm, None,
@@ -606,8 +599,8 @@ class SignalHandler():
         #  STOP_STREAM_METADATA   #
         ###########################
         elif signal == b"STOP_STREAM" or signal == b"STOP_STREAM_METADATA":
-            self.log.info("Received signal: {s} for host {h}"
-                          .format(s=signal, h=socketIds))
+            self.log.info("Received signal: {0} for host {1}"
+                          .format(signal, socketIds))
 
             self.openRequPerm, nonetmp, self.nextRequNode = (
                 self.__stop_signal(signal, socketIds, self.openRequPerm,
@@ -620,8 +613,8 @@ class SignalHandler():
         #       START_QUERY       #
         ###########################
         elif signal == b"START_QUERY_NEXT":
-            self.log.info("Received signal: {s} for hosts {h}"
-                          .format(s=signal, h=socketIds))
+            self.log.info("Received signal: {0} for hosts {1}"
+                          .format(signal, socketIds))
 
             self.__start_signal(signal, "data", socketIds,
                                 self.allowedQueries, self.openRequVari,
@@ -633,8 +626,8 @@ class SignalHandler():
         #  START_QUERY_METADATA   #
         ###########################
         elif signal == b"START_QUERY_METADATA":
-            self.log.info("Received signal: {s} for hosts {h}"
-                          .format(s=signal, h=socketIds))
+            self.log.info("Received signal: {0} for hosts {1}"
+                          .format(signal, socketIds))
 
             self.__start_signal(signal, "metadata", socketIds,
                                 self.allowedQueries,
@@ -647,8 +640,8 @@ class SignalHandler():
         #  STOP_QUERY_METADATA    #
         ###########################
         elif signal == b"STOP_QUERY_NEXT" or signal == b"STOP_QUERY_METADATA":
-            self.log.info("Received signal: {s} for hosts {h}"
-                          .format(s=signal, h=socketIds))
+            self.log.info("Received signal: {0} for hosts {1}"
+                          .format(signal, socketIds))
 
             self.allowedQueries, self.openRequVari, nonetmp = (
                 self.__stop_signal(signal, socketIds, self.allowedQueries,
@@ -658,8 +651,8 @@ class SignalHandler():
             return
 
         else:
-            self.log.info("Received signal: {s} for hosts {h}"
-                          .format(s=signal, h=socketIds))
+            self.log.info("Received signal: {0} for hosts {1}"
+                          .format(signal, socketIds))
             self.send_response(b"NO_VALID_SIGNAL")
 
     def stop(self):

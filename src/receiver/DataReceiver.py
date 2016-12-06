@@ -1,5 +1,4 @@
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
-
+from __future__ import print_function
 
 import sys
 import argparse
@@ -14,13 +13,16 @@ except:
     import configparser as ConfigParser
 
 
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+BASE_PATH = os.path.dirname(
+    os.path.dirname(
+        os.path.dirname(
+            os.path.realpath(__file__))))
 SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-API_PATH    = os.path.join(BASE_PATH, "src", "APIs")
+API_PATH = os.path.join(BASE_PATH, "src", "APIs")
 CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
+if SHARED_PATH not in sys.path:
+    sys.path.append(SHARED_PATH)
 del SHARED_PATH
 del BASE_PATH
 
@@ -31,15 +33,17 @@ try:
     from hidra import Transfer
 except:
     # then search in local modules
-    if not API_PATH in sys.path:
-        sys.path.append ( API_PATH )
+    if API_PATH not in sys.path:
+        sys.path.append(API_PATH)
     del API_PATH
 
     from hidra import Transfer
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
 
 def argument_parsing():
-    defaultConfig = CONFIG_PATH + os.sep + "dataReceiver.conf"
+    defaultConfig = os.path.join(CONFIG_PATH, "dataReiceiver.conf")
 
     ##################################
     #   Get command line arguments   #
@@ -47,32 +51,46 @@ def argument_parsing():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--configFile"        , type    = str,
-                                                help    = "Location of the configuration file")
+    parser.add_argument("--configFile",
+                        type=str,
+                        help="Location of the configuration file")
 
-    parser.add_argument("--logfilePath"       , type    = str,
-                                                help    = "Path where logfile will be created")
-    parser.add_argument("--logfileName"       , type    = str,
-                                                help    = "Filename used for logging")
-    parser.add_argument("--logfileSize"       , type    = int,
-                                                help    = "File size before rollover in B (linux only)")
-    parser.add_argument("--verbose"           , help    = "More verbose output",
-                                                action  = "store_true" )
-    parser.add_argument("--onScreen"          , type    = str,
-                                                help    = "Display logging on screen (options are CRITICAL, ERROR, WARNING, INFO, DEBUG)",
-                                                default = False )
+    parser.add_argument("--logfilePath",
+                        type=str,
+                        help="Path where logfile will be created")
+    parser.add_argument("--logfileName",
+                        type=str,
+                        help="Filename used for logging")
+    parser.add_argument("--logfileSize",
+                        type=int,
+                        help="File size before rollover in B (linux only)")
+    parser.add_argument("--verbose",
+                        help="More verbose output",
+                        action="store_true")
+    parser.add_argument("--onScreen",
+                        type=str,
+                        help="Display logging on screen "
+                             "(options are CRITICAL, ERROR, WARNING, "
+                             "INFO, DEBUG)",
+                        default=False)
 
-    parser.add_argument("--whitelist"         , type    = str,
-                                                help    = "List of hosts allowed to connect")
-    parser.add_argument("--targetDir"         , type    = str,
-                                                help    = "Where incoming data will be stored to")
-    parser.add_argument("--dataStreamIp"      , type    = str,
-                                                help    = "Ip of dataStream-socket to pull new files from")
-    parser.add_argument("--dataStreamPort"    , type    = str,
-                                                help    = "Port number of dataStream-socket to pull new files from")
+    parser.add_argument("--whitelist",
+                        type=str,
+                        help="List of hosts allowed to connect")
+    parser.add_argument("--targetDir",
+                        type=str,
+                        help="Where incoming data will be stored to")
+    parser.add_argument("--dataStreamIp",
+                        type=str,
+                        help="Ip of dataStream-socket to pull new files from")
+    parser.add_argument("--dataStreamPort",
+                        type=str,
+                        help="Port number of dataStream-socket to pull new "
+                             "files from")
 
-    arguments   = parser.parse_args()
-    arguments.configFile         = arguments.configFile or defaultConfig
+    arguments = parser.parse_args()
+    arguments.configFile = arguments.configFile \
+        or defaultConfig
 
     # check if configFile exist
     helpers.check_file_existance(arguments.configFile)
@@ -84,20 +102,30 @@ def argument_parsing():
     config = ConfigParser.RawConfigParser()
     config.readfp(helpers.FakeSecHead(open(arguments.configFile)))
 
-    arguments.logfilePath        = arguments.logfilePath        or config.get('asection', 'logfilePath')
-    arguments.logfileName        = arguments.logfileName        or config.get('asection', 'logfileName')
+    arguments.logfilePath = arguments.logfilePath \
+        or config.get('asection', 'logfilePath')
+    arguments.logfileName = arguments.logfileName \
+        or config.get('asection', 'logfileName')
 
     if not helpers.is_windows():
-        arguments.logfileSize    = arguments.logfileSize        or config.get('asection', 'logfileSize')
+        arguments.logfileSize = arguments.logfileSize \
+            or config.get('asection', 'logfileSize')
 
     try:
-        arguments.whitelist      = arguments.whitelist          or json.loads(config.get('asection', 'whitelist'))
+        arguments.whitelist = arguments.whitelist \
+            or json.loads(config.get('asection', 'whitelist'))
     except ValueError:
         ldap_cn = config.get('asection', 'whitelist')
-        p = subprocess.Popen(["ldapsearch",  "-x", "-H ldap://it-ldap-slave.desy.de:1389", "cn=" + ldap_cn , "-LLL"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        p = subprocess.Popen(
+            ["ldapsearch",
+             "-x",
+             "-H ldap://it-ldap-slave.desy.de:1389",
+             "cn=" + ldap_cn, "-LLL"],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         lines = p.stdout.readlines()
 
-        matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]', re.M|re.I)
+        matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+                               re.M | re.I)
         arguments.whitelist = []
 
         for line in lines:
@@ -106,24 +134,29 @@ def argument_parsing():
                 if matchHost.match(line).group(1) not in arguments.whitelist:
                     arguments.whitelist.append(matchHost.match(line).group(1))
     except:
-        arguments.whitelist      = json.loads(config.get('asection', 'whitelist').replace("'", '"'))
+        arguments.whitelist = json.loads(
+            config.get('asection', 'whitelist').replace("'", '"'))
 
-    arguments.targetDir          = arguments.targetDir          or config.get('asection', 'targetDir')
+    arguments.targetDir = arguments.targetDir \
+        or config.get('asection', 'targetDir')
 
-    arguments.dataStreamIp       = arguments.dataStreamIp       or config.get('asection', 'dataStreamIp')
-    arguments.dataStreamPort     = arguments.dataStreamPort     or config.get('asection', 'dataStreamPort')
+    arguments.dataStreamIp = arguments.dataStreamIp \
+        or config.get('asection', 'dataStreamIp')
+    arguments.dataStreamPort = arguments.dataStreamPort \
+        or config.get('asection', 'dataStreamPort')
 
     ##################################
     #     Check given arguments      #
     ##################################
 
-    logfile     = os.path.join(arguments.logfilePath, arguments.logfileName)
+    logfile = os.path.join(arguments.logfilePath, arguments.logfileName)
 
     #enable logging
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
 
-    handlers = helpers.get_log_handlers(logfile, arguments.logfileSize, arguments.verbose, arguments.onScreen)
+    handlers = helpers.get_log_handlers(logfile, arguments.logfileSize,
+                                        arguments.verbose, arguments.onScreen)
 
     if type(handlers) == tuple:
         for h in handlers:
@@ -135,7 +168,8 @@ def argument_parsing():
     helpers.check_dir_existance(arguments.targetDir)
 
     # check if logfile is writable
-    helpers.check_log_wile_writable(arguments.logfilePath, arguments.logfileName)
+    helpers.check_log_wile_writable(arguments.logfilePath,
+                                    arguments.logfileName)
 
     return arguments
 
@@ -150,34 +184,33 @@ class DataReceiver:
             self.log = self.get_logger()
             raise
 
-        self.log          = self.get_logger()
+        self.log = self.get_logger()
 
-        self.whitelist    = arguments.whitelist
+        self.whitelist = arguments.whitelist
 
-        self.log.info("Configured whitelist: " + str(self.whitelist))
+        self.log.info("Configured whitelist: {0}".format(self.whitelist))
 
-        self.targetDir    = os.path.normpath(arguments.targetDir)
-        self.dataIp       = arguments.dataStreamIp
-        self.dataPort     = arguments.dataStreamPort
+        self.targetDir = os.path.normpath(arguments.targetDir)
+        self.dataIp = arguments.dataStreamIp
+        self.dataPort = arguments.dataStreamPort
 
-        self.log.info("Writing to directory '" + self.targetDir + "'.")
+        self.log.info("Writing to directory '{0}'.".format(self.targetDir))
 
-        self.transfer = transfer("stream", useLog = True)
+        self.transfer = Transfer("stream", useLog=True)
 
         try:
             self.run()
         except KeyboardInterrupt:
             pass
         except:
-            self.log.error("Stopping due to unknown error condition", exc_info=True)
+            self.log.error("Stopping due to unknown error condition",
+                           exc_info=True)
         finally:
             self.stop()
-
 
     def get_logger(self):
         logger = logging.getLogger("DataReceiver")
         return logger
-
 
     def run(self):
 
@@ -188,9 +221,7 @@ class DataReceiver:
             self.log.error("Could not initiate stream", exc_info=True)
             raise
 
-
-
-        continueReceiving = True #receiving will stop if value gets False
+        continueReceiving = True  # receiving will stop if value gets False
         self.log.debug("Waiting for new messages...")
         #run loop, and wait for incoming messages
         while continueReceiving:
@@ -202,17 +233,14 @@ class DataReceiver:
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise
 
-
     def stop(self):
         if self.transfer:
             self.log.info("Shutting down receiver...")
             self.transfer.stop()
             self.transfer = None
 
-
     def __exit__(self):
         self.stop()
-
 
     def __del__(self):
         self.stop()
