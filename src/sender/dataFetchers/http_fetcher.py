@@ -1,9 +1,6 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
-              'Jan Garrevoet <jan,garrevoet@desy.de>')
-
 import zmq
 import os
 import sys
@@ -14,6 +11,9 @@ import time
 import errno
 
 from send_helpers import __send_to_targets
+
+__author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
+              'Jan Garrevoet <jan,garrevoet@desy.de>')
 
 
 def setup(log, prop):
@@ -37,23 +37,23 @@ def setup(log, prop):
 
 def get_metadata(log, prop, targets, metadata, chunkSize, localTarget=None):
 
-    #extract fileEvent metadata
+    # extract fileEvent metadata
     try:
-        #TODO validate metadata dict
+        # TODO validate metadata dict
         filename = metadata["filename"]
         sourcePath = metadata["sourcePath"]
         relativePath = metadata["relativePath"]
     except:
         log.error("Invalid fileEvent message received.", exc_info=True)
         log.debug("metadata={0}".format(metadata))
-        #skip all further instructions and continue with next iteration
+        # skip all further instructions and continue with next iteration
         raise
 
     # no normpath used because that would transform http://... into http:/...
     sourceFilePath = os.path.join(sourcePath, relativePath)
     sourceFile = os.path.join(sourceFilePath, filename)
 
-    #TODO combine better with sourceFile... (for efficiency)
+    # TODO combine better with sourceFile... (for efficiency)
     if localTarget:
         targetFilePath = os.path.normpath(os.path.join(localTarget,
                                                        relativePath))
@@ -66,7 +66,7 @@ def get_metadata(log, prop, targets, metadata, chunkSize, localTarget=None):
     if targets:
         try:
             log.debug("create metadata for source file...")
-            #metadata = {
+            # metadata = {
             #        "filename"       : ...,
             #        "sourcePath"     : ...,
             #        "relativePath"   : ...,
@@ -163,13 +163,13 @@ def send_data(log, targets, sourceFile, targetFile,  metadata,
     chunkNumber = 0
 
     log.debug("Getting data for file '{0}'...".format(sourceFile))
-    #reading source file into memory
+    # reading source file into memory
     for data in response.iter_content(chunk_size=chunkSize):
         log.debug("Packing multipart-message for file '{0}'..."
                   .format(sourceFile))
 
         try:
-            #assemble metadata for zmq-message
+            # assemble metadata for zmq-message
             metadataExtended = metadata.copy()
             metadataExtended["chunkNumber"] = chunkNumber
 
@@ -188,7 +188,7 @@ def send_data(log, targets, sourceFile, targetFile,  metadata,
                           .format(sourceFile), exc_info=True)
                 fileWritten = False
 
-        #send message to data targets
+        # send message to data targets
         try:
             __send_to_targets(log, targets_data, sourceFile, targetFile,
                               openConnections, metadataExtended, payload,
@@ -217,7 +217,7 @@ def send_data(log, targets, sourceFile, targetFile,  metadata,
         metadataExtended["fileModTime"] = os.stat(targetFile).st_mtime
         metadataExtended["fileCreateTime"] = os.stat(targetFile).st_ctime
 
-        #send message to metadata targets
+        # send message to metadata targets
         try:
             __send_to_targets(log, targets_metadata, sourceFile, targetFile,
                               openConnections, metadataExtended, payload,
@@ -270,7 +270,7 @@ if __name__ == '__main__':
     print ("BASE_PATH", BASE_PATH)
     SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
-    if not SHARED_PATH in sys.path:
+    if SHARED_PATH not in sys.path:
         sys.path.append(SHARED_PATH)
     del SHARED_PATH
 
@@ -309,7 +309,7 @@ if __name__ == '__main__':
     prework_sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
     localTarget = os.path.join(BASE_PATH, "data", "target")
 
-    #read file to send it in data pipe
+    # read file to send it in data pipe
     logging.debug("=== copy file to lsdma-lab04")
 #    os.system('scp "%s" "%s:%s"' % (localfile, remotehost, remotefile) )
     subprocess.call("scp {0} root@lsdma-lab04:/var/www/html/test_httpget/data"

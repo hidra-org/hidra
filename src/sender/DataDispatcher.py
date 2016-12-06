@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
-
 import zmq
 import os
 import sys
@@ -23,24 +21,25 @@ except:
                 os.path.abspath(sys.argv[0]))))
 SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
-if not SHARED_PATH in sys.path:
+if SHARED_PATH not in sys.path:
     sys.path.append(SHARED_PATH)
 del SHARED_PATH
 
 DATAFETCHER_PATH = os.path.join(BASE_PATH, "src", "sender", "dataFetchers")
-if not DATAFETCHER_PATH in sys.path:
+if DATAFETCHER_PATH not in sys.path:
     sys.path.append(DATAFETCHER_PATH)
 del DATAFETCHER_PATH
 
 from logutils.queue import QueueHandler
 import helpers
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
 
 #
 # --------------------------  class: DataDispatcher  --------------------------
 #
 class DataDispatcher():
-#class DataDispatcher(Process):
 
     def __init__(self, id, controlConId, routerConId, chunkSize,
                  fixedStreamId, dataFetcherProp, logQueue,

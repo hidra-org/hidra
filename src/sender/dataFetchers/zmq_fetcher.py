@@ -1,8 +1,6 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
-
 import zmq
 import os
 import sys
@@ -11,6 +9,8 @@ import json
 import time
 
 from send_helpers import __send_to_targets
+
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 try:
     BASE_PATH = os.path.dirname(
@@ -31,7 +31,7 @@ except:
 #                    os.path.abspath(sys.argv[0])))))
 SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
-if not SHARED_PATH in sys.path:
+if SHARED_PATH not in sys.path:
     sys.path.append(SHARED_PATH)
 del SHARED_PATH
 
@@ -68,17 +68,17 @@ def setup(log, prop):
 
 def get_metadata(log, prop, targets, metadata, chunkSize, localTarget=None):
 
-    #extract fileEvent metadata
+    # extract fileEvent metadata
     try:
-        #TODO validate metadata dict
+        # TODO validate metadata dict
         sourceFile = metadata["filename"]
     except:
         log.error("Invalid fileEvent message received.", exc_info=True)
         log.debug("metadata={0}".format(metadata))
-        #skip all further instructions and continue with next iteration
+        # skip all further instructions and continue with next iteration
         raise
 
-    #TODO combine better with sourceFile... (for efficiency)
+    # TODO combine better with sourceFile... (for efficiency)
     if localTarget:
         targetFile = os.path.join(localTarget, sourceFile)
     else:
@@ -87,7 +87,7 @@ def get_metadata(log, prop, targets, metadata, chunkSize, localTarget=None):
     if targets:
         try:
             log.debug("create metadata for source file...")
-            #metadata = {
+            # metadata = {
             #        "filename"       : ...,
             #        "fileModTime"    : ...,
             #        "fileCreateTime" : ...,
@@ -112,7 +112,7 @@ def send_data(log, targets, sourceFile, targetFile, metadata,
     if not targets:
         return
 
-    #reading source file into memory
+    # reading source file into memory
     try:
         log.debug("Getting data out of queue for file '{0}'..."
                   .format(sourceFile))
@@ -132,7 +132,7 @@ def send_data(log, targets, sourceFile, targetFile, metadata,
                   .format(sourceFile))
         chunkNumber = 0
 
-        #assemble metadata for zmq-message
+        # assemble metadata for zmq-message
         metadataExtended = metadata.copy()
         metadataExtended["chunkNumber"] = chunkNumber
 
@@ -143,7 +143,7 @@ def send_data(log, targets, sourceFile, targetFile, metadata,
         log.error("Unable to pack multipart-message for file '{0}'"
                   .format(sourceFile), exc_info=True)
 
-    #send message
+    # send message
     try:
         __send_to_targets(log, targets, sourceFile, targetFile,
                           openConnections, metadataExtended, payload, context)
@@ -213,7 +213,7 @@ if __name__ == '__main__':
 
     prework_sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
 
-    #read file to send it in data pipe
+    # read file to send it in data pipe
     fileDescriptor = open(prework_sourceFile, "rb")
     fileContent = fileDescriptor.read()
     logging.debug("=== File read")

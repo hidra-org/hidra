@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
-
 import socket
 import zmq
 import os
@@ -23,17 +21,19 @@ except:
                 os.path.abspath(sys.argv[0]))))
 SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
-if not SHARED_PATH in sys.path:
+if SHARED_PATH not in sys.path:
     sys.path.append(SHARED_PATH)
 del SHARED_PATH
 
 EVENTDETECTOR_PATH = os.path.join(BASE_PATH, "src", "sender", "eventDetectors")
-if not EVENTDETECTOR_PATH in sys.path:
+if EVENTDETECTOR_PATH not in sys.path:
     sys.path.append(EVENTDETECTOR_PATH)
 del EVENTDETECTOR_PATH
 
 from logutils.queue import QueueHandler
 import helpers
+
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 #
@@ -45,13 +45,13 @@ class TaskProvider():
                  routerConId, logQueue, context=None):
         global BASE_PATH
 
-        #eventDetectorConfig = {
+        # eventDetectorConfig = {
         #        eventDetectorType   : ... ,
         #        monDir       : ... ,
         #        monEventType : ... ,
         #        monSubdirs   : ... ,
         #        monSuffixes  : ... ,
-        #}
+        #        }
 
         self.log = self.get_logger(logQueue)
 
@@ -191,7 +191,7 @@ class TaskProvider():
                                exc_info=True)
                 workloadList = []
 
-            #TODO validate workload dict
+            # TODO validate workload dict
             for workload in workloadList:
                 # get requests for this event
                 try:

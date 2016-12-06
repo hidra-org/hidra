@@ -1,8 +1,6 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
-
 import zmq
 import os
 import sys
@@ -12,6 +10,8 @@ import shutil
 import errno
 
 from send_helpers import __send_to_targets, DataHandlingError
+
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 def setup(log, prop):
@@ -77,7 +77,7 @@ def get_metadata(log, prop, targets, metadata, chunkSize, localTarget=None):
 
         try:
             log.debug("create metadata for source file...")
-            #metadata = {
+            # metadata = {
             #        "filename"       : ...,
             #        "sourcePath"     : ...,
             #        "relativePath"   : ...,
@@ -118,7 +118,7 @@ def send_data(log, targets, sourceFile, targetFile, metadata, openConnections,
     chunkNumber = 0
     sendError = False
 
-    #reading source file into memory
+    # reading source file into memory
     try:
         log.debug("Opening '{0}'...".format(sourceFile))
         fileDescriptor = open(str(sourceFile), "rb")
@@ -130,15 +130,15 @@ def send_data(log, targets, sourceFile, targetFile, metadata, openConnections,
     log.debug("Passing multipart-message for file '{0}'...".format(sourceFile))
     while True:
 
-        #read next chunk from file
+        # read next chunk from file
         fileContent = fileDescriptor.read(chunkSize)
 
-        #detect if end of file has been reached
+        # detect if end of file has been reached
         if not fileContent:
             break
 
         try:
-            #assemble metadata for zmq-message
+            # assemble metadata for zmq-message
             chunkMetadata = metadata.copy()
             chunkMetadata["chunkNumber"] = chunkNumber
 
@@ -149,7 +149,7 @@ def send_data(log, targets, sourceFile, targetFile, metadata, openConnections,
             log.error("Unable to pack multipart-message for file '{0}'"
                       .format(sourceFile), exc_info=True)
 
-        #send message to data targets
+        # send message to data targets
         try:
             __send_to_targets(log, targets_data, sourceFile, targetFile,
                               openConnections, None, chunkPayload, context)
@@ -165,7 +165,7 @@ def send_data(log, targets, sourceFile, targetFile, metadata, openConnections,
 
         chunkNumber += 1
 
-    #close file
+    # close file
     try:
         log.debug("Closing '{0}'...".format(sourceFile))
         fileDescriptor.close()
@@ -266,7 +266,7 @@ def finish_data_handling(log, targets, sourceFile, targetFile, metadata,
 
         prop["removeFlag"] = False
 
-    #send message to metadata targets
+    # send message to metadata targets
     if targets_metadata:
         try:
             __send_to_targets(log, targets_metadata, sourceFile, targetFile,
@@ -304,7 +304,7 @@ if __name__ == '__main__':
     print ("BASE_PATH", BASE_PATH)
     SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
-    if not SHARED_PATH in sys.path:
+    if SHARED_PATH not in sys.path:
         sys.path.append(SHARED_PATH)
     del SHARED_PATH
 

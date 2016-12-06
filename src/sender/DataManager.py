@@ -2,8 +2,6 @@
 
 from __future__ import unicode_literals
 
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
-
 import argparse
 import zmq
 import zmq.devices
@@ -40,13 +38,15 @@ except:
 SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 
-if not SHARED_PATH in sys.path:
+if SHARED_PATH not in sys.path:
     sys.path.append(SHARED_PATH)
 del SHARED_PATH
 
 from logutils.queue import QueueHandler
 import helpers
 from version import __version__
+
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 def str2bool(v):
@@ -522,7 +522,7 @@ class DataManager():
                           .format(self.ipcPath))
 
         # Enable specification via IP and DNS name
-        #TODO make this IPv6 compatible
+        # TODO make this IPv6 compatible
         if arguments.extIp == "0.0.0.0":
             self.extIp = arguments.extIp
         else:

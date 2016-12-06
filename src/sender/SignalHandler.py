@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
-
 import time
 import zmq
 import zmq.devices
@@ -12,7 +10,7 @@ import copy
 import json
 
 
-#path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+# path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 try:
     BASE_PATH = os.path.dirname(
         os.path.dirname(
@@ -23,22 +21,16 @@ except:
         os.path.dirname(
             os.path.dirname(
                 os.path.realpath('__file__'))))
-#    BASE_PATH = os.path.dirname(
-#        os.path.dirname(
-#           os.path.dirname(
-#               os.path.abspath(sys.argv[0]))))
-#    BASE_PATH = os.path.dirname(
-#        os.path.dirname(
-#           os.path.dirname(
-#               os.path.realpath(sys.argv[0])))))
 SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
-if not SHARED_PATH in sys.path:
+if SHARED_PATH not in sys.path:
     sys.path.append(SHARED_PATH)
 del SHARED_PATH
 
 from logutils.queue import QueueHandler
 import helpers
+
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 #
@@ -68,17 +60,15 @@ class SignalHandler():
         self.openRequVari = []
         self.openRequPerm = []
         self.allowedQueries = []
-        self.nextRequNode = []  # to rotate through the open
-                                    # permanent requests
+        # to rotate through the open permanent requests
+        self.nextRequNode = []
 
         self.whiteList = []
 
-        #remove .desy.de from hostnames
         for host in whiteList:
-            if host.endswith(".desy.de"):
-                self.whiteList.append(host[:-8])
-            else:
-                self.whiteList.append(host)
+            # remove .desy.de from hostnames
+            host.replace(".desy.de", "")
+            self.whiteList.append(host)
 
         # sockets
         self.controlPubSocket = None
@@ -194,7 +184,7 @@ class SignalHandler():
         self.poller.register(self.requestSocket, zmq.POLLIN)
 
     def run(self):
-        #run loop, and wait for incoming messages
+        # run loop, and wait for incoming messages
         self.log.debug("Waiting for new signals or requests.")
         while True:
             socks = dict(self.poller.poll())
@@ -238,21 +228,21 @@ class SignalHandler():
                             self.requestFwSocket.send_string(
                                 json.dumps(openRequests))
                             self.log.debug("Answered to request: {0}"
-                                .format(openRequests))
+                                           .format(openRequests))
                             self.log.debug("openRequVari: {0}"
-                                .format(self.openRequVari))
+                                           .format(self.openRequVari))
                             self.log.debug("allowedQueries: {0}"
-                                .format(self.allowedQueries))
+                                           .format(self.allowedQueries))
                         else:
                             openRequests = ["None"]
                             self.requestFwSocket.send_string(
                                 json.dumps(openRequests))
                             self.log.debug("Answered to request: {0}"
-                                .format(openRequests))
+                                           .format(openRequests))
                             self.log.debug("openRequVari: {0}"
-                                .format(self.openRequVari))
+                                           .format(self.openRequVari))
                             self.log.debug("allowedQueries: {0}"
-                                .format(self.allowedQueries))
+                                           .format(self.allowedQueries))
 
                 except:
                     self.log.error("Failed to receive/answer new signal "
@@ -298,7 +288,8 @@ class SignalHandler():
                                 self.openRequVari[index].append(
                                     self.allowedQueries[index][i])
                                 self.log.info("Add to open requests: {0}"
-                                    .format(self.allowedQueries[index][i]))
+                                              .format(self.allowedQueries[
+                                                  index][i]))
 
                 elif inMessage[0] == b"CANCEL":
                     incomingSocketId = (
@@ -513,7 +504,7 @@ class SignalHandler():
 #                variList.append([])
 #        else:
 #            # send error back to receiver
-##            self.send_response("CONNECTION_ALREADY_OPEN")
+# #           self.send_response("CONNECTION_ALREADY_OPEN")
 #            # "reopen" the connection and confirm to receiver
 #            self.send_response(signal)
 
@@ -586,7 +577,7 @@ class SignalHandler():
     def react_to_signal(self, signal, socketIds):
 
         ###########################
-        ##      START_STREAM     ##
+        #       START_STREAM      #
         ###########################
         if signal == b"START_STREAM":
             self.log.info("Received signal: {s} for hosts {h}"
@@ -598,7 +589,7 @@ class SignalHandler():
             return
 
         ###########################
-        ## START_STREAM_METADATA ##
+        #  START_STREAM_METADATA  #
         ###########################
         elif signal == b"START_STREAM_METADATA":
             self.log.info("Received signal: {s} for hosts {h}"
@@ -611,8 +602,8 @@ class SignalHandler():
             return
 
         ###########################
-        ##      STOP_STREAM      ##
-        ## STOP_STREAM_METADATA  ##
+        #       STOP_STREAM       #
+        #  STOP_STREAM_METADATA   #
         ###########################
         elif signal == b"STOP_STREAM" or signal == b"STOP_STREAM_METADATA":
             self.log.info("Received signal: {s} for host {h}"
@@ -626,7 +617,7 @@ class SignalHandler():
             return
 
         ###########################
-        ##      START_QUERY      ##
+        #       START_QUERY       #
         ###########################
         elif signal == b"START_QUERY_NEXT":
             self.log.info("Received signal: {s} for hosts {h}"
@@ -639,7 +630,7 @@ class SignalHandler():
             return
 
         ###########################
-        ## START_QUERY_METADATA  ##
+        #  START_QUERY_METADATA   #
         ###########################
         elif signal == b"START_QUERY_METADATA":
             self.log.info("Received signal: {s} for hosts {h}"
@@ -652,8 +643,8 @@ class SignalHandler():
             return
 
         ###########################
-        ##      STOP_QUERY       ##
-        ## STOP_QUERY_METADATA   ##
+        #       STOP_QUERY        #
+        #  STOP_QUERY_METADATA    #
         ###########################
         elif signal == b"STOP_QUERY_NEXT" or signal == b"STOP_QUERY_METADATA":
             self.log.info("Received signal: {s} for hosts {h}"
