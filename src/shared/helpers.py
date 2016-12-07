@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from __future__ import print_function
 
 import os
 import platform
@@ -7,7 +8,13 @@ import logging.handlers
 import sys
 import shutil
 import socket
+import json
 from version import __version__
+
+try:
+    import ConfigParser
+except:
+    import configparser as ConfigParser
 
 try:
     # try to use the system module
@@ -81,6 +88,134 @@ class FakeSecHead (object):
                 self.sechead = None
         else:
             return self.fp.readline()
+
+
+def str2bool(v):
+    return v.lower() == "true"
+
+
+# modified version of the cfelpyutils module
+def parse_config(config):
+    """Sets correct types for parameter dictionaries.
+
+    Reads a parameter dictionary returned by the ConfigParser python module, and assigns correct types to parameters,
+    without changing the structure of the dictionary.
+
+    The parser tries to interpret each entry in the dictionary according to the following rules:
+
+    - If the entry starts and ends with a single quote, it is interpreted as a string.
+    - If the entry starts and ends with a square bracket, it is interpreted as a list.
+    - If the entry starts and ends with a brace, it is interpreted as a dictionary.
+    - If the entry is the word None, without quotes, then the entry is interpreted as NoneType.
+    - If the entry is the word False, without quotes, then the entry is interpreted as a boolean False.
+    - If the entry is the word True, without quotes, then the entry is interpreted as a boolean True.
+    - If non of the previous options match the content of the entry, the parser tries to interpret the entry in order
+      as:
+
+        - An integer number.
+        - A float number.
+        - A string.
+
+      The first choice that succeeds determines the entry type.
+
+    Args:
+
+        config (class RawConfigParser): ConfigParser instance.
+
+    Returns:
+
+        config_params (dict): dictionary with the same structure as the input dictionary, but with correct types
+        assigned to each entry.
+    """
+
+    config_params = {}
+
+    for sect in config.sections():
+        config_params[sect] = {}
+        for op in config.options(sect):
+            config_params[sect][op] = config.get(sect, op)
+
+            if (config_params[sect][op].startswith("'")
+                    and config_params[sect][op].endswith("'")):
+                config_params[sect][op] = config_params[sect][op][1:-1]
+                if sys.version_info[0] == 2:
+                    try:
+                        config_params[sect][op] = unicode(config_params[sect][op])
+                    except UnicodeDecodeError:
+                        raise RuntimeError('Error parsing parameters. Only ASCII characters are allowed in parameter '
+                                           'names and values.')
+                continue
+            elif (config_params[sect][op].startswith('"')
+                    and config_params[sect][op].endswith('"')):
+                config_params[sect][op] = config_params[sect][op][1:-1]
+                try:
+                    config_params[sect][op] = unicode(config_params[sect][op])
+                except UnicodeDecodeError:
+                    raise RuntimeError('Error parsing parameters. Only ASCII characters are allowed in parameter '
+                                       'names and values.')
+                continue
+            elif (config_params[sect][op].startswith("[")
+                    and config_params[sect][op].endswith("]")):
+                try:
+                    config_params[sect][op] = json.loads(config.get(sect, op).replace("'", '"'))
+                except UnicodeDecodeError:
+                    raise RuntimeError('Error parsing parameters. Only ASCII characters are allowed in parameter '
+                                       'names and values.')
+                continue
+            elif (config_params[sect][op].startswith("{")
+                    and config_params[sect][op].endswith("}")):
+                try:
+                    config_params[sect][op] = json.loads(config.get(sect, op).replace("'", '"'))
+                except UnicodeDecodeError:
+                    raise RuntimeError('Error parsing parameters. Only ASCII characters are allowed in parameter '
+                                       'names and values.')
+                continue
+            elif config_params[sect][op] == 'None':
+                config_params[sect][op] = None
+                continue
+            elif config_params[sect][op] == 'False':
+                config_params[sect][op] = False
+                continue
+            elif config_params[sect][op] == 'True':
+                config_params[sect][op] = True
+                continue
+
+            try:
+                config_params[sect][op] = int(config_params[sect][op])
+                continue
+            except ValueError:
+                try:
+                    config_params[sect][op] = float(config_params[sect][op])
+                    continue
+                except ValueError:
+                    config_params[sect][op] = config_params[sect][op]
+#                    raise RuntimeError('Error parsing parameters. The parameter {0}/{1} parameter has an invalid type. '
+#                                       'Allowed types are None, int, float, bool and str. Strings must be '
+#                                       'single-quoted.'.format(sect, op))
+
+    return config_params
+
+
+def set_parameters(configFile, arguments):
+
+    config = ConfigParser.RawConfigParser()
+    try:
+        config.readfp(FakeSecHead(open(configFile)))
+    except:
+        with open(configFile, 'r') as f:
+            config_string = '[asection]\n' + f.read()
+        config.read_string(config_string)
+
+    params = parse_config(config)["asection"]
+
+    # arguments set when the program is called have a higher priority than
+    # the ones in the config file
+    for arg in vars(arguments):
+        arg_value = getattr(arguments, arg)
+        if arg_value is not None:
+            params[arg] = arg_value
+
+    return params
 
 
 # http://code.activestate.com/recipes/541096-prompt-the-user-for-confirmation/
