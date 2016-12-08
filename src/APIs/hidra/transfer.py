@@ -76,12 +76,12 @@ class DataSavingError(Exception):
 
 
 class Transfer():
-    def __init__(self, connectionType, signalHost=None, useLog=False,
+    def __init__(self, connection_type, signal_host=None, use_log=False,
                  context=None):
 
-        if useLog:
+        if use_log:
             self.log = logging.getLogger("Transfer")
-        elif useLog is None:
+        elif use_log is None:
             self.log = NoLoggingFunction()
         else:
             self.log = LoggingFunction()
@@ -91,26 +91,26 @@ class Transfer():
         # (source: ZeroMQ, Messaging for Many Applications by Pieter Hintjens)
         if context:
             self.context = context
-            self.extContext = True
+            self.ext_context = True
         else:
             self.context = zmq.Context()
-            self.extContext = False
+            self.ext_context = False
 
-        self.currentPID = os.getpid()
+        self.current_pid = os.getpid()
 
-        self.signalHost = signalHost
-        self.signalPort = "50000"
-        self.requestPort = "50001"
-        self.fileOpPort = "50050"
-        self.dataHost = None
-        self.dataPort = None
-        self.ipcPath = os.path.join(tempfile.gettempdir(), "hidra")
+        self.signal_host = signal_host
+        self.signal_port = "50000"
+        self.request_port = "50001"
+        self.file_op_port = "50050"
+        self.data_host = None
+        self.data_port = None
+        self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
 
-        self.signalSocket = None
-        self.requestSocket = None
-        self.fileOpSocket = None
-        self.dataSocket = None
-        self.controlSocket = None
+        self.signal_socket = None
+        self.request_socket = None
+        self.file_op_socket = None
+        self.data_socket = None
+        self.control_socket = None
 
         self.poller = zmq.Poller()
 
@@ -118,39 +118,39 @@ class Transfer():
 
         self.targets = None
 
-        self.supportedConnections = ["stream", "streamMetadata",
+        self.supported_connections = ["stream", "streamMetadata",
                                      "queryNext", "queryMetadata",
                                      "nexus"]
 
-        self.signalExchanged = None
+        self.signal_exchanged = None
 
-        self.streamStarted = None
-        self.queryNextStarted = None
-        self.nexusStarted = None
+        self.stream_started = None
+        self.query_next_started = None
+        self.nexus_started = None
 
-        self.socketResponseTimeout = 1000
+        self.socket_response_timeout = 1000
 
-        self.numberOfStreams = None
-        self.recvdCloseFrom = []
-        self.replyToSignal = False
-        self.allCloseRecvd = False
+        self.number_of_streams = None
+        self.recvd_close_from = []
+        self.reply_to_signal = False
+        self.all_close_recvd = False
 
-        self.fileDescriptors = dict()
+        self.file_descriptors = dict()
 
-        self.fileOpened = False
-        self.callbackParams = None
-        self.openCallback = None
-        self.readCallback = None
-        self.closeCallback = None
+        self.file_opened = False
+        self.callback_params = None
+        self.open_callback = None
+        self.read_callback = None
+        self.close_callback = None
 
-        if connectionType in self.supportedConnections:
-            self.connectionType = connectionType
+        if connection_type in self.supported_connections:
+            self.connection_type = connection_type
         else:
             raise NotSupported("Chosen type of connection is not supported.")
 
     # targets: [host, port, prio] or [[host, port, prio], ...]
     def initiate(self, targets):
-        if self.connectionType == "nexus":
+        if self.connection_type == "nexus":
             self.log.info("There is no need for a signal exchange for "
                           "connection type 'nexus'")
             return
@@ -161,27 +161,27 @@ class Transfer():
 
         if not self.context:
             self.context = zmq.Context()
-            self.extContext = False
+            self.ext_context = False
 
         signal = None
         # Signal exchange
-        if self.connectionType == "stream":
-            signalPort = self.signalPort
+        if self.connection_type == "stream":
+            signal_port = self.signal_port
             signal = b"START_STREAM"
-        elif self.connectionType == "streamMetadata":
-            signalPort = self.signalPort
+        elif self.connection_type == "streamMetadata":
+            signal_port = self.signal_port
             signal = b"START_STREAM_METADATA"
-        elif self.connectionType == "queryNext":
-            signalPort = self.signalPort
+        elif self.connection_type == "queryNext":
+            signal_port = self.signal_port
             signal = b"START_QUERY_NEXT"
-        elif self.connectionType == "queryMetadata":
-            signalPort = self.signalPort
+        elif self.connection_type == "queryMetadata":
+            signal_port = self.signal_port
             signal = b"START_QUERY_METADATA"
 
         self.log.debug("Create socket for signal exchange...")
 
-        if self.signalHost:
-            self.__create_signal_socket(signalPort)
+        if self.signal_host:
+            self.__create_signal_socket(signal_port)
         else:
             self.stop()
             raise ConnectionFailed("No host to send signal to specified.")
@@ -211,33 +211,33 @@ class Transfer():
         # the receiver should be shut down
         elif message and message.startswith(signal):
             self.log.info("Received confirmation ...")
-            self.signalExchanged = signal
+            self.signal_exchanged = signal
 
         else:
             raise CommunicationFailed("Sending start signal ...failed.")
 
-    def __create_signal_socket(self, signalPort):
+    def __create_signal_socket(self, signal_port):
 
         # To send a notification that a Displayer is up and running, a
         # communication socket is needed
         # create socket to exchange signals with Sender
-        self.signalSocket = self.context.socket(zmq.REQ)
+        self.signal_socket = self.context.socket(zmq.REQ)
 
         # time to wait for the sender to give a confirmation of the signal
-#        self.signalSocket.RCVTIMEO = self.socketResponseTimeout
-        connectionStr = "tcp://{0}:{1}".format(self.signalHost, signalPort)
+#        self.signal_socket.RCVTIMEO = self.socket_response_timeout
+        connection_str = "tcp://{0}:{1}".format(self.signal_host, signal_port)
         try:
-            self.signalSocket.connect(connectionStr)
-            self.log.info("signalSocket started (connect) for '{0}'"
-                          .format(connectionStr))
+            self.signal_socket.connect(connection_str)
+            self.log.info("signal_socket started (connect) for '{0}'"
+                          .format(connection_str))
         except:
-            self.log.error("Failed to start signalSocket (connect): '{0}'"
-                           .format(connectionStr))
+            self.log.error("Failed to start signal_socket (connect): '{0}'"
+                           .format(connection_str))
             raise
 
-        # using a Poller to implement the signalSocket timeout (in older
+        # using a Poller to implement the signal_socket timeout (in older
         # ZMQ version there is no option RCVTIMEO)
-        self.poller.register(self.signalSocket, zmq.POLLIN)
+        self.poller.register(self.signal_socket, zmq.POLLIN)
 
     def __set_targets(self, targets):
         self.targets = []
@@ -248,7 +248,7 @@ class Transfer():
                 and type(targets[1]) != list
                 and type(targets[2]) != list):
             host, port, prio = targets
-            self.targets = [["{h}:{p}".format(h=host, p=port), prio, [""]]]
+            self.targets = [["{0}:{1}".format(host, port), prio, [""]]]
 
         # [host, port, prio, suffixes]
         elif (len(targets) == 4
@@ -257,7 +257,7 @@ class Transfer():
                 and type(targets[2]) != list
                 and type(targets[3]) == list):
             host, port, prio, suffixes = targets
-            self.targets = [["{h}:{p}".format(h=host, p=port), prio, suffixes]]
+            self.targets = [["{0}:{1}".format(host, port), prio, suffixes]]
 
         # [[host, port, prio], ...] or [[host, port, prio, suffixes], ...]
         else:
@@ -284,33 +284,33 @@ class Transfer():
         # established
         self.log.info("Sending Signal")
 
-        sendMessage = [__version__,  signal]
+        send_message = [__version__,  signal]
 
         trg = json.dumps(self.targets).encode('utf-8')
-        sendMessage.append(trg)
+        send_message.append(trg)
 
-#        sendMessage = [__version__, signal, self.dataHost, self.dataPort]
+#        send_message = [__version__, signal, self.data_host, self.data_port]
 
-        self.log.debug("Signal: {0}".format(sendMessage))
+        self.log.debug("Signal: {0}".format(send_message))
         try:
-            self.signalSocket.send_multipart(sendMessage)
+            self.signal_socket.send_multipart(send_message)
         except:
             self.log.error("Could not send signal")
             raise
 
         message = None
         try:
-            socks = dict(self.poller.poll(self.socketResponseTimeout))
+            socks = dict(self.poller.poll(self.socket_response_timeout))
         except:
             self.log.error("Could not poll for new message")
             raise
 
         # if there was a response
-        if (self.signalSocket in socks
-                and socks[self.signalSocket] == zmq.POLLIN):
+        if (self.signal_socket in socks
+                and socks[self.signal_socket] == zmq.POLLIN):
             try:
                 #  Get the reply.
-                message = self.signalSocket.recv()
+                message = self.signal_socket.recv()
                 self.log.info("Received answer to signal: {0}"
                               .format(message))
 
@@ -320,7 +320,7 @@ class Transfer():
 
         return message
 
-    def start(self, dataSocket=False, whitelist=None):
+    def start(self, data_socket=False, whitelist=None):
 
         # Receive data only from whitelisted nodes
         if whitelist:
@@ -344,13 +344,13 @@ class Transfer():
             else:
                 raise FormatError("Whitelist has to be a list of IPs")
 
-        socketIdToBind = (
-            self.streamStarted
-            or self.queryNextStarted
-            or self.nexusStarted
+        socket_id_to_bind = (
+            self.stream_started
+            or self.query_next_started
+            or self.nexus_started
             )
 
-        if socketIdToBind:
+        if socket_id_to_bind:
             self.log.info("Reopening already started connection.")
         else:
 
@@ -359,30 +359,30 @@ class Transfer():
             host = ""
             port = ""
 
-            if dataSocket:
-                self.log.debug("Specified dataSocket: {0}".format(dataSocket))
+            if data_socket:
+                self.log.debug("Specified data_socket: {0}".format(data_socket))
 
-                if type(dataSocket) == list:
-#                    socketIdToBind = "{0}:{1}".format(dataSocket[0],
-#                                                      dataSocket[1])
-                    host = dataSocket[0]
+                if type(data_socket) == list:
+#                    socket_id_to_bind = "{0}:{1}".format(data_socket[0],
+#                                                      data_socket[1])
+                    host = data_socket[0]
                     ip = socket.gethostbyaddr(host)[2][0]
-                    port = dataSocket[1]
+                    port = data_socket[1]
                 else:
-                    port = str(dataSocket)
+                    port = str(data_socket)
 
                     host = socket.gethostname()
-                    socketId = "{h}:{p}".format(h=host, p=port).encode("utf-8")
-                    ipFromHost = socket.gethostbyaddr(host)[2]
-                    if len(ipFromHost) == 1:
-                        ip = ipFromHost[0]
+                    socket_id = "{0}:{1}".format(host, port).encode("utf-8")
+                    ip_from_host = socket.gethostbyaddr(host)[2]
+                    if len(ip_from_host) == 1:
+                        ip = ip_from_host[0]
 
             elif self.targets:
                 if len(self.targets) == 1:
                     host, port = self.targets[0][0].split(":")
-                    ipFromHost = socket.gethostbyaddr(host)[2]
-                    if len(ipFromHost) == 1:
-                        ip = ipFromHost[0]
+                    ip_from_host = socket.gethostbyaddr(host)[2]
+                    if len(ip_from_host) == 1:
+                        ip = ip_from_host[0]
 
                 else:
                     raise FormatError("Multipe possible ports. "
@@ -390,132 +390,133 @@ class Transfer():
             else:
                     raise FormatError("No target specified.")
 
-            socketId = "{h}:{p}".format(h=host, p=port).encode("utf-8")
+            socket_id = "{0}:{1}".format(host, port).encode("utf-8")
 
             try:
                 socket.inet_aton(ip)
                 self.log.info("IPv4 address detected: {0}.".format(ip))
-                socketIdToBind = "{h}:{p}".format(h=ip, p=port)
-                fileOp_conStr = "tcp://{h}:{p}".format(h=ip, p=self.fileOpPort)
+                socket_id_to_bind = "{0}:{1}".format(ip, port)
+                file_op_con_str = "tcp://{0}:{1}".format(ip, self.file_op_port)
                 isIPv6 = False
             except socket.error:
                 self.log.info("Address '{0}' is not a IPv4 address, "
                               "asume it is an IPv6 address.".format(ip))
-#                socketIdToBind = "0.0.0.0:{0}".format(port)
-                socketIdToBind = "[{0}]:{1}".format(ip, port)
-#                fileOp_conStr= "tcp://0.0.0.0:{0}".format(self.fileOpPort)
-                fileOp_conStr = "tcp://[{0}]:{1}".format(ip, self.fileOpPort)
+#                socket_id_to_bind = "0.0.0.0:{0}".format(port)
+                socket_id_to_bind = "[{0}]:{1}".format(ip, port)
+#                file_op_con_str= "tcp://0.0.0.0:{0}".format(self.file_op_port)
+                file_op_con_str = "tcp://[{0}]:{1}".format(ip, self.file_op_port)
                 isIPv6 = True
 
-            self.log.debug("socketIdToBind={0}".format(socketIdToBind))
-            self.log.debug("fileOp_conStr={0}".format(fileOp_conStr))
+            self.log.debug("socket_id_to_bind={0}".format(socket_id_to_bind))
+            self.log.debug("file_op_con_str={0}".format(file_op_con_str))
 
-#            socketIdToBind = "192.168.178.25:{0}".format(port)
+#            socket_id_to_bind = "192.168.178.25:{0}".format(port)
 
-        self.dataSocket = self.context.socket(zmq.PULL)
+        self.data_socket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving
         # mechanism
-        connectionStr = "tcp://{0}".format(socketIdToBind)
+        connection_str = "tcp://{0}".format(socket_id_to_bind)
 
         if whitelist:
-            self.dataSocket.zap_domain = b'global'
+            self.data_socket.zap_domain = b'global'
 
         if isIPv6:
-            self.dataSocket.ipv6 = True
+            self.data_socket.ipv6 = True
             self.log.debug("Enabling IPv6 socket")
 
         try:
-            self.dataSocket.bind(connectionStr)
-#            self.dataSocket.bind(
+            self.data_socket.bind(connection_str)
+#            self.data_socket.bind(
 #                "tcp://[2003:ce:5bc0:a600:fa16:54ff:fef4:9fc0]:50102")
             self.log.info("Data socket of type {0} started (bind) for '{1}'"
-                          .format(self.connectionType, connectionStr))
+                          .format(self.connection_type, connection_str))
         except:
             self.log.error("Failed to start Socket of type {0} (bind): '{1}'"
-                           .format(self.connectionType, connectionStr),
+                           .format(self.connection_type, connection_str),
                            exc_info=True)
             raise
 
-        self.poller.register(self.dataSocket, zmq.POLLIN)
+        self.poller.register(self.data_socket, zmq.POLLIN)
 
-        if self.connectionType in ["queryNext", "queryMetadata"]:
+        if self.connection_type in ["queryNext", "queryMetadata"]:
 
-            self.requestSocket = self.context.socket(zmq.PUSH)
+            self.request_socket = self.context.socket(zmq.PUSH)
             # An additional socket is needed to establish the data retriving
             # mechanism
-            connectionStr = "tcp://{0}:{1}".format(self.signalHost,
-                                                   self.requestPort)
+            connection_str = "tcp://{0}:{1}".format(self.signal_host,
+                                                   self.request_port)
             try:
-                self.requestSocket.connect(connectionStr)
+                self.request_socket.connect(connection_str)
                 self.log.info("Request socket started (connect) for '{0}'"
-                              .format(connectionStr))
+                              .format(connection_str))
             except:
                 self.log.error("Failed to start Socket of type {0} (connect):"
-                               " '{1}'".format(self.connectionType,
-                                               connectionStr),
+                               " '{1}'".format(self.connection_type,
+                                               connection_str),
                                exc_info=True)
                 raise
 
-            self.queryNextStarted = socketId
+            self.query_next_started = socket_id
 
-        elif self.connectionType in ["nexus"]:
+        elif self.connection_type in ["nexus"]:
 
             # An additional socket is needed to get signals to open and close
             # nexus files
-            self.fileOpSocket = self.context.socket(zmq.REP)
+            self.file_op_socket = self.context.socket(zmq.REP)
 
             if isIPv6:
-                self.fileOpSocket.ipv6 = True
-                self.log.debug("Enabling IPv6 socket for fileOpSocket")
+                self.file_op_socket.ipv6 = True
+                self.log.debug("Enabling IPv6 socket for file_op_socket")
 
             try:
-                self.fileOpSocket.bind(fileOp_conStr)
+                self.file_op_socket.bind(file_op_con_str)
                 self.log.info("File operation socket started (bind) for '{0}'"
-                              .format(fileOp_conStr))
+                              .format(file_op_con_str))
             except:
                 self.log.error("Failed to start Socket of type {0} (bind): "
-                               "'{1}'".format(self.connectionType,
-                                              fileOp_conStr),
+                               "'{1}'".format(self.connection_type,
+                                              file_op_con_str),
                                exc_info=True)
 
-            if not os.path.exists(self.ipcPath):
-                os.makedirs(self.ipcPath)
+            if not os.path.exists(self.ipc_path):
+                os.makedirs(self.ipc_path)
 
-            self.controlSocket = self.context.socket(zmq.PULL)
-            controlConStr = ("ipc://{path}/{pid}_{id}"
-                             .format(path=self.ipcPath,
-                                     pid=self.currentPID,
-                                     id="control_API"))
+            self.control_socket = self.context.socket(zmq.PULL)
+            control_con_str = ("ipc://{0}/{1}_{2}"
+                               .format(self.ipc_path,
+                                       self.current_pid,
+                                       "control_API"))
             try:
-                self.controlSocket.bind(controlConStr)
+                self.control_socket.bind(control_con_str)
                 self.log.info("Internal controlling socket started (bind) for"
-                              " '{0}'".format(controlConStr))
+                              " '{0}'".format(control_con_str))
             except:
                 self.log.error("Failed to start internal controlling socket "
-                               "(bind): '{0}'".format(controlConStr),
+                               "(bind): '{0}'".format(control_con_str),
                                exc_info=True)
 
-            self.poller.register(self.fileOpSocket, zmq.POLLIN)
-            self.poller.register(self.controlSocket, zmq.POLLIN)
+            self.poller.register(self.file_op_socket, zmq.POLLIN)
+            self.poller.register(self.control_socket, zmq.POLLIN)
 
-            self.nexusStarted = socketId
+            self.nexus_started = socket_id
         else:
-            self.streamStarted = socketId
+            self.stream_started = socket_id
 
-    def read(self, callbackParams, openCallback, readCallback, closeCallback):
+    def read(self, callback_params, open_callback, read_callback,
+             close_callback):
 
-        if not self.connectionType == "nexus" or not self.nexusStarted:
+        if not self.connection_type == "nexus" or not self.nexus_started:
             raise UsageError("Wrong connection type (current: {0}) or session"
-                             " not started.".format(self.connectionType))
+                             " not started.".format(self.connection_type))
 
-        self.callbackParams = callbackParams
-        self.openCallback = openCallback
-        self.readCallback = readCallback
-        self.closeCallback = closeCallback
+        self.callback_params = callback_params
+        self.open_callback = open_callback
+        self.read_callback = read_callback
+        self.close_callback = close_callback
 
-        runLoop = True
+        run_loop = True
 
-        while runLoop:
+        while run_loop:
             self.log.debug("polling")
             try:
                 socks = dict(self.poller.poll())
@@ -523,60 +524,60 @@ class Transfer():
                 self.log.error("Could not poll for new message")
                 raise
 
-            if (self.fileOpSocket in socks
-                    and socks[self.fileOpSocket] == zmq.POLLIN):
-                self.log.debug("fileOpSocket is polling")
+            if (self.file_op_socket in socks
+                    and socks[self.file_op_socket] == zmq.POLLIN):
+                self.log.debug("file_op_socket is polling")
 
-                message = self.fileOpSocket.recv_multipart()
-                self.log.debug("fileOpSocket recv: {0}".format(message))
+                message = self.file_op_socket.recv_multipart()
+                self.log.debug("file_op_socket recv: {0}".format(message))
 
                 if message[0] == b"CLOSE_FILE":
-                    if self.allCloseRecvd:
-                        self.fileOpSocket.send_multipart(message)
-                        logging.debug("fileOpSocket send: {0}"
+                    if self.all_close_recvd:
+                        self.file_op_socket.send_multipart(message)
+                        logging.debug("file_op_socket send: {0}"
                                       .format(message))
-                        self.allCloseRecvd = False
+                        self.all_close_recvd = False
 
-                        self.closeCallback(self.callbackParams,
+                        self.close_callback(self.callback_params,
                                            message)
                         break
                     else:
-                        self.replyToSignal = message
+                        self.reply_to_signal = message
                 elif message[0] == b"OPEN_FILE":
-                    self.fileOpSocket.send_multipart(message)
-                    self.log.debug("fileOpSocket send: {0}".format(message))
+                    self.file_op_socket.send_multipart(message)
+                    self.log.debug("file_op_socket send: {0}".format(message))
 
-                    self.openCallback(self.callbackParams, message[1])
-                    self.fileOpened = True
+                    self.open_callback(self.callback_params, message[1])
+                    self.file_opened = True
 #                    return message
                 else:
-                    self.fileOpSocket.send_multipart([b"ERROR"])
+                    self.file_op_socket.send_multipart([b"ERROR"])
                     self.log.error("Not supported message received")
 
-            if (self.dataSocket in socks
-                    and socks[self.dataSocket] == zmq.POLLIN):
-                self.log.debug("dataSocket is polling")
+            if (self.data_socket in socks
+                    and socks[self.data_socket] == zmq.POLLIN):
+                self.log.debug("data_socket is polling")
 
                 try:
-                    multipartMessage = self.dataSocket.recv_multipart()
-#                    self.log.debug("multipartMessage={0}"
-#                                    .format(multipartMessage[:100]))
+                    multipart_message = self.data_socket.recv_multipart()
+#                    self.log.debug("multipart_message={0}"
+#                                    .format(multipart_message[:100]))
                 except:
                     self.log.error("Could not receive data due to unknown "
                                    "error.", exc_info=True)
 
-                if multipartMessage[0] == b"ALIVE_TEST":
+                if multipart_message[0] == b"ALIVE_TEST":
                     continue
 
-                if len(multipartMessage) < 2:
+                if len(multipart_message) < 2:
                     self.log.error("Received mutipart-message is too short. "
                                    "Either config or file content is missing.")
-#                    self.log.debug("multipartMessage={0}"
-#                                   .format(multipartMessage[:100]))
+#                    self.log.debug("multipart_message={0}"
+#                                   .format(multipart_message[:100]))
                     # TODO return errorcode
 
                 try:
-                    runLoop = self.__react_on_message(multipartMessage)
+                    run_loop = self.__react_on_message(multipart_message)
                 except KeyboardInterrupt:
                     self.log.debug("Keyboard interrupt detected. "
                                    "Stopping to receive.")
@@ -587,74 +588,74 @@ class Transfer():
 #                    raise Exception("Unknown error while receiving files. "
 #                                   "Need to abort.")
 
-            if (self.controlSocket in socks
-                    and socks[self.controlSocket] == zmq.POLLIN):
-                self.log.debug("controlSocket is polling")
-                self.controlSocket.recv()
+            if (self.control_socket in socks
+                    and socks[self.control_socket] == zmq.POLLIN):
+                self.log.debug("control_socket is polling")
+                self.control_socket.recv()
 #                self.log.debug("Control signal received. Stopping.")
                 raise Exception("Control signal received. Stopping.")
 
-    def __react_on_message(self, multipartMessage):
+    def __react_on_message(self, multipart_message):
 
-        if multipartMessage[0] == b"CLOSE_FILE":
-#            filename = multipartMessage[1]
-            id = multipartMessage[2]
-            self.recvdCloseFrom.append(id)
+        if multipart_message[0] == b"CLOSE_FILE":
+#            filename = multipart_message[1]
+            id = multipart_message[2]
+            self.recvd_close_from.append(id)
             self.log.debug("Received close-file signal from "
                            "DataDispatcher-{0}".format(id))
 
             # get number of signals to wait for
-            if not self.numberOfStreams:
-                self.numberOfStreams = int(id.split("/")[1])
+            if not self.number_of_streams:
+                self.number_of_streams = int(id.split("/")[1])
 
             # have all signals arrived?
-            self.log.debug("self.recvdCloseFrom={0}, self.numberOfStreams={1}"
-                           .format(self.recvdCloseFrom, self.numberOfStreams))
-            if len(self.recvdCloseFrom) == self.numberOfStreams:
+            self.log.debug("self.recvd_close_from={0}, self.number_of_streams={1}"
+                           .format(self.recvd_close_from, self.number_of_streams))
+            if len(self.recvd_close_from) == self.number_of_streams:
                 self.log.info("All close-file-signals arrived")
-                if self.replyToSignal:
-                    self.fileOpSocket.send_multipart(self.replyToSignal)
-                    self.log.debug("fileOpSocket send: {0}"
-                                   .format(self.replyToSignal))
-                    self.replyToSignal = False
-                    self.recvdCloseFrom = []
+                if self.reply_to_signal:
+                    self.file_op_socket.send_multipart(self.reply_to_signal)
+                    self.log.debug("file_op_socket send: {0}"
+                                   .format(self.reply_to_signal))
+                    self.reply_to_signal = False
+                    self.recvd_close_from = []
 
-                    self.closeCallback(self.callbackParams, multipartMessage)
+                    self.close_callback(self.callback_params, multipart_message)
                     return False
                 else:
-                    self.allCloseRecvd = True
+                    self.all_close_recvd = True
 
             else:
-                self.log.info("self.recvdCloseFrom={0}, "
-                              "self.numberOfStreams={1}"
-                              .format(self.recvdCloseFrom,
-                                      self.numberOfStreams))
+                self.log.info("self.recvd_close_from={0}, "
+                              "self.number_of_streams={1}"
+                              .format(self.recvd_close_from,
+                                      self.number_of_streams))
 
         else:
             #extract multipart message
             try:
-                metadata = json.loads(multipartMessage[0]).decode("utf-8")
+                metadata = json.loads(multipart_message[0]).decode("utf-8")
             except:
                 #json.dumps of None results in 'null'
-                if multipartMessage[0] != 'null':
+                if multipart_message[0] != 'null':
                     self.log.error("Could not extract metadata from the "
                                    "multipart-message.", exc_info=True)
                     self.log.debug("multipartmessage[0] = {0}"
-                                   .format(multipartMessage[0]),
+                                   .format(multipart_message[0]),
                                    exc_info=True)
                 metadata = None
 
-            # TODO validate multipartMessage
+            # TODO validate multipart_message
             # (like correct dict-values for metadata)
 
             try:
-                payload = multipartMessage[1]
+                payload = multipart_message[1]
             except:
                 self.log.warning("An empty file was received within the "
                                  "multipart-message", exc_info=True)
                 payload = None
 
-            self.readCallback(self.callbackParams, [metadata, payload])
+            self.read_callback(self.callback_params, [metadata, payload])
 
         return True
 
@@ -672,18 +673,18 @@ class Transfer():
 
         """
 
-        if not self.streamStarted and not self.queryNextStarted:
+        if not self.stream_started and not self.query_next_started:
             self.log.info("Could not communicate, no connection was "
                           "initialized.")
             return None, None
 
-        if self.queryNextStarted:
+        if self.query_next_started:
 
-            sendMessage = [b"NEXT", self.queryNextStarted]
+            send_message = [b"NEXT", self.query_next_started]
             try:
-                self.requestSocket.send_multipart(sendMessage)
+                self.request_socket.send_multipart(send_message)
             except Exception:
-                self.log.error("Could not send request to requestSocket",
+                self.log.error("Could not send request to request_socket",
                                exc_info=True)
                 return None, None
 
@@ -703,37 +704,37 @@ class Transfer():
                     raise
 
             # if there was a response
-            if (self.dataSocket in socks
-                    and socks[self.dataSocket] == zmq.POLLIN):
+            if (self.data_socket in socks
+                    and socks[self.data_socket] == zmq.POLLIN):
 
                 try:
-                    multipartMessage = self.dataSocket.recv_multipart()
+                    multipart_message = self.data_socket.recv_multipart()
                 except:
                     self.log.error("Receiving data..failed.", exc_info=True)
                     return [None, None]
 
-                if multipartMessage[0] == b"ALIVE_TEST":
+                if multipart_message[0] == b"ALIVE_TEST":
                     continue
-                elif len(multipartMessage) < 2:
+                elif len(multipart_message) < 2:
                     self.log.error("Received mutipart-message is too short. "
                                    "Either config or file content is missing.")
-                    self.log.debug("multipartMessage={0}"
-                                   .format(multipartMessage[:100]))
+                    self.log.debug("multipart_message={0}"
+                                   .format(multipart_message[:100]))
                     return [None, None]
 
                 # extract multipart message
                 try:
-                    metadata = json.loads(multipartMessage[0].decode("utf-8"))
+                    metadata = json.loads(multipart_message[0].decode("utf-8"))
                 except:
                     self.log.error("Could not extract metadata from the "
                                    "multipart-message.", exc_info=True)
                     metadata = None
 
-                # TODO validate multipartMessage
+                # TODO validate multipart_message
                 # (like correct dict-values for metadata)
 
                 try:
-                    payload = multipartMessage[1]
+                    payload = multipart_message[1]
                 except:
                     self.log.warning("An empty file was received within the "
                                      "multipart-message", exc_info=True)
@@ -743,75 +744,75 @@ class Transfer():
             else:
 #                self.log.warning("Could not receive data in the given time.")
 
-                if self.queryNextStarted:
+                if self.query_next_started:
                     try:
-                        self.requestSocket.send_multipart(
-                            [b"CANCEL", self.queryNextStarted])
+                        self.request_socket.send_multipart(
+                            [b"CANCEL", self.query_next_started])
                     except Exception:
                         self.log.error("Could not cancel the next query",
                                        exc_info=True)
 
                 return [None, None]
 
-    def store(self, targetBasePath):
+    def store(self, target_base_path):
 
         # save all chunks to file
         while True:
 
             try:
-                [payloadMetadata, payload] = self.get()
+                [payload_metadata, payload] = self.get()
             except KeyboardInterrupt:
                 raise
             except:
                 self.log.error("Getting data failed.", exc_info=True)
                 raise
 
-            if payloadMetadata and payload:
+            if payload_metadata and payload:
 
                 #generate target filepath
-                targetFilepath = self.generate_target_filepath(
-                    targetBasePath, payloadMetadata)
+                target_filepath = self.generate_target_filepath(
+                    target_base_path, payload_metadata)
                 self.log.debug("New chunk for file {0} received."
-                               .format(targetFilepath))
+                               .format(target_filepath))
 
                 #append payload to file
                 #TODO: save message to file using a thread (avoids blocking)
                 try:
-                    self.fileDescriptors[targetFilepath].write(payload)
+                    self.file_descriptors[target_filepath].write(payload)
                 # File was not open
                 except KeyError:
                     try:
-                        self.fileDescriptors[targetFilepath] = (
-                            open(targetFilepath, "wb")
+                        self.file_descriptors[target_filepath] = (
+                            open(target_filepath, "wb")
                             )
-                        self.fileDescriptors[targetFilepath].write(payload)
+                        self.file_descriptors[target_filepath].write(payload)
                     except IOError as e:
                         # errno.ENOENT == "No such file or directory"
                         if e.errno == errno.ENOENT:
                             try:
                                 # TODO do not create commissioning, current
                                 # and local
-                                targetPath = self.__generate_target_path(
-                                    targetBasePath, payloadMetadata)
-                                os.makedirs(targetPath)
+                                target_path = self.__generate_target_path(
+                                    target_base_path, payload_metadata)
+                                os.makedirs(target_path)
 
-                                self.fileDescriptors[targetFilepath] = (
-                                    open(targetFilepath, "wb")
+                                self.file_descriptors[target_filepath] = (
+                                    open(target_filepath, "wb")
                                     )
                                 self.log.info("New target directory created: "
-                                              "{0}".format(targetPath))
-                                self.fileDescriptors[targetFilepath].write(
+                                              "{0}".format(target_path))
+                                self.file_descriptors[target_filepath].write(
                                     payload)
                             except:
                                 self.log.error("Unable to save payload to "
                                                "file: '{0}'"
-                                               .format(targetFilepath),
+                                               .format(target_filepath),
                                                exc_info=True)
-                                self.log.debug("targetPath:{0}"
-                                               .format(targetPath))
+                                self.log.debug("target_path:{0}"
+                                               .format(target_path))
                         else:
                             self.log.error("Failed to append payload to file:"
-                                           " '{0}'".format(targetFilepath),
+                                           " '{0}'".format(target_filepath),
                                            exc_info=True)
                 except KeyboardInterrupt:
                     self.log.info("KeyboardInterrupt detected. Unable to "
@@ -819,63 +820,63 @@ class Transfer():
                     break
                 except:
                     self.log.error("Failed to append payload to file: '{0}'"
-                                   .format(targetFilepath), exc_info=True)
+                                   .format(target_filepath), exc_info=True)
 
-                if len(payload) < payloadMetadata["chunkSize"]:
+                if len(payload) < payload_metadata["chunkSize"]:
                     #indicated end of file. Leave loop
-                    filename = self.generate_target_filepath(targetBasePath,
-                                                             payloadMetadata)
-                    fileModTime = payloadMetadata["fileModTime"]
+                    filename = self.generate_target_filepath(target_base_path,
+                                                             payload_metadata)
+                    file_mod_time = payload_metadata["file_mod_time"]
 
-                    self.fileDescriptors[targetFilepath].close()
-                    del self.fileDescriptors[targetFilepath]
+                    self.file_descriptors[target_filepath].close()
+                    del self.file_descriptors[target_filepath]
 
                     self.log.info("New file with modification time {0} "
                                   "received and saved: {1}"
-                                  .format(fileModTime, filename))
+                                  .format(file_mod_time, filename))
                     break
 
-    def generate_target_filepath(self, basePath, configDict):
+    def generate_target_filepath(self, base_path, config_dict):
         """
         Generates full path where target file will saved to.
 
         """
-        if not configDict:
+        if not config_dict:
             return None
 
-        filename = configDict["filename"]
+        filename = config_dict["filename"]
         # TODO This is due to Windows path names, check if there has do be
         # done anything additionally to work
-        # e.g. check sourcePath if it's a windows path
-        relativePath = configDict["relativePath"].replace('\\', os.sep)
+        # e.g. check source_path if it's a windows path
+        relative_path = config_dict["relative_path"].replace('\\', os.sep)
 
-        if relativePath is '' or relativePath is None:
-            targetPath = basePath
+        if relative_path is '' or relative_path is None:
+            target_path = base_path
         else:
-            targetPath = os.path.normpath(os.path.join(basePath, relativePath))
+            target_path = os.path.normpath(os.path.join(base_path, relative_path))
 
-        filepath = os.path.join(targetPath, filename)
+        filepath = os.path.join(target_path, filename)
 
         return filepath
 
-    def __generate_target_path(self, basePath, configDict):
+    def __generate_target_path(self, base_path, config_dict):
         """
         generates path where target file will saved to.
 
         """
         # TODO This is due to Windows path names, check if there has do be
         # done anything additionally to work
-        # e.g. check sourcePath if it's a windows path
-        relativePath = configDict["relativePath"].replace('\\', os.sep)
+        # e.g. check source_path if it's a windows path
+        relative_path = config_dict["relative_path"].replace('\\', os.sep)
 
         # if the relative path starts with a slash path.join will consider it
         # as absolute path
-        if relativePath.startswith("/"):
-            relativePath = relativePath[1:]
+        if relative_path.startswith("/"):
+            relative_path = relative_path[1:]
 
-        targetPath = os.path.join(basePath, relativePath)
+        target_path = os.path.join(base_path, relative_path)
 
-        return targetPath
+        return target_path
 
     def stop(self):
         """
@@ -883,57 +884,57 @@ class Transfer():
         destoying context
 
         """
-        if self.signalSocket and self.signalExchanged:
+        if self.signal_socket and self.signal_exchanged:
             self.log.info("Sending close signal")
             signal = None
-            if self.streamStarted or (b"STREAM" in self.signalExchanged):
+            if self.stream_started or (b"STREAM" in self.signal_exchanged):
                 signal = b"STOP_STREAM"
-            elif self.queryNextStarted or (b"QUERY" in self.signalExchanged):
+            elif self.query_next_started or (b"QUERY" in self.signal_exchanged):
                 signal = b"STOP_QUERY_NEXT"
 
             self.__send_signal(signal)
             # TODO need to check correctness of signal?
 #            message = self.__send_signal(signal)
 
-            self.streamStarted = None
-            self.queryNextStarted = None
+            self.stream_started = None
+            self.query_next_started = None
 
         try:
-            if self.signalSocket:
-                self.log.info("closing signalSocket...")
-                self.signalSocket.close(linger=0)
-                self.signalSocket = None
-            if self.dataSocket:
-                self.log.info("closing dataSocket...")
-                self.dataSocket.close(linger=0)
-                self.dataSocket = None
-            if self.requestSocket:
-                self.log.info("closing requestSocket...")
-                self.requestSocket.close(linger=0)
-                self.requestSocket = None
-            if self.fileOpSocket:
-                self.log.info("closing fileOpSocket...")
-                self.fileOpSocket.close(linger=0)
-                self.fileOpSocket = None
-            if self.controlSocket:
-                self.log.info("closing controlSocket...")
-                self.controlSocket.close(linger=0)
-                self.controlSocket = None
+            if self.signal_socket:
+                self.log.info("closing signal_socket...")
+                self.signal_socket.close(linger=0)
+                self.signal_socket = None
+            if self.data_socket:
+                self.log.info("closing data_socket...")
+                self.data_socket.close(linger=0)
+                self.data_socket = None
+            if self.request_socket:
+                self.log.info("closing request_socket...")
+                self.request_socket.close(linger=0)
+                self.request_socket = None
+            if self.file_op_socket:
+                self.log.info("closing file_op_socket...")
+                self.file_op_socket.close(linger=0)
+                self.file_op_socket = None
+            if self.control_socket:
+                self.log.info("closing control_socket...")
+                self.control_socket.close(linger=0)
+                self.control_socket = None
 
-                controlConStr = ("{path}/{pid}_{id}"
-                                 .format(path=self.ipcPath,
-                                         pid=self.currentPID,
-                                         id="control_API"))
+                control_con_str = ("{0}/{1}_{2}"
+                                 .format(self.ipc_path,
+                                         self.current_pid,
+                                         "control_API"))
                 try:
-                    os.remove(controlConStr)
+                    os.remove(control_con_str)
                     self.log.debug("Removed ipc socket: {0}"
-                                   .format(controlConStr))
+                                   .format(control_con_str))
                 except OSError:
                     self.log.warning("Could not remove ipc socket: {0}"
-                                     .format(controlConStr))
+                                     .format(control_con_str))
                 except:
                     self.log.warning("Could not remove ipc socket: {0}"
-                                     .format(controlConStr), exc_info=True)
+                                     .format(control_con_str), exc_info=True)
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
@@ -946,17 +947,17 @@ class Transfer():
                 self.log.error("Stopping authentication thread...done.",
                                exc_info=True)
 
-        for target in self.fileDescriptors:
-            self.fileDescriptors[target].close()
+        for target in self.file_descriptors:
+            self.file_descriptors[target].close()
             self.log.warning("Not all chunks were received for file {0}"
                              .format(target))
 
-        if self.fileDescriptors:
-            self.fileDescriptors = dict()
+        if self.file_descriptors:
+            self.file_descriptors = dict()
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class
-        if not self.extContext and self.context:
+        if not self.ext_context and self.context:
             try:
                 self.log.info("Closing ZMQ context...")
                 self.context.destroy(0)
@@ -973,28 +974,28 @@ class Transfer():
 
         if not self.context:
             self.context = zmq.Context()
-            self.extContext = False
+            self.ext_context = False
 
         signal = None
         # Signal exchange
-        if self.connectionType == "stream":
-            signalPort = self.signalPort
+        if self.connection_type == "stream":
+            signal_port = self.signal_port
             signal = b"STOP_STREAM"
-        elif self.connectionType == "streamMetadata":
-            signalPort = self.signalPort
+        elif self.connection_type == "streamMetadata":
+            signal_port = self.signal_port
             signal = b"STOP_STREAM_METADATA"
-        elif self.connectionType == "queryNext":
-            signalPort = self.signalPort
+        elif self.connection_type == "queryNext":
+            signal_port = self.signal_port
             signal = b"STOP_QUERY_NEXT"
-        elif self.connectionType == "queryMetadata":
-            signalPort = self.signalPort
+        elif self.connection_type == "queryMetadata":
+            signal_port = self.signal_port
             signal = b"STOP_QUERY_METADATA"
 
         self.log.debug("Create socket for signal exchange...")
 
-        if self.signalHost and not self.signalSocket:
-            self.__create_signal_socket(signalPort)
-        elif not self.signalHost:
+        if self.signal_host and not self.signal_socket:
+            self.__create_signal_socket(signal_port)
+        elif not self.signal_host:
             self.stop()
             raise ConnectionFailed("No host to send signal to specified.")
 

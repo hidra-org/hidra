@@ -41,61 +41,52 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 #
 
 class TaskProvider():
-    def __init__(self, eventDetectorConfig, controlConId, requestFwConId,
-                 routerConId, logQueue, context=None):
+    def __init__(self, config, control_con_id, request_fw_con_id,
+                 router_con_id, log_queue, context=None):
         global BASE_PATH
 
-        # eventDetectorConfig = {
-        #        eventDetectorType   : ... ,
-        #        monDir       : ... ,
-        #        monEventType : ... ,
-        #        monSubdirs   : ... ,
-        #        monSuffixes  : ... ,
-        #        }
-
-        self.log = self.get_logger(logQueue)
+        self.log = self.get_logger(log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
-        self.currentPID = os.getpid()
+        self.current_pid = os.getpid()
         self.log.debug("TaskProvider started (PID {0})."
-                       .format(self.currentPID))
+                       .format(self.current_pid))
 
-        self.dataDetectorModule = None
-        self.eventDetector = None
+        self.eventdetector = None
 
-        self.config = eventDetectorConfig
-        self.log.info("Configuration for event detector: {0}"
-                      .format(self.config))
+        self.config = config
 
-        eventDetectorModule = self.config["eventDetectorType"]
+        eventdetector_module = self.config["event_detector_type"]
+        self.log.info("Configured type of event detector: {0}"
+                      .format(eventdetector_module))
 
-        self.controlConId = controlConId
-        self.requestFwConId = requestFwConId
-        self.routerConId = routerConId
+        self.control_con_id = control_con_id
+        self.request_fw_con_id = request_fw_con_id
+        self.router_con_id = router_con_id
 
-        self.controlSocket = None
-        self.requestFwSocket = None
-        self.routerSocket = None
+        self.control_socket = None
+        self.request_fw_socket = None
+        self.router_socket = None
 
         self.poller = None
 
         # remember if the context was created outside this class or not
         if context:
             self.context = context
-            self.extContext = True
+            self.ext_context = True
         else:
             self.log.info("Registering ZMQ context")
             self.context = zmq.Context()
-            self.extContext = False
+            self.ext_context = False
 
-        self.log.info("Loading eventDetector: {0}".format(eventDetectorModule))
-        self.eventDetectorModule = __import__(eventDetectorModule)
+        self.log.info("Loading event detector: {0}".format(eventdetector_module))
+        self.eventdetector_module = __import__(eventdetector_module)
 
-        self.eventDetector = self.eventDetectorModule.EventDetector(
-            self.config, logQueue)
+        self.eventdetector = self.eventdetector_module.EventDetector(
+            self.config, log_queue)
 
-        self.continueRun = True
+        self.continue_run = True
 
         try:
             self.create_sockets()
@@ -129,54 +120,54 @@ class TaskProvider():
 
         # socket to get control signals from
         try:
-            self.controlSocket = self.context.socket(zmq.SUB)
-            self.controlSocket.connect(self.controlConId)
-            self.log.info("Start controlSocket (connect): '{0}'"
-                          .format(self.controlConId))
+            self.control_socket = self.context.socket(zmq.SUB)
+            self.control_socket.connect(self.control_con_id)
+            self.log.info("Start control_socket (connect): '{0}'"
+                          .format(self.control_con_id))
         except:
-            self.log.error("Failed to start controlSocket (connect): '{0}'"
-                           .format(self.controlConId), exc_info=True)
+            self.log.error("Failed to start control_socket (connect): '{0}'"
+                           .format(self.control_con_id), exc_info=True)
             raise
 
-        self.controlSocket.setsockopt_string(zmq.SUBSCRIBE, "control")
+        self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
 
         # socket to get requests
         try:
-            self.requestFwSocket = self.context.socket(zmq.REQ)
-            self.requestFwSocket.connect(self.requestFwConId)
-            self.log.info("Start requestFwSocket (connect): '{0}'"
-                          .format(self.requestFwConId))
+            self.request_fw_socket = self.context.socket(zmq.REQ)
+            self.request_fw_socket.connect(self.request_fw_con_id)
+            self.log.info("Start request_fw_socket (connect): '{0}'"
+                          .format(self.request_fw_con_id))
         except:
-            self.log.error("Failed to start requestFwSocket (connect): '{0}'"
-                           .format(self.requestFwConId), exc_info=True)
+            self.log.error("Failed to start request_fw_socket (connect): '{0}'"
+                           .format(self.request_fw_con_id), exc_info=True)
             raise
 
         # socket to disribute the events to the worker
         try:
-            self.routerSocket = self.context.socket(zmq.PUSH)
-            self.routerSocket.bind(self.routerConId)
+            self.router_socket = self.context.socket(zmq.PUSH)
+            self.router_socket.bind(self.router_con_id)
             self.log.info("Start to router socket (bind): '{0}'"
-                          .format(self.routerConId))
+                          .format(self.router_con_id))
         except:
             self.log.error("Failed to start router Socket (bind): '{0}'"
-                           .format(self.routerConId), exc_info=True)
+                           .format(self.router_con_id), exc_info=True)
             raise
 
         self.poller = zmq.Poller()
-        self.poller.register(self.controlSocket, zmq.POLLIN)
+        self.poller.register(self.control_socket, zmq.POLLIN)
 
     def run(self):
 
-        while self.continueRun:
+        while self.continue_run:
             try:
                 # the event for a file /tmp/test/source/local/file1.tif
                 # is of the form:
                 # {
-                #   "sourcePath" : "/tmp/test/source/"
-                #   "relativePath": "local"
-                #   "filename"   : "file1.tif"
+                #   "source_path": "/tmp/test/source/"
+                #   "relative_path": "local"
+                #   "filename": "file1.tif"
                 # }
-                workloadList = self.eventDetector.get_new_event()
+                workload_list = self.eventdetector.get_new_event()
             except KeyboardInterrupt:
                 break
             except IOError as e:
@@ -185,22 +176,22 @@ class TaskProvider():
                 else:
                     self.log.error("Invalid fileEvent message received.",
                                    exc_info=True)
-                    workloadList = []
+                    workload_list = []
             except:
                 self.log.error("Invalid fileEvent message received.",
                                exc_info=True)
-                workloadList = []
+                workload_list = []
 
             # TODO validate workload dict
-            for workload in workloadList:
+            for workload in workload_list:
                 # get requests for this event
                 try:
                     self.log.debug("Get requests...")
-                    self.requestFwSocket.send_multipart(
+                    self.request_fw_socket.send_multipart(
                         [b"GET_REQUESTS",
                          json.dumps(workload["filename"]).encode("utf-8")])
 
-                    requests = json.loads(self.requestFwSocket.recv_string())
+                    requests = json.loads(self.request_fw_socket.recv_string())
                     self.log.debug("Requests: {0}".format(requests))
                 except TypeError:
                     # This happens when CLOSE_FILE is sent as workload
@@ -213,7 +204,7 @@ class TaskProvider():
                 try:
                     self.log.debug("Building message dict...")
                     # set correct escape characters
-                    messageDict = json.dumps(workload).encode("utf-8")
+                    message_dict = json.dumps(workload).encode("utf-8")
                 except:
                     self.log.error("Unable to assemble message dict.",
                                    exc_info=True)
@@ -222,21 +213,21 @@ class TaskProvider():
                 # send the file to the fileMover
                 try:
                     self.log.debug("Sending message...")
-                    message = [messageDict]
+                    message = [message_dict]
                     if requests != ["None"]:
                         message.append(json.dumps(requests).encode("utf-8"))
                     self.log.debug(str(message))
-                    self.routerSocket.send_multipart(message)
+                    self.router_socket.send_multipart(message)
                 except:
                     self.log.error("Sending message...failed.", exc_info=True)
 
             socks = dict(self.poller.poll(0))
 
-            if (self.controlSocket in socks
-                    and socks[self.controlSocket] == zmq.POLLIN):
+            if (self.control_socket in socks
+                    and socks[self.control_socket] == zmq.POLLIN):
 
                 try:
-                    message = self.controlSocket.recv_multipart()
+                    message = self.control_socket.recv_multipart()
                     self.log.debug("Control signal received: message = {0}"
                                    .format(message))
                 except:
@@ -255,25 +246,25 @@ class TaskProvider():
                                    .format(message))
 
     def stop(self):
-        self.continueRun = False
+        self.continue_run = False
 
         self.log.debug("Closing sockets for TaskProvider")
-        if self.routerSocket:
-            self.log.info("Closing routerSocket")
-            self.routerSocket.close(0)
-            self.routerSocket = None
+        if self.router_socket:
+            self.log.info("Closing router_socket")
+            self.router_socket.close(0)
+            self.router_socket = None
 
-        if self.requestFwSocket:
-            self.log.info("Closing requestFwSocket")
-            self.requestFwSocket.close(0)
-            self.requestFwSocket = None
+        if self.request_fw_socket:
+            self.log.info("Closing request_fw_socket")
+            self.request_fw_socket.close(0)
+            self.request_fw_socket = None
 
-        if self.controlSocket:
-            self.log.info("Closing controlSocket")
-            self.controlSocket.close(0)
-            self.controlSocket = None
+        if self.control_socket:
+            self.log.info("Closing control_socket")
+            self.control_socket.close(0)
+            self.control_socket = None
 
-        if not self.extContext and self.context:
+        if not self.ext_context and self.context:
             self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
@@ -292,16 +283,16 @@ class TaskProvider():
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
 class RequestResponder():
-    def __init__(self, requestFwPort, logQueue, context=None):
+    def __init__(self, request_fw_port, log_queue, context=None):
         # Send all logs to the main process
-        self.log = self.get_logger(logQueue)
+        self.log = self.get_logger(log_queue)
 
         self.context = context or zmq.Context.instance()
-        self.requestFwSocket = self.context.socket(zmq.REP)
-        connectionStr = "tcp://127.0.0.1:{0}".format(requestFwPort)
-        self.requestFwSocket.bind(connectionStr)
-        self.log.info("[RequestResponder] requestFwSocket started (bind) for "
-                      "'{0}'".format(connectionStr))
+        self.request_fw_socket = self.context.socket(zmq.REP)
+        connection_str = "tcp://127.0.0.1:{0}".format(request_fw_port)
+        self.request_fw_socket.bind(connection_str)
+        self.log.info("[RequestResponder] request_fw_socket started (bind) for "
+                      "'{0}'".format(connection_str))
 
         self.run()
 
@@ -322,19 +313,19 @@ class RequestResponder():
     def run(self):
         hostname = socket.gethostname()
         self.log.info("[RequestResponder] Start run")
-        openRequests = [['{0}:6003'.format(hostname), 1, [".cbf"]],
+        open_requests = [['{0}:6003'.format(hostname), 1, [".cbf"]],
                         ['{0}:6004'.format(hostname), 0, [".cbf"]]]
         while True:
-            request = self.requestFwSocket.recv_multipart()
+            request = self.request_fw_socket.recv_multipart()
             self.log.debug("[RequestResponder] Received request: {0}"
                            .format(request))
 
-            self.requestFwSocket.send(json.dumps(openRequests).encode("utf-8"))
+            self.request_fw_socket.send(json.dumps(open_requests).encode("utf-8"))
             self.log.debug("[RequestResponder] Answer: {0}"
-                           .format(openRequests))
+                           .format(open_requests))
 
     def __exit__(self):
-        self.requestFwSocket.close(0)
+        self.request_fw_socket.close(0)
         self.context.destroy()
 
 
@@ -349,82 +340,79 @@ if __name__ == '__main__':
     logfile = os.path.join(BASE_PATH, "logs", "taskProvider.log")
     logsize = 10485760
 
-    eventDetectorConfig = {
-        "eventDetectorType": "inotifyx_detector",
-        "monDir": os.path.join(BASE_PATH, "data", "source"),
-        "monSubdirs": ["commissioning", "current", "local"],
-        "monEvents": {"IN_CLOSE_WRITE": [".tif", ".cbf"],
-                      "IN_MOVED_TO": [".log"]},
+    config = {
+        "event_detector_type": "inotifyx_detector",
+        "monitored_dir": os.path.join(BASE_PATH, "data", "source"),
+        "fix_subdirs": ["commissioning", "current", "local"],
+        "monitored_events": {"IN_CLOSE_WRITE": [".tif", ".cbf"],
+                             "IN_MOVED_TO": [".log"]},
         "timeout": 0.1,
-        "historySize": 0,
-        "useCleanUp": False,
-        "cleanUpTime": 5,
-        "actionTime": 120
+        "history_size": 0,
+        "use_cleanup": False,
+        "time_till_closed": 5,
+        "action_time": 120
         }
 
     localhost = "127.0.0.1"
 
-    controlPort = "50005"
-    requestFwPort = "6001"
-    routerPort = "7000"
+    control_port = "50005"
+    request_fw_port = "6001"
+    router_port = "7000"
 
-    controlConId = ("tcp://{ip}:{port}"
-                    .format(ip=localhost, port=controlPort))
-    requestFwConId = ("tcp://{ip}:{port}"
-                      .format(ip=localhost, port=requestFwPort))
-    routerConId = ("tcp://{ip}:{port}"
-                   .format(ip=localhost, port=routerPort))
+    control_con_id = "tcp://{0}:{1}".format(localhost, control_port)
+    request_fw_con_id = "tcp://{0}:{1}".format(localhost, request_fw_port)
+    router_con_id = "tcp://{0}:{1}".format(localhost, router_port)
 
-    logQueue = Queue(-1)
+    log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
     h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onScreenLogLevel="debug")
+                                      onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    logQueueListener = helpers.CustomQueueListener(logQueue, h1, h2)
-    logQueueListener.start()
+    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener.start()
 
     # Create log and set handler to queue handle
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)  # Log level = DEBUG
-    qh = QueueHandler(logQueue)
+    qh = QueueHandler(log_queue)
     root.addHandler(qh)
 
-    taskProviderPr = Process(
+    taskprovider_pr = Process(
         target=TaskProvider,
-        args=(eventDetectorConfig, controlConId, requestFwConId, routerConId,
-              logQueue))
-    taskProviderPr.start()
+        args=(config, control_con_id, request_fw_con_id, router_con_id,
+              log_queue))
+    taskprovider_pr.start()
 
     requestResponderPr = Process(target=RequestResponder,
-                                 args=(requestFwPort, logQueue))
+                                 args=(request_fw_port, log_queue))
     requestResponderPr.start()
 
     context = zmq.Context.instance()
 
-    routerSocket = context.socket(zmq.PULL)
-    connectionStr = "tcp://localhost:{0}".format(routerPort)
-    routerSocket.connect(connectionStr)
-    logging.info("=== routerSocket connected to {0}".format(connectionStr))
+    router_socket = context.socket(zmq.PULL)
+    connection_str = "tcp://localhost:{0}".format(router_port)
+    router_socket.connect(connection_str)
+    logging.info("=== router_socket connected to {0}".format(connection_str))
 
-    sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
-    targetFileBase = os.path.join(
+    source_file = os.path.join(BASE_PATH, "test_file.cbf")
+    target_file_base = os.path.join(
         BASE_PATH, "data", "source", "local", "raw") + os.sep
-    if not os.path.exists(targetFileBase):
-        os.makedirs(targetFileBase)
+    if not os.path.exists(target_file_base):
+        os.makedirs(target_file_base)
 
     i = 100
     try:
         while i <= 105:
             time.sleep(0.5)
-            targetFile = "{0}{1}.cbf".format(targetFileBase, i)
-            logging.debug("copy to {0}".format(targetFile))
-            copyfile(sourceFile, targetFile)
-#            call(["cp", sourceFile, targetFile])
+            target_file = "{0}{1}.cbf".format(target_file_base, i)
+            logging.debug("copy to {0}".format(target_file))
+            copyfile(source_file, target_file)
+#            call(["cp", source_file, target_file])
             i += 1
 
-            workload = routerSocket.recv_multipart()
+            workload = router_socket.recv_multipart()
             logging.info("=== next workload {0}".format(workload))
             time.sleep(1)
     except KeyboardInterrupt:
@@ -432,15 +420,15 @@ if __name__ == '__main__':
     finally:
 
         requestResponderPr.terminate()
-        taskProviderPr.terminate()
+        taskprovider_pr.terminate()
 
-        routerSocket.close(0)
+        router_socket.close(0)
         context.destroy()
 
         for number in range(100, i):
-            targetFile = "{0}{1}.cbf".format(targetFileBase, number)
-            logging.debug("remove {0}".format(targetFile))
-            os.remove(targetFile)
+            target_file = "{0}{1}.cbf".format(target_file_base, number)
+            logging.debug("remove {0}".format(target_file))
+            os.remove(target_file)
 
-        logQueue.put_nowait(None)
-        logQueueListener.stop()
+        log_queue.put_nowait(None)
+        log_queue_listener.stop()

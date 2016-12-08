@@ -56,28 +56,28 @@ if __name__ == '__main__':
     arguments = argument_parsing()
 
     beamline = "p10"
-    supportedTargets = ["current/raw",
-                        "current/scratch_bl",
-                        "commissioning/raw",
-                        "commissioning/scratch_bl",
-                        "local"]
+    supported_targets = ["current/raw",
+                         "current/scratch_bl",
+                         "commissioning/raw",
+                         "commissioning/scratch_bl",
+                         "local"]
 
     if (arguments.target
-            and os.path.normpath(arguments.target) not in supportedTargets):
+            and os.path.normpath(arguments.target) not in supported_targets):
         print ("ERROR: target not supported")
         sys.exit(1)
 
 #    obj = hidra.Control(beamline)
-    obj = hidra.Control(beamline, useLog=None)
+    obj = hidra.Control(beamline, use_log=None)
 
     try:
         if arguments.start:
-            obj.set("localTarget", arguments.target)
-            obj.set("eigerIp", "192.168.138.52")
-            obj.set("eigerApiVersion", "1.6.0")
-            obj.set("historySize", 2000)
-            obj.set("storeData", False)
-            obj.set("removeData", False)
+            obj.set("local_target", arguments.target)
+            obj.set("eiger_ip", "192.168.138.52")
+            obj.set("eiger_api_version", "1.6.0")
+            obj.set("history_size", 2000)
+            obj.set("store_data", False)
+            obj.set("remove_data", False)
             obj.set("whitelist", "localhost")
 
             print ("Starting HiDRA for Eiger:", obj.do("start"))

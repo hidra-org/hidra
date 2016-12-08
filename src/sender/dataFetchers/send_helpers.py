@@ -10,88 +10,88 @@ class DataHandlingError(Exception):
     pass
 
 
-def __send_to_targets(log, targets, sourceFile, targetFile, openConnections,
+def __send_to_targets(log, targets, source_file, target_file, open_connections,
                       metadata, payload, context, timeout=-1):
 
-    for target, prio, suffixes, sendType in targets:
+    for target, prio, suffixes, send_type in targets:
 
         # send data to the data stream to store it in the storage system
         if prio == 0:
             # socket not known
-            if target not in openConnections:
+            if target not in open_connections:
                 # open socket
                 try:
                     socket = context.socket(zmq.PUSH)
-                    connectionStr = "tcp://{0}".format(target)
+                    connection_str = "tcp://{0}".format(target)
 
-                    socket.connect(connectionStr)
+                    socket.connect(connection_str)
                     log.info("Start socket (connect): '{0}'"
-                             .format(connectionStr))
+                             .format(connection_str))
 
                     # register socket
-                    openConnections[target] = socket
+                    open_connections[target] = socket
                 except:
                     raise DataHandlingError("Failed to start socket (connect):"
-                                            " '{0}'".format(connectionStr))
+                                            " '{0}'".format(connection_str))
 
             # send data
             try:
-                if sendType == "data":
-                    tracker = openConnections[target].send_multipart(
+                if send_type == "data":
+                    tracker = open_connections[target].send_multipart(
                         payload, copy=False, track=True)
                     log.info("Sending message part from file '{0}' to '{1}' "
                              "with priority {2}"
-                             .format(sourceFile, target, prio))
+                             .format(source_file, target, prio))
 
-                elif sendType == "metadata":
+                elif send_type == "metadata":
                     #json.dumps(None) is 'N.'
-                    tracker = openConnections[target].send_multipart(
+                    tracker = open_connections[target].send_multipart(
                         [json.dumps(metadata).encode("utf-8"),
                          json.dumps(None).encode("utf-8")],
                         copy=False, track=True)
                     log.info("Sending metadata of message part from file "
                              "'{0}' to '{1}' with priority {2}"
-                             .format(sourceFile, target, prio))
+                             .format(source_file, target, prio))
                     log.debug("metadata={0}".format(metadata))
 
                 if not tracker.done:
                     log.debug("Message part from file '{0}' has not been sent "
-                              "yet, waiting...".format(sourceFile))
+                              "yet, waiting...".format(source_file))
                     tracker.wait(timeout)
                     log.debug("Message part from file '{0}' has not been sent "
-                              "yet, waiting...done".format(sourceFile))
+                              "yet, waiting...done".format(source_file))
 
             except:
                 raise DataHandlingError("Sending (metadata of) message part "
                                         "from file '{0}' to '{1}' with "
                                         "priority {2} failed."
-                                        .format(sourceFile, target, prio))
+                                        .format(source_file, target, prio))
 
         else:
             # socket not known
-            if target not in openConnections:
+            if target not in open_connections:
                 # open socket
                 socket = context.socket(zmq.PUSH)
-                connectionStr = "tcp://{0}".format(target)
+                connection_str = "tcp://{0}".format(target)
 
-                socket.connect(connectionStr)
-                log.info("Start socket (connect): '{0}'".format(connectionStr))
+                socket.connect(connection_str)
+                log.info("Start socket (connect): '{0}'".format(connection_str))
 
                 # register socket
-                openConnections[target] = socket
+                open_connections[target] = socket
 
             # send data
-            if sendType == "data":
-                openConnections[target].send_multipart(payload, zmq.NOBLOCK)
+            if send_type == "data":
+                open_connections[target].send_multipart(payload, zmq.NOBLOCK)
                 log.info("Sending message part from file '{0}' to '{1}' with "
-                         "priority {2}".format(sourceFile, target, prio))
+                         "priority {2}".format(source_file, target, prio))
 
-            elif sendType == "metadata":
-                openConnections[target].send_multipart(
+            elif send_type == "metadata":
+                open_connections[target].send_multipart(
                     [json.dumps(metadata).encode("utf-8"),
                      json.dumps(None).encode("utf-8")],
                     zmq.NOBLOCK)
                 log.info("Sending metadata of message part from file '{0}' "
                          "to '{1}' with priority {2}"
-                         .format(sourceFile, target, prio))
+                         .format(source_file, target, prio))
                 log.debug("metadata={0}".format(metadata))

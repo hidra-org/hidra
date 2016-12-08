@@ -67,7 +67,7 @@ class CommunicationFailed(Exception):
     pass
 
 
-connectionList = {
+connection_list = {
     "p00": {
         "host": "asap3-p00",
         "port": 51000
@@ -124,47 +124,47 @@ connectionList = {
 
 
 class Control():
-    def __init__(self, beamline, useLog=False):
-        global connectionList
+    def __init__(self, beamline, use_log=False):
+        global connection_list
 
-        if useLog:
+        if use_log:
             self.log = logging.getLogger("Control")
-        elif useLog is None:
+        elif use_log is None:
             self.log = NoLoggingFunction()
         else:
             self.log = LoggingFunction()
 
-        self.currentPID = os.getpid()
+        self.current_pid = os.getpid()
 
         try:
-            self.signalHost = connectionList[beamline]["host"]
-            self.signalPort = connectionList[beamline]["port"]
+            self.signal_host = connection_list[beamline]["host"]
+            self.signal_port = connection_list[beamline]["port"]
             self.log.info("Starting connection to {0} on port {1}"
-                          .format(self.signalHost, self.signalPort))
+                          .format(self.signal_host, self.signal_port))
         except:
             self.log.error("Beamline {0} not supported".format(beamline))
 
-        self.signalSocket = None
+        self.signal_socket = None
 
         self.__create_sockets()
 
     def __create_sockets(self):
-        self.signalSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.signal_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         try:
-            self.signalSocket.connect((self.signalHost, self.signalPort))
+            self.signal_socket.connect((self.signal_host, self.signal_port))
         except Exception:
             self.log.error("connect() failed", exc_info=True)
-            self.signalSocket.close()
+            self.signal_socket.close()
             sys.exit()
 
     def get(self, attribute, timeout=None):
         msg = 'get {0}'.format(attribute)
 
-        self.signalSocket.send(msg)
+        self.signal_socket.send(msg)
         self.log.debug("sent (len %2d): %s" % (len(msg), msg))
 
-        reply = self.signalSocket.recv(1024)
+        reply = self.signal_socket.recv(1024)
         self.log.debug("recv (len %2d): %s " % (len(reply), reply))
 
         return reply
@@ -181,10 +181,10 @@ class Control():
         else:
             msg = 'set {0} {1}'.format(attribute, value[0])
 
-        self.signalSocket.send(msg)
+        self.signal_socket.send(msg)
         self.log.debug("sent (len %2d): %s" % (len(msg), msg))
 
-        reply = self.signalSocket.recv(1024)
+        reply = self.signal_socket.recv(1024)
         self.log.debug("recv (len %2d): %s " % (len(reply), reply))
 
         return reply
@@ -192,29 +192,29 @@ class Control():
     def do(self, command, timeout=None):
         msg = 'do {0}'.format(command)
 
-        self.signalSocket.send(msg)
+        self.signal_socket.send(msg)
         self.log.debug("sent (len %2d): %s" % (len(msg), msg))
 
-        reply = self.signalSocket.recv(1024)
+        reply = self.signal_socket.recv(1024)
         self.log.debug("recv (len %2d): %s " % (len(reply), reply))
 
         return reply
 
     def stop(self):
-        if self.signalSocket:
+        if self.signal_socket:
             self.log.info("Sending close signal")
             msg = 'bye'
 
-            self.signalSocket.send(msg)
+            self.signal_socket.send(msg)
             self.log.debug("sent (len %2d): %s" % (len(msg), msg))
 
-            reply = self.signalSocket.recv(1024)
+            reply = self.signal_socket.recv(1024)
             self.log.debug("recv (len %2d): %s " % (len(reply), reply))
 
             try:
-                self.log.info("closing signalSocket...")
-                self.signalSocket.close()
-                self.signalSocket = None
+                self.log.info("closing signal_socket...")
+                self.signal_socket.close()
+                self.signal_socket = None
             except:
                 self.log.error("closing sockets...failed.", exc_info=True)
 

@@ -38,51 +38,50 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 #
 class SignalHandler():
 
-    def __init__(self, controlPubConId, controlSubConId, whiteList, comConId,
-                 requestFwConId, requestConId, logQueue, context=None):
+    def __init__(self, control_pub_con_id, control_sub_con_id, whitelist, com_con_id,
+                 request_fw_con_id, request_con_id, log_queue, context=None):
 
         # Send all logs to the main process
-        self.log = self.get_logger(logQueue)
+        self.log = self.get_logger(log_queue)
 
-        self.currentPID = os.getpid()
-        self.log.debug("SignalHandler started (PID {pid})."
-                       .format(pid=self.currentPID))
+        self.current_pid = os.getpid()
+        self.log.debug("SignalHandler started (PID {0})."
+                       .format(self.current_pid))
 
-        self.controlPubConId = controlPubConId
-        self.controlSubConId = controlSubConId
-        self.comConId = comConId
-        self.requestFwConId = requestFwConId
-        self.requestConId = requestConId
+        self.control_pub_con_id = control_pub_con_id
+        self.control_sub_con_id = control_sub_con_id
+        self.com_con_id = com_con_id
+        self.request_fw_con_id = request_fw_con_id
+        self.request_con_id = request_con_id
 
-        self.openConnections = []
-        self.forwardSignal = []
+        self.open_connections = []
 
-        self.openRequVari = []
-        self.openRequPerm = []
-        self.allowedQueries = []
+        self.open_requ_vari = []
+        self.open_requ_perm = []
+        self.allowed_queries = []
         # to rotate through the open permanent requests
-        self.nextRequNode = []
+        self.next_requ_node = []
 
-        self.whiteList = []
+        self.whitelist = []
 
-        for host in whiteList:
-            self.whiteList.append(host.replace(".desy.de", ""))
+        for host in whitelist:
+            self.whitelist.append(host.replace(".desy.de", ""))
 
         # sockets
-        self.controlPubSocket = None
-        self.controlSubSocket = None
-        self.comSocket = None
-        self.requestFwSocket = None
-        self.requestSocket = None
+        self.control_pub_socket = None
+        self.control_sub_socket = None
+        self.com_socket = None
+        self.request_fw_socket = None
+        self.request_socket = None
 
         # remember if the context was created outside this class or not
         if context:
             self.context = context
-            self.extContext = True
+            self.ext_context = True
         else:
             self.log.info("Registering ZMQ context")
             self.context = zmq.Context()
-            self.extContext = False
+            self.ext_context = False
 
         try:
             self.create_sockets()
@@ -117,69 +116,69 @@ class SignalHandler():
 
         # socket to send control signals to
         try:
-            self.controlPubSocket = self.context.socket(zmq.PUB)
-            self.controlPubSocket.connect(self.controlPubConId)
-            self.log.info("Start controlPubSocket (connect): '{0}'"
-                          .format(self.controlPubConId))
+            self.control_pub_socket = self.context.socket(zmq.PUB)
+            self.control_pub_socket.connect(self.control_pub_con_id)
+            self.log.info("Start control_pub_socket (connect): '{0}'"
+                          .format(self.control_pub_con_id))
         except:
-            self.log.error("Failed to start controlPubSocket (connect): '{0}'"
-                           .format(self.controlPubConId), exc_info=True)
+            self.log.error("Failed to start control_pub_socket (connect): '{0}'"
+                           .format(self.control_pub_con_id), exc_info=True)
             raise
 
         # socket to get control signals from
         try:
-            self.controlSubSocket = self.context.socket(zmq.SUB)
-            self.controlSubSocket.connect(self.controlSubConId)
-            self.log.info("Start controlSubSocket (connect): '{0}'"
-                          .format(self.controlSubConId))
+            self.control_sub_socket = self.context.socket(zmq.SUB)
+            self.control_sub_socket.connect(self.control_sub_con_id)
+            self.log.info("Start control_sub_socket (connect): '{0}'"
+                          .format(self.control_sub_con_id))
         except:
-            self.log.error("Failed to start controlSubSocket (connect): '{0}'"
-                           .format(self.controlSubConId), exc_info=True)
+            self.log.error("Failed to start control_sub_socket (connect): '{0}'"
+                           .format(self.control_sub_con_id), exc_info=True)
             raise
 
-        self.controlSubSocket.setsockopt_string(zmq.SUBSCRIBE, u"control")
+        self.control_sub_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
 
         # create zmq socket for signal communication with receiver
         try:
-            self.comSocket = self.context.socket(zmq.REP)
-            self.comSocket.bind(self.comConId)
-            self.log.info("Start comSocket (bind): '{0}'"
-                          .format(self.comConId))
+            self.com_socket = self.context.socket(zmq.REP)
+            self.com_socket.bind(self.com_con_id)
+            self.log.info("Start com_socket (bind): '{0}'"
+                          .format(self.com_con_id))
         except:
-            self.log.error("Failed to start comSocket (bind): '{0}'"
-                           .format(self.comConId), exc_info=True)
+            self.log.error("Failed to start com_socket (bind): '{0}'"
+                           .format(self.com_con_id), exc_info=True)
             raise
 
         # setting up router for load-balancing worker-processes.
         # each worker-process will handle a file event
         try:
-            self.requestFwSocket = self.context.socket(zmq.REP)
-            self.requestFwSocket.bind(self.requestFwConId)
-            self.log.info("Start requestFwSocket (bind): '{0}'"
-                          .format(self.requestFwConId))
+            self.request_fw_socket = self.context.socket(zmq.REP)
+            self.request_fw_socket.bind(self.request_fw_con_id)
+            self.log.info("Start request_fw_socket (bind): '{0}'"
+                          .format(self.request_fw_con_id))
         except:
-            self.log.error("Failed to start requestFwSocket (bind): '{0}'"
-                           .format(self.requestFwConId), exc_info=True)
+            self.log.error("Failed to start request_fw_socket (bind): '{0}'"
+                           .format(self.request_fw_con_id), exc_info=True)
             raise
 
         # create socket to receive requests
         try:
-            self.requestSocket = self.context.socket(zmq.PULL)
-            self.requestSocket.bind(self.requestConId)
-            self.log.info("requestSocket started (bind) for '{0}'"
-                          .format(self.requestConId))
+            self.request_socket = self.context.socket(zmq.PULL)
+            self.request_socket.bind(self.request_con_id)
+            self.log.info("request_socket started (bind) for '{0}'"
+                          .format(self.request_con_id))
         except:
-            self.log.error("Failed to start requestSocket (bind): '{0}'"
-                           .format(self.requestConId), exc_info=True)
+            self.log.error("Failed to start request_socket (bind): '{0}'"
+                           .format(self.request_con_id), exc_info=True)
             raise
 
         # Poller to distinguish between start/stop signals and queries for the
         # next set of signals
         self.poller = zmq.Poller()
-        self.poller.register(self.controlSubSocket, zmq.POLLIN)
-        self.poller.register(self.comSocket, zmq.POLLIN)
-        self.poller.register(self.requestFwSocket, zmq.POLLIN)
-        self.poller.register(self.requestSocket, zmq.POLLIN)
+        self.poller.register(self.control_sub_socket, zmq.POLLIN)
+        self.poller.register(self.com_socket, zmq.POLLIN)
+        self.poller.register(self.request_fw_socket, zmq.POLLIN)
+        self.poller.register(self.request_socket, zmq.POLLIN)
 
     def run(self):
         # run loop, and wait for incoming messages
@@ -190,57 +189,57 @@ class SignalHandler():
             ######################################
             # incoming request from TaskProvider #
             ######################################
-            if (self.requestFwSocket in socks
-                    and socks[self.requestFwSocket] == zmq.POLLIN):
+            if (self.request_fw_socket in socks
+                    and socks[self.request_fw_socket] == zmq.POLLIN):
 
                 try:
-                    inMessage = self.requestFwSocket.recv_multipart()
-                    if inMessage[0] == b"GET_REQUESTS":
+                    in_message = self.request_fw_socket.recv_multipart()
+                    if in_message[0] == b"GET_REQUESTS":
                         self.log.debug("New request for signals received.")
-                        filename = json.loads(inMessage[1].decode("utf-8"))
-                        openRequests = []
+                        filename = json.loads(in_message[1].decode("utf-8"))
+                        open_requests = []
 
-                        for requestSet in self.openRequPerm:
-                            if requestSet:
-                                index = self.openRequPerm.index(requestSet)
-                                tmp = requestSet[self.nextRequNode[index]]
+                        for request_set in self.open_requ_perm:
+                            if request_set:
+                                index = self.open_requ_perm.index(request_set)
+                                tmp = request_set[self.next_requ_node[index]]
                                 # Check if filename suffix matches requested
                                 # suffix
                                 if filename.endswith(tuple(tmp[2])):
-                                    openRequests.append(copy.deepcopy(tmp))
+                                    open_requests.append(copy.deepcopy(tmp))
                                     # distribute in round-robin order
-                                    self.nextRequNode[index] = (
-                                        (self.nextRequNode[index] + 1)
-                                        % len(requestSet)
+                                    self.next_requ_node[index] = (
+                                        (self.next_requ_node[index] + 1)
+                                        % len(request_set)
                                         )
 
-                        for requestSet in self.openRequVari:
+                        for request_set in self.open_requ_vari:
                             # Check if filename suffix matches requested suffix
-                            if (requestSet
+                            if (request_set
                                     and filename.endswith(
-                                        tuple(requestSet[0][2]))):
-                                tmp = requestSet.pop(0)
-                                openRequests.append(tmp)
+                                        tuple(request_set[0][2]))):
+                                tmp = request_set.pop(0)
+                                open_requests.append(tmp)
 
-                        if openRequests:
-                            self.requestFwSocket.send_string(
-                                json.dumps(openRequests))
+                        if open_requests:
+                            self.request_fw_socket.send_string(
+                                json.dumps(open_requests))
                             self.log.debug("Answered to request: {0}"
-                                           .format(openRequests))
-                            self.log.debug("openRequVari: {0}"
-                                           .format(self.openRequVari))
-                            self.log.debug("allowedQueries: {0}"
-                                           .format(self.allowedQueries))
+                                           .format(open_requests))
+                            self.log.debug("open_requ_vari: {0}"
+                                           .format(self.open_requ_vari))
+                            self.log.debug("allowed_queries: {0}"
+                                           .format(self.allowed_queries))
                         else:
-                            openRequests = ["None"]
-                            self.requestFwSocket.send_string(
-                                json.dumps(openRequests))
+                            open_requests = ["None"]
+                            self.request_fw_socket.send_string(
+                                json.dumps(open_requests))
                             self.log.debug("Answered to request: {0}"
-                                           .format(openRequests))
-                            self.log.debug("openRequVari: {0}"
-                                           .format(self.openRequVari))
-                            self.log.debug("allowedQueries: {0}"
-                                           .format(self.allowedQueries))
+                                           .format(open_requests))
+                            self.log.debug("open_requ_vari: {0}"
+                                           .format(self.open_requ_vari))
+                            self.log.debug("allowed_queries: {0}"
+                                           .format(self.allowed_queries))
 
                 except:
                     self.log.error("Failed to receive/answer new signal "
@@ -249,79 +248,79 @@ class SignalHandler():
             ######################################
             #  start/stop command from external  #
             ######################################
-            if (self.comSocket in socks
-                    and socks[self.comSocket] == zmq.POLLIN):
+            if (self.com_socket in socks
+                    and socks[self.com_socket] == zmq.POLLIN):
 
-                inMessage = self.comSocket.recv_multipart()
-                self.log.debug("Received signal: {0}".format(inMessage))
+                in_message = self.com_socket.recv_multipart()
+                self.log.debug("Received signal: {0}".format(in_message))
 
-                checkFailed, signal, target = (
-                    self.check_signal_inverted(inMessage)
+                check_failed, signal, target = (
+                    self.check_signal_inverted(in_message)
                     )
-                if not checkFailed:
+                if not check_failed:
                     self.react_to_signal(signal, target)
                 else:
-                    self.send_response(checkFailed)
+                    self.send_response(check_failed)
 
             ######################################
             #        request from external       #
             ######################################
-            if (self.requestSocket in socks
-                    and socks[self.requestSocket] == zmq.POLLIN):
+            if (self.request_socket in socks
+                    and socks[self.request_socket] == zmq.POLLIN):
 
-                inMessage = self.requestSocket.recv_multipart()
-                self.log.debug("Received request: {0}".format(inMessage))
+                in_message = self.request_socket.recv_multipart()
+                self.log.debug("Received request: {0}".format(in_message))
 
-                if inMessage[0] == b"NEXT":
-                    incomingSocketId = (
-                        inMessage[1]
+                if in_message[0] == b"NEXT":
+                    incoming_socket_id = (
+                        in_message[1]
                         .decode("utf-8")
                         .replace(".desy.de:", ":")
                         )
 
-                    for index in range(len(self.allowedQueries)):
-                        for i in range(len(self.allowedQueries[index])):
-                            if (incomingSocketId
-                                    == self.allowedQueries[index][i][0]):
-                                self.openRequVari[index].append(
-                                    self.allowedQueries[index][i])
+                    for index in range(len(self.allowed_queries)):
+                        for i in range(len(self.allowed_queries[index])):
+                            if (incoming_socket_id
+                                    == self.allowed_queries[index][i][0]):
+                                self.open_requ_vari[index].append(
+                                    self.allowed_queries[index][i])
                                 self.log.info("Add to open requests: {0}"
-                                              .format(self.allowedQueries[
+                                              .format(self.allowed_queries[
                                                   index][i]))
 
-                elif inMessage[0] == b"CANCEL":
-                    incomingSocketId = (
-                        inMessage[1]
+                elif in_message[0] == b"CANCEL":
+                    incoming_socket_id = (
+                        in_message[1]
                         .decode("utf-8")
                         .replace(".desy.de:", ":")
                         )
 
                     still_requested = []
-                    for a in range(len(self.openRequVari)):
+                    for a in range(len(self.open_requ_vari)):
                         vari_per_group = []
-                        for b in self.openRequVari[a]:
-                            if incomingSocketId != b[0]:
+                        for b in self.open_requ_vari[a]:
+                            if incoming_socket_id != b[0]:
                                 vari_per_group.append(b)
 
                         still_requested.append(vari_per_group)
 
-                    self.openRequVari = still_requested
+                    self.open_requ_vari = still_requested
 
-#                    self.openRequVari_old = [
+#                    self.open_requ_vari_old = [
 #                        [
 #                            b
-#                            for b in self.openRequVari[a]
-#                            if incomingSocketId != b[0]]
-#                        for a in range(len(self.openRequVari))]
+#                            for b in self.open_requ_vari[a]
+#                            if incoming_socket_id != b[0]]
+#                        for a in range(len(self.open_requ_vari))]
 
-#                    self.log.debug("openRequVari_old ={0}"
-#                                   .format(self.openRequVari_old))
-#                    self.log.debug("openRequVari     ={0}"
-#                                   .format(self.openRequVari))
+#                    self.log.debug("open_requ_vari_old ={0}"
+#                                   .format(self.open_requ_vari_old))
+#                    self.log.debug("open_requ_vari     ={0}"
+#                                   .format(self.open_requ_vari))
 
                     self.log.info("Remove all occurences from {0} from "
                                   "variable request list."
-                                  .format(incomingSocketId))
+                                  .format(incoming_socket_id))
 
                 else:
                     self.log.info("Request not supported.")
@@ -329,11 +328,11 @@ class SignalHandler():
             ######################################
             #   control commands from internal   #
             ######################################
-            if (self.controlSubSocket in socks
-                    and socks[self.controlSubSocket] == zmq.POLLIN):
+            if (self.control_sub_socket in socks
+                    and socks[self.control_sub_socket] == zmq.POLLIN):
 
                 try:
-                    message = self.controlSubSocket.recv_multipart()
+                    message = self.control_sub_socket.recv_multipart()
                     self.log.debug("Control signal received.")
                 except:
                     self.log.error("Waiting for control signal...failed",
@@ -350,21 +349,21 @@ class SignalHandler():
                     self.log.error("Unhandled control signal received: {0}"
                                    .format(message[0]))
 
-    def check_signal_inverted(self, inMessage):
+    def check_signal_inverted(self, in_message):
 
-        if len(inMessage) != 3:
+        if len(in_message) != 3:
 
             self.log.warning("Received signal is of the wrong format")
             self.log.debug("Received signal is too short or too long: {0}"
-                           .format(inMessage))
+                           .format(in_message))
             return b"NO_VALID_SIGNAL", None, None
 
         else:
 
             version, signal, target = (
-                inMessage[0].decode("utf-8"),
-                inMessage[1],
-                inMessage[2].decode("utf-8")
+                in_message[0].decode("utf-8"),
+                in_message[1],
+                in_message[2].decode("utf-8")
                 )
             target = json.loads(target)
 
@@ -384,8 +383,8 @@ class SignalHandler():
 
                 # Checking signal sending host
                 self.log.debug("Check if host to send data to are in "
-                               "whiteList...")
-                if helpers.check_host(host, self.whiteList, self.log):
+                               "whitelist...")
+                if helpers.check_host(host, self.whitelist, self.log):
                     self.log.info("Hosts are allowed to connect.")
                     self.log.debug("hosts: {0}".format(host))
                 else:
@@ -398,186 +397,186 @@ class SignalHandler():
 
     def send_response(self, signal):
             self.log.debug("Send response back: {0}".format(signal))
-            self.comSocket.send(signal, zmq.NOBLOCK)
+            self.com_socket.send(signal, zmq.NOBLOCK)
 
-    def __start_signal(self, signal, sendType, socketIds, listToCheck,
-                       variList, correspList):
+    def __start_signal(self, signal, send_type, socket_ids, list_to_check,
+                       vari_list, corresp_list):
 
         # make host naming consistent
-        for socketConf in socketIds:
-            socketConf[0] = socketConf[0].replace(".desy.de:", ":")
+        for socket_conf in socket_ids:
+            socket_conf[0] = socket_conf[0].replace(".desy.de:", ":")
 
         overwrite_index = None
         flatlist_nested = [set([j[0] for j in sublist])
-                           for sublist in listToCheck]
-        socketIds_flatlist = set([socketConf[0] for socketConf in socketIds])
+                           for sublist in list_to_check]
+        socket_ids_flatlist = set([socket_conf[0] for socket_conf in socket_ids])
 
         for i in flatlist_nested:
-            # Check if socketIds is sublist of one entry of listToCheck
-            if socketIds_flatlist.issubset(i):
-                self.log.debug("socketIds already contained, override")
+            # Check if socket_ids is sublist of one entry of list_to_check
+            if socket_ids_flatlist.issubset(i):
+                self.log.debug("socket_ids already contained, override")
                 overwrite_index = flatlist_nested.index(i)
-            # Check if one entry of listToCheck is sublist in socketIds
-            elif i.issubset(socketIds_flatlist):
-                self.log.debug("socketIds is superset of already contained "
+            # Check if one entry of list_to_check is sublist in socket_ids
+            elif i.issubset(socket_ids_flatlist):
+                self.log.debug("socket_ids is superset of already contained "
                                "set, override")
                 overwrite_index = flatlist_nested.index(i)
             # TODO Mixture ?
-            elif not socketIds_flatlist.isdisjoint(i):
-                self.log.debug("socketIds is neither a subset nor superset "
+            elif not socket_ids_flatlist.isdisjoint(i):
+                self.log.debug("socket_ids is neither a subset nor superset "
                                "of already contained set")
                 self.log.debug("Currently: no idea what to do with this.")
-                self.log.debug("socketIds={0}".format(socketIds_flatlist))
+                self.log.debug("socket_ids={0}".format(socket_ids_flatlist))
                 self.log.debug("flatlist_nested[i]={0}".format(i))
 
         if overwrite_index is not None:
             # overriding is necessary because the new request may contain
             # different parameters like monitored file suffix, priority or
-            # connection type also this means the old socketId set should be
+            # connection type also this means the old socket_id set should be
             # replaced in total and not only partially
             self.log.debug("overwrite_index={0}".format(overwrite_index))
 
-            listToCheck[overwrite_index] = copy.deepcopy(
-                sorted([i + [sendType] for i in socketIds]))
-            if correspList is not None:
-                correspList[overwrite_index] = 0
+            list_to_check[overwrite_index] = copy.deepcopy(
+                sorted([i + [send_type] for i in socket_ids]))
+            if corresp_list is not None:
+                corresp_list[overwrite_index] = 0
 
-            if variList is not None:
-                variList[overwrite_index] = []
+            if vari_list is not None:
+                vari_list[overwrite_index] = []
         else:
-            listToCheck.append(copy.deepcopy(
-                sorted([i + [sendType] for i in socketIds])))
-            if correspList is not None:
-                correspList.append(0)
+            list_to_check.append(copy.deepcopy(
+                sorted([i + [send_type] for i in socket_ids])))
+            if corresp_list is not None:
+                corresp_list.append(0)
 
-            if variList is not None:
+            if vari_list is not None:
 
-                variList.append([])
+                vari_list.append([])
 
-        self.log.debug("after start handling: listToCheck={0}"
-                       .format(listToCheck))
+        self.log.debug("after start handling: list_to_check={0}"
+                       .format(list_to_check))
 
         # send signal back to receiver
         self.send_response(signal)
 
-#        connectionFound = False
-#        tmpAllowed = []
+#        connection_found = False
+#        tmp_allowed = []
 #        flatlist = [i[0] for i in
-#                    [j for sublist in listToCheck for j in sublist]]
+#                    [j for sublist in list_to_check for j in sublist]]
 #        self.log.debug("flatlist: {0}".format(flatlist))
 
-#        for socketConf in socketIds:
+#        for socket_conf in socket_ids:
 #
-#            socketConf[0] = socketConf[0].replace(".desy.de:",":")
+#            socket_conf[0] = socket_conf[0].replace(".desy.de:",":")
 #
-#            socketId = socketConf[0]
-#            self.log.debug("socketId: {0}".format(socketId))
+#            socket_id = socket_conf[0]
+#            self.log.debug("socket_id: {0}".format(socket_id))
 #
-#            if socketId in flatlist:
-#                connectionFound = True
+#            if socket_id in flatlist:
+#                connection_found = True
 #                self.log.info("Connection to {0} is already open"
-#                              .format(socketId))
-#            elif socketId not in [ i[0] for i in tmpAllowed]:
-#                tmpSocketConf = socketConf + [sendType]
-#                tmpAllowed.append(tmpSocketConf)
+#                              .format(socket_id))
+#            elif socket_id not in [ i[0] for i in tmp_allowed]:
+#                tmp_socket_conf = socket_conf + [send_type]
+#                tmp_allowed.append(tmp_socket_conf)
 #            else:
 #                # TODO send notification back?
 #                # (double entries in START_QUERY_NEXT)
 #                pass
 
-#        if not connectionFound:
+#        if not connection_found:
 #            # send signal back to receiver
 #            self.send_response(signal)
-#            listToCheck.append(copy.deepcopy(sorted(tmpAllowed)))
-#            if correspList != None:
-#                correspList.append(0)
-#            del tmpAllowed
+#            list_to_check.append(copy.deepcopy(sorted(tmp_allowed)))
+#            if corresp_list != None:
+#                corresp_list.append(0)
+#            del tmp_allowed
 #
-#            if variList != None:
-#                variList.append([])
+#            if vari_list != None:
+#                vari_list.append([])
 #        else:
 #            # send error back to receiver
 # #           self.send_response("CONNECTION_ALREADY_OPEN")
 #            # "reopen" the connection and confirm to receiver
 #            self.send_response(signal)
 
-    def __stop_signal(self, signal, socketIds, listToCheck, variList,
-                      correspList):
+    def __stop_signal(self, signal, socket_ids, list_to_check, vari_list,
+                      corresp_list):
 
-        connectionNotFound = False
-        tmpRemoveIndex = []
-        tmpRemoveElement = []
+        connection_not_found = False
+        tmp_remove_index = []
+        tmp_remove_element = []
         found = False
 
-        for socketConf in socketIds:
+        for socket_conf in socket_ids:
 
-            socketId = socketConf[0].replace(".desy.de:", ":")
+            socket_id = socket_conf[0].replace(".desy.de:", ":")
 
-            for sublist in listToCheck:
+            for sublist in list_to_check:
                 for element in sublist:
-                    if socketId == element[0]:
-                        tmpRemoveElement.append(element)
+                    if socket_id == element[0]:
+                        tmp_remove_element.append(element)
                         found = True
             if not found:
-                connectionNotFound = True
+                connection_not_found = True
 
-        if connectionNotFound:
+        if connection_not_found:
             self.send_response(b"NO_OPEN_CONNECTION_FOUND")
             self.log.info("No connection to close was found for {0}"
-                          .format(socketConf))
+                          .format(socket_conf))
         else:
             # send signal back to receiver
             self.send_response(signal)
 
-            for element in tmpRemoveElement:
+            for element in tmp_remove_element:
 
-                socketId = element[0]
+                socket_id = element[0]
 
-                if variList is not None:
-                    variList = [[b for b in variList[a] if socketId != b[0]]
-                                for a in range(len(variList))]
+                if vari_list is not None:
+                    vari_list = [[b for b in vari_list[a] if socket_id != b[0]]
+                                for a in range(len(vari_list))]
                     self.log.debug("Remove all occurences from {0} from "
-                                   "variable request list.".format(socketId))
+                                   "variable request list.".format(socket_id))
 
-                for i in range(len(listToCheck)):
-                    if element in listToCheck[i]:
-                        listToCheck[i].remove(element)
+                for i in range(len(list_to_check)):
+                    if element in list_to_check[i]:
+                        list_to_check[i].remove(element)
                         self.log.debug("Remove {0} from pemanent request "
-                                       "allowed list.".format(socketId))
+                                       "allowed list.".format(socket_id))
 
-                        if not listToCheck[i]:
-                            tmpRemoveIndex.append(i)
-                            if variList is not None:
-                                del variList[i]
-                            if correspList is not None:
-                                correspList.pop(i)
+                        if not list_to_check[i]:
+                            tmp_remove_index.append(i)
+                            if vari_list is not None:
+                                del vari_list[i]
+                            if corresp_list is not None:
+                                corresp_list.pop(i)
                         else:
-                            if correspList is not None:
-                                correspList[i] = (
-                                    correspList[i] % len(listToCheck[i])
+                            if corresp_list is not None:
+                                corresp_list[i] = (
+                                    corresp_list[i] % len(list_to_check[i])
                                     )
 
-                for index in tmpRemoveIndex:
-                    del listToCheck[index]
+                for index in tmp_remove_index:
+                    del list_to_check[index]
 
             # send signal to TaskManager
-            self.controlPubSocket.send_multipart(
+            self.control_pub_socket.send_multipart(
                 [b"signal", b"CLOSE_SOCKETS",
-                    json.dumps(socketIds).encode("utf-8")])
+                    json.dumps(socket_ids).encode("utf-8")])
 
-        return listToCheck, variList, correspList
+        return list_to_check, vari_list, corresp_list
 
-    def react_to_signal(self, signal, socketIds):
+    def react_to_signal(self, signal, socket_ids):
 
         ###########################
         #       START_STREAM      #
         ###########################
         if signal == b"START_STREAM":
             self.log.info("Received signal: {0} for hosts {1}"
-                          .format(signal, socketIds))
+                          .format(signal, socket_ids))
 
-            self.__start_signal(signal, "data", socketIds, self.openRequPerm,
-                                None, self.nextRequNode)
+            self.__start_signal(signal, "data", socket_ids, self.open_requ_perm,
+                                None, self.next_requ_node)
 
             return
 
@@ -586,11 +585,11 @@ class SignalHandler():
         ###########################
         elif signal == b"START_STREAM_METADATA":
             self.log.info("Received signal: {0} for hosts {1}"
-                          .format(signal, socketIds))
+                          .format(signal, socket_ids))
 
-            self.__start_signal(signal, "metadata", socketIds,
-                                self.openRequPerm, None,
-                                self.nextRequNode)
+            self.__start_signal(signal, "metadata", socket_ids,
+                                self.open_requ_perm, None,
+                                self.next_requ_node)
 
             return
 
@@ -600,11 +599,11 @@ class SignalHandler():
         ###########################
         elif signal == b"STOP_STREAM" or signal == b"STOP_STREAM_METADATA":
             self.log.info("Received signal: {0} for host {1}"
-                          .format(signal, socketIds))
+                          .format(signal, socket_ids))
 
-            self.openRequPerm, nonetmp, self.nextRequNode = (
-                self.__stop_signal(signal, socketIds, self.openRequPerm,
-                                   None, self.nextRequNode)
+            self.open_requ_perm, nonetmp, self.next_requ_node = (
+                self.__stop_signal(signal, socket_ids, self.open_requ_perm,
+                                   None, self.next_requ_node)
                 )
 
             return
@@ -614,10 +613,10 @@ class SignalHandler():
         ###########################
         elif signal == b"START_QUERY_NEXT":
             self.log.info("Received signal: {0} for hosts {1}"
-                          .format(signal, socketIds))
+                          .format(signal, socket_ids))
 
-            self.__start_signal(signal, "data", socketIds,
-                                self.allowedQueries, self.openRequVari,
+            self.__start_signal(signal, "data", socket_ids,
+                                self.allowed_queries, self.open_requ_vari,
                                 None)
 
             return
@@ -627,11 +626,11 @@ class SignalHandler():
         ###########################
         elif signal == b"START_QUERY_METADATA":
             self.log.info("Received signal: {0} for hosts {1}"
-                          .format(signal, socketIds))
+                          .format(signal, socket_ids))
 
-            self.__start_signal(signal, "metadata", socketIds,
-                                self.allowedQueries,
-                                self.openRequVari, None)
+            self.__start_signal(signal, "metadata", socket_ids,
+                                self.allowed_queries,
+                                self.open_requ_vari, None)
 
             return
 
@@ -641,48 +640,48 @@ class SignalHandler():
         ###########################
         elif signal == b"STOP_QUERY_NEXT" or signal == b"STOP_QUERY_METADATA":
             self.log.info("Received signal: {0} for hosts {1}"
-                          .format(signal, socketIds))
+                          .format(signal, socket_ids))
 
-            self.allowedQueries, self.openRequVari, nonetmp = (
-                self.__stop_signal(signal, socketIds, self.allowedQueries,
-                                   self.openRequVari, None)
+            self.allowed_queries, self.open_requ_vari, nonetmp = (
+                self.__stop_signal(signal, socket_ids, self.allowed_queries,
+                                   self.open_requ_vari, None)
                 )
 
             return
 
         else:
             self.log.info("Received signal: {0} for hosts {1}"
-                          .format(signal, socketIds))
+                          .format(signal, socket_ids))
             self.send_response(b"NO_VALID_SIGNAL")
 
     def stop(self):
         self.log.debug("Closing sockets for SignalHandler")
-        if self.comSocket:
-            self.log.info("Closing comSocket")
-            self.comSocket.close(0)
-            self.comSocket = None
+        if self.com_socket:
+            self.log.info("Closing com_socket")
+            self.com_socket.close(0)
+            self.com_socket = None
 
-        if self.requestFwSocket:
-            self.log.info("Closing requestFwSocket")
-            self.requestFwSocket.close(0)
-            self.requestFwSocket = None
+        if self.request_fw_socket:
+            self.log.info("Closing request_fw_socket")
+            self.request_fw_socket.close(0)
+            self.request_fw_socket = None
 
-        if self.requestSocket:
-            self.log.info("Closing requestSocket")
-            self.requestSocket.close(0)
-            self.requestSocket = None
+        if self.request_socket:
+            self.log.info("Closing request_socket")
+            self.request_socket.close(0)
+            self.request_socket = None
 
-        if self.controlPubSocket:
-            self.log.info("Closing controlPubSocket")
-            self.controlPubSocket.close(0)
-            self.controlPubSocket = None
+        if self.control_pub_socket:
+            self.log.info("Closing control_pub_socket")
+            self.control_pub_socket.close(0)
+            self.control_pub_socket = None
 
-        if self.controlSubSocket:
-            self.log.info("Closing controlSubSocket")
-            self.controlSubSocket.close(0)
-            self.controlSubSocket = None
+        if self.control_sub_socket:
+            self.log.info("Closing control_sub_socket")
+            self.control_sub_socket.close(0)
+            self.control_sub_socket = None
 
-        if not self.extContext and self.context:
+        if not self.ext_context and self.context:
             self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
@@ -697,15 +696,15 @@ class SignalHandler():
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
 class RequestPuller():
-    def __init__(self, requestFwConId, logQueue, context=None):
+    def __init__(self, request_fw_con_id, log_queue, context=None):
 
-        self.log = self.get_logger(logQueue)
+        self.log = self.get_logger(log_queue)
 
         self.context = context or zmq.Context.instance()
-        self.requestFwSocket = self.context.socket(zmq.REQ)
-        self.requestFwSocket.connect(requestFwConId)
-        self.log.info("[getRequests] requestFwSocket started (connect) for "
-                      "'{0}'".format(requestFwConId))
+        self.request_fw_socket = self.context.socket(zmq.REQ)
+        self.request_fw_socket.connect(request_fw_con_id)
+        self.log.info("[getRequests] request_fw_socket started (connect) for "
+                      "'{0}'".format(request_fw_con_id))
 
         self.run()
 
@@ -727,11 +726,11 @@ class RequestPuller():
         self.log.info("[getRequests] Start run")
         while True:
             try:
-                self.requestFwSocket.send_multipart([b"GET_REQUESTS"])
+                self.request_fw_socket.send_multipart([b"GET_REQUESTS"])
                 self.log.info("[getRequests] send")
                 requests = (
                     json.loads(
-                        self.requestFwSocket.recv().decode("utf-8"))
+                        self.request_fw_socket.recv().decode("utf-8"))
                     )
                 self.log.info("[getRequests] Requests: {0}".format(requests))
                 time.sleep(0.25)
@@ -740,7 +739,7 @@ class RequestPuller():
                 break
 
     def __exit__(self):
-        self.requestFwSocket.close(0)
+        self.request_fw_socket.close(0)
         self.context.destroy()
 
 
@@ -752,43 +751,43 @@ if __name__ == '__main__':
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     freeze_support()
 
-    whiteList = ["localhost", "zitpcx19282"]
+    whitelist = ["localhost", "zitpcx19282"]
 
     localhost = "127.0.0.1"
-    extIp = "0.0.0.0"
+    ext_ip = "0.0.0.0"
 
-    controlPort = "7000"
-    comPort = "6000"
-    requestPort = "6002"
+    control_port = "7000"
+    com_port = "6000"
+    request_port = "6002"
 
-    currentPID = os.getpid()
+    current_pid = os.getpid()
 
-    controlPubConId = "ipc://{pid}_{id}".format(
-        pid=currentPID, id="controlPub")
-    controlSubConId = "ipc://{pid}_{id}".format(
-        pid=currentPID, id="controlSub")
-    comConId = "tcp://{ip}:{port}".format(ip=extIp, port=comPort)
-    requestFwConId = "ipc://{pid}_{id}".format(
-        pid=currentPID, id="requestFw")
-    requestConId = "tcp://{ip}:{port}".format(ip=extIp, port=requestPort)
+    control_pub_con_id = ("ipc://{0}_{1}"
+                          .format(current_pid, "controlPub"))
+    control_sub_con_id = ("ipc://{0}_{1}"
+                          .format(current_pid, "controlSub"))
+    com_con_id = "tcp://{0}:{1}".format(ext_ip, com_port)
+    request_fw_con_id = ("ipc://{0}_{1}"
+                      .format(current_pid, "requestFw"))
+    request_con_id = "tcp://{0}:{1}".format(ext_ip, request_port)
 
     logfile = os.path.join(BASE_PATH, "logs", "signalHandler.log")
     logsize = 10485760
 
-    logQueue = Queue(-1)
+    log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
     h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onScreenLogLevel="debug")
+                                      onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    logQueueListener = helpers.CustomQueueListener(logQueue, h1, h2)
-    logQueueListener.start()
+    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener.start()
 
     # Create log and set handler to queue handle
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)  # Log level = DEBUG
-    qh = QueueHandler(logQueue)
+    qh = QueueHandler(log_queue)
     root.addHandler(qh)
 
     # Register context
@@ -796,31 +795,31 @@ if __name__ == '__main__':
 
     # initiate forwarder for control signals (multiple pub, multiple sub)
     device = zmq.devices.ThreadDevice(zmq.FORWARDER, zmq.SUB, zmq.PUB)
-    device.bind_in(controlPubConId)
-    device.bind_out(controlSubConId)
+    device.bind_in(control_pub_con_id)
+    device.bind_out(control_sub_con_id)
     device.setsockopt_in(zmq.SUBSCRIBE, b"")
     device.start()
 
     # create control socket
-    controlPubSocket = context.socket(zmq.PUB)
-    controlPubSocket.connect(controlPubConId)
-    logging.info("=== controlPubSocket connect to: '{0}'"
-                 .format(controlPubConId))
+    control_pub_socket = context.socket(zmq.PUB)
+    control_pub_socket.connect(control_pub_con_id)
+    logging.info("=== control_pub_socket connect to: '{0}'"
+                 .format(control_pub_con_id))
 
-    signalHandlerPr = threading.Thread(
+    signalhandler_pr = threading.Thread(
         target=SignalHandler,
-        args=(controlPubConId, controlSubConId, whiteList, comConId,
-              requestFwConId, requestConId, logQueue, context))
-    signalHandlerPr.start()
+        args=(control_pub_con_id, control_sub_con_id, whitelist, com_con_id,
+              request_fw_con_id, request_con_id, log_queue, context))
+    signalhandler_pr.start()
 
-    requestPullerPr = Process(
+    request_puller_pr = Process(
         target=RequestPuller,
-        args=(requestFwConId, logQueue))
-    requestPullerPr.start()
+        args=(request_fw_con_id, log_queue))
+    request_puller_pr.start()
 
     def send_signal(socket, signal, ports, prio=None):
-        logging.info("=== send_signal : {s}, {p}".format(s=signal, p=ports))
-        sendMessage = [__version__,  signal]
+        logging.info("=== send_signal : {0}, {1}".format(signal, ports))
+        send_message = [__version__,  signal]
         targets = []
         if type(ports) == list:
             for port in ports:
@@ -828,74 +827,74 @@ if __name__ == '__main__':
         else:
             targets.append(["zitpcx19282:{0}".format(ports), prio])
         targets = json.dumps(targets).encode("utf-8")
-        sendMessage.append(targets)
-        socket.send_multipart(sendMessage)
-        receivedMessage = socket.recv()
-        logging.info("=== Responce : {0}".format(receivedMessage))
+        send_message.append(targets)
+        socket.send_multipart(send_message)
+        received_message = socket.recv()
+        logging.info("=== Responce : {0}".format(received_message))
 
-    def sendRequest(socket, socketId):
-        sendMessage = [b"NEXT", socketId.encode('utf-8')]
-        logging.info("=== sendRequest: {0}".format(sendMessage))
-        socket.send_multipart(sendMessage)
-        logging.info("=== request sent: {0}".format(sendMessage))
+    def send_request(socket, socket_id):
+        send_message = [b"NEXT", socket_id.encode('utf-8')]
+        logging.info("=== send_request: {0}".format(send_message))
+        socket.send_multipart(send_message)
+        logging.info("=== request sent: {0}".format(send_message))
 
-    def cancelRequest(socket, socketId):
-        sendMessage = [b"CANCEL", socketId.encode('utf-8')]
-        logging.info("=== sendRequest: {0}".format(sendMessage))
-        socket.send_multipart(sendMessage)
-        logging.info("=== request sent: {0}".format(sendMessage))
+    def cancel_request(socket, socket_id):
+        send_message = [b"CANCEL", socket_id.encode('utf-8')]
+        logging.info("=== send_request: {0}".format(send_message))
+        socket.send_multipart(send_message)
+        logging.info("=== request sent: {0}".format(send_message))
 
-    comSocket = context.socket(zmq.REQ)
-    comSocket.connect(comConId)
-    logging.info("=== comSocket connected to {0}".format(comConId))
+    com_socket = context.socket(zmq.REQ)
+    com_socket.connect(com_con_id)
+    logging.info("=== com_socket connected to {0}".format(com_con_id))
 
-    requestSocket = context.socket(zmq.PUSH)
-    requestSocket.connect(requestConId)
-    logging.info("=== requestSocket connected to {0}". format(requestConId))
+    request_socket = context.socket(zmq.PUSH)
+    request_socket.connect(request_con_id)
+    logging.info("=== request_socket connected to {0}". format(request_con_id))
 
-    requestFwSocket = context.socket(zmq.REQ)
-    requestFwSocket.connect(requestFwConId)
-    logging.info("=== requestFwSocket connected to {0}"
-                 .format(requestFwConId))
+    request_fw_socket = context.socket(zmq.REQ)
+    request_fw_socket.connect(request_fw_con_id)
+    logging.info("=== request_fw_socket connected to {0}"
+                 .format(request_fw_con_id))
 
     time.sleep(1)
 
-    send_signal(comSocket, b"START_STREAM", "6003", 1)
+    send_signal(com_socket, b"START_STREAM", "6003", 1)
 
-    send_signal(comSocket, b"START_STREAM", "6004", 0)
+    send_signal(com_socket, b"START_STREAM", "6004", 0)
 
-    send_signal(comSocket, b"STOP_STREAM", "6003")
+    send_signal(com_socket, b"STOP_STREAM", "6003")
 
-    sendRequest(requestSocket, "zitpcx19282:6006")
+    send_request(request_socket, "zitpcx19282:6006")
 
-    send_signal(comSocket, b"START_QUERY_NEXT", ["6005", "6006"], 2)
+    send_signal(com_socket, b"START_QUERY_NEXT", ["6005", "6006"], 2)
 
-    sendRequest(requestSocket, b"zitpcx19282:6005")
-    sendRequest(requestSocket, b"zitpcx19282:6005")
-    sendRequest(requestSocket, b"zitpcx19282:6006")
+    send_request(request_socket, b"zitpcx19282:6005")
+    send_request(request_socket, b"zitpcx19282:6005")
+    send_request(request_socket, b"zitpcx19282:6006")
 
-    cancelRequest(requestSocket, b"zitpcx19282:6005")
+    cancel_request(request_socket, b"zitpcx19282:6005")
 
     time.sleep(0.5)
 
-    sendRequest(requestSocket, "zitpcx19282:6005")
-    send_signal(comSocket, b"STOP_QUERY_NEXT", "6005", 2)
+    send_request(request_socket, "zitpcx19282:6005")
+    send_signal(com_socket, b"STOP_QUERY_NEXT", "6005", 2)
 
     time.sleep(1)
 
-    controlPubSocket.send_multipart([b"control", b"EXIT"])
+    control_pub_socket.send_multipart([b"control", b"EXIT"])
     logging.debug("=== EXIT")
 
-    signalHandlerPr.join()
-    requestPullerPr.terminate()
+    signalhandler_pr.join()
+    request_puller_pr.terminate()
 
-    controlPubSocket.close(0)
+    control_pub_socket.close(0)
 
-    comSocket.close(0)
-    requestSocket.close(0)
-    requestFwSocket.close(0)
+    com_socket.close(0)
+    request_socket.close(0)
+    request_fw_socket.close(0)
 
     context.destroy()
 
-    logQueue.put_nowait(None)
-    logQueueListener.stop()
+    log_queue.put_nowait(None)
+    log_queue_listener.stop()

@@ -43,7 +43,7 @@ LOGPATH = os.path.join(tempfile.gettempdir(), "hidra", "logs")
 #
 # assume that the server listening to 51000 serves p00
 #
-connectionList = {
+connection_list = {
     "p00": {
         "host": "asap3-p00",
         "port": 51000
@@ -99,7 +99,7 @@ connectionList = {
     }
 
 
-class ZmqDT():
+class HidraController():
     '''
     this class holds getter/setter for all parameters
     and function members that control the operation.
@@ -121,27 +121,27 @@ class ZmqDT():
         # TODO after removal of detectorDevice and filewriterDevice:
         # change default to None
         # IP of the EIGER Detector
-        self.eigerIp = "None"
+        self.eiger_ip = "None"
         # API version of the EIGER Detector
-        self.eigerApiVersion = "None"
+        self.eiger_api_version = "None"
 
         # Number of events stored to look for doubles
-        self.historySize = None
+        self.history_size = None
 
         # Target to move the files into
         # e.g. /beamline/p11/current/raw
-        self.localTarget = None
-        self.supportedLocalTargets = ["current/raw",
-                                      "current/scratch_bl",
-                                      "commissioning/raw",
-                                      "commissioning/scratch_bl",
-                                      "local"]
+        self.local_target = None
+        self.supported_local_targets = ["current/raw",
+                                        "current/scratch_bl",
+                                        "commissioning/raw",
+                                        "commissioning/scratch_bl",
+                                        "local"]
 
-        # Flag describing if the data should be stored in localTarget
-        self.storeData = None
+        # Flag describing if the data should be stored in local_target
+        self.store_data = None
 
         # Flag describing if the files should be removed from the source
-        self.removeData = None
+        self.remove_data = None
 
         # List of hosts allowed to connect to the data distribution
         self.whitelist = None
@@ -156,7 +156,7 @@ class ZmqDT():
 
         return logger
 
-    def execMsg(self, msg):
+    def exec_msg(self, msg):
         '''
         set filedir /gpfs/current/raw
           returns DONE
@@ -193,33 +193,33 @@ class ZmqDT():
 
     def set(self, param, value):
         '''
-        set a parameter, e.g.: set localTarget /beamline/p11/current/raw/
+        set a parameter, e.g.: set local_target /beamline/p11/current/raw/
         '''
 
         key = param.lower()
 
         if key == "eigerip":
-            self.eigerIp = value
+            self.eiger_ip = value
             return "DONE"
 
         elif key == "eigerapiversion":
-            self.eigerApiVersion = value
+            self.eiger_api_version = value
             return "DONE"
 
         elif key == "historysize":
-            self.historySize = value
+            self.history_size = value
             return "DONE"
 
-        elif key == "localtarget" and value in self.supportedLocalTargets:
-            self.localTarget = os.path.join("/beamline", self.beamline, value)
+        elif key == "localtarget" and value in self.supported_local_targets:
+            self.local_target = os.path.join("/beamline", self.beamline, value)
             return "DONE"
 
         elif key == "storedata":
-            self.storeData = value
+            self.store_data = value
             return "DONE"
 
         elif key == "removedata":
-            self.removeData = value
+            self.remove_data = value
             return "DONE"
 
         elif key == "whitelist":
@@ -227,7 +227,7 @@ class ZmqDT():
             return "DONE"
 
         else:
-            self.log.debug("key={a}; value={v}".format(a=key, v=value))
+            self.log.debug("key={0}; value={1}".format(key, value))
             return "ERROR"
 
     def get(self, param):
@@ -237,23 +237,23 @@ class ZmqDT():
         key = param.lower()
 
         if key == "eigerip":
-            return self.eigerIp
+            return self.eiger_ip
 
         elif key == "eigerapiversion":
-            return self.eigerApiVersion
+            return self.eiger_api_version
 
         elif key == "historysize":
-            return self.historySize
+            return self.history_size
 
         elif key == "localtarget":
-            return os.path.relpath(self.localTarget,
+            return os.path.relpath(self.local_target,
                                    os.path.join("/beamline", self.beamline))
 
         elif key == "storedata":
-            return self.storeData
+            return self.store_data
 
         elif key == "removedata":
-            return self.removeData
+            return self.remove_data
 
         elif key == "whitelist":
             return self.whitelist
@@ -282,87 +282,87 @@ class ZmqDT():
         else:
             return "ERROR"
 
-    def __writeConfig(self):
+    def __write_config(self):
         global CONFIGPATH
 
         #
         # see, if all required params are there.
         #
-        if (self.eigerIp
-                and self.eigerApiVersion
-                and self.historySize
-                and self.localTarget
-                and self.storeData is not None
-                and self.removeData is not None
+        if (self.eiger_ip
+                and self.eiger_api_version
+                and self.history_size
+                and self.local_target
+                and self.store_data is not None
+                and self.remove_data is not None
                 and self.whitelist):
 
             # TODO correct IP
             if self.beamline == "p00":
-                externalIp = "asap3-p00"
-#                externalIp = "131.169.251.55" # asap3-p00
-                eventDetector = "inotifyx_detector"
-                dataFetcher = "file_fetcher"
+                external_ip = "asap3-p00"
+#                external_ip = "131.169.251.55" # asap3-p00
+                eventdetector = "inotifyx_detector"
+                datafetcher = "file_fetcher"
             else:
-                externalIp = "asap3-bl-prx07"
-#                externalIp = "131.169.251.38" # asap3-bl-prx07
-                eventDetector = "http_detector"
-                dataFetcher = "http_fetcher"
+                external_ip = "asap3-bl-prx07"
+#                external_ip = "131.169.251.38" # asap3-bl-prx07
+                eventdetector = "http_detector"
+                datafetcher = "http_fetcher"
 
             # write configfile
             # /etc/hidra/P01.conf
-            configFile = CONFIGPATH + os.sep + self.beamline + ".conf"
-            self.log.info("Writing config file: {0}".format(configFile))
+            config_file = CONFIGPATH + os.sep + self.beamline + ".conf"
+            self.log.info("Writing config file: {0}".format(config_file))
 
-            with open(configFile, 'w') as f:
-                f.write("logfilePath        = {0}\n".format(LOGPATH))
-                f.write("logfileName        = dataManager_{0}.log\n"
+            with open(config_file, 'w') as f:
+                f.write("log_path             = {0}\n".format(LOGPATH))
+                f.write("log_name             = dataManager_{0}.log\n"
                         .format(self.beamline))
-                f.write("logfileSize        = 10485760\n")
-                f.write("procname           = {0}\n".format(self.procname))
-                f.write("extIp              = {0}\n".format(externalIp))
-                f.write("comPort            = 50000\n")
-                f.write("requestPort        = 50001\n")
+                f.write("log_size             = 10485760\n")
+                f.write("procname             = {0}\n".format(self.procname))
+                f.write("ext_ip               = {0}\n".format(external_ip))
+                f.write("com_port             = 50000\n")
+                f.write("request_port         = 50001\n")
 
-                f.write("eventDetectorType  = {0}\n".format(eventDetector))
-                f.write('fixSubdirs         = ["commissioning", "current", '
+                f.write("event_detector_type  = {0}\n".format(eventdetector))
+                f.write('fix_subdirs          = ["commissioning", "current", '
                         '"local"]\n')
-                f.write("monitoredDir       = {0}/data/source\n"
+                f.write("monitored_dir        = {0}/data/source\n"
                         .format(BASEDIR))
-                f.write('monitoredEvents    = {"IN_CLOSE_WRITE" : [".tif", '
+                f.write('monitored_events     = {"IN_CLOSE_WRITE" : [".tif", '
                         '".cbf", ".nxs"]}\n')
-                f.write("useCleanUp         = False\n")
-                f.write("actionTime         = 150\n")
-                f.write("timeTillClosed     = 2\n")
+                f.write("use_cleanup          = False\n")
+                f.write("action_time          = 150\n")
+                f.write("time_till_closed     = 2\n")
 
-                f.write("dataFetcherType    = {0}\n".format(dataFetcher))
+                f.write("data_fetcher_type    = {0}\n".format(datafetcher))
 
-                f.write("numberOfStreams    = 1\n")
-                f.write("useDataStream      = False\n")
-                f.write("chunkSize          = 10485760\n")
+                f.write("number_of_streams    = 1\n")
+                f.write("use_data_stream      = False\n")
+                f.write("chunksize            = 10485760\n")
 
-                f.write("eigerIp            = {0}\n".format(self.eigerIp))
-                f.write("eigerApiVersion    = {0}\n"
-                        .format(self.eigerApiVersion))
-                f.write("historySize        = {0}\n".format(self.historySize))
-                f.write("localTarget        = {0}\n".format(self.localTarget))
-                f.write("storeData          = {0}\n".format(self.storeData))
-                f.write("removeData         = {0}\n".format(self.removeData))
-                f.write("whitelist          = {0}\n".format(self.whitelist))
+                f.write("eiger_ip             = {0}\n".format(self.eiger_ip))
+                f.write("eiger_api_version    = {0}\n"
+                        .format(self.eiger_api_version))
+                f.write("history_size         = {0}\n".format(self.history_size))
+                f.write("local_target         = {0}\n".format(self.local_target))
+                f.write("store_data           = {0}\n".format(self.store_data))
+                f.write("remove_data          = {0}\n".format(self.remove_data))
+                f.write("whitelist            = {0}\n".format(self.whitelist))
 
-                self.log.debug("Started with extIp: {0}".format(externalIp))
-                self.log.debug("Started with eventDetector: {0}"
-                               .format(eventDetector))
-                self.log.debug("Started with dataFetcher: {0}"
-                               .format(dataFetcher))
+                self.log.debug("Started with ext_ip: {0}".format(external_ip))
+                self.log.debug("Started with event detector: {0}"
+                               .format(eventdetector))
+                self.log.debug("Started with data fetcher: {0}"
+                               .format(datafetcher))
 
         else:
-            self.log.debug("eigerIp: {0}".format(self.eigerIp))
-            self.log.debug("eigerApiVersion: {0}"
-                           .format(self.eigerApiVersion))
-            self.log.debug("historySize: {0}".format(self.historySize))
-            self.log.debug("localTarge: {0}".format(self.localTarget))
-            self.log.debug("storeData: {0}".format(self.storeData))
-            self.log.debug("removeData: {0}".format(self.removeData))
+            self.log.debug("eiger_ip: {0}".format(self.eiger_ip))
+            self.log.debug("eiger_api_version: {0}"
+                           .format(self.eiger_api_version))
+            self.log.debug("history_size: {0}".format(self.history_size))
+            self.log.debug("localTarge: {0}".format(self.local_target))
+            self.log.debug("store_data: {0}".format(self.store_data))
+            self.log.debug("remove_data: {0}".format(self.remove_data))
             self.log.debug("whitelist: {0}".format(self.whitelist))
             raise Exception("Not all required parameters are specified")
 
@@ -372,7 +372,7 @@ class ZmqDT():
         '''
 
         try:
-            self.__writeConfig()
+            self.__write_config()
         except:
             self.log.error("ConfigFile not written", exc_info=True)
             return "ERROR"
@@ -431,25 +431,25 @@ class ZmqDT():
             return "NOT RUNNING"
 
 
-class socketServer(object):
+class SocketServer(object):
     '''
     one socket for the port, accept() generates new sockets
     '''
-    global connectionList
+    global connection_list
 
-    def __init__(self, logQueue, beamline):
-        global connectionList
+    def __init__(self, log_queue, beamline):
+        global connection_list
 
-        self.logQueue = logQueue
+        self.log_queue = log_queue
 
-        self.log = self.get_logger(logQueue)
+        self.log = self.get_logger(log_queue)
 
         self.beamline = beamline
-        self.log.debug("socketServer startet for beamline {0}"
+        self.log.debug("SocketServer startet for beamline {0}"
                        .format(self.beamline))
 
-        self.host = connectionList[self.beamline]["host"]
-        self.port = connectionList[self.beamline]["port"]
+        self.host = connection_list[self.beamline]["host"]
+        self.port = connection_list[self.beamline]["port"]
         self.conns = []
         self.socket = None
 
@@ -458,7 +458,7 @@ class socketServer(object):
     def get_logger(self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("socketServer")
+        logger = logging.getLogger("SocketServer")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -490,8 +490,8 @@ class socketServer(object):
                 conn, addr = self.sckt.accept()
 
                 threading.Thread(
-                    target=socketCom,
-                    args=(self.logQueue, self.beamline, conn, addr)).start()
+                    target=SocketCom,
+                    args=(self.log_queue, self.beamline, conn, addr)).start()
             except KeyboardInterrupt:
                 break
             except Exception:
@@ -511,13 +511,13 @@ class socketServer(object):
         self.finish()
 
 
-class socketCom ():
-    def __init__(self, logQueue, beamline, conn, addr):
+class SocketCom ():
+    def __init__(self, log_queue, beamline, conn, addr):
         self.id = threading.current_thread().name
 
-        self.log = self.get_logger(logQueue)
+        self.log = self.get_logger(log_queue)
 
-        self.zmqDT = ZmqDT(beamline, self.log)
+        self.controller = HidraController(beamline, self.log)
         self.conn = conn
         self.addr = addr
 
@@ -526,7 +526,7 @@ class socketCom ():
     def get_logger(self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("socketCom_{0}".format(self.id))
+        logger = logging.getLogger("SocketCom_{0}".format(self.id))
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -557,7 +557,7 @@ class socketCom ():
                 self.close()
                 sys.exit(1)
 
-            reply = self.zmqDT.execMsg(msg)
+            reply = self.controller.exec_msg(msg)
 
             if self.send(reply) == 0:
                 self.close()
@@ -614,60 +614,60 @@ def argument_parsing():
     return parser.parse_args()
 
 
-class HiDRAControlServer():
+class HidraControlServer():
     def __init__(self):
         arguments = argument_parsing()
 
         self.beamline = arguments.beamline
 
-        setproctitle.setproctitle("HiDRAControlServer_{0}"
+        setproctitle.setproctitle("HidraControlServer_{0}"
                                   .format(self.beamline))
 
-        onScreen = False
-#        onScreen = "debug"
+        onscreen = False
+#        onscreen = "debug"
         verbose = True
         logfile = os.path.join(BASE_PATH, "logs",
-                               "HiDRAControlServer_{0}.log"
+                               "HidraControlServer_{0}.log"
                                .format(self.beamline))
         logsize = 10485760
 
         # Get queue
-        self.logQueue = Queue(-1)
+        self.log_queue = Queue(-1)
 
         # Get the log Configuration for the lisener
-        if onScreen:
+        if onscreen:
             h1, h2 = helpers.get_log_handlers(logfile, logsize,
-                                              verbose, onScreen)
+                                              verbose, onscreen)
 
             # Start queue listener using the stream handler above.
-            self.logQueueListener = (
-                helpers.CustomQueueListener(self.logQueue, h1, h2))
+            self.log_queue_listener = (
+                helpers.CustomQueueListener(self.log_queue, h1, h2))
         else:
             h1 = helpers.get_log_handlers(logfile, logsize,
-                                          verbose, onScreen)
+                                          verbose, onscreen)
 
             # Start queue listener using the stream handler above
-            self.logQueueListener = (
-                helpers.CustomQueueListener(self.logQueue, h1))
+            self.log_queue_listener = (
+                helpers.CustomQueueListener(self.log_queue, h1))
 
-        self.logQueueListener.start()
+        self.log_queue_listener.start()
 
         # Create log and set handler to queue handle
-        self.log = self.get_logger(self.logQueue)
+        self.log = self.get_logger(self.log_queue)
 
         self.log.info("Init")
 
         # waits for new accepts on the original socket,
         # receives the newly created socket and
         # creates threads to handle each client separatly
-        s = socketServer(self.logQueue, self.beamline)
+        s = SocketServer(self.log_queue, self.beamline)
 
         s.run()
 
     def get_logger(self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("HiDRAControlServer")
+        logger = logging.getLogger("HidraControlServer")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -676,4 +676,4 @@ class HiDRAControlServer():
 
 
 if __name__ == '__main__':
-    t = HiDRAControlServer()
+    t = HidraControlServer()

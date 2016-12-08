@@ -46,29 +46,21 @@ except:
 
 
 def is_windows():
-    returnValue = False
-    windowsName = "Windows"
-    platformName = platform.system()
-
-    if platformName == windowsName:
-        returnValue = True
+    if platform.system() == "Windows":
+        return True
     # osRelease = platform.release()
     # supportedWindowsReleases = ["7"]
     # if osRelease in supportedWindowsReleases:
-    #     returnValue = True
-
-    return returnValue
+    #     return True
+    else:
+        return False
 
 
 def is_linux():
-    returnValue = False
-    linuxName = "Linux"
-    platformName = platform.system()
-
-    if platformName == linuxName:
-        returnValue = True
-
-    return returnValue
+    if platform.system() == "Linux":
+        return True
+    else:
+        return False
 
 
 # This function is needed because configParser always needs a section name
@@ -196,13 +188,13 @@ def parse_config(config):
     return config_params
 
 
-def set_parameters(configFile, arguments):
+def set_parameters(config_file, arguments):
 
     config = ConfigParser.RawConfigParser()
     try:
-        config.readfp(FakeSecHead(open(configFile)))
+        config.readfp(FakeSecHead(open(config_file)))
     except:
-        with open(configFile, 'r') as f:
+        with open(config_file, 'r') as f:
             config_string = '[asection]\n' + f.read()
         config.read_string(config_string)
 
@@ -267,27 +259,38 @@ def confirm(prompt=None, resp=False):
             return False
 
 
-def check_event_detector_type(eDType, supportedTypes):
+def check_event_detector_type(specified_type, supportedTypes, log_string):
 
-    eDType = eDType.lower()
+    specified_typee = specified_type.lower()
 
-    if eDType in supportedTypes:
-        logging.debug("Event detector '{0}' is ok.".format(eDType))
+    if specified_type in specified_type:
+        logging.debug("Event detector '{0}' is ok.".format(specified_type))
     else:
-        logging.error("Event detector '{0}' is not supported.".format(eDType))
+        logging.error("Event detector '{0}' is not supported.".format(specified_type))
         sys.exit(1)
 
 
-def check_dir_empty(dirPath):
+def check_type(specified_type, supported_types, log_string):
+
+    specified_type = specified_type.lower()
+
+    if specified_type in supported_types:
+        logging.debug("{0} '{1}' is ok.".format(log_string, specified_type))
+    else:
+        logging.error("{0} '{1}' is not supported.".format(log_string, specified_type))
+        sys.exit(1)
+
+
+def check_dir_empty(dir_path):
 
     #check if directory is empty
-    if os.listdir(dirPath):
-        logging.debug("Directory '{0}' is not empty.".format(dirPath))
+    if os.listdir(dir_path):
+        logging.debug("Directory '{0}' is not empty.".format(dir_path))
         if confirm(prompt="Directory {0} is not empty.\n"
-                          "Should its content be removed?".format(dirPath),
+                          "Should its content be removed?".format(dir_path),
                    resp=True):
-            for element in os.listdir(dirPath):
-                path = os.path.join(dirPath, element)
+            for element in os.listdir(dir_path):
+                path = os.path.join(dir_path, element)
                 if os.path.isdir(path):
                     try:
                         os.rmdir(path)
@@ -296,65 +299,67 @@ def check_dir_empty(dirPath):
                 else:
                     os.remove(path)
             logging.info("All elements of directory {0} were removed."
-                         .format(dirPath))
+                         .format(dir_path))
 
 
-def check_any_sub_dir_exists(dirPath, subDirs):
+def check_any_sub_dir_exists(dir_path, subDirs):
 
-    dirPath = os.path.normpath(dirPath)
-    dirsToCheck = [os.path.join(dirPath, directory) for directory in subDirs]
+    dir_path = os.path.normpath(dir_path)
+    dirs_to_check = [os.path.join(dir_path, directory)
+                     for directory in subDirs]
     noSubdir = True
 
-    for d in dirsToCheck:
+    for d in dirs_to_check:
         #check directory path for existance. exits if it does not exist
         if os.path.exists(d):
             noSubdir = False
 
     if noSubdir:
         logging.error("There are none of the specified subdirectories inside "
-                      "'{0}'. Abort.".format(dirPath))
-        logging.error("Checked paths: {0}".format(dirsToCheck))
+                      "'{0}'. Abort.".format(dir_path))
+        logging.error("Checked paths: {0}".format(dirs_to_check))
         sys.exit(1)
 
 
-def check_all_sub_dir_exist(dirPath, subDirs):
+def check_all_sub_dir_exist(dir_path, subDirs):
 
-    dirPath = os.path.normpath(dirPath)
-    dirsToCheck = [os.path.join(dirPath, directory) for directory in subDirs]
+    dir_path = os.path.normpath(dir_path)
+    dirs_to_check = [os.path.join(dir_path, directory)
+                     for directory in subDirs]
 
-    for d in dirsToCheck:
+    for d in dirs_to_check:
         if not os.path.exists(d):
             logging.warning("Dir '{0}' does not exist.".format(d))
 
 
-def check_file_existance(filePath):
+def check_file_existance(path):
     # Check file for existance.
     # Exits if it does not exist
 
-    if not os.path.exists(filePath):
-        logging.error("File '{0}' does not exist. Abort.".format(filePath))
+    if not os.path.exists(path):
+        logging.error("File '{0}' does not exist. Abort.".format(path))
         sys.exit(1)
 
 
-def check_dir_existance(dirPath):
+def check_dir_existance(path):
     # Check directory path for existance.
     # Exits if it does not exist
 
-    if not os.path.exists(dirPath):
-        logging.error("Dir '{0}' does not exist. Abort.".format(dirPath))
+    if not os.path.exists(path):
+        logging.error("Dir '{0}' does not exist. Abort.".format(path))
         sys.exit(1)
 
 
 def check_log_file_writable(filepath, filename):
     # Exits if logfile cannot be written
     try:
-        logfullPath = os.path.join(filepath, filename)
-        logFile = open(logfullPath, "a")
-        logFile.close()
+        log_fullpath = os.path.join(filepath, filename)
+        logfile = open(log_fullpath, "a")
+        logfile.close()
     except:
-        logging.error("Unable to create the logfile {0}".format(logfullPath))
+        logging.error("Unable to create the logfile {0}".format(log_fullpath))
         logging.error("Please specify a new target by setting the following "
-                      "arguments:\n--logfileName\n--logfilePath")
+                      "arguments:\n--log_name\n--log_path")
         sys.exit(1)
 
 
@@ -372,16 +377,16 @@ def check_version(version, log):
         return True
 
 
-def check_host(host, whiteList, log):
+def check_host(host, whitelist, log):
 
-    if host and whiteList:
+    if host and whitelist:
 
         if type(host) == list:
             return_val = True
             for hostname in host:
-                hostModified = hostname.replace(".desy.de", "")
+                host_modified = hostname.replace(".desy.de", "")
 
-                if hostname not in whiteList and hostModified not in whiteList:
+                if hostname not in whitelist and host_modified not in whitelist:
                     log.info("Host {0} is not allowed to connect"
                              .format(hostname))
                     return_val = False
@@ -389,9 +394,9 @@ def check_host(host, whiteList, log):
             return return_val
 
         else:
-            hostModified = host.replace(".desy.de", "")
+            host_modified = host.replace(".desy.de", "")
 
-            if host in whiteList or hostModified in whiteList:
+            if host in whitelist or host_modified in whitelist:
                 return True
             else:
                 log.info("Host {0} is not allowed to connect".format(host))
@@ -414,30 +419,50 @@ def check_ping(host, log=logging):
 # IP and DNS name should be both in the whitelist
 def extend_whitelist(whitelist, log):
     log.info("Configured whitelist: {0}".format(whitelist))
-    extendedWhitelist = []
+    extended_whitelist = []
 
     for host in whitelist:
 
         if host == "localhost":
-            extendedWhitelist.append(socket.gethostbyname(host))
+            extended_whitelist.append(socket.gethostbyname(host))
         else:
             try:
                 hostname, tmp, ip = socket.gethostbyaddr(host)
 
-                hostModified = hostname.replace(".desy.de", "")
+                host_modified = hostname.replace(".desy.de", "")
 
-                if hostModified not in whitelist:
-                    extendedWhitelist.append(hostModified)
+                if host_modified not in whitelist:
+                    extended_whitelist.append(host_modified)
 
                 if ip[0] not in whitelist:
-                    extendedWhitelist.append(ip[0])
+                    extended_whitelist.append(ip[0])
             except:
                 pass
 
-    for host in extendedWhitelist:
+    for host in extended_whitelist:
         whitelist.append(host)
 
     log.debug("Extended whitelist: {0}".format(whitelist))
+
+
+def check_config(required_params, config, log):
+
+    check_passed = True
+    config_reduced = "{"
+
+    for param in required_params:
+        if param not in config:
+            self.log.error("Configuration of wrong format. "
+                           "Missing parameter: '{0}'".format(param))
+            check_passed = False
+        else:
+            config_reduced += "{0}: {1}, ".format(param, config[param])
+
+    # Remove redundant divider
+    config_reduced = config_reduced[:-2] + "}"
+
+    return check_passed, config_reduced
+
 
 
 # http://stackoverflow.com/questions/25585518/
@@ -484,11 +509,11 @@ class CustomQueueListener (QueueListener):
 
 
 # Get the log Configuration for the lisener
-def get_log_handlers(logfile, logsize, verbose, onScreenLogLevel=False):
+def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
     # Enable more detailed logging if verbose-option has been set
-    logLevel = logging.INFO
+    loglevel = logging.INFO
     if verbose:
-        logLevel = logging.DEBUG
+        loglevel = logging.DEBUG
 
     # Set format
     datef = "%Y-%m-%d %H:%M:%S"
@@ -504,69 +529,69 @@ def get_log_handlers(logfile, logsize, verbose, onScreenLogLevel=False):
         h1 = logging.handlers.RotatingFileHandler(logfile, 'a', logsize, 5)
     f1 = logging.Formatter(datefmt=datef, fmt=f)
     h1.setFormatter(f1)
-    h1.setLevel(logLevel)
+    h1.setLevel(loglevel)
 
     # Setup stream handler to output to console
-    if onScreenLogLevel:
-        onScreenLogLevelLower = onScreenLogLevel.lower()
-        if (onScreenLogLevelLower in ["debug", "info", "warning",
+    if onscreen_log_level:
+        onscreen_log_levelLower = onscreen_log_level.lower()
+        if (onscreen_log_levelLower in ["debug", "info", "warning",
                                       "error", "critical"]):
 
             f = "[%(asctime)s] > %(message)s"
 
-            if onScreenLogLevelLower == "debug":
-                screenLogLevel = logging.DEBUG
+            if onscreen_log_levelLower == "debug":
+                screen_log_level = logging.DEBUG
                 f = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s"
 
                 if not verbose:
                     logging.error("Logging on Screen: Option DEBUG in only "
                                   "active when using verbose option as well "
                                   "(Fallback to INFO).")
-            elif onScreenLogLevelLower == "info":
-                screenLogLevel = logging.INFO
-            elif onScreenLogLevelLower == "warning":
-                screenLogLevel = logging.WARNING
-            elif onScreenLogLevelLower == "error":
-                screenLogLevel = logging.ERROR
-            elif onScreenLogLevelLower == "critical":
-                screenLogLevel = logging.CRITICAL
+            elif onscreen_log_levelLower == "info":
+                screen_log_level = logging.INFO
+            elif onscreen_log_levelLower == "warning":
+                screen_log_level = logging.WARNING
+            elif onscreen_log_levelLower == "error":
+                screen_log_level = logging.ERROR
+            elif onscreen_log_levelLower == "critical":
+                screen_log_level = logging.CRITICAL
 
             h2 = logging.StreamHandler()
             f2 = logging.Formatter(datefmt=datef, fmt=f)
             h2.setFormatter(f2)
-            h2.setLevel(screenLogLevel)
+            h2.setLevel(screen_log_level)
 
             return h1, h2
         else:
             logging.error("Logging on Screen: Option {0} is not supported."
-                          .format(onScreenLogLevel))
+                          .format(onscreen_log_level))
             exit(1)
 
     else:
         return h1
 
 
-def init_logging(filenameFullPath, verbose, onScreenLogLevel=False):
+def init_logging(filename_full_path, verbose, onscreen_log_level=False):
     # see https://docs.python.org/2/howto/logging-cookbook.html
 
     # more detailed logging if verbose-option has been set
-    loggingLevel = logging.INFO
+    logging_level = logging.INFO
     if verbose:
-        loggingLevel = logging.DEBUG
+        logging_level = logging.DEBUG
 
     # log everything to file
 #                        format=("[%(asctime)s] [PID %(process)d] "
 #                                "[%(filename)s] "
 #                                "[%(module)s:%(funcName)s:%(lineno)d] "
 #                                "[%(name)s] [%(levelname)s] %(message)s"),
-    logging.basicConfig(level=loggingLevel,
+    logging.basicConfig(level=logging_level,
                         format=("%(asctime)s %(processName)-10s %(name)s "
                                 "%(levelname)-8s %(message)s"),
                         datefmt="%Y-%m-%d_%H:%M:%S",
-                        filename=filenameFullPath,
+                        filename=filename_full_path,
                         filemode="a")
 
-#        fileHandler = logging.FileHandler(filename=filenameFullPath,
+#        fileHandler = logging.FileHandler(filename=filename_full_path,
 #                                          mode="a")
 #        fileHandlerFormat = logging.Formatter(
 #            datefmt="%Y-%m-%d_%H:%M:%S,
@@ -578,49 +603,50 @@ def init_logging(filenameFullPath, verbose, onScreenLogLevel=False):
 #                 "[%(levelname)s] "
 #                 "%(message)s"))
 #        fileHandler.setFormatter(fileHandlerFormat)
-#        fileHandler.setLevel(loggingLevel)
+#        fileHandler.setLevel(logging_level)
 #        logging.getLogger("").addHandler(fileHandler)
 
     # log info to stdout, display messages with different format than the
     # file output
-    if onScreenLogLevel:
-        onScreenLogLevelLower = onScreenLogLevel.lower()
-        if (onScreenLogLevelLower in ["debug", "info", "warning",
+    if onscreen_log_level:
+        onscreen_log_levelLower = onscreen_log_level.lower()
+        if (onscreen_log_levelLower in ["debug", "info", "warning",
                                       "error", "critical"]):
 
             console = logging.StreamHandler()
-            screenHandlerFormat = logging.Formatter(
-                datefmt="%Y-%m-%d_%H:%M:%S",
-                fmt="[%(asctime)s] > %(message)s")
+            screen_handler_format = (
+                logging.Formatter(datefmt="%Y-%m-%d_%H:%M:%S",
+                                  fmt="[%(asctime)s] > %(message)s"))
 
-            if onScreenLogLevelLower == "debug":
-                screenLoggingLevel = logging.DEBUG
-                console.setLevel(screenLoggingLevel)
+            if onscreen_log_levelLower == "debug":
+                screen_logging_level = logging.DEBUG
+                console.setLevel(screen_logging_level)
 
-                screenHandlerFormat = logging.Formatter(
-                    datefmt="%Y-%m-%d_%H:%M:%S",
-                    fmt=("[%(asctime)s] > [%(filename)s:%(lineno)d] "
-                         "%(message)s"))
+                screen_handler_format = (
+                    logging.Formatter(datefmt="%Y-%m-%d_%H:%M:%S",
+                                      fmt=("[%(asctime)s] > "
+                                           "[%(filename)s:%(lineno)d] "
+                                           "%(message)s")))
 
                 if not verbose:
                     logging.error("Logging on Screen: Option DEBUG in only "
                                   "active when using verbose option as well "
                                   "(Fallback to INFO).")
-            elif onScreenLogLevelLower == "info":
-                screenLoggingLevel = logging.INFO
-                console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevelLower == "warning":
-                screenLoggingLevel = logging.WARNING
-                console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevelLower == "error":
-                screenLoggingLevel = logging.ERROR
-                console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevelLower == "critical":
-                screenLoggingLevel = logging.CRITICAL
-                console.setLevel(screenLoggingLevel)
+            elif onscreen_log_levelLower == "info":
+                screen_logging_level = logging.INFO
+                console.setLevel(screen_logging_level)
+            elif onscreen_log_levelLower == "warning":
+                screen_logging_level = logging.WARNING
+                console.setLevel(screen_logging_level)
+            elif onscreen_log_levelLower == "error":
+                screen_logging_level = logging.ERROR
+                console.setLevel(screen_logging_level)
+            elif onscreen_log_levelLower == "critical":
+                screen_logging_level = logging.CRITICAL
+                console.setLevel(screen_logging_level)
 
-            console.setFormatter(screenHandlerFormat)
+            console.setFormatter(screen_handler_format)
             logging.getLogger("").addHandler(console)
         else:
             logging.error("Logging on Screen: Option {0} is not supported."
-                          .format(onScreenLogLevel))
+                          .format(onscreen_log_level))

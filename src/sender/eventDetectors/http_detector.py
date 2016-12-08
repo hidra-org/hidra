@@ -7,6 +7,7 @@ import time
 from logutils.queue import QueueHandler
 import requests
 import collections
+import socket
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan,garrevoet@desy.de>')
@@ -14,38 +15,45 @@ __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
 
 class EventDetector():
 
-    def __init__(self, config, logQueue):
+    def __init__(self, config, log_queue):
 
-        self.log = self.get_logger(logQueue)
+        self.log = self.get_logger(log_queue)
 
-        # check format of config
-        if ("eigerIp" not in config
-                or "eigerApiVersion" not in config
-                or "historySize" not in config):
-            self.log.error("Configuration of wrong format")
-            self.log.debug("config={0}".format(config))
-            checkPassed = False
-        else:
-            checkPassed = True
-            self.log.info("Event detector configuration {0}".format(config))
+        required_params = ["eiger_ip",
+                           "eiger_api_version",
+                           "history_size"]
 
-        if checkPassed:
+        # Check format of config
+        check_passed, config_reduced = helpers.check_config(required_params,
+                                                            config,
+                                                            self.log)
+
+        # Only proceed if the configuration was correct
+        if check_passed:
+            self.log.info("Configuration for event detector: {0}"
+                          .format(config_reduced))
+
             self.session = requests.session()
 
-            self.eigerIp = config["eigerIp"]
-            self.eigerApiVersion = config["eigerApiVersion"]
-            self.eigerUrl = ("http://{ip}/filewriter/api/{api}/files"
-                             .format(ip=self.eigerIp,
-                                     api=self.eigerApiVersion))
-            self.log.debug("Getting files from: {0}".format(self.eigerUrl))
+            # Enable specification via IP and DNS name
+            self.eiger_ip = socket.gethostbyaddr(config["eiger_ip"])[2][0]
+            self.eiger_api_version = config["eiger_api_version"]
+            self.eiger_url = ("http://{0}/filewriter/api/{1}/files"
+                             .format(self.eiger_ip,
+                                     self.eiger_api_version))
+            self.log.debug("Getting files from: {0}".format(self.eiger_url))
 #            http://192.168.138.37/filewriter/api/1.6.0/files
 
             # time to sleep after detector returned emtpy file list
-            self.sleepTime = 0.5
+            self.sleep_time = 0.5
 
             # history to prevend double events
             self.files_downloaded = collections.deque(
-                maxlen=config["historySize"])
+                maxlen=config["history_size"])
+
+        else:
+            self.log.debug("config={0}".format(config))
+            raise Exception("Wrong configuration")
 
     # Send all logs to the main process
     # The worker configuration is done at the start of the worker process run.
@@ -54,7 +62,7 @@ class EventDetector():
     def get_logger(self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("HttpGetDetector")
+        logger = logging.getLogger("http_detector")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -63,7 +71,7 @@ class EventDetector():
 
     def get_new_event(self):
 
-        eventMessageList = []
+        event_message_list = []
 
         files_stored = []
 
@@ -77,16 +85,16 @@ class EventDetector():
 #        except Exception as e:
 #            self.log.error("Getting 'FilesInBuffer'...failed. {0}".format(e))
 #            time.sleep(0.2)
-#            return eventMessageList
+#            return event_message_list
 
         try:
-            response = self.session.get(self.eigerUrl)
+            response = self.session.get(self.eiger_url)
         except:
             self.log.error("Error in getting file list from {0}"
-                           .format(self.eigerUrl), exc_info=True)
+                           .format(self.eiger_url), exc_info=True)
             # Wait till next try to prevent denial of service
-            time.sleep(self.sleepTime)
-            return eventMessageList
+            time.sleep(self.sleep_time)
+            return event_message_list
 
         try:
             response.raise_for_status()
@@ -96,27 +104,27 @@ class EventDetector():
         except:
             self.log.error("Getting file list...failed.", exc_info=True)
             # Wait till next try to prevent denial of service
-            time.sleep(self.sleepTime)
-            return eventMessageList
+            time.sleep(self.sleep_time)
+            return event_message_list
 
         if (not files_stored
                 or set(files_stored).issubset(self.files_downloaded)):
             # no new files received
-            time.sleep(self.sleepTime)
+            time.sleep(self.sleep_time)
 
         for file in files_stored:
             if file not in self.files_downloaded:
-                (relativePath, filename) = os.path.split(file)
-                eventMessage = {
-                    "sourcePath": "http://{0}/data".format(self.eigerIp),
-                    "relativePath": relativePath,
+                (relative_path, filename) = os.path.split(file)
+                event_message = {
+                    "source_path": "http://{0}/data".format(self.eiger_ip),
+                    "relative_path": relative_path,
                     "filename": filename
                     }
-                self.log.debug("eventMessage {0}".format(eventMessage))
-                eventMessageList.append(eventMessage)
+                self.log.debug("event_message {0}".format(event_message))
+                event_message_list.append(event_message)
                 self.files_downloaded.append(file)
 
-        return eventMessageList
+        return event_message_list
 
     def stop(self):
         pass
@@ -149,47 +157,46 @@ if __name__ == '__main__':
     logfile = os.path.join(BASE_PATH, "logs", "http_detector.log")
     logsize = 10485760
 
-    logQueue = Queue(-1)
+    log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
     h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onScreenLogLevel="debug")
+                                      onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    logQueueListener = helpers.CustomQueueListener(logQueue, h1, h2)
-    logQueueListener.start()
+    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener.start()
 
     # Create log and set handler to queue handle
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)  # Log level = DEBUG
-    qh = QueueHandler(logQueue)
+    qh = QueueHandler(log_queue)
     root.addHandler(qh)
 
 #    detectorDevice   = "haspp10lab:10000/p10/eigerdectris/lab.01"
 #    detectorDevice   = "haspp06:10000/p06/eigerdectris/exp.01"
 #    filewriterDevice = "haspp10lab:10000/p10/eigerfilewriter/lab.01"
 #    filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
-#    eigerIp          = "192.168.138.52"  # haspp11e1m
-    eigerIp = "131.169.55.170"  # lsdma-lab04
-    eigerApiVersion = "1.5.0"
+#    eiger_ip          = "192.168.138.52"  # haspp11e1m
+    eiger_ip = "131.169.55.170"  # lsdma-lab04
+    eiger_api_version = "1.5.0"
     config = {
-        "eventDetectorType": "http_detector",
-        "eigerIp": eigerIp,
-        "eigerApiVersion": eigerApiVersion,
-        "historySize": 1000
+        "eiger_ip": eiger_ip,
+        "eiger_api_version": eiger_api_version,
+        "history_size": 1000
         }
 
-    eventDetector = EventDetector(config, logQueue)
+    eventdetector = EventDetector(config, log_queue)
 
     for i in range(5):
         try:
-            eventList = eventDetector.get_new_event()
-            if eventList:
-                print ("eventList:", eventList)
+            event_list = eventdetector.get_new_event()
+            if event_list:
+                print ("event_list:", event_list)
 
             time.sleep(1)
         except KeyboardInterrupt:
             break
 
-    logQueue.put_nowait(None)
-    logQueueListener.stop()
+    log_queue.put_nowait(None)
+    log_queue_listener.stop()

@@ -23,32 +23,32 @@ except:
     import hidra
 
 
-obj = hidra.Control("p00", useLog=None)
+obj = hidra.Control("p00", use_log=None)
 #obj = hidra.Control("p00")
 
 # where the data should be stored inside the beamline filesystem
 # only the relative path is needed because the absolute path can be
 # reconstucted with the beamline name
-print ("Setting localTarget:", obj.set("localTarget", "commissioning/raw"))
-#print ("Setting localTarget:", obj.set("localTarget", "current/raw"))
+print ("Setting local_target:", obj.set("local_target", "commissioning/raw"))
+#print ("Setting local_target:", obj.set("local_target", "current/raw"))
 
-print (obj.get("localTarget"))
+print (obj.get("local_target"))
 
 # from which eiger should the data should be get
-print ("Setting eigerIp:", obj.set("eigerIp", "192.168.138.52"))
+print ("Setting eiger_ip:", obj.set("eiger_ip", "192.168.138.52"))
 # which simplon api version is running on the eiger
-print ("Setting eigerApiVersion:", obj.set("eigerApiVersion", "1.5.0"))
+print ("Setting eiger_api_version:", obj.set("eiger_api_version", "1.5.0"))
 # this should only be shown in expert view because it can be critical
 # HiDRA gets a file list from the eiger and the downloads these files
 # asynchoniously. If the work on file list is not finished when the next list
-# is get there is an overlap. To saveguard this the last <historySize> files
+# is get there is an overlap. To saveguard this the last <history_size> files
 # are remembered as currently processed and thus not handled if appearing
 # again
-print ("Setting historySize:", obj.set("historySize", 2000))
-# if the data should be stored in the localTarget
-print ("Setting storeData:", obj.set("storeData", True))
+print ("Setting history_size:", obj.set("history_size", 2000))
+# if the data should be stored in the local_target
+print ("Setting store_data:", obj.set("store_data", True))
 # if the data should be removed from the eiger
-print ("Setting removeData:", obj.set("removeData", True))
+print ("Setting remove_data:", obj.set("remove_data", True))
 # which hosts are allowed to request the data
 print ("Setting whitelist:", obj.set("whitelist", "localhost"))
 #print ("Setting whitelist:", obj.set("whitelist", ["localhost"]))

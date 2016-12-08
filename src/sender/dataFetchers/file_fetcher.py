@@ -16,28 +16,34 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 def setup(log, prop):
 
-    if ("fixSubdirs" not in prop
-            or "storeData" not in prop
-            or "removeData" not in prop):
+    required_params = ["fix_subdirs",
+                       "store_data",
+                       "remove_data"]
 
-        log.error("Configuration of wrong format")
-        log.debug("dataFetcherProp={0}".format(prop))
-        return False
+    # Check format of config
+    check_passed, config_reduced = helpers.check_config(required_params,
+                                                        prop,
+                                                        log)
 
-    else:
-        prop["timeout"] = -1  # 10
-        prop["removeFlag"] = False
-        return True
+    if check_passed:
+        log.info("Configuration for data fetcher: {0}"
+                 .format(config_reduced))
+
+        prop["send_timeout"] = -1  # 10
+        prop["remove_flag"] = False
 
 
-def get_metadata(log, prop, targets, metadata, chunkSize, localTarget=None):
+    return check_passed
+
+
+def get_metadata(log, prop, targets, metadata, chunksize, local_target=None):
 
     # extract fileEvent metadata
     try:
         # TODO validate metadata dict
         filename = metadata["filename"]
-        sourcePath = metadata["sourcePath"]
-        relativePath = metadata["relativePath"]
+        source_path = metadata["source_path"]
+        relative_path = metadata["relative_path"]
     except:
         log.error("Invalid fileEvent message received.", exc_info=True)
         log.debug("metadata={0}".format(metadata))
@@ -47,29 +53,32 @@ def get_metadata(log, prop, targets, metadata, chunkSize, localTarget=None):
     # filename = "img.tiff"
     # filepath = "C:\dir"
     #
-    # -->  sourceFilePathFull = 'C:\\dir\img.tiff'
-    sourceFilePath = os.path.normpath(os.path.join(sourcePath, relativePath))
-    sourceFile = os.path.join(sourceFilePath, filename)
-
-    # TODO combine better with sourceFile... (for efficiency)
-    if localTarget:
-        targetFilePath = os.path.normpath(os.path.join(localTarget,
-                                                       relativePath))
-        targetFile = os.path.join(targetFilePath, filename)
+    # -->  source_file_path = 'C:\\dir\img.tiff'
+    if relative_path.startswith("/"):
+        source_file_path = os.path.normpath(os.path.join(source_path, relative_path[1:]))
     else:
-        targetFile = None
+        source_file_path = os.path.normpath(os.path.join(source_path, relative_path))
+    source_file = os.path.join(source_file_path, filename)
+
+    # TODO combine better with source_file... (for efficiency)
+    if local_target:
+        target_file_path = os.path.normpath(os.path.join(local_target,
+                                                         relative_path))
+        target_file = os.path.join(target_file_path, filename)
+    else:
+        target_file = None
 
     if targets:
         try:
-            log.debug("get filesize for '{0}'...".format(sourceFile))
-            filesize = os.path.getsize(sourceFile)
-            fileModTime = os.stat(sourceFile).st_mtime
-            fileCreateTime = os.stat(sourceFile).st_ctime
+            log.debug("get filesize for '{0}'...".format(source_file))
+            filesize = os.path.getsize(source_file)
+            file_mod_time = os.stat(source_file).st_mtime
+            file_create_time = os.stat(source_file).st_ctime
             # For quick testing set filesize of file as chunksize
             # chunksize can be used later on to split multipart message
 #            chunksize = filesize
-            log.debug("filesize({0}) = {1}".format(sourceFile, filesize))
-            log.debug("fileModTime({0}) = {1}".format(sourceFile, fileModTime))
+            log.debug("filesize({0}) = {1}".format(source_file, filesize))
+            log.debug("file_mod_time({0}) = {1}".format(source_file, file_mod_time))
 
         except:
             log.error("Unable to create metadata dictionary.")
@@ -79,205 +88,207 @@ def get_metadata(log, prop, targets, metadata, chunkSize, localTarget=None):
             log.debug("create metadata for source file...")
             # metadata = {
             #        "filename"       : ...,
-            #        "sourcePath"     : ...,
-            #        "relativePath"   : ...,
+            #        "source_path"     : ...,
+            #        "relative_path"   : ...,
             #        "filesize"       : ...,
-            #        "fileModTime"    : ...,
-            #        "fileCreateTime" : ...,
-            #        "chunkSize"      : ...
+            #        "file_mod_time"    : ...,
+            #        "file_create_time" : ...,
+            #        "chunksize"      : ...
             #        }
             metadata["filesize"] = filesize
-            metadata["fileModTime"] = fileModTime
-            metadata["fileCreateTime"] = fileCreateTime
-            metadata["chunkSize"] = chunkSize
+            metadata["file_mod_time"] = file_mod_time
+            metadata["file_create_time"] = file_create_time
+            metadata["chunksize"] = chunksize
 
             log.debug("metadata = {0}".format(metadata))
         except:
             log.error("Unable to assemble multi-part message.")
             raise
 
-    return sourceFile, targetFile, metadata
+    return source_file, target_file, metadata
 
 
-def send_data(log, targets, sourceFile, targetFile, metadata, openConnections,
-              context, prop):
+def send_data(log, targets, source_file, target_file, metadata,
+              open_connections, context, prop):
 
     if not targets:
-        prop["removeFlag"] = True
+        prop["remove_flag"] = True
         return
 
     targets_data = [i for i in targets if i[3] == "data"]
 
     if not targets_data:
-        prop["removeFlag"] = True
+        prop["remove_flag"] = True
         return
 
-    prop["removeFlag"] = False
-    chunkSize = metadata["chunkSize"]
+    prop["remove_flag"] = False
+    chunksize = metadata["chunksize"]
 
-    chunkNumber = 0
+    chunk_number = 0
     sendError = False
 
     # reading source file into memory
     try:
-        log.debug("Opening '{0}'...".format(sourceFile))
-        fileDescriptor = open(str(sourceFile), "rb")
+        log.debug("Opening '{0}'...".format(source_file))
+        file_descriptor = open(str(source_file), "rb")
     except:
-        log.error("Unable to read source file '{0}'.".format(sourceFile),
+        log.error("Unable to read source file '{0}'.".format(source_file),
                   exc_info=True)
         raise
 
-    log.debug("Passing multipart-message for file '{0}'...".format(sourceFile))
+    log.debug("Passing multipart-message for file '{0}'..."
+              .format(source_file))
     while True:
 
         # read next chunk from file
-        fileContent = fileDescriptor.read(chunkSize)
+        file_content = file_descriptor.read(chunksize)
 
         # detect if end of file has been reached
-        if not fileContent:
+        if not file_content:
             break
 
         try:
             # assemble metadata for zmq-message
-            chunkMetadata = metadata.copy()
-            chunkMetadata["chunkNumber"] = chunkNumber
+            chunk_metadata = metadata.copy()
+            chunk_metadata["chunk_number"] = chunk_number
 
-            chunkPayload = []
-            chunkPayload.append(json.dumps(chunkMetadata).encode("utf-8"))
-            chunkPayload.append(fileContent)
+            chunk_payload = []
+            chunk_payload.append(json.dumps(chunk_metadata).encode("utf-8"))
+            chunk_payload.append(file_content)
         except:
             log.error("Unable to pack multipart-message for file '{0}'"
-                      .format(sourceFile), exc_info=True)
+                      .format(source_file), exc_info=True)
 
         # send message to data targets
         try:
-            __send_to_targets(log, targets_data, sourceFile, targetFile,
-                              openConnections, None, chunkPayload, context)
+            __send_to_targets(log, targets_data, source_file, target_file,
+                              open_connections, None, chunk_payload, context)
         except DataHandlingError:
             log.error("Unable to send multipart-message for file '{0}' "
-                      "(chunk {1})".format(sourceFile, chunkNumber),
+                      "(chunk {1})".format(source_file, chunk_number),
                       exc_info=True)
             sendError = True
         except:
             log.error("Unable to send multipart-message for file '{0}' "
-                      "(chunk {1})".format(sourceFile, chunkNumber),
+                      "(chunk {1})".format(source_file, chunk_number),
                       exc_info=True)
 
-        chunkNumber += 1
+        chunk_number += 1
 
     # close file
     try:
-        log.debug("Closing '{0}'...".format(sourceFile))
-        fileDescriptor.close()
+        log.debug("Closing '{0}'...".format(source_file))
+        file_descriptor.close()
     except:
-        log.error("Unable to close target file '{0}'.".format(sourceFile),
+        log.error("Unable to close target file '{0}'.".format(source_file),
                   exc_info=True)
         raise
 
     if not sendError:
-        prop["removeFlag"] = True
+        prop["remove_flag"] = True
 
 
-def __data_handling(log, sourceFile, targetFile, actionFunction, metadata,
+def __datahandling(log, source_file, target_file, action_function, metadata,
                     prop):
     try:
-        actionFunction(sourceFile, targetFile)
+        action_function(source_file, target_file)
     except IOError as e:
 
         # errno.ENOENT == "No such file or directory"
         if e.errno == errno.ENOENT:
-            subdir, tmp = os.path.split(metadata["relativePath"])
-            targetBasePath = os.path.join(
-                targetFile.split(subdir + os.sep)[0], subdir)
+            subdir, tmp = os.path.split(metadata["relative_path"])
+            target_base_path = os.path.join(
+                target_file.split(subdir + os.sep)[0], subdir)
 
-            if metadata["relativePath"] in prop["fixSubdirs"]:
+            if metadata["relative_path"] in prop["fix_subdirs"]:
                 log.error("Unable to copy/move file '{0}' to '{1}': "
                           "Directory {2} is not available."
-                          .format(sourceFile, targetFile,
-                                  metadata["relativePath"]))
+                          .format(source_file, target_file,
+                                  metadata["relative_path"]))
                 raise
-            elif (subdir in prop["fixSubdirs"]
-                    and not os.path.isdir(targetBasePath)):
+            elif (subdir in prop["fix_subdirs"]
+                    and not os.path.isdir(target_base_path)):
                 log.error("Unable to copy/move file '{0}' to '{1}': "
                           "Directory {2} is not available."
-                          .format(sourceFile, targetFile, subdir))
+                          .format(source_file, target_file, subdir))
                 raise
             else:
                 try:
-                    targetPath, filename = os.path.split(targetFile)
-                    os.makedirs(targetPath)
+                    target_path, filename = os.path.split(target_file)
+                    os.makedirs(target_path)
                     log.info("New target directory created: {0}"
-                             .format(targetPath))
-                    actionFunction(sourceFile, targetFile)
+                             .format(target_path))
+                    action_function(source_file, target_file)
                 except OSError as e:
                     log.info("Target directory creation failed, was already "
-                             "created in the meantime: {0}".format(targetPath))
-                    actionFunction(sourceFile, targetFile)
+                             "created in the meantime: {0}"
+                             .format(target_path))
+                    action_function(source_file, target_file)
                 except:
                     log.error("Unable to copy/move file '{0}' to '{1}'"
-                              .format(sourceFile, targetFile), exc_info=True)
-                    log.debug("targetPath: {p}".format(p=targetPath))
+                              .format(source_file, target_file), exc_info=True)
+                    log.debug("target_path: {p}".format(p=target_path))
         else:
             log.error("Unable to copy/move file '{0}' to '{1}'"
-                      .format(sourceFile, targetFile), exc_info=True)
+                      .format(source_file, target_file), exc_info=True)
             raise
     except:
         log.error("Unable to copy/move file '{0}' to '{1}'"
-                  .format(sourceFile, targetFile), exc_info=True)
+                  .format(source_file, target_file), exc_info=True)
         raise
 
 
-def finish_data_handling(log, targets, sourceFile, targetFile, metadata,
-                         openConnections, context, prop):
+def finish_datahandling(log, targets, source_file, target_file, metadata,
+                         open_connections, context, prop):
 
     targets_metadata = [i for i in targets if i[3] == "metadata"]
 
-    if prop["storeData"] and prop["removeData"] and prop["removeFlag"]:
+    if prop["store_data"] and prop["remove_data"] and prop["remove_flag"]:
 
         # move file
         try:
-            __data_handling(log, sourceFile, targetFile, shutil.move, metadata,
-                            prop)
-            log.info("Moving file '{0}' ...success.".format(sourceFile))
+            __datahandling(log, source_file, target_file, shutil.move,
+                           metadata, prop)
+            log.info("Moving file '{0}' ...success.".format(source_file))
         except:
             log.error("Could not move file {0} to {1}"
-                      .format(sourceFile, targetFile), exc_info=True)
+                      .format(source_file, target_file), exc_info=True)
             return
 
-    elif prop["storeData"]:
+    elif prop["store_data"]:
 
         # copy file
         # (does not preserve file owner, group or ACLs)
         try:
-            __data_handling(log, sourceFile, targetFile, shutil.copy,
+            __datahandling(log, source_file, target_file, shutil.copy,
                             metadata, prop)
-            log.info("Copying file '{0}' ...success.".format(sourceFile))
+            log.info("Copying file '{0}' ...success.".format(source_file))
         except:
             return
 
-    elif prop["removeData"] and prop["removeFlag"]:
+    elif prop["remove_data"] and prop["remove_flag"]:
         # remove file
         try:
-            os.remove(sourceFile)
-            log.info("Removing file '{0}' ...success.".format(sourceFile))
+            os.remove(source_file)
+            log.info("Removing file '{0}' ...success.".format(source_file))
         except:
-            log.error("Unable to remove file {0}".format(sourceFile),
+            log.error("Unable to remove file {0}".format(source_file),
                       exc_info=True)
 
-        prop["removeFlag"] = False
+        prop["remove_flag"] = False
 
     # send message to metadata targets
     if targets_metadata:
         try:
-            __send_to_targets(log, targets_metadata, sourceFile, targetFile,
-                              openConnections, metadata, None, context,
-                              prop["timeout"])
+            __send_to_targets(log, targets_metadata, source_file, target_file,
+                              open_connections, metadata, None, context,
+                              prop["send_timeout"])
             log.debug("Passing metadata multipart-message for file {0}...done."
-                      .format(sourceFile))
+                      .format(source_file))
 
         except:
             log.error("Unable to send metadata multipart-message for file "
-                      "'{0}' to '{1}'".format(sourceFile, targets_metadata),
+                      "'{0}' to '{1}'".format(source_file, targets_metadata),
                       exc_info=True)
 
 
@@ -315,7 +326,7 @@ if __name__ == '__main__':
 
     # Get the log Configuration for the lisener
     h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onScreenLogLevel="debug")
+                                      onscreen_log_level="debug")
 
     # Create log and set handler to queue handle
     root = logging.getLogger()
@@ -323,77 +334,78 @@ if __name__ == '__main__':
     root.addHandler(h1)
     root.addHandler(h2)
 
-    receivingPort = "6005"
-    receivingPort2 = "6006"
-    extIp = "0.0.0.0"
+    receiving_port = "6005"
+    receiving_port2 = "6006"
+    ext_ip = "0.0.0.0"
 
     context = zmq.Context.instance()
 
-    receivingSocket = context.socket(zmq.PULL)
-    connectionStr = "tcp://{ip}:{port}".format(ip=extIp, port=receivingPort)
-    receivingSocket.bind(connectionStr)
-    logging.info("=== receivingSocket connected to {0}".format(connectionStr))
+    receiving_socket = context.socket(zmq.PULL)
+    connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port)
+    receiving_socket.bind(connection_str)
+    logging.info("=== receiving_socket connected to {0}"
+                 .format(connection_str))
 
-    receivingSocket2 = context.socket(zmq.PULL)
-    connectionStr = "tcp://{ip}:{port}".format(ip=extIp, port=receivingPort2)
-    receivingSocket2.bind(connectionStr)
-    logging.info("=== receivingSocket2 connected to {0}".format(connectionStr))
+    receiving_socket2 = context.socket(zmq.PULL)
+    connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port2)
+    receiving_socket2.bind(connection_str)
+    logging.info("=== receiving_socket2 connected to {0}"
+                 .format(connection_str))
 
-    prework_sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
-    prework_targetFile = os.path.join(
+    prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
+    prework_target_file = os.path.join(
         BASE_PATH, "data", "source", "local", "100.cbf")
 
-    copyfile(prework_sourceFile, prework_targetFile)
+    copyfile(prework_source_file, prework_target_file)
     time.sleep(0.5)
 
     workload = {
-        "sourcePath": os.path.join(BASE_PATH, "data", "source"),
-        "relativePath": os.sep + "local",
+        "source_path": os.path.join(BASE_PATH, "data", "source"),
+        "relative_path": os.sep + "local",
         "filename": "100.cbf"
         }
-    targets = [['localhost:{0}'.format(receivingPort), 1, [".cbf"], "data"],
-               ['localhost:{0}'.format(receivingPort2), 0, [".cbf"],  "data"]]
+    targets = [['localhost:{0}'.format(receiving_port), 1, [".cbf"], "data"],
+               ['localhost:{0}'.format(receiving_port2), 0, [".cbf"],  "data"]]
 
-    chunkSize = 10485760  # = 1024*1024*10 = 10 MiB
-    localTarget = os.path.join(BASE_PATH, "data", "target")
-    openConnections = dict()
+    chunksize = 10485760  # = 1024*1024*10 = 10 MiB
+    local_target = os.path.join(BASE_PATH, "data", "target")
+    open_connections = dict()
 
-    dataFetcherProp = {
-        "type": "file_fetcher",
-        "fixSubdirs": ["commissioning", "current", "local"],
-        "storeData": False,
-        "removeData": False
+    config = {
+        "fix_subdirs": ["commissioning", "current", "local"],
+        "store_data": False,
+        "remove_data": False
         }
 
-    logging.debug("openConnections before function call: {0}"
-                  .format(openConnections))
+    logging.debug("open_connections before function call: {0}"
+                  .format(open_connections))
 
-    setup(logging, dataFetcherProp)
+    setup(logging, config)
 
-    sourceFile, targetFile, metadata = get_metadata(logging, dataFetcherProp,
+    source_file, target_file, metadata = get_metadata(logging, config,
                                                     targets, workload,
-                                                    chunkSize,
-                                                    localTarget=None)
-    send_data(logging, targets, sourceFile, targetFile, metadata,
-              openConnections, context, dataFetcherProp)
+                                                    chunksize,
+                                                    local_target=None)
+    send_data(logging, targets, source_file, target_file, metadata,
+              open_connections, context, config)
 
-    finish_data_handling(logging, targets, sourceFile, targetFile, metadata,
-                         openConnections, context, dataFetcherProp)
+    finish_datahandling(logging, targets, source_file, target_file, metadata,
+                         open_connections, context, config)
 
-    logging.debug("openConnections after function call: {0}"
-                  .format(openConnections))
+    logging.debug("open_connections after function call: {0}"
+                  .format(open_connections))
 
     try:
-        recv_message = receivingSocket.recv_multipart()
-        logging.info("=== received: {0}".format(json.loads(
-            recv_message[0].decode("utf-8"))))
-        recv_message = receivingSocket2.recv_multipart()
-        logging.info("=== received 2: {0}".format(json.loads(
-            recv_message[0].decode("utf-8"))))
+        recv_message = receiving_socket.recv_multipart()
+        logging.info("=== received: {0}"
+                     .format(json.loads(recv_message[0].decode("utf-8"))))
+        recv_message = receiving_socket2.recv_multipart()
+        logging.info("=== received 2: {0}"
+                     .format(json.loads(recv_message[0].decode("utf-8"))))
     except KeyboardInterrupt:
         pass
     finally:
-        receivingSocket.close(0)
-        receivingSocket2.close(0)
-        clean(dataFetcherProp)
+        receiving_socket.close(0)
+        receiving_socket2.close(0)
+        clean(config)
         context.destroy()
