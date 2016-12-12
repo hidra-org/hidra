@@ -30,10 +30,6 @@ CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-def str2bool(v):
-    return v.lower() == "true"
-
-
 def argument_parsing():
     default_config = os.path.join(CONFIG_PATH, "dataManager.conf")
 
@@ -239,6 +235,8 @@ def argument_parsing():
     ##################################################
 
     params = helpers.set_parameters(arguments.config_file, arguments)
+
+    print("params={0}".format(params))
 
     ##################################
     #     Check given arguments      #

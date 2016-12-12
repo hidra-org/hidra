@@ -13,23 +13,23 @@ procname=HiDRA_test3
 
 
 python $BASEPATH/src/sender/DataManager.py \
-    --configFile $BASEPATH/test/dataManager.conf \
+    --config_file $BASEPATH/test/dataManager.conf \
     --procname $procname \
-    --logfilePath $BASEPATH/logs \
-    --logfileName ${procname}.log \
-    --monitoredDir $BASEPATH/data/source \
-    --localTarget $BASEPATH/data/target/local \
-    --extIp 0.0.0.0 \
-    --eventDetectorType http_detector \
-    --dataFetcherType http_fetcher \
-    --eigerIp 131.169.55.170 \
-    --eigerApiVersion 1.5.0 \
-    --historySize 2\
-    --useDataStream False \
-    --storeData True \
-    --removeData False \
+    --log_path $BASEPATH/logs \
+    --log_name ${procname}.log \
+    --monitored_dir $BASEPATH/data/source \
+    --local_target $BASEPATH/data/target/local \
+    --ext_ip 0.0.0.0 \
+    --event_detector_type http_detector \
+    --data_fetcher_type http_fetcher \
+    --eiger_ip 131.169.55.170 \
+    --eiger_api_version 1.5.0 \
+    --history_size 2\
+    --use_data_stream False \
+    --store_data True \
+    --remove_data False \
     --verbose \
-    --onScreen debug &
+    --onscreen debug &
 
 sleep 5
 

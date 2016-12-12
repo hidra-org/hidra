@@ -11,22 +11,22 @@ procname=HiDRA_test2
 
 
 python $BASEPATH/src/sender/DataManager.py \
-    --configFile $BASEPATH/test/dataManager.conf \
+    --config_file $BASEPATH/test/dataManager.conf \
     --procname $procname \
-    --logfilePath $BASEPATH/logs \
-    --logfileName ${procname}.log \
-    --monitoredDir $BASEPATH/data/source \
-    --localTarget $BASEPATH/data/target \
-    --extIp 0.0.0.0 \
-    --eventDetectorType watchdog_detector \
-    --dataFetcherType file_fetcher \
-    --actionTime 2 \
-    --timeTillClosed 1 \
-    --useDataStream False \
-    --storeData True \
-    --removeData True \
+    --log_path $BASEPATH/logs \
+    --log_name ${procname}.log \
+    --monitored_dir $BASEPATH/data/source \
+    --local_target $BASEPATH/data/target \
+    --ext_ip 0.0.0.0 \
+    --event_detector_type watchdog_detector \
+    --data_fetcher_type file_fetcher \
+    --action_time 2 \
+    --time_till_closed 1 \
+    --use_data_stream False \
+    --store_data True \
+    --remove_data True \
     --verbose \
-    --onScreen debug &
+    --onscreen debug &
 
 sleep 2
 

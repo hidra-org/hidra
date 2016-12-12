@@ -189,6 +189,10 @@ def parse_config(config):
     return config_params
 
 
+def str2bool(v):
+    return v.lower() == "true"
+
+
 def set_parameters(config_file, arguments):
 
     config = ConfigParser.RawConfigParser()
@@ -206,7 +210,17 @@ def set_parameters(config_file, arguments):
     for arg in vars(arguments):
         arg_value = getattr(arguments, arg)
         if arg_value is not None:
-            params[arg] = arg_value
+            if type(arg_value) is str:
+                if arg_value.lower() == "none":
+                    params[arg] = None
+                elif arg_value.lower() == "false":
+                    params[arg] = False
+                elif arg_value.lower() == "true":
+                    params[arg] = True
+                else:
+                    params[arg] = arg_value
+            else:
+                params[arg] = arg_value
 
     return params
 

@@ -12,20 +12,20 @@ onda_procname=example_onda
 
 
 python $BASEPATH/src/sender/DataManager.py \
-    --configFile $BASEPATH/test/dataManager.conf \
+    --config_file $BASEPATH/test/dataManager.conf \
     --procname $procname \
-    --logfilePath $BASEPATH/logs \
-    --logfileName ${procname}.log \
-    --monitoredDir $BASEPATH/data/source \
-    --localTarget $BASEPATH/data/target \
-    --extIp 0.0.0.0 \
-    --eventDetectorType inotifyx_detector \
-    --dataFetcherType file_fetcher \
-    --useDataStream False \
-    --storeData True \
-    --removeData True \
+    --log_path $BASEPATH/logs \
+    --log_name ${procname}.log \
+    --monitored_dir $BASEPATH/data/source \
+    --local_target $BASEPATH/data/target \
+    --ext_ip 0.0.0.0 \
+    --event_detector_type inotifyx_detector \
+    --data_fetcher_type file_fetcher \
+    --use_data_stream False \
+    --store_data True \
+    --remove_data True \
     --verbose \
-    --onScreen debug &
+    --onscreen debug &
 
 sleep 2
 
