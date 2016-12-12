@@ -2,13 +2,15 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 import os
+import sys
 import platform
 import logging
 import logging.handlers
-import sys
 import shutil
+import subprocess
 import socket
 import json
+import re
 from version import __version__
 
 try:
@@ -189,10 +191,6 @@ def parse_config(config):
     return config_params
 
 
-def str2bool(v):
-    return v.lower() == "true"
-
-
 def set_parameters(config_file, arguments):
 
     config = ConfigParser.RawConfigParser()
@@ -223,6 +221,28 @@ def set_parameters(config_file, arguments):
                 params[arg] = arg_value
 
     return params
+
+
+def excecute_ldapsearch(ldap_cn):
+
+    p = subprocess.Popen(
+        ["ldapsearch",
+         "-x",
+         "-H ldap://it-ldap-slave.desy.de:1389",
+         "cn=" + ldap_cn, "-LLL"],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    lines = p.stdout.readlines()
+
+    matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+                           re.M | re.I)
+    netgroup = []
+
+    for line in lines:
+        if matchHost.match(line):
+            if matchHost.match(line).group(1) not in netgroup:
+                netgroup.append(matchHost.match(line).group(1))
+
+    return netgroup
 
 
 # http://code.activestate.com/recipes/541096-prompt-the-user-for-confirmation/

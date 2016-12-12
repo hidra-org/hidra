@@ -236,8 +236,6 @@ def argument_parsing():
 
     params = helpers.set_parameters(arguments.config_file, arguments)
 
-    print("params={0}".format(params))
-
     ##################################
     #     Check given arguments      #
     ##################################

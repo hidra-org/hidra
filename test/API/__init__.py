@@ -18,5 +18,3 @@ except:
     # then search in local modules
     if API_PATH not in sys.path:
         sys.path.append(API_PATH)
-
-    from hidra import Transfer

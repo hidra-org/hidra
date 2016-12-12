@@ -1,48 +1,22 @@
 from __future__ import print_function
 
-import sys
 import argparse
 import logging
 import os
-import json
-import subprocess
-import re
-try:
-    import ConfigParser
-except:
-    import configparser as ConfigParser
 
-BASE_PATH = os.path.dirname(
-    os.path.dirname(
-        os.path.dirname(
-            os.path.realpath(__file__))))
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-API_PATH = os.path.join(BASE_PATH, "src", "APIs")
-CONFIG_PATH = os.path.join(BASE_PATH, "conf")
-
-if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
-del SHARED_PATH
-del BASE_PATH
+from __init__ import BASE_PATH
 
 import helpers
+from hidra import Transfer
 
-try:
-    # search in global python modules first
-    from hidra import Transfer
-except:
-    # then search in local modules
-    if API_PATH not in sys.path:
-        sys.path.append(API_PATH)
-    del API_PATH
-
-    from hidra import Transfer
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+CONFIG_PATH = os.path.join(BASE_PATH, "conf")
+
 
 def argument_parsing():
-    default_config = os.path.join(CONFIG_PATH, "dataReiceiver.conf")
+    default_config = os.path.join(CONFIG_PATH, "dataReceiver.conf")
 
     ##################################
     #   Get command line arguments   #
@@ -88,8 +62,7 @@ def argument_parsing():
                              "files from")
 
     arguments = parser.parse_args()
-    arguments.config_file = arguments.config_file \
-        or default_config
+    arguments.config_file = arguments.config_file or default_config
 
     # check if config_file exist
     helpers.check_file_existance(arguments.config_file)
@@ -98,64 +71,23 @@ def argument_parsing():
     # Get arguments from config file #
     ##################################
 
-    config = ConfigParser.RawConfigParser()
-    config.readfp(helpers.FakeSecHead(open(arguments.config_file)))
+    params = helpers.set_parameters(arguments.config_file, arguments)
 
-    arguments.log_path = arguments.log_path \
-        or config.get('asection', 'log_path')
-    arguments.log_name = arguments.log_name \
-        or config.get('asection', 'log_name')
-
-    if not helpers.is_windows():
-        arguments.log_size = arguments.log_size \
-            or config.get('asection', 'log_size')
-
-    try:
-        arguments.whitelist = arguments.whitelist \
-            or json.loads(config.get('asection', 'whitelist'))
-    except ValueError:
-        ldap_cn = config.get('asection', 'whitelist')
-        p = subprocess.Popen(
-            ["ldapsearch",
-             "-x",
-             "-H ldap://it-ldap-slave.desy.de:1389",
-             "cn=" + ldap_cn, "-LLL"],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        lines = p.stdout.readlines()
-
-        matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
-                               re.M | re.I)
-        arguments.whitelist = []
-
-        for line in lines:
-
-            if matchHost.match(line):
-                if matchHost.match(line).group(1) not in arguments.whitelist:
-                    arguments.whitelist.append(matchHost.match(line).group(1))
-    except:
-        arguments.whitelist = json.loads(
-            config.get('asection', 'whitelist').replace("'", '"'))
-
-    arguments.target_dir = arguments.target_dir \
-        or config.get('asection', 'target_dir')
-
-    arguments.data_stream_ip = arguments.data_stream_ip \
-        or config.get('asection', 'data_stream_ip')
-    arguments.data_stream_port = arguments.data_stream_port \
-        or config.get('asection', 'data_stream_port')
+    if params["whitelist"] is not None and type(params["whitelist"]) == str:
+        params["whitelist"] = helpers.excecute_ldapsearch(params["whitelist"])
 
     ##################################
     #     Check given arguments      #
     ##################################
 
-    logfile = os.path.join(arguments.log_path, arguments.log_name)
+    logfile = os.path.join(params["log_path"], params["log_name"])
 
     # enable logging
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
 
-    handlers = helpers.get_log_handlers(logfile, arguments.log_size,
-                                        arguments.verbose, arguments.onscreen)
+    handlers = helpers.get_log_handlers(logfile, params["log_size"],
+                                        params["verbose"], params["onscreen"])
 
     if type(handlers) == tuple:
         for h in handlers:
@@ -164,13 +96,13 @@ def argument_parsing():
         root.addHandler(handlers)
 
     # check target directory for existance
-    helpers.check_dir_existance(arguments.target_dir)
+    helpers.check_dir_existance(params["target_dir"])
 
     # check if logfile is writable
-    helpers.check_log_wile_writable(arguments.log_path,
-                                    arguments.log_name)
+    helpers.check_log_file_writable(params["log_path"],
+                                    params["log_name"])
 
-    return arguments
+    return params
 
 
 class DataReceiver:
@@ -178,22 +110,22 @@ class DataReceiver:
         self.transfer = None
 
         try:
-            arguments = argument_parsing()
+            params = argument_parsing()
         except:
             self.log = self.get_logger()
             raise
 
         self.log = self.get_logger()
 
-        self.whitelist = arguments.whitelist
+        self.whitelist = params["whitelist"]
 
         self.log.info("Configured whitelist: {0}".format(self.whitelist))
 
-        self.target_dir = os.path.normpath(arguments.target_dir)
-        self.data_ip = arguments.data_stream_ip
-        self.data_port = arguments.data_stream_port
+        self.target_dir = os.path.normpath(params["target_dir"])
+        self.data_ip = params["data_stream_ip"]
+        self.data_port = params["data_stream_port"]
 
-        self.log.info("Writing to directory '{0}'.".format(self.target_dir))
+        self.log.info("Writing to directory '{0}'".format(self.target_dir))
 
         self.transfer = Transfer("stream", use_log=True)
 

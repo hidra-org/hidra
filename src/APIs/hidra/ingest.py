@@ -211,7 +211,7 @@ class Ingest():
         message = {
             "filename": self.filename,
             "filepart": self.filepart,
-            "chunkSize": len(data)
+            "chunksize": len(data)
             }
 #        message = ('{ "filepart": {0}, "filename": "{1}" }'
 #                   .format(self.filepart, self.filename))

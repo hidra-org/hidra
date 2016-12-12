@@ -836,7 +836,7 @@ class Transfer():
                     self.log.error("Failed to append payload to file: '{0}'"
                                    .format(target_filepath), exc_info=True)
 
-                if len(payload) < payload_metadata["chunkSize"]:
+                if len(payload) < payload_metadata["chunksize"]:
                     #indicated end of file. Leave loop
                     filename = self.generate_target_filepath(target_base_path,
                                                              payload_metadata)
