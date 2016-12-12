@@ -7,7 +7,6 @@ import zmq
 import zmq.devices
 import os
 import logging
-import sys
 import json
 import time
 from multiprocessing import Process, freeze_support, Queue
@@ -16,35 +15,17 @@ import signal
 import setproctitle
 import tempfile
 import socket
-try:
-    import ConfigParser
-except:
-    import configparser as ConfigParser
 
 from SignalHandler import SignalHandler
 from TaskProvider import TaskProvider
 from DataDispatcher import DataDispatcher
 
-try:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__))))
-except:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.abspath(sys.argv[0]))))
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-CONFIG_PATH = os.path.join(BASE_PATH, "conf")
-
-if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
-del SHARED_PATH
-
+from __init__ import BASE_PATH
 from logutils.queue import QueueHandler
 import helpers
 from version import __version__
+
+CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -320,7 +301,8 @@ class DataManager():
             self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
             raise
 
-        logfile = os.path.join(self.params["log_path"], self.params["log_name"])
+        logfile = os.path.join(self.params["log_path"],
+                               self.params["log_name"])
 
         if log_queue:
             self.log_queue = log_queue
@@ -365,7 +347,8 @@ class DataManager():
         setproctitle.setproctitle(self.params["procname"])
         self.log.info("Running as {0}".format(self.params["procname"]))
 
-        self.log.info("DataManager started (PID {0}).".format(self.current_pid))
+        self.log.info("DataManager started (PID {0})."
+                      .format(self.current_pid))
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -394,43 +377,44 @@ class DataManager():
         self.request_port = self.params["request_port"]
 
         self.com_con_id = ("tcp://{0}:{1}"
-                         .format(self.ext_ip, self.params["com_port"]))
+                           .format(self.ext_ip, self.params["com_port"]))
         self.request_con_id = ("tcp://{0}:{1}"
-                             .format(self.ext_ip, self.params["request_port"]))
+                               .format(self.ext_ip,
+                                       self.params["request_port"]))
 
         if helpers.is_windows():
             self.log.info("Using tcp for internal communication.")
-            self.control_pub_con_id = ("tcp://{0}:{1}"
-                                    .format(self.localhost,
-                                            self.params["control_pub_port"]))
-            self.control_sub_con_id = ("tcp://{0}:{1}"
-                                    .format(self.localhost,
-                                            self.params["control_sub_port"]))
-            self.request_fw_con_id = ("tcp://{0}:{1}"
-                                   .format(self.localhost,
-                                           self.params["request_fw_port"]))
-            self.router_con_id = ("tcp://{0}:{1}"
-                                .format(self.localhost,
-                                        port=self.params["router_port"]))
+            self.control_pub_con_id = (
+                "tcp://{0}:{1}".format(self.localhost,
+                                       self.params["control_pub_port"]))
+            self.control_sub_con_id = (
+                "tcp://{0}:{1}".format(self.localhost,
+                                       self.params["control_sub_port"]))
+            self.request_fw_con_id = (
+                "tcp://{0}:{1}".format(self.localhost,
+                                       self.params["request_fw_port"]))
+            self.router_con_id = (
+                "tcp://{0}:{1}".format(self.localhost,
+                                       self.params["router_port"]))
 
         else:
             self.log.info("Using ipc for internal communication.")
             self.control_pub_con_id = ("ipc://{0}/{1}_{2}"
-                                    .format(self.ipc_path,
-                                            self.current_pid,
-                                            "controlPub"))
+                                       .format(self.ipc_path,
+                                               self.current_pid,
+                                               "controlPub"))
             self.control_sub_con_id = ("ipc://{0}/{1}_{2}"
-                                    .format(self.ipc_path,
-                                            self.current_pid,
-                                            "controlSub"))
+                                       .format(self.ipc_path,
+                                               self.current_pid,
+                                               "controlSub"))
             self.request_fw_con_id = ("ipc://{0}/{1}_{2}"
-                                   .format(self.ipc_path,
-                                           self.current_pid,
-                                           "requestFw"))
+                                      .format(self.ipc_path,
+                                              self.current_pid,
+                                              "requestFw"))
             self.router_con_id = ("ipc://{0}/{1}_{2}"
-                                .format(self.ipc_path,
-                                        self.current_pid,
-                                        "router"))
+                                  .format(self.ipc_path,
+                                          self.current_pid,
+                                          "router"))
 
         self.whitelist = self.params["whitelist"]
 
@@ -440,8 +424,8 @@ class DataManager():
 
         if self.use_data_stream:
             self.fixed_stream_id = ("{0}:{1}"
-                                  .format(self.params["fixed_stream_host"],
-                                          self.params["fixed_stream_port"]))
+                                    .format(self.params["fixed_stream_host"],
+                                            self.params["fixed_stream_port"]))
         else:
             self.fixed_stream_id = None
 
@@ -521,8 +505,9 @@ class DataManager():
             self.log.info("Start control_pub_socket (connect): '{0}'"
                           .format(self.control_pub_con_id))
         except:
-            self.log.error("Failed to start control_pub_socket (connect): '{0}'"
-                           .format(self.control_pub_con_id), exc_info=True)
+            self.log.error("Failed to start control_pub_socket (connect): "
+                           "'{0}'".format(self.control_pub_con_id),
+                           exc_info=True)
             raise
 
     def test_fixed_streaming_host(self):
@@ -580,17 +565,17 @@ class DataManager():
 
     def run(self):
         self.signalhandler_pr = threading.Thread(target=SignalHandler,
-                                                args=(
-                                                    self.control_pub_con_id,
-                                                    self.control_sub_con_id,
-                                                    self.whitelist,
-                                                    self.com_con_id,
-                                                    self.request_fw_con_id,
-                                                    self.request_con_id,
-                                                    self.log_queue,
-                                                    self.context
-                                                    )
-                                                )
+                                                 args=(
+                                                     self.control_pub_con_id,
+                                                     self.control_sub_con_id,
+                                                     self.whitelist,
+                                                     self.com_con_id,
+                                                     self.request_fw_con_id,
+                                                     self.request_con_id,
+                                                     self.log_queue,
+                                                     self.context
+                                                     )
+                                                 )
         self.signalhandler_pr.start()
 
         # needed, because otherwise the requests for the first files are not
@@ -601,14 +586,14 @@ class DataManager():
             return
 
         self.taskprovider_pr = Process(target=TaskProvider,
-                                      args=(
-                                          self.params,
-                                          self.control_sub_con_id,
-                                          self.request_fw_con_id,
-                                          self.router_con_id,
-                                          self.log_queue
-                                          )
-                                      )
+                                       args=(
+                                           self.params,
+                                           self.control_sub_con_id,
+                                           self.request_fw_con_id,
+                                           self.router_con_id,
+                                           self.log_queue
+                                           )
+                                       )
         self.taskprovider_pr.start()
 
         self.log.info("Configured Type of data fetcher: {0}"
@@ -757,8 +742,8 @@ class DataManager():
 # cannot be defined in "if __name__ == '__main__'" because then it is unbound
 # see https://docs.python.org/2/library/multiprocessing.html#windows
 class TestReceiverStream():
-    def __init__(self, com_port, fixed_recv_port, receiving_port, receiving_port2,
-                 log_queue):
+    def __init__(self, com_port, fixed_recv_port, receiving_port,
+                 receiving_port2, log_queue):
 
         self.log = self.get_logger(log_queue)
 
@@ -808,7 +793,7 @@ class TestReceiverStream():
 
     def send_signal(self, signal, ports, prio=None):
         self.log.info("=== send_signal : {0}, {1}".format(signal, ports))
-        send_message = [__version__,  signal]
+        send_message = [__version__, signal]
         targets = []
         if type(ports) == list:
             for port in ports:
@@ -877,8 +862,13 @@ if __name__ == '__main__':
         receiving_port = "50101"
         receiving_port2 = "50102"
 
-        testPr = Process(target=TestReceiverStream, args=(
-            com_port, fixed_recv_port, receiving_port, receiving_port2, log_queue))
+        testPr = Process(target=TestReceiverStream,
+                         args=(
+                             com_port,
+                             fixed_recv_port,
+                             receiving_port,
+                             receiving_port2,
+                             log_queue))
         testPr.start()
         logging.debug("test receiver started")
 

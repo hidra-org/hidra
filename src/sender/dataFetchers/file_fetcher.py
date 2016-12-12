@@ -3,13 +3,13 @@ from __future__ import unicode_literals
 
 import zmq
 import os
-import sys
 import logging
 import json
 import shutil
 import errno
 
 from send_helpers import __send_to_targets, DataHandlingError
+import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -31,7 +31,6 @@ def setup(log, prop):
 
         prop["send_timeout"] = -1  # 10
         prop["remove_flag"] = False
-
 
     return check_passed
 
@@ -55,9 +54,11 @@ def get_metadata(log, prop, targets, metadata, chunksize, local_target=None):
     #
     # -->  source_file_path = 'C:\\dir\img.tiff'
     if relative_path.startswith("/"):
-        source_file_path = os.path.normpath(os.path.join(source_path, relative_path[1:]))
+        source_file_path = os.path.normpath(os.path.join(source_path,
+                                                         relative_path[1:]))
     else:
-        source_file_path = os.path.normpath(os.path.join(source_path, relative_path))
+        source_file_path = os.path.normpath(os.path.join(source_path,
+                                                         relative_path))
     source_file = os.path.join(source_file_path, filename)
 
     # TODO combine better with source_file... (for efficiency)
@@ -78,7 +79,8 @@ def get_metadata(log, prop, targets, metadata, chunksize, local_target=None):
             # chunksize can be used later on to split multipart message
 #            chunksize = filesize
             log.debug("filesize({0}) = {1}".format(source_file, filesize))
-            log.debug("file_mod_time({0}) = {1}".format(source_file, file_mod_time))
+            log.debug("file_mod_time({0}) = {1}"
+                      .format(source_file, file_mod_time))
 
         except:
             log.error("Unable to create metadata dictionary.")
@@ -189,7 +191,7 @@ def send_data(log, targets, source_file, target_file, metadata,
 
 
 def __datahandling(log, source_file, target_file, action_function, metadata,
-                    prop):
+                   prop):
     try:
         action_function(source_file, target_file)
     except IOError as e:
@@ -239,7 +241,7 @@ def __datahandling(log, source_file, target_file, action_function, metadata,
 
 
 def finish_datahandling(log, targets, source_file, target_file, metadata,
-                         open_connections, context, prop):
+                        open_connections, context, prop):
 
     targets_metadata = [i for i in targets if i[3] == "metadata"]
 
@@ -261,7 +263,7 @@ def finish_datahandling(log, targets, source_file, target_file, metadata,
         # (does not preserve file owner, group or ACLs)
         try:
             __datahandling(log, source_file, target_file, shutil.copy,
-                            metadata, prop)
+                           metadata, prop)
             log.info("Copying file '{0}' ...success.".format(source_file))
         except:
             return
@@ -300,26 +302,7 @@ if __name__ == '__main__':
     import time
     from shutil import copyfile
 
-    try:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.realpath(__file__)))))
-    except:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.abspath(sys.argv[0])))))
-    print ("BASE_PATH", BASE_PATH)
-    SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-    if SHARED_PATH not in sys.path:
-        sys.path.append(SHARED_PATH)
-    del SHARED_PATH
-
-    import helpers
+    from dataFetchers import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "file_fetcher.log")
     logsize = 10485760
@@ -365,7 +348,7 @@ if __name__ == '__main__':
         "filename": "100.cbf"
         }
     targets = [['localhost:{0}'.format(receiving_port), 1, [".cbf"], "data"],
-               ['localhost:{0}'.format(receiving_port2), 0, [".cbf"],  "data"]]
+               ['localhost:{0}'.format(receiving_port2), 0, [".cbf"], "data"]]
 
     chunksize = 10485760  # = 1024*1024*10 = 10 MiB
     local_target = os.path.join(BASE_PATH, "data", "target")
@@ -383,14 +366,14 @@ if __name__ == '__main__':
     setup(logging, config)
 
     source_file, target_file, metadata = get_metadata(logging, config,
-                                                    targets, workload,
-                                                    chunksize,
-                                                    local_target=None)
+                                                      targets, workload,
+                                                      chunksize,
+                                                      local_target=None)
     send_data(logging, targets, source_file, target_file, metadata,
               open_connections, context, config)
 
     finish_datahandling(logging, targets, source_file, target_file, metadata,
-                         open_connections, context, config)
+                        open_connections, context, config)
 
     logging.debug("open_connections after function call: {0}"
                   .format(open_connections))

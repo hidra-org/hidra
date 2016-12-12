@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 import zmq
 import os
-import sys
 import logging
 import json
 import requests
@@ -11,6 +10,7 @@ import time
 import errno
 
 from send_helpers import __send_to_targets
+import helpers
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan,garrevoet@desy.de>')
@@ -89,7 +89,7 @@ def get_metadata(log, prop, targets, metadata, chunksize, local_target=None):
     return source_file, target_file, metadata
 
 
-def send_data(log, targets, source_file, target_file,  metadata,
+def send_data(log, targets, source_file, target_file, metadata,
               open_connections, context, prop):
 
     response = prop["session"].get(source_file)
@@ -238,7 +238,7 @@ def send_data(log, targets, source_file, target_file,  metadata,
 
 
 def finish_datahandling(log, targets, source_file, target_file, metadata,
-                         open_connections, context, prop):
+                        open_connections, context, prop):
 
     if prop["remove_data"] and prop["remove_flag"]:
         responce = requests.delete(source_file)
@@ -258,26 +258,7 @@ def clean(prop):
 if __name__ == '__main__':
     import subprocess
 
-    try:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.realpath(__file__)))))
-    except:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.abspath(sys.argv[0])))))
-    print ("BASE_PATH", BASE_PATH)
-    SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-    if SHARED_PATH not in sys.path:
-        sys.path.append(SHARED_PATH)
-    del SHARED_PATH
-
-    import helpers
+    from dataFetchers import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "http_fetcher.log")
     logsize = 10485760
@@ -302,12 +283,14 @@ if __name__ == '__main__':
     receiving_socket = context.socket(zmq.PULL)
     connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port)
     receiving_socket.bind(connection_str)
-    logging.info("=== receiving_socket connected to {0}".format(connection_str))
+    logging.info("=== receiving_socket connected to {0}"
+                 .format(connection_str))
 
     receiving_socket2 = context.socket(zmq.PULL)
     connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port2)
     receiving_socket2.bind(connection_str)
-    logging.info("=== receiving_socket2 connected to {0}".format(connection_str))
+    logging.info("=== receiving_socket2 connected to {0}"
+                 .format(connection_str))
 
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
     local_target = os.path.join(BASE_PATH, "data", "target")
@@ -356,7 +339,7 @@ if __name__ == '__main__':
               open_connections, context, config)
 
     finish_datahandling(logging, targets, source_file, target_file, metadata,
-                         open_connections, context, config)
+                        open_connections, context, config)
 
     logging.debug("open_connections after function call: {0}"
                   .format(open_connections))

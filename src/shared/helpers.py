@@ -21,26 +21,9 @@ try:
     from logutils.queue import QueueListener
 except:
     # there is no module logutils installed, fallback on the one in shared
-
-    try:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.realpath(__file__))))
-    except:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.abspath(sys.argv[0]))))
-#        BASE_PATH = os.path.dirname(
-#            os.path.dirname(
-#                os.path.dirname(
-#                    os.path.realpath(sys.argv[0])))))
-    SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-    if not SHARED_PATH in sys.path:
+    from shared import SHARED_PATH
+    if SHARED_PATH not in sys.path:
         sys.path.append(SHARED_PATH)
-    del SHARED_PATH
 
     from logutils.queue import QueueListener
 
@@ -90,19 +73,27 @@ def str2bool(v):
 def parse_config(config):
     """Sets correct types for parameter dictionaries.
 
-    Reads a parameter dictionary returned by the ConfigParser python module, and assigns correct types to parameters,
-    without changing the structure of the dictionary.
+    Reads a parameter dictionary returned by the ConfigParser python module,
+    and assigns correct types to parameters, without changing the structure of
+    the dictionary.
 
-    The parser tries to interpret each entry in the dictionary according to the following rules:
+    The parser tries to interpret each entry in the dictionary according to
+    the following rules:
 
-    - If the entry starts and ends with a single quote, it is interpreted as a string.
-    - If the entry starts and ends with a square bracket, it is interpreted as a list.
-    - If the entry starts and ends with a brace, it is interpreted as a dictionary.
-    - If the entry is the word None, without quotes, then the entry is interpreted as NoneType.
-    - If the entry is the word False, without quotes, then the entry is interpreted as a boolean False.
-    - If the entry is the word True, without quotes, then the entry is interpreted as a boolean True.
-    - If non of the previous options match the content of the entry, the parser tries to interpret the entry in order
-      as:
+    - If the entry starts and ends with a single quote, it is interpreted as a
+      string.
+    - If the entry starts and ends with a square bracket, it is interpreted as
+      a list.
+    - If the entry starts and ends with a brace, it is interpreted as a
+      dictionary.
+    - If the entry is the word None, without quotes, then the entry is
+      interpreted as NoneType.
+    - If the entry is the word False, without quotes, then the entry is
+      interpreted as a boolean False.
+    - If the entry is the word True, without quotes, then the entry is
+      interpreted as a boolean True.
+    - If non of the previous options match the content of the entry, the
+      parser tries to interpret the entry in order as:
 
         - An integer number.
         - A float number.
@@ -116,8 +107,8 @@ def parse_config(config):
 
     Returns:
 
-        config_params (dict): dictionary with the same structure as the input dictionary, but with correct types
-        assigned to each entry.
+        config_params (dict): dictionary with the same structure as the input
+        dictionary, but with correct types assigned to each entry.
     """
 
     config_params = {}
@@ -132,10 +123,12 @@ def parse_config(config):
                 config_params[sect][op] = config_params[sect][op][1:-1]
                 if sys.version_info[0] == 2:
                     try:
-                        config_params[sect][op] = unicode(config_params[sect][op])
+                        config_params[sect][op] = (
+                            unicode(config_params[sect][op]))
                     except UnicodeDecodeError:
-                        raise RuntimeError('Error parsing parameters. Only ASCII characters are allowed in parameter '
-                                           'names and values.')
+                        raise RuntimeError('Error parsing parameters. Only '
+                                           'ASCII characters are allowed in '
+                                           'parameter names and values.')
                 continue
             elif (config_params[sect][op].startswith('"')
                     and config_params[sect][op].endswith('"')):
@@ -143,23 +136,28 @@ def parse_config(config):
                 try:
                     config_params[sect][op] = unicode(config_params[sect][op])
                 except UnicodeDecodeError:
-                    raise RuntimeError('Error parsing parameters. Only ASCII characters are allowed in parameter '
+                    raise RuntimeError('Error parsing parameters. Only ASCII '
+                                       'characters are allowed in parameter '
                                        'names and values.')
                 continue
             elif (config_params[sect][op].startswith("[")
                     and config_params[sect][op].endswith("]")):
                 try:
-                    config_params[sect][op] = json.loads(config.get(sect, op).replace("'", '"'))
+                    config_params[sect][op] = json.loads(config.get(sect, op)
+                                                         .replace("'", '"'))
                 except UnicodeDecodeError:
-                    raise RuntimeError('Error parsing parameters. Only ASCII characters are allowed in parameter '
+                    raise RuntimeError('Error parsing parameters. Only ASCII '
+                                       'characters are allowed in parameter '
                                        'names and values.')
                 continue
             elif (config_params[sect][op].startswith("{")
                     and config_params[sect][op].endswith("}")):
                 try:
-                    config_params[sect][op] = json.loads(config.get(sect, op).replace("'", '"'))
+                    config_params[sect][op] = json.loads(config.get(sect, op)
+                                                         .replace("'", '"'))
                 except UnicodeDecodeError:
-                    raise RuntimeError('Error parsing parameters. Only ASCII characters are allowed in parameter '
+                    raise RuntimeError('Error parsing parameters. Only ASCII '
+                                       'characters are allowed in parameter '
                                        'names and values.')
                 continue
             elif config_params[sect][op] == 'None':
@@ -181,9 +179,12 @@ def parse_config(config):
                     continue
                 except ValueError:
                     config_params[sect][op] = config_params[sect][op]
-#                    raise RuntimeError('Error parsing parameters. The parameter {0}/{1} parameter has an invalid type. '
-#                                       'Allowed types are None, int, float, bool and str. Strings must be '
-#                                       'single-quoted.'.format(sect, op))
+#                    raise RuntimeError('Error parsing parameters. The '
+#                                       'parameter {0}/{1} parameter has an '
+#                                       'invalid type. Allowed types are '
+#                                       'None, int, float, bool and str. '
+#                                       'Strings must be single-quoted.'
+#                                       .format(sect, op))
 
     return config_params
 
@@ -261,12 +262,13 @@ def confirm(prompt=None, resp=False):
 
 def check_event_detector_type(specified_type, supportedTypes, log_string):
 
-    specified_typee = specified_type.lower()
+    specified_type = specified_type.lower()
 
     if specified_type in specified_type:
         logging.debug("Event detector '{0}' is ok.".format(specified_type))
     else:
-        logging.error("Event detector '{0}' is not supported.".format(specified_type))
+        logging.error("Event detector '{0}' is not supported."
+                      .format(specified_type))
         sys.exit(1)
 
 
@@ -277,13 +279,14 @@ def check_type(specified_type, supported_types, log_string):
     if specified_type in supported_types:
         logging.debug("{0} '{1}' is ok.".format(log_string, specified_type))
     else:
-        logging.error("{0} '{1}' is not supported.".format(log_string, specified_type))
+        logging.error("{0} '{1}' is not supported."
+                      .format(log_string, specified_type))
         sys.exit(1)
 
 
 def check_dir_empty(dir_path):
 
-    #check if directory is empty
+    # check if directory is empty
     if os.listdir(dir_path):
         logging.debug("Directory '{0}' is not empty.".format(dir_path))
         if confirm(prompt="Directory {0} is not empty.\n"
@@ -310,7 +313,7 @@ def check_any_sub_dir_exists(dir_path, subDirs):
     noSubdir = True
 
     for d in dirs_to_check:
-        #check directory path for existance. exits if it does not exist
+        # check directory path for existance. exits if it does not exist
         if os.path.exists(d):
             noSubdir = False
 
@@ -386,7 +389,8 @@ def check_host(host, whitelist, log):
             for hostname in host:
                 host_modified = hostname.replace(".desy.de", "")
 
-                if hostname not in whitelist and host_modified not in whitelist:
+                if (hostname not in whitelist
+                        and host_modified not in whitelist):
                     log.info("Host {0} is not allowed to connect"
                              .format(hostname))
                     return_val = False
@@ -452,8 +456,8 @@ def check_config(required_params, config, log):
 
     for param in required_params:
         if param not in config:
-            self.log.error("Configuration of wrong format. "
-                           "Missing parameter: '{0}'".format(param))
+            log.error("Configuration of wrong format. "
+                      "Missing parameter: '{0}'".format(param))
             check_passed = False
         else:
             config_reduced += "{0}: {1}, ".format(param, config[param])
@@ -462,7 +466,6 @@ def check_config(required_params, config, log):
     config_reduced = config_reduced[:-2] + "}"
 
     return check_passed, config_reduced
-
 
 
 # http://stackoverflow.com/questions/25585518/
@@ -535,7 +538,7 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
     if onscreen_log_level:
         onscreen_log_levelLower = onscreen_log_level.lower()
         if (onscreen_log_levelLower in ["debug", "info", "warning",
-                                      "error", "critical"]):
+                                        "error", "critical"]):
 
             f = "[%(asctime)s] > %(message)s"
 
@@ -611,7 +614,7 @@ def init_logging(filename_full_path, verbose, onscreen_log_level=False):
     if onscreen_log_level:
         onscreen_log_levelLower = onscreen_log_level.lower()
         if (onscreen_log_levelLower in ["debug", "info", "warning",
-                                      "error", "critical"]):
+                                        "error", "critical"]):
 
             console = logging.StreamHandler()
             screen_handler_format = (

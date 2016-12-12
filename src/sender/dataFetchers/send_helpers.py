@@ -44,7 +44,7 @@ def __send_to_targets(log, targets, source_file, target_file, open_connections,
                              .format(source_file, target, prio))
 
                 elif send_type == "metadata":
-                    #json.dumps(None) is 'N.'
+                    # json.dumps(None) is 'N.'
                     tracker = open_connections[target].send_multipart(
                         [json.dumps(metadata).encode("utf-8"),
                          json.dumps(None).encode("utf-8")],
@@ -75,7 +75,8 @@ def __send_to_targets(log, targets, source_file, target_file, open_connections,
                 connection_str = "tcp://{0}".format(target)
 
                 socket.connect(connection_str)
-                log.info("Start socket (connect): '{0}'".format(connection_str))
+                log.info("Start socket (connect): '{0}'"
+                         .format(connection_str))
 
                 # register socket
                 open_connections[target] = socket

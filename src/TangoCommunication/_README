@@ -1,0 +1,28 @@
+M.K., A.R., Nov 18, 2016
+
+history:
+ v 0.0: the first one, Nov 18, 2016
+========================
+
+change to folder /gpfs/local/HiDRAControl
+
+
+
+# Starten:
+./HiDRAControlClient_p10.py --start
+
+Dann werden die Daten standardmaessig in current/raw ins Beamline-FS geschrieben.
+Ein anderes Ziel waehlt ihr mit
+
+# Starten mit alternativem Pfad:
+./HiDRAControlClient_p10.py --start --target current/scratch_bl
+
+Erlaubt sind "current/raw", "current/scratch_bl", "commissioning/raw", "commissioning/scratch_bl" und "local"
+Die Ordnerstruktur wird so uebernommen wir sie im Eiger erstellt wurde.
+
+# Stoppen:
+./HiDRAControlClient_p10.py --stop
+
+# Status checken:
+./HiDRAControlClient_p10.py --status
+

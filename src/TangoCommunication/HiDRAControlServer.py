@@ -30,8 +30,9 @@ if SHARED_PATH not in sys.path:
 del SHARED_PATH
 del CONFIG_PATH
 
-import helpers
 from logutils.queue import QueueHandler
+import helpers
+
 
 BASEDIR = "/opt/hidra"
 
@@ -343,10 +344,13 @@ class HidraController():
                 f.write("eiger_ip             = {0}\n".format(self.eiger_ip))
                 f.write("eiger_api_version    = {0}\n"
                         .format(self.eiger_api_version))
-                f.write("history_size         = {0}\n".format(self.history_size))
-                f.write("local_target         = {0}\n".format(self.local_target))
+                f.write("history_size         = {0}\n"
+                        .format(self.history_size))
+                f.write("local_target         = {0}\n"
+                        .format(self.local_target))
                 f.write("store_data           = {0}\n".format(self.store_data))
-                f.write("remove_data          = {0}\n".format(self.remove_data))
+                f.write("remove_data          = {0}\n"
+                        .format(self.remove_data))
                 f.write("whitelist            = {0}\n".format(self.whitelist))
 
                 self.log.debug("Started with ext_ip: {0}".format(external_ip))
@@ -616,6 +620,8 @@ def argument_parsing():
 
 class HidraControlServer():
     def __init__(self):
+        global BASE_PATH
+
         arguments = argument_parsing()
 
         self.beamline = arguments.beamline

@@ -24,13 +24,13 @@ except:
 
 
 obj = hidra.Control("p00", use_log=None)
-#obj = hidra.Control("p00")
+# obj = hidra.Control("p00")
 
 # where the data should be stored inside the beamline filesystem
 # only the relative path is needed because the absolute path can be
 # reconstucted with the beamline name
 print ("Setting local_target:", obj.set("local_target", "commissioning/raw"))
-#print ("Setting local_target:", obj.set("local_target", "current/raw"))
+# print ("Setting local_target:", obj.set("local_target", "current/raw"))
 
 print (obj.get("local_target"))
 
@@ -51,7 +51,7 @@ print ("Setting store_data:", obj.set("store_data", True))
 print ("Setting remove_data:", obj.set("remove_data", True))
 # which hosts are allowed to request the data
 print ("Setting whitelist:", obj.set("whitelist", "localhost"))
-#print ("Setting whitelist:", obj.set("whitelist", ["localhost"]))
+# print ("Setting whitelist:", obj.set("whitelist", ["localhost"]))
 
 print ("Starting:", obj.do("start"))
 print ("Status:", obj.do("status"))

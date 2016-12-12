@@ -12,7 +12,6 @@ try:
 except:
     import configparser as ConfigParser
 
-
 BASE_PATH = os.path.dirname(
     os.path.dirname(
         os.path.dirname(
@@ -151,7 +150,7 @@ def argument_parsing():
 
     logfile = os.path.join(arguments.log_path, arguments.log_name)
 
-    #enable logging
+    # enable logging
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
 
@@ -222,7 +221,7 @@ class DataReceiver:
             raise
 
         self.log.debug("Waiting for new messages...")
-        #run loop, and wait for incoming messages
+        # run loop, and wait for incoming messages
         while True:
             try:
                 self.transfer.store(self.target_dir)
@@ -246,5 +245,5 @@ class DataReceiver:
 
 
 if __name__ == "__main__":
-    #start file receiver
+    # start file receiver
     receiver = DataReceiver()

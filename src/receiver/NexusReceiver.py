@@ -152,7 +152,7 @@ def argument_parsing():
 
     logfile = os.path.join(arguments.log_path, arguments.log_name)
 
-    #enable logging
+    # enable logging
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
 
@@ -269,7 +269,7 @@ class NexusReceiver:
             self.log.error("Could not initiate stream", exc_info=True)
             raise
 
-        #run loop, and wait for incoming messages
+        # run loop, and wait for incoming messages
         while True:
             try:
                 data = self.transfer.read(callback_params,
@@ -300,5 +300,5 @@ class NexusReceiver:
 
 
 if __name__ == "__main__":
-    #start file receiver
+    # start file receiver
     receiver = NexusReceiver()

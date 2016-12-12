@@ -5,28 +5,10 @@ import zmq
 import zmq.devices
 import logging
 import os
-import sys
 import copy
 import json
 
-
-# path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-try:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__))))
-except:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath('__file__'))))
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
-del SHARED_PATH
-
+from __init__ import BASE_PATH
 from logutils.queue import QueueHandler
 import helpers
 
@@ -38,8 +20,9 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 #
 class SignalHandler():
 
-    def __init__(self, control_pub_con_id, control_sub_con_id, whitelist, com_con_id,
-                 request_fw_con_id, request_con_id, log_queue, context=None):
+    def __init__(self, control_pub_con_id, control_sub_con_id, whitelist,
+                 com_con_id, request_fw_con_id, request_con_id, log_queue,
+                 context=None):
 
         # Send all logs to the main process
         self.log = self.get_logger(log_queue)
@@ -121,8 +104,9 @@ class SignalHandler():
             self.log.info("Start control_pub_socket (connect): '{0}'"
                           .format(self.control_pub_con_id))
         except:
-            self.log.error("Failed to start control_pub_socket (connect): '{0}'"
-                           .format(self.control_pub_con_id), exc_info=True)
+            self.log.error("Failed to start control_pub_socket (connect): "
+                           "'{0}'".format(self.control_pub_con_id),
+                           exc_info=True)
             raise
 
         # socket to get control signals from
@@ -132,8 +116,9 @@ class SignalHandler():
             self.log.info("Start control_sub_socket (connect): '{0}'"
                           .format(self.control_sub_con_id))
         except:
-            self.log.error("Failed to start control_sub_socket (connect): '{0}'"
-                           .format(self.control_sub_con_id), exc_info=True)
+            self.log.error("Failed to start control_sub_socket (connect): "
+                           "'{0}'".format(self.control_sub_con_id),
+                           exc_info=True)
             raise
 
         self.control_sub_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
@@ -409,7 +394,8 @@ class SignalHandler():
         overwrite_index = None
         flatlist_nested = [set([j[0] for j in sublist])
                            for sublist in list_to_check]
-        socket_ids_flatlist = set([socket_conf[0] for socket_conf in socket_ids])
+        socket_ids_flatlist = set([socket_conf[0]
+                                   for socket_conf in socket_ids])
 
         for i in flatlist_nested:
             # Check if socket_ids is sublist of one entry of list_to_check
@@ -534,7 +520,7 @@ class SignalHandler():
 
                 if vari_list is not None:
                     vari_list = [[b for b in vari_list[a] if socket_id != b[0]]
-                                for a in range(len(vari_list))]
+                                 for a in range(len(vari_list))]
                     self.log.debug("Remove all occurences from {0} from "
                                    "variable request list.".format(socket_id))
 
@@ -575,8 +561,9 @@ class SignalHandler():
             self.log.info("Received signal: {0} for hosts {1}"
                           .format(signal, socket_ids))
 
-            self.__start_signal(signal, "data", socket_ids, self.open_requ_perm,
-                                None, self.next_requ_node)
+            self.__start_signal(signal, "data", socket_ids,
+                                self.open_requ_perm, None,
+                                self.next_requ_node)
 
             return
 
@@ -768,7 +755,7 @@ if __name__ == '__main__':
                           .format(current_pid, "controlSub"))
     com_con_id = "tcp://{0}:{1}".format(ext_ip, com_port)
     request_fw_con_id = ("ipc://{0}_{1}"
-                      .format(current_pid, "requestFw"))
+                         .format(current_pid, "requestFw"))
     request_con_id = "tcp://{0}:{1}".format(ext_ip, request_port)
 
     logfile = os.path.join(BASE_PATH, "logs", "signalHandler.log")
@@ -819,7 +806,7 @@ if __name__ == '__main__':
 
     def send_signal(socket, signal, ports, prio=None):
         logging.info("=== send_signal : {0}, {1}".format(signal, ports))
-        send_message = [__version__,  signal]
+        send_message = [__version__, signal]
         targets = []
         if type(ports) == list:
             for port in ports:

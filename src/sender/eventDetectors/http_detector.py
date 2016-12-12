@@ -9,6 +9,8 @@ import requests
 import collections
 import socket
 
+import helpers
+
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan,garrevoet@desy.de>')
 
@@ -39,8 +41,8 @@ class EventDetector():
             self.eiger_ip = socket.gethostbyaddr(config["eiger_ip"])[2][0]
             self.eiger_api_version = config["eiger_api_version"]
             self.eiger_url = ("http://{0}/filewriter/api/{1}/files"
-                             .format(self.eiger_ip,
-                                     self.eiger_api_version))
+                              .format(self.eiger_ip,
+                                      self.eiger_api_version))
             self.log.debug("Getting files from: {0}".format(self.eiger_url))
 #            http://192.168.138.37/filewriter/api/1.6.0/files
 
@@ -76,10 +78,10 @@ class EventDetector():
         files_stored = []
 
 #        try:
-            # returns a tuble of the form:
-            # ('testp06/37_data_000001.h5', 'testp06/37_master.h5',
-            #  'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5',
-            #  'testp06/36_data_000001.h5', 'testp06/36_master.h5')
+#            # returns a tuble of the form:
+#            # ('testp06/37_data_000001.h5', 'testp06/37_master.h5',
+#            #  'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5',
+#            #  'testp06/36_data_000001.h5', 'testp06/36_master.h5')
 #            files_stored = self.eigerdevice.read_attribute(
 #                "FilesInBuffer", timeout=3).value
 #        except Exception as e:
@@ -137,22 +139,9 @@ class EventDetector():
 
 
 if __name__ == '__main__':
-    import sys
     from multiprocessing import Queue
 
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.realpath(__file__)))))
-    SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-    print ("SHARED", SHARED_PATH)
-
-    if not SHARED_PATH in sys.path:
-        sys.path.append(SHARED_PATH)
-    del SHARED_PATH
-
-    import helpers
+    from eventDetectors import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "http_detector.log")
     logsize = 10485760

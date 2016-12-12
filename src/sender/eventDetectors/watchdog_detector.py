@@ -2,45 +2,22 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from six import iteritems
 
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
-
 import os
 import logging
 
 import time
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
-import sys
 import copy
 from multiprocessing.dummy import Pool as ThreadPool
 import threading
 import bisect
 
-try:
-    # try to use the system module
-    from logutils.queue import QueueHandler
-except:
-    # there is no module logutils installed, fallback on the one in shared
+from logutils.queue import QueueHandler
+import helpers
 
-    try:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.realpath(__file__)))))
-    except:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.realpath(sys.argv[0])))))
-    SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-    if SHARED_PATH not in sys.path:
-        sys.path.append(SHARED_PATH)
-    del SHARED_PATH
-
-    from logutils.queue import QueueHandler
 
 event_message_list = []
 event_list_to_observe = []
@@ -137,7 +114,7 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
         global event_list_to_observe
 
         if self.detect_create and event.src_path.endswith(self.detect_create):
-            #TODO only fire for file-event. skip directory-events.
+            # TODO only fire for file-event. skip directory-events.
             self.log.debug("On move event detected")
             self.process(event)
         if self.detect_close and event.src_path.endswith(self.detect_close):
@@ -222,8 +199,8 @@ def split_file_path(filepath, paths):
 
 
 class CheckModTime (threading.Thread):
-    def __init__(self, number_of_threads, time_till_closed, mon_dir, action_time,
-                 lock, log_queue):
+    def __init__(self, number_of_threads, time_till_closed, mon_dir,
+                 action_time, lock, log_queue):
         self.log = self.get_logger(log_queue)
 
         self.log.debug("init")
@@ -260,7 +237,8 @@ class CheckModTime (threading.Thread):
         while True:
             try:
                 self.lock.acquire()
-                event_list_to_observe_copy = copy.deepcopy(event_list_to_observe)
+                event_list_to_observe_copy = (
+                    copy.deepcopy(event_list_to_observe))
                 self.lock.release()
 
                 # Open the urls in their own threads
@@ -346,8 +324,9 @@ class CheckModTime (threading.Thread):
             event_list_to_observe_tmp.append(filepath)
             self.log.debug("check_last_modified-{0} event_message_list {1}"
                            .format(thread_name, event_message_list))
-#            self.log.debug("check_last_modified-{0} event_list_to_observe_tmp "
-#                           "{1}".format(thread_name, event_list_to_observe_tmp))
+#            self.log.debug("check_last_modified-{0} "
+#                           "event_list_to_observe_tmp "{1}"
+#                           .format(thread_name, event_list_to_observe_tmp))
             self.lock.release()
         else:
             self.log.debug("File was last modified {d} sec ago: {p}"
@@ -421,8 +400,8 @@ class EventDetector():
                 observer_id += 1
 
             self.checking_thread = CheckModTime(4, self.time_till_closed,
-                                               self.mon_dir, self.action_time,
-                                               self.lock, log_queue)
+                                                self.mon_dir, self.action_time,
+                                                self.lock, log_queue)
             self.checking_thread.start()
 
         else:
@@ -459,7 +438,7 @@ class EventDetector():
             observer.stop()
             observer.join()
 
-        #close the pool and wait for the work to finish
+        # close the pool and wait for the work to finish
         self.checking_thread.stop()
         self.checking_thread.join()
 
@@ -471,30 +450,10 @@ class EventDetector():
 
 
 if __name__ == '__main__':
-    import sys
     from shutil import copyfile
     from multiprocessing import Queue
 
-    try:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.realpath(__file__)))))
-    except:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.realpath(sys.argv[0])))))
-    SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-    print ("SHARED", SHARED_PATH)
-
-    if SHARED_PATH not in sys.path:
-        sys.path.append(SHARED_PATH)
-    del SHARED_PATH
-
-    import helpers
+    from eventDetectors import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "watchdogDetector.log")
     logsize = 10485760

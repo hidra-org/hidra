@@ -5,34 +5,10 @@ import os
 import zmq
 import logging
 import json
-import sys
 import tempfile
 
-try:
-    # try to use the system module
-    from logutils.queue import QueueHandler
-except:
-    # there is no module logutils installed, fallback on the one in shared
-
-    try:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.realpath(__file__)))))
-    except:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.realpath(sys.argv[0])))))
-    SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-    if not SHARED_PATH in sys.path:
-        sys.path.append(SHARED_PATH)
-    del SHARED_PATH
-
-    from logutils.queue import QueueHandler
+from logutils.queue import QueueHandler
+import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -65,12 +41,12 @@ class EventDetector():
 
             if helpers.is_windows():
                 self.event_det_con_str = ("tcp://{0}:{1}"
-                                       .format(config["ext_ip"],
-                                               config["event_det_port"]))
+                                          .format(config["ext_ip"],
+                                                  config["event_det_port"]))
             else:
-                self.event_det_con_str =("ipc://{0}:{1}"
-                                         .format(config["ipc_path"],
-                                                 "eventDet"))
+                self.event_det_con_str = ("ipc://{0}:{1}"
+                                          .format(config["ipc_path"],
+                                                  "eventDet"))
 
             self.event_socket = None
 
@@ -133,7 +109,7 @@ class EventDetector():
         return event_message_list
 
     def stop(self):
-        #close ZMQ
+        # close ZMQ
         if self.event_socket:
             self.event_socket.close(0)
             self.event_socket = None
@@ -157,30 +133,10 @@ class EventDetector():
 
 
 if __name__ == '__main__':
-    import sys
     import time
     from multiprocessing import Queue
 
-    try:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.realpath(__file__)))))
-    except:
-        BASE_PATH = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.realpath(sys.argv[0])))))
-    SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-    print ("SHARED", SHARED_PATH)
-
-    if not SHARED_PATH in sys.path:
-        sys.path.append(SHARED_PATH)
-    del SHARED_PATH
-
-    import helpers
+    from eventDetectors import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "zmqDetector.log")
     logsize = 10485760
@@ -225,7 +181,8 @@ if __name__ == '__main__':
     # create zmq socket to send events
     event_socket = context.socket(zmq.PUSH)
     event_socket.connect(event_det_con_str)
-    logging.info("Start event_socket (connect): '{0}'".format(event_det_con_str))
+    logging.info("Start event_socket (connect): '{0}'"
+                 .format(event_det_con_str))
 
     i = 100
     while i <= 101:
@@ -249,7 +206,8 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             break
 
-    event_socket.send_multipart([b"CLOSE_FILE", "test_file.cbf".encode("utf8")])
+    event_socket.send_multipart(
+        [b"CLOSE_FILE", "test_file.cbf".encode("utf8")])
 
     event_list = eventdetector.get_new_event()
     logging.debug("event_list: {0}".format(event_list))

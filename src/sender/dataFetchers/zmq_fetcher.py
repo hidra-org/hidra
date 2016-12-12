@@ -3,39 +3,14 @@ from __future__ import unicode_literals
 
 import zmq
 import os
-import sys
 import logging
 import json
 import time
 
 from send_helpers import __send_to_targets
+import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
-
-try:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.realpath(__file__)))))
-except:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.realpath('__file__')))))
-#    BASE_PATH = os.path.dirname(
-#        os.path.dirname(
-#            os.path.dirname(
-#                os.path.dirname(
-#                    os.path.abspath(sys.argv[0])))))
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
-del SHARED_PATH
-
-import helpers
 
 
 def setup(log, prop):
@@ -49,15 +24,13 @@ def setup(log, prop):
                            "ipc_path"]
 
     # Check format of config
-    check_passed = True
-    for param in required_params:
-        if param not in prop:
-            self.log.error("Configuration of wrong format. "
-                           "Missing parameter: '{0}'".format(param))
-            self.log.debug("prop={0}".format(prop))
-            check_passed = False
+    check_passed, config_reduced = helpers.check_config(required_params,
+                                                        prop,
+                                                        log)
 
     if check_passed:
+        log.info("Configuration for data fetcher: {0}"
+                 .format(config_reduced))
 
         if helpers.is_windows():
             con_str = ("tcp://{0}:{1}"
@@ -162,7 +135,8 @@ def send_data(log, targets, source_file, target_file, metadata,
     # send message
     try:
         __send_to_targets(log, targets, source_file, target_file,
-                          open_connections, metadata_extended, payload, context)
+                          open_connections, metadata_extended, payload,
+                          context)
         log.debug("Passing multipart-message for file '{0}'...done."
                   .format(source_file))
     except:
@@ -171,7 +145,7 @@ def send_data(log, targets, source_file, target_file, metadata,
 
 
 def finish_datahandling(log, targets, source_file, target_file, metadata,
-                         open_connections, context, prop):
+                        open_connections, context, prop):
     pass
 
 
@@ -184,6 +158,8 @@ def clean(prop):
 
 if __name__ == '__main__':
     import tempfile
+
+    from dataFetchers import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "zmq_fetcher.log")
     logsize = 10485760
@@ -215,14 +191,14 @@ if __name__ == '__main__':
 
     receiving_socket = context.socket(zmq.PULL)
     connection_str = ("tcp://{0}:{1}"
-                     .format(ext_ip, receiving_port))
+                      .format(ext_ip, receiving_port))
     receiving_socket.bind(connection_str)
     logging.info("=== receiving_socket connected to {0}"
                  .format(connection_str))
 
     receiving_socket2 = context.socket(zmq.PULL)
     connection_str = ("tcp://{0}:{1}"
-                     .format(ext_ip, receiving_port2))
+                      .format(ext_ip, receiving_port2))
     receiving_socket2.bind(connection_str)
     logging.info("=== receiving_socket2 connected to {0}"
                  .format(connection_str))
@@ -264,14 +240,14 @@ if __name__ == '__main__':
     setup(logging, config)
 
     source_file, target_file, metadata = get_metadata(logging, config,
-                                                    targets, workload,
-                                                    chunksize,
-                                                    local_target=None)
+                                                      targets, workload,
+                                                      chunksize,
+                                                      local_target=None)
     send_data(logging, targets, source_file, target_file, metadata,
               open_connections, context, config)
 
     finish_datahandling(logging, targets, source_file, target_file, metadata,
-                         open_connections, context, config)
+                        open_connections, context, config)
 
     logging.debug("open_connections after function call: {0}"
                   .format(open_connections))

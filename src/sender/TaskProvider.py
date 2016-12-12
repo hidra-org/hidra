@@ -4,32 +4,11 @@ import socket
 import zmq
 import os
 import logging
-import sys
 import json
 import signal
 import errno
 
-try:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__))))
-except:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.abspath(sys.argv[0]))))
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
-del SHARED_PATH
-
-EVENTDETECTOR_PATH = os.path.join(BASE_PATH, "src", "sender", "eventDetectors")
-if EVENTDETECTOR_PATH not in sys.path:
-    sys.path.append(EVENTDETECTOR_PATH)
-del EVENTDETECTOR_PATH
-
+from __init__ import BASE_PATH
 from logutils.queue import QueueHandler
 import helpers
 
@@ -80,7 +59,8 @@ class TaskProvider():
             self.context = zmq.Context()
             self.ext_context = False
 
-        self.log.info("Loading event detector: {0}".format(eventdetector_module))
+        self.log.info("Loading event detector: {0}"
+                      .format(eventdetector_module))
         self.eventdetector_module = __import__(eventdetector_module)
 
         self.eventdetector = self.eventdetector_module.EventDetector(
@@ -291,8 +271,8 @@ class RequestResponder():
         self.request_fw_socket = self.context.socket(zmq.REP)
         connection_str = "tcp://127.0.0.1:{0}".format(request_fw_port)
         self.request_fw_socket.bind(connection_str)
-        self.log.info("[RequestResponder] request_fw_socket started (bind) for "
-                      "'{0}'".format(connection_str))
+        self.log.info("[RequestResponder] request_fw_socket started (bind) "
+                      "for '{0}'".format(connection_str))
 
         self.run()
 
@@ -314,13 +294,14 @@ class RequestResponder():
         hostname = socket.gethostname()
         self.log.info("[RequestResponder] Start run")
         open_requests = [['{0}:6003'.format(hostname), 1, [".cbf"]],
-                        ['{0}:6004'.format(hostname), 0, [".cbf"]]]
+                         ['{0}:6004'.format(hostname), 0, [".cbf"]]]
         while True:
             request = self.request_fw_socket.recv_multipart()
             self.log.debug("[RequestResponder] Received request: {0}"
                            .format(request))
 
-            self.request_fw_socket.send(json.dumps(open_requests).encode("utf-8"))
+            self.request_fw_socket.send(
+                json.dumps(open_requests).encode("utf-8"))
             self.log.debug("[RequestResponder] Answer: {0}"
                            .format(open_requests))
 

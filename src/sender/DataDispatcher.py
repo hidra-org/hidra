@@ -2,35 +2,14 @@ from __future__ import unicode_literals
 
 import zmq
 import os
-import sys
 import time
 import logging
 import json
 import signal
 from multiprocessing import Process
 
-try:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__))))
-except:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.abspath(sys.argv[0]))))
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
-del SHARED_PATH
-
-DATAFETCHER_PATH = os.path.join(BASE_PATH, "src", "sender", "dataFetchers")
-if DATAFETCHER_PATH not in sys.path:
-    sys.path.append(DATAFETCHER_PATH)
-del DATAFETCHER_PATH
-
 from logutils.queue import QueueHandler
+from __init__ import BASE_PATH
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -303,11 +282,11 @@ class DataDispatcher():
 
                 # finish data handling
                 self.datafetcher.finish_datahandling(self.log, targets,
-                                                      source_file, target_file,
-                                                      metadata,
-                                                      self.open_connections,
-                                                      self.context,
-                                                      self.config)
+                                                     source_file, target_file,
+                                                     metadata,
+                                                     self.open_connections,
+                                                     self.context,
+                                                     self.config)
 
             ######################################
             #         control commands           #
@@ -448,9 +427,9 @@ if __name__ == '__main__':
     context = zmq.Context.instance()
 
     datadispatcher_pr = Process(target=DataDispatcher,
-                                args=(1, control_con_id, router_con_id, chunksize,
-                                      fixed_stream_id, config, log_queue,
-                                      local_target, context))
+                                args=(1, control_con_id, router_con_id,
+                                      chunksize, fixed_stream_id, config,
+                                      log_queue, local_target, context))
     datadispatcher_pr.start()
 
     router_socket = context.socket(zmq.PUSH)
@@ -461,12 +440,14 @@ if __name__ == '__main__':
     receiving_socket = context.socket(zmq.PULL)
     connection_str = "tcp://0.0.0.0:{0}".format(receiving_port)
     receiving_socket.bind(connection_str)
-    logging.info("=== receiving_socket connected to {0}".format(connection_str))
+    logging.info("=== receiving_socket connected to {0}"
+                 .format(connection_str))
 
     receiving_socket2 = context.socket(zmq.PULL)
     connection_str = "tcp://0.0.0.0:{0}".format(receiving_port2)
     receiving_socket2.bind(connection_str)
-    logging.info("=== receiving_socket2 connected to {0}".format(connection_str))
+    logging.info("=== receiving_socket2 connected to {0}"
+                 .format(connection_str))
 
     metadata = {
         "source_path": os.path.join(BASE_PATH, "data", "source"),
