@@ -44,7 +44,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 def argument_parsing():
-    default_config = os.path.join(CONFIG_PATH, "nexusReiceiver.conf")
+    default_config = os.path.join(CONFIG_PATH, "nexusReceiver.conf")
 
     ##################################
     #   Get command line arguments   #

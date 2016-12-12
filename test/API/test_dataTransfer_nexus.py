@@ -1,101 +1,88 @@
+from __future__ import print_function
+#from __future__ import unicode_literals
+
 import os
-import sys
-import time
 import zmq
 import logging
-import threading
 import json
 
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = os.path.join(BASE_PATH, "src", "APIs")
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
-del SHARED_PATH
-
+from __init__ import BASE_PATH
 import helpers
 
-try:
-    # search in global python modules first
-    from hidra import Transfer
-except:
-    # then search in local modules
-    if not API_PATH in sys.path:
-        sys.path.append ( API_PATH )
-    del API_PATH
 
-    from hidra import Transfer
-
-
-#enable logging
-logfilePath = os.path.join(BASE_PATH, "logs")
-logfile     = os.path.join(logfilePath, "testNexusTransferAPI.log")
+# enable logging
+logfile_path = os.path.join(BASE_PATH, "logs")
+logfile = os.path.join(logfile_path, "test_nexus_transfer.log")
 helpers.init_logging(logfile, True, "DEBUG")
 
 
 class Sender ():
-    def __init__ (self):
-        self.extHost    = "0.0.0.0"
-        self.localhost  = "zitpcx19282"
-#        self.localhost  = "localhost"
-        self.signalPort = "50050"
-        self.dataPort   = "50100"
+    def __init__(self):
+        self.ext_host = "0.0.0.0"
+        self.localhost = "zitpcx19282"
+#        self.localhost = "localhost"
+        self.signal_port = "50050"
+        self.data_port = "50100"
 
-        self.context       = zmq.Context()
+        self.context = zmq.Context()
 
-        self.fileOpSocket  = self.context.socket(zmq.REQ)
-        connectionStr = "tcp://" + str(self.localhost) + ":" + str(self.signalPort)
-        self.fileOpSocket.connect(connectionStr)
-        logging.info("fileOpSocket started (connect) for '" + connectionStr + "'")
+        self.file_op_socket = self.context.socket(zmq.REQ)
+        connection_str = ("tcp://{0}:{1}"
+                          .format(self.localhost, self.signal_port))
+        self.file_op_socket.connect(connection_str)
+        logging.info("file_op_socket started (connect) for '{0}'"
+                     .format(connection_str))
 
-        self.dataSocket    = self.context.socket(zmq.PUSH)
-        connectionStr = "tcp://" + str(self.localhost) + ":" + str(self.dataPort)
-        self.dataSocket.connect(connectionStr)
-        logging.info("dataSocket started (connect) for '" + connectionStr + "'")
+        self.data_socket = self.context.socket(zmq.PUSH)
+        connection_str = ("tcp://{0}:{1}"
+                          .format(self.localhost, self.data_port))
+        self.data_socket.connect(connection_str)
+        logging.info("data_socket started (connect) for '{0}'"
+                     .format(connection_str))
 
+    def run(self):
 
-    def run (self):
-
-        sourceFile = BASE_PATH + os.sep + "test_file.cbf"
-        chunkSize = 10485760 # 1024*1024*10 = 10MB
+        source_file = os.path.join(BASE_PATH, "test_file.cbf")
+        chunksize = 10485760  # 1024*1024*10 = 10MB
         filepart = 0
         timeout = 2
+        filename = "test.cbf"
 
-        message = "OPEN_FILE"
-        logging.debug("Send " + message)
-        self.fileOpSocket.send(message)
+        message = b"OPEN_FILE"
+        logging.debug("Send {0}".format(message))
+        self.file_op_socket.send_multipart([message, filename])
 
-        recvMessage = self.fileOpSocket.recv()
-        logging.debug("Recv confirmation: " + recvMessage)
+        recv_message = self.file_op_socket.recv_multipart()
+        logging.debug("Recv confirmation: {0}".format(recv_message))
 
         metadata = {
-            "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
-            "relativePath": "local",
-            "filename"    : "test.cbf",
-            "filePart"    : filepart,
-            "chunkSize"   : chunkSize
+            "source_path": os.path.join(BASE_PATH, "data", "source"),
+            "relative_path": "local",
+            "filename": filename,
+            "file_part": filepart,
+            "chunksize": chunksize
         }
 
         # Checking if receiver is alive
-#        self.dataSocket.send_multipart([b"ALIVE_TEST"])
-        tracker = self.dataSocket.send_multipart([b"ALIVE_TEST"], copy=False, track=True)
+#        self.data_socket.send_multipart([b"ALIVE_TEST"])
+        tracker = self.data_socket.send_multipart([b"ALIVE_TEST"],
+                                                  copy=False,
+                                                  track=True)
         if not tracker.done:
             tracker.wait(timeout)
-        logging.debug("tracker.done = {t}".format(t=tracker.done))
+        logging.debug("tracker.done = {0}".format(tracker.done))
         if not tracker.done:
             logging.error("Failed to send ALIVE_TEST", exc_info=True)
         else:
             logging.info("Sending ALIVE_TEST...success")
 
-
         # Open file
-        source_fp = open(sourceFile, "rb")
-        logging.debug("Opened file: {s}".format(s=sourceFile))
+        source_fp = open(source_file, "rb")
+        logging.debug("Opened file: {0}".format(source_file))
 
         while True:
             # Read file content
-            content = source_fp.read(chunkSize)
+            content = source_fp.read(chunksize)
             logging.debug("Read file content")
 
             if not content:
@@ -103,53 +90,53 @@ class Sender ():
                 break
 
             # Build message
-            metadata["filePart"] = filepart
+            metadata["file_part"] = filepart
 
             payload = []
             payload.append(json.dumps(metadata))
             payload.append(content)
 
             # Send message over ZMQ
-            #self.dataSocket.send_multipart(payload)
+            #self.data_socket.send_multipart(payload)
 
-            tracker = self.dataSocket.send_multipart(payload, copy=False, track=True)
+            tracker = self.data_socket.send_multipart(payload,
+                                                      copy=False,
+                                                      track=True)
             if not tracker.done:
-                    logging.debug("Message part from file " + str(sourceFile) +
-                             " has not been sent yet, waiting...")
+                    logging.debug("Message part from file {0} has not been "
+                                  "sent yet, waiting...".format(source_file))
                     tracker.wait(timeout)
-                    logging.debug("Message part from file " + str(sourceFile) +
-                             " has not been sent yet, waiting...done")
-
+                    logging.debug("Message part from file {0} has not been "
+                                  "sent yet, waiting...done"
+                                  .format(source_file))
 
             logging.debug("Send")
 
             filepart += 1
 
+        message = b"CLOSE_FILE"
+        logging.debug("Send {0}".format(message))
+        self.file_op_socket.send(message)
 
-        message = "CLOSE_FILE"
-        logging.debug("Send " + message)
-        self.fileOpSocket.send(message)
+        self.data_socket.send_multipart([message, filename, b"0/1"])
 
-        self.dataSocket.send_multipart([message, "0/1"])
-
-        recvMessage = self.fileOpSocket.recv()
-        logging.debug("Recv confirmation: " + recvMessage)
+        recv_message = self.file_op_socket.recv()
+        logging.debug("Recv confirmation: {0}".format(recv_message))
 
         # Close file
         source_fp.close()
-        logging.debug("Closed file: {f}".format(f=sourceFile))
+        logging.debug("Closed file: {0}".format(source_file))
 
-
-    def stop (self):
+    def stop(self):
         try:
-            if self.fileOpSocket:
-                logging.info("Closing fileOpSocket...")
-                self.fileOpSocket.close(linger=0)
-                self.fileOpSocket = None
-            if self.dataSocket:
-                logging.info("Closing dataSocket...")
-                self.dataSocket.close(linger=0)
-                self.dataSocket = None
+            if self.file_op_socket:
+                logging.info("Closing file_op_socket...")
+                self.file_op_socket.close(linger=0)
+                self.file_op_socket = None
+            if self.data_socket:
+                logging.info("Closing data_socket...")
+                self.data_socket.close(linger=0)
+                self.data_socket = None
             if self.context:
                 logging.info("Destroying context...")
                 self.context.destroy()
@@ -158,26 +145,14 @@ class Sender ():
         except:
             logging.error("Closing ZMQ Sockets...failed.", exc_info=True)
 
-
-    def __exit__ (self):
+    def __exit__(self):
         self.stop()
 
-
-    def __del__ (self):
+    def __del__(self):
         self.stop()
 
-
-def openCallback (params, retrievedParams):
-    print params, retrievedParams
-
-def closeCallback (params, retrievedParams):
-    print params, retrievedParams
-
-def readCallback (params, retrievedParams):
-    print params, retrievedParams
 
 if __name__ == '__main__':
     s = Sender()
     s.run()
     s.stop()
-

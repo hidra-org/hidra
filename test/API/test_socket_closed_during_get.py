@@ -1,36 +1,45 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import zmq
-import cPickle
+import json
 
 context = zmq.Context()
 
-comSocket = context.socket(zmq.REQ)
-comSocket.connect("tcp://zitpcx19282.desy.de:50000")
+signal_socket = context.socket(zmq.REQ)
+signal_socket.connect("tcp://zitpcx19282.desy.de:50000")
 
-dataSocket = context.socket(zmq.PULL)
-dataSocket.bind("tcp://131.169.185.121:50101")
+data_socket = context.socket(zmq.PULL)
+data_socket.bind("tcp://131.169.185.121:50101")
 
-requestSocket = context.socket(zmq.PUSH)
-requestSocket.connect("tcp://zitpcx19282.desy.de:50001")
+request_socket = context.socket(zmq.PUSH)
+request_socket.connect("tcp://zitpcx19282.desy.de:50001")
 
-
-comSocket.send_multipart(["0.0.1",  "START_QUERY_NEXT", cPickle.dumps([["zitpcx19282.desy.de:50101", 1]])])
-print "Signal responded: ", comSocket.recv()
+signal_socket.send_multipart(
+    [b"2.4.2",
+     b"START_QUERY_NEXT",
+     json.dumps([["zitpcx19282.desy.de:50101", 1, "cbf"]])])
+print ("Signal responded: ", signal_socket.recv_multipart())
 
 try:
-    requestSocket.send_multipart(["NEXT", "zitpcx19282.desy.de:50101"])
+    request_socket.send_multipart(
+        [b"NEXT",
+         "zitpcx19282.desy.de:50101".encode("utf-8")])
 
-    multipartMessage = dataSocket.recv_multipart()
-    metadata = cPickle.loads(multipartMessage[0])
-    payload = multipartMessage[1:]
+    multipart_message = data_socket.recv_multipart()
+    metadata = json.loads(multipart_message[0])
+    payload = multipart_message[1:]
 
-    print "metadata: ", metadata
+    print ("metadata: ", metadata)
 
 finally:
-    comSocket.send_multipart(["0.0.1",  "STOP_QUERY_NEXT", cPickle.dumps([["zitpcx19282.desy.de:50101", 1]])])
+    signal_socket.send_multipart(
+        [b"2.4.2",
+         b"STOP_QUERY_NEXT",
+         json.dumps([["zitpcx19282.desy.de:50101", 1, "cbf"]])])
 
-    comSocket.close()
-    dataSocket.close()
-    requestSocket.close()
+    signal_socket.close()
+    data_socket.close()
+    request_socket.close()
 
     context.destroy()
-

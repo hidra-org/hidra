@@ -1,95 +1,76 @@
+from __future__ import print_function
+#from __future__ import unicode_literals
+
 import os
-import sys
-import time
 import zmq
 import logging
 import threading
 import json
 import tempfile
 
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = os.path.join(BASE_PATH, "src", "APIs")
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
-del SHARED_PATH
-
+from __init__ import BASE_PATH
 import helpers
 
-try:
-    # search in global python modules first
-    from hidra import Transfer
-except:
-    # then search in local modules
-    if not API_PATH in sys.path:
-        sys.path.append ( API_PATH )
-
-    from hidra import Transfer
-
-try:
-    # search in global python modules first
-    from hidra import Ingest
-except:
-    # then search in local modules
-    if not API_PATH in sys.path:
-        sys.path.append ( API_PATH )
-    del API_PATH
-
-    from hidra import Ingest
+from hidra import Transfer
+from hidra import Ingest
 
 
-#enable logging
-logfilePath = os.path.join(BASE_PATH, "logs")
-logfile     = os.path.join(logfilePath, "testHidraIngestWithDataTransfer.log")
+# enable logging
+logfile_path = os.path.join(BASE_PATH, "logs")
+logfile = os.path.join(logfile_path, "test_nexus_ingest_with_transfer.log")
 helpers.init_logging(logfile, True, "DEBUG")
 
-del BASE_PATH
-
-print
-print "==== TEST: hidraIngest together with nexus transfer ===="
-print
+print ("\n==== TEST: hidraIngest together with nexus transfer ====\n")
 
 
-class ZmqDataManager(threading.Thread):
-    def __init__(self, context = None):
-        self.extHost      = "0.0.0.0"
-        self.localhost    = "zitpcx19282"
-#        self.localhost    = "localhost"
-        self.dataOutPort  = "50100"
+class HidraSimulation (threading.Thread):
+    def __init__(self, context=None):
+        self.ext_host = "0.0.0.0"
+        self.localhost = "zitpcx19282"
+#        self.localhost = "localhost"
+        self.dataOutPort = "50100"
 
-        self.log          = logging.getLogger("ZmqDataManager")
+        self.log = logging.getLogger("HidraSimulation")
 
         if context:
-            self.context    = context
-            self.extContext = True
+            self.context = context
+            self.ext_context = True
         else:
-            self.context    = zmq.Context()
-            self.extContext = False
+            self.context = zmq.Context()
+            self.ext_context = False
 
-        self.eventSocket  = self.context.socket(zmq.PULL)
-        connectionStr     = "ipc://{0}".format(os.path.join(tempfile.gettempdir(), "hidra", "eventDet"))
-#        connectionStr     = "tcp://{h}:{p}".format(h=self.extHost, p=self.eventPort)
-        self.eventSocket.bind(connectionStr)
-        self.log.info("eventSocket started (bind) for '{0}'".format(connectionStr))
+        self.event_socket = self.context.socket(zmq.PULL)
+        connection_str = "ipc://{0}".format(os.path.join(tempfile.gettempdir(),
+                                                         "hidra",
+                                                         "eventDet"))
+#        connection_str = ("tcp://{0}:{1}"
+#                          .format(self.ext_host, self.event_port))
+        self.event_socket.bind(connection_str)
+        self.log.info("event_socket started (bind) for '{0}'"
+                      .format(connection_str))
 
-        self.dataInSocket  = self.context.socket(zmq.PULL)
-        connectionStr      = "ipc://{0}".format(os.path.join(tempfile.gettempdir(), "hidra", "dataFetch"))
-#        connectionStr      = "tcp://{h}:{p}".format(h=self.extHost, p=self.dataInPort)
-        self.dataInSocket.bind(connectionStr)
-        self.log.info("dataInSocket started (bind) for '" + connectionStr + "'")
+        self.data_in_socket = self.context.socket(zmq.PULL)
+        connection_str = "ipc://{0}".format(os.path.join(tempfile.gettempdir(),
+                                                         "hidra",
+                                                         "dataFetch"))
+#        connection_str = ("tcp://{0}:{1}"
+#                          .format(self.ext_host, self.dataInPort))
+        self.data_in_socket.bind(connection_str)
+        self.log.info("data_in_socket started (bind) for '{0}'"
+                      .format(connection_str))
 
-        self.dataOutSocket = self.context.socket(zmq.PUSH)
-        connectionStr      = "tcp://{h}:{p}".format(h=self.localhost, p=self.dataOutPort)
-        self.dataOutSocket.connect(connectionStr)
-        self.log.info("dataOutSocket started (connect) for '{0}'".format(connectionStr))
+        self.data_out_socket = self.context.socket(zmq.PUSH)
+        connection_str = ("tcp://{0}:{1}"
+                          .format(self.localhost, self.dataOutPort))
+        self.data_out_socket.connect(connection_str)
+        self.log.info("data_out_socket started (connect) for '{0}'"
+                      .format(connection_str))
 
         self.poller = zmq.Poller()
-        self.poller.register(self.eventSocket, zmq.POLLIN)
-        self.poller.register(self.dataInSocket, zmq.POLLIN)
+        self.poller.register(self.event_socket, zmq.POLLIN)
+        self.poller.register(self.data_in_socket, zmq.POLLIN)
 
         threading.Thread.__init__(self)
-
 
     def run(self):
         filename = "1.h5"
@@ -97,25 +78,30 @@ class ZmqDataManager(threading.Thread):
         while True:
             try:
                 socks = dict(self.poller.poll())
-                dataMessage = None
-                metadata    = None
+                data_message = None
+                metadata = None
 
-                if socks and self.eventSocket in socks and socks[self.eventSocket] == zmq.POLLIN:
+                if (socks
+                        and self.event_socket in socks
+                        and socks[self.event_socket] == zmq.POLLIN):
 
-                    metadata = self.eventSocket.recv()
-                    self.log.debug("eventSocket recv: {0}".format(metadata))
+                    metadata = self.event_socket.recv()
+                    self.log.debug("event_socket recv: {0}".format(metadata))
 
                     if metadata == b"CLOSE_FILE":
-                        self.dataOutSocket.send_multipart([metadata, filename, "0/1"])
+                        self.data_out_socket.send_multipart(
+                            [metadata, filename, "0/1"])
 
-                if socks and self.dataInSocket in socks and socks[self.dataInSocket] == zmq.POLLIN:
+                if (socks
+                        and self.data_in_socket in socks
+                        and socks[self.data_in_socket] == zmq.POLLIN):
 
-                    data = self.dataInSocket.recv()
-                    self.log.debug("dataSocket recv: {0}".format(data))
+                    data = self.data_in_socket.recv()
+                    self.log.debug("data_socket recv: {0}".format(data))
 
-                    dataMessage = [json.dumps(metadata), data]
+                    data_message = [json.dumps(metadata), data]
 
-                    self.dataOutSocket.send_multipart(dataMessage)
+                    self.data_out_socket.send_multipart(data_message)
                     self.log.debug("Send")
 
             except zmq.ZMQError as e:
@@ -126,26 +112,24 @@ class ZmqDataManager(threading.Thread):
                 self.log.error("Error in run", exc_info=True)
                 break
 
-
     def stop(self):
         try:
-            if self.eventSocket:
-                self.log.info("closing eventSocket...")
-                self.eventSocket.close(linger=0)
-                self.eventSocket = None
-            if self.dataInSocket:
-                self.log.info("closing dataInSocket...")
-                self.dataInSocket.close(linger=0)
-                self.dataInSocket = None
-            if self.dataOutSocket:
-                self.log.info("closing dataOutSocket...")
-                self.dataOutSocket.close(linger=0)
-                self.dataOutSocket = None
+            if self.event_socket:
+                self.log.info("closing event_socket...")
+                self.event_socket.close(linger=0)
+                self.event_socket = None
+            if self.data_in_socket:
+                self.log.info("closing data_in_socket...")
+                self.data_in_socket.close(linger=0)
+                self.data_in_socket = None
+            if self.data_out_socket:
+                self.log.info("closing data_out_socket...")
+                self.data_out_socket.close(linger=0)
+                self.data_out_socket = None
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
-
-        if not self.extContext and self.context:
+        if not self.ext_context and self.context:
             try:
                 self.log.info("Closing ZMQ context...")
                 self.context.destroy(0)
@@ -155,19 +139,18 @@ class ZmqDataManager(threading.Thread):
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
-
-def runHidraIngest(numbToSend):
-    dI = Ingest(useLog = True)
+def HidraIngest(numbToSend):
+    dI = Ingest(use_log=True)
 
     dI.create_file("1.h5")
 
     for i in range(numbToSend):
         try:
-            data = "THISISTESTDATA-" + str(i)
+            data = "THISISTESTDATA-{0}".format(i)
             dI.write(data)
             logging.info("write")
         except:
-            logging.error("runHidraIngest break", exc_info=True)
+            logging.error("HidraIngest break", exc_info=True)
             break
 
     try:
@@ -178,64 +161,61 @@ def runHidraIngest(numbToSend):
     dI.stop()
 
 
-def openCallback (params, retrievedParams):
-    print "openCallback", params, retrievedParams
-
-def closeCallback (params, retrievedParams):
-    params["runLoop"] = False
-    print "closeCallback",  params, retrievedParams
-
-def readCallback (params, retrievedParams):
-    print "readCallback", params, retrievedParams
+def open_callback(params, retrieved_params):
+    print ("open_callback", params, retrieved_params)
 
 
+def close_callback(params, retrieved_params):
+    params["run_loop"] = False
+    print ("close_callback", params, retrieved_params)
 
-def runNexusTransfer(numbToRecv):
-    dT = Transfer("nexus", useLog = True)
+
+def read_callback(params, retrieved_params):
+    print ("read_callback", params, retrieved_params)
+
+
+def NexusTransfer(numbToRecv):
+    dT = Transfer("nexus", use_log=True)
     dT.start(["zitpcx19282", "50100"])
 #    dT.start(["localhost", "50100"])
 
-    callbackParams = {
-            "runLoop" : True
-            }
+    callback_params = {
+        "run_loop": True
+        }
 
     # number to receive + open signal + close signal
     try:
-        while callbackParams["runLoop"]:
+        while callback_params["run_loop"]:
             try:
-                dT.read(callbackParams, openCallback, readCallback, closeCallback)
+                dT.read(callback_params, open_callback, read_callback,
+                        close_callback)
             except KeyboardInterrupt:
                 break
             except:
-                logging.error("runNexusTransfer break", exc_info=True)
+                logging.error("NexusTransfer break", exc_info=True)
                 break
     finally:
         dT.stop()
 
-useTest = True
-#useTest = False
+use_test = True
+#use_test = False
 
-if useTest:
-    zmqDataManagerThread = ZmqDataManager()
-    zmqDataManagerThread.start()
+if use_test:
+    hidra_simulation_thread = HidraSimulation()
+    hidra_simulation_thread.start()
 
 number = 5
 
-runHidraIngestThread = threading.Thread(target=runHidraIngest, args = (number, ))
-runNexusTransferThread = threading.Thread(target=runNexusTransfer, args = (number, ))
+hidra_ingest_thread = threading.Thread(target=HidraIngest, args=(number, ))
+nexus_transfer_thread = threading.Thread(target=NexusTransfer, args=(number, ))
 
-runHidraIngestThread.start()
-runNexusTransferThread.start()
+hidra_ingest_thread.start()
+nexus_transfer_thread.start()
 
-runHidraIngestThread.join()
-runNexusTransferThread.join()
+hidra_ingest_thread.join()
+nexus_transfer_thread.join()
 
-if useTest:
-    zmqDataManagerThread.stop()
+if use_test:
+    hidra_simulation_thread.stop()
 
-print
-print "==== TEST END: hidraIngest together with nexus transfer ===="
-print
-
-
-
+print ("\n==== TEST END: hidraIngest together with nexus transfer ====\n")

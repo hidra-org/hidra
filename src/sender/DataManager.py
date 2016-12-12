@@ -600,7 +600,7 @@ class DataManager():
                       .format(self.params["data_fetcher_type"]))
 
         for i in range(self.number_of_streams):
-            id = "{0}/{1}".format(i, self.number_of_streams)
+            id = b"{0}/{1}".format(i, self.number_of_streams)
             pr = Process(target=DataDispatcher,
                          args=(
                              id,

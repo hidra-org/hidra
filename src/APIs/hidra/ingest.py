@@ -72,7 +72,8 @@ class Ingest():
 
         self.current_pid = os.getpid()
 
-        self.localhost = socket.gethostbyaddr("localhost")[2][0]
+        self.localhost = "127.0.0.1"
+#        self.localhost = socket.gethostbyaddr("localhost")[2][0]
         try:
             socket.inet_aton(self.localhost)
             self.log.info("IPv4 address detected for localhost: {0}."
@@ -220,6 +221,7 @@ class Ingest():
         # send data to ZMQ-Queue
         self.datafetch_socket.send(data)
         self.filepart += 1
+#        self.log.debug("write action sent: {0}".format(message))
 
     # return error code
     def close_file(self):
@@ -261,7 +263,7 @@ class Ingest():
             recv_message = None
 
         if recv_message != send_message:
-            self.log.debug("recieved message: {0}".format(recv_message))
+            self.log.debug("received message: {0}".format(recv_message))
             self.log.debug("send message: {0}".format(send_message))
             raise Exception("Something went wrong while notifying to close "
                             "the file")

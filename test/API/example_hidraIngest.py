@@ -1,50 +1,31 @@
+from __future__ import print_function
+#from __future__ import unicode_literals
+
 import os
-import sys
-import time
 import zmq
 import logging
-import threading
 
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = os.path.join(BASE_PATH, "src", "APIs")
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
-del SHARED_PATH
-
+from __init__ import BASE_PATH
 import helpers
 
-try:
-    # search in global python modules first
-    from hidra import Ingest
-except:
-    # then search in local modules
-    if not API_PATH in sys.path:
-        sys.path.append ( API_PATH )
-    del API_PATH
-
-    from hidra import Ingest
+from hidra import Ingest
 
 
-#enable logging
-logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfile     = os.path.join(logfilePath, "test_Ingest.log")
+# enable logging
+logfile_path = os.path.join(BASE_PATH, "logs")
+logfile = os.path.join(logfile_path, "test_ingest.log")
 helpers.init_logging(logfile, True, "DEBUG")
 
+print ("\n==== TEST: Ingest ====\n")
 
-print
-print "==== TEST: Ingest ===="
-print
-
-sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
+source_file = os.path.join(BASE_PATH, "test_file.cbf")
 chunksize = 524288
 
-context    = zmq.Context()
+context = zmq.Context()
 
-obj = Ingest(useLog = True, context = context)
+obj = Ingest(use_log=True, context=context)
 
-obj.create_file("test" + os.sep + "1.h5")
+obj.create_file(os.path.join("test", "1.h5"))
 
 #for i in range(5):
 #    try:
@@ -57,8 +38,8 @@ obj.create_file("test" + os.sep + "1.h5")
 #        break
 
 # Open file
-source_fp = open(sourceFile, "rb")
-print "Opened file:", sourceFile
+source_fp = open(source_file, "rb")
+print ("Opened file:", source_file)
 
 while True:
     try:
@@ -79,7 +60,7 @@ while True:
 
 # Close file
 source_fp.close()
-logging.debug("Closed file: {0}".format(sourceFile))
+logging.debug("Closed file: {0}".format(source_file))
 
 
 try:
@@ -91,9 +72,4 @@ logging.info("Stopping")
 
 obj.stop()
 
-print
-print "==== TEST END: Ingest ===="
-print
-
-
-
+print ("\n==== TEST END: Ingest ====\n")

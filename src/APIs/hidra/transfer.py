@@ -547,8 +547,12 @@ class Transfer():
                     self.file_op_socket.send_multipart(message)
                     self.log.debug("file_op_socket send: {0}".format(message))
 
-                    self.open_callback(self.callback_params, message[1])
-                    self.file_opened = True
+                    try:
+                        self.open_callback(self.callback_params, message[1])
+                        self.file_opened = True
+                    except:
+                        self.file_op_socket.send_multipart([b"ERROR"])
+                        self.log.error("Not supported message received")
 #                    return message
                 else:
                     self.file_op_socket.send_multipart([b"ERROR"])
@@ -598,8 +602,17 @@ class Transfer():
     def __react_on_message(self, multipart_message):
 
         if multipart_message[0] == b"CLOSE_FILE":
-#            filename = multipart_message[1]
-            id = multipart_message[2]
+            try:
+#                filename = multipart_message[1]
+                id = multipart_message[2]
+            except:
+                self.log.error("Could not extract id from the "
+                               "multipart-message", exc_info=True)
+                self.log.debug("multipart-message: {0}"
+                                .format(multipart_message),
+                                exc_info=True)
+                raise
+
             self.recvd_close_from.append(id)
             self.log.debug("Received close-file signal from "
                            "DataDispatcher-{0}".format(id))
@@ -634,7 +647,8 @@ class Transfer():
         else:
             #extract multipart message
             try:
-                metadata = json.loads(multipart_message[0]).decode("utf-8")
+#                self.log.debug("multipart_message={0}".format(multipart_message))
+                metadata = json.loads(multipart_message[0].decode("utf-8"))
             except:
                 #json.dumps of None results in 'null'
                 if multipart_message[0] != 'null':

@@ -1,57 +1,40 @@
-import os
-import sys
+from __future__ import print_function
+#from __future__ import unicode_literals
+
 import time
-
-
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = os.path.join(BASE_PATH, "src", "APIs")
-
-try:
-    # search in global python modules first
-    from hidra import Transfer
-except:
-    # then search in local modules
-    if not API_PATH in sys.path:
-        sys.path.append ( API_PATH )
-    del API_PATH
-    del BASE_PATH
-
-    from hidra import Transfer
+from hidra import Transfer
 
 
 class Worker():
-    def __init__(self, id, signalHost, port):
+    def __init__(self, id, signal_host, port):
 
-        self.id    = id
-        self.port  = port
+        self.id = id
+        self.port = port
 
-        self.query = Transfer("stream", signalHost)
-#        self.query = Transfer("queryNext", signalHost)
+        self.query = Transfer("stream", signal_host)
+#        self.query = Transfer("queryNext", signal_host)
 
-        print "start Transfer on port", str(port)
+        print ("start Transfer on port", port)
         self.query.start(port)
-
 
     def run(self):
         while True:
             try:
-                print "worker-" + str(self.id) + ": waiting"
+                print ("worker-{0}: waiting".format(self.id))
                 [metadata, data] = self.query.get()
                 time.sleep(0.1)
             except:
                 break
 
-            print "worker-" + str(self.id), "metadata", metadata["filename"]
+            print ("worker-{0}".format(self.id),
+                   "metadata", metadata["filename"])
         #    print "data", str(data)[:10]
-
 
     def stop(self):
         self.query.stop()
 
-
     def __exit__(self):
         self.stop()
-
 
     def __del__(self):
         self.stop()
@@ -59,13 +42,12 @@ class Worker():
 
 if __name__ == "__main__":
 
-    signalHost = "zitpcx19282.desy.de"
-    port = "50104"
+    signal_host = "zitpcx19282.desy.de"
+    port = "50101"
 
-    w = Worker(4, signalHost, port)
+    w = Worker(4, signal_host, port)
 
     try:
         w.run()
     finally:
         w.stop()
-

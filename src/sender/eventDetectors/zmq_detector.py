@@ -44,7 +44,7 @@ class EventDetector():
                                           .format(config["ext_ip"],
                                                   config["event_det_port"]))
             else:
-                self.event_det_con_str = ("ipc://{0}:{1}"
+                self.event_det_con_str = ("ipc://{0}/{1}"
                                           .format(config["ipc_path"],
                                                   "eventDet"))
 

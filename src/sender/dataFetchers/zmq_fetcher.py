@@ -112,7 +112,7 @@ def send_data(log, targets, source_file, target_file, metadata,
         raise
 
 #    try:
-#        chunksize = metadata[ "chunksize" ]
+#        chunksize = metadata["chunksize"]
 #    except:
 #        log.error("Unable to get chunksize", exc_info=True)
 

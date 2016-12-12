@@ -317,13 +317,17 @@ class DataDispatcher():
 
                     targets = json.loads(message[1].decode("utf-8"))
 
-                    for socket_id, prio, suffix in targets:
-                        if socket_id in self.open_connections:
-                            self.log.info("Closing socket {0}".format(
-                                socket_id))
-                            if self.open_connections[socket_id]:
-                                self.open_connections[socket_id].close(0)
-                            del self.open_connections[socket_id]
+                    try:
+                        for socket_id, prio, suffix in targets:
+                            if socket_id in self.open_connections:
+                                self.log.info("Closing socket {0}"
+                                              .format(socket_id))
+                                if self.open_connections[socket_id]:
+                                    self.open_connections[socket_id].close(0)
+                                del self.open_connections[socket_id]
+                    except:
+                        self.log.error("Request for closing sockets of wrong "
+                                       "format", exc_info=True)
                     continue
                 else:
                     self.log.error("Unhandled control signal received: {0}"

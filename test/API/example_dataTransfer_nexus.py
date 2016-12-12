@@ -1,104 +1,94 @@
+from __future__ import print_function
+#from __future__ import unicode_literals
+
 import os
-import sys
-import time
 import zmq
 import logging
 import threading
 import json
 
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = os.poath.join(BASE_PATH, "APIs")
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
-del SHARED_PATH
-
+from __init__ import BASE_PATH
 import helpers
 
-try:
-    # search in global python modules first
-    from hidra import Transfer
-except:
-    # then search in local modules
-    if not API_PATH in sys.path:
-        sys.path.append ( API_PATH )
-    del API_PATH
-
-    from hidra import Transfer
+from hidra import Transfer
 
 
-#enable logging
-logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfile     = os.path.join(logfilePath, "testNexusTransfer.log")
+# enable logging
+logfile_path = os.path.join(os.path.join(BASE_PATH, "logs"))
+logfile = os.path.join(logfile_path, "example_nexus_transfer.log")
 helpers.init_logging(logfile, True, "DEBUG")
 
+print ("\n==== TEST: nexus transfer ====\n")
 
-print
-print "==== TEST: nexus transfer ===="
-print
 
-class Sender_as_thread (threading.Thread):
-    def __init__ (self):
-        self.extHost    = "0.0.0.0"
-        self.localhost  = "localhost"
-        self.signalPort = "50050"
-        self.dataPort   = "50100"
+class SenderAsThread (threading.Thread):
+    def __init__(self):
+        self.ext_host = "0.0.0.0"
+#        self.localhost = "localhost"
+        self.signal_host = "zitpcx19282"
+        self.signal_port = "50050"
+        self.data_port = "50100"
 
-        self.context       = zmq.Context()
+        self.context = zmq.Context()
 
-        self.fileOpSocket  = self.context.socket(zmq.REQ)
-        connectionStr = "tcp://" + str(self.localhost) + ":" + str(self.signalPort)
-        self.fileOpSocket.connect(connectionStr)
-        logging.info("fileOpSocket started (connect) for '" + connectionStr + "'")
+        self.file_op_socket = self.context.socket(zmq.REQ)
+        connection_str = ("tcp://{0}:{1}"
+                          .format(self.signal_host, self.signal_port))
+        self.file_op_socket.connect(connection_str)
+        logging.info("file_op_socket started (connect) for '{0}'"
+                     .format(connection_str))
 
-        self.dataSocket    = self.context.socket(zmq.PUSH)
-        connectionStr = "tcp://" + str(self.localhost) + ":" + str(self.dataPort)
-        self.dataSocket.connect(connectionStr)
-        logging.info("dataSocket started (connect) for '" + connectionStr + "'")
+        self.data_socket = self.context.socket(zmq.PUSH)
+        connection_str = ("tcp://{0}:{1}"
+                          .format(self.signal_host, self.data_port))
+        self.data_socket.connect(connection_str)
+        logging.info("data_socket started (connect) for '{0}'"
+                     .format(connection_str))
 
         threading.Thread.__init__(self)
 
+    def run(self):
+        filename = "1.h5"
+        self.file_op_socket.send_multipart(
+            [b"OPEN_FILE", filename.encode("utf-8")])
 
-    def run (self):
-        self.fileOpSocket.send("OPEN_FILE")
-
-        recvMessage = self.fileOpSocket.recv()
+        recv_message = self.file_op_socket.recv_multipart()
+        logging.debug("Recv confirmation: {0}".format(recv_message))
 
         for i in range(5):
             metadata = {
-                "sourcePath"  : BASE_PATH + os.sep +"data" + os.sep + "source",
-                "relativePath": "local",
-                "filename"    : str(i) + ".cbf"
+                "source_path": os.path.join(BASE_PATH, "data", "source"),
+                "relative_path": "local",
+                "filename": filename,
+                "filepart": "{0}".format(i)
                 }
             metadata = json.dumps(metadata).encode("utf-8")
 
-            data     = "THISISTESTDATA-" + str(i)
+            data = b"THISISTESTDATA-{0}".format(i)
 
-            dataMessage = [metadata, data]
-            self.dataSocket.send_multipart(dataMessage)
+            data_message = [metadata, data]
+            self.data_socket.send_multipart(data_message)
             logging.debug("Send")
 
-        message = "CLOSE_FILE"
-        logging.debug("Send " + message)
-        self.fileOpSocket.send(message)
+        message = b"CLOSE_FILE"
+        logging.debug("Send {0}".format(message))
+        self.file_op_socket.send(message)
 
-        self.dataSocket.send_multipart([message, "0/1"])
+        self.data_socket.send_multipart([message, filename, "0/1"])
 
-        recvMessage = self.fileOpSocket.recv()
-        logging.debug("Recv confirmation: " + recvMessage)
+        recv_message = self.file_op_socket.recv()
+        logging.debug("Recv confirmation: {0}".format(recv_message))
 
-
-    def stop (self):
+    def stop(self):
         try:
-            if self.fileOpSocket:
-                logging.info("Closing fileOpSocket...")
-                self.fileOpSocket.close(linger=0)
-                self.fileOpSocket = None
-            if self.dataSocket:
-                logging.info("Closing dataSocket...")
-                self.dataSocket.close(linger=0)
-                self.dataSocket = None
+            if self.file_op_socket:
+                logging.info("Closing file_op_socket...")
+                self.file_op_socket.close(linger=0)
+                self.file_op_socket = None
+            if self.data_socket:
+                logging.info("Closing data_socket...")
+                self.data_socket.close(linger=0)
+                self.data_socket = None
             if self.context:
                 logging.info("Destroying context...")
                 self.context.destroy()
@@ -107,41 +97,41 @@ class Sender_as_thread (threading.Thread):
         except:
             logging.error("Closing ZMQ Sockets...failed.", exc_info=True)
 
+    def __exit__(self):
+        self.stop()
 
-    def __exit__ (self):
+    def __del__(self):
         self.stop()
 
 
-    def __del__ (self):
-        self.stop()
+def open_callback(params, retrieved_params):
+    print (params, retrieved_params)
 
 
-def openCallback (params, retrievedParams):
-    print params, retrievedParams
-
-def closeCallback (params, retrievedParams):
-    print params, retrievedParams
-
-def readCallback (params, retrievedParams):
-    print params, retrievedParams
+def close_callback(params, retrieved_params):
+    params["run_loop"] = False
+    print (params, retrieved_params)
 
 
-senderThread = Sender_as_thread()
+def read_callback(params, retrieved_params):
+    print (params, retrieved_params)
+
+
+senderThread = SenderAsThread()
 senderThread.start()
 
-obj = Transfer("nexus", useLog = True)
+obj = Transfer("nexus", use_log=True)
 obj.start(["zitpcx19282", "50100"])
 
-callbackParams = None
+callback_params = {
+    "run_loop": True
+    }
 
 try:
-    while True:
+    while callback_params["run_loop"]:
         try:
-            data = obj.read(callbackParams, openCallback, readCallback, closeCallback)
-            logging.debug("Retrieved: " + str(data))
-
-            if data == "CLOSE_FILE":
-                break
+            obj.read(callback_params, open_callback, read_callback,
+                     close_callback)
         except KeyboardInterrupt:
             break
         except:
@@ -151,9 +141,4 @@ finally:
     senderThread.stop()
     obj.stop()
 
-print
-print "==== TEST END: nexus transfer ===="
-print
-
-
-
+print ("\n==== TEST END: nexus transfer ====\n")
