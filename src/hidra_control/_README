@@ -1,0 +1,28 @@
+Manuela Kuhn, Andre Rothkirch, Nov 18, 2016
+
+history:
+ v 0.0: the first one, Nov 18, 2016
+ v 0.1: adjust script name and english desciption, Dec 13, 2016
+========================
+
+change to folder /gpfs/local/HiDRAControl
+
+
+# Start:
+./hidra_control_client_p10.py --start
+
+By default all data is written into current/raw in the beamline file system.
+To choose a different path execute the following.
+
+# Start with alternativ path:
+./hidra_control_client_p10.py --start --target current/scratch_bl
+
+Permitted are "current/raw", "current/scratch_bl", "commissioning/raw", "commissioning/scratch_bl" and "local".
+The directory structure is inherited as created on the Eiger.
+
+# Stop:
+./hidra_control_client_p10.py --stop
+
+# Check status:
+./hidra_control_client_p10.py --status
+
