@@ -228,7 +228,7 @@ def argument_parsing():
     arguments.config_file = arguments.config_file or default_config
 
     # check if config_file exist
-    helpers.check_file_existance(arguments.config_file)
+    helpers.check_existance(arguments.config_file)
 
     ##################################################
     # Get arguments from config file and comand line #
@@ -258,14 +258,14 @@ def argument_parsing():
         "Data fetcher")
 
     # check if directories exist
-    helpers.check_dir_existance(params["log_path"])
+    helpers.check_existance(params["log_path"])
     if params["monitored_dir"]:
-        helpers.check_dir_existance(params["monitored_dir"])
+        helpers.check_existance(params["monitored_dir"])
         helpers.check_any_sub_dir_exists(
             params["monitored_dir"],
             params["fix_subdirs"])
     if params["store_data"]:
-        helpers.check_dir_existance(params["local_target"])
+        helpers.check_existance(params["local_target"])
         helpers.check_all_sub_dir_exist(
             params["local_target"],
             params["fix_subdirs"])

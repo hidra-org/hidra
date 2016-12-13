@@ -1,17 +1,9 @@
 from __future__ import print_function
 
-import sys
 import argparse
 import logging
 import os
-import json
-import subprocess
-import re
 import errno
-try:
-    import ConfigParser
-except:
-    import configparser as ConfigParser
 
 from __init__ import BASE_PATH
 
@@ -75,7 +67,7 @@ def argument_parsing():
         or default_config
 
     # check if config_file exist
-    helpers.check_file_existance(arguments.config_file)
+    helpers.check_existance(arguments.config_file)
 
     ##################################
     # Get arguments from config file #
@@ -106,7 +98,7 @@ def argument_parsing():
         root.addHandler(handlers)
 
     # check target directory for existance
-    helpers.check_dir_existance(params["target_dir"])
+    helpers.check_existance(params["target_dir"])
 
     # check if logfile is writable
     helpers.check_log_file_writable(params["log_path"],

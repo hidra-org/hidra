@@ -294,18 +294,6 @@ def confirm(prompt=None, resp=False):
             return False
 
 
-def check_event_detector_type(specified_type, supportedTypes, log_string):
-
-    specified_type = specified_type.lower()
-
-    if specified_type in specified_type:
-        logging.debug("Event detector '{0}' is ok.".format(specified_type))
-    else:
-        logging.error("Event detector '{0}' is not supported."
-                      .format(specified_type))
-        sys.exit(1)
-
-
 def check_type(specified_type, supported_types, log_string):
 
     specified_type = specified_type.lower()
@@ -369,21 +357,16 @@ def check_all_sub_dir_exist(dir_path, subDirs):
             logging.warning("Dir '{0}' does not exist.".format(d))
 
 
-def check_file_existance(path):
-    # Check file for existance.
+def check_existance(path):
+    # Check path for existance.
     # Exits if it does not exist
+    if os.path.isdir(path):
+        obj_type = "Dir"
+    else:
+        obj_type = "File"
 
     if not os.path.exists(path):
-        logging.error("File '{0}' does not exist. Abort.".format(path))
-        sys.exit(1)
-
-
-def check_dir_existance(path):
-    # Check directory path for existance.
-    # Exits if it does not exist
-
-    if not os.path.exists(path):
-        logging.error("Dir '{0}' does not exist. Abort.".format(path))
+        logging.error("{0} '{1}' does not exist. Abort.".format(obj_type, path))
         sys.exit(1)
 
 
