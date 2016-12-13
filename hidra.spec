@@ -49,7 +49,7 @@ cp conf/dataManager.conf conf/dataReceiver.conf conf/nexusReceiver.conf %{buildr
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
-cp initScripts/*.service %{buildroot}/%{_unitdir}/
+cp initscripts/*.service %{buildroot}/%{_unitdir}/
 
 # log directory
 mkdir -p %{buildroot}/opt/%{name}/logs
