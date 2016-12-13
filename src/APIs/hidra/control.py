@@ -8,6 +8,8 @@ import logging
 import os
 import sys
 import traceback
+import subprocess
+import re
 
 __version__ = '0.0.4'
 
@@ -144,14 +146,25 @@ def excecute_ldapsearch(ldap_cn):
 
     return netgroup
 
-def check_netgroup(hostname, beamline, log=LoggingFunction()):
+def check_netgroup(hostname, beamline, log=None):
+    if log is None:
+        log = NoLoggingFunction()
+    else:
+        log = LoggingFunction()
+
     netgroup_name = "a3{0}-hosts".format(beamline)
 
     netgroup = excecute_ldapsearch(netgroup_name)
 
-    if hostname not in netgroup:
+    # not all hosts are configuered with a fully qualified DNS name
+    hostname = hostname.replace(".desy.de", "")
+    netgroup_modified = []
+    for host in netgroup:
+        netgroup_modified.append(host.replace(".desy.de", ""))
+
+    if hostname not in netgroup_modified:
         log.error("Host {0} is not contained in netgroup of "
-                  "beamline {0}".format(hostname, beamline))
+                  "beamline {1}".format(hostname, beamline))
         sys.exit(1)
 
 class Control():
@@ -168,6 +181,7 @@ class Control():
         self.current_pid = os.getpid()
 
         self.beamline = beamline
+        self.signal_socket = None
 
         check_netgroup(socket.gethostname(), self.beamline, self.log)
 
@@ -178,8 +192,6 @@ class Control():
                           .format(self.signal_host, self.signal_port))
         except:
             self.log.error("Beamline {0} not supported".format(self.beamline))
-
-        self.signal_socket = None
 
         self.__create_sockets()
 

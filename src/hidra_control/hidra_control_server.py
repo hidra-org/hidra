@@ -199,27 +199,27 @@ class HidraController():
 
         key = param.lower()
 
-        if key == "eigerip":
+        if key == "eiger_ip":
             self.eiger_ip = value
             return "DONE"
 
-        elif key == "eigerapiversion":
+        elif key == "eiger_api_version":
             self.eiger_api_version = value
             return "DONE"
 
-        elif key == "historysize":
+        elif key == "history_size":
             self.history_size = value
             return "DONE"
 
-        elif key == "localtarget" and value in self.supported_local_targets:
+        elif key == "local_target" and value in self.supported_local_targets:
             self.local_target = os.path.join("/beamline", self.beamline, value)
             return "DONE"
 
-        elif key == "storedata":
+        elif key == "store_data":
             self.store_data = value
             return "DONE"
 
-        elif key == "removedata":
+        elif key == "remove_data":
             self.remove_data = value
             return "DONE"
 
@@ -237,23 +237,23 @@ class HidraController():
         '''
         key = param.lower()
 
-        if key == "eigerip":
+        if key == "eiger_ip":
             return self.eiger_ip
 
-        elif key == "eigerapiversion":
+        elif key == "eiger_api_version":
             return self.eiger_api_version
 
-        elif key == "historysize":
+        elif key == "history_size":
             return self.history_size
 
-        elif key == "localtarget":
+        elif key == "local_target":
             return os.path.relpath(self.local_target,
                                    os.path.join("/beamline", self.beamline))
 
-        elif key == "storedata":
+        elif key == "store_data":
             return self.store_data
 
-        elif key == "removedata":
+        elif key == "remove_data":
             return self.remove_data
 
         elif key == "whitelist":

@@ -29,17 +29,17 @@ def argument_parsing():
     parser.add_argument("--beamline",
                         type=str,
                         required=True,
-#                        choices=["p01", "p02.1", "p02.2", "p03", "p04", "p05", "p06", "p07", "p08", "p09", "p10", "p11"]
+                        choices=["p00", "p01", "p02.1", "p02.2", "p03", "p04", "p05", "p06", "p07", "p08", "p09", "p10", "p11"],
                         help="Beamline for which the HiDRA server for the "
                              "Eiger detector should be operated")
 
     parser.add_argument("--eigerip",
                         type=str,
-                        default="lsdma-lab04"
+                        default="lsdma-lab04",
                         help="IP (or DNS name) of the Eiger detector")
     parser.add_argument("--eigerapi",
                         type=str,
-                        default="1.5.0"
+                        default="1.5.0",
                         help="API version of the Eiger detector")
 
     parser.add_argument("--start",
@@ -71,7 +71,6 @@ def argument_parsing():
 if __name__ == '__main__':
     arguments = argument_parsing()
 
-#    beamline = "p00"
     beamline = arguments.beamline
     supported_targets = ["current/raw",
                          "current/scratch_bl",
@@ -84,16 +83,16 @@ if __name__ == '__main__':
         print ("ERROR: target not supported")
         sys.exit(1)
 
-    obj = hidra.Control(beamline, use_log=None)
+    obj = hidra.Control(beamline, use_log=False)
 
     try:
         if arguments.start:
             # check if beamline is allowed to get data from this Eiger
-            hidra.check_netgroup(arguments.eigerip, beamline)
+            hidra.check_netgroup(arguments.eigerip, beamline, log = hidra.control.LoggingFunction())
 
             obj.set("local_target", arguments.target)
-            obj.set("eiger_ip", argument.eigerip)
-            obj.set("eiger_api_version", argument.eigerapi)
+            obj.set("eiger_ip", arguments.eigerip)
+            obj.set("eiger_api_version", arguments.eigerapi)
             obj.set("history_size", 2000)
             obj.set("store_data", False)
             obj.set("remove_data", False)
