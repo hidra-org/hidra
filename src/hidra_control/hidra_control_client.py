@@ -83,7 +83,7 @@ if __name__ == '__main__':
         print ("ERROR: target not supported")
         sys.exit(1)
 
-    obj = hidra.Control(beamline, use_log=False)
+    obj = hidra.Control(beamline, use_log=None)
 
     try:
         if arguments.start:

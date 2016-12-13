@@ -383,7 +383,7 @@ class HidraController():
 
         # check if service is running
         if self.status() == "RUNNING":
-            return "ERROR"
+            return "ALREADY RUNNING"
 
         # start service
         p = subprocess.call(["systemctl", "start",
