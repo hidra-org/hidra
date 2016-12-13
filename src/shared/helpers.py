@@ -327,30 +327,30 @@ def check_dir_empty(dir_path):
                          .format(dir_path))
 
 
-def check_any_sub_dir_exists(dir_path, subDirs):
+def check_any_sub_dir_exists(dir_path, subdirs):
 
     dir_path = os.path.normpath(dir_path)
     dirs_to_check = [os.path.join(dir_path, directory)
-                     for directory in subDirs]
-    noSubdir = True
+                     for directory in subdirs]
+    no_subdir = True
 
     for d in dirs_to_check:
         # check directory path for existance. exits if it does not exist
         if os.path.exists(d):
-            noSubdir = False
+            no_subdir = False
 
-    if noSubdir:
+    if no_subdir:
         logging.error("There are none of the specified subdirectories inside "
                       "'{0}'. Abort.".format(dir_path))
         logging.error("Checked paths: {0}".format(dirs_to_check))
         sys.exit(1)
 
 
-def check_all_sub_dir_exist(dir_path, subDirs):
+def check_all_sub_dir_exist(dir_path, subdirs):
 
     dir_path = os.path.normpath(dir_path)
     dirs_to_check = [os.path.join(dir_path, directory)
-                     for directory in subDirs]
+                     for directory in subdirs]
 
     for d in dirs_to_check:
         if not os.path.exists(d):
@@ -366,20 +366,18 @@ def check_existance(path):
         obj_type = "File"
 
     if not os.path.exists(path):
-        logging.error("{0} '{1}' does not exist. Abort.".format(obj_type, path))
+        logging.error("{0} '{1}' does not exist. Abort."
+                      .format(obj_type, path))
         sys.exit(1)
 
 
-def check_log_file_writable(filepath, filename):
-    # Exits if logfile cannot be written
+def check_writable(file_to_check):
+    # Exits if file can be written
     try:
-        log_fullpath = os.path.join(filepath, filename)
-        logfile = open(log_fullpath, "a")
-        logfile.close()
+        file_descriptor = open(file_to_check, "a")
+        file_descriptor.close()
     except:
-        logging.error("Unable to create the logfile {0}".format(log_fullpath))
-        logging.error("Please specify a new target by setting the following "
-                      "arguments:\n--log_name\n--log_path")
+        logging.error("Unable to create the file {0}".format(file_to_check))
         sys.exit(1)
 
 

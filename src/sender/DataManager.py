@@ -241,9 +241,8 @@ def argument_parsing():
     ##################################
 
     # check if logfile is writable
-    helpers.check_log_file_writable(
-        params["log_path"],
-        params["log_name"])
+    params["log_file"] = os.path.join(params["log_path"], params["log_name"])
+    helpers.check_writable(params["log_file"])
 
     # check if the event_detector_type is supported
     helpers.check_type(

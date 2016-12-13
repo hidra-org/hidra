@@ -99,8 +99,8 @@ def argument_parsing():
     helpers.check_existance(params["target_dir"])
 
     # check if logfile is writable
-    helpers.check_log_file_writable(params["log_path"],
-                                    params["log_name"])
+    params["log_file"] = os.path.join(params["log_path"], params["log_name"])
+    helpers.check_writable(params["log_file"])
 
     return params
 
