@@ -16,7 +16,7 @@ __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan,garrevoet@desy.de>')
 
 
-def setup(log, prop):
+def setup(log, config):
 
     required_params = ["session",
                        "store_data",
@@ -25,20 +25,20 @@ def setup(log, prop):
 
     # Check format of config
     check_passed, config_reduced = helpers.check_config(required_params,
-                                                        prop,
+                                                        config,
                                                         log)
 
     if check_passed:
         log.info("Configuration for data fetcher: {0}"
                  .format(config_reduced))
 
-        prop["session"] = requests.session()
-        prop["remove_flag"] = False
+        config["session"] = requests.session()
+        config["remove_flag"] = False
 
     return check_passed
 
 
-def get_metadata(log, prop, targets, metadata, chunksize, local_target=None):
+def get_metadata(log, config, targets, metadata, chunksize, local_target=None):
 
     # extract fileEvent metadata
     try:
@@ -90,9 +90,9 @@ def get_metadata(log, prop, targets, metadata, chunksize, local_target=None):
 
 
 def send_data(log, targets, source_file, target_file, metadata,
-              open_connections, context, prop):
+              open_connections, context, config):
 
-    response = prop["session"].get(source_file)
+    response = config["session"].get(source_file)
     try:
         response.raise_for_status()
         log.debug("Initiating http get for file '{0}' succeeded."
@@ -112,7 +112,7 @@ def send_data(log, targets, source_file, target_file, metadata,
     file_closed = False
     file_send = True
 
-    if prop["store_data"]:
+    if config["store_data"]:
         try:
             log.debug("Opening '{0}'...".format(target_file))
             file_descriptor = open(target_file, "wb")
@@ -123,14 +123,14 @@ def send_data(log, targets, source_file, target_file, metadata,
 
                 subdir, tmp = os.path.split(metadata["relative_path"])
 
-                if metadata["relative_path"] in prop["fix_subdirs"]:
+                if metadata["relative_path"] in config["fix_subdirs"]:
                     log.error("Unable to move file '{0}' to '{1}': "
                               "Directory {2} is not available."
                               .format(source_file, target_file,
                                       metadata["relative_path"]),
                               exc_info=True)
 
-                elif subdir in prop["fix_subdirs"]:
+                elif subdir in config["fix_subdirs"]:
                     log.error("Unable to move file '{0}' to '{1}': "
                               "Directory {2} is not available."
                               .format(source_file, target_file, subdir),
@@ -183,7 +183,7 @@ def send_data(log, targets, source_file, target_file, metadata,
             log.error("Unable to pack multipart-message for file '{0}'"
                       .format(source_file), exc_info=True)
 
-        if prop["store_data"]:
+        if config["store_data"]:
             try:
                 file_descriptor.write(data)
             except:
@@ -206,7 +206,7 @@ def send_data(log, targets, source_file, target_file, metadata,
 
         chunk_number += 1
 
-    if prop["store_data"]:
+    if config["store_data"]:
         try:
             log.debug("Closing '{0}'...".format(target_file))
             file_descriptor.close()
@@ -232,15 +232,15 @@ def send_data(log, targets, source_file, target_file, metadata,
             log.error("Unable to send metadata multipart-message for "
                       "file '{0}'".format(source_file), exc_info=True)
 
-        prop["remove_flag"] = file_opened and file_written and file_closed
+        config["remove_flag"] = file_opened and file_written and file_closed
     else:
-        prop["remove_flag"] = file_send
+        config["remove_flag"] = file_send
 
 
 def finish_datahandling(log, targets, source_file, target_file, metadata,
-                        open_connections, context, prop):
+                        open_connections, context, config):
 
-    if prop["remove_data"] and prop["remove_flag"]:
+    if config["remove_data"] and config["remove_flag"]:
         responce = requests.delete(source_file)
 
         try:
@@ -251,7 +251,7 @@ def finish_datahandling(log, targets, source_file, target_file, metadata,
                       exc_info=True)
 
 
-def clean(prop):
+def clean(config):
     pass
 
 

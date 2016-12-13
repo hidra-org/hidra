@@ -14,7 +14,7 @@ import helpers
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-def setup(log, prop):
+def setup(log, config):
 
     required_params = ["fix_subdirs",
                        "store_data",
@@ -22,20 +22,20 @@ def setup(log, prop):
 
     # Check format of config
     check_passed, config_reduced = helpers.check_config(required_params,
-                                                        prop,
+                                                        config,
                                                         log)
 
     if check_passed:
         log.info("Configuration for data fetcher: {0}"
                  .format(config_reduced))
 
-        prop["send_timeout"] = -1  # 10
-        prop["remove_flag"] = False
+        config["send_timeout"] = -1  # 10
+        config["remove_flag"] = False
 
     return check_passed
 
 
-def get_metadata(log, prop, targets, metadata, chunksize, local_target=None):
+def get_metadata(log, config, targets, metadata, chunksize, local_target=None):
 
     # extract fileEvent metadata
     try:
@@ -111,19 +111,19 @@ def get_metadata(log, prop, targets, metadata, chunksize, local_target=None):
 
 
 def send_data(log, targets, source_file, target_file, metadata,
-              open_connections, context, prop):
+              open_connections, context, config):
 
     if not targets:
-        prop["remove_flag"] = True
+        config["remove_flag"] = True
         return
 
     targets_data = [i for i in targets if i[3] == "data"]
 
     if not targets_data:
-        prop["remove_flag"] = True
+        config["remove_flag"] = True
         return
 
-    prop["remove_flag"] = False
+    config["remove_flag"] = False
     chunksize = metadata["chunksize"]
 
     chunk_number = 0
@@ -134,7 +134,7 @@ def send_data(log, targets, source_file, target_file, metadata,
         log.debug("Opening '{0}'...".format(source_file))
         file_descriptor = open(str(source_file), "rb")
     except:
-        log.error("Unable to read source file '{0}'.".format(source_file),
+        log.error("Unable to read source file '{0}'".format(source_file),
                   exc_info=True)
         raise
 
@@ -182,16 +182,16 @@ def send_data(log, targets, source_file, target_file, metadata,
         log.debug("Closing '{0}'...".format(source_file))
         file_descriptor.close()
     except:
-        log.error("Unable to close target file '{0}'.".format(source_file),
+        log.error("Unable to close target file '{0}'".format(source_file),
                   exc_info=True)
         raise
 
     if not sendError:
-        prop["remove_flag"] = True
+        config["remove_flag"] = True
 
 
 def __datahandling(log, source_file, target_file, action_function, metadata,
-                   prop):
+                   config):
     try:
         action_function(source_file, target_file)
     except IOError as e:
@@ -202,16 +202,16 @@ def __datahandling(log, source_file, target_file, action_function, metadata,
             target_base_path = os.path.join(
                 target_file.split(subdir + os.sep)[0], subdir)
 
-            if metadata["relative_path"] in prop["fix_subdirs"]:
+            if metadata["relative_path"] in config["fix_subdirs"]:
                 log.error("Unable to copy/move file '{0}' to '{1}': "
-                          "Directory {2} is not available."
+                          "Directory {2} is not available"
                           .format(source_file, target_file,
                                   metadata["relative_path"]))
                 raise
-            elif (subdir in prop["fix_subdirs"]
+            elif (subdir in config["fix_subdirs"]
                     and not os.path.isdir(target_base_path)):
                 log.error("Unable to copy/move file '{0}' to '{1}': "
-                          "Directory {2} is not available."
+                          "Directory {2} is not available"
                           .format(source_file, target_file, subdir))
                 raise
             else:
@@ -241,34 +241,34 @@ def __datahandling(log, source_file, target_file, action_function, metadata,
 
 
 def finish_datahandling(log, targets, source_file, target_file, metadata,
-                        open_connections, context, prop):
+                        open_connections, context, config):
 
     targets_metadata = [i for i in targets if i[3] == "metadata"]
 
-    if prop["store_data"] and prop["remove_data"] and prop["remove_flag"]:
+    if config["store_data"] and config["remove_data"] and config["remove_flag"]:
 
         # move file
         try:
             __datahandling(log, source_file, target_file, shutil.move,
-                           metadata, prop)
+                           metadata, config)
             log.info("Moving file '{0}' ...success.".format(source_file))
         except:
             log.error("Could not move file {0} to {1}"
                       .format(source_file, target_file), exc_info=True)
             return
 
-    elif prop["store_data"]:
+    elif config["store_data"]:
 
         # copy file
         # (does not preserve file owner, group or ACLs)
         try:
             __datahandling(log, source_file, target_file, shutil.copy,
-                           metadata, prop)
+                           metadata, config)
             log.info("Copying file '{0}' ...success.".format(source_file))
         except:
             return
 
-    elif prop["remove_data"] and prop["remove_flag"]:
+    elif config["remove_data"] and config["remove_flag"]:
         # remove file
         try:
             os.remove(source_file)
@@ -277,14 +277,14 @@ def finish_datahandling(log, targets, source_file, target_file, metadata,
             log.error("Unable to remove file {0}".format(source_file),
                       exc_info=True)
 
-        prop["remove_flag"] = False
+        config["remove_flag"] = False
 
     # send message to metadata targets
     if targets_metadata:
         try:
             __send_to_targets(log, targets_metadata, source_file, target_file,
                               open_connections, metadata, None, context,
-                              prop["send_timeout"])
+                              config["send_timeout"])
             log.debug("Passing metadata multipart-message for file {0}...done."
                       .format(source_file))
 
@@ -294,7 +294,7 @@ def finish_datahandling(log, targets, source_file, target_file, metadata,
                       exc_info=True)
 
 
-def clean(prop):
+def clean(config):
     pass
 
 

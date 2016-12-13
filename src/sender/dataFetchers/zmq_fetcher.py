@@ -13,7 +13,7 @@ import helpers
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-def setup(log, prop):
+def setup(log, config):
 
     if helpers.is_windows():
         required_params = ["context",
@@ -25,7 +25,7 @@ def setup(log, prop):
 
     # Check format of config
     check_passed, config_reduced = helpers.check_config(required_params,
-                                                        prop,
+                                                        config,
                                                         log)
 
     if check_passed:
@@ -34,14 +34,14 @@ def setup(log, prop):
 
         if helpers.is_windows():
             con_str = ("tcp://{0}:{1}"
-                       .format(prop["ext_ip"], prop["data_fetcher_port"]))
+                       .format(config["ext_ip"], config["data_fetcher_port"]))
         else:
             con_str = ("ipc://{0}/{1}"
-                       .format(prop["ipc_path"], "dataFetch"))
+                       .format(config["ipc_path"], "dataFetch"))
 
         # Create zmq socket
         try:
-            socket = prop["context"].socket(zmq.PULL)
+            socket = config["context"].socket(zmq.PULL)
             socket.bind(con_str)
             log.info("Start socket (bind): '{0}'".format(con_str))
         except:
@@ -50,12 +50,12 @@ def setup(log, prop):
             raise
 
         # register socket
-        prop["socket"] = socket
+        config["socket"] = socket
 
     return check_passed
 
 
-def get_metadata(log, prop, targets, metadata, chunksize, local_target=None):
+def get_metadata(log, config, targets, metadata, chunksize, local_target=None):
 
     # extract fileEvent metadata
     try:
@@ -96,7 +96,7 @@ def get_metadata(log, prop, targets, metadata, chunksize, local_target=None):
 
 
 def send_data(log, targets, source_file, target_file, metadata,
-              open_connections, context, prop):
+              open_connections, context, config):
 
     if not targets:
         return
@@ -105,7 +105,7 @@ def send_data(log, targets, source_file, target_file, metadata,
     try:
         log.debug("Getting data out of queue for file '{0}'..."
                   .format(source_file))
-        data = prop["socket"].recv()
+        data = config["socket"].recv()
     except:
         log.error("Unable to get data out of queue for file '{0}'"
                   .format(source_file), exc_info=True)
@@ -145,15 +145,15 @@ def send_data(log, targets, source_file, target_file, metadata,
 
 
 def finish_datahandling(log, targets, source_file, target_file, metadata,
-                        open_connections, context, prop):
+                        open_connections, context, config):
     pass
 
 
-def clean(prop):
+def clean(config):
     # Close zmq socket
-    if prop["socket"]:
-        prop["socket"].close(0)
-        prop["socket"] = None
+    if config["socket"]:
+        config["socket"].close(0)
+        config["socket"] = None
 
 
 if __name__ == '__main__':
