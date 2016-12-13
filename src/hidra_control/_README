@@ -9,20 +9,20 @@ change to folder /gpfs/local/HiDRAControl
 
 
 # Start:
-./hidra_control_client_p10.py --start
+./hidra_control_client.py --beamline <beamline> --eigerip <eigerip or dns name> --start
 
 By default all data is written into current/raw in the beamline file system.
 To choose a different path execute the following.
 
 # Start with alternativ path:
-./hidra_control_client_p10.py --start --target current/scratch_bl
+./hidra_control_client.py --beamline <beamline> --eigerip <eigerip or dns name> --target current/scratch_bl --start
 
 Permitted are "current/raw", "current/scratch_bl", "commissioning/raw", "commissioning/scratch_bl" and "local".
 The directory structure is inherited as created on the Eiger.
 
 # Stop:
-./hidra_control_client_p10.py --stop
+./hidra_control_client.py --beamline <beamline> --stop
 
 # Check status:
-./hidra_control_client_p10.py --status
+./hidra_control_client.py --beamline <beamline> --status
 

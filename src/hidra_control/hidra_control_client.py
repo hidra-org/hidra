@@ -84,13 +84,13 @@ if __name__ == '__main__':
         print ("ERROR: target not supported")
         sys.exit(1)
 
-    # check if beamline is allowed to get data from this Eiger
-    hidra.check_netgroup(arguments.eigerip, beamline)
-
     obj = hidra.Control(beamline, use_log=None)
 
     try:
         if arguments.start:
+            # check if beamline is allowed to get data from this Eiger
+            hidra.check_netgroup(arguments.eigerip, beamline)
+
             obj.set("local_target", arguments.target)
             obj.set("eiger_ip", argument.eigerip)
             obj.set("eiger_api_version", argument.eigerapi)
