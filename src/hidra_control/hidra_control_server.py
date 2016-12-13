@@ -626,14 +626,14 @@ class HidraControlServer():
 
         self.beamline = arguments.beamline
 
-        setproctitle.setproctitle("HidraControlServer_{0}"
+        setproctitle.setproctitle("hidra-control-server_{0}"
                                   .format(self.beamline))
 
         onscreen = False
 #        onscreen = "debug"
         verbose = True
         logfile = os.path.join(BASE_PATH, "logs",
-                               "HidraControlServer_{0}.log"
+                               "hidra-control-server_{0}.log"
                                .format(self.beamline))
         logsize = 10485760
 
