@@ -40,8 +40,8 @@ cp -ra src/sender %{buildroot}/opt/%{name}/src/
 mkdir -p %{buildroot}/opt/%{name}/src/shared/
 cp -a src/shared/*.py %{buildroot}/opt/%{name}/src/shared/
 
-mkdir -p %{buildroot}/opt/%{name}/src/TangoCommunication
-cp -a src/TangoCommunication/*.py %{buildroot}/opt/%{name}/src/TangoCommunication/
+mkdir -p %{buildroot}/opt/%{name}/src/hidra_control
+cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
@@ -73,7 +73,7 @@ mkdir -p %{buildroot}/opt/%{name}/logs
 /opt/%{name}/src/sender/*
 %attr(0755,root,root) /opt/%{name}/src/sender/DataManager.py
 /opt/%{name}/src/shared/*
-/opt/%{name}/src/TangoCommunication/*
+/opt/%{name}/src/hidra_control/*
 %{_unitdir}/*.service
 %config(noreplace) /opt/%{name}/conf/*
 %attr(1777,root,root) /opt/%{name}/logs
