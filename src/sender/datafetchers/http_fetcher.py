@@ -258,7 +258,7 @@ def clean(config):
 if __name__ == '__main__':
     import subprocess
 
-    from dataFetchers import BASE_PATH
+    from datafetchers import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "http_fetcher.log")
     logsize = 10485760

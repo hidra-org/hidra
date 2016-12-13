@@ -22,8 +22,8 @@ except:
 #               os.path.realpath(sys.argv[0])))))
 
 SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-EVENTDETECTOR_PATH = os.path.join(BASE_PATH, "src", "sender", "eventDetectors")
-DATAFETCHER_PATH = os.path.join(BASE_PATH, "src", "sender", "dataFetchers")
+EVENTDETECTOR_PATH = os.path.join(BASE_PATH, "src", "sender", "eventdetectors")
+DATAFETCHER_PATH = os.path.join(BASE_PATH, "src", "sender", "datafetchers")
 
 if SHARED_PATH not in sys.path:
     sys.path.append(SHARED_PATH)

@@ -758,7 +758,7 @@ if __name__ == '__main__':
                          .format(current_pid, "requestFw"))
     request_con_id = "tcp://{0}:{1}".format(ext_ip, request_port)
 
-    logfile = os.path.join(BASE_PATH, "logs", "signalHandler.log")
+    logfile = os.path.join(BASE_PATH, "logs", "signalhandler.log")
     logsize = 10485760
 
     log_queue = Queue(-1)

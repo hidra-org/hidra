@@ -141,7 +141,7 @@ class EventDetector():
 if __name__ == '__main__':
     from multiprocessing import Queue
 
-    from eventDetectors import BASE_PATH
+    from eventdetectors import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "http_events.log")
     logsize = 10485760

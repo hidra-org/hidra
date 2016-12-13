@@ -90,10 +90,10 @@ class Ingest():
         self.signal_host = "zitpcx19282"
         self.signal_port = "50050"
 
-        # has to be the same port as configured in dataManager.conf
+        # has to be the same port as configured in the configuration file
         # as event_det_port
         self.event_det_port = "50003"
-        # has to be the same port as configured in dataManager.conf
+        # has to be the same port as configured in the configuration file
         # as ...
         self.data_fetch_port = "50010"
 

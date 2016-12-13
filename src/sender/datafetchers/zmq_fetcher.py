@@ -159,7 +159,7 @@ def clean(config):
 if __name__ == '__main__':
     import tempfile
 
-    from dataFetchers import BASE_PATH
+    from datafetchers import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "zmq_fetcher.log")
     logsize = 10485760

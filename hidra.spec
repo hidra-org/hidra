@@ -45,7 +45,7 @@ cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
-cp conf/dataManager.conf conf/dataReceiver.conf conf/nexusReceiver.conf %{buildroot}/opt/%{name}/conf/
+cp conf/datamanager.conf conf/dataReceiver.conf conf/nexusReceiver.conf %{buildroot}/opt/%{name}/conf/
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
@@ -71,7 +71,7 @@ mkdir -p %{buildroot}/opt/%{name}/logs
 /opt/%{name}/conf/*
 %attr(0755,root,root) /opt/%{name}/src/receiver/*
 /opt/%{name}/src/sender/*
-%attr(0755,root,root) /opt/%{name}/src/sender/DataManager.py
+%attr(0755,root,root) /opt/%{name}/src/sender/datamanager.py
 /opt/%{name}/src/shared/*
 /opt/%{name}/src/hidra_control/*
 %{_unitdir}/*.service

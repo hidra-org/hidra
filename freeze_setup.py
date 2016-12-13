@@ -19,22 +19,22 @@ if platform.system() == "Windows":
 
     platform_specific_packages = ["watchdog"]
     platform_specific_files = [
-        (os.path.join(senderpath, "eventDetectors", "inotifyx_events.py"),
-            os.path.join("eventDetectors", "inotifyx_events.py")),
-        (os.path.join(senderpath, "eventDetectors", "watchdog_events.py"),
-            os.path.join("eventDetectors", "watchdog_events.py")),
-        (os.path.join(senderpath, "eventDetectors", "http_events.py"),
-            os.path.join("eventDetectors", "http_events.py")),
-        (os.path.join(senderpath, "eventDetectors", "zmq_events.py"),
-            os.path.join("eventDetectors", "zmq_events.py")),
-        (os.path.join(senderpath, "dataFetchers", "file_fetcher.py"),
-            os.path.join("dataFetchers", "file_fetcher.py")),
-        (os.path.join(senderpath, "dataFetchers", "http_fetcher.py"),
-            os.path.join("dataFetchers", "http_fetcher.py")),
-        (os.path.join(senderpath, "dataFetchers", "zmq_fetcher.py"),
-            os.path.join("dataFetchers", "zmq_fetcher.py")),
-        (os.path.join(senderpath, "dataFetchers", "send_helpers.py"),
-            os.path.join("dataFetchers", "send_helpers.py"))
+        (os.path.join(senderpath, "eventdetectors", "inotifyx_events.py"),
+            os.path.join("eventdetectors", "inotifyx_events.py")),
+        (os.path.join(senderpath, "eventdetectors", "watchdog_events.py"),
+            os.path.join("eventdetectors", "watchdog_events.py")),
+        (os.path.join(senderpath, "eventdetectors", "http_events.py"),
+            os.path.join("eventdetectors", "http_events.py")),
+        (os.path.join(senderpath, "eventdetectors", "zmq_events.py"),
+            os.path.join("eventdetectors", "zmq_events.py")),
+        (os.path.join(senderpath, "datafetchers", "file_fetcher.py"),
+            os.path.join("datafetchers", "file_fetcher.py")),
+        (os.path.join(senderpath, "datafetchers", "http_fetcher.py"),
+            os.path.join("datafetchers", "http_fetcher.py")),
+        (os.path.join(senderpath, "datafetchers", "zmq_fetcher.py"),
+            os.path.join("datafetchers", "zmq_fetcher.py")),
+        (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
+            os.path.join("datafetchers", "send_helpers.py"))
         ]
 
 else:
@@ -44,21 +44,21 @@ else:
 
     platform_specific_packages = ["inotifyx"]
     platform_specific_files = [
-        (os.path.join(senderpath, "eventDetectors", "inotifyx_events.py"),
+        (os.path.join(senderpath, "eventdetectors", "inotifyx_events.py"),
             "inotifyx_events.py"),
-        (os.path.join(senderpath, "eventDetectors", "watchdog_events.py"),
+        (os.path.join(senderpath, "eventdetectors", "watchdog_events.py"),
             "watchdog_events.py"),
-        (os.path.join(senderpath, "eventDetectors", "http_events.py"),
+        (os.path.join(senderpath, "eventdetectors", "http_events.py"),
             "http_events.py"),
-        (os.path.join(senderpath, "eventDetectors", "zmq_events.py"),
+        (os.path.join(senderpath, "eventdetectors", "zmq_events.py"),
             "zmq_events.py"),
-        (os.path.join(senderpath, "dataFetchers", "file_fetcher.py"),
+        (os.path.join(senderpath, "datafetchers", "file_fetcher.py"),
             "file_fetcher.py"),
-        (os.path.join(senderpath, "dataFetchers", "http_fetcher.py"),
+        (os.path.join(senderpath, "datafetchers", "http_fetcher.py"),
             "http_fetcher.py"),
-        (os.path.join(senderpath, "dataFetchers", "zmq_fetcher.py"),
+        (os.path.join(senderpath, "datafetchers", "zmq_fetcher.py"),
             "zmq_fetcher.py"),
-        (os.path.join(senderpath, "dataFetchers", "send_helpers.py"),
+        (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
             "send_helpers.py")
         ]
 
@@ -86,9 +86,9 @@ buildOptions = {
 #    "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
         (libzmq_path, "zmq"),
-        (os.path.join(senderpath, "SignalHandler.py"), "SignalHandler.py"),
-        (os.path.join(senderpath, "TaskProvider.py"), "TaskProvider.py"),
-        (os.path.join(senderpath, "DataDispatcher.py"), "DataDispatcher.py"),
+        (os.path.join(senderpath, "signalhandler.py"), "signalhandler.py"),
+        (os.path.join(senderpath, "taskprovider.py"), "taskprovider.py"),
+        (os.path.join(senderpath, "datadispatcher.py"), "datadispatcher.py"),
         (os.path.join(sharedpath, "logutils"), "logutils"),
         (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
         (os.path.join(sharedpath, "version.py"), "version.py"),
@@ -97,7 +97,7 @@ buildOptions = {
 }
 
 executables = [
-    Executable(os.path.join(senderpath, "DataManager.py"))
+    Executable(os.path.join(senderpath, "datamanager.py"))
 ]
 
 setup(name='HiDRA',

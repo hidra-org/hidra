@@ -318,7 +318,7 @@ if __name__ == '__main__':
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     freeze_support()
 
-    logfile = os.path.join(BASE_PATH, "logs", "taskProvider.log")
+    logfile = os.path.join(BASE_PATH, "logs", "taskprovider.log")
     logsize = 10485760
 
     config = {

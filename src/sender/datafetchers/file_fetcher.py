@@ -302,7 +302,7 @@ if __name__ == '__main__':
     import time
     from shutil import copyfile
 
-    from dataFetchers import BASE_PATH
+    from datafetchers import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "file_fetcher.log")
     logsize = 10485760

@@ -16,9 +16,9 @@ import setproctitle
 import tempfile
 import socket
 
-from SignalHandler import SignalHandler
-from TaskProvider import TaskProvider
-from DataDispatcher import DataDispatcher
+from signalhandler import SignalHandler
+from taskprovider import TaskProvider
+from datadispatcher import DataDispatcher
 
 from __init__ import BASE_PATH
 from logutils.queue import QueueHandler
@@ -31,7 +31,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 def argument_parsing():
-    default_config = os.path.join(CONFIG_PATH, "dataManager.conf")
+    default_config = os.path.join(CONFIG_PATH, "datamanager.conf")
 
     supported_ed_types = ["inotifyx_events",
                           "watchdog_events",
@@ -832,7 +832,7 @@ if __name__ == '__main__':
     if test:
         from shutil import copyfile
 
-        logfile = os.path.join(BASE_PATH, "logs", "dataManager_test.log")
+        logfile = os.path.join(BASE_PATH, "logs", "datamanager_test.log")
         logsize = 10485760
 
         log_queue = Queue(-1)

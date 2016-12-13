@@ -453,7 +453,7 @@ if __name__ == '__main__':
     from shutil import copyfile
     from multiprocessing import Queue
 
-    from eventDetectors import BASE_PATH
+    from eventdetectors import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "watchdogDetector.log")
     logsize = 10485760

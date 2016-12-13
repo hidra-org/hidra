@@ -16,7 +16,7 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="HiDRA"
 # Process name ( For display )
 NAME=hidra
-DAEMON=/opt/hidra/src/sender/DataManager.py
+DAEMON=/opt/hidra/src/sender/datamanager.py
 DAEMON_ARGS="--verbose"
 PIDFILE=/opt/hidra/$NAME.pid
 IPCPATH=/tmp/hidra

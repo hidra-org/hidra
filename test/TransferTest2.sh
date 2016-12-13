@@ -10,8 +10,8 @@ movedfile=$BASEPATH/data/target/local/test_file.cbf
 procname=HiDRA_test2
 
 
-python $BASEPATH/src/sender/DataManager.py \
-    --config_file $BASEPATH/test/dataManager.conf \
+python $BASEPATH/src/sender/datamanager.py \
+    --config_file $BASEPATH/test/datamanager.conf \
     --procname $procname \
     --log_path $BASEPATH/logs \
     --log_name ${procname}.log \

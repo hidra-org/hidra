@@ -316,7 +316,7 @@ class HidraController():
 
             with open(config_file, 'w') as f:
                 f.write("log_path             = {0}\n".format(LOGPATH))
-                f.write("log_name             = dataManager_{0}.log\n"
+                f.write("log_name             = datamanager_{0}.log\n"
                         .format(self.beamline))
                 f.write("log_size             = 10485760\n")
                 f.write("procname             = {0}\n".format(self.procname))
