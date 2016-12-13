@@ -64,7 +64,7 @@ class EventDetector():
     def get_logger(self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("http_detector")
+        logger = logging.getLogger("http_events")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
@@ -143,7 +143,7 @@ if __name__ == '__main__':
 
     from eventDetectors import BASE_PATH
 
-    logfile = os.path.join(BASE_PATH, "logs", "http_detector.log")
+    logfile = os.path.join(BASE_PATH, "logs", "http_events.log")
     logsize = 10485760
 
     log_queue = Queue(-1)

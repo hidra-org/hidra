@@ -33,10 +33,10 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 def argument_parsing():
     default_config = os.path.join(CONFIG_PATH, "dataManager.conf")
 
-    supported_ed_types = ["inotifyx_detector",
-                          "watchdog_detector",
-                          "zmq_detector",
-                          "http_detector"]
+    supported_ed_types = ["inotifyx_events",
+                          "watchdog_events",
+                          "zmq_events",
+                          "http_events"]
 
     supported_df_types = ["file_fetcher",
                           "zmq_fetcher",
@@ -111,7 +111,7 @@ def argument_parsing():
                         type=str,
                         help="Subdirectories to be monitored and to store the "
                              "data to (only needed if event detector is "
-                             "inotifyx_detector or watchdog_detector "
+                             "inotifyx_events or watchdog_events "
                              "and data fetcher is file_fetcher)")
 
     parser.add_argument("--monitored_dir",
@@ -119,57 +119,57 @@ def argument_parsing():
                         help="Directory to be monitor for changes; inside "
                              "this directory only the specified "
                              "subdirectories are monitred (only needed if "
-                             "event detector is inotifyx_detector or "
-                             "watchdog_detector)")
+                             "event detector is inotifyx_events or "
+                             "watchdog_events)")
     parser.add_argument("--monitored_events",
                         type=str,
                         help="Event type of files (options are: "
                              "IN_CLOSE_WRITE, IN_MOVED_TO, ...) and the "
                              "formats to be monitored, files in an other "
                              "format will be be neglected (needed if "
-                             "event detector is inotifyx_detector or "
-                             "watchdog_detector)")
+                             "event detector is inotifyx_events or "
+                             "watchdog_events)")
 
     parser.add_argument("--history_size",
                         type=int,
                         help="Number of events stored to look for doubles "
                              "(needed if event detector is "
-                             "inotifyx_detector)")
+                             "inotifyx_events)")
 
     parser.add_argument("--use_cleanup",
                         help="Flag describing if a clean up thread which "
                              "regularly checks if some files were missed "
                              "should be activated (needed if event detector "
-                             "is inotifyx_detector)",
+                             "is inotifyx_events)",
                         choices=["True", "False"])
 
     parser.add_argument("--action_time",
                         type=float,
                         help="Intervall time (in seconds) used for clea nup "
                              "(only needed if event_detector_type is "
-                             "inotifyx_detector)")
+                             "inotifyx_events)")
 
     parser.add_argument("--time_till_closed",
                         type=float,
                         help="Time (in seconds) since last modification after "
                              "which a file will be seen as closed (only "
                              "needed if event_detector_type is "
-                             "inotifyx_detector (for clean up) or "
-                             "watchdog_detector)")
+                             "inotifyx_events (for clean up) or "
+                             "watchdog_events)")
 
     parser.add_argument("--event_det_port",
                         type=str,
                         help="ZMQ port to get events from (only needed if "
-                             "event_detector_type is zmq_detector)")
+                             "event_detector_type is zmq_events)")
 
     parser.add_argument("--eiger_ip",
                         type=str,
                         help="IP of the Eiger detector (only needed if "
-                             "event_detector_type is http_detector)")
+                             "event_detector_type is http_events)")
     parser.add_argument("--eiger_api_version",
                         type=str,
                         help="API version of the Eiger detector (only needed "
-                             "if event_detector_type is http_detector)")
+                             "if event_detector_type is http_events)")
 
     # DataFetcher config
 

@@ -18,7 +18,7 @@ python $BASEPATH/src/sender/DataManager.py \
     --monitored_dir $BASEPATH/data/source \
     --local_target $BASEPATH/data/target \
     --ext_ip 0.0.0.0 \
-    --event_detector_type inotifyx_detector \
+    --event_detector_type inotifyx_events \
     --data_fetcher_type file_fetcher \
     --use_data_stream False \
     --store_data True \

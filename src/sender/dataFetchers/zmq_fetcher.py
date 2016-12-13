@@ -85,7 +85,7 @@ def get_metadata(log, config, targets, metadata, chunksize, local_target=None):
             metadata["filesize"] = None
             metadata["file_mod_time"] = time.time()
             metadata["file_create_time"] = time.time()
-            # chunksize is coming from zmq_detector
+            # chunksize is coming from zmq_events
 
             log.debug("metadata = {0}".format(metadata))
         except:

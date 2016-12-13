@@ -301,12 +301,12 @@ class HidraController():
             if self.beamline == "p00":
                 external_ip = "asap3-p00"
 #                external_ip = "131.169.251.55" # asap3-p00
-                eventdetector = "inotifyx_detector"
+                eventdetector = "inotifyx_events"
                 datafetcher = "file_fetcher"
             else:
                 external_ip = "asap3-bl-prx07"
 #                external_ip = "131.169.251.38" # asap3-bl-prx07
-                eventdetector = "http_detector"
+                eventdetector = "http_events"
                 datafetcher = "http_fetcher"
 
             # write configfile

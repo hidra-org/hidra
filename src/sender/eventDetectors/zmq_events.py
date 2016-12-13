@@ -74,7 +74,7 @@ class EventDetector():
     def get_logger(self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("zmq_detector")
+        logger = logging.getLogger("zmq_events")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)

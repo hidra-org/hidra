@@ -415,7 +415,7 @@ class EventDetector():
     def get_logger(self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("watchdog_detector")
+        logger = logging.getLogger("watchdog_events")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)

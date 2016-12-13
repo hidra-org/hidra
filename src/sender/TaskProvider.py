@@ -322,7 +322,7 @@ if __name__ == '__main__':
     logsize = 10485760
 
     config = {
-        "event_detector_type": "inotifyx_detector",
+        "event_detector_type": "inotifyx_events",
         "monitored_dir": os.path.join(BASE_PATH, "data", "source"),
         "fix_subdirs": ["commissioning", "current", "local"],
         "monitored_events": {"IN_CLOSE_WRITE": [".tif", ".cbf"],

@@ -18,7 +18,7 @@ python $BASEPATH/src/sender/DataManager.py \
     --monitored_dir $BASEPATH/data/source \
     --local_target $BASEPATH/data/target \
     --ext_ip 0.0.0.0 \
-    --event_detector_type watchdog_detector \
+    --event_detector_type watchdog_events \
     --data_fetcher_type file_fetcher \
     --action_time 2 \
     --time_till_closed 1 \
