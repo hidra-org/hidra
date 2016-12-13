@@ -123,6 +123,37 @@ connection_list = {
     }
 
 
+def excecute_ldapsearch(ldap_cn):
+
+    p = subprocess.Popen(
+        ["ldapsearch",
+         "-x",
+         "-H ldap://it-ldap-slave.desy.de:1389",
+         "cn=" + ldap_cn, "-LLL"],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    lines = p.stdout.readlines()
+
+    matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+                           re.M | re.I)
+    netgroup = []
+
+    for line in lines:
+        if matchHost.match(line):
+            if matchHost.match(line).group(1) not in netgroup:
+                netgroup.append(matchHost.match(line).group(1))
+
+    return netgroup
+
+def check_netgroup(hostname, beamline, log=LoggingFunction()):
+    netgroup_name = "a3{0}-hosts".format(beamline)
+
+    netgroup = excecute_ldapsearch(netgroup_name)
+
+    if hostname not in netgroup:
+        log.error("Host {0} is not contained in netgroup of "
+                  "beamline {0}".format(hostname, beamline))
+        sys.exit(1)
+
 class Control():
     def __init__(self, beamline, use_log=False):
         global connection_list
@@ -136,13 +167,17 @@ class Control():
 
         self.current_pid = os.getpid()
 
+        self.beamline = beamline
+
+        check_netgroup(socket.gethostname(), self.beamline, self.log)
+
         try:
             self.signal_host = connection_list[beamline]["host"]
             self.signal_port = connection_list[beamline]["port"]
             self.log.info("Starting connection to {0} on port {1}"
                           .format(self.signal_host, self.signal_port))
         except:
-            self.log.error("Beamline {0} not supported".format(beamline))
+            self.log.error("Beamline {0} not supported".format(self.beamline))
 
         self.signal_socket = None
 
@@ -156,7 +191,7 @@ class Control():
         except Exception:
             self.log.error("connect() failed", exc_info=True)
             self.signal_socket.close()
-            sys.exit()
+            sys.exit(1)
 
     def get(self, attribute, timeout=None):
         msg = 'get {0}'.format(attribute)
@@ -175,6 +210,9 @@ class Control():
         # flatten list if entry was a list (result: list of lists)
         if type(value[0]) == list:
             value = [item for sublist in value for item in sublist]
+
+        if attribute == "eigerip":
+            check_netgroup(value, self.beamline, self.log)
 
         if attribute == "whitelist":
             msg = 'set {0} {1}'.format(attribute, value)
