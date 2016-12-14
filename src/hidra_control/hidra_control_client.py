@@ -37,12 +37,11 @@ def argument_parsing():
 
     parser.add_argument("--eigerip",
                         type=str,
-                        default="lsdma-lab04",
                         help="IP (or DNS name) of the Eiger detector")
     parser.add_argument("--eigerapi",
                         type=str,
                         default="1.5.0",
-                        help="API version of the Eiger detector")
+                        help="API version of the Eiger detector (default: 1.5.0)")
 
     parser.add_argument("--start",
                         help="Starts the HiDRA Server for the Eiger detector",
@@ -67,11 +66,26 @@ def argument_parsing():
                              "or local)",
                         default="current/raw")
 
-    return parser.parse_args()
+    parser.add_argument("--version",
+                        help="Displays the used hidra_control version",
+                        action="store_true")
+
+    return parser
 
 
 if __name__ == '__main__':
-    arguments = argument_parsing()
+    parser = argument_parsing()
+    arguments = parser.parse_args()
+
+    if arguments.start and arguments.eigerip is None:
+        print ("parser error")
+        parser.error("--start requires --eigerip")
+        sys.exit(1)
+
+    if arguments.version:
+        print ("Hidra version: {0}".format(hidra.__version__))
+        sys.exit(0)
+
 
     beamline = arguments.beamline
     supported_targets = ["current/raw",
