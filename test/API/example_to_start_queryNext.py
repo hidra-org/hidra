@@ -1,29 +1,18 @@
-import os
-import sys
-import time
+from __future__ import print_function
+from __future__ import unicode_literals
+
+# import time
+from hidra import Transfer
 
 
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = BASE_PATH + os.sep + "APIs"
-
-if not API_PATH in sys.path:
-    sys.path.append ( API_PATH )
-del API_PATH
-del BASE_PATH
-
-from dataTransferAPI import dataTransfer
-
-
-signalHost   = "zitpcx19282.desy.de"
-#signalHost   = "zitpcx22614w.desy.de"
+signal_host = "zitpcx19282.desy.de"
+# signal_host = "zitpcx22614w.desy.de"
 targets = ["zitpcx19282.desy.de", "50101", 0]
-#targets = ["zitpcx22614w.desy.de", "50101", 0]
+# targets = ["zitpcx22614w.desy.de", "50101", 0]
 
-print
-print "==== TEST: Query for the newest filename ===="
-print
+print ("\n==== TEST: Query for the newest filename ====\n")
 
-query = dataTransfer("queryNext", signalHost)
+query = Transfer("QUERY_NEXT", signal_host)
 
 query.initiate(targets)
 
@@ -37,18 +26,14 @@ while True:
 
     print
     if metadata and data:
-        print "metadata", metadata["filename"]
-        print "data", str(data)[:10]
+        print ("metadata", metadata["filename"])
+        print ("data", str(data)[:10])
     else:
-        print "metadata", metadata
-        print "data", data
+        print ("metadata", metadata)
+        print ("data", data)
     print
 #    time.sleep(0.1)
 
 query.stop()
 
-print
-print "==== TEST END: Query for the newest filename ===="
-print
-
-
+print ("\n==== TEST END: Query for the newest filename ====\n")

@@ -1,61 +1,59 @@
+from __future__ import unicode_literals
+from __future__ import print_function
+
 import os
+import sys
 import platform
 import logging
 import logging.handlers
-import sys
 import shutil
-import zmq
+import subprocess
 import socket
-from version import __version__
+import json
+import re
+from _version import __version__
 
 try:
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+    import ConfigParser
 except:
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
+    import configparser as ConfigParser
 
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
-del SHARED_PATH
+try:
+    # try to use the system module
+    from logutils.queue import QueueListener
+except:
+    # there is no module logutils installed, fallback on the one in shared
+    from shared import SHARED_PATH
+    if SHARED_PATH not in sys.path:
+        sys.path.append(SHARED_PATH)
 
-from logutils.queue import QueueHandler, QueueListener
+    from logutils.queue import QueueListener
 
 
-def isWindows():
-    returnValue = False
-    windowsName = "Windows"
-    platformName = platform.system()
-
-    if platformName == windowsName:
-        returnValue = True
+def is_windows():
+    if platform.system() == "Windows":
+        return True
     # osRelease = platform.release()
     # supportedWindowsReleases = ["7"]
     # if osRelease in supportedWindowsReleases:
-    #     returnValue = True
-
-    return returnValue
-
-
-def isLinux():
-    returnValue = False
-    linuxName = "Linux"
-    platformName = platform.system()
-
-    if platformName == linuxName:
-        returnValue = True
-
-    return returnValue
+    #     return True
+    else:
+        return False
 
 
-class globalObjects (object):
-    controlFlag   = True
+def is_linux():
+    if platform.system() == "Linux":
+        return True
+    else:
+        return False
 
 
 # This function is needed because configParser always needs a section name
 # the used config file consists of key-value pairs only
-# source: http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788
+# source: http://stackoverflow.com/questions/2819696/
+#                parsing-properties-file-in-python/2819788#2819788
 class FakeSecHead (object):
-    def __init__ (self, fp):
+    def __init__(self, fp):
         self.fp = fp
         self.sechead = '[asection]\n'
 
@@ -69,8 +67,186 @@ class FakeSecHead (object):
             return self.fp.readline()
 
 
+def str2bool(v):
+    return v.lower() == "true"
+
+
+# modified version of the cfelpyutils module
+def parse_config(config):
+    """Sets correct types for parameter dictionaries.
+
+    Reads a parameter dictionary returned by the ConfigParser python module,
+    and assigns correct types to parameters, without changing the structure of
+    the dictionary.
+
+    The parser tries to interpret each entry in the dictionary according to
+    the following rules:
+
+    - If the entry starts and ends with a single quote, it is interpreted as a
+      string.
+    - If the entry starts and ends with a square bracket, it is interpreted as
+      a list.
+    - If the entry starts and ends with a brace, it is interpreted as a
+      dictionary.
+    - If the entry is the word None, without quotes, then the entry is
+      interpreted as NoneType.
+    - If the entry is the word False, without quotes, then the entry is
+      interpreted as a boolean False.
+    - If the entry is the word True, without quotes, then the entry is
+      interpreted as a boolean True.
+    - If non of the previous options match the content of the entry, the
+      parser tries to interpret the entry in order as:
+
+        - An integer number.
+        - A float number.
+        - A string.
+
+      The first choice that succeeds determines the entry type.
+
+    Args:
+
+        config (class RawConfigParser): ConfigParser instance.
+
+    Returns:
+
+        config_params (dict): dictionary with the same structure as the input
+        dictionary, but with correct types assigned to each entry.
+    """
+
+    config_params = {}
+
+    for sect in config.sections():
+        config_params[sect] = {}
+        for op in config.options(sect):
+            config_params[sect][op] = config.get(sect, op)
+
+            if (config_params[sect][op].startswith("'")
+                    and config_params[sect][op].endswith("'")):
+                config_params[sect][op] = config_params[sect][op][1:-1]
+                if sys.version_info[0] == 2:
+                    try:
+                        config_params[sect][op] = (
+                            unicode(config_params[sect][op]))
+                    except UnicodeDecodeError:
+                        raise RuntimeError('Error parsing parameters. Only '
+                                           'ASCII characters are allowed in '
+                                           'parameter names and values.')
+                continue
+            elif (config_params[sect][op].startswith('"')
+                    and config_params[sect][op].endswith('"')):
+                config_params[sect][op] = config_params[sect][op][1:-1]
+                try:
+                    config_params[sect][op] = unicode(config_params[sect][op])
+                except UnicodeDecodeError:
+                    raise RuntimeError('Error parsing parameters. Only ASCII '
+                                       'characters are allowed in parameter '
+                                       'names and values.')
+                continue
+            elif (config_params[sect][op].startswith("[")
+                    and config_params[sect][op].endswith("]")):
+                try:
+                    config_params[sect][op] = json.loads(config.get(sect, op)
+                                                         .replace("'", '"'))
+                except UnicodeDecodeError:
+                    raise RuntimeError('Error parsing parameters. Only ASCII '
+                                       'characters are allowed in parameter '
+                                       'names and values.')
+                continue
+            elif (config_params[sect][op].startswith("{")
+                    and config_params[sect][op].endswith("}")):
+                try:
+                    config_params[sect][op] = json.loads(config.get(sect, op)
+                                                         .replace("'", '"'))
+                except UnicodeDecodeError:
+                    raise RuntimeError('Error parsing parameters. Only ASCII '
+                                       'characters are allowed in parameter '
+                                       'names and values.')
+                continue
+            elif config_params[sect][op] == 'None':
+                config_params[sect][op] = None
+                continue
+            elif config_params[sect][op] == 'False':
+                config_params[sect][op] = False
+                continue
+            elif config_params[sect][op] == 'True':
+                config_params[sect][op] = True
+                continue
+
+            try:
+                config_params[sect][op] = int(config_params[sect][op])
+                continue
+            except ValueError:
+                try:
+                    config_params[sect][op] = float(config_params[sect][op])
+                    continue
+                except ValueError:
+                    config_params[sect][op] = config_params[sect][op]
+#                    raise RuntimeError('Error parsing parameters. The '
+#                                       'parameter {0}/{1} parameter has an '
+#                                       'invalid type. Allowed types are '
+#                                       'None, int, float, bool and str. '
+#                                       'Strings must be single-quoted.'
+#                                       .format(sect, op))
+
+    return config_params
+
+
+def set_parameters(config_file, arguments):
+
+    config = ConfigParser.RawConfigParser()
+    try:
+        config.readfp(FakeSecHead(open(config_file)))
+    except:
+        with open(config_file, 'r') as f:
+            config_string = '[asection]\n' + f.read()
+        config.read_string(config_string)
+
+    params = parse_config(config)["asection"]
+
+    # arguments set when the program is called have a higher priority than
+    # the ones in the config file
+    for arg in vars(arguments):
+        arg_value = getattr(arguments, arg)
+        if arg_value is not None:
+            if type(arg_value) is str:
+                if arg_value.lower() == "none":
+                    params[arg] = None
+                elif arg_value.lower() == "false":
+                    params[arg] = False
+                elif arg_value.lower() == "true":
+                    params[arg] = True
+                else:
+                    params[arg] = arg_value
+            else:
+                params[arg] = arg_value
+
+    return params
+
+
+def excecute_ldapsearch(ldap_cn):
+
+    p = subprocess.Popen(
+        ["ldapsearch",
+         "-x",
+         "-H ldap://it-ldap-slave.desy.de:1389",
+         "cn=" + ldap_cn, "-LLL"],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    lines = p.stdout.readlines()
+
+    matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+                           re.M | re.I)
+    netgroup = []
+
+    for line in lines:
+        if matchHost.match(line):
+            if matchHost.match(line).group(1) not in netgroup:
+                netgroup.append(matchHost.match(line).group(1))
+
+    return netgroup
+
+
 # http://code.activestate.com/recipes/541096-prompt-the-user-for-confirmation/
-def confirm (prompt=None, resp=False):
+def confirm(prompt=None, resp=False):
     """prompts for yes or no response from the user. Returns True for yes and
     False for no.
 
@@ -104,7 +280,7 @@ def confirm (prompt=None, resp=False):
             logging.error("Keyboard Interruption detected.")
         except Exception as e:
             logging.error("Something went wrong with the confirmation.")
-            logging.debug("Error was: " + str(e))
+            logging.debug("Error was: {0}".format(e))
             break
 
         if not ans:
@@ -118,96 +294,97 @@ def confirm (prompt=None, resp=False):
             return False
 
 
-def checkEventDetectorType (eDType, supportedTypes):
+def check_type(specified_type, supported_types, log_string):
 
-    eDType = eDType.lower()
+    specified_type = specified_type.lower()
 
-    if eDType in supportedTypes:
-        logging.debug("Event detector '" + eDType + "' is ok.")
+    if specified_type in supported_types:
+        logging.debug("{0} '{1}' is ok.".format(log_string, specified_type))
     else:
-        logging.error("Event detector '" + eDType + "' is not supported.")
+        logging.error("{0} '{1}' is not supported."
+                      .format(log_string, specified_type))
         sys.exit(1)
 
 
+def check_dir_empty(dir_path):
 
-def checkDirEmpty (dirPath):
-
-    #check if directory is empty
-    if os.listdir(dirPath):
-        logging.debug("Directory '%s' is not empty." % str(dirPath))
-        if confirm(prompt="Directory " + str(dirPath) + " is not empty.\nShould its content be removed?",
-                   resp = True):
-            for element in os.listdir(dirPath):
-                path = dirPath + os.sep + element
+    # check if directory is empty
+    if os.listdir(dir_path):
+        logging.debug("Directory '{0}' is not empty.".format(dir_path))
+        if confirm(prompt="Directory {0} is not empty.\n"
+                          "Should its content be removed?".format(dir_path),
+                   resp=True):
+            for element in os.listdir(dir_path):
+                path = os.path.join(dir_path, element)
                 if os.path.isdir(path):
-                   try:
+                    try:
                         os.rmdir(path)
-                   except OSError:
+                    except OSError:
                         shutil.rmtree(path)
                 else:
                     os.remove(path)
-            logging.info("All elements of directory " + str(dirPath) + " were removed.")
+            logging.info("All elements of directory {0} were removed."
+                         .format(dir_path))
 
 
-def checkAnySubDirExists (dirPath, subDirs):
+def check_any_sub_dir_exists(dir_path, subdirs):
 
-    dirPath = os.path.normpath(dirPath)
-    dirsToCheck = [dirPath + os.sep + directory for directory in subDirs]
-    noSubdir = True
+    dir_path = os.path.normpath(dir_path)
+    dirs_to_check = [os.path.join(dir_path, directory)
+                     for directory in subdirs]
+    no_subdir = True
 
-    for d in dirsToCheck:
-        #check directory path for existance. exits if it does not exist
+    for d in dirs_to_check:
+        # check directory path for existance. exits if it does not exist
         if os.path.exists(d):
-            noSubdir = False
+            no_subdir = False
 
-    if noSubdir:
-        logging.error("There are none of the specified subdirectories inside '%s'. Abort." % str(dirPath))
-        logging.error("Checked paths: " + str(dirsToCheck))
+    if no_subdir:
+        logging.error("There are none of the specified subdirectories inside "
+                      "'{0}'. Abort.".format(dir_path))
+        logging.error("Checked paths: {0}".format(dirs_to_check))
         sys.exit(1)
 
 
-def checkAllSubDirExist (dirPath, subDirs):
+def check_all_sub_dir_exist(dir_path, subdirs):
 
-    dirPath = os.path.normpath(dirPath)
-    dirsToCheck = [dirPath + os.sep + directory for directory in subDirs]
+    dir_path = os.path.normpath(dir_path)
+    dirs_to_check = [os.path.join(dir_path, directory)
+                     for directory in subdirs]
 
-    for d in dirsToCheck:
+    for d in dirs_to_check:
         if not os.path.exists(d):
-            logging.warning("Dir '%s' does not exist." % str(d))
+            logging.warning("Dir '{0}' does not exist.".format(d))
 
 
-def checkFileExistance (filePath):
-    # Check file for existance.
+def check_existance(path):
+    # Check path for existance.
     # Exits if it does not exist
+    if os.path.isdir(path):
+        obj_type = "Dir"
+    else:
+        obj_type = "File"
 
-    if not os.path.exists(filePath):
-        logging.error("File '%s' does not exist. Abort." % str(filePath))
+    if not os.path.exists(path):
+        logging.error("{0} '{1}' does not exist. Abort."
+                      .format(obj_type, path))
         sys.exit(1)
 
 
-def checkDirExistance (dirPath):
-    # Check directory path for existance.
-    # Exits if it does not exist
-
-    if not os.path.exists(dirPath):
-        logging.error("Dir '%s' does not exist. Abort." % str(dirPath))
-        sys.exit(1)
-
-
-def checkLogFileWritable (filepath, filename):
-    # Exits if logfile cannot be written
+def check_writable(file_to_check):
+    # Exits if file can be written
     try:
-        logfullPath = os.path.join(filepath, filename)
-        logFile = open(logfullPath, "a")
-        logFile.close()
+        file_descriptor = open(file_to_check, "a")
+        file_descriptor.close()
     except:
-        logging.error("Unable to create the logfile " + str(logfullPath))
-        logging.error("Please specify a new target by setting the following arguments:\n--logfileName\n--logfilePath")
+        logging.error("Unable to create the file {0}".format(file_to_check))
         sys.exit(1)
 
 
-def checkVersion (version, log):
-    log.debug("remote version: " + version + ", local version: " + __version__)
+def check_version(version, log):
+    log.debug("remote version: {0}, local version: {1}"
+              .format(version, __version__))
+
     if version.rsplit(".", 1)[0] < __version__.rsplit(".", 1)[0]:
         log.info("Version of receiver is lower. Please update receiver.")
         return False
@@ -218,135 +395,98 @@ def checkVersion (version, log):
         return True
 
 
-def checkHost (hostname, whiteList, log):
+def check_host(host, whitelist, log):
 
-    if hostname and whiteList:
+    if host and whitelist:
 
-        if type(hostname) == list:
-            temp = True
-            for host in hostname:
-                if host.endswith(".desy.de"):
-                    hostModified = host[:-8]
-                else:
-                    hostModified = host
+        if type(host) == list:
+            return_val = True
+            for hostname in host:
+                host_modified = hostname.replace(".desy.de", "")
 
-                if host not in whiteList and hostModified not in whiteList:
-                    log.info("Host " + str(host) + " is not allowed to connect")
-                    temp = False
+                if (hostname not in whitelist
+                        and host_modified not in whitelist):
+                    log.info("Host {0} is not allowed to connect"
+                             .format(hostname))
+                    return_val = False
 
-            return temp
-
+            return return_val
 
         else:
-            if hostname.endswith(".desy.de"):
-                hostnameModified = hostname[:-8]
-            else:
-                hostnameModified = hostname
+            host_modified = host.replace(".desy.de", "")
 
-            if hostname in whiteList or hostnameModified in whiteList:
+            if host in whitelist or host_modified in whitelist:
                 return True
+            else:
+                log.info("Host {0} is not allowed to connect".format(host))
 
     return False
 
 
-def checkPing(host, log = logging):
-    if isWindows():
-        response = os.system("ping -n 1 -w 2 " + host)
+def check_ping(host, log=logging):
+    if is_windows():
+        response = os.system("ping -n 1 -w 2 {0}".format(host))
     else:
-        response = os.system("ping -c 1 -w 2 " + host + " > /dev/null 2>&1")
+        response = os.system("ping -c 1 -w 2 {0} > /dev/null 2>&1"
+                             .format(host))
 
     if response != 0:
-        log.error(host + " is not pingable.")
+        log.error("{0} is not pingable.".format(host))
         sys.exit(1)
 
 
 # IP and DNS name should be both in the whitelist
-def extendWhitelist(whitelist, log):
-    log.info("Configured whitelist: " + str(whitelist))
-    extendedWhitelist = []
+def extend_whitelist(whitelist, log):
+    log.info("Configured whitelist: {0}".format(whitelist))
+    extended_whitelist = []
 
     for host in whitelist:
 
         if host == "localhost":
-            elementToAdd = socket.gethostbyname(host)
+            extended_whitelist.append(socket.gethostbyname(host))
         else:
             try:
                 hostname, tmp, ip = socket.gethostbyaddr(host)
 
-                if hostname.endswith(".desy.de"):
-                    hostModified = hostname[:-8]
-                else:
-                    hostModified = hostname
+                host_modified = hostname.replace(".desy.de", "")
 
-
-                if hostModified not in whitelist:
-                    extendedWhitelist.append(hostModified)
+                if host_modified not in whitelist:
+                    extended_whitelist.append(host_modified)
 
                 if ip[0] not in whitelist:
-                    extendedWhitelist.append(ip[0])
+                    extended_whitelist.append(ip[0])
             except:
                 pass
 
-    for host in extendedWhitelist:
+    for host in extended_whitelist:
         whitelist.append(host)
 
-    log.debug("Extended whitelist: " + str(whitelist))
+    log.debug("Extended whitelist: {0}".format(whitelist))
 
 
-#class forwarderThread(threading.Thread):
-#    def __init__ (self, controlPubConId, controlSubConId, context):
-#
-#        threading.Thread.__init__(self)
-#
-#        self.controlPubConId = controlPubConId
-#        self.controlSubConId = controlSubConId
-#        self.context         = context
-#
-#        self.frontend        = None
-#        self.backend         = None
-#
-#
-#    def run (self):
-#        # initiate XPUB/XSUB for control signals
-#
-#        # Socket facing clients
-#        self.frontend = context.socket(zmq.SUB)
-#        self.frontend.bind(controlPubConId)
-#        logging.info("=== [forwarder] frontend bind to: '" + controlPubConId + "'")
-#
-#        self.frontend.setsockopt(zmq.SUBSCRIBE, "")
-#
-#        # Socket facing services
-#        self.backend = context.socket(zmq.PUB)
-#        self.backend.bind(controlSubConId)
-#        logging.info("=== [forwarder] backend bind to: '" + controlSubConId + "'")
-#
-#        zmq.device(zmq.FORWARDER, self.frontend, self.backend)
-#        logging.info("=== [forwarder] forwarder initiated")
-#
-#
-#    def stop (self):
-#        if self.frontend:
-#            logging.info("=== [forwarder] close frontend")
-#            self.frontend.close()
-#            self.frontend = None
-#        if self.backend:
-#            logging.info("=== [forwarder] close backend")
-#            self.backend.close()
-#            self.backend = None
-#
-#
-#    def __exit (self):
-#        self.stop()
-#
-#
-#    def __del__ (self):
-#        self.stop()
+def check_config(required_params, config, log):
+
+    check_passed = True
+    config_reduced = "{"
+
+    for param in required_params:
+        if param not in config:
+            log.error("Configuration of wrong format. "
+                      "Missing parameter: '{0}'".format(param))
+            check_passed = False
+        else:
+            config_reduced += "{0}: {1}, ".format(param, config[param])
+
+    # Remove redundant divider
+    config_reduced = config_reduced[:-2] + "}"
+
+    return check_passed, config_reduced
 
 
-# http://stackoverflow.com/questions/25585518/python-logging-logutils-with-queuehandler-and-queuelistener#25594270
+# http://stackoverflow.com/questions/25585518/
+#        python-logging-logutils-with-queuehandler-and-queuelistener#25594270
 class CustomQueueListener (QueueListener):
-    def __init__ (self, queue, *handlers):
+    def __init__(self, queue, *handlers):
         super(CustomQueueListener, self).__init__(queue, *handlers)
         """
         Initialise an instance with the specified queue and
@@ -355,7 +495,7 @@ class CustomQueueListener (QueueListener):
         # Changing this to a list from tuple in the parent class
         self.handlers = list(handlers)
 
-    def handle (self, record):
+    def handle(self, record):
         """
         Override handle a record.
 
@@ -366,17 +506,18 @@ class CustomQueueListener (QueueListener):
         """
         record = self.prepare(record)
         for handler in self.handlers:
-            if record.levelno >= handler.level: # This check is not in the parent class
+            # This check is not in the parent class
+            if record.levelno >= handler.level:
                 handler.handle(record)
 
-    def addHandler (self, hdlr):
+    def addHandler(self, hdlr):
         """
         Add the specified handler to this logger.
         """
         if not (hdlr in self.handlers):
             self.handlers.append(hdlr)
 
-    def removeHandler (self, hdlr):
+    def removeHandler(self, hdlr):
         """
         Remove the specified handler from this logger.
         """
@@ -386,121 +527,144 @@ class CustomQueueListener (QueueListener):
 
 
 # Get the log Configuration for the lisener
-def getLogHandlers (logfile, logsize, verbose, onScreenLogLevel = False):
+def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
     # Enable more detailed logging if verbose-option has been set
-    logLevel = logging.INFO
+    loglevel = logging.INFO
     if verbose:
-        logLevel = logging.DEBUG
+        loglevel = logging.DEBUG
 
     # Set format
-    datef='%Y-%m-%d %H:%M:%S'
-    f = '[%(asctime)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s'
+    datef = "%Y-%m-%d %H:%M:%S"
+    f = ("[%(asctime)s] [%(module)s:%(funcName)s:%(lineno)d] "
+         "[%(name)s] [%(levelname)s] %(message)s")
 
     # Setup file handler to output to file
     # argument for RotatingFileHandler: filename, mode, maxBytes, backupCount)
     # 1048576 = 1MB
-    if isWindows():
+    if is_windows():
         h1 = logging.FileHandler(logfile, 'a')
     else:
         h1 = logging.handlers.RotatingFileHandler(logfile, 'a', logsize, 5)
-    f1 = logging.Formatter(datefmt=datef,fmt=f)
+    f1 = logging.Formatter(datefmt=datef, fmt=f)
     h1.setFormatter(f1)
-    h1.setLevel(logLevel)
+    h1.setLevel(loglevel)
 
     # Setup stream handler to output to console
-    if onScreenLogLevel:
-        onScreenLogLevelLower = onScreenLogLevel.lower()
-        if onScreenLogLevelLower in ["debug", "info", "warning", "error", "critical"]:
+    if onscreen_log_level:
+        onscreen_log_levelLower = onscreen_log_level.lower()
+        if (onscreen_log_levelLower in ["debug", "info", "warning",
+                                        "error", "critical"]):
 
-            f  = "[%(asctime)s] > %(message)s"
+            f = "[%(asctime)s] > %(message)s"
 
-            if onScreenLogLevelLower == "debug":
-                screenLogLevel = logging.DEBUG
+            if onscreen_log_levelLower == "debug":
+                screen_log_level = logging.DEBUG
                 f = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s"
 
                 if not verbose:
-                    logging.error("Logging on Screen: Option DEBUG in only active when using verbose option as well (Fallback to INFO).")
-            elif onScreenLogLevelLower == "info":
-                screenLogLevel = logging.INFO
-            elif onScreenLogLevelLower == "warning":
-                screenLogLevel = logging.WARNING
-            elif onScreenLogLevelLower == "error":
-                screenLogLevel = logging.ERROR
-            elif onScreenLogLevelLower == "critical":
-                screenLogLevel = logging.CRITICAL
+                    logging.error("Logging on Screen: Option DEBUG in only "
+                                  "active when using verbose option as well "
+                                  "(Fallback to INFO).")
+            elif onscreen_log_levelLower == "info":
+                screen_log_level = logging.INFO
+            elif onscreen_log_levelLower == "warning":
+                screen_log_level = logging.WARNING
+            elif onscreen_log_levelLower == "error":
+                screen_log_level = logging.ERROR
+            elif onscreen_log_levelLower == "critical":
+                screen_log_level = logging.CRITICAL
 
             h2 = logging.StreamHandler()
             f2 = logging.Formatter(datefmt=datef, fmt=f)
             h2.setFormatter(f2)
-            h2.setLevel(screenLogLevel)
+            h2.setLevel(screen_log_level)
 
             return h1, h2
         else:
-            logging.error("Logging on Screen: Option " + str(onScreenLogLevel) + " is not supported.")
+            logging.error("Logging on Screen: Option {0} is not supported."
+                          .format(onscreen_log_level))
             exit(1)
 
     else:
         return h1
 
 
-def initLogging (filenameFullPath, verbose, onScreenLogLevel = False):
-    #@see https://docs.python.org/2/howto/logging-cookbook.html
+def init_logging(filename_full_path, verbose, onscreen_log_level=False):
+    # see https://docs.python.org/2/howto/logging-cookbook.html
 
-    #more detailed logging if verbose-option has been set
-    loggingLevel = logging.INFO
+    # more detailed logging if verbose-option has been set
+    logging_level = logging.INFO
     if verbose:
-        loggingLevel = logging.DEBUG
+        logging_level = logging.DEBUG
 
-    #log everything to file
-    logging.basicConfig(level=loggingLevel,
-#                        format='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s:%(lineno)d] [%(name)s] [%(levelname)s] %(message)s',
-                        format='%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s',
-                        datefmt='%Y-%m-%d_%H:%M:%S',
-                        filename=filenameFullPath,
+    # log everything to file
+#                        format=("[%(asctime)s] [PID %(process)d] "
+#                                "[%(filename)s] "
+#                                "[%(module)s:%(funcName)s:%(lineno)d] "
+#                                "[%(name)s] [%(levelname)s] %(message)s"),
+    logging.basicConfig(level=logging_level,
+                        format=("%(asctime)s %(processName)-10s %(name)s "
+                                "%(levelname)-8s %(message)s"),
+                        datefmt="%Y-%m-%d_%H:%M:%S",
+                        filename=filename_full_path,
                         filemode="a")
 
-#        fileHandler = logging.FileHandler(filename=filenameFullPath,
+#        fileHandler = logging.FileHandler(filename=filename_full_path,
 #                                          mode="a")
-#        fileHandlerFormat = logging.Formatter(datefmt='%Y-%m-%d_%H:%M:%S',
-#                                              fmt='[%(asctime)s] [PID %(process)d] [%(filename)s] [%(module)s:%(funcName)s] [%(name)s] [%(levelname)s] %(message)s')
+#        fileHandlerFormat = logging.Formatter(
+#            datefmt="%Y-%m-%d_%H:%M:%S,
+#            fmt=("[%(asctime)s] "
+#                 "[PID %(process)d] "
+#                 "[%(filename)s] "
+#                 "[%(module)s:%(funcName)s] "
+#                 "[%(name)s] "
+#                 "[%(levelname)s] "
+#                 "%(message)s"))
 #        fileHandler.setFormatter(fileHandlerFormat)
-#        fileHandler.setLevel(loggingLevel)
+#        fileHandler.setLevel(logging_level)
 #        logging.getLogger("").addHandler(fileHandler)
 
-    #log info to stdout, display messages with different format than the file output
-    if onScreenLogLevel:
-        onScreenLogLevelLower = onScreenLogLevel.lower()
-        if onScreenLogLevelLower in ["debug", "info", "warning", "error", "critical"]:
+    # log info to stdout, display messages with different format than the
+    # file output
+    if onscreen_log_level:
+        onscreen_log_levelLower = onscreen_log_level.lower()
+        if (onscreen_log_levelLower in ["debug", "info", "warning",
+                                        "error", "critical"]):
 
             console = logging.StreamHandler()
-            screenHandlerFormat = logging.Formatter(datefmt = "%Y-%m-%d_%H:%M:%S",
-                                                    fmt     = "[%(asctime)s] > %(message)s")
+            screen_handler_format = (
+                logging.Formatter(datefmt="%Y-%m-%d_%H:%M:%S",
+                                  fmt="[%(asctime)s] > %(message)s"))
 
-            if onScreenLogLevelLower == "debug":
-                screenLoggingLevel = logging.DEBUG
-                console.setLevel(screenLoggingLevel)
+            if onscreen_log_levelLower == "debug":
+                screen_logging_level = logging.DEBUG
+                console.setLevel(screen_logging_level)
 
-                screenHandlerFormat = logging.Formatter(datefmt = "%Y-%m-%d_%H:%M:%S",
-                                                        fmt     = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s")
+                screen_handler_format = (
+                    logging.Formatter(datefmt="%Y-%m-%d_%H:%M:%S",
+                                      fmt=("[%(asctime)s] > "
+                                           "[%(filename)s:%(lineno)d] "
+                                           "%(message)s")))
 
                 if not verbose:
-                    logging.error("Logging on Screen: Option DEBUG in only active when using verbose option as well (Fallback to INFO).")
-            elif onScreenLogLevelLower == "info":
-                screenLoggingLevel = logging.INFO
-                console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevelLower == "warning":
-                screenLoggingLevel = logging.WARNING
-                console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevelLower == "error":
-                screenLoggingLevel = logging.ERROR
-                console.setLevel(screenLoggingLevel)
-            elif onScreenLogLevelLower == "critical":
-                screenLoggingLevel = logging.CRITICAL
-                console.setLevel(screenLoggingLevel)
+                    logging.error("Logging on Screen: Option DEBUG in only "
+                                  "active when using verbose option as well "
+                                  "(Fallback to INFO).")
+            elif onscreen_log_levelLower == "info":
+                screen_logging_level = logging.INFO
+                console.setLevel(screen_logging_level)
+            elif onscreen_log_levelLower == "warning":
+                screen_logging_level = logging.WARNING
+                console.setLevel(screen_logging_level)
+            elif onscreen_log_levelLower == "error":
+                screen_logging_level = logging.ERROR
+                console.setLevel(screen_logging_level)
+            elif onscreen_log_levelLower == "critical":
+                screen_logging_level = logging.CRITICAL
+                console.setLevel(screen_logging_level)
 
-            console.setFormatter(screenHandlerFormat)
+            console.setFormatter(screen_handler_format)
             logging.getLogger("").addHandler(console)
         else:
-            logging.error("Logging on Screen: Option " + str(onScreenLogLevel) + " is not supported.")
-
-
+            logging.error("Logging on Screen: Option {0} is not supported."
+                          .format(onscreen_log_level))

@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: inotifyx
+Version: 0.2.2
+Summary: Simple Linux inotify bindings
+Home-page: https://launchpad.net/inotifyx/
+Author: Forest Bond
+Author-email: forest@forestbond.com
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN

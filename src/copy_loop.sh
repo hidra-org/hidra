@@ -1,9 +1,6 @@
 #/bin/sh
 
-SOURCE=/space/projects/zeromq-data-transfer
-#SOURCE=/home/kuhnm/Arbeit/zeromq-data-transfer
-#SOURCE=/home/p11user/zeromq-data-transfer
-#SOURCE=/home/p11user/live-viewer
+SOURCE=/opt/hidra
 
 TARGET=${SOURCE}/data/source/local
 LIMIT=10

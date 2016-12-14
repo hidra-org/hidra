@@ -1,42 +1,26 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import os
-import sys
-import time
-import traceback
 
-
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = BASE_PATH + os.sep + "APIs"
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
-
-if not API_PATH in sys.path:
-    sys.path.append ( API_PATH )
-del API_PATH
-
-from dataTransferAPI import dataTransfer
-
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
-del SHARED_PATH
-
+from __init__ import BASE_PATH
 import helpers
 
-#enable logging
-logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfile     = os.path.join(logfilePath, "test_fixedStream.log")
-helpers.initLogging(logfile, True, "DEBUG")
-
-del BASE_PATH
+from hidra import Transfer
 
 
-dataPort   = "50100"
+# enable logging
+logfile_path = os.path.join(BASE_PATH, "logs")
+logfile = os.path.join(logfile_path, "test_fixedStream.log")
+helpers.init_logging(logfile, True, "DEBUG")
 
-print
-print "==== TEST: Fixed stream ===="
-print
+data_port = "50100"
 
-query = dataTransfer("stream", useLog = True)
+print ("\n==== TEST: Fixed stream ====\n")
 
-query.start(dataPort)
+query = Transfer("STREAM", use_log=True)
+
+query.start(data_port)
 
 while True:
     try:
@@ -44,19 +28,15 @@ while True:
     except KeyboardInterrupt:
         break
     except Exception as e:
-        print "Getting data failed."
-        print "Error was: " + str(e)
+        print ("Getting data failed.")
+        print ("Error was: {0}".format(e))
         break
 
     print
-    print "metadata of file",  metadata["filename"]
-    print "data", str(data)[:10]
+    print ("metadata of file", metadata["filename"])
+    print ("data", str(data)[:10])
     print
 
 query.stop()
 
-print
-print "==== TEST END: Fixed Stream ===="
-print
-
-
+print ("\n==== TEST END: Fixed Stream ====\n")

@@ -1,4 +1,4 @@
-$source = "D:\zeromq-data-transfer"
+$source = "D:\hidra"
 
 $target = {$source\data\source\local}
 $limit  = 10

@@ -1,50 +1,30 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import os
-import sys
-import time
 
-
-BASE_PATH   = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) ) ) )
-API_PATH    = BASE_PATH + os.sep + "APIs"
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
-
-print BASE_PATH
-
-if not API_PATH in sys.path:
-    sys.path.append ( API_PATH )
-del API_PATH
-
-from dataTransferAPI import dataTransfer
-
-
-if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
-del SHARED_PATH
-
+from __init__ import BASE_PATH
 import helpers
 
-#enable logging
-logfilePath = os.path.join(BASE_PATH + os.sep + "logs")
-logfile     = os.path.join(logfilePath, "testAPI.log")
-helpers.initLogging(logfile, True, "DEBUG")
-
-del BASE_PATH
+from hidra import Transfer
 
 
-signalHost = "zitpcx19282.desy.de"
-#signalHost = "zitpcx22614.desy.de"
+# enable logging
+logfile_path = os.path.join(BASE_PATH, "logs")
+logfile = os.path.join(logfile_path, "testAPI.log")
+helpers.init_logging(logfile, True, "DEBUG")
+
+signal_host = "zitpcx19282.desy.de"
+# signal_host = "zitpcx22614.desy.de"
 targets = ["zitpcx19282.desy.de", "50100", 0]
 
-print
-print "==== TEST: Stream all files and store them ===="
-print
+print ("\n==== TEST: Stream all files and store them ====\n")
 
-
-query = dataTransfer("stream", signalHost, useLog = True)
+query = Transfer("STREAM", signal_host, use_log=True)
 
 query.initiate(targets)
 
 query.start()
-
 
 while True:
     try:
@@ -52,23 +32,17 @@ while True:
     except KeyboardInterrupt:
         break
     except Exception as e:
-        print "Getting data failed."
-        print "Error was: " + str(e)
+        print ("Getting data failed.")
+        print ("Error was:", e)
         break
 
     try:
-        query.store("/space/projects/zeromq-data-transfer/data/target/testStore", result)
+        query.store("/opt/hidra/data/target/testStore", result)
     except Exception as e:
-        print "Storing data failed."
-        print "Error was:", e
+        print ("Storing data failed.")
+        print ("Error was:", e)
         break
-
 
 query.stop()
 
-print
-print "==== TEST END: Stream all files and store them ===="
-print
-
-
-
+print ("\n==== TEST END: Stream all files and store them ====\n")

@@ -1,0 +1,82 @@
+======================
+inotifyx Release Notes
+======================
+
+.. contents::
+
+
+inotifyx 0.2.2 2014-08-25
+=========================
+
+ * Added release file to MANIFEST.in.  This fixes incorrect version number
+   reporting for release tarballs.
+   (Forest Bond)
+
+
+inotifyx 0.2.1 2014-08-25
+=========================
+
+ * Some reference counting bugs in get_events were fixed.  This prevents leaking
+   memory while processing events.
+   (Henry Stern)
+
+ * A bug with memory allocation failure handling in get_events was fixed.  This
+   prevents a segmentation fault under low memory conditions.
+   (Forest Bond)
+
+ * inotify events with zero-length name fields are now properly handled.
+   Previously, segmentation faults and other errors would have occurred if such
+   events were received.
+   (Forest Bond)
+
+ * A distutils manifest is now provided.  Source code tarballs can now be
+   generated via setup.py, and this mechanism will be used to generate official
+   release tarballs.
+   (Forest Bond)
+
+ * The "download_url" distutils option is no longer specified.  Release tarballs
+   will be available directly from PyPI.  This is now required by pip.
+   (Forest Bond)
+
+
+inotifyx 0.2.0 2011-07-09
+=========================
+
+ * The distutils option "download_url" is now specified.  This should fix
+   problems using pip, zc.buildout, and other tools that rely on PyPI for
+   package downloads to install inotifyx.  Thanks to Dariusz Suchojad for
+   the report.
+   (Forest Bond)
+
+ * inotifyx is now distributed as a Python package instead of a few bare
+   modules.  The "_inotifyx" C extension is now shipped as "inotifyx.binding".
+   This change should be backwards compatible with respect to imports since
+   the C extension did not directly implement public interfaces.
+   (Forest Bond)
+
+ * A __version__ attribute is now provided.  This specifies the version
+   of the inotifyx library.  Thanks to Jérôme Laheurte for the suggestion.
+   (Forest Bond)
+
+
+inotifyx 0.1.2 2011-03-31
+=========================
+
+ * Threads are now allowed during I/O operations.  Thanks to Jean-Baptiste
+   Denis for the report and patch.
+   (Forest Bond)
+
+
+inotifyx 0.1.1 2009-10-18
+=========================
+
+ * Fix integer truncation of timeout argument in get_events.  Thanks to Eric
+   Firing for the report and patch.
+   (Forest Bond)
+
+
+inotifyx 0.1.0 2009-04-26
+=========================
+
+ * Initial release.
+   (Forest Bond)
