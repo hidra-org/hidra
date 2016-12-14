@@ -1,5 +1,6 @@
 HiDRA develop
 
+- Automatic bump versioning
 - Added generic hidra control client with included authentication (host-based)
 - Clean up and consolidation of helper functions
 - PEP8 compliance
