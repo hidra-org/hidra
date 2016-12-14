@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
 import os
 import platform
@@ -12,8 +13,7 @@ import json
 import tempfile
 import socket
 
-__version__ = '0.0.1'
-
+from ._version import __version__
 
 class LoggingFunction:
     def out(self, x, exc_info=None):

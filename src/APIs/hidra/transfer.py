@@ -2,8 +2,8 @@
 
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
-__version__ = b'2.4.2'
 
 import zmq
 import socket
@@ -15,6 +15,8 @@ import traceback
 import tempfile
 from zmq.auth.thread import ThreadAuthenticator
 
+#__version__ = b'2.4.2'
+from ._version import __version__
 
 class LoggingFunction:
     def out(self, x, exc_info=None):

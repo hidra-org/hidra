@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 #from __future__ import unicode_literals
+from __future__ import absolute_import
 
 import socket
 import logging
@@ -11,8 +12,7 @@ import traceback
 import subprocess
 import re
 
-__version__ = '0.0.4'
-
+from ._version import __version__
 
 class LoggingFunction:
     def out(self, x, exc_info=None):
