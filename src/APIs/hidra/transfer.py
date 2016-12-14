@@ -15,7 +15,6 @@ import traceback
 import tempfile
 from zmq.auth.thread import ThreadAuthenticator
 
-#__version__ = b'2.4.2'
 from ._version import __version__
 
 class LoggingFunction:
