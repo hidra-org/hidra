@@ -749,10 +749,12 @@ if __name__ == '__main__':
 
     current_pid = os.getpid()
 
-    control_pub_con_id = ("ipc://{0}_{1}"
-                          .format(current_pid, "controlPub"))
-    control_sub_con_id = ("ipc://{0}_{1}"
-                          .format(current_pid, "controlSub"))
+    control_pub_path = "{0}_{1}".format(current_pid, "controlPub")
+    control_pub_con_id = "ipc://{0}".format(control_pub_path)
+
+    control_sub_path = "{0}_{1}".format(current_pid, "controlSub")
+    control_sub_con_id = "ipc://{0}".format(control_sub_path)
+
     com_con_id = "tcp://{0}:{1}".format(ext_ip, com_port)
     request_fw_con_id = ("ipc://{0}_{1}"
                          .format(current_pid, "requestFw"))
@@ -882,6 +884,27 @@ if __name__ == '__main__':
     request_fw_socket.close(0)
 
     context.destroy()
+
+    try:
+        os.remove(control_pub_path)
+        logging.debug("Removed ipc socket: {0}".format(control_pub_path))
+    except OSError:
+        logging.warning("Could not remove ipc socket: {0}"
+                         .format(control_pub_path))
+    except:
+        logging.warning("Could not remove ipc socket: {0}"
+                        .format(control_pub_path), exc_info=True)
+
+    try:
+        os.remove(control_sub_path)
+        logging.debug("Removed ipc socket: {0}".format(control_sub_path))
+    except OSError:
+        logging.warning("Could not remove ipc socket: {0}"
+                        .format(control_sub_path))
+    except:
+        logging.warning("Could not remove ipc socket: {0}"
+                        .format(control_sub_path), exc_info=True)
+
 
     log_queue.put_nowait(None)
     log_queue_listener.stop()
