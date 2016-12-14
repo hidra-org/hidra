@@ -12,7 +12,7 @@ targets = ["zitpcx19282.desy.de", "50101", 0]
 
 print ("\n==== TEST: Query for the newest filename ====\n")
 
-query = Transfer("queryNext", signal_host)
+query = Transfer("QUERY_NEXT", signal_host)
 
 query.initiate(targets)
 

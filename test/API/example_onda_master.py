@@ -24,7 +24,7 @@ if __name__ == "__main__":
                ["zitpcx19282.desy.de", "50103", 1],
                ["lsdma-lab04.desy.de", "50104", 1]]
 
-    query = Transfer("queryNext", signal_host, use_log=True)
+    query = Transfer("QUERY_NEXT", signal_host, use_log=True)
     query.initiate(targets)
 
     try:

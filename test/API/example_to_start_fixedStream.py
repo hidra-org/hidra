@@ -18,7 +18,7 @@ data_port = "50100"
 
 print ("\n==== TEST: Fixed stream ====\n")
 
-query = Transfer("stream", use_log=True)
+query = Transfer("STREAM", use_log=True)
 
 query.start(data_port)
 

@@ -11,8 +11,8 @@ class Worker():
         self.id = id
         self.port = port
 
-        self.query = Transfer("stream", signal_host)
-#        self.query = Transfer("queryNext", signal_host)
+        self.query = Transfer("STREAM", signal_host)
+#        self.query = Transfer("QUERY_NEXT", signal_host)
 
         print ("start Transfer on port", port)
         self.query.start(port)

@@ -129,7 +129,7 @@ class NexusReceiver:
 
         self.log.info("Writing to directory '{0}'".format(self.target_dir))
 
-        self.transfer = Transfer("nexus", use_log=True)
+        self.transfer = Transfer("NEXUS", use_log=True)
 
         try:
             self.run()

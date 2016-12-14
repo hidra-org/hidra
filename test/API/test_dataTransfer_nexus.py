@@ -129,15 +129,15 @@ class Sender ():
 
     def stop(self):
         try:
-            if self.file_op_socket:
+            if self.file_op_socket is not None:
                 logging.info("Closing file_op_socket...")
                 self.file_op_socket.close(linger=0)
                 self.file_op_socket = None
-            if self.data_socket:
+            if self.data_socket is not None:
                 logging.info("Closing data_socket...")
                 self.data_socket.close(linger=0)
                 self.data_socket = None
-            if self.context:
+            if self.context is not None:
                 logging.info("Destroying context...")
                 self.context.destroy()
                 self.context = None
@@ -153,6 +153,8 @@ class Sender ():
 
 
 if __name__ == '__main__':
-    s = Sender()
-    s.run()
-    s.stop()
+    try:
+        s = Sender()
+        s.run()
+    finally:
+        s.stop()

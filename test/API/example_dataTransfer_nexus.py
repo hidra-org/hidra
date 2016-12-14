@@ -120,7 +120,7 @@ def read_callback(params, retrieved_params):
 senderThread = SenderAsThread()
 senderThread.start()
 
-obj = Transfer("nexus", use_log=True)
+obj = Transfer("NEXUS", use_log=True)
 obj.start(["zitpcx19282", "50100"])
 
 callback_params = {

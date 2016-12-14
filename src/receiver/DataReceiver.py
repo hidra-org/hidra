@@ -127,7 +127,7 @@ class DataReceiver:
 
         self.log.info("Writing to directory '{0}'".format(self.target_dir))
 
-        self.transfer = Transfer("stream", use_log=True)
+        self.transfer = Transfer("STREAM", use_log=True)
 
         try:
             self.run()

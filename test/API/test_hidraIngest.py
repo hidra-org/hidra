@@ -31,6 +31,10 @@ class Receiver ():
             self.context = zmq.Context()
             self.ext_context = False
 
+        self.signal_socket = None
+        self.event_socket = None
+        self.data_socket = None
+
         self.signal_socket = self.context.socket(zmq.REP)
         connection_str = ("tcp://{0}:{1}"
                           .format(self.ext_host, self.signal_port))
@@ -183,5 +187,7 @@ class Receiver ():
 
 if __name__ == '__main__':
     r = Receiver()
-    r.run()
-    r.stop()
+    try:
+        r.run()
+    finally:
+        r.stop()

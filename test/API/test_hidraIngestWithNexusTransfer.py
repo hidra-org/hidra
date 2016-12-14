@@ -175,7 +175,7 @@ def read_callback(params, retrieved_params):
 
 
 def NexusTransfer(numbToRecv):
-    dT = Transfer("nexus", use_log=True)
+    dT = Transfer("NEXUS", use_log=True)
     dT.start(["zitpcx19282", "50100"])
 #    dT.start(["localhost", "50100"])
 

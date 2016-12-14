@@ -120,9 +120,9 @@ class Transfer():
 
         self.targets = None
 
-        self.supported_connections = ["stream", "streamMetadata",
-                                     "queryNext", "queryMetadata",
-                                     "nexus"]
+        self.supported_connections = ["STREAM", "STREAM_METADATA",
+                                     "QUERY_NEXT", "QUERY_METADATA",
+                                     "NEXUS"]
 
         self.signal_exchanged = None
 
@@ -152,9 +152,9 @@ class Transfer():
 
     # targets: [host, port, prio] or [[host, port, prio], ...]
     def initiate(self, targets):
-        if self.connection_type == "nexus":
+        if self.connection_type == "NEXUS":
             self.log.info("There is no need for a signal exchange for "
-                          "connection type 'nexus'")
+                          "connection type 'NEXUS'")
             return
 
         if type(targets) != list:
@@ -167,16 +167,16 @@ class Transfer():
 
         signal = None
         # Signal exchange
-        if self.connection_type == "stream":
+        if self.connection_type == "STREAM":
             signal_port = self.signal_port
             signal = b"START_STREAM"
-        elif self.connection_type == "streamMetadata":
+        elif self.connection_type == "STREAM_METADATA":
             signal_port = self.signal_port
             signal = b"START_STREAM_METADATA"
-        elif self.connection_type == "queryNext":
+        elif self.connection_type == "QUERY_NEXT":
             signal_port = self.signal_port
             signal = b"START_QUERY_NEXT"
-        elif self.connection_type == "queryMetadata":
+        elif self.connection_type == "QUERY_METADATA":
             signal_port = self.signal_port
             signal = b"START_QUERY_METADATA"
 
@@ -440,7 +440,7 @@ class Transfer():
 
         self.poller.register(self.data_socket, zmq.POLLIN)
 
-        if self.connection_type in ["queryNext", "queryMetadata"]:
+        if self.connection_type in ["QUERY_NEXT", "QUERY_METADATA"]:
 
             self.request_socket = self.context.socket(zmq.PUSH)
             # An additional socket is needed to establish the data retriving
@@ -460,7 +460,7 @@ class Transfer():
 
             self.query_next_started = socket_id
 
-        elif self.connection_type in ["nexus"]:
+        elif self.connection_type in ["NEXUS"]:
 
             # An additional socket is needed to get signals to open and close
             # nexus files
@@ -507,7 +507,7 @@ class Transfer():
     def read(self, callback_params, open_callback, read_callback,
              close_callback):
 
-        if not self.connection_type == "nexus" or not self.nexus_started:
+        if not self.connection_type == "NEXUS" or not self.nexus_started:
             raise UsageError("Wrong connection type (current: {0}) or session"
                              " not started.".format(self.connection_type))
 
@@ -682,9 +682,9 @@ class Transfer():
 
          returns either
             the newest file
-                (if connection type "queryNext" or "stream" was choosen)
+                (if connection type "QUERY_NEXT" or "STREAM" was choosen)
             the path of the newest file
-                (if connection type "queryMetadata" or "streamMetadata" was
+                (if connection type "QUERY_METADATA" or "STREAM_METADATA" was
                  choosen)
 
         """
@@ -994,16 +994,16 @@ class Transfer():
 
         signal = None
         # Signal exchange
-        if self.connection_type == "stream":
+        if self.connection_type == "STREAM":
             signal_port = self.signal_port
             signal = b"STOP_STREAM"
-        elif self.connection_type == "streamMetadata":
+        elif self.connection_type == "STREAM_METADATA":
             signal_port = self.signal_port
             signal = b"STOP_STREAM_METADATA"
-        elif self.connection_type == "queryNext":
+        elif self.connection_type == "QUERY_NEXT":
             signal_port = self.signal_port
             signal = b"STOP_QUERY_NEXT"
-        elif self.connection_type == "queryMetadata":
+        elif self.connection_type == "QUERY_METADATA":
             signal_port = self.signal_port
             signal = b"STOP_QUERY_METADATA"
 

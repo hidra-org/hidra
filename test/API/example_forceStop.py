@@ -35,10 +35,10 @@ if __name__ == "__main__":
 #               ["zitpcx19282.desy.de", "50103", 1, [".cbf"]],
 #               ["lsdma-lab04.desy.de", "50104", 1, [".cbf"]]]
 
-    transfer_type = "queryNext"
-#    transfer_type = "stream"
-#    transfer_type = "streamMetadata"
-#    transfer_type = "queryMetadata"
+    transfer_type = "QUERY_NEXT"
+#    transfer_type = "STREAM"
+#    transfer_type = "STREAM_METADATA"
+#    transfer_type = "QUERY_METADATA"
 
     query = Transfer(transfer_type, signal_host, use_log=True)
     query.force_stop(targets)

@@ -16,7 +16,7 @@ base_target_path = os.path.join(BASE_PATH, "data", "target")
 
 print ("\n==== TEST: Query for the newest filename ====\n")
 
-query = Transfer("queryMetadata", signal_host)
+query = Transfer("QUERY_METADATA", signal_host)
 
 query.initiate(targets)
 

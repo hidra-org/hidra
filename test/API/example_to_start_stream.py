@@ -11,7 +11,7 @@ targets = ["zitpcx19282.desy.de", "50101", 0]
 
 print ("\n==== TEST: Stream all files ====\n")
 
-query = Transfer("stream", signal_host)
+query = Transfer("STREAM", signal_host)
 
 query.initiate(targets)
 

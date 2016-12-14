@@ -49,7 +49,7 @@ class Worker(multiprocessing.Process):
             except:
                 break
 
-            if transfer_type in ["queryMetadata", "streamMetadata"]:
+            if transfer_type in ["QUERY_METADATA", "STREAM_METADATA"]:
                 self.log.debug("Worker-{0}: metadata {1}"
                                .format(self.id, metadata["filename"]))
                 filepath = self.query.generate_target_filepath(self.basepath,
@@ -100,10 +100,10 @@ if __name__ == "__main__":
 #    signal_host = "lsdma-lab04.desy.de"
 #    signal_host = "asap3-bl-prx07.desy.de"
 
-    transfer_type = "queryNext"
-#    transfer_type = "stream"
-#    transfer_type = "streamMetadata"
-#    transfer_type = "queryMetadata"
+    transfer_type = "QUERY_NEXT"
+#    transfer_type = "STREAM"
+#    transfer_type = "STREAM_METADATA"
+#    transfer_type = "QUERY_METADATA"
 
     basepath = os.path.join(BASE_PATH, "data", "target")
 
