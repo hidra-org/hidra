@@ -1,4 +1,5 @@
 HiDRA develop
+HiDRA 3.0.0
 
 - Automatic bump versioning
 - Added generic hidra control client with included authentication (host-based)
