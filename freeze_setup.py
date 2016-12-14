@@ -91,7 +91,7 @@ buildOptions = {
         (os.path.join(senderpath, "datadispatcher.py"), "datadispatcher.py"),
         (os.path.join(sharedpath, "logutils"), "logutils"),
         (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
-        (os.path.join(sharedpath, "version.py"), "version.py"),
+        (os.path.join(sharedpath, "_version.py"), "_version.py"),
         (confpath, "conf"),
         ] + platform_specific_files,
 }

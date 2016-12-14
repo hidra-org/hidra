@@ -733,7 +733,7 @@ class RequestPuller():
 if __name__ == '__main__':
     from multiprocessing import Process, freeze_support, Queue
     import threading
-    from version import __version__
+    from _version import __version__
 
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     freeze_support()

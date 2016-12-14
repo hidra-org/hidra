@@ -23,7 +23,7 @@ from datadispatcher import DataDispatcher
 from __init__ import BASE_PATH
 from logutils.queue import QueueHandler
 import helpers
-from version import __version__
+from _version import __version__
 
 CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 

@@ -11,7 +11,7 @@ import subprocess
 import socket
 import json
 import re
-from version import __version__
+from _version import __version__
 
 try:
     import ConfigParser
