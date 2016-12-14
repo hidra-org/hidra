@@ -29,7 +29,9 @@ def argument_parsing():
     parser.add_argument("--beamline",
                         type=str,
                         required=True,
-                        choices=["p00", "p01", "p02.1", "p02.2", "p03", "p04", "p05", "p06", "p07", "p08", "p09", "p10", "p11"],
+                        choices=["p00", "p01", "p02.1", "p02.2", "p03", "p04",
+                                 "p05", "p06", "p07", "p08", "p09", "p10",
+                                 "p11"],
                         help="Beamline for which the HiDRA server for the "
                              "Eiger detector should be operated")
 
@@ -88,7 +90,9 @@ if __name__ == '__main__':
     try:
         if arguments.start:
             # check if beamline is allowed to get data from this Eiger
-            hidra.check_netgroup(arguments.eigerip, beamline, log = hidra.control.LoggingFunction())
+            hidra.check_netgroup(arguments.eigerip,
+                                 beamline,
+                                 log=hidra.control.LoggingFunction())
 
             obj.set("local_target", arguments.target)
             obj.set("eiger_ip", arguments.eigerip)

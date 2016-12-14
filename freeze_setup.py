@@ -65,10 +65,10 @@ else:
     dist = platform.dist()
     if dist[0].lower() == "suse" and dist[1].startswith("10"):
         setproctitle_egg_path = (
-                os.path.join(os.path.expanduser("~"),
-                             ".cache/Python-Eggs/"
-                             "setproctitle-1.1.10-py2.7-linux-i686.egg-tmp/"
-                             "setproctitle.so"))
+            os.path.join(os.path.expanduser("~"),
+                         ".cache/Python-Eggs/"
+                         "setproctitle-1.1.10-py2.7-linux-i686.egg-tmp/"
+                         "setproctitle.so"))
         platform_specific_files += [(setproctitle_egg_path, "setproctitle.so")]
 
 sharedpath = os.path.join(basepath, "src", "shared")
@@ -83,7 +83,7 @@ buildOptions = {
                   "setproctitle"]
                  + platform_specific_packages),
     # libzmq.pyd is a vital dependency
-#    "include_files": [zmq.libzmq.__file__, ],
+    # "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
         (libzmq_path, "zmq"),
         (os.path.join(senderpath, "signalhandler.py"), "signalhandler.py"),

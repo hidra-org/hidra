@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-#from __future__ import unicode_literals
+# from __future__ import unicode_literals
 
 import os
 import time
 import socket
-#from PyQt4 import QtCore
+# from PyQt4 import QtCore
 from PyQt4.QtCore import QThread, QMutex
 
 from __init__ import BASE_PATH
 
 from hidra import Transfer
 
-#from dectris import albula
+# from dectris import albula
 
 
 class LiveView(QThread):

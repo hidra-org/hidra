@@ -6,9 +6,9 @@ from hidra import Transfer
 
 
 signal_host = "zitpcx19282.desy.de"
-#signal_host = "zitpcx22614w.desy.de"
+# signal_host = "zitpcx22614w.desy.de"
 targets = ["zitpcx19282.desy.de", "50101", 0]
-#targets = ["zitpcx22614w.desy.de", "50101", 0]
+# targets = ["zitpcx22614w.desy.de", "50101", 0]
 
 print ("\n==== TEST: Query for the newest filename ====\n")
 

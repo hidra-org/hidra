@@ -6,7 +6,7 @@ from hidra import Transfer
 
 
 signal_host = "zitpcx19282.desy.de"
-#signal_host = "zitpcx22614.desy.de"
+# signal_host = "zitpcx22614.desy.de"
 targets = ["zitpcx19282.desy.de", "50101", 0]
 
 print ("\n==== TEST: Stream all files ====\n")

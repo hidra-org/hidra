@@ -1,5 +1,5 @@
 from __future__ import print_function
-#from __future__ import unicode_literals
+# from __future__ import unicode_literals
 
 import os
 import zmq
@@ -97,7 +97,7 @@ class Sender ():
             payload.append(content)
 
             # Send message over ZMQ
-            #self.data_socket.send_multipart(payload)
+            # self.data_socket.send_multipart(payload)
 
             tracker = self.data_socket.send_multipart(payload,
                                                       copy=False,

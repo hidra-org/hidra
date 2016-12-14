@@ -1,5 +1,5 @@
 from __future__ import print_function
-#from __future__ import unicode_literals
+# from __future__ import unicode_literals
 
 import os
 import zmq
@@ -198,7 +198,7 @@ def NexusTransfer(numbToRecv):
         dT.stop()
 
 use_test = True
-#use_test = False
+# use_test = False
 
 if use_test:
     hidra_simulation_thread = HidraSimulation()

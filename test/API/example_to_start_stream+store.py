@@ -15,7 +15,7 @@ logfile = os.path.join(logfile_path, "testAPI.log")
 helpers.init_logging(logfile, True, "DEBUG")
 
 signal_host = "zitpcx19282.desy.de"
-#signal_host = "zitpcx22614.desy.de"
+# signal_host = "zitpcx22614.desy.de"
 targets = ["zitpcx19282.desy.de", "50100", 0]
 
 print ("\n==== TEST: Stream all files and store them ====\n")

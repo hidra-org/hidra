@@ -245,7 +245,9 @@ def finish_datahandling(log, targets, source_file, target_file, metadata,
 
     targets_metadata = [i for i in targets if i[3] == "metadata"]
 
-    if config["store_data"] and config["remove_data"] and config["remove_flag"]:
+    if (config["store_data"]
+            and config["remove_data"]
+            and config["remove_flag"]):
 
         # move file
         try:

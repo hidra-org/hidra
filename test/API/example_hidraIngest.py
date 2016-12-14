@@ -1,5 +1,5 @@
 from __future__ import print_function
-#from __future__ import unicode_literals
+# from __future__ import unicode_literals
 
 import os
 import zmq
@@ -27,7 +27,7 @@ obj = Ingest(use_log=True, context=context)
 
 obj.create_file(os.path.join("test", "1.h5"))
 
-#for i in range(5):
+# for i in range(5):
 #    try:
 #        data = "asdfasdasdfasd"
 #        obj.write(data)
