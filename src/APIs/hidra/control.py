@@ -16,6 +16,7 @@ import json
 # from ._version import __version__
 from ._constants import connection_list
 
+
 class LoggingFunction:
     def out(self, x, exc_info=None):
         if exc_info:
@@ -118,7 +119,6 @@ def check_netgroup(hostname, beamline, log=None):
 
 class Control():
     def __init__(self, beamline, use_log=False):
-        global connection_list
 
         if use_log:
             self.log = logging.getLogger("Control")

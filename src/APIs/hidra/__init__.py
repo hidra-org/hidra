@@ -7,4 +7,5 @@ from .control import check_netgroup
 from ._version import __version__
 from ._constants import connection_list
 
-__all__ = ["Transfer", "Control", "Ingest", "check_netgroup", "__version__", "connection_list"]
+__all__ = ["Transfer", "Control", "Ingest", "check_netgroup", "__version__",
+           "connection_list"]

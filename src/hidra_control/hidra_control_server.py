@@ -14,6 +14,12 @@ import tempfile
 import json
 
 try:
+    from logutils.queue import QueueHandler
+    logutils_imported = True
+except:
+    logutils_imported = False
+
+try:
     BASE_PATH = os.path.dirname(
         os.path.dirname(
             os.path.dirname(
@@ -25,6 +31,7 @@ except:
                 os.path.abspath(sys.argv[0]))))
 SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 CONFIG_PATH = os.path.join(BASE_PATH, "conf")
+API_PATH = os.path.join(BASE_PATH, "src", "APIs")
 
 if SHARED_PATH not in sys.path:
     sys.path.append(SHARED_PATH)
@@ -33,23 +40,19 @@ del CONFIG_PATH
 
 try:
     # search in global python modules first
-    from hidra import connection_list
+    import hidra
 except:
     # then search in local modules
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__))))
-    API_PATH = os.path.join(BASE_PATH, "src", "APIs")
-
     if API_PATH not in sys.path:
         sys.path.append(API_PATH)
     del API_PATH
 
-    from hidra import connection_list
+    import hidra
 
-from logutils.queue import QueueHandler
-import helpers
+if not logutils_imported:
+    from logutils.queue import QueueHandler  # noqa F811
+
+import helpers  # noqa E402
 
 
 BASEDIR = "/opt/hidra"
@@ -250,7 +253,6 @@ class HidraController():
 
     def __write_config(self):
         global CONFIGPATH
-        global connection_list
         global beamline_config
 
         #
@@ -264,7 +266,7 @@ class HidraController():
                 and beamline_config["remove_data"] is not None
                 and beamline_config["whitelist"]):
 
-            external_ip = connection_list[self.beamline]["host"]
+            external_ip = hidra.connection_list[self.beamline]["host"]
 
             # TODO set p00 to http
             if self.beamline == "p00":
@@ -328,14 +330,20 @@ class HidraController():
                                .format(datafetcher))
 
         else:
-            self.log.debug("eiger_ip: {0}".format(beamline_config["eiger_ip"]))
+            self.log.debug("eiger_ip: {0}"
+                           .format(beamline_config["eiger_ip"]))
             self.log.debug("eiger_api_version: {0}"
                            .format(beamline_config["eiger_api_version"]))
-            self.log.debug("history_size: {0}".format(beamline_config["history_size"]))
-            self.log.debug("localTarge: {0}".format(beamline_config["local_target"]))
-            self.log.debug("store_data: {0}".format(beamline_config["store_data"]))
-            self.log.debug("remove_data: {0}".format(beamline_config["remove_data"]))
-            self.log.debug("whitelist: {0}".format(beamline_config["whitelist"]))
+            self.log.debug("history_size: {0}"
+                           .format(beamline_config["history_size"]))
+            self.log.debug("localTarge: {0}"
+                           .format(beamline_config["local_target"]))
+            self.log.debug("store_data: {0}"
+                           .format(beamline_config["store_data"]))
+            self.log.debug("remove_data: {0}"
+                           .format(beamline_config["remove_data"]))
+            self.log.debug("whitelist: {0}"
+                           .format(beamline_config["whitelist"]))
             raise Exception("Not all required parameters are specified")
 
     def start(self):
@@ -412,11 +420,7 @@ class SocketServer(object):
     '''
     one socket for the port, accept() generates new sockets
     '''
-    global connection_list
-
     def __init__(self, log_queue, beamline):
-        global connection_list
-
         self.log_queue = log_queue
 
         self.log = self.get_logger(log_queue)
@@ -425,8 +429,8 @@ class SocketServer(object):
         self.log.debug("SocketServer startet for beamline {0}"
                        .format(self.beamline))
 
-        self.host = connection_list[self.beamline]["host"]
-        self.port = connection_list[self.beamline]["port"]
+        self.host = hidra.connection_list[self.beamline]["host"]
+        self.port = hidra.connection_list[self.beamline]["port"]
         self.conns = []
         self.socket = None
 

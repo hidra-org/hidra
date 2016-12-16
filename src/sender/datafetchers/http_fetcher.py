@@ -194,8 +194,8 @@ def send_data(log, targets, source_file, target_file, metadata,
         # send message to data targets
         try:
             send_to_targets(log, targets_data, source_file, target_file,
-                              open_connections, metadata_extended, payload,
-                              context)
+                            open_connections, metadata_extended, payload,
+                            context)
             log.debug("Passing multipart-message for file {0}...done."
                       .format(source_file))
 
@@ -223,8 +223,8 @@ def send_data(log, targets, source_file, target_file, metadata,
         # send message to metadata targets
         try:
             send_to_targets(log, targets_metadata, source_file, target_file,
-                              open_connections, metadata_extended, payload,
-                              context)
+                            open_connections, metadata_extended, payload,
+                            context)
             log.debug("Passing metadata multipart-message for file '{0}'"
                       "...done.".format(source_file))
 

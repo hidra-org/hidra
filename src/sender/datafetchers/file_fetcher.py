@@ -164,7 +164,7 @@ def send_data(log, targets, source_file, target_file, metadata,
         # send message to data targets
         try:
             send_to_targets(log, targets_data, source_file, target_file,
-                              open_connections, None, chunk_payload, context)
+                            open_connections, None, chunk_payload, context)
         except DataHandlingError:
             log.error("Unable to send multipart-message for file '{0}' "
                       "(chunk {1})".format(source_file, chunk_number),
@@ -285,8 +285,8 @@ def finish_datahandling(log, targets, source_file, target_file, metadata,
     if targets_metadata:
         try:
             send_to_targets(log, targets_metadata, source_file, target_file,
-                              open_connections, metadata, None, context,
-                              config["send_timeout"])
+                            open_connections, metadata, None, context,
+                            config["send_timeout"])
             log.debug("Passing metadata multipart-message for file {0}...done."
                       .format(source_file))
 
