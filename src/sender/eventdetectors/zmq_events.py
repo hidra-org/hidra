@@ -168,7 +168,7 @@ if __name__ == '__main__':
         "ext_ip": "0.0.0.0",
         "event_det_port": 50003,
         "ipc_path": ipc_path
-        }
+    }
 
     eventdetector = EventDetector(config, log_queue)
 
@@ -193,7 +193,7 @@ if __name__ == '__main__':
                 "filename": target_file,
                 "filepart": 0,
                 "chunksize": 10
-                }
+            }
 
             event_socket.send_multipart([json.dumps(message).encode("utf-8")])
             i += 1

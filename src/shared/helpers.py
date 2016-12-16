@@ -191,7 +191,7 @@ def parse_config(config):
     return config_params
 
 
-def set_parameters(config_file, arguments):
+def read_config(config_file):
 
     config = ConfigParser.RawConfigParser()
     try:
@@ -201,7 +201,12 @@ def set_parameters(config_file, arguments):
             config_string = '[asection]\n' + f.read()
         config.read_string(config_string)
 
-    params = parse_config(config)["asection"]
+    return config
+
+
+def set_parameters(config_file, arguments):
+
+    params = parse_config(read_config(config_file))["asection"]
 
     # arguments set when the program is called have a higher priority than
     # the ones in the config file
@@ -233,14 +238,14 @@ def excecute_ldapsearch(ldap_cn):
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     lines = p.stdout.readlines()
 
-    matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
-                           re.M | re.I)
+    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+                            re.M | re.I)
     netgroup = []
 
     for line in lines:
-        if matchHost.match(line):
-            if matchHost.match(line).group(1) not in netgroup:
-                netgroup.append(matchHost.match(line).group(1))
+        if match_host.match(line):
+            if match_host.match(line).group(1) not in netgroup:
+                netgroup.append(match_host.match(line).group(1))
 
     return netgroup
 
@@ -510,14 +515,14 @@ class CustomQueueListener (QueueListener):
             if record.levelno >= handler.level:
                 handler.handle(record)
 
-    def addHandler(self, hdlr):
+    def addHandler(self, hdlr):  # noqa: N802
         """
         Add the specified handler to this logger.
         """
         if not (hdlr in self.handlers):
             self.handlers.append(hdlr)
 
-    def removeHandler(self, hdlr):
+    def removeHandler(self, hdlr):  # noqa: N802
         """
         Remove the specified handler from this logger.
         """
@@ -551,13 +556,13 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
 
     # Setup stream handler to output to console
     if onscreen_log_level:
-        onscreen_log_levelLower = onscreen_log_level.lower()
-        if (onscreen_log_levelLower in ["debug", "info", "warning",
-                                        "error", "critical"]):
+        onscreen_log_level_lower = onscreen_log_level.lower()
+        if (onscreen_log_level_lower in ["debug", "info", "warning",
+                                         "error", "critical"]):
 
             f = "[%(asctime)s] > %(message)s"
 
-            if onscreen_log_levelLower == "debug":
+            if onscreen_log_level_lower == "debug":
                 screen_log_level = logging.DEBUG
                 f = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s"
 
@@ -565,13 +570,13 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
                     logging.error("Logging on Screen: Option DEBUG in only "
                                   "active when using verbose option as well "
                                   "(Fallback to INFO).")
-            elif onscreen_log_levelLower == "info":
+            elif onscreen_log_level_lower == "info":
                 screen_log_level = logging.INFO
-            elif onscreen_log_levelLower == "warning":
+            elif onscreen_log_level_lower == "warning":
                 screen_log_level = logging.WARNING
-            elif onscreen_log_levelLower == "error":
+            elif onscreen_log_level_lower == "error":
                 screen_log_level = logging.ERROR
-            elif onscreen_log_levelLower == "critical":
+            elif onscreen_log_level_lower == "critical":
                 screen_log_level = logging.CRITICAL
 
             h2 = logging.StreamHandler()
@@ -627,16 +632,16 @@ def init_logging(filename_full_path, verbose, onscreen_log_level=False):
     # log info to stdout, display messages with different format than the
     # file output
     if onscreen_log_level:
-        onscreen_log_levelLower = onscreen_log_level.lower()
-        if (onscreen_log_levelLower in ["debug", "info", "warning",
-                                        "error", "critical"]):
+        onscreen_log_level_lower = onscreen_log_level.lower()
+        if (onscreen_log_level_lower in ["debug", "info", "warning",
+                                         "error", "critical"]):
 
             console = logging.StreamHandler()
             screen_handler_format = (
                 logging.Formatter(datefmt="%Y-%m-%d_%H:%M:%S",
                                   fmt="[%(asctime)s] > %(message)s"))
 
-            if onscreen_log_levelLower == "debug":
+            if onscreen_log_level_lower == "debug":
                 screen_logging_level = logging.DEBUG
                 console.setLevel(screen_logging_level)
 
@@ -650,16 +655,16 @@ def init_logging(filename_full_path, verbose, onscreen_log_level=False):
                     logging.error("Logging on Screen: Option DEBUG in only "
                                   "active when using verbose option as well "
                                   "(Fallback to INFO).")
-            elif onscreen_log_levelLower == "info":
+            elif onscreen_log_level_lower == "info":
                 screen_logging_level = logging.INFO
                 console.setLevel(screen_logging_level)
-            elif onscreen_log_levelLower == "warning":
+            elif onscreen_log_level_lower == "warning":
                 screen_logging_level = logging.WARNING
                 console.setLevel(screen_logging_level)
-            elif onscreen_log_levelLower == "error":
+            elif onscreen_log_level_lower == "error":
                 screen_logging_level = logging.ERROR
                 console.setLevel(screen_logging_level)
-            elif onscreen_log_levelLower == "critical":
+            elif onscreen_log_level_lower == "critical":
                 screen_logging_level = logging.CRITICAL
                 console.setLevel(screen_logging_level)
 

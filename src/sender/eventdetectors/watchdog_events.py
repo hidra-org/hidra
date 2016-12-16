@@ -193,7 +193,7 @@ def split_file_path(filepath, paths):
         "source_path": os.path.normpath(parent_dir),
         "relative_path": os.path.normpath(relative_path),
         "filename": filename
-        }
+    }
 
     return event_message
 
@@ -482,7 +482,7 @@ if __name__ == '__main__':
                              "IN_MOVED_TO": [".log"]},
         "time_till_closed": 1,  # s
         "action_time": 2  # s
-        }
+    }
 
     source_file = os.path.join(BASE_PATH, "test_file.cbf")
     target_file_base = os.path.join(

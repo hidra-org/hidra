@@ -196,7 +196,7 @@ class SignalHandler():
                                     self.next_requ_node[index] = (
                                         (self.next_requ_node[index] + 1)
                                         % len(request_set)
-                                        )
+                                    )
 
                         for request_set in self.open_requ_vari:
                             # Check if filename suffix matches requested suffix
@@ -241,7 +241,7 @@ class SignalHandler():
 
                 check_failed, signal, target = (
                     self.check_signal_inverted(in_message)
-                    )
+                )
                 if not check_failed:
                     self.react_to_signal(signal, target)
                 else:
@@ -261,7 +261,7 @@ class SignalHandler():
                         in_message[1]
                         .decode("utf-8")
                         .replace(".desy.de:", ":")
-                        )
+                    )
 
                     for index in range(len(self.allowed_queries)):
                         for i in range(len(self.allowed_queries[index])):
@@ -278,7 +278,7 @@ class SignalHandler():
                         in_message[1]
                         .decode("utf-8")
                         .replace(".desy.de:", ":")
-                        )
+                    )
 
                     still_requested = []
                     for a in range(len(self.open_requ_vari)):
@@ -349,7 +349,7 @@ class SignalHandler():
                 in_message[0].decode("utf-8"),
                 in_message[1],
                 in_message[2].decode("utf-8")
-                )
+            )
             target = json.loads(target)
 
             try:
@@ -540,7 +540,7 @@ class SignalHandler():
                             if corresp_list is not None:
                                 corresp_list[i] = (
                                     corresp_list[i] % len(list_to_check[i])
-                                    )
+                                )
 
                 for index in tmp_remove_index:
                     del list_to_check[index]
@@ -591,7 +591,7 @@ class SignalHandler():
             self.open_requ_perm, nonetmp, self.next_requ_node = (
                 self.__stop_signal(signal, socket_ids, self.open_requ_perm,
                                    None, self.next_requ_node)
-                )
+            )
 
             return
 
@@ -632,7 +632,7 @@ class SignalHandler():
             self.allowed_queries, self.open_requ_vari, nonetmp = (
                 self.__stop_signal(signal, socket_ids, self.allowed_queries,
                                    self.open_requ_vari, None)
-                )
+            )
 
             return
 
@@ -718,7 +718,7 @@ class RequestPuller():
                 requests = (
                     json.loads(
                         self.request_fw_socket.recv().decode("utf-8"))
-                    )
+                )
                 self.log.info("[getRequests] Requests: {0}".format(requests))
                 time.sleep(0.25)
             except Exception as e:
@@ -890,7 +890,7 @@ if __name__ == '__main__':
         logging.debug("Removed ipc socket: {0}".format(control_pub_path))
     except OSError:
         logging.warning("Could not remove ipc socket: {0}"
-                         .format(control_pub_path))
+                        .format(control_pub_path))
     except:
         logging.warning("Could not remove ipc socket: {0}"
                         .format(control_pub_path), exc_info=True)
@@ -904,7 +904,6 @@ if __name__ == '__main__':
     except:
         logging.warning("Could not remove ipc socket: {0}"
                         .format(control_sub_path), exc_info=True)
-
 
     log_queue.put_nowait(None)
     log_queue_listener.stop()

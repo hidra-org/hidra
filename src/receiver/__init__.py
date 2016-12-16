@@ -30,7 +30,7 @@ if SHARED_PATH not in sys.path:
 
 try:
     # search in global python modules first
-    from hidra import Transfer
+    from hidra import Transfer  # noqa F401
 except:
     # then search in local modules
     if API_PATH not in sys.path:

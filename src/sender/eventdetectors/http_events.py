@@ -121,7 +121,7 @@ class EventDetector():
                     "source_path": "http://{0}/data".format(self.eiger_ip),
                     "relative_path": relative_path,
                     "filename": filename
-                    }
+                }
                 self.log.debug("event_message {0}".format(event_message))
                 event_message_list.append(event_message)
                 self.files_downloaded.append(file)
@@ -173,7 +173,7 @@ if __name__ == '__main__':
         "eiger_ip": eiger_ip,
         "eiger_api_version": eiger_api_version,
         "history_size": 1000
-        }
+    }
 
     eventdetector = EventDetector(config, log_queue)
 

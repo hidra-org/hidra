@@ -332,7 +332,7 @@ if __name__ == '__main__':
         "use_cleanup": False,
         "time_till_closed": 5,
         "action_time": 120
-        }
+    }
 
     localhost = "127.0.0.1"
 

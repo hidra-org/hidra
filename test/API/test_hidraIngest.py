@@ -115,13 +115,13 @@ class Receiver ():
                         and self.event_socket in socks
                         and socks[self.event_socket] == zmq.POLLIN):
 
-                    eventMessage = self.event_socket.recv()
+                    event_message = self.event_socket.recv()
 #                    logging.debug("event_socket recv: {0}"
-#                                  .format(json.loads(eventMessage)))
+#                                  .format(json.loads(event_message)))
                     logging.debug("event_socket recv: {0}"
-                                  .format(eventMessage))
+                                  .format(event_message))
 
-                    if eventMessage == b"CLOSE_FILE":
+                    if event_message == b"CLOSE_FILE":
                         if mark_as_close:
                             self.signal_socket.send_multipart(mark_as_close)
                             logging.debug("signal_socket send: {0}"

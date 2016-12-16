@@ -8,7 +8,7 @@ import json
 import shutil
 import errno
 
-from send_helpers import __send_to_targets, DataHandlingError
+from send_helpers import send_to_targets, DataHandlingError
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -127,7 +127,7 @@ def send_data(log, targets, source_file, target_file, metadata,
     chunksize = metadata["chunksize"]
 
     chunk_number = 0
-    sendError = False
+    send_error = False
 
     # reading source file into memory
     try:
@@ -163,13 +163,13 @@ def send_data(log, targets, source_file, target_file, metadata,
 
         # send message to data targets
         try:
-            __send_to_targets(log, targets_data, source_file, target_file,
-                              open_connections, None, chunk_payload, context)
+            send_to_targets(log, targets_data, source_file, target_file,
+                            open_connections, None, chunk_payload, context)
         except DataHandlingError:
             log.error("Unable to send multipart-message for file '{0}' "
                       "(chunk {1})".format(source_file, chunk_number),
                       exc_info=True)
-            sendError = True
+            send_error = True
         except:
             log.error("Unable to send multipart-message for file '{0}' "
                       "(chunk {1})".format(source_file, chunk_number),
@@ -186,12 +186,12 @@ def send_data(log, targets, source_file, target_file, metadata,
                   exc_info=True)
         raise
 
-    if not sendError:
+    if not send_error:
         config["remove_flag"] = True
 
 
-def __datahandling(log, source_file, target_file, action_function, metadata,
-                   config):
+def _datahandling(log, source_file, target_file, action_function, metadata,
+                  config):
     try:
         action_function(source_file, target_file)
     except IOError as e:
@@ -251,8 +251,8 @@ def finish_datahandling(log, targets, source_file, target_file, metadata,
 
         # move file
         try:
-            __datahandling(log, source_file, target_file, shutil.move,
-                           metadata, config)
+            _datahandling(log, source_file, target_file, shutil.move,
+                          metadata, config)
             log.info("Moving file '{0}' ...success.".format(source_file))
         except:
             log.error("Could not move file {0} to {1}"
@@ -264,8 +264,8 @@ def finish_datahandling(log, targets, source_file, target_file, metadata,
         # copy file
         # (does not preserve file owner, group or ACLs)
         try:
-            __datahandling(log, source_file, target_file, shutil.copy,
-                           metadata, config)
+            _datahandling(log, source_file, target_file, shutil.copy,
+                          metadata, config)
             log.info("Copying file '{0}' ...success.".format(source_file))
         except:
             return
@@ -284,9 +284,9 @@ def finish_datahandling(log, targets, source_file, target_file, metadata,
     # send message to metadata targets
     if targets_metadata:
         try:
-            __send_to_targets(log, targets_metadata, source_file, target_file,
-                              open_connections, metadata, None, context,
-                              config["send_timeout"])
+            send_to_targets(log, targets_metadata, source_file, target_file,
+                            open_connections, metadata, None, context,
+                            config["send_timeout"])
             log.debug("Passing metadata multipart-message for file {0}...done."
                       .format(source_file))
 
@@ -348,7 +348,7 @@ if __name__ == '__main__':
         "source_path": os.path.join(BASE_PATH, "data", "source"),
         "relative_path": os.sep + "local",
         "filename": "100.cbf"
-        }
+    }
     targets = [['localhost:{0}'.format(receiving_port), 1, [".cbf"], "data"],
                ['localhost:{0}'.format(receiving_port2), 0, [".cbf"], "data"]]
 
@@ -360,7 +360,7 @@ if __name__ == '__main__':
         "fix_subdirs": ["commissioning", "current", "local"],
         "store_data": False,
         "remove_data": False
-        }
+    }
 
     logging.debug("open_connections before function call: {0}"
                   .format(open_connections))

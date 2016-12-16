@@ -196,7 +196,7 @@ class DataDispatcher():
                                     .send_multipart(workload,
                                                     copy=False,
                                                     track=True)
-                                    )
+                                )
                                 self.log.info("Sending close file signal to "
                                               "'{0}' with priority 0"
                                               .format(self.fixed_stream_id))
@@ -213,7 +213,7 @@ class DataDispatcher():
                                 # register socket
                                 self.open_connections[self.fixed_stream_id] = (
                                     socket
-                                    )
+                                )
 
                                 # send data
                                 tracker = (
@@ -221,7 +221,7 @@ class DataDispatcher():
                                     .send_multipart(workload,
                                                     copy=False,
                                                     track=True)
-                                    )
+                                )
                                 self.log.info("Sending close file signal to "
                                               "'{0}' with priority 0"
                                               .format(fixed_stream_id))
@@ -258,7 +258,7 @@ class DataDispatcher():
                         self.datafetcher.get_metadata(
                             self.log, self.config, targets, workload,
                             self.chunksize, self.local_target)
-                        )
+                    )
 
                 except:
                     self.log.error("Building of metadata dictionary failed "
@@ -426,7 +426,7 @@ if __name__ == '__main__':
         "fix_subdirs": ["commissioning", "current", "local"],
         "store_data": False,
         "remove_data": False
-        }
+    }
 
     context = zmq.Context.instance()
 
@@ -457,7 +457,7 @@ if __name__ == '__main__':
         "source_path": os.path.join(BASE_PATH, "data", "source"),
         "relative_path": "local",
         "filename": "100.cbf"
-        }
+    }
     targets = [['localhost:6005', 1, [".cbf"], "data"],
                ['localhost:6006', 0, [".cbf"], "data"]]
 

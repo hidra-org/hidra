@@ -139,26 +139,26 @@ class HidraSimulation (threading.Thread):
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
-def HidraIngest(numbToSend):
-    dI = Ingest(use_log=True)
+def hidra_ingest(numb_to_send):
+    obj = Ingest(use_log=True)
 
-    dI.create_file("1.h5")
+    obj.create_file("1.h5")
 
-    for i in range(numbToSend):
+    for i in range(numb_to_send):
         try:
             data = "THISISTESTDATA-{0}".format(i)
-            dI.write(data)
+            obj.write(data)
             logging.info("write")
         except:
-            logging.error("HidraIngest break", exc_info=True)
+            logging.error("hidra_ingest break", exc_info=True)
             break
 
     try:
-        dI.close_file()
+        obj.close_file()
     except:
         logging.error("Could not close file", exc_info=True)
 
-    dI.stop()
+    obj.stop()
 
 
 def open_callback(params, retrieved_params):
@@ -174,28 +174,28 @@ def read_callback(params, retrieved_params):
     print ("read_callback", params, retrieved_params)
 
 
-def NexusTransfer(numbToRecv):
-    dT = Transfer("NEXUS", use_log=True)
-    dT.start(["zitpcx19282", "50100"])
-#    dT.start(["localhost", "50100"])
+def nexus_transfer():
+    obj = Transfer("NEXUS", use_log=True)
+    obj.start(["zitpcx19282", "50100"])
+#    obj.start(["localhost", "50100"])
 
     callback_params = {
         "run_loop": True
-        }
+    }
 
     # number to receive + open signal + close signal
     try:
         while callback_params["run_loop"]:
             try:
-                dT.read(callback_params, open_callback, read_callback,
-                        close_callback)
+                obj.read(callback_params, open_callback, read_callback,
+                         close_callback)
             except KeyboardInterrupt:
                 break
             except:
-                logging.error("NexusTransfer break", exc_info=True)
+                logging.error("nexus_transfer break", exc_info=True)
                 break
     finally:
-        dT.stop()
+        obj.stop()
 
 use_test = True
 # use_test = False
@@ -206,8 +206,8 @@ if use_test:
 
 number = 5
 
-hidra_ingest_thread = threading.Thread(target=HidraIngest, args=(number, ))
-nexus_transfer_thread = threading.Thread(target=NexusTransfer, args=(number, ))
+hidra_ingest_thread = threading.Thread(target=hidra_ingest, args=(number, ))
+nexus_transfer_thread = threading.Thread(target=nexus_transfer)
 
 hidra_ingest_thread.start()
 nexus_transfer_thread.start()

@@ -41,21 +41,22 @@ def argument_parsing():
     parser.add_argument("--eigerapi",
                         type=str,
                         default="1.5.0",
-                        help="API version of the Eiger detector (default: 1.5.0)")
+                        help="API version of the Eiger detector "
+                             "(default: 1.5.0)")
 
     parser.add_argument("--start",
-                        help="Starts the HiDRA Server for the Eiger detector",
+                        help="Starts the HiDRA server for the Eiger detector",
                         action="store_true")
 #    parser.add_argument("--restart",
 #                        help="Restarts the HiDRA Server for the Eiger "
 #                             "detector",
 #                        action="store_true")
     parser.add_argument("--status",
-                        help="Displays the Status of the HiDRA Server for "
+                        help="Displays the status of the HiDRA server for "
                              "the Eiger detector",
                         action="store_true")
     parser.add_argument("--stop",
-                        help="Stops the HiDRA Server for the Eiger detector",
+                        help="Stops the HiDRA server for the Eiger detector",
                         action="store_true")
     parser.add_argument("--target",
                         type=str,
@@ -68,6 +69,10 @@ def argument_parsing():
 
     parser.add_argument("--version",
                         help="Displays the used hidra_control version",
+                        action="store_true")
+    parser.add_argument("--getsettings",
+                        help="Displays the settings of the HiDRA Server for "
+                             "the Eiger detector",
                         action="store_true")
 
     return parser
@@ -85,7 +90,6 @@ if __name__ == '__main__':
     if arguments.version:
         print ("Hidra version: {0}".format(hidra.__version__))
         sys.exit(0)
-
 
     beamline = arguments.beamline
     supported_targets = ["current/raw",
@@ -126,6 +130,27 @@ if __name__ == '__main__':
 
         elif arguments.stop:
             print ("Stopping HiDRA for Eiger:", obj.do("stop"))
+
+        elif arguments.getsettings:
+
+            if obj.do("status") == "RUNNING":
+                print ("Configured settings:")
+                print ("Data is written to:         {0}"
+                       .format(obj.get("local_target")))
+                print ("Eiger IP:                   {0}"
+                       .format(obj.get("eiger_ip")))
+                print ("Eiger API version:          {0}"
+                       .format(obj.get("eiger_api_version")))
+                print ("History size:               {0}"
+                       .format(obj.get("history_size")))
+                print ("Store data:                 {0}"
+                       .format(obj.get("store_data")))
+                print ("Remove data from the Eiger: {0}"
+                       .format(obj.get("remove_data")))
+                print ("Whitelist:                  {0}"
+                       .format(obj.get("whitelist")))
+            else:
+                print ("HiDRA is not running")
 
     finally:
         obj.stop()

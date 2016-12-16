@@ -568,8 +568,7 @@ class DataManager():
                                                      self.request_fw_con_id,
                                                      self.request_con_id,
                                                      self.log_queue,
-                                                     self.context
-                                                     )
+                                                     self.context)
                                                  )
         self.signalhandler_pr.start()
 
@@ -586,8 +585,7 @@ class DataManager():
                                            self.control_sub_con_id,
                                            self.request_fw_con_id,
                                            self.router_con_id,
-                                           self.log_queue
-                                           )
+                                           self.log_queue)
                                        )
         self.taskprovider_pr.start()
 
@@ -605,8 +603,7 @@ class DataManager():
                              self.fixed_stream_id,
                              self.params,
                              self.log_queue,
-                             self.local_target
-                             )
+                             self.local_target)
                          )
             pr.start()
             self.datadispatcher_pr.append(pr)
