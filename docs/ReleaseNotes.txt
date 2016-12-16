@@ -1,4 +1,8 @@
 HiDRA develop
+
+- Added option to get configured settings to hidra control client
+- The connection list is now contained in a seperate module
+
 HiDRA 3.0.0
 
 - Automatic bump versioning
