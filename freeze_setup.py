@@ -35,7 +35,7 @@ if platform.system() == "Windows":
             os.path.join("datafetchers", "zmq_fetcher.py")),
         (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
             os.path.join("datafetchers", "send_helpers.py"))
-        ]
+    ]
 
 else:
     libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
@@ -60,7 +60,7 @@ else:
             "zmq_fetcher.py"),
         (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
             "send_helpers.py")
-        ]
+    ]
 
     dist = platform.dist()
     if dist[0].lower() == "suse" and dist[1].startswith("10"):
@@ -93,7 +93,7 @@ buildOptions = {
         (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
         (os.path.join(sharedpath, "_version.py"), "_version.py"),
         (confpath, "conf"),
-        ] + platform_specific_files,
+    ] + platform_specific_files,
 }
 
 executables = [

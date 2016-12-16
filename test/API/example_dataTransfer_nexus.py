@@ -61,7 +61,7 @@ class SenderAsThread (threading.Thread):
                 "relative_path": "local",
                 "filename": filename,
                 "filepart": "{0}".format(i)
-                }
+            }
             metadata = json.dumps(metadata).encode("utf-8")
 
             data = b"THISISTESTDATA-{0}".format(i)
@@ -125,7 +125,7 @@ obj.start(["zitpcx19282", "50100"])
 
 callback_params = {
     "run_loop": True
-    }
+}
 
 try:
     while callback_params["run_loop"]:

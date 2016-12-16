@@ -41,21 +41,22 @@ def argument_parsing():
     parser.add_argument("--eigerapi",
                         type=str,
                         default="1.5.0",
-                        help="API version of the Eiger detector (default: 1.5.0)")
+                        help="API version of the Eiger detector "
+                             "(default: 1.5.0)")
 
     parser.add_argument("--start",
-                        help="Starts the HiDRA Server for the Eiger detector",
+                        help="Starts the HiDRA server for the Eiger detector",
                         action="store_true")
 #    parser.add_argument("--restart",
 #                        help="Restarts the HiDRA Server for the Eiger "
 #                             "detector",
 #                        action="store_true")
     parser.add_argument("--status",
-                        help="Displays the Status of the HiDRA Server for "
+                        help="Displays the status of the HiDRA server for "
                              "the Eiger detector",
                         action="store_true")
     parser.add_argument("--stop",
-                        help="Stops the HiDRA Server for the Eiger detector",
+                        help="Stops the HiDRA server for the Eiger detector",
                         action="store_true")
     parser.add_argument("--target",
                         type=str,
@@ -85,7 +86,6 @@ if __name__ == '__main__':
     if arguments.version:
         print ("Hidra version: {0}".format(hidra.__version__))
         sys.exit(0)
-
 
     beamline = arguments.beamline
     supported_targets = ["current/raw",

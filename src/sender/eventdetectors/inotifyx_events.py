@@ -118,7 +118,7 @@ def get_event_message(path, filename, paths):
                 "source_path": parent_dir,
                 "relative_path": relative_path,
                 "filename": filename
-                }
+            }
 
             return event_message
 
@@ -570,7 +570,7 @@ if __name__ == '__main__':
         "use_cleanup": False,
         "time_till_closed": 5,
         "action_time": 120
-        }
+    }
 
     source_file = os.path.join(BASE_PATH, "test_file.cbf")
     target_file_base = os.path.join(

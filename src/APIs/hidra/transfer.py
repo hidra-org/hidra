@@ -17,6 +17,7 @@ from zmq.auth.thread import ThreadAuthenticator
 
 from ._version import __version__
 
+
 class LoggingFunction:
     def out(self, x, exc_info=None):
         if exc_info:
@@ -120,8 +121,8 @@ class Transfer():
         self.targets = None
 
         self.supported_connections = ["STREAM", "STREAM_METADATA",
-                                     "QUERY_NEXT", "QUERY_METADATA",
-                                     "NEXUS"]
+                                      "QUERY_NEXT", "QUERY_METADATA",
+                                      "NEXUS"]
 
         self.signal_exchanged = None
 
@@ -285,7 +286,7 @@ class Transfer():
         # established
         self.log.info("Sending Signal")
 
-        send_message = [__version__,  signal]
+        send_message = [__version__, signal]
 
         trg = json.dumps(self.targets).encode('utf-8')
         send_message.append(trg)
@@ -349,7 +350,7 @@ class Transfer():
             self.stream_started
             or self.query_next_started
             or self.nexus_started
-            )
+        )
 
         if socket_id_to_bind:
             self.log.info("Reopening already started connection.")
@@ -361,11 +362,12 @@ class Transfer():
             port = ""
 
             if data_socket:
-                self.log.debug("Specified data_socket: {0}".format(data_socket))
+                self.log.debug("Specified data_socket: {0}"
+                               .format(data_socket))
 
                 if type(data_socket) == list:
-#                    socket_id_to_bind = "{0}:{1}".format(data_socket[0],
-#                                                      data_socket[1])
+                    # socket_id_to_bind = "{0}:{1}".format(data_socket[0],
+                    #                                      data_socket[1])
                     host = data_socket[0]
                     ip = socket.gethostbyaddr(host)[2][0]
                     port = data_socket[1]
@@ -398,15 +400,16 @@ class Transfer():
                 self.log.info("IPv4 address detected: {0}.".format(ip))
                 socket_id_to_bind = "{0}:{1}".format(ip, port)
                 file_op_con_str = "tcp://{0}:{1}".format(ip, self.file_op_port)
-                isIPv6 = False
+                is_ipv6 = False
             except socket.error:
                 self.log.info("Address '{0}' is not a IPv4 address, "
                               "asume it is an IPv6 address.".format(ip))
 #                socket_id_to_bind = "0.0.0.0:{0}".format(port)
                 socket_id_to_bind = "[{0}]:{1}".format(ip, port)
 #                file_op_con_str= "tcp://0.0.0.0:{0}".format(self.file_op_port)
-                file_op_con_str = "tcp://[{0}]:{1}".format(ip, self.file_op_port)
-                isIPv6 = True
+                file_op_con_str = ("tcp://[{0}]:{1}"
+                                   .format(ip, self.file_op_port))
+                is_ipv6 = True
 
             self.log.debug("socket_id_to_bind={0}".format(socket_id_to_bind))
             self.log.debug("file_op_con_str={0}".format(file_op_con_str))
@@ -421,7 +424,7 @@ class Transfer():
         if whitelist:
             self.data_socket.zap_domain = b'global'
 
-        if isIPv6:
+        if is_ipv6:
             self.data_socket.ipv6 = True
             self.log.debug("Enabling IPv6 socket")
 
@@ -445,7 +448,7 @@ class Transfer():
             # An additional socket is needed to establish the data retriving
             # mechanism
             connection_str = "tcp://{0}:{1}".format(self.signal_host,
-                                                   self.request_port)
+                                                    self.request_port)
             try:
                 self.request_socket.connect(connection_str)
                 self.log.info("Request socket started (connect) for '{0}'"
@@ -465,7 +468,7 @@ class Transfer():
             # nexus files
             self.file_op_socket = self.context.socket(zmq.REP)
 
-            if isIPv6:
+            if is_ipv6:
                 self.file_op_socket.ipv6 = True
                 self.log.debug("Enabling IPv6 socket for file_op_socket")
 
@@ -540,7 +543,7 @@ class Transfer():
                         self.all_close_recvd = False
 
                         self.close_callback(self.callback_params,
-                                           message)
+                                            message)
                         break
                     else:
                         self.reply_to_signal = message
@@ -604,14 +607,14 @@ class Transfer():
 
         if multipart_message[0] == b"CLOSE_FILE":
             try:
-#                filename = multipart_message[1]
+                # filename = multipart_message[1]
                 id = multipart_message[2]
             except:
                 self.log.error("Could not extract id from the "
                                "multipart-message", exc_info=True)
                 self.log.debug("multipart-message: {0}"
-                                .format(multipart_message),
-                                exc_info=True)
+                               .format(multipart_message),
+                               exc_info=True)
                 raise
 
             self.recvd_close_from.append(id)
@@ -623,8 +626,10 @@ class Transfer():
                 self.number_of_streams = int(id.split("/")[1])
 
             # have all signals arrived?
-            self.log.debug("self.recvd_close_from={0}, self.number_of_streams={1}"
-                           .format(self.recvd_close_from, self.number_of_streams))
+            self.log.debug("self.recvd_close_from={0}, "
+                           "self.number_of_streams={1}"
+                           .format(self.recvd_close_from,
+                                   self.number_of_streams))
             if len(self.recvd_close_from) == self.number_of_streams:
                 self.log.info("All close-file-signals arrived")
                 if self.reply_to_signal:
@@ -634,7 +639,8 @@ class Transfer():
                     self.reply_to_signal = False
                     self.recvd_close_from = []
 
-                    self.close_callback(self.callback_params, multipart_message)
+                    self.close_callback(self.callback_params,
+                                        multipart_message)
                     return False
                 else:
                     self.all_close_recvd = True
@@ -646,12 +652,12 @@ class Transfer():
                                       self.number_of_streams))
 
         else:
-            #extract multipart message
+            # extract multipart message
             try:
-#                self.log.debug("multipart_message={0}".format(multipart_message))
+                # self.log.debug("multipart_message={0}".format(multipart_message))
                 metadata = json.loads(multipart_message[0].decode("utf-8"))
             except:
-                #json.dumps of None results in 'null'
+                # json.dumps of None results in 'null'
                 if multipart_message[0] != 'null':
                     self.log.error("Could not extract metadata from the "
                                    "multipart-message.", exc_info=True)
@@ -757,7 +763,7 @@ class Transfer():
 
                 return [metadata, payload]
             else:
-#                self.log.warning("Could not receive data in the given time.")
+                # self.log.warning("Could not receive data in the given time.")
 
                 if self.query_next_started:
                     try:
@@ -784,14 +790,14 @@ class Transfer():
 
             if payload_metadata and payload:
 
-                #generate target filepath
+                # generate target filepath
                 target_filepath = self.generate_target_filepath(
                     target_base_path, payload_metadata)
                 self.log.debug("New chunk for file {0} received."
                                .format(target_filepath))
 
-                #append payload to file
-                #TODO: save message to file using a thread (avoids blocking)
+                # append payload to file
+                # TODO: save message to file using a thread (avoids blocking)
                 try:
                     self.file_descriptors[target_filepath].write(payload)
                 # File was not open
@@ -799,7 +805,7 @@ class Transfer():
                     try:
                         self.file_descriptors[target_filepath] = (
                             open(target_filepath, "wb")
-                            )
+                        )
                         self.file_descriptors[target_filepath].write(payload)
                     except IOError as e:
                         # errno.ENOENT == "No such file or directory"
@@ -813,7 +819,7 @@ class Transfer():
 
                                 self.file_descriptors[target_filepath] = (
                                     open(target_filepath, "wb")
-                                    )
+                                )
                                 self.log.info("New target directory created: "
                                               "{0}".format(target_path))
                                 self.file_descriptors[target_filepath].write(
@@ -838,7 +844,7 @@ class Transfer():
                                    .format(target_filepath), exc_info=True)
 
                 if len(payload) < payload_metadata["chunksize"]:
-                    #indicated end of file. Leave loop
+                    # indicated end of file. Leave loop
                     filename = self.generate_target_filepath(target_base_path,
                                                              payload_metadata)
                     file_mod_time = payload_metadata["file_mod_time"]
@@ -868,7 +874,8 @@ class Transfer():
         if relative_path is '' or relative_path is None:
             target_path = base_path
         else:
-            target_path = os.path.normpath(os.path.join(base_path, relative_path))
+            target_path = os.path.normpath(os.path.join(base_path,
+                                                        relative_path))
 
         filepath = os.path.join(target_path, filename)
 
@@ -904,7 +911,8 @@ class Transfer():
             signal = None
             if self.stream_started or (b"STREAM" in self.signal_exchanged):
                 signal = b"STOP_STREAM"
-            elif self.query_next_started or (b"QUERY" in self.signal_exchanged):
+            elif (self.query_next_started
+                    or (b"QUERY" in self.signal_exchanged)):
                 signal = b"STOP_QUERY_NEXT"
 
             self.__send_signal(signal)
@@ -937,9 +945,9 @@ class Transfer():
                 self.control_socket = None
 
                 control_con_str = ("{0}/{1}_{2}"
-                                 .format(self.ipc_path,
-                                         self.current_pid,
-                                         "control_API"))
+                                   .format(self.ipc_path,
+                                           self.current_pid,
+                                           "control_API"))
                 try:
                     os.remove(control_con_str)
                     self.log.debug("Removed ipc socket: {0}"

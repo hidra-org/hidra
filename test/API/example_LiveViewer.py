@@ -89,19 +89,19 @@ class LiveView(QThread):
                 # get latest file from reveiver
                 [metadata, data] = self.query.get(2000)
 
-                receivedFile = (
+                receivedfile = (
                     self.query.generate_target_filepath(self.basepath,
                                                         metadata))
-                print ("Next file: ", receivedFile)
+                print ("Next file: ", receivedfile)
 
-                if receivedFile is None:
+                if receivedfile is None:
                     self.mutex.unlock()
                     continue
 
 #                time.sleep(0.2)
                 # display image
 #                try:
-#                    self.subframe.loadFile(receivedFile)
+#                    self.subframe.loadFile(receivedfile)
 #                # viewer or subframe has been closed by the user
 #                except:
 #                    self.mutex.unlock()
@@ -129,13 +129,13 @@ class LiveView(QThread):
         print ("Live view thread: Thread for Live view died")
         self.alive = False
 
-    def setPath(self, path=None):
+    def setPath(self, path=None):  # noqa N802
         self.mutex.lock()
         if path is not None:
             self.path = path
         self.mutex.unlock()
 
-    def setFiletype(self, filetype=None):
+    def setFiletype(self, filetype=None):  # noqa N802
         restart = False
         if self.alive:
             restart = True
@@ -145,7 +145,7 @@ class LiveView(QThread):
         if restart:
             self.start()
 
-    def setInterval(self, interval=None):
+    def setInterval(self, interval=None):  # noqa N802
         if interval is not None:
             self.interval = interval
 

@@ -1,7 +1,7 @@
 # API to communicate with a data transfer unit
 
 from __future__ import print_function
-#from __future__ import unicode_literals
+# from __future__ import unicode_literals
 from __future__ import absolute_import
 
 import socket
@@ -11,8 +11,10 @@ import sys
 import traceback
 import subprocess
 import re
+import json
 
-from ._version import __version__
+# from ._version import __version__
+
 
 class LoggingFunction:
     def out(self, x, exc_info=None):
@@ -135,16 +137,17 @@ def excecute_ldapsearch(ldap_cn):
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     lines = p.stdout.readlines()
 
-    matchHost = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
-                           re.M | re.I)
+    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+                            re.M | re.I)
     netgroup = []
 
     for line in lines:
-        if matchHost.match(line):
-            if matchHost.match(line).group(1) not in netgroup:
-                netgroup.append(matchHost.match(line).group(1))
+        if match_host.match(line):
+            if match_host.match(line).group(1) not in netgroup:
+                netgroup.append(match_host.match(line).group(1))
 
     return netgroup
+
 
 def check_netgroup(hostname, beamline, log=None):
     if log is None:
@@ -166,6 +169,7 @@ def check_netgroup(hostname, beamline, log=None):
         log.error("Host {0} is not contained in netgroup of "
                   "beamline {1}".format(hostname, beamline))
         sys.exit(1)
+
 
 class Control():
     def __init__(self, beamline, use_log=False):

@@ -483,7 +483,8 @@ class SocketServer(object):
             self.log.info("Start socket (bind):  {0}, {1}"
                           .format(self.host, self.port))
         except Exception:
-            self.log.error("Failed to start socket (bind).", exc_info=True)
+            self.log.error("Failed to start socket (bind): {0}, {1}"
+                           .format(self.host, self.port), exc_info=True)
             raise
 
         self.sckt.listen(5)
@@ -495,7 +496,12 @@ class SocketServer(object):
 
                 threading.Thread(
                     target=SocketCom,
-                    args=(self.log_queue, self.beamline, conn, addr)).start()
+                    args=(self.log_queue,
+                          self.beamline,
+                          conn,
+                          addr,
+                          self.lock)
+                ).start()
             except KeyboardInterrupt:
                 break
             except Exception:

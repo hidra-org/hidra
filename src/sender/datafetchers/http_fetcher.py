@@ -9,7 +9,7 @@ import requests
 import time
 import errno
 
-from send_helpers import __send_to_targets
+from send_helpers import send_to_targets
 import helpers
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
@@ -193,7 +193,7 @@ def send_data(log, targets, source_file, target_file, metadata,
 
         # send message to data targets
         try:
-            __send_to_targets(log, targets_data, source_file, target_file,
+            send_to_targets(log, targets_data, source_file, target_file,
                               open_connections, metadata_extended, payload,
                               context)
             log.debug("Passing multipart-message for file {0}...done."
@@ -222,7 +222,7 @@ def send_data(log, targets, source_file, target_file, metadata,
 
         # send message to metadata targets
         try:
-            __send_to_targets(log, targets_metadata, source_file, target_file,
+            send_to_targets(log, targets_metadata, source_file, target_file,
                               open_connections, metadata_extended, payload,
                               context)
             log.debug("Passing metadata multipart-message for file '{0}'"
@@ -310,7 +310,7 @@ if __name__ == '__main__':
         "source_path": "http://131.169.55.170/test_httpget/data",
         "relative_path": "",
         "filename": "test_file.cbf"
-        }
+    }
     targets = [['localhost:{0}'.format(receiving_port), 1, [".cbf", ".tif"],
                 "data"],
                ['localhost:{0}'.format(receiving_port2), 1, [".cbf", ".tif"],
@@ -325,7 +325,7 @@ if __name__ == '__main__':
         "fix_subdirs": ["commissioning", "current", "local"],
         "store_data": True,
         "remove_data": False
-        }
+    }
 
     setup(logging, config)
 

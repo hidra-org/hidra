@@ -10,7 +10,7 @@ class DataHandlingError(Exception):
     pass
 
 
-def __send_to_targets(log, targets, source_file, target_file, open_connections,
+def send_to_targets(log, targets, source_file, target_file, open_connections,
                       metadata, payload, context, timeout=-1):
 
     for target, prio, suffixes, send_type in targets:

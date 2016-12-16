@@ -13,7 +13,8 @@ import json
 import tempfile
 import socket
 
-from ._version import __version__
+# from ._version import __version__
+
 
 class LoggingFunction:
     def out(self, x, exc_info=None):
@@ -104,8 +105,9 @@ class Ingest():
             self.log.info("Using tcp for internal communication.")
             self.eventdet_con_id = "tcp://{0}:{1}".format(self.localhost,
                                                           self.event_det_port)
-            self.datafetch_con_id = "tcp://{0}:{1}".format(self.localhost,
-                                                           self.data_fetch_port)
+            self.datafetch_con_id = ("tcp://{0}:{1}"
+                                     .format(self.localhost,
+                                             self.data_fetch_port))
         else:
             self.log.info("Using ipc for internal communication.")
             self.eventdet_con_id = "ipc://{0}/{1}".format(self.ipc_path,
@@ -212,7 +214,7 @@ class Ingest():
             "filename": self.filename,
             "filepart": self.filepart,
             "chunksize": len(data)
-            }
+        }
 #        message = ('{ "filepart": {0}, "filename": "{1}" }'
 #                   .format(self.filepart, self.filename))
         message = json.dumps(message).encode("utf-8")

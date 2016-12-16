@@ -7,7 +7,7 @@ import logging
 import json
 import time
 
-from send_helpers import __send_to_targets
+from send_helpers import send_to_targets
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -134,7 +134,7 @@ def send_data(log, targets, source_file, target_file, metadata,
 
     # send message
     try:
-        __send_to_targets(log, targets, source_file, target_file,
+        send_to_targets(log, targets, source_file, target_file,
                           open_connections, metadata_extended, payload,
                           context)
         log.debug("Passing multipart-message for file '{0}'...done."
@@ -218,7 +218,7 @@ if __name__ == '__main__':
         "source_path": os.path.join(BASE_PATH, "data", "source"),
         "relative_path": os.sep + "local" + os.sep + "raw",
         "filename": "100.cbf"
-        }
+    }
     targets = [['localhost:{0}'.format(receiving_port), 1, [".cbf", ".tif"],
                 "data"],
                ['localhost:{0}'.format(receiving_port2), 0, [".cbf", ".tif"],
@@ -232,7 +232,7 @@ if __name__ == '__main__':
         "type": "getFromZmq",
         "context": context,
         "data_fetch_con_str": data_fetch_con_str
-        }
+    }
 
     logging.debug("open_connections before function call: {0}"
                   .format(open_connections))
