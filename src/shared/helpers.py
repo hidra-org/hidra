@@ -191,7 +191,7 @@ def parse_config(config):
     return config_params
 
 
-def set_parameters(config_file, arguments):
+def read_config(config_file):
 
     config = ConfigParser.RawConfigParser()
     try:
@@ -201,7 +201,12 @@ def set_parameters(config_file, arguments):
             config_string = '[asection]\n' + f.read()
         config.read_string(config_string)
 
-    params = parse_config(config)["asection"]
+    return config
+
+
+def set_parameters(config_file, arguments):
+
+    params = parse_config(read_config(config_file))["asection"]
 
     # arguments set when the program is called have a higher priority than
     # the ones in the config file

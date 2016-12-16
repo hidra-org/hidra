@@ -70,6 +70,10 @@ def argument_parsing():
     parser.add_argument("--version",
                         help="Displays the used hidra_control version",
                         action="store_true")
+    parser.add_argument("--getsettings",
+                        help="Displays the settings of the HiDRA Server for "
+                             "the Eiger detector",
+                        action="store_true")
 
     return parser
 
@@ -126,6 +130,27 @@ if __name__ == '__main__':
 
         elif arguments.stop:
             print ("Stopping HiDRA for Eiger:", obj.do("stop"))
+
+        elif arguments.getsettings:
+
+            if obj.do("status") == "RUNNING":
+                print ("Configured settings:")
+                print ("Data is written to:         {0}"
+                       .format(obj.get("local_target")))
+                print ("Eiger IP:                   {0}"
+                       .format(obj.get("eiger_ip")))
+                print ("Eiger API version:          {0}"
+                       .format(obj.get("eiger_api_version")))
+                print ("History size:               {0}"
+                       .format(obj.get("history_size")))
+                print ("Store data:                 {0}"
+                       .format(obj.get("store_data")))
+                print ("Remove data from the Eiger: {0}"
+                       .format(obj.get("remove_data")))
+                print ("Whitelist:                  {0}"
+                       .format(obj.get("whitelist")))
+            else:
+                print ("HiDRA is not running")
 
     finally:
         obj.stop()

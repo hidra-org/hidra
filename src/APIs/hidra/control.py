@@ -14,7 +14,7 @@ import re
 import json
 
 # from ._version import __version__
-
+from ._constants import connection_list
 
 class LoggingFunction:
     def out(self, x, exc_info=None):
@@ -71,62 +71,6 @@ class CommunicationFailed(Exception):
     pass
 
 
-connection_list = {
-    "p00": {
-        "host": "asap3-p00",
-        "port": 51000
-        },
-    "p01": {
-        "host": "asap3-bl-prx07",
-        "port": 51001
-        },
-    "p02.1": {
-        "host": "asap3-bl-prx07",
-        "port": 51002
-        },
-    "p02.2": {
-        "host": "asap3-bl-prx07",
-        "port": 51003
-        },
-    "p03": {
-        "host": "asap3-bl-prx07",
-        "port": 51004
-        },
-    "p04": {
-        "host": "asap3-bl-prx07",
-        "port": 51005
-        },
-    "p05": {
-        "host": "asap3-bl-prx07",
-        "port": 51006
-        },
-    "p06": {
-        "host": "asap3-bl-prx07",
-        "port": 51007
-        },
-    "p07": {
-        "host": "asap3-bl-prx07",
-        "port": 51008
-        },
-    "p08": {
-        "host": "asap3-bl-prx07",
-        "port": 51009
-        },
-    "p09": {
-        "host": "asap3-bl-prx07",
-        "port": 51010
-        },
-    "p10": {
-        "host": "asap3-bl-prx07",
-        "port": 51011
-        },
-    "p11": {
-        "host": "asap3-bl-prx07",
-        "port": 51012
-        },
-    }
-
-
 def excecute_ldapsearch(ldap_cn):
 
     p = subprocess.Popen(
@@ -135,6 +79,7 @@ def excecute_ldapsearch(ldap_cn):
          "-H ldap://it-ldap-slave.desy.de:1389",
          "cn=" + ldap_cn, "-LLL"],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
     lines = p.stdout.readlines()
 
     match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
@@ -218,7 +163,7 @@ class Control():
         reply = self.signal_socket.recv(1024)
         self.log.debug("recv (len %2d): %s " % (len(reply), reply))
 
-        return reply
+        return json.loads(reply)
 
     def set(self, attribute, *value):
         value = list(value)
@@ -227,8 +172,8 @@ class Control():
         if type(value[0]) == list:
             value = [item for sublist in value for item in sublist]
 
-        if attribute == "eigerip":
-            check_netgroup(value, self.beamline, self.log)
+        if attribute == "eiger_ip":
+            check_netgroup(value[0], self.beamline, self.log)
 
         if attribute == "whitelist":
             msg = 'set {0} {1}'.format(attribute, value)
