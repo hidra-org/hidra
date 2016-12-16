@@ -679,8 +679,12 @@ class HidraControlServer():
         config_file = CONFIGPATH + os.sep + self.beamline + ".conf"
         self.log.info("Reading config file: {0}".format(config_file))
 
-        config = helpers.read_config(config_file)
-        beamline_config = helpers.parse_config(config)["asection"]
+        try:
+            config = helpers.read_config(config_file)
+            beamline_config = helpers.parse_config(config)["asection"]
+        except IOError:
+            self.log.debug("Configuration file available: {0}"
+                           .format(config_file))
         self.log.debug("beamline_config={0}".format(beamline_config))
 
     def get_logger(self, queue):
