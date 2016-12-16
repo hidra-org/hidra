@@ -1,5 +1,5 @@
 Name:		hidra
-Version:	3.0.0
+Version:	3.0.1
 Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
@@ -79,6 +79,8 @@ mkdir -p %{buildroot}/opt/%{name}/logs
 %attr(1777,root,root) /opt/%{name}/logs
 
 %changelog
+Fri Dec 16 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.1-1
+Bump version
 Wed Dec 14 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.0-1
 Bump version
 * Tue Nov 22 2016 Stefan Dietrich <stefan.dietrich@desy.de> - 2.4.2-1

@@ -101,7 +101,7 @@ executables = [
 ]
 
 setup(name='HiDRA',
-      version='3.0.0',
+      version='3.0.1',
       description='',
       options={"build_exe": buildOptions},
       executables=executables
