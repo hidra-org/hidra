@@ -12,6 +12,7 @@ import setproctitle
 from multiprocessing import Queue
 import tempfile
 import json
+import copy
 
 try:
     from logutils.queue import QueueHandler
@@ -89,6 +90,20 @@ class HidraController():
                                         "commissioning/scratch_bl",
                                         "local"]
 
+        # local, thread internal hidra configuration, global one is
+        # overwritten with these parameters when start is executed
+        self.local_config = {
+            "active": False,
+            "beamline": self.beamline,
+            "eiger_ip": None,
+            "eiger_api_version": None,
+            "history_size": None,
+            "local_target": None,
+            "store_data": None,
+            "remove_data": None,
+            "whitelist": None
+        }
+
     def get_logger(self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue)  # Just the one handler needed
@@ -152,46 +167,49 @@ class HidraController():
         self.lock.acquire()
         # IP of the EIGER Detector
         if key == "eiger_ip":
-            beamline_config["eiger_ip"] = value
+            self.local_config["eiger_ip"] = value
             return_val = "DONE"
 
         # API version of the EIGER Detector
         elif key == "eiger_api_version":
-            beamline_config["eiger_api_version"] = value
+            self.local_config["eiger_api_version"] = value
             return_val = "DONE"
 
         # Number of events stored to look for doubles
         elif key == "history_size":
-            beamline_config["history_size"] = value
+            self.local_config["history_size"] = value
             return_val = "DONE"
 
         # Target to move the files into
         # e.g. /beamline/p11/current/raw
         elif key == "local_target" and value in self.supported_local_targets:
-            beamline_config["local_target"] = os.path.join("/beamline",
-                                                           self.beamline,
-                                                           value)
+            self.local_config["local_target"] = os.path.join("/beamline",
+                                                             self.beamline,
+                                                             value)
             return_val = "DONE"
 
         # Flag describing if the data should be stored in local_target
         elif key == "store_data":
-            beamline_config["store_data"] = value
+            self.local_config["store_data"] = value
             return_val = "DONE"
 
         # Flag describing if the files should be removed from the source
         elif key == "remove_data":
-            beamline_config["remove_data"] = value
+            self.local_config["remove_data"] = value
             return_val = "DONE"
 
         # List of hosts allowed to connect to the data distribution
         elif key == "whitelist":
-            beamline_config["whitelist"] = value
+            self.local_config["whitelist"] = value
             return_val = "DONE"
 
         else:
             self.log.debug("key={0}; value={1}".format(key, value))
             return_val = "ERROR"
         self.lock.release()
+
+        if return_val != "ERROR":
+            self.local_config["active"] = True
 
         return return_val
 
@@ -203,29 +221,42 @@ class HidraController():
 
         key = param.lower()
 
+        # if the requesting client has set parameters before but has not
+        # executed start yet, the previously set parameters should be
+        # displayed (not the ones with which hidra was started the last time)
+        # on the other hand if it is a client coming up to check with which
+        # parameters the current hidra instance is running, these should be
+        # shown
+        if self.local_config["active"]:
+            self.log.debug("use local_config")
+            tmp_config = self.local_config
+        else:
+            self.log.debug("use beamline_config")
+            tmp_config = beamline_config
+
         if key == "eiger_ip":
-            return beamline_config["eiger_ip"]
+            return tmp_config["eiger_ip"]
 
         elif key == "eiger_api_version":
-            return beamline_config["eiger_api_version"]
+            return tmp_config["eiger_api_version"]
 
         elif key == "history_size":
-            return beamline_config["history_size"]
+            return tmp_config["history_size"]
 
         elif key == "local_target":
-            if beamline_config["local_target"] is None:
-                return beamline_config["local_target"]
-            return os.path.relpath(beamline_config["local_target"],
+            if tmp_config["local_target"] is None:
+                return tmp_config["local_target"]
+            return os.path.relpath(tmp_config["local_target"],
                                    os.path.join("/beamline", self.beamline))
 
         elif key == "store_data":
-            return beamline_config["store_data"]
+            return tmp_config["store_data"]
 
         elif key == "remove_data":
-            return beamline_config["remove_data"]
+            return tmp_config["remove_data"]
 
         elif key == "whitelist":
-            return beamline_config["whitelist"]
+            return tmp_config["whitelist"]
 
         else:
             return "ERROR"
@@ -234,10 +265,12 @@ class HidraController():
         '''
         executes commands
         '''
+        global beamline_config
         key = cmd.lower()
 
         if key == "start":
-            return self.start()
+            ret_val = self.start()
+            return ret_val
 
         elif key == "stop":
             return self.stop()
@@ -255,16 +288,24 @@ class HidraController():
         global CONFIGPATH
         global beamline_config
 
+        # if the requesting client has set parameters before these should be
+        # taken. If this was not the case use the one from the privious
+        # executed start
+        if not self.local_config["active"]:
+            self.log.debug("Config parameters did not change since last start")
+            self.log.debug("No need to write new config file")
+            return
+
         #
         # see, if all required params are there.
         #
-        if (beamline_config["eiger_ip"]
-                and beamline_config["eiger_api_version"]
-                and beamline_config["history_size"]
-                and beamline_config["local_target"]
-                and beamline_config["store_data"] is not None
-                and beamline_config["remove_data"] is not None
-                and beamline_config["whitelist"]):
+        if (self.local_config["eiger_ip"]
+                and self.local_config["eiger_api_version"]
+                and self.local_config["history_size"]
+                and self.local_config["local_target"]
+                and self.local_config["store_data"] is not None
+                and self.local_config["remove_data"] is not None
+                and self.local_config["whitelist"]):
 
             external_ip = hidra.connection_list[self.beamline]["host"]
 
@@ -278,7 +319,7 @@ class HidraController():
 
             # write configfile
             # /etc/hidra/P01.conf
-            config_file = CONFIGPATH + os.sep + self.beamline + ".conf"
+            config_file = os.path.join(CONFIGPATH, self.beamline + ".conf")
             self.log.info("Writing config file: {0}".format(config_file))
 
             with open(config_file, 'w') as f:
@@ -309,19 +350,19 @@ class HidraController():
                 f.write("chunksize            = 10485760\n")
 
                 f.write("eiger_ip             = {0}\n"
-                        .format(beamline_config["eiger_ip"]))
+                        .format(self.local_config["eiger_ip"]))
                 f.write("eiger_api_version    = {0}\n"
-                        .format(beamline_config["eiger_api_version"]))
+                        .format(self.local_config["eiger_api_version"]))
                 f.write("history_size         = {0}\n"
-                        .format(beamline_config["history_size"]))
+                        .format(self.local_config["history_size"]))
                 f.write("local_target         = {0}\n"
-                        .format(beamline_config["local_target"]))
+                        .format(self.local_config["local_target"]))
                 f.write("store_data           = {0}\n"
-                        .format(beamline_config["store_data"]))
+                        .format(self.local_config["store_data"]))
                 f.write("remove_data          = {0}\n"
-                        .format(beamline_config["remove_data"]))
+                        .format(self.local_config["remove_data"]))
                 f.write("whitelist            = {0}\n"
-                        .format(beamline_config["whitelist"]))
+                        .format(self.local_config["whitelist"]))
 
                 self.log.debug("Started with ext_ip: {0}".format(external_ip))
                 self.log.debug("Started with event detector: {0}"
@@ -329,21 +370,31 @@ class HidraController():
                 self.log.debug("Started with data fetcher: {0}"
                                .format(datafetcher))
 
+                # store the configuration parameters globally
+                self.log.debug("config = {0}".format(self.local_config))
+                for key in self.local_config:
+                    if key != "active":
+                        beamline_config[key] = (
+                            copy.deepcopy(self.local_config[key]))
+
+                # mark local_config as inactive
+                self.local_config["active"] = False
+
         else:
             self.log.debug("eiger_ip: {0}"
-                           .format(beamline_config["eiger_ip"]))
+                           .format(self.local_config["eiger_ip"]))
             self.log.debug("eiger_api_version: {0}"
-                           .format(beamline_config["eiger_api_version"]))
+                           .format(self.local_config["eiger_api_version"]))
             self.log.debug("history_size: {0}"
-                           .format(beamline_config["history_size"]))
+                           .format(self.local_config["history_size"]))
             self.log.debug("localTarge: {0}"
-                           .format(beamline_config["local_target"]))
+                           .format(self.local_config["local_target"]))
             self.log.debug("store_data: {0}"
-                           .format(beamline_config["store_data"]))
+                           .format(self.local_config["store_data"]))
             self.log.debug("remove_data: {0}"
-                           .format(beamline_config["remove_data"]))
+                           .format(self.local_config["remove_data"]))
             self.log.debug("whitelist: {0}"
-                           .format(beamline_config["whitelist"]))
+                           .format(self.local_config["whitelist"]))
             raise Exception("Not all required parameters are specified")
 
     def start(self):
@@ -353,7 +404,7 @@ class HidraController():
 
         # check if service is running
         if hidra_status(self.beamline) == "RUNNING":
-            return "ALREADY RUNNING"
+            return "ALREADY_RUNNING"
 
         try:
             self.__write_config()
@@ -380,7 +431,7 @@ class HidraController():
     def stop(self):
         # check if really running before return
         if hidra_status(self.beamline) != "RUNNING":
-            return "ARLEADY STOPPED"
+            return "ARLEADY_STOPPED"
 
         # stop service
         p = subprocess.call(["systemctl", "stop",
