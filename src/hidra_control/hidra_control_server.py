@@ -351,15 +351,15 @@ class HidraController():
         start ...
         '''
 
+        # check if service is running
+        if hidra_status(self.beamline) == "RUNNING":
+            return "ALREADY RUNNING"
+
         try:
             self.__write_config()
         except:
             self.log.error("Config file not written", exc_info=True)
             return "ERROR"
-
-        # check if service is running
-        if hidra_status(self.beamline) == "RUNNING":
-            return "ALREADY RUNNING"
 
         # start service
         p = subprocess.call(["systemctl", "start",
