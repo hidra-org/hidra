@@ -1,4 +1,7 @@
 HiDRA develop
+
+- Fixed parallel hidra control client usage of script and permanent open connection (e.g. Tango)
+
 HiDRA 3.0.1
 
 - Added option to get configured settings to hidra control client

@@ -44,23 +44,23 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
     stop()
     {
 	    echo -n "Stopping ${DESC}..."
-        DATATRANSFER_PID="`pidofproc ${NAME}`"
+        HIDRA_PID="`pidofproc ${NAME}`"
         # stop gracefully and wait up to 180 seconds.
-#        if [ -z "$DATATRANSFER_PID" ]; then
+#        if [ -z "$HIDRA_PID" ]; then
 #            exit 0
 #        else
-            kill $DATATRANSFER_PID > /dev/null 2>&1
+            kill $HIDRA_PID > /dev/null 2>&1
 #        fi
 
         TIMEOUT=0
-#        while checkpid $DATATRANSFER_PID && [ $TIMEOUT -lt 30 ] ; do
-        while checkpid $DATATRANSFER_PID && [ $TIMEOUT -lt 5 ] ; do
+#        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 30 ] ; do
+        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 5 ] ; do
             sleep 1
             let TIMEOUT=TIMEOUT+1
         done
-        echo $DATATRANSFER_PID
+        echo $HIDRA_PID
 
-        if checkpid $DATATRANSFER_PID ; then
+        if checkpid $HIDRA_PID ; then
             killall -KILL $NAME
 
             SOCKETID=`cat $PIDFILE`
