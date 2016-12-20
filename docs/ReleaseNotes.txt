@@ -1,4 +1,5 @@
 HiDRA develop
+HiDRA 3.0.2
 
 - Fixed parallel hidra control client usage of script and permanent open connection (e.g. Tango)
 
