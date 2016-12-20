@@ -296,9 +296,6 @@ class DataManager():
             self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
             raise
 
-        logfile = os.path.join(self.params["log_path"],
-                               self.params["log_name"])
-
         if log_queue:
             self.log_queue = log_queue
             self.ext_log_queue = True
@@ -310,7 +307,7 @@ class DataManager():
 
             # Get the log Configuration for the lisener
             if self.params["onscreen"]:
-                h1, h2 = helpers.get_log_handlers(logfile,
+                h1, h2 = helpers.get_log_handlers(self.params["log_file"],
                                                   self.params["log_size"],
                                                   self.params["verbose"],
                                                   self.params["onscreen"])
@@ -319,14 +316,14 @@ class DataManager():
                 self.log_queue_listener = helpers.CustomQueueListener(
                     self.log_queue, h1, h2)
             else:
-                h1 = helpers.get_log_handlers(logfile,
+                h1 = helpers.get_log_handlers(self.params["log_file"],
                                               self.params["log_size"],
                                               self.params["verbose"],
                                               self.params["onscreen"])
 
                 # Start queue listener using the stream handler above
-                self.log_queue_listener = helpers.CustomQueueListener(
-                    self.log_queue, h1)
+                self.log_queue_listener = (
+                    helpers.CustomQueueListener(self.log_queue, h1))
 
             self.log_queue_listener.start()
 

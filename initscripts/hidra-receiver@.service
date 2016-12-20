@@ -1,0 +1,13 @@
+[Unit]
+Description=HiDRA receiver for %i
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+TimeoutStartSec=0
+WorkingDirectory=/opt/hidra
+#User=%iuser
+ExecStart=/opt/hidra/src/receiver/datareceiver.py --verbose --config_file /opt/hidra/conf/receiver_%i.conf
+
+[Install]
+WantedBy=multi-user.target

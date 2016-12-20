@@ -1,8 +1,11 @@
+#!/usr/bin/env python
+
 from __future__ import print_function
 
 import argparse
 import logging
 import os
+import setproctitle
 
 from __init__ import BASE_PATH
 
@@ -82,19 +85,6 @@ def argument_parsing():
 
     logfile = os.path.join(params["log_path"], params["log_name"])
 
-    # enable logging
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-
-    handlers = helpers.get_log_handlers(logfile, params["log_size"],
-                                        params["verbose"], params["onscreen"])
-
-    if type(handlers) == tuple:
-        for h in handlers:
-            root.addHandler(h)
-    else:
-        root.addHandler(handlers)
-
     # check target directory for existance
     helpers.check_existance(params["target_dir"])
 
@@ -115,7 +105,24 @@ class DataReceiver:
             self.log = self.get_logger()
             raise
 
+        # enable logging
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG)
+
+        handlers = helpers.get_log_handlers(params["log_file"],
+                                            params["log_size"],
+                                            params["verbose"],
+                                            params["onscreen"])
+
+        if type(handlers) == tuple:
+            for h in handlers:
+                root.addHandler(h)
+        else:
+            root.addHandler(handlers)
+
         self.log = self.get_logger()
+
+        setproctitle.setproctitle(params["procname"])
 
         self.whitelist = params["whitelist"]
 
@@ -168,6 +175,8 @@ class DataReceiver:
             self.log.info("Shutting down receiver...")
             self.transfer.stop()
             self.transfer = None
+        else:
+            self.log.info("No tranfer object to shut down available")
 
     def __exit__(self):
         self.stop()
