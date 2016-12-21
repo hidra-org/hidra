@@ -905,5 +905,5 @@ if __name__ == '__main__':
         try:
             sender = DataManager()
         finally:
-            if sender:
+            if sender is not None:
                 sender.stop()

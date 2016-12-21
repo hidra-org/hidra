@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 import setproctitle
+import signal
 
 from __init__ import BASE_PATH
 
@@ -83,8 +84,6 @@ def argument_parsing():
     #     Check given arguments      #
     ##################################
 
-    logfile = os.path.join(params["log_path"], params["log_name"])
-
     # check target directory for existance
     helpers.check_existance(params["target_dir"])
 
@@ -123,6 +122,8 @@ class DataReceiver:
         self.log = self.get_logger()
 
         setproctitle.setproctitle(params["procname"])
+
+        signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         self.whitelist = params["whitelist"]
 
@@ -177,6 +178,10 @@ class DataReceiver:
             self.transfer = None
         else:
             self.log.info("No tranfer object to shut down available")
+
+    def signal_term_handler(self, signal, frame):
+        self.log.debug('got SIGTERM')
+        self.stop()
 
     def __exit__(self):
         self.stop()
