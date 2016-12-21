@@ -336,6 +336,10 @@ class DataManager():
         # Make ipc_path accessible for modules
         self.params["ipc_path"] = self.ipc_path
 
+        # set process name
+        check_passed, _ = helpers.check_config(["procname"] , params, self.log)
+        if not check_passed:
+            raise Exception("Configuration check failed")
         setproctitle.setproctitle(self.params["procname"])
         self.log.info("Running as {0}".format(self.params["procname"]))
 

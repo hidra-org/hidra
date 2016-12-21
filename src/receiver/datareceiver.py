@@ -20,7 +20,7 @@ CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 
 
 def argument_parsing():
-    default_config = os.path.join(CONFIG_PATH, "dataReceiver.conf")
+    default_config = os.path.join(CONFIG_PATH, "datareceiver.conf")
 
     ##################################
     #   Get command line arguments   #
@@ -121,8 +121,13 @@ class DataReceiver:
 
         self.log = self.get_logger()
 
+        # set process name
+        check_passed, _ = helpers.check_config(["procname"] , params, self.log)
+        if not check_passed:
+            raise Exception("Configuration check failed")
         setproctitle.setproctitle(params["procname"])
 
+        # for proper clean up if kill is called
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         self.whitelist = params["whitelist"]
@@ -176,8 +181,6 @@ class DataReceiver:
             self.log.info("Shutting down receiver...")
             self.transfer.stop()
             self.transfer = None
-        else:
-            self.log.info("No tranfer object to shut down available")
 
     def signal_term_handler(self, signal, frame):
         self.log.debug('got SIGTERM')
