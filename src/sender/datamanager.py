@@ -337,7 +337,7 @@ class DataManager():
         self.params["ipc_path"] = self.ipc_path
 
         # set process name
-        check_passed, _ = helpers.check_config(["procname"] , params, self.log)
+        check_passed, _ = helpers.check_config(["procname"], self.params, self.log)
         if not check_passed:
             raise Exception("Configuration check failed")
         setproctitle.setproctitle(self.params["procname"])
