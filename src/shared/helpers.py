@@ -15,7 +15,7 @@ from _version import __version__
 
 try:
     import ConfigParser
-except:
+except ImportError:
     import configparser as ConfigParser
 
 try:

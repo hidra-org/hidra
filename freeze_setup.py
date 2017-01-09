@@ -6,7 +6,7 @@
 
 from cx_Freeze import setup, Executable
 # import zmq
-# from distutils.sysconfig import get_python_lib
+from distutils.sysconfig import get_python_lib
 import os
 import platform
 
@@ -73,23 +73,26 @@ else:
 
 sharedpath = os.path.join(basepath, "src", "shared")
 confpath = os.path.join(basepath, "conf")
-# libzmq_path = os.path.join(get_python_lib(), "zmq")
+libzmq_path = os.path.join(get_python_lib(), "zmq")
 
 # Dependencies are automatically detected, but it might need fine tuning.
 buildOptions = {
     # zmq.backend.cython seems to be left out by default
     "packages": (["zmq", "zmq.backend.cython",
                   "logging.handlers",
-                  "setproctitle"]
+                  "setproctitle",
+                  "six",
+                  "ConfigParser"] #TODO windows compatible
                  + platform_specific_packages),
     # libzmq.pyd is a vital dependency
     # "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
         (libzmq_path, "zmq"),
-        (os.path.join(senderpath, "signalhandler.py"), "signalhandler.py"),
+        (os.path.join(senderpath, "__init__.py"), "__init__.py"),
         (os.path.join(senderpath, "taskprovider.py"), "taskprovider.py"),
         (os.path.join(senderpath, "datadispatcher.py"), "datadispatcher.py"),
         (os.path.join(sharedpath, "logutils"), "logutils"),
+        (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
         (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
         (os.path.join(sharedpath, "_version.py"), "_version.py"),
         (confpath, "conf"),
