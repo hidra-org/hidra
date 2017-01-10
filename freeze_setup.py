@@ -64,11 +64,17 @@ else:
 
     dist = platform.dist()
     if dist[0].lower() == "suse" and dist[1].startswith("10"):
+        architecture_type = platform.archtiecture()[0]
+        if architecture_type == "64 bit":
+            archi_t = "x86_64"
+        else:
+            archi_t = "i686"
         setproctitle_egg_path = (
-            os.path.join(os.path.expanduser("~"),
-                         ".cache/Python-Eggs/"
-                         "setproctitle-1.1.10-py2.7-linux-i686.egg-tmp/"
-                         "setproctitle.so"))
+            os.path.join(
+                os.path.expanduser("~"),
+                ".cache/Python-Eggs/"
+                "setproctitle-1.1.10-py2.7-linux-" + archi_t +  ".egg-tmp/"
+                "setproctitle.so"))
         platform_specific_files += [(setproctitle_egg_path, "setproctitle.so")]
 
 sharedpath = os.path.join(basepath, "src", "shared")
