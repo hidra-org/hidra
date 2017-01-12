@@ -428,8 +428,11 @@ class DataManager():
         self.number_of_streams = self.params["number_of_streams"]
         self.chunksize = self.params["chunksize"]
 
-        self.local_target = self.params["local_target"]
-        self.log.info("Configured local_target: {0}".format(self.local_target))
+        try:
+            self.local_target = self.params["local_target"]
+            self.log.info("Configured local_target: {0}".format(self.local_target))
+        except KeyError:
+            self.local_target = None
 
         self.signalhandler_pr = None
         self.taskprovider_pr = None
