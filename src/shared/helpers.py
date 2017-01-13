@@ -359,7 +359,8 @@ def check_all_sub_dir_exist(dir_path, subdirs):
 
     for d in dirs_to_check:
         if not os.path.exists(d):
-            logging.warning("Dir '{0}' does not exist.".format(d))
+            logging.error("Dir '{0}' does not exist. Abort.".format(d))
+            sys.exit(1)
 
 
 def check_existance(path):

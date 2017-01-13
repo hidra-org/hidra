@@ -260,7 +260,7 @@ def argument_parsing():
     helpers.check_existance(params["log_path"])
     if params["monitored_dir"]:
         helpers.check_existance(params["monitored_dir"])
-        helpers.check_any_sub_dir_exists(
+        helpers.check_all_sub_dir_exist(
             params["monitored_dir"],
             params["fix_subdirs"])
     if params["store_data"]:
