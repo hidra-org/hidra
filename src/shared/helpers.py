@@ -476,7 +476,18 @@ def check_config(required_params, config, log):
     config_reduced = "{"
 
     for param in required_params:
-        if param not in config:
+        if type(param) == list:
+            if param[0] not in config:
+                log.error("Configuration of wrong format. "
+                          "Missing parameter: '{0}'".format(param[0]))
+                check_passed = False
+            elif type(config[param[0]]) != param[1]:
+                log.error("Configuration of wrong format. "
+                          "Parameter '{0}' is of format '{1}' but should be "
+                          "of format '{2}'"
+                          .format(param[0], type(config[param[0]]), param[1]))
+                check_passed = False
+        elif param not in config:
             log.error("Configuration of wrong format. "
                       "Missing parameter: '{0}'".format(param))
             check_passed = False

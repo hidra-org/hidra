@@ -234,7 +234,7 @@ class EventDetector():
 
         required_params = ["monitored_dir",
                            "fix_subdirs",
-                           "monitored_events",
+                           ["monitored_events", dict],
                            # "event_timeout",
                            "history_size",
                            "use_cleanup",
