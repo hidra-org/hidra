@@ -514,17 +514,18 @@ class DataManager():
 
     def test_fixed_streaming_host(self):
         if self.use_data_stream:
-            try:
-                self.test_socket = self.context.socket(zmq.PUSH)
-                connection_str = "tcp://{0}".format(self.fixed_stream_id)
+            if self.test_socket is None:
+                try:
+                    self.test_socket = self.context.socket(zmq.PUSH)
+                    connection_str = "tcp://{0}".format(self.fixed_stream_id)
 
-                self.test_socket.connect(connection_str)
-                self.log.info("Start test_socket (connect): '{0}'"
-                              .format(connection_str))
-            except:
-                self.log.error("Failed to start test_socket (connect): '{0}'"
-                               .format(connection_str), exc_info=True)
-                return False
+                    self.test_socket.connect(connection_str)
+                    self.log.info("Start test_socket (connect): '{0}'"
+                                  .format(connection_str))
+                except:
+                    self.log.error("Failed to start test_socket (connect): '{0}'"
+                                   .format(connection_str), exc_info=True)
+                    return False
 
             try:
                 self.log.debug("ZMQ version used: {0}".format(zmq.__version__))
@@ -540,29 +541,26 @@ class DataManager():
                                   .format(self.fixed_stream_id))
 
                 else:
-
                     tracker = self.test_socket.send_multipart(
                         [b"ALIVE_TEST"], copy=False, track=True)
                     if not tracker.done:
                         tracker.wait(2)
                     self.log.debug("tracker.done = {0}".format(tracker.done))
                     if not tracker.done:
-                        self.log.error(
-                            "Failed to send test message to fixed streaming "
-                            "host {0}".format(self.fixed_stream_id),
-                            exc_info=True)
+                        self.log.error("Failed to send test message to fixed "
+                                       "streaming host {0}"
+                                       .format(self.fixed_stream_id),
+                                       exc_info=True)
                         return False
                     else:
-                        self.log.info(
-                            "Sending test message to fixed streaming host {0} "
-                            "... success"
-                            .format(self.fixed_stream_id))
+                        self.log.info("Sending test message to fixed "
+                                      "streaming host {0} ... success"
+                                      .format(self.fixed_stream_id))
             except:
-                self.log.error(
-                    "Failed to send test message to fixed streaming host {0}"
-                    .format(self.fixed_stream_id), exc_info=True)
+                self.log.error("Failed to send test message to fixed "
+                               "streaming host {0}"
+                               .format(self.fixed_stream_id), exc_info=True)
                 return False
-
         return True
 
     def run(self):
@@ -615,13 +613,31 @@ class DataManager():
             pr.start()
             self.datadispatcher_pr.append(pr)
 
+        # indicates if the processed are sent to waiting mode
+        sleep_was_sent = False
+
         while self.signalhandler_pr.is_alive() and \
             self.taskprovider_pr.is_alive() and \
             all(datadispatcher.is_alive()
                 for datadispatcher in self.datadispatcher_pr):
 
+            """
+            if self.test_fixed_streaming_host():
+                if sleep_was_sent:
+                    self.log.info("Sending 'WAKEUP' signal")
+                    self.control_pub_socket.send_multipart([b"control", b"WAKEUP"])
+                    sleep_was_sent = False
+
+            else:
+                # Due to an unforseeable event there is no active receiver on
+                # the other side. Thus the processed should enter a waiting
+                # mode and no data should be send.
+                self.log.warning("Sending 'SLEEP' signal")
+                self.control_pub_socket.send_multipart([b"control", b"SLEEP"])
+                sleep_was_sent = True
+            """
+
             time.sleep(1)
-            pass
 
         # notify which subprocess terminated
         if not self.signalhandler_pr.is_alive():

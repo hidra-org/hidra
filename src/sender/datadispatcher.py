@@ -293,7 +293,6 @@ class DataDispatcher():
             ######################################
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
-
                 try:
                     message = self.control_socket.recv_multipart()
                     self.log.debug("DataDispatcher-{0}: control signal "
@@ -309,29 +308,69 @@ class DataDispatcher():
                 del message[0]
 
                 if message[0] == b"EXIT":
-                    self.log.debug("Router requested to shutdown "
-                                   "DataDispatcher-{0}.".format(self.id))
+                    self.react_to_close_sockets_signal()
                     break
 
+#                elif message[0] == b"SLEEP":
+#                    self.log.debug("Router requested DataDispatcher-{0} to "
+#                                   "wait.".format(self.id))
+#
+#                    break_outer_loop = False
+#
+#                    # if there are problems on the receiving side no data
+#                    # should be processed till the problem is solved
+#                    while not_awake:
+#                        message = self.control_socket.recv_multipart()
+#
+#                        # remove subsription topic
+#                        del message[0]
+#
+#                        if message[0] == b"WAKEUP"
+#                            # Wake up from sleeping
+#                            break
+#
+#                        elif message[0] == b"EXIT":
+#                            self.react_to_close_sockets_signal()
+#                            break_outer_loop = True
+#                            break
+#                        elif message[0] == b"CLOSE_SOCKETS":
+#                            self.react_to_close_sockets_signal()
+#                            continue
+#
+#                    # the exit signal should become effective
+#                    if break_outer_loop:
+#                        break
+#                    else:
+#                        continue
+#
+#                    else:
+#                        self.log.error("Unhandled control signal received: {0}"
+#                                       .format(message))
+
                 elif message[0] == b"CLOSE_SOCKETS":
-
-                    targets = json.loads(message[1].decode("utf-8"))
-
-                    try:
-                        for socket_id, prio, suffix in targets:
-                            if socket_id in self.open_connections:
-                                self.log.info("Closing socket {0}"
-                                              .format(socket_id))
-                                if self.open_connections[socket_id]:
-                                    self.open_connections[socket_id].close(0)
-                                del self.open_connections[socket_id]
-                    except:
-                        self.log.error("Request for closing sockets of wrong "
-                                       "format", exc_info=True)
+                    self.react_to_close_sockets_signal()
                     continue
+
                 else:
                     self.log.error("Unhandled control signal received: {0}"
                                    .format(message))
+
+    def react_to_exit_signal(self):
+        iself.log.debug("Router requested to shutdown DataDispatcher-{0}."
+                        .format(self.id))
+
+    def react_to_close_sockets_signal(self):
+        targets = json.loads(message[1].decode("utf-8"))
+        try:
+            for socket_id, prio, suffix in targets:
+                if socket_id in self.open_connections:
+                    self.log.info("Closing socket {0}".format(socket_id))
+                    if self.open_connections[socket_id]:
+                        self.open_connections[socket_id].close(0)
+                    del self.open_connections[socket_id]
+        except:
+            self.log.error("Request for closing sockets of wrong format",
+                           exc_info=True)
 
     def stop(self):
         self.continue_run = False
