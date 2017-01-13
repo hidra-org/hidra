@@ -281,4 +281,89 @@ elif [ -f /etc/debian_version ] ; then
             exit 3
             ;;
     esac
+
+elif [ -f /etc/SuSE-release ] ; then
+# SuSE
+
+# source: /etc/init.d/skeleton
+
+    # source function library.
+#    . /lib/lsb/init-functions
+
+    # Shell functions sourced from /etc/rc.status
+    . /etc/rc.status
+
+
+    # Reset status of this service
+    rc_reset
+
+    cleanup()
+    {
+        SOCKETID=`cat $PIDFILE`
+        /bin/rm -rf "${IPCPATH}/${SOCKETID}"*
+
+        # Many daemons don't delete their pidfiles when they exit.
+        /bin/rm -rf $PIDFILE
+        return 0
+
+    }
+
+    case "$1" in
+        start)
+            echo -n "Starting $NAME"
+            ## Start daemon with startproc(8). If this fails
+            ## the return value is set appropriately by startproc.
+            /sbin/startproc $DAEMON $DAEMON_ARGS
+
+            sleep 3
+            # Remember status and be verbose
+            rc_status -v
+            ;;
+        stop)
+            echo -n "Stopping $NAME"
+            ## Stop daemon with killproc(8) and if this fails
+            ## killprox sets the return value according to LSB
+
+            /sbin/killproc -TERM $NAME
+
+            # Remember status and be verbose
+            rc_status -v
+            ;;
+        status)
+            echo -n "Checking for service $NAME "
+            ## Check status with checkproc(8), if process is running
+            ## checkproc will return with exit status 0.
+
+            # Return value is slightly different for the status command:
+            # 0 - service up and running
+            # 1 - service dead, but /var/run/  pid  file exists
+            # 2 - service dead, but /var/lock/ lock file exists
+            # 3 - service not running (unused)
+            # 4 - service status unknown :-(
+            # 5--199 reserved (5--99 LSB, 100--149 distro, 150--199 appl.)
+
+            # NOTE: checkproc returns LSB compliant status values.
+            /sbin/checkproc $NAME
+            # NOTE: rc_status knows that we called this init script with
+            # "status" option and adapts its messages accordingly.
+            rc_status -v
+            ;;
+        #reload|force-reload)
+            # If do_reload() is not implemented then leave this commented out
+            # and leave 'force-reload' as an alias for 'restart'.
+
+            #log_daemon_msg "Reloading $DESC" "$NAME"
+            #do_reload
+            #log_end_msg $?
+            #;;
+        restart|force-reload)
+            ;;
+        *)
+            #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
+            echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
+            exit 3
+            ;;
+    esac
+
+
 fi
