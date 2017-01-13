@@ -73,7 +73,7 @@ else:
             os.path.join(
                 os.path.expanduser("~"),
                 ".cache/Python-Eggs/"
-                "setproctitle-1.1.10-py2.7-linux-" + archi_t +  ".egg-tmp/"
+                "setproctitle-1.1.10-py2.7-linux-" + archi_t + ".egg-tmp/"
                 "setproctitle.so"))
         platform_specific_files += [(setproctitle_egg_path, "setproctitle.so")]
 
@@ -88,14 +88,16 @@ buildOptions = {
                   "logging.handlers",
                   "setproctitle",
                   "six",
-                  "ConfigParser"] #TODO windows compatible
+                  "ConfigParser"]  # TODO windows compatible
                  + platform_specific_packages),
     # libzmq.pyd is a vital dependency
     # "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
         (libzmq_path, "zmq"),
+        (os.path.join(basepath, "initscripts", "hidra.sh"), "hidra.sh"),
         (os.path.join(senderpath, "__init__.py"), "__init__.py"),
         (os.path.join(senderpath, "taskprovider.py"), "taskprovider.py"),
+        (os.path.join(senderpath, "signalhandler.py"), "signalhandler.py"),
         (os.path.join(senderpath, "datadispatcher.py"), "datadispatcher.py"),
         (os.path.join(sharedpath, "logutils"), "logutils"),
         (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
