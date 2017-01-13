@@ -337,7 +337,9 @@ class DataManager():
         self.params["ipc_path"] = self.ipc_path
 
         # set process name
-        check_passed, _ = helpers.check_config(["procname"], self.params, self.log)
+        check_passed, _ = helpers.check_config(["procname"],
+                                               self.params,
+                                               self.log)
         if not check_passed:
             raise Exception("Configuration check failed")
         setproctitle.setproctitle(self.params["procname"])
@@ -430,7 +432,8 @@ class DataManager():
 
         try:
             self.local_target = self.params["local_target"]
-            self.log.info("Configured local_target: {0}".format(self.local_target))
+            self.log.info("Configured local_target: {0}"
+                          .format(self.local_target))
         except KeyError:
             self.local_target = None
 
@@ -631,6 +634,9 @@ class DataManager():
 
     def stop(self):
 
+        if self.log is None:
+            self.log = logging
+
         if self.control_pub_socket:
             self.log.info("Sending 'Exit' signal")
             self.control_pub_socket.send_multipart([b"control", b"EXIT"])
@@ -661,62 +667,38 @@ class DataManager():
                             .format(self.ipc_path,
                                     self.current_pid,
                                     "controlSub"))
+
+        # Clean up ipc communication files
         try:
             os.remove(control_pub_path)
             self.log.debug("Removed ipc socket: {0}".format(control_pub_path))
         except OSError:
-            try:
-                self.log.warning("Could not remove ipc socket: {0}"
-                                 .format(control_pub_path))
-            except:
-                logging.warning("Could not remove ipc socket: {0}"
-                                .format(control_pub_path))
+            self.log.debug("Could not remove ipc socket: {0}"
+                           .format(control_pub_path))
         except:
-            try:
-                self.log.warning("Could not remove ipc socket: {0}"
-                                 .format(control_pub_path), exc_info=True)
-            except:
-                logging.warning("Could not remove ipc socket: {0}"
-                                .format(control_pub_path), exc_info=True)
+            self.log.warning("Could not remove ipc socket: {0}"
+                             .format(control_pub_path), exc_info=True)
 
         try:
             os.remove(control_sub_path)
             self.log.debug("Removed ipc socket: {0}".format(control_sub_path))
         except OSError:
-            try:
-                self.log.warning("Could not remove ipc socket: {0}"
-                                 .format(control_sub_path))
-            except:
-                logging.warning("Could not remove ipc socket: {0}"
-                                .format(control_sub_path))
+            self.log.debug("Could not remove ipc socket: {0}"
+                           .format(control_sub_path))
         except:
-            try:
-                self.log.warning("Could not remove ipc socket: {0}"
-                                 .format(control_sub_path), exc_info=True)
-            except:
-                logging.warning("Could not remove ipc socket: {0}"
-                                .format(control_sub_path), exc_info=True)
+            self.log.warning("Could not remove ipc socket: {0}"
+                             .format(control_sub_path), exc_info=True)
 
         # Remove temp directory (if empty)
         try:
             os.rmdir(self.ipc_path)
             self.log.debug("Removed IPC direcory: {0}".format(self.ipc_path))
-        except OSError as e:
-            try:
-                self.log.warning("Could not remove IPC directory: {0}"
-                                 .format(self.ipc_path))
-                self.log.debug("Error was {0}".format(e))
-            except:
-                logging.warning("Could not remove IPC directory: {0}"
-                                .format(self.ipc_path))
-                logging.debug("Error was:  {0}".format(e))
+        except OSError:
+            self.log.debug("Could not remove IPC directory: {0}"
+                           .format(self.ipc_path))
         except:
-            try:
-                self.log.warning("Could not remove IPC directory: {0}"
-                                 .format(self.ipc_path), exc_info=True)
-            except:
-                logging.warning("Could not remove IPC directory: {0}"
-                                .format(self.ipc_path), exc_info=True)
+            self.log.warning("Could not remove IPC directory: {0}"
+                             .format(self.ipc_path), exc_info=True)
 
         if not self.ext_log_queue and self.log_queue_listener:
             self.log.info("Stopping log_queue")
