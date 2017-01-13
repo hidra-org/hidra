@@ -654,7 +654,6 @@ class Transfer():
         else:
             # extract multipart message
             try:
-                # self.log.debug("multipart_message={0}".format(multipart_message))
                 metadata = json.loads(multipart_message[0].decode("utf-8"))
             except:
                 # json.dumps of None results in 'null'

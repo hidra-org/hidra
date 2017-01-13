@@ -122,7 +122,7 @@ class DataReceiver:
         self.log = self.get_logger()
 
         # set process name
-        check_passed, _ = helpers.check_config(["procname"] , params, self.log)
+        check_passed, _ = helpers.check_config(["procname"], params, self.log)
         if not check_passed:
             raise Exception("Configuration check failed")
         setproctitle.setproctitle(params["procname"])

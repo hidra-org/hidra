@@ -6,7 +6,7 @@ HiDRA 3.0.2
 HiDRA 3.0.1
 
 - Added option to get configured settings to hidra control client
-- The connection list is now contained in a seperate module
+- The connection list is now contained in a separate module
 
 HiDRA 3.0.0
 
