@@ -453,7 +453,7 @@ class DataManager():
         self.log.debug("Registering global ZMQ context")
 
         try:
-            if self.test_fixed_streaming_host():
+            if self.test_fixed_streaming_host(enable_logging = True):
                 self.create_sockets()
 
                 self.run()
@@ -512,7 +512,7 @@ class DataManager():
                            exc_info=True)
             raise
 
-    def test_fixed_streaming_host(self):
+    def test_fixed_streaming_host(self, enable_logging = False):
         if self.use_data_stream:
             if self.test_socket is None:
                 try:
@@ -528,7 +528,9 @@ class DataManager():
                     return False
 
             try:
-                self.log.debug("ZMQ version used: {0}".format(zmq.__version__))
+                if enable_logging:
+                    self.log.debug("ZMQ version used: {0}"
+                                   .format(zmq.__version__))
 
                 # With older ZMQ versions the tracker results in an ZMQError in
                 # the DataDispatchers when an event is processed
@@ -536,23 +538,24 @@ class DataManager():
                 if zmq.__version__ <= "14.5.0":
 
                     self.test_socket.send_multipart([b"ALIVE_TEST"])
-                    self.log.info("Sending test message to fixed streaming "
-                                  "host {0} ... success"
-                                  .format(self.fixed_stream_id))
+                    if enable_logging:
+                        self.log.info("Sending test message to fixed streaming "
+                                      "host {0} ... success"
+                                      .format(self.fixed_stream_id))
 
                 else:
                     tracker = self.test_socket.send_multipart(
                         [b"ALIVE_TEST"], copy=False, track=True)
                     if not tracker.done:
                         tracker.wait(2)
-                    self.log.debug("tracker.done = {0}".format(tracker.done))
+#                    self.log.debug("tracker.done = {0}".format(tracker.done))
                     if not tracker.done:
                         self.log.error("Failed to send test message to fixed "
                                        "streaming host {0}"
                                        .format(self.fixed_stream_id),
                                        exc_info=True)
                         return False
-                    else:
+                    elif enable_logging:
                         self.log.info("Sending test message to fixed "
                                       "streaming host {0} ... success"
                                       .format(self.fixed_stream_id))
@@ -621,7 +624,6 @@ class DataManager():
             all(datadispatcher.is_alive()
                 for datadispatcher in self.datadispatcher_pr):
 
-            """
             if self.test_fixed_streaming_host():
                 if sleep_was_sent:
                     self.log.info("Sending 'WAKEUP' signal")
@@ -630,12 +632,11 @@ class DataManager():
 
             else:
                 # Due to an unforseeable event there is no active receiver on
-                # the other side. Thus the processed should enter a waiting
+                # the other side. Thus the processes should enter a waiting
                 # mode and no data should be send.
                 self.log.warning("Sending 'SLEEP' signal")
                 self.control_pub_socket.send_multipart([b"control", b"SLEEP"])
                 sleep_was_sent = True
-            """
 
             time.sleep(1)
 

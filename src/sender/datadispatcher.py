@@ -299,7 +299,7 @@ class DataDispatcher():
                                    "received".format(self.id))
                     self.log.debug("message = {0}".format(message))
                 except:
-                    self.log.error("DataDispatcher-{0}: waiting for control "
+                    self.log.error("DataDispatcher-{0}: reiceiving control "
                                    "signal...failed".format(self.id),
                                    exc_info=True)
                     continue
@@ -311,44 +311,53 @@ class DataDispatcher():
                     self.react_to_close_sockets_signal()
                     break
 
-#                elif message[0] == b"SLEEP":
-#                    self.log.debug("Router requested DataDispatcher-{0} to "
-#                                   "wait.".format(self.id))
-#
-#                    break_outer_loop = False
-#
-#                    # if there are problems on the receiving side no data
-#                    # should be processed till the problem is solved
-#                    while not_awake:
-#                        message = self.control_socket.recv_multipart()
-#
-#                        # remove subsription topic
-#                        del message[0]
-#
-#                        if message[0] == b"WAKEUP"
-#                            # Wake up from sleeping
-#                            break
-#
-#                        elif message[0] == b"EXIT":
-#                            self.react_to_close_sockets_signal()
-#                            break_outer_loop = True
-#                            break
-#                        elif message[0] == b"CLOSE_SOCKETS":
-#                            self.react_to_close_sockets_signal()
-#                            continue
-#
-#                    # the exit signal should become effective
-#                    if break_outer_loop:
-#                        break
-#                    else:
-#                        continue
-#
-#                    else:
-#                        self.log.error("Unhandled control signal received: {0}"
-#                                       .format(message))
-
                 elif message[0] == b"CLOSE_SOCKETS":
                     self.react_to_close_sockets_signal()
+                    continue
+
+                elif message[0] == b"SLEEP":
+                    self.log.debug("Router requested DataDispatcher-{0} to "
+                                   "wait.".format(self.id))
+                    break_outer_loop = False
+
+                    # if there are problems on the receiving side no data
+                    # should be processed till the problem is solved
+                    while True:
+                        try:
+                            message = self.control_socket.recv_multipart()
+                        except:
+                            self.log.error("Receiving control signal...failed",
+                                           exc_info=True)
+                            continue
+
+                        # remove subsription topic
+                        del message[0]
+
+                        if message[0] == b"WAKEUP":
+                            self.log.debug("Received wakeup signal")
+                            # Wake up from sleeping
+                            break
+
+                        elif message[0] == b"EXIT":
+                            self.react_to_close_sockets_signal()
+                            break_outer_loop = True
+                            break
+                        elif message[0] == b"CLOSE_SOCKETS":
+                            self.react_to_close_sockets_signal()
+                            continue
+                        else:
+                            self.log.error("Unhandled control signal received: {0}"
+                                           .format(message))
+
+                    # the exit signal should become effective
+                    if break_outer_loop:
+                        break
+                    else:
+                        continue
+
+                elif message[0] == b"WAKEUP":
+                    self.log.debug("Received wakeup signal without sleeping. "
+                                   "Do nothing.")
                     continue
 
                 else:

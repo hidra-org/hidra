@@ -330,6 +330,12 @@ class SignalHandler():
                 if message[0] == b"EXIT":
                     self.log.info("Requested to shutdown.")
                     break
+                elif message[0] == b"SLEEP":
+                    self.log.debug("Received sleep signal. Do nothing.")
+                    continue
+                elif message[0] == b"WAKEUP":
+                    self.log.debug("Received wakeup signal. Do nothing.")
+                    continue
                 else:
                     self.log.error("Unhandled control signal received: {0}"
                                    .format(message[0]))

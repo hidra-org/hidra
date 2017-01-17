@@ -190,7 +190,7 @@ class TaskProvider():
                                    exc_info=True)
                     continue
 
-                # send the file to the fileMover
+                # send the file to the dataDispatcher
                 try:
                     self.log.debug("Sending message...")
                     message = [message_dict]
@@ -221,6 +221,46 @@ class TaskProvider():
                 if message[0] == b"EXIT":
                     self.log.debug("Requested to shutdown.")
                     break
+
+                elif message[0] == b"SLEEP":
+                    self.log.debug("Received sleep signal")
+                    break_outer_loop = False
+
+                    # if there are problems on the receiving side no data
+                    # should be processed till the problem is solved
+                    while True:
+                        try:
+                            message = self.control_socket.recv_multipart()
+                        except:
+                            self.log.error("Receiving control signal...failed")
+                            continue
+
+                        # remove subsription topic
+                        del message[0]
+
+                        if message[0] == b"WAKEUP":
+                            self.log.debug("Received wakeup signal")
+                            # Wake up from sleeping
+                            break
+                        elif message[0] == b"EXIT":
+                            self.react_to_close_sockets_signal()
+                            break_outer_loop = True
+                            break
+                        else:
+                            self.log.error("Unhandled control signal received: {0}"
+                                           .format(message))
+
+                    # the exit signal should become effective
+                    if break_outer_loop:
+                        break
+                    else:
+                        continue
+
+                elif message[0] == b"WAKEUP":
+                    self.log.debug("Received wakeup signal without sleeping. "
+                                   "Do nothing.")
+                    continue
+
                 else:
                     self.log.error("Unhandled control signal received: {0}"
                                    .format(message))
