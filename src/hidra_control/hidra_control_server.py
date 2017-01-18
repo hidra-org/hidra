@@ -54,6 +54,7 @@ if not logutils_imported:
     from logutils.queue import QueueHandler  # noqa F811
 
 import helpers  # noqa E402
+from cfel_optarg import parse_parameters
 
 
 BASEDIR = "/opt/hidra"
@@ -736,7 +737,7 @@ class HidraControlServer():
 
         try:
             config = helpers.read_config(config_file)
-            beamline_config = helpers.parse_config(config)["asection"]
+            beamline_config = parse_parameters(config)["asection"]
         except IOError:
             self.log.debug("Configuration file available: {0}"
                            .format(config_file))
