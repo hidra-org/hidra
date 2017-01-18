@@ -352,25 +352,57 @@ def extend_whitelist(whitelist, log):
 
 
 def check_config(required_params, config, log):
+    """
+    Check the configuration
+
+    Args:
+
+        required_params (list): list which can contain multiple formats
+            - string: check if the parameter is contained
+            - list of the format [<name>, <format>]: checks if the parameter
+                is contained and has the right format
+            - list of the format [<name>, <list of options>]: checks if the
+                parameter is contained and set to supported values
+        config (dict): dictionary where the configuration is stored
+        log (class Logger): Logger instance of the module logging
+
+    Returns:
+
+        check_passed: if all checks were successfull
+        config_reduced (string): string to print all required parameters with
+            their values
+    """
 
     check_passed = True
     config_reduced = "{"
 
     for param in required_params:
+        # multiple checks have to be done
         if type(param) == list:
+            # checks if the parameter is contained in the config dict
             if param[0] not in config:
                 log.error("Configuration of wrong format. "
-                          "Missing parameter: '{0}'".format(param[0]))
+                          "Missing parameter '{0}'".format(param[0]))
                 check_passed = False
+            # check if the parameter is one of the supported values
+            elif type(param[1]) == list:
+                if config[param[0]] not in param[1]:
+                    log.error("Configuration of wrong format. Options for "
+                              "parameter '{0}' are {1}"
+                              .format(param[0], param[1]))
+                    log.debug("parameter '{0}' = {1}"
+                              .format(param[0], config[param[0]]))
+                    check_passed = False
+            # check if the parameter has the supported type
             elif type(config[param[0]]) != param[1]:
-                log.error("Configuration of wrong format. "
-                          "Parameter '{0}' is of format '{1}' but should be "
-                          "of format '{2}'"
+                log.error("Configuration of wrong format. Parameter '{0}' is "
+                          "of format '{1}' but should be of format '{2}'"
                           .format(param[0], type(config[param[0]]), param[1]))
                 check_passed = False
+        # checks if the parameter is contained in the config dict
         elif param not in config:
-            log.error("Configuration of wrong format. "
-                      "Missing parameter: '{0}'".format(param))
+            log.error("Configuration of wrong format. Missing parameter: '{0}'"
+                      .format(param))
             check_passed = False
         else:
             config_reduced += "{0}: {1}, ".format(param, config[param])
