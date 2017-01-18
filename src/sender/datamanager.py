@@ -222,7 +222,7 @@ def argument_parsing():
                         help="Flag describing if the files should be removed "
                              "from the source (needed if data_fetcher_type is "
                              "http_fetcher)",
-                        choices=["True", "False"])
+                        choices=["True", "False", "with_confirmation"])
 
     arguments = parser.parse_args()
     arguments.config_file = arguments.config_file or default_config

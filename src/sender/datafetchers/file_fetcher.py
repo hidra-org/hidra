@@ -18,7 +18,7 @@ def setup(log, config):
 
     required_params = ["fix_subdirs",
                        "store_data",
-                       "remove_data"]
+                       ["remove_data", [True, False, "with_confirmation"]]]
 
     # Check format of config
     check_passed, config_reduced = helpers.check_config(required_params,
@@ -113,12 +113,16 @@ def get_metadata(log, config, targets, metadata, chunksize, local_target=None):
 def send_data(log, targets, source_file, target_file, metadata,
               open_connections, context, config):
 
+    # no targets to send data to -> data can be removed
+    # (after possible local storing)
     if not targets:
         config["remove_flag"] = True
         return
 
+    # find the targets requesting for data
     targets_data = [i for i in targets if i[3] == "data"]
 
+    # no targets to send data to
     if not targets_data:
         config["remove_flag"] = True
         return
@@ -140,6 +144,7 @@ def send_data(log, targets, source_file, target_file, metadata,
 
     log.debug("Passing multipart-message for file '{0}'..."
               .format(source_file))
+    # sending data divided into chunks
     while True:
 
         # read next chunk from file
@@ -186,7 +191,16 @@ def send_data(log, targets, source_file, target_file, metadata,
                   exc_info=True)
         raise
 
-    if not send_error:
+    # do not remove data until a confirmation is sent back from the priority
+    # target
+    if config["remove_data"] == "with_confirmation":
+
+        # notify cleanup
+
+        config["remove_flag"] = False
+
+    # the data was successfully sent -> mark it as removable
+    elif not send_error:
         config["remove_flag"] = True
 
 
