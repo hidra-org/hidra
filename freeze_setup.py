@@ -88,6 +88,7 @@ buildOptions = {
                   "logging.handlers",
                   "setproctitle",
                   "six",
+                  "ast",
                   "ConfigParser"]  # TODO windows compatible
                  + platform_specific_packages),
     # libzmq.pyd is a vital dependency
