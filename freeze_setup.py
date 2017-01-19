@@ -64,8 +64,8 @@ else:
 
     dist = platform.dist()
     if dist[0].lower() == "suse" and dist[1].startswith("10"):
-        architecture_type = platform.archtiecture()[0]
-        if architecture_type == "64 bit":
+        architecture_type = platform.architecture()[0]
+        if architecture_type == "64bit":
             archi_t = "x86_64"
         else:
             archi_t = "i686"
@@ -101,7 +101,7 @@ buildOptions = {
         (os.path.join(senderpath, "datadispatcher.py"), "datadispatcher.py"),
         (os.path.join(sharedpath, "logutils"), "logutils"),
         (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
-        (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
+        (os.path.join(sharedpath, "cfel_optarg.py"), "cfel_optarg.py"),
         (os.path.join(sharedpath, "_version.py"), "_version.py"),
         (confpath, "conf"),
     ] + platform_specific_files,
