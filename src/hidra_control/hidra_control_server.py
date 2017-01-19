@@ -346,7 +346,7 @@ class HidraController():
 
                 f.write("data_fetcher_type    = {0}\n".format(datafetcher))
 
-                f.write("number_of_streams    = 1\n")
+                f.write("number_of_streams    = 32\n")
                 f.write("use_data_stream      = False\n")
                 f.write("chunksize            = 10485760\n")
 
