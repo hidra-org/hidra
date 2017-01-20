@@ -18,6 +18,8 @@ DESC="HiDRA"
 NAME=hidra
 DAEMON=/opt/hidra/src/sender/datamanager.py
 DAEMON_ARGS="--verbose"
+DAEMON_EXE=/opt/hidra/datamanager
+DAEMON_EXE_ARGS="DAEMON_ARGS --config_file /opt/hidra/conf/datamanager.conf"
 PIDFILE=/opt/hidra/$NAME.pid
 IPCPATH=/tmp/hidra
 PYTHON=/usr/bin/python
@@ -311,9 +313,11 @@ elif [ -f /etc/SuSE-release ] ; then
     case "$1" in
         start)
             echo -n "Starting $NAME"
+            export LD_LIBRARY_PATH=/opt/hidra:$LD_LIBRARY_PATH
+
             ## Start daemon with startproc(8). If this fails
             ## the return value is set appropriately by startproc.
-            /sbin/startproc $DAEMON $DAEMON_ARGS
+            /sbin/startproc $DAEMON_EXE $DAEMON_EXE_ARGS
 
             sleep 3
             # Remember status and be verbose
