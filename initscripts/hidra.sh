@@ -23,6 +23,7 @@ DAEMON_EXE_ARGS="DAEMON_ARGS --config_file /opt/hidra/conf/datamanager.conf"
 PIDFILE=/opt/hidra/$NAME.pid
 IPCPATH=/tmp/hidra
 PYTHON=/usr/bin/python
+LOG_DIRECTORY=/var/log/hidra
 
 SCRIPTNAME=/etc/init.d/$NAME
 
@@ -314,6 +315,12 @@ elif [ -f /etc/SuSE-release ] ; then
         start)
             echo -n "Starting $NAME"
             export LD_LIBRARY_PATH=/opt/hidra:$LD_LIBRARY_PATH
+
+            # Create the directory for the log files
+            if [ ! -d "$LOG_DIRECTORY" ]; then
+                mkdir $LOG_DIRECTORY
+                chmod 1777 $LOG_DIRECTORY
+            fi
 
             ## Start daemon with startproc(8). If this fails
             ## the return value is set appropriately by startproc.
