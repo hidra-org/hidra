@@ -247,8 +247,8 @@ class TaskProvider():
                             break_outer_loop = True
                             break
                         else:
-                            self.log.error("Unhandled control signal received: {0}"
-                                           .format(message))
+                            self.log.error("Unhandled control signal received:"
+                                           " {0}".format(message))
 
                     # the exit signal should become effective
                     if break_outer_loop:

@@ -9,7 +9,6 @@ import logging.handlers
 import shutil
 import subprocess
 import socket
-import json
 import re
 from _version import __version__
 from cfel_optarg import parse_parameters

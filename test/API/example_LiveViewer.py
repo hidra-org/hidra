@@ -80,7 +80,7 @@ class LiveView(QThread):
         self.alive = True
         print ("Live view thread: started")
 
-        if self.filetype in [LiveView.FILETYPE_CBF, LiveView.FILETYPE_TIF]:
+        if self.filetype in [LiveView.FILETYPE_CBF, LiveView.FILETYPE_TIF]:  # noqa F821
             # open viewer
             while self.alive:
                 # find latest image
@@ -123,7 +123,7 @@ class LiveView(QThread):
                             self.alive = False
                     time.sleep(0.05)
                     interval += 0.05
-        elif self.filetype == LiveView.FILETYPE_HDF5:
+        elif self.filetype == LiveView.FILETYPE_HDF5:  # noqa F821
             print ("Live view thread: HDF5 not supported yet")
 
         print ("Live view thread: Thread for Live view died")

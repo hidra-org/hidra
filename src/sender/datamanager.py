@@ -453,7 +453,7 @@ class DataManager():
         self.log.debug("Registering global ZMQ context")
 
         try:
-            if self.test_fixed_streaming_host(enable_logging = True):
+            if self.test_fixed_streaming_host(enable_logging=True):
                 self.create_sockets()
 
                 self.run()
@@ -512,7 +512,7 @@ class DataManager():
                            exc_info=True)
             raise
 
-    def test_fixed_streaming_host(self, enable_logging = False):
+    def test_fixed_streaming_host(self, enable_logging=False):
         if self.use_data_stream:
             if self.test_socket is None:
                 try:
@@ -523,8 +523,9 @@ class DataManager():
                     self.log.info("Start test_socket (connect): '{0}'"
                                   .format(connection_str))
                 except:
-                    self.log.error("Failed to start test_socket (connect): '{0}'"
-                                   .format(connection_str), exc_info=True)
+                    self.log.error("Failed to start test_socket (connect): "
+                                   "'{0}'".format(connection_str),
+                                   exc_info=True)
                     return False
 
             try:
@@ -539,8 +540,8 @@ class DataManager():
 
                     self.test_socket.send_multipart([b"ALIVE_TEST"])
                     if enable_logging:
-                        self.log.info("Sending test message to fixed streaming "
-                                      "host {0} ... success"
+                        self.log.info("Sending test message to fixed streaming"
+                                      " host {0} ... success"
                                       .format(self.fixed_stream_id))
 
                 else:
@@ -627,7 +628,8 @@ class DataManager():
             if self.test_fixed_streaming_host():
                 if sleep_was_sent:
                     self.log.info("Sending 'WAKEUP' signal")
-                    self.control_pub_socket.send_multipart([b"control", b"WAKEUP"])
+                    self.control_pub_socket.send_multipart([b"control",
+                                                            b"WAKEUP"])
                     sleep_was_sent = False
 
             else:
