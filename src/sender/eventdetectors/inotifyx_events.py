@@ -237,14 +237,32 @@ class EventDetector():
                            ["monitored_events", dict],
                            # "event_timeout",
                            "history_size",
-                           "use_cleanup",
-                           "time_till_closed",
-                           "action_time"]
+                           "use_cleanup"]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
                                                             config,
                                                             self.log)
+
+        if config["use_cleanup"]:
+            required_params2 = ["time_till_closed", "action_time"]
+
+            # Check format of config
+            # the second set of parameters only has to be checked if cleanup
+            # is enabled
+            check_passed2, config_reduced2 = (
+                helpers.check_config(required_params2,
+                                     config,
+                                     self.log))
+            if check_passed2:
+                # To merge them the braces have to be removed
+                config_reduced = (config_reduced[:-1]
+                                  + ", "
+                                  + config_reduced2[1:])
+        else:
+            check_passed2 = True
+
+        check_passed = check_passed and check_passed2
 
         self.wd_to_path = {}
         self.fd = binding.init()
@@ -272,14 +290,14 @@ class EventDetector():
 
             self.history = collections.deque(maxlen=config["history_size"])
 
-            self.cleanup_time = config["time_till_closed"]
-            self.action_time = config["action_time"]
-
             self.lock = threading.Lock()
 
             self.add_watch()
 
             if config["use_cleanup"]:
+                self.cleanup_time = config["time_till_closed"]
+                self.action_time = config["action_time"]
+
                 self.cleanup_thread = CleanUp(self.paths, self.mon_subdirs,
                                               self.mon_suffixes,
                                               self.cleanup_time,
