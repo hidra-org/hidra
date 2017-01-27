@@ -308,11 +308,11 @@ class DataDispatcher():
                 del message[0]
 
                 if message[0] == b"EXIT":
-                    self.react_to_close_sockets_signal()
+                    self.react_to_exit_signal()
                     break
 
                 elif message[0] == b"CLOSE_SOCKETS":
-                    self.react_to_close_sockets_signal()
+                    self.react_to_close_sockets_signal(message)
                     continue
 
                 elif message[0] == b"SLEEP":
@@ -339,15 +339,15 @@ class DataDispatcher():
                             break
 
                         elif message[0] == b"EXIT":
-                            self.react_to_close_sockets_signal()
+                            self.react_to_exit_signal()
                             break_outer_loop = True
                             break
                         elif message[0] == b"CLOSE_SOCKETS":
-                            self.react_to_close_sockets_signal()
+                            self.react_to_close_sockets_signal(message)
                             continue
                         else:
-                            self.log.error("Unhandled control signal received: {0}"
-                                           .format(message))
+                            self.log.error("Unhandled control signal received:"
+                                           " {0}".format(message))
 
                     # the exit signal should become effective
                     if break_outer_loop:
@@ -365,10 +365,10 @@ class DataDispatcher():
                                    .format(message))
 
     def react_to_exit_signal(self):
-        iself.log.debug("Router requested to shutdown DataDispatcher-{0}."
-                        .format(self.id))
+        self.log.debug("Router requested to shutdown DataDispatcher-{0}."
+                       .format(self.id))
 
-    def react_to_close_sockets_signal(self):
+    def react_to_close_sockets_signal(self, message):
         targets = json.loads(message[1].decode("utf-8"))
         try:
             for socket_id, prio, suffix in targets:
