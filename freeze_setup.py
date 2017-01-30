@@ -12,77 +12,18 @@ import sys
 import platform
 
 basepath = os.path.dirname(os.path.abspath(__file__))
+senderpath = os.path.join(basepath, "src", "sender")
 sharedpath = os.path.join(basepath, "src", "shared")
 confpath = os.path.join(basepath, "conf")
 libzmq_path = os.path.join(get_python_lib(), "zmq")
 
 if platform.system() == "Windows":
 #    libzmq_path = "C:\Python27\Lib\site-packages\zmq"
-    senderpath = os.path.join(basepath, "src", "sender")
-
     platform_specific_packages = ["watchdog"]
-    platform_specific_files = [
-        (os.path.join(senderpath, "eventdetectors", "inotifyx_events.py"),
-            os.path.join("eventdetectors", "inotifyx_events.py")),
-        (os.path.join(senderpath, "eventdetectors", "watchdog_events.py"),
-            os.path.join("eventdetectors", "watchdog_events.py")),
-        (os.path.join(senderpath, "eventdetectors", "http_events.py"),
-            os.path.join("eventdetectors", "http_events.py")),
-        (os.path.join(senderpath, "eventdetectors", "zmq_events.py"),
-            os.path.join("eventdetectors", "zmq_events.py")),
-        (os.path.join(senderpath, "datafetchers", "file_fetcher.py"),
-            os.path.join("datafetchers", "file_fetcher.py")),
-        (os.path.join(senderpath, "datafetchers", "http_fetcher.py"),
-            os.path.join("datafetchers", "http_fetcher.py")),
-        (os.path.join(senderpath, "datafetchers", "zmq_fetcher.py"),
-            os.path.join("datafetchers", "zmq_fetcher.py")),
-        (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
-            os.path.join("datafetchers", "send_helpers.py"))
-    ]
 
 else:
 #    libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
-    senderpath = os.path.join(basepath, "src", "sender")
-
     platform_specific_packages = ["inotifyx"]
-    platform_specific_files = [
-        (os.path.join(senderpath, "eventdetectors", "inotifyx_events.py"),
-            "inotifyx_events.py"),
-        (os.path.join(senderpath, "eventdetectors", "watchdog_events.py"),
-            "watchdog_events.py"),
-        (os.path.join(senderpath, "eventdetectors", "http_events.py"),
-            "http_events.py"),
-        (os.path.join(senderpath, "eventdetectors", "zmq_events.py"),
-            "zmq_events.py"),
-        (os.path.join(senderpath, "datafetchers", "file_fetcher.py"),
-            "file_fetcher.py"),
-        (os.path.join(senderpath, "datafetchers", "http_fetcher.py"),
-            "http_fetcher.py"),
-        (os.path.join(senderpath, "datafetchers", "zmq_fetcher.py"),
-            "zmq_fetcher.py"),
-        (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
-            "send_helpers.py")
-    ]
-    """
-    platform_specific_files = [
-        (os.path.join(senderpath, "eventdetectors", "inotifyx_events.py"),
-            os.path.join("eventdetectors", "inotifyx_events.py")),
-        (os.path.join(senderpath, "eventdetectors", "watchdog_events.py"),
-            os.path.join("eventdetectors", "watchdog_events.py")),
-        (os.path.join(senderpath, "eventdetectors", "http_events.py"),
-            os.path.join("eventdetectors", "http_events.py")),
-        (os.path.join(senderpath, "eventdetectors", "zmq_events.py"),
-            os.path.join("eventdetectors", "zmq_events.py")),
-        (os.path.join(senderpath, "datafetchers", "file_fetcher.py"),
-            os.path.join("datafetchers", "file_fetcher.py")),
-        (os.path.join(senderpath, "datafetchers", "http_fetcher.py"),
-            os.path.join("datafetchers", "http_fetcher.py")),
-        (os.path.join(senderpath, "datafetchers", "zmq_fetcher.py"),
-            os.path.join("datafetchers", "zmq_fetcher.py")),
-        (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
-            os.path.join("datafetchers", "send_helpers.py"))
-    ]
-    """
 
     # Workaround for including setproctitle when building on SuSE 10
     dist = platform.dist()
@@ -130,10 +71,28 @@ buildOptions = {
         (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
         (os.path.join(sharedpath, "cfel_optarg.py"), "cfel_optarg.py"),
         (os.path.join(sharedpath, "_version.py"), "_version.py"),
+        # config
         (os.path.join(confpath, "datamanager_pilatus.conf"),
             os.path.join("conf", "datamanager.conf")),
-#        (confpath, "conf"),
-    ] + platform_specific_files,
+        # event detectors
+        (os.path.join(senderpath, "eventdetectors", "inotifyx_events.py"),
+            os.path.join("eventdetectors", "inotifyx_events.py")),
+        (os.path.join(senderpath, "eventdetectors", "watchdog_events.py"),
+            os.path.join("eventdetectors", "watchdog_events.py")),
+        (os.path.join(senderpath, "eventdetectors", "http_events.py"),
+            os.path.join("eventdetectors", "http_events.py")),
+        (os.path.join(senderpath, "eventdetectors", "zmq_events.py"),
+            os.path.join("eventdetectors", "zmq_events.py")),
+        # data fetchers
+        (os.path.join(senderpath, "datafetchers", "file_fetcher.py"),
+            os.path.join("datafetchers", "file_fetcher.py")),
+        (os.path.join(senderpath, "datafetchers", "http_fetcher.py"),
+            os.path.join("datafetchers", "http_fetcher.py")),
+        (os.path.join(senderpath, "datafetchers", "zmq_fetcher.py"),
+            os.path.join("datafetchers", "zmq_fetcher.py")),
+        (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
+            os.path.join("datafetchers", "send_helpers.py"))
+    ],
 }
 
 executables = [
