@@ -8,13 +8,16 @@ from cx_Freeze import setup, Executable
 # import zmq
 from distutils.sysconfig import get_python_lib
 import os
+import sys
 import platform
 
 basepath = os.path.dirname(os.path.abspath(__file__))
+sharedpath = os.path.join(basepath, "src", "shared")
+confpath = os.path.join(basepath, "conf")
+libzmq_path = os.path.join(get_python_lib(), "zmq")
 
 if platform.system() == "Windows":
-    libzmq_path = "C:\Python27\Lib\site-packages\zmq"
-#    basepath = "D:\hidra"
+#    libzmq_path = "C:\Python27\Lib\site-packages\zmq"
     senderpath = os.path.join(basepath, "src", "sender")
 
     platform_specific_packages = ["watchdog"]
@@ -38,8 +41,7 @@ if platform.system() == "Windows":
     ]
 
 else:
-    libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
-#    basepath = "/opt/hidra"
+#    libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
     senderpath = os.path.join(basepath, "src", "sender")
 
     platform_specific_packages = ["inotifyx"]
@@ -61,7 +63,28 @@ else:
         (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
             "send_helpers.py")
     ]
+    """
+    platform_specific_files = [
+        (os.path.join(senderpath, "eventdetectors", "inotifyx_events.py"),
+            os.path.join("eventdetectors", "inotifyx_events.py")),
+        (os.path.join(senderpath, "eventdetectors", "watchdog_events.py"),
+            os.path.join("eventdetectors", "watchdog_events.py")),
+        (os.path.join(senderpath, "eventdetectors", "http_events.py"),
+            os.path.join("eventdetectors", "http_events.py")),
+        (os.path.join(senderpath, "eventdetectors", "zmq_events.py"),
+            os.path.join("eventdetectors", "zmq_events.py")),
+        (os.path.join(senderpath, "datafetchers", "file_fetcher.py"),
+            os.path.join("datafetchers", "file_fetcher.py")),
+        (os.path.join(senderpath, "datafetchers", "http_fetcher.py"),
+            os.path.join("datafetchers", "http_fetcher.py")),
+        (os.path.join(senderpath, "datafetchers", "zmq_fetcher.py"),
+            os.path.join("datafetchers", "zmq_fetcher.py")),
+        (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
+            os.path.join("datafetchers", "send_helpers.py"))
+    ]
+    """
 
+    # Workaround for including setproctitle when building on SuSE 10
     dist = platform.dist()
     if dist[0].lower() == "suse" and dist[1].startswith("10"):
         architecture_type = platform.architecture()[0]
@@ -77,9 +100,12 @@ else:
                 "setproctitle.so"))
         platform_specific_files += [(setproctitle_egg_path, "setproctitle.so")]
 
-sharedpath = os.path.join(basepath, "src", "shared")
-confpath = os.path.join(basepath, "conf")
-libzmq_path = os.path.join(get_python_lib(), "zmq")
+# Some packages differ in Python 3
+# TODO windows compatible?
+if sys.version_info >= (3,0):
+    version_specific_packages = ["configparser"]
+else:
+    version_specific_packages = ["ConfigParser"]
 
 # Dependencies are automatically detected, but it might need fine tuning.
 buildOptions = {
@@ -88,8 +114,8 @@ buildOptions = {
                   "logging.handlers",
                   "setproctitle",
                   "six",
-                  "ast",
-                  "ConfigParser"]  # TODO windows compatible
+                  "ast"]
+                 + version_specific_packages
                  + platform_specific_packages),
     # libzmq.pyd is a vital dependency
     # "include_files": [zmq.libzmq.__file__, ],
@@ -104,7 +130,9 @@ buildOptions = {
         (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
         (os.path.join(sharedpath, "cfel_optarg.py"), "cfel_optarg.py"),
         (os.path.join(sharedpath, "_version.py"), "_version.py"),
-        (confpath, "conf"),
+        (os.path.join(confpath, "datamanager_pilatus.conf"),
+            os.path.join("conf", "datamanager.conf")),
+#        (confpath, "conf"),
     ] + platform_specific_files,
 }
 
@@ -117,4 +145,4 @@ setup(name='HiDRA',
       description='',
       options={"build_exe": buildOptions},
       executables=executables
-      )
+)

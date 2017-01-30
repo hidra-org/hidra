@@ -16,6 +16,7 @@ from cfel_optarg import parse_parameters
 try:
     import ConfigParser
 except ImportError:
+    # The ConfigParser module has been renamed to configparser in Python 3
     import configparser as ConfigParser
 
 try:
