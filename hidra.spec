@@ -80,12 +80,12 @@ mkdir -p %{buildroot}/var/log/%{name}
 
 %changelog
 * Tue Jan 30 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-2
-Change log directory
+- Change log directory
 * Tue Dec 20 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-1
-Bump version
+- Bump version
 * Fri Dec 16 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.1-1
-Bump version
+- Bump version
 * Wed Dec 14 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.0-1
-Bump version
+- Bump version
 * Tue Nov 22 2016 Stefan Dietrich <stefan.dietrich@desy.de> - 2.4.2-1
 - Initial packaging
