@@ -14,7 +14,7 @@
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="HiDRA"
-# Process name ( For display )
+# Process name (for display)
 NAME=hidra
 DAEMON=/opt/hidra/src/sender/datamanager.py
 DAEMON_ARGS="--verbose"
@@ -313,35 +313,52 @@ elif [ -f /etc/SuSE-release ] ; then
 
     case "$1" in
         start)
-            echo -n "Starting $NAME"
+            printf "Starting $NAME"
             export LD_LIBRARY_PATH=/opt/hidra:$LD_LIBRARY_PATH
 
-            # Create the directory for the log files
-            if [ ! -d "$LOG_DIRECTORY" ]; then
-                mkdir $LOG_DIRECTORY
-                chmod 1777 $LOG_DIRECTORY
+            # Checking if the process is already running
+            /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"
+            # 0: service is up and running
+            if [ $status = "0" ]; then
+               printf "\n$NAME is already running"
+            else
+                # Create the directory for the log files
+                if [ ! -d "$LOG_DIRECTORY" ]; then
+                    mkdir $LOG_DIRECTORY
+                    chmod 1777 $LOG_DIRECTORY
+                fi
+
+                ## Start daemon with startproc(8). If this fails
+                ## the return value is set appropriately by startproc.
+                /sbin/startproc $DAEMON_EXE $DAEMON_EXE_ARGS
+
+                sleep 3
+
+                /sbin/checkproc $NAME
             fi
 
-            ## Start daemon with startproc(8). If this fails
-            ## the return value is set appropriately by startproc.
-            /sbin/startproc $DAEMON_EXE $DAEMON_EXE_ARGS
-
-            sleep 3
             # Remember status and be verbose
             rc_status -v
             ;;
         stop)
-            echo -n "Stopping $NAME"
-            ## Stop daemon with killproc(8) and if this fails
-            ## killprox sets the return value according to LSB
+            printf "Stopping $NAME"
 
+            # Checking if the process is running at all
+            /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"
+            # 3: service is not running
+            if [ $status = "3" ]; then
+               printf "\n$NAME is not running"
+            fi
+
+            ## Stop daemon with killproc(8) and if this fails
+            ## killproc sets the return value according to LSB
             /sbin/killproc -TERM $NAME
 
             # Remember status and be verbose
             rc_status -v
             ;;
         status)
-            echo -n "Checking for service $NAME "
+            printf "Checking for service $NAME "
             ## Check status with checkproc(8), if process is running
             ## checkproc will return with exit status 0.
 
@@ -371,7 +388,7 @@ elif [ -f /etc/SuSE-release ] ; then
             ;;
         *)
             #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
-            echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
+            printf "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
             exit 3
             ;;
     esac
