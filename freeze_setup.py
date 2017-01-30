@@ -16,6 +16,7 @@ senderpath = os.path.join(basepath, "src", "sender")
 sharedpath = os.path.join(basepath, "src", "shared")
 confpath = os.path.join(basepath, "conf")
 libzmq_path = os.path.join(get_python_lib(), "zmq")
+platform_specific_files = []
 
 if platform.system() == "Windows":
 #    libzmq_path = "C:\Python27\Lib\site-packages\zmq"
@@ -92,7 +93,7 @@ buildOptions = {
             os.path.join("datafetchers", "zmq_fetcher.py")),
         (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
             os.path.join("datafetchers", "send_helpers.py"))
-    ],
+    ] + platform_specific_files,
 }
 
 executables = [
