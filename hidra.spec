@@ -52,7 +52,7 @@ mkdir -p %{buildroot}/%{_unitdir}
 cp initscripts/*.service %{buildroot}/%{_unitdir}/
 
 # log directory
-mkdir -p %{buildroot}/opt/%{name}/logs
+mkdir -p %{buildroot}/var/log/%{name}
 
 #%{__python} setup.py install -O1 --skip-build --root %{buildroot}
 
@@ -76,14 +76,16 @@ mkdir -p %{buildroot}/opt/%{name}/logs
 /opt/%{name}/src/hidra_control/*
 %{_unitdir}/*.service
 %config(noreplace) /opt/%{name}/conf/*
-%attr(1777,root,root) /opt/%{name}/logs
+%attr(1777,root,root) /var/log/%{name}
 
 %changelog
-Tue Dec 20 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-1
+* Tue Jan 30 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-2
+Change log directory
+* Tue Dec 20 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-1
 Bump version
-Fri Dec 16 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.1-1
+* Fri Dec 16 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.1-1
 Bump version
-Wed Dec 14 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.0-1
+* Wed Dec 14 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.0-1
 Bump version
 * Tue Nov 22 2016 Stefan Dietrich <stefan.dietrich@desy.de> - 2.4.2-1
 - Initial packaging
