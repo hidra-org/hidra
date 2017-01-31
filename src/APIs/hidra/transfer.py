@@ -145,6 +145,8 @@ class Transfer():
         self.read_callback = None
         self.close_callback = None
 
+        self.stopped_everything = False
+
         if connection_type in self.supported_connections:
             self.connection_type = connection_type
         else:
@@ -720,8 +722,12 @@ class Transfer():
                 try:
                     socks = dict(self.poller.poll())
                 except:
-                    self.log.error("Could not poll for new message")
-                    raise
+                    if self.stopped_everything:
+                        self.log.debug("Stopping poller")
+                        raise KeyboardInterrupt
+                    else:
+                        self.log.error("Could not poll for new message")
+                        raise
 
             # if there was a response
             if (self.data_socket in socks
@@ -987,6 +993,8 @@ class Transfer():
                 self.log.info("Closing ZMQ context...done.")
             except:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
+
+        self.stopped_everything = True
 
     def force_stop(self, targets):
 
