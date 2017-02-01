@@ -24,6 +24,7 @@ def get_ip_addr():
     ip_list = p.stdout.readlines()[0].split(" ")[:-1]
 
     active_ips = []
+    ip_complete = []
 
     for ip in ip_list:
 
@@ -50,9 +51,15 @@ def get_ip_addr():
 
         # Version 2
         try:
-            active_ips.append(socket.gethostbyaddr(ip))
+            ip_complete = socket.gethostbyaddr(ip)
         except:
             pass
+
+        for i in ip_complete:
+            if type(i) == list:
+                active_ips += i
+            elif i not in active_ips:
+                active_ips.append(i)
 
     return active_ips
 
@@ -89,32 +96,39 @@ def get_service_list():
 
         config = get_config(conf)
 
-        ip = config.get("asection", "data_stream_ip")
+        ip = remove_domain(config.get("asection", "data_stream_ip"))
+
         for entry in active_ips:
-            if ip in entry:
-                services_to_check.append(SERVICE_PREFIX + bl)
+	    # remove domain for easier host comparison
+            if ip in remove_domain(entry):
+                if SERVICE_PREFIX + bl not in services_to_check:
+			services_to_check.append(SERVICE_PREFIX + bl)
 
     return services_to_check
+
+
+def remove_domain(x):
+    return x.replace(".desy.de", "")
 
 
 if __name__ == '__main__':
 
     # Get IP addresses
-    print "Active Ips"
     active_ips = get_ip_addr()
-    print active_ips
+    print "Active Ips\n", active_ips
 
     # mapping ip/hostname to beamline
-    print "List of beamline receivers to check"
     services_to_check = get_service_list()
-    print services_to_check
+    print "List of beamline receivers to check\n", services_to_check
 
     # check if hidra runs for this beamline
     # and start it if that is not the case
-    for s in service_to_check:
+    for s in services_to_check:
         p = subprocess.call(["systemctl", "status", s])
-        print "service", s, "is running"
 
         if p != 0:
+            print "service", s, "is not running"
             # start service
-#            p = subprocess.call(["systemctl", "start", s])
+            p = subprocess.call(["systemctl", "start", s])
+        else:
+            print "service", s, "is running"
