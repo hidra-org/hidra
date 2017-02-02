@@ -782,8 +782,9 @@ class Transfer():
 
     def store(self, target_base_path):
 
+        runLoop = True
         # save all chunks to file
-        while True:
+        while runLoop:
 
             try:
                 [payload_metadata, payload] = self.get()
@@ -841,9 +842,12 @@ class Transfer():
                                            " '{0}'".format(target_filepath),
                                            exc_info=True)
                 except KeyboardInterrupt:
-                    self.log.info("KeyboardInterrupt detected. Unable to "
-                                  "append multipart-content to file.")
-                    break
+                    # save the data in the file before quitting
+                    self.log.debug("KeyboardInterrupt received while writing data")
+                    runLoop = False
+                    # self.log.info("KeyboardInterrupt detected. Unable to "
+                    #               "append multipart-content to file.")
+                    # break
                 except:
                     self.log.error("Failed to append payload to file: '{0}'"
                                    .format(target_filepath), exc_info=True)
@@ -907,10 +911,17 @@ class Transfer():
 
     def stop(self):
         """
-        Send signal that the displayer is quitting, close ZMQ connections,
-        destoying context
+        * close open file handler to prevent file corruption
+        * Send signal that the displayer is quitting
+        * close ZMQ connections
+        * destoying context
 
         """
+
+        for target_filepath in list(self.file_descriptors.keys()):
+            self.file_descriptors[target_filepath].close()
+            del self.file_descriptors[target_filepath]
+
         if self.signal_socket and self.signal_exchanged:
             self.log.info("Sending close signal")
             signal = None
