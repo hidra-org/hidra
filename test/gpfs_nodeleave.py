@@ -124,7 +124,7 @@ if __name__ == '__main__':
     # check if hidra runs for this beamline
     # and start it if that is not the case
     for s in services_to_check:
-        p = subprocess.call(["systemctl", "status", s])
+        p = subprocess.call(["systemctl", "is-active", s])
 
         if p != 0:
             print "service", s, "is not running"
