@@ -318,7 +318,7 @@ class SignalHandler():
 
                 try:
                     message = self.control_sub_socket.recv_multipart()
-                    self.log.debug("Control signal received.")
+                    # self.log.debug("Control signal received.")
                 except:
                     self.log.error("Waiting for control signal...failed",
                                    exc_info=True)
@@ -331,7 +331,7 @@ class SignalHandler():
                     self.log.info("Requested to shutdown.")
                     break
                 elif message[0] == b"SLEEP":
-                    self.log.debug("Received sleep signal. Do nothing.")
+                    # self.log.debug("Received sleep signal. Do nothing.")
                     continue
                 elif message[0] == b"WAKEUP":
                     self.log.debug("Received wakeup signal. Do nothing.")

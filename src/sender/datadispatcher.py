@@ -325,6 +325,11 @@ class DataDispatcher():
                     while True:
                         try:
                             message = self.control_socket.recv_multipart()
+                        except KeyboardInterrupt:
+                            self.log.error("Receiving control signal..."
+                                           "failed due to KeyboardInterrupt")
+                            break_outer_loop = True
+                            break
                         except:
                             self.log.error("Receiving control signal...failed",
                                            exc_info=True)
@@ -333,7 +338,10 @@ class DataDispatcher():
                         # remove subsription topic
                         del message[0]
 
-                        if message[0] == b"WAKEUP":
+                        if message[0] == b"SLEEP":
+                            continue
+
+                        elif message[0] == b"WAKEUP":
                             self.log.debug("Received wakeup signal")
                             # Wake up from sleeping
                             break
@@ -342,9 +350,11 @@ class DataDispatcher():
                             self.react_to_exit_signal()
                             break_outer_loop = True
                             break
+
                         elif message[0] == b"CLOSE_SOCKETS":
                             self.react_to_close_sockets_signal(message)
                             continue
+
                         else:
                             self.log.error("Unhandled control signal received:"
                                            " {0}".format(message))

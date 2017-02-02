@@ -238,7 +238,9 @@ class TaskProvider():
                         # remove subsription topic
                         del message[0]
 
-                        if message[0] == b"WAKEUP":
+                        if message[0] == b"SLEEP":
+                            continue
+                        elif message[0] == b"WAKEUP":
                             self.log.debug("Received wakeup signal")
                             # Wake up from sleeping
                             break
