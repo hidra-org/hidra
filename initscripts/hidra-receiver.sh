@@ -32,7 +32,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 
     if [ -z "$2" ]
     then
-        echo "Usage: $0 {start|stop|status|restart|force-reload} {beamline}"
+        printf "Usage: $0 {start|stop|status|restart|force-reload} {beamline}\n"
         exit 1
     fi
 
@@ -44,7 +44,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 
     if [ ! -f $CONFIG_FILE ]
     then
-        echo "Configuration file ${CONFIG_FILE} not found."
+        printf "Configuration file ${CONFIG_FILE} not found\n"
         exit 1
     fi
 
@@ -74,11 +74,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
         printf "Stopping ${DESC} for beamline ${BEAMLINE}...\n"
         HIDRA_PID="`pidofproc ${NAME}`"
         # stop gracefully and wait up to 180 seconds.
-#        if [ -z "$HIDRA_PID" ]; then
-#            exit 0
-#        else
-            kill $HIDRA_PID > /dev/null 2>&1
-#        fi
+        kill $HIDRA_PID > /dev/null 2>&1
 
         TIMEOUT=0
 #        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 30 ] ; do
@@ -86,7 +82,6 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             sleep 1
             let TIMEOUT=TIMEOUT+1
         done
-#        echo $HIDRA_PID
 
         if checkpid $HIDRA_PID ; then
             killall -KILL $NAME
@@ -105,7 +100,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             stop
             ;;
         restart)
-            echo -n "Restarting ${DESC} for beamline ${BEAMLINE}: "
+            printf "Restarting ${DESC} for beamline ${BEAMLINE}: \n"
             stop
             start
             ;;
@@ -114,12 +109,11 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             RETVAL=$?
             ;;
         *)
-            echo "Usage: $0 {start|stop|status|restart|forece-reload} {beamline}"
+            printf "Usage: $0 {start|stop|status|restart|forece-reload} {beamline}\n"
             RETVAL=1
             ;;
     esac
     exit $RETVAL
-
 
 
 elif [ -f /etc/debian_version ] ; then

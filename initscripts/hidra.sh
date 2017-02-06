@@ -36,24 +36,32 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 
     start()
     {
-    	echo -n "Starting ${DESC}..."
+        status ${NAME} > /dev/null && status="1" || status="$?"
+        # If the status is SUCCESS then don't need to start again.
+        if [ $status = "1" ]; then
+            printf "$NAME is already running\n"
+            return 0
+        fi
+
+    	printf "Starting ${DESC}...\n"
 	    ${DAEMON} ${DAEMON_ARGS} &
-        echo $! > $PIDFILE
     	RETVAL=$?
-#	    [ "$RETVAL" = 0 ] && touch /var/lock/subsys/hidra
     	echo
     }
 
     stop()
     {
-	    echo -n "Stopping ${DESC}..."
+        status ${NAME} > /dev/null && status="1" || status="$?"
+        # If the status is SUCCESS then don't need to start again.
+        if [ $status != "1" ]; then
+            printf "$NAME is already stopped\n"
+            return 0
+        fi
+
+	    printf -n "Stopping ${DESC}...\n"
         HIDRA_PID="`pidofproc ${NAME}`"
         # stop gracefully and wait up to 180 seconds.
-#        if [ -z "$HIDRA_PID" ]; then
-#            exit 0
-#        else
-            kill $HIDRA_PID > /dev/null 2>&1
-#        fi
+        kill $HIDRA_PID > /dev/null 2>&1
 
         TIMEOUT=0
 #        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 30 ] ; do
@@ -61,7 +69,6 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             sleep 1
             let TIMEOUT=TIMEOUT+1
         done
-        echo $HIDRA_PID
 
         if checkpid $HIDRA_PID ; then
             killall -KILL $NAME
@@ -70,10 +77,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 
             rm -f "${IPCPATH}/${SOCKETID}"*
         fi
-        rm -f $PIDFILE
     	RETVAL=$?
-#    	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/hidra
-	    echo
     }
 
     case "$1" in
@@ -84,7 +88,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             stop
             ;;
         restart)
-            echo -n "Restarting ${DESC}: "
+            printf "Restarting ${DESC}: \n"
             stop
             start
             ;;
@@ -93,11 +97,12 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             RETVAL=$?
             ;;
         *)
-            echo "Usage: $0 {start|stop|status|restart}"
+            printf "Usage: $0 {start|stop|status|restart}\n"
             RETVAL=1
             ;;
     esac
     exit $RETVAL
+
 
 elif [ -f /etc/debian_version ] ; then
 # Debian and Ubuntu
