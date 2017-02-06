@@ -32,15 +32,70 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 
     if [ -z "$2" ]
     then
-        echo "Usage: $0 {start|stop|status|restart} {beamline}"
+        echo "Usage: $0 {start|stop|status|restart|force-reload} {beamline}"
         exit 1
     fi
 
     # set variables
     BEAMLINE="$2"
     NAME=${SCRIPT_NAME}_${BEAMLINE}
-    DAEMON_ARGS="--verbose --config_file ${CONFIG_PATH}/receiver_${BEAMLINE}.conf"
-    PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
+    CONFIG_FILE="${CONFIG_PATH}/receiver_${BEAMLINE}.conf"
+    DAEMON_ARGS="--verbose --config_file ${CONFIG_FILE}"
+
+    if [ ! -f $CONFIG_FILE ]
+    then
+        echo "Configuration file ${CONFIG_FILE} not found."
+        exit 1
+    fi
+
+    start()
+    {
+        status ${NAME} > /dev/null && status="1" || status="$?"
+        # If the status is SUCCESS then don't need to start again.
+        if [ $status = "1" ]; then
+            printf "$NAME for beamline is already running\n"
+            return 0
+        fi
+
+    	printf "Starting ${DESC} for beamline ${BEAMLINE}...\n"
+        ${DAEMON} ${DAEMON_ARGS} &
+    	RETVAL=$?
+    }
+
+    stop()
+    {
+        status ${NAME} > /dev/null && status="1" || status="$?"
+        # If the status is SUCCESS then don't need to start again.
+        if [ $status != "1" ]; then
+            printf "$NAME for beamline is already stopped\n"
+            return 0
+        fi
+
+        printf "Stopping ${DESC} for beamline ${BEAMLINE}...\n"
+        HIDRA_PID="`pidofproc ${NAME}`"
+        # stop gracefully and wait up to 180 seconds.
+#        if [ -z "$HIDRA_PID" ]; then
+#            exit 0
+#        else
+            kill $HIDRA_PID > /dev/null 2>&1
+#        fi
+
+        TIMEOUT=0
+#        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 30 ] ; do
+        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 5 ] ; do
+            sleep 1
+            let TIMEOUT=TIMEOUT+1
+        done
+#        echo $HIDRA_PID
+
+        if checkpid $HIDRA_PID ; then
+            killall -KILL $NAME
+
+            SOCKETIF="`pidofproc ${NAME}`"
+            rm -f "${IPCPATH}/${SOCKETID}"*
+        fi
+    	RETVAL=$?
+    }
 
     case "$1" in
         start)
@@ -59,52 +114,12 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             RETVAL=$?
             ;;
         *)
-            echo "Usage: $0 {start|stop|status|restart} {beamline}"
+            echo "Usage: $0 {start|stop|status|restart|forece-reload} {beamline}"
             RETVAL=1
             ;;
     esac
     exit $RETVAL
 
-    start()
-    {
-    	echo -n "Starting ${DESC} for beamline ${BEAMLINE}..."
-	    ${DAEMON} ${DAEMON_ARGS} &
-        echo $! > $PIDFILE
-    	RETVAL=$?
-    	echo
-    }
-
-    stop()
-    {
-	    echo -n "Stopping ${DESC} for beamline ${BEAMLINE}..."
-        HIDRA_PID="`pidofproc ${NAME}`"
-        # stop gracefully and wait up to 180 seconds.
-#        if [ -z "$HIDRA_PID" ]; then
-#            exit 0
-#        else
-            kill $HIDRA_PID > /dev/null 2>&1
-#        fi
-
-        TIMEOUT=0
-#        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 30 ] ; do
-        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 5 ] ; do
-            sleep 1
-            let TIMEOUT=TIMEOUT+1
-        done
-        echo $HIDRA_PID
-
-        if checkpid $HIDRA_PID ; then
-            killall -KILL $NAME
-
-            SOCKETID=`cat $PIDFILE`
-
-            rm -f "${IPCPATH}/${SOCKETID}"*
-        fi
-        rm -f $PIDFILE
-    	RETVAL=$?
-#    	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/hidra
-	    echo
-    }
 
 
 elif [ -f /etc/debian_version ] ; then
@@ -123,7 +138,7 @@ elif [ -f /etc/debian_version ] ; then
 
     if [ -z "$2" ]
     then
-        echo "Usage: $0 {start|stop|status|restart} {beamline}"
+        echo "Usage: $0 {start|stop|status|restart|force-reload} {beamline}"
         exit 1
     fi
 
@@ -132,77 +147,6 @@ elif [ -f /etc/debian_version ] ; then
     NAME=${SCRIPT_NAME}_${BEAMLINE}
     DAEMON_ARGS="--verbose --config_file ${CONFIG_PATH}/receiver_${BEAMLINE}.conf"
     PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
-
-    case "$1" in
-        start)
-            log_daemon_msg "Starting ${NAME} for beamline ${BEAMLINE}"
-            do_start
-            case "$?" in
-                0) log_end_msg 0
-                    ;;
-                *) log_end_msg 1
-                    ;;
-            esac
-            ;;
-        stop)
-            log_daemon_msg "Stopping ${NAME}  for beamline ${BEAMLINE}"
-            do_stop
-            case "$?" in
-                0) log_end_msg 0
-                    ;;
-                *) log_end_msg 1
-                    ;;
-            esac
-            ;;
-        status)
-            status_of_proc $NAME $NAME && exit 0 || exit $?
-            ;;
-        #reload|force-reload)
-            # If do_reload() is not implemented then leave this commented out
-            # and leave 'force-reload' as an alias for 'restart'.
-
-            #log_daemon_msg "Reloading $DESC" "$NAME"
-            #do_reload
-            #log_end_msg $?
-            #;;
-        restart|force-reload)
-            # If the "reload" option is implemented then remove the
-            # 'force-reload' alias
-
-            log_daemon_msg "Restarting ${DESC} for beamline ${BEAMLINE}" "$NAME"
-            log_daemon_msg "Stopping ${DESC} for beamline ${BEAMLINE}" "$NAME"
-            do_stop
-            stop_status="$?"
-            case "$stop_status" in
-                0) log_end_msg 0
-                    ;;
-                *) log_end_msg 1
-                    ;;
-            esac
-            sleep 3
-            case "$stop_status" in
-                0)
-                    log_daemon_msg "Starting ${NAME} for beamline ${BEAMLINE}"
-                    do_start
-                    case "$?" in
-                        0) log_end_msg 0
-                            ;;
-                        *) log_end_msg 1
-                            ;;
-                    esac
-                    ;;
-                *)
-                    # Failed to stop
-                    log_end_msg 1
-                    ;;
-            esac
-            ;;
-        *)
-            #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
-            echo "Usage: $0 {start|stop|status|restart|force-reload}" >&2
-            exit 3
-            ;;
-    esac
 
     #
     # Function that starts the daemon/service
@@ -302,5 +246,76 @@ elif [ -f /etc/debian_version ] ; then
         start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $NAME
         return 0
     }
+
+    case "$1" in
+        start)
+            log_daemon_msg "Starting ${NAME} for beamline ${BEAMLINE}"
+            do_start
+            case "$?" in
+                0) log_end_msg 0
+                    ;;
+                *) log_end_msg 1
+                    ;;
+            esac
+            ;;
+        stop)
+            log_daemon_msg "Stopping ${NAME}  for beamline ${BEAMLINE}"
+            do_stop
+            case "$?" in
+                0) log_end_msg 0
+                    ;;
+                *) log_end_msg 1
+                    ;;
+            esac
+            ;;
+        status)
+            status_of_proc $NAME $NAME && exit 0 || exit $?
+            ;;
+        #reload|force-reload)
+            # If do_reload() is not implemented then leave this commented out
+            # and leave 'force-reload' as an alias for 'restart'.
+
+            #log_daemon_msg "Reloading $DESC" "$NAME"
+            #do_reload
+            #log_end_msg $?
+            #;;
+        restart|force-reload)
+            # If the "reload" option is implemented then remove the
+            # 'force-reload' alias
+
+            log_daemon_msg "Restarting ${DESC} for beamline ${BEAMLINE}" "$NAME"
+            log_daemon_msg "Stopping ${DESC} for beamline ${BEAMLINE}" "$NAME"
+            do_stop
+            stop_status="$?"
+            case "$stop_status" in
+                0) log_end_msg 0
+                    ;;
+                *) log_end_msg 1
+                    ;;
+            esac
+            sleep 3
+            case "$stop_status" in
+                0)
+                    log_daemon_msg "Starting ${NAME} for beamline ${BEAMLINE}"
+                    do_start
+                    case "$?" in
+                        0) log_end_msg 0
+                            ;;
+                        *) log_end_msg 1
+                            ;;
+                    esac
+                    ;;
+                *)
+                    # Failed to stop
+                    log_end_msg 1
+                    ;;
+            esac
+            ;;
+        *)
+            #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
+            echo "Usage: $0 {start|stop|status|restart|force-reload}" >&2
+            exit 3
+            ;;
+    esac
 
 fi
