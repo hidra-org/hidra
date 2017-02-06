@@ -3,6 +3,7 @@ import re
 import socket
 import os
 import StringIO
+#import platform
 try:
     import ConfigParser
 except ImportError:
@@ -13,7 +14,41 @@ except ImportError:
 CONFIG_PATH = "/opt/hidra/conf"
 CONFIG_PREFIX = "receiver_"
 CONFIG_POSTFIX = ".conf"
-SERVICE_PREFIX = "hidra-receiver@"
+SYSTEMD_PREFIX = "hidra-receiver@"
+SERVICE_NAME = "hidra-receiver"
+
+
+def call_initsystem(beamline, command):
+    global SYSTEMD_PREFIX
+    global SERVICE_NAME
+
+#    dist = platform.dist()
+    return_val = None
+
+    # source for the differentiation: https://en.wikipedia.org/wiki/Systemd
+    # systems using systemd
+#    if (dist[0].lower() in ["centos", "redhat"] and dist[1] >= 7
+#        or dist[0].lower() in ["fedora"] and dist[1] >= 15
+#        or dist[0].lower() in ["debian"] and dist[1] >= 8
+#        or dist[0].lower() in ["ubuntu"] and dist[1] >= 15.04):
+    if os.path.isfile("/usr/lib/systemd"):
+        if command == "status":
+            return_val = subprocess.call(["systemctl", "is-active", SYSTEMD_PREFIX + beamline])
+        elif command == "start":
+            return_val = subprocess.call(["systemctl", "start", SYSTEMD_PREFIX + beamline])
+
+    # systems using init scripts
+#    elif (dist[0].lower() in ["centos", "redhat"] and dist[1] < 7
+#          or dist[0].lower() in ["fedora"] and dist[1] >= 15
+#          or dist[0].lower() in ["debian"] and dist[1] >= 8
+#          or dist[0].lower() in ["ubuntu"] and dist[1] < 15.04):
+    elif os.path.isfile("/etc/init.d"):
+        if command == "status":
+            return_val = subprocess.call(["service", SERVICE_NAME, "status", beamline])
+        elif command == "start":
+            return_val = subprocess.call(["service", SERVICE_NAME, "start", beamline])
+
+    return return_val
 
 
 def get_ip_addr():
@@ -79,32 +114,46 @@ def get_config(conf):
     return config
 
 
-def get_service_list():
+
+#def get_diff_ip_and_conf():
+def get_bls_to_check():
     global CONFIG_PATH
     global CONFIG_PREFIX
     global CONFIG_POSTFIX
 
     files = [[os.path.join(CONFIG_PATH, f), f[len(CONFIG_PREFIX):-len(CONFIG_POSTFIX)]]
              for f in os.listdir(CONFIG_PATH)
-             if f.startswith(CONFIG_PREFIX) and f.endswith(CONFIG_POSTFIX) ]
+             if f.startswith(CONFIG_PREFIX) and f.endswith(CONFIG_POSTFIX)]
 
     print "Config files"
     print files
 
-    services_to_check = []
+    beamlines_to_activate = []
+    beamlines_to_deactivate = []
+
     for conf, bl in files:
 
         config = get_config(conf)
 
+        # the IP configured in the config file
         ip = remove_domain(config.get("asection", "data_stream_ip"))
+        ip_found = False
 
+        # get the beamline corresponding to the active ip
         for entry in active_ips:
 	    # remove domain for easier host comparison
-            if ip in remove_domain(entry):
-                if SERVICE_PREFIX + bl not in services_to_check:
-			services_to_check.append(SERVICE_PREFIX + bl)
+            if ip == remove_domain(entry):
+                ip_found = True
+                # avoid multiple entries
+                if bl not in beamlines_to_activate:
+                    beamlines_to_activate.append(bl)
 
-    return services_to_check
+        if not ip_found:
+            # avoid multiple entries
+            if bl not in beamlines_to_deactivate:
+                beamlines_to_deactivate.append(bl)
+
+    return beamlines_to_activate, beamlines_to_deactivate
 
 
 def remove_domain(x):
@@ -118,17 +167,31 @@ if __name__ == '__main__':
     print "Active Ips\n", active_ips
 
     # mapping ip/hostname to beamline
-    services_to_check = get_service_list()
-    print "List of beamline receivers to check\n", services_to_check
+    beamlines_to_activate, beamlines_to_deactivate = get_bls_to_check()
+    print "List of beamline receivers to check (activate)\n", beamlines_to_activate
+    print "List of beamline receivers to check (deactivate)\n", beamlines_to_deactivate
 
     # check if hidra runs for this beamline
     # and start it if that is not the case
-    for s in services_to_check:
-        p = subprocess.call(["systemctl", "is-active", s])
+    for bl in beamlines_to_deactivate:
+        p = call_initsystem(bl, "status")
 
         if p != 0:
-            print "service", s, "is not running"
-            # start service
-            p = subprocess.call(["systemctl", "start", s])
+            print "service", bl, "is not running"
         else:
-            print "service", s, "is running"
+            print "service", bl, "is running, , but has to be stopped"
+            # stop service
+#            p = call_initsystem(bl, "stop")
+
+    # check if hidra runs for this beamline
+    # and start it if that is not the case
+    for bl in beamlines_to_activate:
+        p = call_initsystem(bl, "status")
+
+        if p != 0:
+            print "service", bl, "is not running, but has to be started"
+            # start service
+#            p = call_initsystem(bl, "start")
+        else:
+            print "service", bl, "is running"
+
