@@ -187,16 +187,11 @@ def argument_parsing():
                              "false: the file is moved into the "
                              "local_target)",
                         choices=["True", "False"])
-    parser.add_argument("--fixed_stream_host",
+    parser.add_argument("--data_stream_target",
                         type=str,
-                        help="Fixed host to send the data to with highest "
-                             "priority (only active if use_data_stream is "
-                             "set)")
-    parser.add_argument("--fixed_stream_port",
-                        type=str,
-                        help="Fixed port to send the data to with highest "
-                             "priority (only active if use_data_stream is "
-                             "set)")
+                        help="Fixed host and port to send the data to with "
+                             "highest priority (only active if "
+                              "use_data_stream is set)")
     parser.add_argument("--number_of_streams",
                         type=int,
                         help="Number of parallel data streams)")
@@ -270,7 +265,7 @@ def argument_parsing():
             params["fix_subdirs"])
 
     if params["use_data_stream"]:
-        helpers.check_ping(params["fixed_stream_host"])
+        helpers.check_ping(params["data_stream_targets"][0][0])
 
     return params
 
@@ -421,9 +416,14 @@ class DataManager():
                       .format(self.use_data_stream))
 
         if self.use_data_stream:
+            if len(self.params["data_stream_targets"]) > 1:
+                self.log.error("Targets to send data stream to have more than one entry which is not supported")
+                self.log.debug("data_stream_targets: {0}".format(self.params["data_stream_targets"]))
+                sys.exit(1)
+
             self.fixed_stream_id = ("{0}:{1}"
-                                    .format(self.params["fixed_stream_host"],
-                                            self.params["fixed_stream_port"]))
+                                    .format(self.params["data_stream_targets"][0][0],
+                                            self.params["data_stream_targets"][0][1]))
         else:
             self.fixed_stream_id = None
 

@@ -346,7 +346,7 @@ class Transfer():
                         raise AuthenticationFailed(
                             "Could not get IP of host {0}".format(host))
             else:
-                raise FormatError("Whitelist has to be a list of IPs")
+                raise FormatError("Whitelist has to be a list of IPs/DNS names")
 
         socket_id_to_bind = (
             self.stream_started
@@ -911,10 +911,10 @@ class Transfer():
 
     def stop(self):
         """
-        * close open file handler to prevent file corruption
-        * Send signal that the displayer is quitting
-        * close ZMQ connections
-        * destoying context
+        * Close open file handler to prevent file corruption
+        * Send signal that the application is quitting
+        * Close ZMQ connections
+        * Destroying context
 
         """
 
