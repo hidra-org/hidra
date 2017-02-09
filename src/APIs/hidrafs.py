@@ -64,7 +64,7 @@ class Passthrough(Operations):
     def getattr(self, path, fh=None):
         #self.log.debug("path={0}".format(path))
 
-        if path in ["/", "/.Trash", "/.Trash-1000"]:
+        if path =="/" or path.startswith("/.Trash"):
             st = os.lstat(path)
             return {
                 "st_mode": getattr(st, "st_mode"),

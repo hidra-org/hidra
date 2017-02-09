@@ -1,7 +1,7 @@
 import os
 import time
 
-path = "/space/tmp"
+path = "/tmp/fs_test"
 
 while True:
     for f in os.listdir(path):
