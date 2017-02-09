@@ -64,7 +64,7 @@ class Passthrough(Operations):
     def getattr(self, path, fh=None):
         #self.log.debug("path={0}".format(path))
 
-        if path == "/":
+        if path in ["/", "/.Trash", "/.Trash-1000"]:
             st = os.lstat(path)
             return {
                 "st_mode": getattr(st, "st_mode"),
@@ -79,6 +79,7 @@ class Passthrough(Operations):
             if self.metadata is None and self.data is None:
                 self.log.debug("get")
                 [self.metadata, self.data] = self.query.get(self.timeout)
+
             return {
                 "st_mode": (stat.S_IFREG | 0644),
                 "st_nlink": 1,
