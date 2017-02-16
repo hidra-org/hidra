@@ -89,7 +89,7 @@ if __name__ == "__main__":
 
     setproctitle.setproctitle(arguments.procname)
 
-#    signal_host = arguments.signal_host
+    signal_host = arguments.signal_host
 #    signal_host = "asap3-p00"
 #    signal_host = "zitpcx22614.fritz.box"
 #    signal_host = "zitpcx19282.desy.de"
@@ -133,7 +133,8 @@ if __name__ == "__main__":
 
     try:
         while True:
-            pass
+            time.sleep(0.1)
+            print ("number_of_files={0}".format(number_of_files.value))
     except KeyboardInterrupt:
         pass
     finally:
