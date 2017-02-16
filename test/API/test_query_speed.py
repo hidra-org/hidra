@@ -34,19 +34,32 @@ except:
 
 
 class Worker(multiprocessing.Process):
-    def __init__(self, id, transfer_type, basepath, signal_host, target_host, port, number_of_files):
+    def __init__(self, id, port, number_of_files):
 
         self.id = id
-        self.port = port
+        self.basepath = os.path.join(BASE_PATH, "data", "target")
         self.number_of_files = number_of_files
+
+        self.port = port
+
+#        signal_host = arguments.signal_host
+        signal_host = "asap3-p00"
+#        signal_host = "zitpcx22614.fritz.box"
+#        signal_host = "zitpcx19282.desy.de"
+#        signal_host = "lsdma-lab04.desy.de"
+#        signal_host = "asap3-bl-prx07.desy.de"
+
+        target_host = socket.gethostname()
+#        target_host = "zitpcx22614w.desy.de"
+
+        transfer_type = "QUERY_NEXT"
 
         self.query = Transfer(transfer_type, signal_host, use_log=None)
 
-        self.basepath = basepath
-
         print("start Transfer on port {0}".format(port))
-        # targets are locally
+        self.query.initiate([[target_host, self.port, 1, [".cbf"]]])
         self.query.start([target_host, port])
+        # targets are locally
 #        self.query.start(port)
 
         self.run()
@@ -89,51 +102,22 @@ if __name__ == "__main__":
 
     setproctitle.setproctitle(arguments.procname)
 
-    signal_host = arguments.signal_host
-#    signal_host = "asap3-p00"
-#    signal_host = "zitpcx22614.fritz.box"
-#    signal_host = "zitpcx19282.desy.de"
-#    signal_host = "lsdma-lab04.desy.de"
-#    signal_host = "asap3-bl-prx07.desy.de"
-
-    target_host = socket.gethostname()
-#    target_host = "zitpcx22614w.desy.de"
-
-    transfer_type = "QUERY_NEXT"
-
-    basepath = os.path.join(BASE_PATH, "data", "target")
-
     number_of_worker = 3
     workers = []
-
-    targets = []
 
     number_of_files = multiprocessing.Value('i', 0)
 
     for n in range(number_of_worker):
         p = str(50100 + n)
 
-        targets.append([target_host, p, 1, [".cbf"]])
-
         w = multiprocessing.Process(target=Worker,
-                                    args=(n,
-                                          transfer_type,
-                                          basepath,
-                                          signal_host,
-                                          target_host,
-                                          p,
-                                          number_of_files))
+                                    args=(n, p, number_of_files))
         workers.append(w)
-
-    query = Transfer(transfer_type, signal_host, use_log=None)
-    query.initiate(targets)
-
-    for w in workers:
         w.start()
 
     try:
         while True:
-            time.sleep(0.1)
+            time.sleep(0.5)
             print ("number_of_files={0}".format(number_of_files.value))
     except KeyboardInterrupt:
         pass
@@ -142,4 +126,3 @@ if __name__ == "__main__":
         for w in workers:
             w.terminate()
 
-        query.stop()
