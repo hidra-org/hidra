@@ -34,13 +34,13 @@ except:
 
 
 class Worker(multiprocessing.Process):
-    def __init__(self, id, transfer_type, basepath, signal_host, target_host, port):
+    def __init__(self, id, transfer_type, basepath, signal_host, target_host, port, number_of_files):
 
         self.id = id
         self.port = port
-        self.number_of_files = 0
+        self.number_of_files = number_of_files
 
-        self.query = Transfer(transfer_type, signal_host, use_log=False)
+        self.query = Transfer(transfer_type, signal_host, use_log=None)
 
         self.basepath = basepath
 
@@ -52,18 +52,17 @@ class Worker(multiprocessing.Process):
         self.run()
 
     def run(self):
-        while True:
-            try:
-                print("Worker-{0}: waiting".format(self.id))
+        try:
+            while True:
+                #print("Worker-{0}: waiting".format(self.id))
                 [metadata, data] = self.query.get()
-            except:
-                break
+                if metadata and data:
+                    self.number_of_files.value += 1
+        finally:
+            self.stop()
 
-            if metadata and data:
-                self.number_of_files += 1
 
     def stop(self):
-        print("number of files in worker-{0}: {1}".format(self.id, self.number_of_files))
         self.query.stop()
 
     def __exit__(self):
@@ -90,14 +89,15 @@ if __name__ == "__main__":
 
     setproctitle.setproctitle(arguments.procname)
 
-    signal_host = arguments.signal_host
+#    signal_host = arguments.signal_host
+#    signal_host = "asap3-p00"
 #    signal_host = "zitpcx22614.fritz.box"
 #    signal_host = "zitpcx19282.desy.de"
 #    signal_host = "lsdma-lab04.desy.de"
 #    signal_host = "asap3-bl-prx07.desy.de"
 
-    #target_host = socket.gethostname()
-    target_host = "zitpcx22614w.desy.de"
+    target_host = socket.gethostname()
+#    target_host = "zitpcx22614w.desy.de"
 
     transfer_type = "QUERY_NEXT"
 
@@ -107,6 +107,8 @@ if __name__ == "__main__":
     workers = []
 
     targets = []
+
+    number_of_files = multiprocessing.Value('i', 0)
 
     for n in range(number_of_worker):
         p = str(50100 + n)
@@ -119,10 +121,11 @@ if __name__ == "__main__":
                                           basepath,
                                           signal_host,
                                           target_host,
-                                          p))
+                                          p,
+                                          number_of_files))
         workers.append(w)
 
-    query = Transfer(transfer_type, signal_host, use_log=True)
+    query = Transfer(transfer_type, signal_host, use_log=None)
     query.initiate(targets)
 
     for w in workers:
@@ -131,9 +134,10 @@ if __name__ == "__main__":
     try:
         while True:
             pass
-    except:
+    except KeyboardInterrupt:
         pass
     finally:
+        print ("number_of_files={0}".format(number_of_files.value))
         for w in workers:
             w.terminate()
 
