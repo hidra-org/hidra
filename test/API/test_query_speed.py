@@ -115,8 +115,10 @@ if __name__ == "__main__":
         workers.append(w)
         w.start()
 
+
+
     try:
-        while True:
+        while all(w.is_alive() for w in workers):
             time.sleep(0.5)
             print ("number_of_files={0}".format(number_of_files.value))
     except KeyboardInterrupt:
