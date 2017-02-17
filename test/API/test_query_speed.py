@@ -34,20 +34,13 @@ except:
 
 
 class Worker(multiprocessing.Process):
-    def __init__(self, id, port, number_of_files):
+    def __init__(self, id, signal_host, port, number_of_files):
 
         self.id = id
         self.basepath = os.path.join(BASE_PATH, "data", "target")
         self.number_of_files = number_of_files
 
         self.port = port
-
-#        signal_host = arguments.signal_host
-        signal_host = "asap3-p00"
-#        signal_host = "zitpcx22614.fritz.box"
-#        signal_host = "zitpcx19282.desy.de"
-#        signal_host = "lsdma-lab04.desy.de"
-#        signal_host = "asap3-bl-prx07.desy.de"
 
         target_host = socket.gethostname()
 #        target_host = "zitpcx22614w.desy.de"
@@ -111,7 +104,10 @@ if __name__ == "__main__":
         p = str(50100 + n)
 
         w = multiprocessing.Process(target=Worker,
-                                    args=(n, p, number_of_files))
+                                    args=(n,
+                                          arguments.signal_host,
+                                          p,
+                                          number_of_files))
         workers.append(w)
         w.start()
 
@@ -127,4 +123,3 @@ if __name__ == "__main__":
         print ("number_of_files={0}".format(number_of_files.value))
         for w in workers:
             w.terminate()
-

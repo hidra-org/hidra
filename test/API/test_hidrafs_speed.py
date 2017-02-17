@@ -63,4 +63,3 @@ if __name__ == "__main__":
         print ("number_of_files={0}".format(number_of_files.value))
         for w in workers:
             w.terminate()
-

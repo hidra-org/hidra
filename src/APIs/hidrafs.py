@@ -7,6 +7,9 @@ import sys
 import errno
 import stat
 import logging
+import argparse
+import socket
+import setproctitle
 
 from fuse import FUSE, FuseOSError, Operations
 
@@ -190,11 +193,24 @@ class Passthrough(Operations):
         self.release(path, fh)
     """
 
-def main(mountpoint):
-    signal_host = "asap3-p00.desy.de"
-#    signal_host = "zitpcx19282.desy.de"
-
-    FUSE(Passthrough(signal_host), mountpoint, nothreads=True, foreground=True)
-
 if __name__ == '__main__':
-    main(sys.argv[1])
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--signal_host",
+                        type=str,
+                        help="Host where HiDRA is runnning",
+                        default=socket.gethostname())
+    parser.add_argument("--mount",
+                        type=str,
+                        help="Mount point under which hidrafs should be mounted")
+    parser.add_argument("--procname",
+                        type=str,
+                        help="Name with which the service should be running",
+                        default="hidrafs")
+
+    arguments = parser.parse_args()
+
+    setproctitle.setproctitle(arguments.procname)
+
+    FUSE(Passthrough(arguments.signal_host), arguments.mount, nothreads=True, foreground=True)
