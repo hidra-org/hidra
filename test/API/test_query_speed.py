@@ -34,7 +34,7 @@ except:
 
 
 class Worker(multiprocessing.Process):
-    def __init__(self, id, signal_host, port, number_of_files):
+    def __init__(self, id, transfer_type, signal_host, target_host, port, number_of_files):
 
         self.id = id
         self.basepath = os.path.join(BASE_PATH, "data", "target")
@@ -42,18 +42,9 @@ class Worker(multiprocessing.Process):
 
         self.port = port
 
-        target_host = socket.gethostname()
-#        target_host = "zitpcx22614w.desy.de"
-
-        transfer_type = "QUERY_NEXT"
-
-        self.query = Transfer(transfer_type, signal_host, use_log=None)
-
         print("start Transfer on port {0}".format(port))
-        self.query.initiate([[target_host, self.port, 1, [".cbf"]]])
+        self.query = Transfer(transfer_type, signal_host, use_log=None)
         self.query.start([target_host, port])
-        # targets are locally
-#        self.query.start(port)
 
         self.run()
 
@@ -100,18 +91,29 @@ if __name__ == "__main__":
 
     number_of_files = multiprocessing.Value('i', 0)
 
+    targets = []
+    transfer_type = "QUERY_NEXT"
+    target_host = socket.gethostname()
+#    target_host = "zitpcx22614w.desy.de"
+
     for n in range(number_of_worker):
         p = str(50100 + n)
 
         w = multiprocessing.Process(target=Worker,
                                     args=(n,
+                                          transfer_type,
                                           arguments.signal_host,
+                                          target_host,
                                           p,
                                           number_of_files))
         workers.append(w)
+        targets.append([target_host, p, 1, [".cbf"]])
+
+    query = Transfer(transfer_type, arguments.signal_host, use_log=None)
+    query.initiate(targets)
+
+    for w in workers:
         w.start()
-
-
 
     try:
         while all(w.is_alive() for w in workers):
@@ -123,3 +125,5 @@ if __name__ == "__main__":
         print ("number_of_files={0}".format(number_of_files.value))
         for w in workers:
             w.terminate()
+
+        query.stop()
