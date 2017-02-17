@@ -81,6 +81,10 @@ if __name__ == "__main__":
                         type=str,
                         help="Name with which the service should be running",
                         default="test_query_speed")
+    parser.add_argument("--workers",
+                        type=int,
+                        help="How many worker processes should be launched",
+                        default=1)
 
     arguments = parser.parse_args()
 
@@ -96,7 +100,7 @@ if __name__ == "__main__":
     target_host = socket.gethostname()
 #    target_host = "zitpcx22614w.desy.de"
 
-    for n in range(number_of_worker):
+    for n in range(arguments.workers):
         p = str(50100 + n)
 
         w = multiprocessing.Process(target=Worker,
