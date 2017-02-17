@@ -23,7 +23,7 @@ class Passthrough(Operations):
         self.timeout = 2000
         self.read_pointer = 0
 
-        targets = ["zitpcx19282.desy.de", "50101", 1]
+        targets = [socket.gethostname(), "50101", 1]
 
         # create HiDRA Transfer instance which wants data by request only
         self.query = Transfer("QUERY_NEXT", signal_host)
