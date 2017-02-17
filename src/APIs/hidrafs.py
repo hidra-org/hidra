@@ -13,15 +13,13 @@ from fuse import FUSE, FuseOSError, Operations
 from hidra import Transfer
 
 class Passthrough(Operations):
-    def __init__(self):
+    def __init__(self, signal_host):
 
         self.log = self.__get_logger()
 
         self.timeout = 2000
         self.read_pointer = 0
 
-
-        signal_host = "zitpcx19282.desy.de"
         targets = ["zitpcx19282.desy.de", "50101", 1]
 
         # create HiDRA Transfer instance which wants data by request only
@@ -62,7 +60,7 @@ class Passthrough(Operations):
 
     """
     def getattr(self, path, fh=None):
-        #self.log.debug("path={0}".format(path))
+        self.log.debug("path={0}".format(path))
 
         if path =="/" or path.startswith("/.Trash"):
             st = os.lstat(path)
@@ -91,8 +89,8 @@ class Passthrough(Operations):
             }
 
     def readdir(self, path, fh):
-        if self.metadata is None and self.data is None:
-            [self.metadata, self.data] = self.query.get(self.timeout)
+#        if self.metadata is None and self.data is None:
+        [self.metadata, self.data] = self.query.get(self.timeout)
 
         if self.metadata is None:
             return [".", ".."]
@@ -130,6 +128,8 @@ class Passthrough(Operations):
         pass
 
     def link(self, target, name):
+        signal_host = "zitpcx19282.desy.de"
+        targets = ["zitpcx19282.desy.de", "50101", 1]
         pass
 
     # The method utime() sets the access and modified times of the file specified by path.
@@ -191,7 +191,10 @@ class Passthrough(Operations):
     """
 
 def main(mountpoint):
-    FUSE(Passthrough(), mountpoint, nothreads=True, foreground=True)
+    signal_host = "asap3-p00.desy.de"
+#    signal_host = "zitpcx19282.desy.de"
+
+    FUSE(Passthrough(signal_host), mountpoint, nothreads=True, foreground=True)
 
 if __name__ == '__main__':
     main(sys.argv[1])
