@@ -337,7 +337,7 @@ elif [ -f /etc/SuSE-release ] ; then
                 ## the return value is set appropriately by startproc.
                 /sbin/startproc $DAEMON_EXE $DAEMON_EXE_ARGS
 
-                sleep 3
+                sleep 5
 
                 /sbin/checkproc $NAME
             fi
