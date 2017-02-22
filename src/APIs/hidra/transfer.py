@@ -341,6 +341,8 @@ class Transfer():
                         self.log.debug("Allowing host {0} ({1})"
                                        .format(host, ip[0]))
                         self.auth.allow(ip[0])
+                    except socket.gaierror:
+                        self.log.error("Could not get IP of host {0}. Proceed.".format(host))
                     except:
                         self.log.error("Error was: ", exc_info=True)
                         raise AuthenticationFailed(
