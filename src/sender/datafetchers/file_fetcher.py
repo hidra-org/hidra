@@ -35,7 +35,7 @@ def setup(log, config):
     return check_passed
 
 
-def get_metadata(log, config, targets, metadata, chunksize, local_target=None):
+def get_metadata(log, targets, metadata, chunksize, local_target=None):
 
     # extract fileEvent metadata
     try:
@@ -107,7 +107,7 @@ def get_metadata(log, config, targets, metadata, chunksize, local_target=None):
             log.error("Unable to assemble multi-part message.")
             raise
 
-    return source_file, target_file, metadata
+    return source_file, target_file
 
 
 def send_data(log, targets, source_file, target_file, metadata,

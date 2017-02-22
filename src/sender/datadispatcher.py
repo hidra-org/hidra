@@ -159,7 +159,7 @@ class DataDispatcher():
 
                 if len(message) >= 2:
 
-                    workload = json.loads(message[0].decode("utf-8"))
+                    metadata = json.loads(message[0].decode("utf-8"))
                     targets = json.loads(message[1].decode("utf-8"))
 
                     if self.fixed_stream_id:
@@ -171,29 +171,29 @@ class DataDispatcher():
                     targets = sorted(targets, key=lambda target: target[1])
 
                 else:
-                    workload = json.loads(message[0].decode("utf-8"))
+                    metadata = json.loads(message[0].decode("utf-8"))
 
-                    if type(workload) == list and workload[0] == b"CLOSE_FILE":
+                    if type(metadata) == list and metadata[0] == b"CLOSE_FILE":
 
                         # woraround for error
                         # "TypeError: Frame 0 (u'CLOSE_FILE') does not support
                         # the buffer interface."
-                        workload[0] = b"CLOSE_FILE"
-                        for i in range(1, len(workload)):
-                            workload[i] = (json.dumps(workload[i])
+                        metadata[0] = b"CLOSE_FILE"
+                        for i in range(1, len(metadata)):
+                            metadata[i] = (json.dumps(metadata[i])
                                            .encode("utf-8")
                                            )
 
                         if self.fixed_stream_id:
                             self.log.debug("Router requested to send signal "
                                            "that file was closed.")
-                            workload.append(self.id)
+                            metadata.append(self.id)
 
                             # socket already known
                             if self.fixed_stream_id in self.open_connections:
                                 tracker = (
                                     self.open_connections[self.fixed_stream_id]
-                                    .send_multipart(workload,
+                                    .send_multipart(metadata,
                                                     copy=False,
                                                     track=True)
                                 )
@@ -218,7 +218,7 @@ class DataDispatcher():
                                 # send data
                                 tracker = (
                                     self.open_connections[self.fixed_stream_id]
-                                    .send_multipart(workload,
+                                    .send_multipart(metadata,
                                                     copy=False,
                                                     track=True)
                                 )
@@ -254,15 +254,16 @@ class DataDispatcher():
                 # get metadata and paths of the file
                 try:
                     self.log.debug("Getting file paths and metadata")
-                    source_file, target_file, metadata = (
+                    # additional information is stored in the metadata dict
+                    source_file, target_file = (
                         self.datafetcher.get_metadata(
-                            self.log, self.config, targets, workload,
-                            self.chunksize, self.local_target)
+                            self.log, targets, metadata, self.chunksize,
+                            self.local_target)
                     )
 
                 except:
                     self.log.error("Building of metadata dictionary failed "
-                                   "for workload: {0}".format(workload),
+                                   "for metadata: {0}".format(metadata),
                                    exc_info=True)
                     # skip all further instructions and
                     # continue with next iteration
