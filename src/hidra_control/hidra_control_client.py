@@ -22,6 +22,11 @@ except:
 
     import hidra
 
+# the list transformation is needed for Python 3 compliance
+allowed_beamlines = list(hidra.connection_list.keys())
+#allowed_beamlines = ["p00", "p01", "p02.1", "p02.2", "p03", "p04", "p05",
+#                     "p06", "p07", "p08", "p09", "p10", "p11"]
+
 
 def argument_parsing():
     parser = argparse.ArgumentParser()
@@ -29,9 +34,7 @@ def argument_parsing():
     parser.add_argument("--beamline",
                         type=str,
                         required=True,
-                        choices=["p00", "p01", "p02.1", "p02.2", "p03", "p04",
-                                 "p05", "p06", "p07", "p08", "p09", "p10",
-                                 "p11"],
+                        choices=allowed_beamlines,
                         help="Beamline for which the HiDRA server for the "
                              "Eiger detector should be operated")
 
