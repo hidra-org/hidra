@@ -97,7 +97,8 @@ buildOptions = {
 }
 
 executables = [
-    Executable(os.path.join(senderpath, "datamanager.py"))
+    Executable(os.path.join(senderpath, "datamanager.py")),
+    Executable(os.path.join(sharedpath, "getsettings.py"))
 ]
 
 setup(name='HiDRA',

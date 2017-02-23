@@ -16,10 +16,12 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="HiDRA"
 # Process name (for display)
 NAME=hidra
-DAEMON=/opt/hidra/src/sender/datamanager.py
+BASEDIR=/opt/hidra
+DAEMON=$BASEDIR/src/sender/datamanager.py
+DAEMON_EXE=$BASEDIR/datamanager
 DAEMON_ARGS="--verbose"
-DAEMON_EXE=/opt/hidra/datamanager
-DAEMON_EXE_ARGS="$DAEMON_ARGS --config_file /opt/hidra/conf/datamanager.conf"
+CONFIG_FILE=$BASEDIR/conf/datamanager.conf
+DAEMON_EXE_ARGS="$DAEMON_ARGS --config_file $CONFIG_FILE"
 PIDFILE=/opt/hidra/$NAME.pid
 IPCPATH=/tmp/hidra
 PYTHON=/usr/bin/python
@@ -316,51 +318,66 @@ elif [ -f /etc/SuSE-release ] ; then
 
     }
 
+    do_start()
+    {
+        printf "Starting $NAME"
+        export LD_LIBRARY_PATH=/opt/hidra:$LD_LIBRARY_PATH
+
+        # Checking if the process is already running
+        /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"
+        # 0: service is up and running
+        if [ $status = "0" ]; then
+           printf "\n$NAME is already running"
+        else
+            # Create the directory for the log files
+            if [ ! -d "$LOG_DIRECTORY" ]; then
+                mkdir $LOG_DIRECTORY
+                chmod 1777 $LOG_DIRECTORY
+            fi
+
+            ## Start daemon with startproc(8). If this fails
+            ## the return value is set appropriately by startproc.
+            /sbin/startproc $DAEMON_EXE $DAEMON_EXE_ARGS
+
+            sleep 5
+
+            /sbin/checkproc $NAME
+        fi
+
+        # Remember status and be verbose
+        rc_status -v
+    }
+
+    do_stop()
+    {
+        printf "Stopping $NAME"
+
+        # Checking if the process is running at all
+        /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"
+        # 3: service is not running
+        if [ $status = "3" ]; then
+           printf "\n$NAME is not running"
+        fi
+
+        ## Stop daemon with killproc(8) and if this fails
+        ## killproc sets the return value according to LSB
+        /sbin/killproc -TERM $NAME
+
+        # Remember status and be verbose
+        rc_status -v
+    }
+
+    getsettings()
+    {
+        $BASEDIR/getsettings.py
+    }
+
     case "$1" in
         start)
-            printf "Starting $NAME"
-            export LD_LIBRARY_PATH=/opt/hidra:$LD_LIBRARY_PATH
-
-            # Checking if the process is already running
-            /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"
-            # 0: service is up and running
-            if [ $status = "0" ]; then
-               printf "\n$NAME is already running"
-            else
-                # Create the directory for the log files
-                if [ ! -d "$LOG_DIRECTORY" ]; then
-                    mkdir $LOG_DIRECTORY
-                    chmod 1777 $LOG_DIRECTORY
-                fi
-
-                ## Start daemon with startproc(8). If this fails
-                ## the return value is set appropriately by startproc.
-                /sbin/startproc $DAEMON_EXE $DAEMON_EXE_ARGS
-
-                sleep 5
-
-                /sbin/checkproc $NAME
-            fi
-
-            # Remember status and be verbose
-            rc_status -v
+            do_start
             ;;
         stop)
-            printf "Stopping $NAME"
-
-            # Checking if the process is running at all
-            /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"
-            # 3: service is not running
-            if [ $status = "3" ]; then
-               printf "\n$NAME is not running"
-            fi
-
-            ## Stop daemon with killproc(8) and if this fails
-            ## killproc sets the return value according to LSB
-            /sbin/killproc -TERM $NAME
-
-            # Remember status and be verbose
-            rc_status -v
+            do_stop
             ;;
         status)
             printf "Checking for service $NAME "
@@ -390,13 +407,18 @@ elif [ -f /etc/SuSE-release ] ; then
             #log_end_msg $?
             #;;
         restart|force-reload)
+            printf "Not implemented yet\n"
+            do_stop
+            do_start
+            ;;
+        getsettings)
+            getsettings
             ;;
         *)
             #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
-            printf "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
+            printf "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload|getsettings}\n" >&2
             exit 3
             ;;
     esac
-
 
 fi
