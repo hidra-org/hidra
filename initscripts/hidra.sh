@@ -367,11 +367,6 @@ elif [ -f /etc/SuSE-release ] ; then
         rc_status -v
     }
 
-    getsettings()
-    {
-        $BASEDIR/getsettings.py
-    }
-
     case "$1" in
         start)
             do_start
@@ -412,7 +407,7 @@ elif [ -f /etc/SuSE-release ] ; then
             do_start
             ;;
         getsettings)
-            getsettings
+            $BASEDIR/getsettings
             ;;
         *)
             #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
