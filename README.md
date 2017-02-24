@@ -21,4 +21,4 @@ The project is licensed under __AGPL v3__.
 Getting Started
 ===============
 
-
+Further information can be found [in the documentation space] (https://confluence.desy.de/display/hidra/HiDRA)
