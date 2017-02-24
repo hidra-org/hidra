@@ -45,10 +45,13 @@ class SignalHandler():
         # to rotate through the open permanent requests
         self.next_requ_node = []
 
-        self.whitelist = []
+        if whitelist is not None:
+            self.whitelist = []
 
-        for host in whitelist:
-            self.whitelist.append(host.replace(".desy.de", ""))
+            for host in whitelist:
+                self.whitelist.append(host.replace(".desy.de", ""))
+        else:
+            self.whitelist = None
 
         # sockets
         self.control_pub_socket = None

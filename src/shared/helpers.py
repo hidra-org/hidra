@@ -284,6 +284,9 @@ def check_version(version, log):
 
 def check_host(host, whitelist, log):
 
+    if whitelist is None:
+        return True
+
     if host and whitelist:
 
         if type(host) == list:
@@ -327,28 +330,30 @@ def extend_whitelist(whitelist, log):
     log.info("Configured whitelist: {0}".format(whitelist))
     extended_whitelist = []
 
-    for host in whitelist:
 
-        if host == "localhost":
-            extended_whitelist.append(socket.gethostbyname(host))
-        else:
-            try:
-                hostname, tmp, ip = socket.gethostbyaddr(host)
+    if whitelist is not None:
+        for host in whitelist:
 
-                host_modified = hostname.replace(".desy.de", "")
+            if host == "localhost":
+                extended_whitelist.append(socket.gethostbyname(host))
+            else:
+                try:
+                    hostname, tmp, ip = socket.gethostbyaddr(host)
 
-                if host_modified not in whitelist:
-                    extended_whitelist.append(host_modified)
+                    host_modified = hostname.replace(".desy.de", "")
 
-                if ip[0] not in whitelist:
-                    extended_whitelist.append(ip[0])
-            except:
-                pass
+                    if host_modified not in whitelist:
+                        extended_whitelist.append(host_modified)
 
-    for host in extended_whitelist:
-        whitelist.append(host)
+                    if ip[0] not in whitelist:
+                        extended_whitelist.append(ip[0])
+                except:
+                    pass
 
-    log.debug("Extended whitelist: {0}".format(whitelist))
+        for host in extended_whitelist:
+            whitelist.append(host)
+
+        log.debug("Extended whitelist: {0}".format(whitelist))
 
 
 def check_config(required_params, config, log):

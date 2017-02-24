@@ -409,7 +409,7 @@ class DataManager():
                                           self.current_pid,
                                           "router"))
 
-        self.whitelist = self.params["whitelist"] or []
+        self.whitelist = self.params["whitelist"]
 
         self.use_data_stream = self.params["use_data_stream"]
         self.log.info("Usage of data stream set to '{0}'"
