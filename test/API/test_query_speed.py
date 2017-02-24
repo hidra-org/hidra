@@ -77,6 +77,10 @@ if __name__ == "__main__":
                         type=str,
                         help="Host where HiDRA is runnning",
                         default=socket.gethostname())
+    parser.add_argument("--target_host",
+                        type=str,
+                        help="Host where the data should be send to",
+                        default=socket.gethostname())
     parser.add_argument("--procname",
                         type=str,
                         help="Name with which the service should be running",
@@ -90,15 +94,12 @@ if __name__ == "__main__":
 
     setproctitle.setproctitle(arguments.procname)
 
-    number_of_worker = 3
     workers = []
 
     number_of_files = multiprocessing.Value('i', 0)
 
     targets = []
     transfer_type = "QUERY_NEXT"
-    target_host = socket.gethostname()
-#    target_host = "zitpcx22614w.desy.de"
 
     for n in range(arguments.workers):
         p = str(50100 + n)
@@ -107,11 +108,11 @@ if __name__ == "__main__":
                                     args=(n,
                                           transfer_type,
                                           arguments.signal_host,
-                                          target_host,
+                                          arguments.target_host,
                                           p,
                                           number_of_files))
         workers.append(w)
-        targets.append([target_host, p, 1, [".cbf"]])
+        targets.append([arguments.target_host, p, 1, [".cbf"]])
 
     query = Transfer(transfer_type, arguments.signal_host, use_log=None)
     query.initiate(targets)

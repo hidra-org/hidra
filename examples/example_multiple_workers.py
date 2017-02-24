@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import os
 import multiprocessing
 import socket
+import argparse
 
 import __init__
 from hidra import Transfer
@@ -47,8 +48,23 @@ class Worker(multiprocessing.Process):
 
 if __name__ == "__main__":
 
-    signal_host = "asap3-p00.desy.de"
-    target_host = socket.gethostname()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--signal_host",
+                        type=str,
+                        help="Host where HiDRA is runnning",
+                        default=socket.gethostname())
+    parser.add_argument("--target_host",
+                    type=str,
+                    help="Host where the data should be send to",
+                    default=socket.gethostname())
+    parser.add_argument("--procname",
+                        type=str,
+                        help="Name with which the service should be running",
+                        default="example_onda")
+
+    arguments = parser.parse_args()
+
     transfer_type = "QUERY_NEXT"
 
     number_of_worker = 3
@@ -60,19 +76,19 @@ if __name__ == "__main__":
     for n in range(number_of_worker):
         p = str(50100 + n)
 
-        targets.append([target_host, p, 1, [".cbf"]])
+        targets.append([arguments.target_host, p, 1, [".cbf"]])
 
         w = multiprocessing.Process(target=Worker,
                                     args=(n,
                                           transfer_type,
-                                          signal_host,
-                                          target_host,
+                                          arguments.signal_host,
+                                          arguments.target_host,
                                           p))
         workers.append(w)
 
     # register these workers on the sending side
     # this is done from the master to enforce that the data received from the workers is disjuct
-    query = Transfer(transfer_type, signal_host, use_log=False)
+    query = Transfer(transfer_type, arguments.signal_host, use_log=False)
     query.initiate(targets)
 
     for w in workers:

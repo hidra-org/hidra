@@ -2,6 +2,8 @@ from __future__ import print_function
 # from __future__ import unicode_literals
 
 import os
+import argparse
+import socket
 
 from __init__ import BASE_PATH
 import helpers
@@ -16,29 +18,27 @@ helpers.init_logging(logfile, True, "DEBUG")
 
 if __name__ == "__main__":
 
-    signal_host = "zitpcx19282.desy.de"
-#    signal_host = "lsdma-lab04.desy.de"
-#    signal_host = "asap3-bl-prx07.desy.de"
+    parser = argparse.ArgumentParser()
 
-#    targets = [["asap3-bl-prx07.desy.de", "50101", 1, [".cbf"]],
-#               ["asap3-bl-prx07.desy.de", "50102", 1, [".cbf"]],
-#               ["asap3-bl-prx07.desy.de", "50103", 1, [".cbf"]]]
-#    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]]]
-    targets = [["zitpcx19282.desy.de", "50100", 1, [".cbf"]],
-               ["zitpcx19282.desy.de", "50101", 1, [".cbf"]],
-               ["zitpcx19282.desy.de", "50102", 1, [".cbf"]]]
-#    targets = [["zitpcx19282.desy.de", "50101", 1],
-#               ["zitpcx19282.desy.de", "50102", 1],
-#               ["zitpcx19282.desy.de", "50103", 1]]
-#    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]],
-#               ["zitpcx19282.desy.de", "50102", 1, [".cbf"]],
-#               ["zitpcx19282.desy.de", "50103", 1, [".cbf"]],
-#               ["lsdma-lab04.desy.de", "50104", 1, [".cbf"]]]
+    parser.add_argument("--signal_host",
+                        type=str,
+                        help="Host where HiDRA is runnning",
+                        default=socket.gethostname())
+    parser.add_argument("--target_host",
+                        type=str,
+                        help="Host where the data should be send to",
+                        default=socket.gethostname())
+
+    arguments = parser.parse_args()
+
+    targets = [[arguments.target_host, "50100", 1, [".cbf"]],
+               [arguments.target_host, "50101", 1, [".cbf"]],
+               [arguments.target_host, "50102", 1, [".cbf"]]]
 
     transfer_type = "QUERY_NEXT"
 #    transfer_type = "STREAM"
 #    transfer_type = "STREAM_METADATA"
 #    transfer_type = "QUERY_METADATA"
 
-    query = Transfer(transfer_type, signal_host, use_log=True)
+    query = Transfer(transfer_type, arguments.signal_host, use_log=True)
     query.force_stop(targets)

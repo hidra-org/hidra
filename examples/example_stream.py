@@ -1,33 +1,48 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-# import time
+import argparse
+import socket
+
+import __init__
 from hidra import Transfer
 
+if __name__ == "__main__":
 
-signal_host = "zitpcx19282.desy.de"
-# signal_host = "zitpcx22614.desy.de"
-targets = ["zitpcx19282.desy.de", "50101", 0]
+    parser = argparse.ArgumentParser()
 
-print ("\n==== TEST: Stream all files ====\n")
+    parser.add_argument("--signal_host",
+                        type=str,
+                        help="Host where HiDRA is runnning",
+                        default=socket.gethostname())
+    parser.add_argument("--target_host",
+                        type=str,
+                        help="Host where the data should be send to",
+                        default=socket.gethostname())
 
-query = Transfer("STREAM", signal_host)
+    arguments = parser.parse_args()
 
-query.initiate(targets)
+    targets = [arguments.target_host, "50101", 0]
 
-query.start()
+    print ("\n==== TEST: Stream all files ====\n")
 
-while True:
-    try:
-        [metadata, data] = query.get()
-    except:
-        break
+    query = Transfer("STREAM", arguments.signal_host)
 
-    print
-    print ("metadata", metadata["filename"])
-#    print ("data", str(data)[:10])
-    print
+    query.initiate(targets)
 
-query.stop()
+    query.start()
 
-print ("\n==== TEST END: Stream all files ====\n")
+    while True:
+        try:
+            [metadata, data] = query.get()
+        except:
+            break
+
+        print
+        print ("metadata", metadata["filename"])
+    #    print ("data", str(data)[:10])
+        print
+
+    query.stop()
+
+    print ("\n==== TEST END: Stream all files ====\n")

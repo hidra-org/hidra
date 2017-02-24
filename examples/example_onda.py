@@ -22,7 +22,7 @@ helpers.init_logging(logfile, True, "DEBUG")
 
 
 class Worker(multiprocessing.Process):
-    def __init__(self, id, transfer_type, basepath, signal_host, port):
+    def __init__(self, id, transfer_type, basepath, signal_host, target_host, port):
 
         self.id = id
         self.port = port
@@ -35,7 +35,7 @@ class Worker(multiprocessing.Process):
 
         self.log.debug("start Transfer on port {0}".format(port))
         # targets are locally
-        self.query.start([signal_host, port])
+        self.query.start([target_host, port])
 #        self.query.start(port)
 
         self.run()
@@ -84,6 +84,10 @@ if __name__ == "__main__":
                         type=str,
                         help="Host where HiDRA is runnning",
                         default=socket.gethostname())
+    parser.add_argument("--target_host",
+                    type=str,
+                    help="Host where the data should be send to",
+                    default=socket.gethostname())
     parser.add_argument("--procname",
                         type=str,
                         help="Name with which the service should be running",
@@ -92,13 +96,6 @@ if __name__ == "__main__":
     arguments = parser.parse_args()
 
     setproctitle.setproctitle(arguments.procname)
-
-    signal_host = arguments.signal_host
-#    signal_host = "zitpcx22614.fritz.box"
-#    signal_host = "zitpcx22614w.desy.de"
-#    signal_host = "zitpcx19282.desy.de"
-#    signal_host = "lsdma-lab04.desy.de"
-#    signal_host = "asap3-bl-prx07.desy.de"
 
     transfer_type = "QUERY_NEXT"
 #    transfer_type = "STREAM"
@@ -115,26 +112,18 @@ if __name__ == "__main__":
     for n in range(number_of_worker):
         p = str(50100 + n)
 
-        targets.append([signal_host, p, 1, [".cbf"]])
+        targets.append([arguments.target_host, p, 1, [".cbf"]])
 
         w = multiprocessing.Process(target=Worker,
                                     args=(n,
                                           transfer_type,
                                           basepath,
-                                          signal_host,
+                                          arguments.signal_host,
+                                          arguments.target_host,
                                           p))
         workers.append(w)
 
-#    targets = [[signal_host, "50101", 1, [".cbf"]]]
-#    targets = [[signal_host, "50101", 1],
-#               [signal_host, "50102", 1],
-#               [signal_host, "50103", 1]]
-#    targets = [["zitpcx19282.desy.de", "50101", 1, [".cbf"]],
-#               ["zitpcx19282.desy.de", "50102", 1, [".cbf"]],
-#               ["zitpcx19282.desy.de", "50103", 1, [".cbf"]],
-#               ["lsdma-lab04.desy.de", "50104", 1, [".cbf"]]]
-
-    query = Transfer(transfer_type, signal_host, use_log=True)
+    query = Transfer(transfer_type, arguments.signal_host, use_log=True)
     query.initiate(targets)
 
     for w in workers:

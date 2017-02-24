@@ -1,41 +1,52 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-# import time
+import argparse
+import socket
+
 import __init__
 from hidra import Transfer
 
+if __name__ == "__main__":
 
-signal_host = "asap3-p00.desy.de"
-# signal_host = "zitpcx19282.desy.de"
-# signal_host = "zitpcx22614w.desy.de"
-targets = [["zitpcx19282.desy.de", "50101", 0]]
-# targets = [["zitpcx22614w.desy.de", "50101", 0]]
+    parser = argparse.ArgumentParser()
 
-print ("\n==== TEST: Query for the newest filename ====\n")
+    parser.add_argument("--signal_host",
+                        type=str,
+                        help="Host where HiDRA is runnning",
+                        default=socket.gethostname())
+    parser.add_argument("--target_host",
+                        type=str,
+                        help="Host where the data should be send to",
+                        default=socket.gethostname())
 
-query = Transfer("QUERY_NEXT", signal_host)
+    arguments = parser.parse_args()
 
-query.initiate(targets)
+    targets = [[arguments.target_host, "50101", 1]]
 
-query.start()
+    print ("\n==== TEST: Query for the newest filename ====\n")
 
-while True:
-    try:
-        [metadata, data] = query.get(2000)
-    except:
-        break
+    query = Transfer("QUERY_NEXT", arguments.signal_host)
 
-    print
-    if metadata and data:
-        print ("metadata", metadata["filename"])
-        print ("data", str(data)[:10])
-    else:
-        print ("metadata", metadata)
-        print ("data", data)
-    print
-#    time.sleep(0.1)
+    query.initiate(targets)
 
-query.stop()
+    query.start()
 
-print ("\n==== TEST END: Query for the newest filename ====\n")
+    while True:
+        try:
+            [metadata, data] = query.get(2000)
+        except:
+            break
+
+        print
+        if metadata and data:
+            print ("metadata", metadata["filename"])
+            print ("data", str(data)[:10])
+        else:
+            print ("metadata", metadata)
+            print ("data", data)
+        print
+
+    query.stop()
+
+    print ("\n==== TEST END: Query for the newest filename ====\n")
