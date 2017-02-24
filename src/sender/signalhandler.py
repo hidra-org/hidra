@@ -801,15 +801,20 @@ if __name__ == '__main__':
     logging.info("=== control_pub_socket connect to: '{0}'"
                  .format(control_pub_con_id))
 
-    signalhandler_pr = threading.Thread(
-        target=SignalHandler,
-        args=(control_pub_con_id, control_sub_con_id, whitelist, com_con_id,
-              request_fw_con_id, request_con_id, log_queue, context))
+    signalhandler_pr = threading.Thread(target=SignalHandler,
+                                        args=(control_pub_con_id,
+                                              control_sub_con_id,
+                                              whitelist,
+                                              com_con_id,
+                                              request_fw_con_id,
+                                              request_con_id,
+                                              log_queue,
+                                              context))
     signalhandler_pr.start()
 
-    request_puller_pr = Process(
-        target=RequestPuller,
-        args=(request_fw_con_id, log_queue))
+    request_puller_pr = Process(target=RequestPuller,
+                                args=(request_fw_con_id,
+                                      log_queue))
     request_puller_pr.start()
 
     def send_signal(socket, signal, ports, prio=None):
