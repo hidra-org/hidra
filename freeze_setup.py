@@ -22,9 +22,18 @@ if platform.system() == "Windows":
 #    libzmq_path = "C:\Python27\Lib\site-packages\zmq"
     platform_specific_packages = ["watchdog"]
 
+    platform_specific_files += [
+        # config
+        (os.path.join(confpath, "datamanager_pilatus.conf"),
+            os.path.join("conf", "datamanager.conf"))]
 else:
 #    libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
     platform_specific_packages = ["inotifyx"]
+
+    platform_specific_files += [
+        # config
+        (os.path.join(confpath, "datamanager_windows.conf"),
+            os.path.join("conf", "datamanager.conf"))]
 
     # Workaround for including setproctitle when building on SuSE 10
     dist = platform.dist()
