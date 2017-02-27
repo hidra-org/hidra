@@ -13,4 +13,5 @@ RUN pip install --upgrade pip && pip install \
     inotifyx
 RUN cd /opt && git clone https://stash.desy.de/scm/hidra/hidra.git
 RUN cd /opt/hidra && git checkout develop
+RUN cp -r /opt/hidra/src/APIs/hidra /usr/local/lib/python2.7/dist-packages/
 
