@@ -24,7 +24,7 @@ if platform.system() == "Windows":
 
     platform_specific_files += [
         # config
-        (os.path.join(confpath, "datamanager_pilatus.conf"),
+        (os.path.join(confpath, "datamanager_windows.conf"),
             os.path.join("conf", "datamanager.conf"))]
 else:
 #    libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
@@ -32,7 +32,7 @@ else:
 
     platform_specific_files += [
         # config
-        (os.path.join(confpath, "datamanager_windows.conf"),
+        (os.path.join(confpath, "datamanager_pilatus.conf"),
             os.path.join("conf", "datamanager.conf"))]
 
     # Workaround for including setproctitle when building on SuSE 10
@@ -81,9 +81,6 @@ buildOptions = {
         (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
         (os.path.join(sharedpath, "cfel_optarg.py"), "cfel_optarg.py"),
         (os.path.join(sharedpath, "_version.py"), "_version.py"),
-        # config
-        (os.path.join(confpath, "datamanager_pilatus.conf"),
-            os.path.join("conf", "datamanager.conf")),
         # event detectors
         (os.path.join(senderpath, "eventdetectors", "inotifyx_events.py"),
             os.path.join("eventdetectors", "inotifyx_events.py")),
