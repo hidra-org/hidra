@@ -13,6 +13,7 @@ from multiprocessing import Queue
 import tempfile
 import json
 import copy
+import zmq
 
 try:
     from logutils.queue import QueueHandler
@@ -71,16 +72,12 @@ class HidraController():
     this class holds getter/setter for all parameters
     and function members that control the operation.
     '''
-    def __init__(self, beamline, lock, log):
-        global beamline_config
+    def __init__(self, beamline, log):
 
         # Beamline is read-only, determined by portNo
         self.beamline = beamline
 
         self.procname = "hidra_{0}".format(self.beamline)
-
-        # lock to access in global variable from multiple threads
-        self.lock = lock
 
         # Set log handler
         self.log = log
@@ -91,9 +88,29 @@ class HidraController():
                                         "commissioning/scratch_bl",
                                         "local"]
 
-        # local, thread internal hidra configuration, global one is
+        self.master_config = dict()
+
+        self.__read_config()
+        """
+        if hidra_status(self.beamline) == "RUNNING":
+            self.master_config = self.__read_config()
+        else:
+            self.master_config["beamline"] = self.beamline
+            self.master_config["eiger_ip"] = "None"
+            self.master_config["eiger_api_version"] = "None"
+            self.master_config["history_size"] = 0
+            self.master_config["local_target"] = None
+            self.master_config["store_data"] = None
+            self.master_config["remove_data"] = None
+            self.master_config["whitelist"] = None
+        """
+
+
+        # connection depending hidra configuration, master config one is
         # overwritten with these parameters when start is executed
-        self.local_config = {
+        self.all_configs = dict()
+
+        self.config_template = {
             "active": False,
             "beamline": self.beamline,
             "eiger_ip": None,
@@ -105,6 +122,7 @@ class HidraController():
             "whitelist": None
         }
 
+
     def get_logger(self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue)  # Just the one handler needed
@@ -115,31 +133,45 @@ class HidraController():
 
         return logger
 
+    def __read_config(self):
+        global CONFIGPATH
+
+        # write configfile
+        # /etc/hidra/P01.conf
+        config_file = os.path.join(CONFIGPATH, self.beamline + ".conf")
+        self.log.info("Reading config file: {0}".format(config_file))
+
+        try:
+            config = helpers.read_config(config_file)
+            self.master_config = parse_parameters(config)["asection"]
+        except IOError:
+            self.log.debug("Configuration file available: {0}"
+                           .format(config_file))
+        self.log.debug("master_config={0}".format(self.master_config))
+
     def exec_msg(self, msg):
         '''
-        set filedir /gpfs/current/raw
-          returns DONE
-        get filedir
-          returns /gpfs/current/raw
-        do reset
-          return DONE
+        set ID local_target /gpfs/current/raw
+            returns DONE
+        get ID local_target
+            returns /gpfs/current/raw
+        do ID start
+            return DONE
         '''
-        tokens = msg.split(' ', 2)
-
-        if len(tokens) == 0:
+        if len(msg) == 0:
             return "ERROR"
 
-        if tokens[0].lower() == 'set':
-            if len(tokens) < 3:
+        if msg[0] == b"set":
+            if len(msg) < 3:
                 return "ERROR"
 
-            return self.set(tokens[1], tokens[2])
+            return self.set(msg[1], msg[2], json.loads(msg[3]))
 
-        elif tokens[0].lower() == 'get':
-            if len(tokens) != 2:
+        elif msg[0] == b"get":
+            if len(msg) != 3:
                 return "ERROR"
 
-            reply = json.dumps(self.get(tokens[1]))
+            reply = json.dumps(self.get(msg[1], msg[2]))
             self.log.debug("reply is {0}".format(reply))
 
             if reply is None:
@@ -148,129 +180,138 @@ class HidraController():
 
             return reply
 
-        elif tokens[0].lower() == 'do':
-            if len(tokens) != 2:
+        elif msg[0] == b"do":
+            if len(msg) != 3:
                 return "ERROR"
 
-            return self.do(tokens[1])
+            return self.do(msg[1], msg[2])
+
+        elif msg[0] == b"bye":
+            if len(msg) != 2:
+                return "ERROR"
+
+            self.log.debug("Received 'bye'")
+            if msg[1] in self.all_configs:
+                del self.all_configs[msg[1]]
+
+            return "DONE"
 
         else:
             return "ERROR"
 
-    def set(self, param, value):
+    def set(self, id, param, value):
         '''
         set a parameter, e.g.: set local_target /beamline/p11/current/raw/
         '''
-        global beamline_config
+        # identify the configuration for this connection
+        if id not in self.all_configs:
+            self.all_configs[id] = copy.deepcopy(self.config_template)
+
+        # This is a pointer
+        current_config = self.all_configs[id]
 
         key = param.lower()
 
-        self.lock.acquire()
         # IP of the EIGER Detector
         if key == "eiger_ip":
-            self.local_config["eiger_ip"] = value
+            current_config["eiger_ip"] = value
             return_val = "DONE"
 
         # API version of the EIGER Detector
         elif key == "eiger_api_version":
-            self.local_config["eiger_api_version"] = value
+            current_config["eiger_api_version"] = value
             return_val = "DONE"
 
         # Number of events stored to look for doubles
         elif key == "history_size":
-            self.local_config["history_size"] = value
+            current_config["history_size"] = value
             return_val = "DONE"
 
         # Target to move the files into
         # e.g. /beamline/p11/current/raw
         elif key == "local_target" and value in self.supported_local_targets:
-            self.local_config["local_target"] = os.path.join("/beamline",
-                                                             self.beamline,
-                                                             value)
+            current_config["local_target"] = os.path.join("/beamline",
+                                                          self.beamline,
+                                                          value)
             return_val = "DONE"
 
         # Flag describing if the data should be stored in local_target
         elif key == "store_data":
-            self.local_config["store_data"] = value
+            current_config["store_data"] = value
             return_val = "DONE"
 
         # Flag describing if the files should be removed from the source
         elif key == "remove_data":
-            self.local_config["remove_data"] = value
+            current_config["remove_data"] = value
             return_val = "DONE"
 
         # List of hosts allowed to connect to the data distribution
         elif key == "whitelist":
-            self.local_config["whitelist"] = value
+            current_config["whitelist"] = value
             return_val = "DONE"
 
         else:
             self.log.debug("key={0}; value={1}".format(key, value))
             return_val = "ERROR"
-        self.lock.release()
 
         if return_val != "ERROR":
-            self.local_config["active"] = True
+            current_config["active"] = True
 
         return return_val
 
-    def get(self, param):
+    def get(self, id, param):
         '''
         return the value of a parameter, e.g.: get local_target
         '''
-        global beamline_config
-
-        key = param.lower()
-
         # if the requesting client has set parameters before but has not
         # executed start yet, the previously set parameters should be
         # displayed (not the ones with which hidra was started the last time)
         # on the other hand if it is a client coming up to check with which
         # parameters the current hidra instance is running, these should be
         # shown
-        if self.local_config["active"]:
-            self.log.debug("use local_config")
-            tmp_config = self.local_config
+        if id in self.all_configs and self.all_configs[id]["active"]:
+            # This is a pointer
+            current_config = self.all_configs[id]
         else:
-            self.log.debug("use beamline_config")
-            tmp_config = beamline_config
+            current_config = self.master_config
+
+        key = param.lower()
 
         if key == "eiger_ip":
-            return tmp_config["eiger_ip"]
+            return current_config["eiger_ip"]
 
         elif key == "eiger_api_version":
-            return tmp_config["eiger_api_version"]
+            return current_config["eiger_api_version"]
 
         elif key == "history_size":
-            return tmp_config["history_size"]
+            return current_config["history_size"]
 
         elif key == "local_target":
-            if tmp_config["local_target"] is None:
-                return tmp_config["local_target"]
-            return os.path.relpath(tmp_config["local_target"],
+            if current_config["local_target"] is None:
+                return current_config["local_target"]
+            return os.path.relpath(current_config["local_target"],
                                    os.path.join("/beamline", self.beamline))
 
         elif key == "store_data":
-            return tmp_config["store_data"]
+            return current_config["store_data"]
 
         elif key == "remove_data":
-            return tmp_config["remove_data"]
+            return current_config["remove_data"]
 
         elif key == "whitelist":
-            return tmp_config["whitelist"]
+            return current_config["whitelist"]
 
         else:
             return "ERROR"
 
-    def do(self, cmd):
+    def do(self, id, cmd):
         '''
         executes commands
         '''
-        global beamline_config
         key = cmd.lower()
 
         if key == "start":
-            ret_val = self.start()
+            ret_val = self.start(id)
             return ret_val
 
         elif key == "stop":
@@ -285,14 +326,21 @@ class HidraController():
         else:
             return "ERROR"
 
-    def __write_config(self):
+    def __write_config(self, id):
         global CONFIGPATH
-        global beamline_config
+
+        # identify the configuration for this connection
+        if id in self.all_configs[id]:
+            # This is a pointer
+            current_config = self.all_configs[id]
+        else:
+            self.log.debug("No current configuration found")
+            return
 
         # if the requesting client has set parameters before these should be
-        # taken. If this was not the case use the one from the privious
+        # taken. If this was not the case use the one from the previous
         # executed start
-        if not self.local_config["active"]:
+        if not current_config["active"]:
             self.log.debug("Config parameters did not change since last start")
             self.log.debug("No need to write new config file")
             return
@@ -300,13 +348,13 @@ class HidraController():
         #
         # see, if all required params are there.
         #
-        if (self.local_config["eiger_ip"]
-                and self.local_config["eiger_api_version"]
-                and self.local_config["history_size"]
-                and self.local_config["local_target"]
-                and self.local_config["store_data"] is not None
-                and self.local_config["remove_data"] is not None
-                and self.local_config["whitelist"]):
+        if (current_config["eiger_ip"]
+                and current_config["eiger_api_version"]
+                and current_config["history_size"]
+                and current_config["local_target"]
+                and current_config["store_data"] is not None
+                and current_config["remove_data"] is not None
+                and current_config["whitelist"]):
 
             external_ip = hidra.connection_list[self.beamline]["host"]
 
@@ -351,19 +399,19 @@ class HidraController():
                 f.write("chunksize            = 10485760\n")
 
                 f.write("eiger_ip             = {0}\n"
-                        .format(self.local_config["eiger_ip"]))
+                        .format(current_config["eiger_ip"]))
                 f.write("eiger_api_version    = {0}\n"
-                        .format(self.local_config["eiger_api_version"]))
+                        .format(current_config["eiger_api_version"]))
                 f.write("history_size         = {0}\n"
-                        .format(self.local_config["history_size"]))
+                        .format(current_config["history_size"]))
                 f.write("local_target         = {0}\n"
-                        .format(self.local_config["local_target"]))
+                        .format(current_config["local_target"]))
                 f.write("store_data           = {0}\n"
-                        .format(self.local_config["store_data"]))
+                        .format(current_config["store_data"]))
                 f.write("remove_data          = {0}\n"
-                        .format(self.local_config["remove_data"]))
+                        .format(current_config["remove_data"]))
                 f.write("whitelist            = {0}\n"
-                        .format(self.local_config["whitelist"]))
+                        .format(current_config["whitelist"]))
 
                 self.log.debug("Started with ext_ip: {0}".format(external_ip))
                 self.log.debug("Started with event detector: {0}"
@@ -372,33 +420,33 @@ class HidraController():
                                .format(datafetcher))
 
                 # store the configuration parameters globally
-                self.log.debug("config = {0}".format(self.local_config))
-                for key in self.local_config:
+                self.log.debug("config = {0}".format(current_config))
+                for key in current_config:
                     if key != "active":
-                        beamline_config[key] = (
-                            copy.deepcopy(self.local_config[key]))
+                        self.master_config[key] = (
+                            copy.deepcopy(current_config[key]))
 
                 # mark local_config as inactive
-                self.local_config["active"] = False
+                current_config["active"] = False
 
         else:
             self.log.debug("eiger_ip: {0}"
-                           .format(self.local_config["eiger_ip"]))
+                           .format(current_config["eiger_ip"]))
             self.log.debug("eiger_api_version: {0}"
-                           .format(self.local_config["eiger_api_version"]))
+                           .format(current_config["eiger_api_version"]))
             self.log.debug("history_size: {0}"
-                           .format(self.local_config["history_size"]))
+                           .format(current_config["history_size"]))
             self.log.debug("localTarge: {0}"
-                           .format(self.local_config["local_target"]))
+                           .format(current_config["local_target"]))
             self.log.debug("store_data: {0}"
-                           .format(self.local_config["store_data"]))
+                           .format(current_config["store_data"]))
             self.log.debug("remove_data: {0}"
-                           .format(self.local_config["remove_data"]))
+                           .format(current_config["remove_data"]))
             self.log.debug("whitelist: {0}"
-                           .format(self.local_config["whitelist"]))
+                           .format(current_config["whitelist"]))
             raise Exception("Not all required parameters are specified")
 
-    def start(self):
+    def start(self, id):
         '''
         start ...
         '''
@@ -408,7 +456,7 @@ class HidraController():
             return "ALREADY_RUNNING"
 
         try:
-            self.__write_config()
+            self.__write_config(id)
         except:
             self.log.error("Config file not written", exc_info=True)
             return "ERROR"
@@ -437,8 +485,6 @@ class HidraController():
         # stop service
         p = subprocess.call(["systemctl", "stop",
                              "hidra@{0}.service".format(self.beamline)])
-        return "DONE"
-
         if p == 0:
             return "DONE"
         else:
@@ -468,208 +514,17 @@ def hidra_status(beamline):
         return "NOT RUNNING"
 
 
-class SocketServer(object):
-    '''
-    one socket for the port, accept() generates new sockets
-    '''
-    def __init__(self, log_queue, beamline):
-        self.log_queue = log_queue
-
-        self.log = self.get_logger(log_queue)
-
-        self.beamline = beamline
-        self.log.debug("SocketServer startet for beamline {0}"
-                       .format(self.beamline))
-
-        self.host = hidra.connection_list[self.beamline]["host"]
-        self.port = hidra.connection_list[self.beamline]["port"]
-        self.conns = []
-        self.socket = None
-
-        self.lock = threading.Lock()
-
-        self.create_socket()
-
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("SocketServer")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
-
-    def create_socket(self):
-
-        try:
-            self.sckt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.log.debug("Socket created.")
-        except Exception:
-            self.log.error("Creation of socket failed", exc_info=True)
-            sys.exit()
-
-        try:
-            self.sckt.bind((self.host, self.port))
-            self.log.info("Start socket (bind):  {0}, {1}"
-                          .format(self.host, self.port))
-        except Exception:
-            self.log.error("Failed to start socket (bind): {0}, {1}"
-                           .format(self.host, self.port), exc_info=True)
-            raise
-
-        self.sckt.listen(5)
-
-    def run(self):
-        while True:
-            try:
-                conn, addr = self.sckt.accept()
-
-                threading.Thread(
-                    target=SocketCom,
-                    args=(self.log_queue,
-                          self.beamline,
-                          conn,
-                          addr,
-                          self.lock)
-                ).start()
-            except KeyboardInterrupt:
-                break
-            except Exception:
-                self.log.error("Stopped due to unknown error", exc_info=True)
-                break
-
-    def finish(self):
-        if self.sckt:
-            self.log.info("Closing Socket")
-            self.sckt.close()
-            self.sckt = None
-
-    def __exit__(self):
-        self.finish()
-
-    def __del__(self):
-        self.finish()
-
-
-class SocketCom ():
-    def __init__(self, log_queue, beamline, conn, addr, lock):
-        self.id = threading.current_thread().name
-
-        self.log = self.get_logger(log_queue)
-
-        self.controller = HidraController(beamline, lock, self.log)
-        self.conn = conn
-        self.addr = addr
-
-        self.run()
-
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("SocketCom_{0}".format(self.id))
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
-
-    def run(self):
-
-        while True:
-
-            msg = self.recv()
-
-            # These calls return the number of bytes received, or -1 if an
-            # error occurred.The return value will be 0 when the peer has
-            # performed an orderly shutdown.
-            # see: http://man7.org/linux/man-pages/man2/recv.2.html
-            if len(msg) == 0:
-                self.log.debug("Received empty msg")
-                break
-
-            elif msg.lower().find('bye') == 0:
-                self.log.debug("Received 'bye'")
-                self.close()
-                break
-
-            elif msg.find('exit') >= 0:
-                self.log.debug("Received 'exit'")
-                self.close()
-                sys.exit(1)
-
-            reply = self.controller.exec_msg(msg)
-
-            if self.send(reply) == 0:
-                self.close()
-                break
-
-    def recv(self):
-        argout = None
-        try:
-            argout = self.conn.recv(1024)
-        except Exception as e:
-            print e
-            argout = None
-
-        self.log.debug("Recv (len {0: <2}): {1}"
-                       .format(len(argout.strip()), argout.strip()))
-
-        return argout.strip()
-
-    def send(self, msg):
-        try:
-            argout = self.conn.send(msg)
-        except:
-            argout = ""
-
-        self.log.debug("Send (len {0: <2}): {1}".format(argout, msg))
-
-        return argout
-
-    def close(self):
-        #
-        # close the 'accepted' socket only, not the main socket
-        # because it may still be in use by another client
-        #
-        if self.conn:
-            self.log.info("Closing connection")
-            self.conn.close()
-            self.conn = None
-
-    def __exit__(self):
-        self.close()
-
-    def __del__(self):
-        self.close()
-
-
-def argument_parsing():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--beamline",
-                        type=str,
-                        help="Beamline for which the HiDRA Server for the "
-                             "Eiger detector should be started",
-                        default="p00")
-    return parser.parse_args()
-
-
-class HidraControlServer():
+class ControlServer():
     def __init__(self):
         global BASE_PATH
-        global beamline_config
 
-        arguments = argument_parsing()
+        arguments = self.argument_parsing()
 
         self.beamline = arguments.beamline
 
         setproctitle.setproctitle("hidra-control-server_{0}"
                                   .format(self.beamline))
 
-        onscreen = False
-#        onscreen = "debug"
-        verbose = True
         logfile = os.path.join(BASE_PATH, "logs",
                                "hidra-control-server_{0}.log"
                                .format(self.beamline))
@@ -679,16 +534,18 @@ class HidraControlServer():
         self.log_queue = Queue(-1)
 
         # Get the log Configuration for the lisener
-        if onscreen:
+        if arguments.onscreen:
             h1, h2 = helpers.get_log_handlers(logfile, logsize,
-                                              verbose, onscreen)
+                                              arguments.verbose,
+                                              arguments.onscreen)
 
             # Start queue listener using the stream handler above.
             self.log_queue_listener = (
                 helpers.CustomQueueListener(self.log_queue, h1, h2))
         else:
             h1 = helpers.get_log_handlers(logfile, logsize,
-                                          verbose, onscreen)
+                                          arguments.verbose,
+                                          arguments.onscreen)
 
             # Start queue listener using the stream handler above
             self.log_queue_listener = (
@@ -701,58 +558,111 @@ class HidraControlServer():
 
         self.log.info("Init")
 
-        # store in global variable to let other connections also
-        # access the config (beamline_config has to contain all key
-        # accessable with get
-        self.__read_config()
-        """
-        if hidra_status(self.beamline) == "RUNNING":
-            beamline_config = self.__read_config()
-        else:
-            beamline_config["beamline"] = self.beamline
-            beamline_config["eiger_ip"] = "None"
-            beamline_config["eiger_api_version"] = "None"
-            beamline_config["history_size"] = 0
-            beamline_config["local_target"] = None
-            beamline_config["store_data"] = None
-            beamline_config["remove_data"] = None
-            beamline_config["whitelist"] = None
-        """
+        self.master_config = None
 
-        # waits for new accepts on the original socket,
-        # receives the newly created socket and
-        # creates threads to handle each client separatly
-        s = SocketServer(self.log_queue, self.beamline)
+        self.controller = HidraController(self.beamline, self.log)
 
-        s.run()
+        self.con_id = "tcp://{0}:{1}".format(
+            socket.gethostbyaddr(
+                hidra.connection_list[self.beamline]["host"])[2][0],
+            hidra.connection_list[self.beamline]["port"])
 
-    def __read_config(self):
-        global CONFIGPATH
-        global beamline_config
+        self.socket = None
 
-        # write configfile
-        # /etc/hidra/P01.conf
-        config_file = CONFIGPATH + os.sep + self.beamline + ".conf"
-        self.log.info("Reading config file: {0}".format(config_file))
+        self.create_sockets()
 
-        try:
-            config = helpers.read_config(config_file)
-            beamline_config = parse_parameters(config)["asection"]
-        except IOError:
-            self.log.debug("Configuration file available: {0}"
-                           .format(config_file))
-        self.log.debug("beamline_config={0}".format(beamline_config))
+        self.run()
+
+    def argument_parsing(self):
+        parser = argparse.ArgumentParser()
+
+        parser.add_argument("--beamline",
+                            type=str,
+                            help="Beamline for which the HiDRA Server for the "
+                                 "Eiger detector should be started",
+                            default="p00")
+        parser.add_argument("--verbose",
+                            help="More verbose output",
+                            action="store_true")
+        parser.add_argument("--onscreen",
+                            type=str,
+                            help="Display logging on screen "
+                                 "(options are CRITICAL, ERROR, WARNING, "
+                                 "INFO, DEBUG)",
+                            default=False)
+
+        return parser.parse_args()
 
     def get_logger(self, queue):
         # Create log and set handler to queue handle
         h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("HidraControlServer")
+        logger = logging.getLogger("ControlServer")
         logger.propagate = False
         logger.addHandler(h)
         logger.setLevel(logging.DEBUG)
 
         return logger
 
+    def create_sockets(self):
+
+        #Create ZeroMQ context
+        self.log.info("Registering ZMQ context")
+        self.context = zmq.Context()
+
+        # socket to get requests
+        try:
+            self.socket = self.context.socket(zmq.REP)
+            self.socket.bind(self.con_id)
+            self.log.info("Start socket (bind): '{0}'"
+                          .format(self.con_id))
+        except zmq.error.ZMQError:
+            self.log.error("Failed to start socket (bind) zmqerror: '{0}'"
+                           .format(self.con_id), exc_info=True)
+            raise
+        except:
+            self.log.error("Failed to start socket (bind): '{0}'"
+                           .format(self.con_id), exc_info=True)
+            raise
+
+    def run(self):
+
+        while True:
+
+            try:
+                msg = self.socket.recv_multipart()
+                self.log.debug("Recv {0}".format(msg))
+            except KeyboardInterrupt:
+                break
+
+            if len(msg) == 0:
+                self.log.debug("Received empty msg")
+                break
+
+            elif msg[0] == b"exit":
+                self.log.debug("Received 'exit'")
+                self.close()
+                sys.exit(1)
+
+            reply = self.controller.exec_msg(msg)
+
+            self.socket.send(reply)
+
+    def stop(self):
+        if self.socket:
+            self.log.info("Closing Socket")
+            self.socket.close()
+            self.spcket = None
+        if self.context:
+            self.log.info("Destroying Context")
+            self.context.destroy()
+            self.context = None
+
+    def __exit__(self):
+        self.stop()
+
+    def __del__(self):
+        self.stop()
+
 
 if __name__ == '__main__':
-    t = HidraControlServer()
+    ControlServer()

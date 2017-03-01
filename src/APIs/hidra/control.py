@@ -12,10 +12,13 @@ import traceback
 import subprocess
 import re
 import json
+import zmq
 
 # from ._version import __version__
 from ._constants import connection_list
 
+DOMAIN = ".desy.de"
+LDAPURI = "it-ldap-slave.desy.de:1389"
 
 class LoggingFunction:
     def out(self, x, exc_info=None):
@@ -73,11 +76,12 @@ class CommunicationFailed(Exception):
 
 
 def excecute_ldapsearch(ldap_cn):
+    global LDAPURI
 
     p = subprocess.Popen(
         ["ldapsearch",
          "-x",
-         "-H ldap://it-ldap-slave.desy.de:1389",
+         "-H ldap://" + LDAPURI,
          "cn=" + ldap_cn, "-LLL"],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -96,6 +100,8 @@ def excecute_ldapsearch(ldap_cn):
 
 
 def check_netgroup(hostname, beamline, log=None):
+    global DOMAIN
+
     if log is None:
         log = NoLoggingFunction()
     else:
@@ -106,10 +112,10 @@ def check_netgroup(hostname, beamline, log=None):
     netgroup = excecute_ldapsearch(netgroup_name)
 
     # not all hosts are configuered with a fully qualified DNS name
-    hostname = hostname.replace(".desy.de", "")
+    hostname = hostname.replace(DOMAIN, "")
     netgroup_modified = []
     for host in netgroup:
-        netgroup_modified.append(host.replace(".desy.de", ""))
+        netgroup_modified.append(host.replace(DOMAIN, ""))
 
     if hostname not in netgroup_modified:
         log.error("Host {0} is not contained in netgroup of "
@@ -132,36 +138,46 @@ class Control():
         self.beamline = beamline
         self.signal_socket = None
 
-        check_netgroup(socket.gethostname(), self.beamline, self.log)
+        self.host = socket.gethostname()
+
+        check_netgroup(self.host, self.beamline, self.log)
 
         try:
-            self.signal_host = connection_list[beamline]["host"]
-            self.signal_port = connection_list[beamline]["port"]
-            self.log.info("Starting connection to {0} on port {1}"
-                          .format(self.signal_host, self.signal_port))
+            self.con_id = "tcp://{0}:{1}".format(
+                connection_list[self.beamline]["host"],
+                connection_list[self.beamline]["port"])
+            self.log.info("Starting connection to {0}".format(self.con_id))
         except:
             self.log.error("Beamline {0} not supported".format(self.beamline))
+            sys.exit(1)
 
         self.__create_sockets()
 
     def __create_sockets(self):
-        self.signal_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+        #Create ZeroMQ context
+        self.log.info("Registering ZMQ context")
+        self.context = zmq.Context()
+
+        # socket to get requests
         try:
-            self.signal_socket.connect((self.signal_host, self.signal_port))
-        except Exception:
-            self.log.error("connect() failed", exc_info=True)
-            self.signal_socket.close()
-            sys.exit(1)
+            self.socket = self.context.socket(zmq.REQ)
+            self.socket.connect(self.con_id)
+            self.log.info("Start socket (connect): '{0}'"
+                          .format(self.con_id))
+        except:
+            self.log.error("Failed to start socket (connect): '{0}'"
+                           .format(self.con_id), exc_info=True)
+            raise
 
     def get(self, attribute, timeout=None):
-        msg = 'get {0}'.format(attribute)
+        msg = [b"get", self.host, attribute]
 
-        self.signal_socket.send(msg)
-        self.log.debug("sent (len %2d): %s" % (len(msg), msg))
+        self.socket.send_multipart(msg)
+        self.log.debug("sent: {0}".format(msg))
 
-        reply = self.signal_socket.recv(1024)
-        self.log.debug("recv (len %2d): %s " % (len(reply), reply))
+        reply = self.socket.recv()
+        self.log.debug("recv: {0}".format(reply))
 
         return json.loads(reply)
 
@@ -176,44 +192,44 @@ class Control():
             check_netgroup(value[0], self.beamline, self.log)
 
         if attribute == "whitelist":
-            msg = 'set {0} {1}'.format(attribute, value)
+            msg = [b"set", self.host, attribute, json.dumps(value)]
         else:
-            msg = 'set {0} {1}'.format(attribute, value[0])
+            msg = [b"set", self.host, attribute, json.dumps(value[0])]
 
-        self.signal_socket.send(msg)
-        self.log.debug("sent (len %2d): %s" % (len(msg), msg))
+        self.socket.send_multipart(msg)
+        self.log.debug("sent: {0}".format(msg))
 
-        reply = self.signal_socket.recv(1024)
-        self.log.debug("recv (len %2d): %s " % (len(reply), reply))
+        reply = self.socket.recv()
+        self.log.debug("recv: {0}".format(reply))
 
         return reply
 
     def do(self, command, timeout=None):
-        msg = 'do {0}'.format(command)
+        msg = [b"do", self.host, command]
 
-        self.signal_socket.send(msg)
-        self.log.debug("sent (len %2d): %s" % (len(msg), msg))
+        self.socket.send_multipart(msg)
+        self.log.debug("sent: {0}".format(msg))
 
-        reply = self.signal_socket.recv(1024)
-        self.log.debug("recv (len %2d): %s " % (len(reply), reply))
+        reply = self.socket.recv()
+        self.log.debug("recv: {0}".format(reply))
 
         return reply
 
     def stop(self):
-        if self.signal_socket:
+        if self.socket:
             self.log.info("Sending close signal")
-            msg = 'bye'
+            msg = [b"bye", self.host]
 
-            self.signal_socket.send(msg)
-            self.log.debug("sent (len %2d): %s" % (len(msg), msg))
+            self.socket.send_multipart(msg)
+            self.log.debug("sent: {0}".format(msg))
 
-            reply = self.signal_socket.recv(1024)
-            self.log.debug("recv (len %2d): %s " % (len(reply), reply))
+            reply = self.socket.recv()
+            self.log.debug("recv: {0} ".format(reply))
 
             try:
-                self.log.info("closing signal_socket...")
-                self.signal_socket.close()
-                self.signal_socket = None
+                self.log.info("closing socket...")
+                self.socket.close()
+                self.socket = None
             except:
                 self.log.error("closing sockets...failed.", exc_info=True)
 
