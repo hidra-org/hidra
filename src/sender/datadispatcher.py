@@ -403,19 +403,19 @@ class DataDispatcher():
                 self.open_connections[connection].close(0)
                 self.open_connections[connection] = None
 
-        if self.control_socket:
+        if self.control_socket in not None:
             self.log.info("Closing control_socket")
             self.control_socket.close(0)
             self.control_socket = None
 
-        if self.router_socket:
+        if self.router_socket in not None:
             self.log.info("Closing router_socket")
             self.router_socket.close(0)
             self.router_socket = None
 
         self.datafetcher.clean(self.config)
 
-        if not self.ext_context and self.context:
+        if not self.ext_context and self.context is not None:
             self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
