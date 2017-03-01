@@ -113,7 +113,7 @@ if __name__ == '__main__':
             # check if beamline is allowed to get data from this Eiger
             hidra.check_netgroup(arguments.eigerip,
                                  beamline,
-                                 log=hidra.control.LoggingFunction())
+                                 log=hidra.LoggingFunction())
 
             obj.set("local_target", arguments.target)
             obj.set("eiger_ip", arguments.eigerip)

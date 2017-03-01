@@ -90,6 +90,22 @@ class HidraController():
 
         self.master_config = dict()
 
+        self.__read_config()
+        """
+        if hidra_status(self.beamline) == "RUNNING":
+            self.master_config = self.__read_config()
+        else:
+            self.master_config["beamline"] = self.beamline
+            self.master_config["eiger_ip"] = "None"
+            self.master_config["eiger_api_version"] = "None"
+            self.master_config["history_size"] = 0
+            self.master_config["local_target"] = None
+            self.master_config["store_data"] = None
+            self.master_config["remove_data"] = None
+            self.master_config["whitelist"] = None
+        """
+
+
         # connection depending hidra configuration, master config one is
         # overwritten with these parameters when start is executed
         self.all_configs = dict()
@@ -117,6 +133,22 @@ class HidraController():
 
         return logger
 
+    def __read_config(self):
+        global CONFIGPATH
+
+        # write configfile
+        # /etc/hidra/P01.conf
+        config_file = os.path.join(CONFIGPATH, self.beamline + ".conf")
+        self.log.info("Reading config file: {0}".format(config_file))
+
+        try:
+            config = helpers.read_config(config_file)
+            self.master_config = parse_parameters(config)["asection"]
+        except IOError:
+            self.log.debug("Configuration file available: {0}"
+                           .format(config_file))
+        self.log.debug("master_config={0}".format(self.master_config))
+
     def exec_msg(self, msg):
         '''
         set ID local_target /gpfs/current/raw
@@ -133,7 +165,7 @@ class HidraController():
             if len(msg) < 3:
                 return "ERROR"
 
-            return self.set(msg[1], msg[2], msg[3])
+            return self.set(msg[1], msg[2], json.loads(msg[3]))
 
         elif msg[0] == b"get":
             if len(msg) != 3:
@@ -154,6 +186,16 @@ class HidraController():
 
             return self.do(msg[1], msg[2])
 
+        elif msg[0] == b"bye":
+            if len(msg) != 2:
+                return "ERROR"
+
+            self.log.debug("Received 'bye'")
+            if msg[1] in self.all_configs:
+                del self.all_configs[msg[1]]
+
+            return "DONE"
+
         else:
             return "ERROR"
 
@@ -162,11 +204,11 @@ class HidraController():
         set a parameter, e.g.: set local_target /beamline/p11/current/raw/
         '''
         # identify the configuration for this connection
-        if id in self.all_configs[id]:
-            # This is a pointer
-            current_config = self.all_config[id]
-        else:
-            self.all_confi[id] = copy.deepcopy(self.config_template)
+        if id not in self.all_configs:
+            self.all_configs[id] = copy.deepcopy(self.config_template)
+
+        # This is a pointer
+        current_config = self.all_configs[id]
 
         key = param.lower()
 
@@ -227,9 +269,9 @@ class HidraController():
         # on the other hand if it is a client coming up to check with which
         # parameters the current hidra instance is running, these should be
         # shown
-        if id in self.all_configs[id] and self.all_configs[id]["active"]:
+        if id in self.all_configs and self.all_configs[id]["active"]:
             # This is a pointer
-            current_config = self.all_config[id]
+            current_config = self.all_configs[id]
         else:
             current_config = self.master_config
 
@@ -290,7 +332,7 @@ class HidraController():
         # identify the configuration for this connection
         if id in self.all_configs[id]:
             # This is a pointer
-            current_config = self.all_config[id]
+            current_config = self.all_configs[id]
         else:
             self.log.debug("No current configuration found")
             return
@@ -518,24 +560,6 @@ class ControlServer():
 
         self.master_config = None
 
-        # store in global variable to let other connections also
-        # access the config (master_config has to contain all key
-        # accessable with get
-        self.__read_config()
-        """
-        if hidra_status(self.beamline) == "RUNNING":
-            master_config = self.__read_config()
-        else:
-            master_config["beamline"] = self.beamline
-            master_config["eiger_ip"] = "None"
-            master_config["eiger_api_version"] = "None"
-            master_config["history_size"] = 0
-            master_config["local_target"] = None
-            master_config["store_data"] = None
-            master_config["remove_data"] = None
-            master_config["whitelist"] = None
-        """
-
         self.controller = HidraController(self.beamline, self.log)
 
         self.con_id = "tcp://{0}:{1}".format(
@@ -568,24 +592,6 @@ class ControlServer():
                             default=False)
 
         return parser.parse_args()
-
-
-
-    def __read_config(self):
-        global CONFIGPATH
-
-        # write configfile
-        # /etc/hidra/P01.conf
-        config_file = os.path.join(CONFIGPATH, self.beamline + ".conf")
-        self.log.info("Reading config file: {0}".format(config_file))
-
-        try:
-            config = helpers.read_config(config_file)
-            self.master_config = parse_parameters(config)["asection"]
-        except IOError:
-            self.log.debug("Configuration file available: {0}"
-                           .format(config_file))
-        self.log.debug("master_config={0}".format(self.master_config))
 
     def get_logger(self, queue):
         # Create log and set handler to queue handle
@@ -622,16 +628,15 @@ class ControlServer():
 
         while True:
 
-            msg = self.socket.recv_multipart()
-            self.log.debug("Recv {0}".format(msg))
+            try:
+                msg = self.socket.recv_multipart()
+                self.log.debug("Recv {0}".format(msg))
+            except KeyboardInterrupt:
+                break
 
             if len(msg) == 0:
                 self.log.debug("Received empty msg")
                 break
-
-            elif msg[0] == b"bye":
-                self.log.debug("Received 'bye'")
-                # remove id from all_configs in HiDRAController
 
             elif msg[0] == b"exit":
                 self.log.debug("Received 'exit'")

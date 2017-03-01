@@ -191,9 +191,12 @@ class Control():
         if attribute == "eiger_ip":
             check_netgroup(value[0], self.beamline, self.log)
 
-        msg = [b"set", self.host, attribute, value]
+        if attribute == "whitelist":
+            msg = [b"set", self.host, attribute, json.dumps(value)]
+        else:
+            msg = [b"set", self.host, attribute, json.dumps(value[0])]
 
-        self.socket.send(msg)
+        self.socket.send_multipart(msg)
         self.log.debug("sent: {0}".format(msg))
 
         reply = self.socket.recv()
@@ -213,9 +216,9 @@ class Control():
         return reply
 
     def stop(self):
-        if self.signal_socket:
+        if self.socket:
             self.log.info("Sending close signal")
-            msg = [b"bye"]
+            msg = [b"bye", self.host]
 
             self.socket.send_multipart(msg)
             self.log.debug("sent: {0}".format(msg))
@@ -224,9 +227,9 @@ class Control():
             self.log.debug("recv: {0} ".format(reply))
 
             try:
-                self.log.info("closing signal_socket...")
-                self.signal_socket.close()
-                self.signal_socket = None
+                self.log.info("closing socket...")
+                self.socket.close()
+                self.socket = None
             except:
                 self.log.error("closing sockets...failed.", exc_info=True)
 
