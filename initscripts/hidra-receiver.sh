@@ -36,11 +36,16 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
         exit 1
     fi
 
+    BLUE=$(tput setaf 4)
+    NORMAL=$(tput sgr0)
+    GREEN=$(tput setaf 2)
+    RED=$(tput setaf 1)
+
     # set variables
     BEAMLINE="$2"
     NAME=${SCRIPT_NAME}_${BEAMLINE}
     CONFIG_FILE="${CONFIG_PATH}/receiver_${BEAMLINE}.conf"
-    DAEMON_ARGS="--verbose --config_file ${CONFIG_FILE}"
+    DAEMON_ARGS="--verbose --config_file ${CONFIG_FILE} --procname ${NAME}"
 
     if [ ! -f $CONFIG_FILE ]
     then
@@ -50,28 +55,47 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 
     start()
     {
-        status ${NAME} > /dev/null && status="1" || status="$?"
-        # If the status is SUCCESS then don't need to start again.
+        status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+        # If the status is RUNNING then don't need to start again.
         if [ $status = "1" ]; then
-            printf "$NAME for beamline is already running\n"
+            printf "$NAME is already running\n"
             return 0
         fi
 
-    	printf "Starting ${DESC} for beamline ${BEAMLINE}...\n"
-        ${DAEMON} ${DAEMON_ARGS} &
+    	printf "%-50s" "Starting ${DESC} for beamline ${BEAMLINE}..."
+	    ${DAEMON} ${DAEMON_ARGS} &
     	RETVAL=$?
+
+        TIMEOUT=0
+        status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+        while [ $status != "1" ] && [ $TIMEOUT -lt 5 ] ; do
+            sleep 1
+            let TIMEOUT=TIMEOUT+1
+            status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+        done
+
+        status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+        if [ $status = "1" ]; then
+            printf "%4s\n" "[ ${GREEN}OK${NORMAL} ]"
+            return 0
+        else
+            printf "%4s\n" "[ ${RED}FAILED${NORMAL} ]"
+            return $RETVAL
+        fi
+        echo
     }
 
     stop()
     {
-        status ${NAME} > /dev/null && status="1" || status="$?"
-        # If the status is SUCCESS then don't need to start again.
+        #check_status_q || exit 0
+        status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+        # If the status is not RUNNING then don't need to stop again.
         if [ $status != "1" ]; then
             printf "$NAME for beamline is already stopped\n"
             return 0
         fi
 
-        printf "Stopping ${DESC} for beamline ${BEAMLINE}...\n"
+    	printf "%-50s" "Stopping ${DESC} for beamline ${BEAMLINE}..."
         HIDRA_PID="`pidofproc ${NAME}`"
         # stop gracefully and wait up to 180 seconds.
         kill $HIDRA_PID > /dev/null 2>&1
@@ -86,10 +110,21 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
         if checkpid $HIDRA_PID ; then
             killall -KILL $NAME
 
-            SOCKETIF="`pidofproc ${NAME}`"
+            SOCKETID="`pidofproc ${NAME}`"
             rm -f "${IPCPATH}/${SOCKETID}"*
         fi
     	RETVAL=$?
+
+        status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+        if [ $status != "1" ]; then
+            printf "%4s\n" "[ ${GREEN}OK${NORMAL} ]"
+            return 0
+        else
+            printf "%4s\n" "[ ${RED}FAILED${NORMAL} ]"
+            return $RETVAL
+        fi
+
+
     }
 
     case "$1" in

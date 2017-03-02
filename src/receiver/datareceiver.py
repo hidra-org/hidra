@@ -51,6 +51,10 @@ def argument_parsing():
                              "INFO, DEBUG)",
                         default=False)
 
+    parser.add_argument("--procname",
+                        type=str,
+                        help="Name with which the service should be running")
+
     parser.add_argument("--whitelist",
                         type=str,
                         help="List of hosts allowed to connect")
