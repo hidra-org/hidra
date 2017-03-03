@@ -79,7 +79,7 @@ mkdir -p %{buildroot}/var/log/%{name}
 %attr(1777,root,root) /var/log/%{name}
 
 %changelog
-* Tue Jan 30 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-2
+* Mon Jan 30 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-2
 - Change log directory
 * Tue Dec 20 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-1
 - Bump version

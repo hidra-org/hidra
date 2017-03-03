@@ -403,12 +403,12 @@ class DataDispatcher():
                 self.open_connections[connection].close(0)
                 self.open_connections[connection] = None
 
-        if self.control_socket in not None:
+        if self.control_socket is not None:
             self.log.info("Closing control_socket")
             self.control_socket.close(0)
             self.control_socket = None
 
-        if self.router_socket in not None:
+        if self.router_socket is not None:
             self.log.info("Closing router_socket")
             self.router_socket.close(0)
             self.router_socket = None
