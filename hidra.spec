@@ -4,8 +4,8 @@ Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
 License:	AGPLv3
-URL:		https://stash.desy.de/projects/LSDMA/repos/hidra
-Source0:	hidra-%{version}.zip
+URL:		https://stash.desy.de/projects/HIDRA/repos/hidra
+Source0:	hidra-v%{version}.zip
 #Source1:	hidra.service
 
 BuildArch:	noarch
@@ -23,7 +23,7 @@ Requires:	python-six
 HiDRA is a generic tool set for high performance data multiplexing with different qualities of service and is based on Python and ZeroMQ. It can be used to directly store the data in the storage system but also to send it to some kind of online monitoring or analysis framework. Together with OnDA, data can be analyzed with a delay of seconds resulting in an increase of the quality of the generated scientific data by 20 %. The modular architecture of the tool (divided into event detectors, data fetchers and receivers) makes it easily extendible and even gives the possibility to adapt the software to specific detectors directly (for example, Eiger and Lambda detector).
 
 %prep
-%setup -q -n %{name}-%{version}
+%setup -q -c %{name}-%{version}
 
 #%build
 #%{__python} setup.py build
@@ -45,7 +45,7 @@ cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
-cp conf/datamanager.conf conf/dataReceiver.conf conf/nexusReceiver.conf %{buildroot}/opt/%{name}/conf/
+cp conf/datamanager.conf conf/datareceiver.conf conf/nexusReceiver.conf %{buildroot}/opt/%{name}/conf/
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
