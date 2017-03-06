@@ -59,7 +59,7 @@ else:
     version_specific_packages = ["ConfigParser"]
 
 # Dependencies are automatically detected, but it might need fine tuning.
-buildOptions = {
+build_exe_options = {
     # zmq.backend.cython seems to be left out by default
     "packages": (["zmq", "zmq.backend.cython",
                   "logging.handlers",
@@ -102,6 +102,13 @@ buildOptions = {
     ] + platform_specific_files,
 }
 
+bdist_msi_options = {
+    # the upgrade code for the package that is created;
+    # this is used to force removal of any packages created with the same
+    # upgrade code prior to the installation of this one
+    "upgrade_code": "{3bce61b3-96da-42af-99e7-a080130539aa}"
+}
+
 executables = [
     Executable(os.path.join(senderpath, "datamanager.py")),
     Executable(os.path.join(sharedpath, "getsettings.py"))
@@ -110,6 +117,7 @@ executables = [
 setup(name='HiDRA',
       version='3.0.2',
       description='',
-      options={"build_exe": buildOptions},
+      options={"build_exe": build_exe_options,
+               "bdist_msi": bdist_msi_options},
       executables=executables
 )
