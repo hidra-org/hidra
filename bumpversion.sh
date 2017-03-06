@@ -1,4 +1,4 @@
-#/bin/sh
+#!/bin/sh
 
 usage() { echo "Usage: $0 [-r <major|minor|patch>] [-d]" 1>&2; exit 1; }
 
