@@ -8,16 +8,17 @@ ip = "*"
 #ip="zitpcx19282.desy.de"
 
 context = zmq.Context()
-socket = context.socket(zmq.PUSH)
-socket.zap_domain = b'global'
-socket.bind("tcp://" + ip + ":%s" % port)
-
 auth = ThreadAuthenticator(context)
 auth.start()
 
+# allow for "zitpcx22614",  "zitpcx19282"
 whitelist = ["131.169.185.34", "131.169.185.121"]
 for host in whitelist:
     auth.allow(host)
+
+socket = context.socket(zmq.PUSH)
+socket.zap_domain = b'global'
+socket.bind("tcp://" + ip + ":%s" % port)
 
 
 while True:
