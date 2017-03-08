@@ -286,7 +286,7 @@ class HidraController():
         # parameters the current hidra instance is running, these should be
         # shown
         if host_id in self.all_configs \
-            and det_id in self.all_config[host_id] \
+            and det_id in self.all_configs[host_id] \
             and self.all_configs[host_id][det_id]["active"]:
             # This is a pointer
             current_config = self.all_configs[host_id][det_id]

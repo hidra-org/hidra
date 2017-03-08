@@ -17,20 +17,20 @@ The script only is allowed to be executed from beamline PCs corresponding to
 the specified beamline.
 
 # Start:
-./hidra_control_client.py --beamline <beamline> --eigerip <eigerip or dns name> --start
+./hidra_control_client.py --beamline <beamline> --detip <detip or dns name> --start
 
-For starting hidra the Eiger IP or DNS name is mandatory and the API version
-of the filewriter may be set (default is 1.5.0). The Eiger specified has to be
+For starting hidra the detector IP or DNS name is mandatory and the API version
+of the filewriter may be set (default is 1.5.0). The detector specified has to be
 registered for the beamline.
 By default all data is written into current/raw in the beamline file system.
 To choose a different path execute the following.
 
 # Start with alternativ path:
-./hidra_control_client.py --beamline <beamline> --eigerip <eigerip or dns name> --target current/scratch_bl --start
+./hidra_control_client.py --beamline <beamline> --detip <detip or dns name> --target current/scratch_bl --start
 
 Permitted are "current/raw", "current/scratch_bl", "commissioning/raw",
 "commissioning/scratch_bl" and "local".
-The directory structure is inherited as created on the Eiger.
+The directory structure is inherited as created on the detector.
 
 # Stop:
 ./hidra_control_client.py --beamline <beamline> --stop
