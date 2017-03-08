@@ -99,8 +99,8 @@ class HidraController():
             self.master_config = self.__read_config()
         else:
             self.master_config["beamline"] = self.beamline
-            self.master_config["eiger_ip"] = "None"
-            self.master_config["eiger_api_version"] = "None"
+            self.master_config["det_ip"] = "None"
+            self.master_config["det_api_version"] = "None"
             self.master_config["history_size"] = 0
             self.master_config["local_target"] = None
             self.master_config["store_data"] = None
@@ -116,8 +116,8 @@ class HidraController():
         self.config_template = {
             "active": False,
             "beamline": self.beamline,
-            "eiger_ip": None,
-            "eiger_api_version": None,
+            "det_ip": None,
+            "det_api_version": None,
             "history_size": None,
             "local_target": None,
             "store_data": None,
@@ -228,14 +228,14 @@ class HidraController():
 
         key = param.lower()
 
-        # IP of the EIGER Detector
-        if key == "eiger_ip":
-            current_config["eiger_ip"] = value
+        # IP of the detector
+        if key == "det_ip":
+            current_config["det_ip"] = value
             return_val = "DONE"
 
-        # API version of the EIGER Detector
-        elif key == "eiger_api_version":
-            current_config["eiger_api_version"] = value
+        # API version of the detector
+        elif key == "det_api_version":
+            current_config["det_api_version"] = value
             return_val = "DONE"
 
         # Number of events stored to look for doubles
@@ -295,11 +295,11 @@ class HidraController():
 
         key = param.lower()
 
-        if key == "eiger_ip":
-            return current_config["eiger_ip"]
+        if key == "det_ip":
+            return current_config["det_ip"]
 
-        elif key == "eiger_api_version":
-            return current_config["eiger_api_version"]
+        elif key == "det_api_version":
+            return current_config["det_api_version"]
 
         elif key == "history_size":
             return current_config["history_size"]
@@ -331,7 +331,7 @@ class HidraController():
         if key == "start":
             ret_val = self.start(host_id, det_id)
             return ret_val
-
+src/hidra_control/hidra_control_client_p10.py:
         elif key == "stop":
             return self.stop(det_id)
 
@@ -367,8 +367,8 @@ class HidraController():
         #
         # see, if all required params are there.
         #
-        if (current_config["eiger_ip"]
-                and current_config["eiger_api_version"]
+        if (current_config["det_ip"]
+                and current_config["det_api_version"]
                 and current_config["history_size"]
                 and current_config["local_target"]
                 and current_config["store_data"] is not None
@@ -418,10 +418,10 @@ class HidraController():
                 f.write("use_data_stream      = False\n")
                 f.write("chunksize            = 10485760\n")
 
-                f.write("eiger_ip             = {0}\n"
-                        .format(current_config["eiger_ip"]))
-                f.write("eiger_api_version    = {0}\n"
-                        .format(current_config["eiger_api_version"]))
+                f.write("det_ip               = {0}\n"
+                        .format(current_config["det_ip"]))
+                f.write("det_api_version      = {0}\n"
+                        .format(current_config["det_api_version"]))
                 f.write("history_size         = {0}\n"
                         .format(current_config["history_size"]))
                 f.write("local_target         = {0}\n"
@@ -451,10 +451,10 @@ class HidraController():
                 current_config["active"] = False
 
         else:
-            self.log.debug("eiger_ip: {0}"
-                           .format(current_config["eiger_ip"]))
-            self.log.debug("eiger_api_version: {0}"
-                           .format(current_config["eiger_api_version"]))
+            self.log.debug("det_ip: {0}"
+                           .format(current_config["det_ip"]))
+            self.log.debug("det_api_version: {0}"
+                           .format(current_config["det_api_version"]))
             self.log.debug("history_size: {0}"
                            .format(current_config["history_size"]))
             self.log.debug("localTarge: {0}"
@@ -625,8 +625,8 @@ class ControlServer():
 
         parser.add_argument("--beamline",
                             type=str,
-                            help="Beamline for which the HiDRA Server for the "
-                                 "Eiger detector should be started",
+                            help="Beamline for which the HiDRA Server "
+                                 "(detector mode) should be started",
                             default="p00")
         parser.add_argument("--verbose",
                             help="More verbose output",

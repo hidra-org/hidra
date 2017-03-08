@@ -25,14 +25,14 @@ except:
 def do_set(obj):
     det = "lsdma-lab04"
 
-    # check if beamline is allowed to get data from this Eiger
+    # check if beamline is allowed to get data from this detector
     hidra.check_netgroup(det,
                          "p00",
                          log=hidra.control.LoggingFunction())
 
     obj.set("local_target", "local")
-    obj.set("eiger_ip", det)
-    obj.set("eiger_api_version", "1.5.0")
+    obj.set("det_ip", det)
+    obj.set("det_api_version", "1.5.0")
     obj.set("history_size", 2000)
     obj.set("store_data", False)
     obj.set("remove_data", False)
@@ -40,15 +40,15 @@ def do_set(obj):
 
 
 def do_start(obj):
-    print ("Starting HiDRA for Eiger:", obj.do("start"))
+    print ("Starting HiDRA (detector mode):", obj.do("start"))
 
 
 def do_stop(obj):
-    print ("Stopping HiDRA for Eiger:", obj.do("stop"))
+    print ("Stopping HiDRA (detector mode):", obj.do("stop"))
 
 
 def do_status(obj):
-    print ("Status of HiDRA for Eiger:", obj.do("status"))
+    print ("Status of HiDRA (detector mode):", obj.do("status"))
 
 
 def do_getsettings(obj):
@@ -56,15 +56,15 @@ def do_getsettings(obj):
         print ("Configured settings:")
         print ("Data is written to:         {0}"
                .format(obj.get("local_target")))
-#        print ("Eiger IP:                   {0}"
-#               .format(obj.get("eiger_ip")))
-#        print ("Eiger API version:          {0}"
-#               .format(obj.get("eiger_api_version")))
+#        print ("Detector IP:                {0}"
+#               .format(obj.get("det_ip")))
+#        print ("Detector API version:       {0}"
+#               .format(obj.get("det_api_version")))
 #        print ("History size:               {0}"
 #               .format(obj.get("history_size")))
 #        print ("Store data:                 {0}"
 #               .format(obj.get("store_data")))
-#        print ("Remove data from the Eiger: {0}"
+#        print ("Remove data from the detector: {0}"
 #               .format(obj.get("remove_data")))
 #        print ("Whitelist:                  {0}"
 #               .format(obj.get("whitelist")))

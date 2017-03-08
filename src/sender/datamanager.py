@@ -162,13 +162,13 @@ def argument_parsing():
                         help="ZMQ port to get events from (only needed if "
                              "event_detector_type is zmq_events)")
 
-    parser.add_argument("--eiger_ip",
+    parser.add_argument("--det_ip",
                         type=str,
-                        help="IP of the Eiger detector (only needed if "
+                        help="IP of the detector (only needed if "
                              "event_detector_type is http_events)")
-    parser.add_argument("--eiger_api_version",
+    parser.add_argument("--det_api_version",
                         type=str,
-                        help="API version of the Eiger detector (only needed "
+                        help="API version of the detector (only needed "
                              "if event_detector_type is http_events)")
 
     # DataFetcher config

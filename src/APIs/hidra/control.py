@@ -190,7 +190,7 @@ class Control():
         if type(value[0]) == list:
             value = [item for sublist in value for item in sublist]
 
-        if attribute == "eiger_ip":
+        if attribute == "det_ip":
             check_netgroup(value[0], self.beamline, self.log)
 
         if attribute == "whitelist":

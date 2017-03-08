@@ -21,8 +21,8 @@ class EventDetector():
 
         self.log = self.get_logger(log_queue)
 
-        required_params = ["eiger_ip",
-                           "eiger_api_version",
+        required_params = ["det_ip",
+                           "det_api_version",
                            "history_size"]
 
         # Check format of config
@@ -38,12 +38,12 @@ class EventDetector():
             self.session = requests.session()
 
             # Enable specification via IP and DNS name
-            self.eiger_ip = socket.gethostbyaddr(config["eiger_ip"])[2][0]
-            self.eiger_api_version = config["eiger_api_version"]
-            self.eiger_url = ("http://{0}/filewriter/api/{1}/files"
-                              .format(self.eiger_ip,
-                                      self.eiger_api_version))
-            self.log.debug("Getting files from: {0}".format(self.eiger_url))
+            self.det_ip = socket.gethostbyaddr(config["det_ip"])[2][0]
+            self.det_api_version = config["det_api_version"]
+            self.det_url = ("http://{0}/filewriter/api/{1}/files"
+                              .format(self.det_ip,
+                                      self.det_api_version))
+            self.log.debug("Getting files from: {0}".format(self.det_url))
 #            http://192.168.138.37/filewriter/api/1.6.0/files
 
             # time to sleep after detector returned emtpy file list
@@ -82,7 +82,7 @@ class EventDetector():
 #            # ('testp06/37_data_000001.h5', 'testp06/37_master.h5',
 #            #  'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5',
 #            #  'testp06/36_data_000001.h5', 'testp06/36_master.h5')
-#            files_stored = self.eigerdevice.read_attribute(
+#            files_stored = self.detdevice.read_attribute(
 #                "FilesInBuffer", timeout=3).value
 #        except Exception as e:
 #            self.log.error("Getting 'FilesInBuffer'...failed. {0}".format(e))
@@ -90,10 +90,10 @@ class EventDetector():
 #            return event_message_list
 
         try:
-            response = self.session.get(self.eiger_url)
+            response = self.session.get(self.det_url)
         except:
             self.log.error("Error in getting file list from {0}"
-                           .format(self.eiger_url), exc_info=True)
+                           .format(self.det_url), exc_info=True)
             # Wait till next try to prevent denial of service
             time.sleep(self.sleep_time)
             return event_message_list
@@ -118,7 +118,7 @@ class EventDetector():
             if file not in self.files_downloaded:
                 (relative_path, filename) = os.path.split(file)
                 event_message = {
-                    "source_path": "http://{0}/data".format(self.eiger_ip),
+                    "source_path": "http://{0}/data".format(self.det_ip),
                     "relative_path": relative_path,
                     "filename": filename
                 }
@@ -166,12 +166,12 @@ if __name__ == '__main__':
 #    detectorDevice   = "haspp06:10000/p06/eigerdectris/exp.01"
 #    filewriterDevice = "haspp10lab:10000/p10/eigerfilewriter/lab.01"
 #    filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
-#    eiger_ip          = "192.168.138.52"  # haspp11e1m
-    eiger_ip = "131.169.55.170"  # lsdma-lab04
-    eiger_api_version = "1.5.0"
+#    det_ip          = "192.168.138.52"  # haspp11e1m
+    det_ip = "131.169.55.170"  # lsdma-lab04
+    det_api_version = "1.5.0"
     config = {
-        "eiger_ip": eiger_ip,
-        "eiger_api_version": eiger_api_version,
+        "det_ip": det_ip,
+        "det_api_version": det_api_version,
         "history_size": 1000
     }
 

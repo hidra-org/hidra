@@ -35,8 +35,8 @@ def argument_parsing():
                         type=str,
                         required=True,
                         choices=allowed_beamlines,
-                        help="Beamline for which the HiDRA server for the "
-                             "Eiger detector should be operated")
+                        help="Beamline for which the HiDRA server (detector "
+                             "mode) should be operated")
 
     parser.add_argument("--det",
                         type=str,
@@ -49,18 +49,17 @@ def argument_parsing():
                              "(default: 1.5.0)")
 
     parser.add_argument("--start",
-                        help="Starts the HiDRA server for the Eiger detector",
+                        help="Starts the HiDRA server (detector mode)",
                         action="store_true")
 #    parser.add_argument("--restart",
-#                        help="Restarts the HiDRA Server for the Eiger "
-#                             "detector",
+#                        help="Restarts the HiDRA Server (detector mode)",
 #                        action="store_true")
     parser.add_argument("--status",
-                        help="Displays the status of the HiDRA server for "
-                             "the Eiger detector",
+                        help="Displays the status of the HiDRA server "
+                             "(detector mode)",
                         action="store_true")
     parser.add_argument("--stop",
-                        help="Stops the HiDRA server for the Eiger detector",
+                        help="Stops the HiDRA server (detector mode)",
                         action="store_true")
     parser.add_argument("--target",
                         type=str,
@@ -75,8 +74,8 @@ def argument_parsing():
                         help="Displays the used hidra_control version",
                         action="store_true")
     parser.add_argument("--getsettings",
-                        help="Displays the settings of the HiDRA Server for "
-                             "the Eiger detector",
+                        help="Displays the settings of the HiDRA Server "
+                             "(detector mode)",
                         action="store_true")
 
     return parser
@@ -106,47 +105,47 @@ if __name__ == '__main__':
 
     try:
         if arguments.start:
-            # check if beamline is allowed to get data from this Eiger
+            # check if beamline is allowed to get data from this detector
             hidra.check_netgroup(arguments.det,
                                  beamline,
                                  log=hidra.LoggingFunction())
 
             obj.set("local_target", arguments.target)
-            obj.set("eiger_ip", arguments.det)
-            obj.set("eiger_api_version", arguments.detapi)
+            obj.set("det_ip", arguments.det)
+            obj.set("det_api_version", arguments.detapi)
             obj.set("history_size", 2000)
             obj.set("store_data", False)
             obj.set("remove_data", False)
             obj.set("whitelist", "localhost")
 
-            print ("Starting HiDRA for Eiger:", obj.do("start"))
+            print ("Starting HiDRA (detector mode):", obj.do("start"))
 
 #        elif arguments.restart:
-#            print ("Restarting HiDRA for Eiger:", obj.do("restart"))
+#            print ("Restarting HiDRA (detector mode):", obj.do("restart"))
 
         elif arguments.status:
-            print ("Status of HiDRA for Eiger:", obj.do("status"))
+            print ("Status of HiDRA (detector mode):", obj.do("status"))
 
         elif arguments.stop:
-            print ("Stopping HiDRA for Eiger:", obj.do("stop"))
+            print ("Stopping HiDRA (detector mode):", obj.do("stop"))
 
         elif arguments.getsettings:
 
             if obj.do("status") == "RUNNING":
                 print ("Configured settings:")
-                print ("Data is written to:         {0}"
+                print ("Data is written to:            {0}"
                        .format(obj.get("local_target")))
-                print ("Eiger IP:                   {0}"
-                       .format(obj.get("eiger_ip")))
-                print ("Eiger API version:          {0}"
-                       .format(obj.get("eiger_api_version")))
-                print ("History size:               {0}"
+                print ("Detector IP:                   {0}"
+                       .format(obj.get("det_ip")))
+                print ("Detector API version:          {0}"
+                       .format(obj.get("det_api_version")))
+                print ("History size:                  {0}"
                        .format(obj.get("history_size")))
-                print ("Store data:                 {0}"
+                print ("Store data:                    {0}"
                        .format(obj.get("store_data")))
-                print ("Remove data from the Eiger: {0}"
+                print ("Remove data from the detector: {0}"
                        .format(obj.get("remove_data")))
-                print ("Whitelist:                  {0}"
+                print ("Whitelist:                     {0}"
                        .format(obj.get("whitelist")))
             else:
                 print ("HiDRA is not running")
