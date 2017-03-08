@@ -41,11 +41,11 @@ def argument_parsing():
     parser.add_argument("--det",
                         type=str,
                         required=True,
-                        help="IP (or DNS name) of the Eiger detector")
-    parser.add_argument("--eigerapi",
+                        help="IP (or DNS name) of the detector")
+    parser.add_argument("--detapi",
                         type=str,
                         default="1.5.0",
-                        help="API version of the Eiger detector "
+                        help="API version of the detector "
                              "(default: 1.5.0)")
 
     parser.add_argument("--start",
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
             obj.set("local_target", arguments.target)
             obj.set("eiger_ip", arguments.det)
-            obj.set("eiger_api_version", arguments.eigerapi)
+            obj.set("eiger_api_version", arguments.detapi)
             obj.set("history_size", 2000)
             obj.set("store_data", False)
             obj.set("remove_data", False)
