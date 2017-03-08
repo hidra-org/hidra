@@ -331,7 +331,6 @@ class HidraController():
         if key == "start":
             ret_val = self.start(host_id, det_id)
             return ret_val
-src/hidra_control/hidra_control_client_p10.py:
         elif key == "stop":
             return self.stop(det_id)
 
