@@ -38,7 +38,7 @@ def argument_parsing():
                         help="Beamline for which the HiDRA server for the "
                              "Eiger detector should be operated")
 
-    parser.add_argument("--detip",
+    parser.add_argument("--det",
                         type=str,
                         required=True,
                         help="IP (or DNS name) of the Eiger detector")
@@ -102,17 +102,17 @@ if __name__ == '__main__':
         print ("ERROR: target not supported")
         sys.exit(1)
 
-    obj = hidra.Control(beamline, arguments.detip, use_log=None)
+    obj = hidra.Control(beamline, arguments.det, use_log=None)
 
     try:
         if arguments.start:
             # check if beamline is allowed to get data from this Eiger
-            hidra.check_netgroup(arguments.detip,
+            hidra.check_netgroup(arguments.det,
                                  beamline,
                                  log=hidra.LoggingFunction())
 
             obj.set("local_target", arguments.target)
-            obj.set("eiger_ip", arguments.detip)
+            obj.set("eiger_ip", arguments.det)
             obj.set("eiger_api_version", arguments.eigerapi)
             obj.set("history_size", 2000)
             obj.set("store_data", False)

@@ -23,15 +23,15 @@ except:
 
 
 def do_set(obj):
-    detip = "lsdma-lab04"
+    det = "lsdma-lab04"
 
     # check if beamline is allowed to get data from this Eiger
-    hidra.check_netgroup(detip,
+    hidra.check_netgroup(det,
                          "p00",
                          log=hidra.control.LoggingFunction())
 
     obj.set("local_target", "local")
-    obj.set("eiger_ip", detip)
+    obj.set("eiger_ip", det)
     obj.set("eiger_api_version", "1.5.0")
     obj.set("history_size", 2000)
     obj.set("store_data", False)
