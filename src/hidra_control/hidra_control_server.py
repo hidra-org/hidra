@@ -386,8 +386,8 @@ class HidraController():
 
             # write configfile
             # /etc/hidra/P01.conf
-            config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + "{0}.conf".format(self.beamline))
-            #config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + "{0}_{1}.conf".format(self.beamline, det_id))
+            #config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + "{0}.conf".format(self.beamline))
+            config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + "{0}_{1}.conf".format(self.beamline, det_id))
             self.log.info("Writing config file: {0}".format(config_file))
 
             with open(config_file, 'w') as f:
@@ -483,7 +483,7 @@ class HidraController():
 
         # start service
         if call_hidra_service("start", self.beamline, det_id) != 0:
-            self.log.error("Could not start the servive.")
+            self.log.error("Could not start the service.")
             return "ERROR"
 
         # Needed because status always returns "RUNNING" in the first second
@@ -571,9 +571,8 @@ class ControlServer():
         setproctitle.setproctitle("hidra-control-server_{0}"
                                   .format(self.beamline))
 
-        logfile = os.path.join(BASE_PATH, "logs",
-                               "hidra-control-server_{0}.log"
-                               .format(self.beamline))
+        logfile = os.path.join(LOGPATH, "hidra-control-server_{0}.log"
+                                        .format(self.beamline))
         logsize = 10485760
 
         # Get queue
