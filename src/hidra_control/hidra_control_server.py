@@ -14,6 +14,7 @@ import tempfile
 import json
 import copy
 import zmq
+import glob
 
 try:
     from logutils.queue import QueueHandler
@@ -60,9 +61,11 @@ from cfel_optarg import parse_parameters
 
 BASEDIR = "/opt/hidra"
 
-CONFIGPATH = "/opt/hidra/conf"
+CONFIG_PATH = "/opt/hidra/conf"
+CONFIG_PREFIX = "datamanager_"
 
-LOGPATH = os.path.join(tempfile.gettempdir(), "hidra", "logs")
+LOGPATH = os.path.join("/var", "log", "hidra")
+#LOGPATH = os.path.join(tempfile.gettempdir(), "hidra", "logs")
 
 beamline_config = dict()
 
@@ -134,44 +137,51 @@ class HidraController():
         return logger
 
     def __read_config(self):
-        global CONFIGPATH
+        global CONFIG_PREFIX
+        global CONFIG_PATH
 
         # write configfile
         # /etc/hidra/P01.conf
-        config_file = os.path.join(CONFIGPATH, self.beamline + ".conf")
-        self.log.info("Reading config file: {0}".format(config_file))
+#        config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + self.beamline + ".conf")
+        joined_path = os.path.join(CONFIG_PATH, CONFIG_PREFIX + self.beamline)
+        config_files = glob.glob(joined_path + "_*.conf")
+        self.log.info("Reading config files: {0}".format(config_files))
 
-        try:
-            config = helpers.read_config(config_file)
-            self.master_config = parse_parameters(config)["asection"]
-        except IOError:
-            self.log.debug("Configuration file available: {0}"
-                           .format(config_file))
+        for cfile in config_files:
+            #extract the detector id from the config file name (remove path, prefix, beamline and ending)
+            det_id = cfile.replace(joined_path + "_", "")[:-5]
+            try:
+                config = helpers.read_config(cfile)
+                self.master_config[det_id] = parse_parameters(config)["asection"]
+            except IOError:
+                self.log.debug("Configuration file not readable: {0}"
+                               .format(cfile))
         self.log.debug("master_config={0}".format(self.master_config))
 
     def exec_msg(self, msg):
         '''
-        set ID local_target /gpfs/current/raw
-            returns DONE
-        get ID local_target
-            returns /gpfs/current/raw
-        do ID start
-            return DONE
+        [b"set", host_id, det_id, "local_target", "/gpfs/current/raw"]
+            return "DONE"
+        [b"get", host_id, det_id, "local_target"]
+            return "/gpfs/current/raw"
+        [b"do", host_id, det_id, b"start"]
+            return "DONE"
+        [b"bye", host_id]
         '''
         if len(msg) == 0:
             return "ERROR"
 
         if msg[0] == b"set":
-            if len(msg) < 3:
+            if len(msg) < 4:
                 return "ERROR"
 
-            return self.set(msg[1], msg[2], json.loads(msg[3]))
+            return self.set(msg[1], msg[2], msg[3], json.loads(msg[4]))
 
         elif msg[0] == b"get":
-            if len(msg) != 3:
+            if len(msg) != 4:
                 return "ERROR"
 
-            reply = json.dumps(self.get(msg[1], msg[2]))
+            reply = json.dumps(self.get(msg[1], msg[2], msg[3]))
             self.log.debug("reply is {0}".format(reply))
 
             if reply is None:
@@ -181,10 +191,10 @@ class HidraController():
             return reply
 
         elif msg[0] == b"do":
-            if len(msg) != 3:
+            if len(msg) != 4:
                 return "ERROR"
 
-            return self.do(msg[1], msg[2])
+            return self.do(msg[1], msg[2], msg[3])
 
         elif msg[0] == b"bye":
             if len(msg) != 2:
@@ -192,23 +202,29 @@ class HidraController():
 
             self.log.debug("Received 'bye'")
             if msg[1] in self.all_configs:
-                del self.all_configs[msg[1]]
+                if msg[2] in self.allconfigs[msd[1]]:
+                    del self.allconfigs[msd[1]][msg[2]]
+
+                # no configs for this host left
+                if not self.all_configs[msg[1]]:
+                    del self.all_configs[msg[1]]
 
             return "DONE"
-
         else:
             return "ERROR"
 
-    def set(self, id, param, value):
+    def set(self, host_id, det_id, param, value):
         '''
-        set a parameter, e.g.: set local_target /beamline/p11/current/raw/
+        set a parameter
         '''
         # identify the configuration for this connection
-        if id not in self.all_configs:
-            self.all_configs[id] = copy.deepcopy(self.config_template)
+        if host_id not in self.all_configs:
+            self.all_configs[host_id] = dict()
+        if det_id not in self.all_configs[host_id]:
+            self.all_configs[host_id][det_id] = copy.deepcopy(self.config_template)
 
         # This is a pointer
-        current_config = self.all_configs[id]
+        current_config = self.all_configs[host_id][det_id]
 
         key = param.lower()
 
@@ -259,9 +275,9 @@ class HidraController():
 
         return return_val
 
-    def get(self, id, param):
+    def get(self, host_id, det_id, param):
         '''
-        return the value of a parameter, e.g.: get local_target
+        return the value of a parameter
         '''
         # if the requesting client has set parameters before but has not
         # executed start yet, the previously set parameters should be
@@ -269,11 +285,13 @@ class HidraController():
         # on the other hand if it is a client coming up to check with which
         # parameters the current hidra instance is running, these should be
         # shown
-        if id in self.all_configs and self.all_configs[id]["active"]:
+        if host_id in self.all_configs \
+            and det_id in self.all_config[host_id] \
+            and self.all_configs[host_id][det_id]["active"]:
             # This is a pointer
-            current_config = self.all_configs[id]
+            current_config = self.all_configs[host_id][det_id]
         else:
-            current_config = self.master_config
+            current_config = self.master_config[det_id]
 
         key = param.lower()
 
@@ -304,35 +322,36 @@ class HidraController():
         else:
             return "ERROR"
 
-    def do(self, id, cmd):
+    def do(self, host_id, det_id, cmd):
         '''
         executes commands
         '''
         key = cmd.lower()
 
         if key == "start":
-            ret_val = self.start(id)
+            ret_val = self.start(host_id, det_id)
             return ret_val
 
         elif key == "stop":
-            return self.stop()
+            return self.stop(det_id)
 
         elif key == "restart":
-            return self.restart()
+            return self.restart(det_id)
 
         elif key == "status":
-            return hidra_status(self.beamline)
+            return hidra_status(self.beamline, det_id)
 
         else:
             return "ERROR"
 
-    def __write_config(self, id):
-        global CONFIGPATH
+    def __write_config(self, host_id, det_id):
+        global CONFIG_PATH
+        global CONFIG_PREFIX
 
         # identify the configuration for this connection
-        if id in self.all_configs[id]:
+        if host_id in self.all_configs and det_id in self.all_configs[host_id]:
             # This is a pointer
-            current_config = self.all_configs[id]
+            current_config = self.all_configs[host_id][det_id]
         else:
             self.log.debug("No current configuration found")
             return
@@ -368,7 +387,8 @@ class HidraController():
 
             # write configfile
             # /etc/hidra/P01.conf
-            config_file = os.path.join(CONFIGPATH, self.beamline + ".conf")
+            config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + "{0}.conf".format(self.beamline))
+            #config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + "{0}_{1}.conf".format(self.beamline, det_id))
             self.log.info("Writing config file: {0}".format(config_file))
 
             with open(config_file, 'w') as f:
@@ -421,9 +441,10 @@ class HidraController():
 
                 # store the configuration parameters globally
                 self.log.debug("config = {0}".format(current_config))
+                self.master_config[det_id] = dict()
                 for key in current_config:
                     if key != "active":
-                        self.master_config[key] = (
+                        self.master_config[det_id][key] = (
                             copy.deepcopy(current_config[key]))
 
                 # mark local_config as inactive
@@ -446,51 +467,55 @@ class HidraController():
                            .format(current_config["whitelist"]))
             raise Exception("Not all required parameters are specified")
 
-    def start(self, id):
+    def start(self, host_id, det_id):
         '''
         start ...
         '''
 
         # check if service is running
-        if hidra_status(self.beamline) == "RUNNING":
+        if hidra_status(self.beamline, det_id) == "RUNNING":
             return "ALREADY_RUNNING"
 
         try:
-            self.__write_config(id)
+            self.__write_config(host_id, det_id)
         except:
             self.log.error("Config file not written", exc_info=True)
             return "ERROR"
 
         # start service
-        p = subprocess.call(["systemctl", "start",
-                             "hidra@{0}.service".format(self.beamline)])
-
-        if p != 0:
+        if call_hidra_service("start", self.beamline, det_id) != 0:
+            self.log.error("Could not start the servive.")
             return "ERROR"
 
         # Needed because status always returns "RUNNING" in the first second
         time.sleep(1)
 
         # check if really running before return
-        if hidra_status(self.beamline) == "RUNNING":
+        if hidra_status(self.beamline, det_id) == "RUNNING":
             return "DONE"
         else:
+            self.log.error("Service is not running after triggering start.")
             return "ERROR"
 
-    def stop(self):
+    def stop(self, det_id):
+        '''
+        stop ...
+        '''
         # check if really running before return
-        if hidra_status(self.beamline) != "RUNNING":
+        if hidra_status(self.beamline, det_id) != "RUNNING":
             return "ARLEADY_STOPPED"
 
         # stop service
-        p = subprocess.call(["systemctl", "stop",
-                             "hidra@{0}.service".format(self.beamline)])
-        if p == 0:
+        if call_hidra_service("stop", self.beamline, det_id) == 0:
             return "DONE"
         else:
+            self.log.error("Could not stop the service.")
             return "ERROR"
 
-    def restart(self):
+    def restart(self, det_id):
+        '''
+        restart ...
+        '''
         # stop service
         reval = self.stop()
 
@@ -501,10 +526,32 @@ class HidraController():
             return "ERROR"
 
 
-def hidra_status(beamline):
+def call_hidra_service(cmd, beamline, det_id):
+    SYSTEMD_PREFIX = "hidra@"
+    SERVICE_NAME = "hidra"
+
+    # systems using systemd
+    if os.path.exists("/usr/lib/systemd") \
+            and os.path.exists("/usr/lib/systemd/" + SYSTEMD_PREFIX + ".service"):
+
+        svc = "{0}{1}_{2}.service".format(SYSTEMD_PREFIX, beamline, det_id)
+        if cmd == "status":
+            return subprocess.call(["systemctl", "is-active", svc])
+        else:
+            return subprocess.call(["systemctl", cmd, svc])
+
+    # systems using init scripts
+    elif os.path.exists("/etc/init.d") \
+            and os.path.exists("/etc/init.d/" + SERVICE_NAME):
+        return subprocess.call(["service", SERVICE_NAME, cmd])
+        # TODO implement beamline and det_id in hisdra.sh
+        # return subprocess.call(["service", SERVICE_NAME, "status", beamline, det_id])
+
+
+def hidra_status(beamline, det_id):
+
     try:
-        p = subprocess.call(["systemctl", "is-active",
-                             "hidra@{0}.service".format(beamline)])
+        p = call_hidra_service("status", beamline, det_id)
     except:
         return "ERROR"
 

@@ -124,7 +124,7 @@ def check_netgroup(hostname, beamline, log=None):
 
 
 class Control():
-    def __init__(self, beamline, use_log=False):
+    def __init__(self, beamline, detector, use_log=False):
 
         if use_log:
             self.log = logging.getLogger("Control")
@@ -136,11 +136,13 @@ class Control():
         self.current_pid = os.getpid()
 
         self.beamline = beamline
+        self.detector = detector
         self.signal_socket = None
 
         self.host = socket.gethostname()
 
         check_netgroup(self.host, self.beamline, self.log)
+        check_netgroup(self.detector, self.beamline, self.log)
 
         try:
             self.con_id = "tcp://{0}:{1}".format(
@@ -171,7 +173,7 @@ class Control():
             raise
 
     def get(self, attribute, timeout=None):
-        msg = [b"get", self.host, attribute]
+        msg = [b"get", self.host, self.detector, attribute]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: {0}".format(msg))
@@ -192,9 +194,9 @@ class Control():
             check_netgroup(value[0], self.beamline, self.log)
 
         if attribute == "whitelist":
-            msg = [b"set", self.host, attribute, json.dumps(value)]
+            msg = [b"set", self.host, self.detector, attribute, json.dumps(value)]
         else:
-            msg = [b"set", self.host, attribute, json.dumps(value[0])]
+            msg = [b"set", self.host, self.detector, attribute, json.dumps(value[0])]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: {0}".format(msg))
@@ -205,7 +207,7 @@ class Control():
         return reply
 
     def do(self, command, timeout=None):
-        msg = [b"do", self.host, command]
+        msg = [b"do", self.host, self.detector, command]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: {0}".format(msg))
@@ -218,7 +220,7 @@ class Control():
     def stop(self):
         if self.socket:
             self.log.info("Sending close signal")
-            msg = [b"bye", self.host]
+            msg = [b"bye", self.host, self.detector]
 
             self.socket.send_multipart(msg)
             self.log.debug("sent: {0}".format(msg))

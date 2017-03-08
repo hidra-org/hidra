@@ -40,6 +40,7 @@ def argument_parsing():
 
     parser.add_argument("--eigerip",
                         type=str,
+                        required=True,
                         help="IP (or DNS name) of the Eiger detector")
     parser.add_argument("--eigerapi",
                         type=str,
@@ -85,11 +86,6 @@ if __name__ == '__main__':
     parser = argument_parsing()
     arguments = parser.parse_args()
 
-    if arguments.start and arguments.eigerip is None:
-        print ("parser error")
-        parser.error("--start requires --eigerip")
-        sys.exit(1)
-
     if arguments.version:
         print ("Hidra version: {0}".format(hidra.__version__))
         sys.exit(0)
@@ -106,7 +102,7 @@ if __name__ == '__main__':
         print ("ERROR: target not supported")
         sys.exit(1)
 
-    obj = hidra.Control(beamline, use_log=None)
+    obj = hidra.Control(beamline, arguments.eigerip, use_log=None)
 
     try:
         if arguments.start:
