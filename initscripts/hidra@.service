@@ -6,8 +6,10 @@ After=network-online.target
 [Service]
 TimeoutStartSec=0
 WorkingDirectory=/opt/hidra
-User=%iuser
-ExecStart=/opt/hidra/src/sender/datamanager.py --verbose --config_file /opt/hidra/conf/datamanager_%i.conf
+#ExecStartPre=/bin/sh -c 'v=%i; beamline=$${v%_*}; exec /bin/echo USER=$${beamline}user > /opt/hidra/hidra_service_%i'
+#EnvironmentFile=/opt/hidra/hidra_service_%i
+#User=$USER
+ExecStart=/bin/sh -c 'v=%i; beamline=$${v%_*}; exec /usr/bin/sudo -u $${beamline}user /opt/hidra/src/sender/datamanager.py --verbose --config_file /opt/hidra/conf/datamanager_%i.conf --procname hidra_%i'
 
 [Install]
 WantedBy=multi-user.target
