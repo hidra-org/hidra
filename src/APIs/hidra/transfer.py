@@ -788,6 +788,7 @@ class Transfer():
         # save all chunks to file
         while runLoop:
 
+            self.log.debug("file_descriptors={0}".format(self.file_descriptors))
             try:
                 [payload_metadata, payload] = self.get()
             except KeyboardInterrupt:
@@ -854,7 +855,17 @@ class Transfer():
                     self.log.error("Failed to append payload to file: '{0}'"
                                    .format(target_filepath), exc_info=True)
 
-                if len(payload) < payload_metadata["chunksize"]:
+
+                # pointer for readability
+                m = payload_metadata
+
+                # Either the message is smaller than than expected (last chunk)
+                # or the size of the origin file was a multiple of the chunksize
+                # and this is the last expected chunk (chunk_number starts with 0)
+                if len(payload) < m["chunksize"] \
+                    or (m["filesize"] % m["chunksize"] == 0 \
+                            and m["filesize"] / m["chunksize"] == m["chunk_number"] + 1):
+
                     # indicated end of file. Leave loop
                     filename = self.generate_target_filepath(target_base_path,
                                                              payload_metadata)
