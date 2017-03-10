@@ -14,6 +14,7 @@ import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+DOMAIN = ".desy.de"
 
 #
 #  --------------------------  class: SignalHandler  --------------------------
@@ -23,6 +24,7 @@ class SignalHandler():
     def __init__(self, control_pub_con_id, control_sub_con_id, whitelist,
                  com_con_id, request_fw_con_id, request_con_id, log_queue,
                  context=None):
+        global DOMAIN
 
         # Send all logs to the main process
         self.log = self.get_logger(log_queue)
@@ -49,7 +51,7 @@ class SignalHandler():
             self.whitelist = []
 
             for host in whitelist:
-                self.whitelist.append(host.replace(".desy.de", ""))
+                self.whitelist.append(host.replace(DOMAIN, ""))
         else:
             self.whitelist = None
 
@@ -169,6 +171,40 @@ class SignalHandler():
         self.poller.register(self.request_socket, zmq.POLLIN)
 
     def run(self):
+        """
+        possible incomming signals:
+        com_socket (start/stop command from external):
+            START_STREAM: Add request for all incoming data packets
+                          (no  further requests needed)
+            STOP_STREAM: Remove assignment for all incoming data packets
+            START_STREAM_METADATA: Add request for metadata only of all
+                                   incoming data packets
+                                   (no  further requests needed)
+            STOP_STREAM_METADATA: Remove assignment for metadata of all
+                                  incoming data packets
+            START_QUERY_NEXT: Enable requests for individual data packets
+            STOP_QUERY_NEXT: Disable requests for individual data packets
+            START_QUERY_METADATA: Enable requests for metadata of individual
+                                  data packets
+            STOP_QUERY_METADATA: Disable requests for metadata of individual
+                                 data packets
+
+        request_socket (requests from external):
+            NEXT: Request for the next incoming data packet
+            CANCEL: Cancel the previous request
+
+        request_fw_socket (internal forwarding of requests which came from external):
+            GET_REQUESTS: TaskProvider asks to get the next set of open requests
+
+        control_sub_socket (internal control messages):
+            SLEEP: receiver is currently not available
+                   -> this does not affect this class
+            WAKEUP: receiver is back online
+                    -> this does not affect this class
+            EXIT: shutdown everything
+        """
+        global DOMAIN
+
         # run loop, and wait for incoming messages
         self.log.debug("Waiting for new signals or requests.")
         while True:
@@ -263,7 +299,7 @@ class SignalHandler():
                     incoming_socket_id = (
                         in_message[1]
                         .decode("utf-8")
-                        .replace(".desy.de:", ":")
+                        .replace(DOMAIN, "")
                     )
 
                     for index in range(len(self.allowed_queries)):
@@ -280,7 +316,7 @@ class SignalHandler():
                     incoming_socket_id = (
                         in_message[1]
                         .decode("utf-8")
-                        .replace(".desy.de:", ":")
+                        .replace(DOMAIN, "")
                     )
 
                     still_requested = []
@@ -293,18 +329,6 @@ class SignalHandler():
                         still_requested.append(vari_per_group)
 
                     self.open_requ_vari = still_requested
-
-#                    self.open_requ_vari_old = [
-#                        [
-#                            b
-#                            for b in self.open_requ_vari[a]
-#                            if incoming_socket_id != b[0]]
-#                        for a in range(len(self.open_requ_vari))]
-
-#                    self.log.debug("open_requ_vari_old ={0}"
-#                                   .format(self.open_requ_vari_old))
-#                    self.log.debug("open_requ_vari     ={0}"
-#                                   .format(self.open_requ_vari))
 
                     self.log.info("Remove all occurences from {0} from "
                                   "variable request list."
@@ -395,10 +419,11 @@ class SignalHandler():
 
     def __start_signal(self, signal, send_type, socket_ids, list_to_check,
                        vari_list, corresp_list):
+        global DOMAIN
 
         # make host naming consistent
         for socket_conf in socket_ids:
-            socket_conf[0] = socket_conf[0].replace(".desy.de:", ":")
+            socket_conf[0] = socket_conf[0].replace(DOMAIN, "")
 
         overwrite_index = None
         flatlist_nested = [set([j[0] for j in sublist])
@@ -462,7 +487,7 @@ class SignalHandler():
 
 #        for socket_conf in socket_ids:
 #
-#            socket_conf[0] = socket_conf[0].replace(".desy.de:",":")
+#            socket_conf[0] = socket_conf[0].replace(DOMAIN, "")
 #
 #            socket_id = socket_conf[0]
 #            self.log.debug("socket_id: {0}".format(socket_id))
@@ -497,6 +522,7 @@ class SignalHandler():
 
     def __stop_signal(self, signal, socket_ids, list_to_check, vari_list,
                       corresp_list):
+        global DOMAIN
 
         connection_not_found = False
         tmp_remove_index = []
@@ -505,7 +531,7 @@ class SignalHandler():
 
         for socket_conf in socket_ids:
 
-            socket_id = socket_conf[0].replace(".desy.de:", ":")
+            socket_id = socket_conf[0].replace(DOMAIN, ":")
 
             for sublist in list_to_check:
                 for element in sublist:
