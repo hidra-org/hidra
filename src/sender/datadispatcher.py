@@ -175,7 +175,7 @@ class DataDispatcher():
 
                     if type(metadata) == list and metadata[0] == b"CLOSE_FILE":
 
-                        # woraround for error
+                        # workaround for error
                         # "TypeError: Frame 0 (u'CLOSE_FILE') does not support
                         # the buffer interface."
                         metadata[0] = b"CLOSE_FILE"

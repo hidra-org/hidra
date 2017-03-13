@@ -725,7 +725,11 @@ class RequestPuller():
 
         self.log = self.get_logger(log_queue)
 
-        self.context = context or zmq.Context.instance()
+        # to give the signal handler to bind to the socket before the connect
+        # is done
+        time.sleep(0.5)
+
+        self.context = context or zmq.Context()
         self.request_fw_socket = self.context.socket(zmq.REQ)
         self.request_fw_socket.connect(request_fw_con_id)
         self.log.info("[getRequests] request_fw_socket started (connect) for "
@@ -749,14 +753,13 @@ class RequestPuller():
 
     def run(self):
         self.log.info("[getRequests] Start run")
+        filename = "test_file.cbf"
         while True:
             try:
-                self.request_fw_socket.send_multipart([b"GET_REQUESTS"])
+                self.request_fw_socket.send_multipart(
+                    [b"GET_REQUESTS", json.dumps(filename).encode("utf-8")])
                 self.log.info("[getRequests] send")
-                requests = (
-                    json.loads(
-                        self.request_fw_socket.recv().decode("utf-8"))
-                )
+                requests = json.loads(self.request_fw_socket.recv_string())
                 self.log.info("[getRequests] Requests: {0}".format(requests))
                 time.sleep(0.25)
             except Exception as e:
@@ -855,9 +858,9 @@ if __name__ == '__main__':
         targets = []
         if type(ports) == list:
             for port in ports:
-                targets.append(["zitpcx19282:{0}".format(port), prio])
+                targets.append(["zitpcx19282:{0}".format(port), prio, [""]])
         else:
-            targets.append(["zitpcx19282:{0}".format(ports), prio])
+            targets.append(["zitpcx19282:{0}".format(ports), prio, [""]])
         targets = json.dumps(targets).encode("utf-8")
         send_message.append(targets)
         socket.send_multipart(send_message)
@@ -883,11 +886,6 @@ if __name__ == '__main__':
     request_socket = context.socket(zmq.PUSH)
     request_socket.connect(request_con_id)
     logging.info("=== request_socket connected to {0}". format(request_con_id))
-
-    request_fw_socket = context.socket(zmq.REQ)
-    request_fw_socket.connect(request_fw_con_id)
-    logging.info("=== request_fw_socket connected to {0}"
-                 .format(request_fw_con_id))
 
     time.sleep(1)
 
@@ -924,7 +922,6 @@ if __name__ == '__main__':
 
     com_socket.close(0)
     request_socket.close(0)
-    request_fw_socket.close(0)
 
     context.destroy()
 
