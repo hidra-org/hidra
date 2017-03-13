@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 import argparse
 import socket
 
-import __init__
+import __init__  # noqa F401
 from hidra import Transfer
 
 if __name__ == "__main__":

@@ -16,9 +16,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 DOMAIN = ".desy.de"
 
-#
-#  --------------------------  class: SignalHandler  --------------------------
-#
+
 class SignalHandler():
 
     def __init__(self, control_pub_con_id, control_sub_con_id, whitelist,
@@ -173,7 +171,8 @@ class SignalHandler():
     def run(self):
         """
         possible incomming signals:
-        com_socket (start/stop command from external):
+        com_socket
+            (start/stop command from external)
             START_STREAM: Add request for all incoming data packets
                           (no  further requests needed)
             STOP_STREAM: Remove assignment for all incoming data packets
@@ -189,14 +188,18 @@ class SignalHandler():
             STOP_QUERY_METADATA: Disable requests for metadata of individual
                                  data packets
 
-        request_socket (requests from external):
+        request_socket
+            (requests from external)
             NEXT: Request for the next incoming data packet
             CANCEL: Cancel the previous request
 
-        request_fw_socket (internal forwarding of requests which came from external):
-            GET_REQUESTS: TaskProvider asks to get the next set of open requests
+        request_fw_socket
+            (internal forwarding of requests which came fromexternal)
+            GET_REQUESTS: TaskProvider asks to get the next set of open
+                          requests
 
-        control_sub_socket (internal control messages):
+        control_sub_socket
+            (internal control messages)
             SLEEP: receiver is currently not available
                    -> this does not affect this class
             WAKEUP: receiver is back online

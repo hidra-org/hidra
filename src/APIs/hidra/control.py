@@ -20,6 +20,7 @@ from ._constants import connection_list
 DOMAIN = ".desy.de"
 LDAPURI = "it-ldap-slave.desy.de:1389"
 
+
 class LoggingFunction:
     def out(self, x, exc_info=None):
         if exc_info:
@@ -194,9 +195,11 @@ class Control():
             check_netgroup(value[0], self.beamline, self.log)
 
         if attribute == "whitelist":
-            msg = [b"set", self.host, self.detector, attribute, json.dumps(value)]
+            msg = [b"set", self.host, self.detector, attribute,
+                   json.dumps(value)]
         else:
-            msg = [b"set", self.host, self.detector, attribute, json.dumps(value[0])]
+            msg = [b"set", self.host, self.detector, attribute,
+                   json.dumps(value[0])]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: {0}".format(msg))

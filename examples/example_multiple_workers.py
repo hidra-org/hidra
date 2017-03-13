@@ -1,17 +1,16 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
 import multiprocessing
 import socket
 import argparse
 
-import __init__
+import __init__  # noqa F401
 from hidra import Transfer
 
 
 class Worker(multiprocessing.Process):
-    def __init__(self, id, transfer_type, signal_host, target_host, port):
+    def __init__(self, id, transfer_type, signal_host, target_host, port):  # noqa F811
 
         self.id = id
         self.port = port
@@ -55,9 +54,9 @@ if __name__ == "__main__":
                         help="Host where HiDRA is runnning",
                         default=socket.gethostname())
     parser.add_argument("--target_host",
-                    type=str,
-                    help="Host where the data should be send to",
-                    default=socket.gethostname())
+                        type=str,
+                        help="Host where the data should be send to",
+                        default=socket.gethostname())
     parser.add_argument("--procname",
                         type=str,
                         help="Name with which the service should be running",
@@ -87,7 +86,8 @@ if __name__ == "__main__":
         workers.append(w)
 
     # register these workers on the sending side
-    # this is done from the master to enforce that the data received from the workers is disjuct
+    # this is done from the master to enforce that the data received from the
+    # workers is disjoint
     query = Transfer(transfer_type, arguments.signal_host, use_log=False)
     query.initiate(targets)
 

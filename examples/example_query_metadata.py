@@ -23,7 +23,6 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
 
-
     targets = [[arguments.target_host, "50101", 0]]
     base_target_path = os.path.join(BASE_PATH, "data", "target")
 

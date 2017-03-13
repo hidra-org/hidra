@@ -41,8 +41,8 @@ class EventDetector():
             self.det_ip = socket.gethostbyaddr(config["det_ip"])[2][0]
             self.det_api_version = config["det_api_version"]
             self.det_url = ("http://{0}/filewriter/api/{1}/files"
-                              .format(self.det_ip,
-                                      self.det_api_version))
+                            .format(self.det_ip,
+                                    self.det_api_version))
             self.log.debug("Getting files from: {0}".format(self.det_url))
 #            http://192.168.138.37/filewriter/api/1.6.0/files
 

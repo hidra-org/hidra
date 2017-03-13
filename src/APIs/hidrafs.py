@@ -3,17 +3,16 @@
 from __future__ import with_statement
 
 import os
-import sys
-import errno
 import stat
 import logging
 import argparse
 import socket
 import setproctitle
 
-from fuse import FUSE, FuseOSError, Operations
+from fuse import FUSE, Operations
 
 from hidra import Transfer
+
 
 class Passthrough(Operations):
     def __init__(self, signal_host):
@@ -65,7 +64,7 @@ class Passthrough(Operations):
     def getattr(self, path, fh=None):
         self.log.debug("path={0}".format(path))
 
-        if path =="/" or path.startswith("/.Trash"):
+        if path == "/" or path.startswith("/.Trash"):
             st = os.lstat(path)
             return {
                 "st_mode": getattr(st, "st_mode"),
@@ -101,11 +100,13 @@ class Passthrough(Operations):
             return [".", "..", self.metadata["filename"]]
 
     """
-    # The method readlink() returns a string representing the path to which the symbolic link points. It may return an absolute or relative pathname.
+    # The method readlink() returns a string representing the path to which the
+    # symbolic link points. It may return an absolute or relative pathname.
     def readlink(self, path):
         pass
 
-    # The method mknod() creates a filesystem node (file, device special file or named pipe) named filename.
+    # The method mknod() creates a filesystem node (file, device special file
+    # or named pipe) named filename.
     def mknod(self, path, mode, dev):
         pass
 
@@ -119,7 +120,8 @@ class Passthrough(Operations):
     def statfs(self, path):
         pass
 
-    # The method unlink() removes (deletes) the file path. If the path is a directory, OSError is raised.
+    # The method unlink() removes (deletes) the file path. If the path is a
+    # directory, OSError is raised.
     def unlink(self, path):
         pass
 
@@ -135,7 +137,8 @@ class Passthrough(Operations):
         targets = ["zitpcx19282.desy.de", "50101", 1]
         pass
 
-    # The method utime() sets the access and modified times of the file specified by path.
+    # The method utime() sets the access and modified times of the file
+    # specified by path.
     def utimens(self, path, times=None):
         pass
     """
@@ -164,7 +167,7 @@ class Passthrough(Operations):
 #        self.log.debug("read")
 
         self.read_pointer += length
-        return self.data[self.read_pointer-length:self.read_pointer]
+        return self.data[self.read_pointer - length:self.read_pointer]
 
     """
     def write(self, path, buf, offset, fh):
@@ -203,7 +206,8 @@ if __name__ == '__main__':
                         default=socket.gethostname())
     parser.add_argument("--mount",
                         type=str,
-                        help="Mount point under which hidrafs should be mounted")
+                        help="Mount point under which hidrafs should be"
+                             "mounted")
     parser.add_argument("--procname",
                         type=str,
                         help="Name with which the service should be running",
@@ -213,4 +217,5 @@ if __name__ == '__main__':
 
     setproctitle.setproctitle(arguments.procname)
 
-    FUSE(Passthrough(arguments.signal_host), arguments.mount, nothreads=True, foreground=True)
+    FUSE(Passthrough(arguments.signal_host), arguments.mount,
+         nothreads=True, foreground=True)

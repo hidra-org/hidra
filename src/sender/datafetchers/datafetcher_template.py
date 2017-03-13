@@ -67,15 +67,17 @@ def get_metadata(log, targets, metadata, chunksize, local_target=None):
 
     """
 
-    source_file_path = os.path.normpath(os.path.join(metadata["source_path"],
-                                                     metadata["relative_path"],
-                                                     metadata["filename"]))
+    source_file_path = os.path.normpath(  # noqa F841
+                            os.path.join(metadata["source_path"],
+                                         metadata["relative_path"],
+                                         metadata["filename"]))
 
     # Build target file
     if local_target:
-        target_file_path = os.path.normpath(os.path.join(local_target,
-                                                         relative_path))
-        target_file = os.path.join(target_file_path, filename)
+        target_file_path = os.path.normpath(
+            os.path.join(local_target,
+                         metadata["relative_path"]))
+        target_file = os.path.join(target_file_path, metadata["filename"])
     else:
         target_file = None
 
@@ -98,7 +100,8 @@ def send_data(log, targets, source_file, target_file, metadata,
         targets (list)
         source_file (str)
         target_file (str)
-        metadata (dict): extendet metadata dictionary filled by function get_metadata
+        metadata (dict): extendet metadata dictionary filled by function
+                         get_metadata
         open_connections (dict)
         context: zmq context
         config (dict): modul config
@@ -120,7 +123,6 @@ def send_data(log, targets, source_file, target_file, metadata,
     chunksize = metadata["chunksize"]
 
     chunk_number = 0
-    sendError = False
 
     # reading source file into memory
     try:
@@ -162,13 +164,17 @@ def send_data(log, targets, source_file, target_file, metadata,
             log.error("Unable to send multipart-message for file '{0}' "
                       "(chunk {1})".format(source_file, chunk_number),
                       exc_info=True)
-            sendError = True
         except:
             log.error("Unable to send multipart-message for file '{0}' "
                       "(chunk {1})".format(source_file, chunk_number),
                       exc_info=True)
 
         chunk_number += 1
+
+
+def __datahandling(log, source_file, target_file, action_function, metadata,
+                   config):
+    pass
 
 
 def finish_datahandling(log, targets, source_file, target_file, metadata,

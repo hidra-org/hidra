@@ -53,7 +53,7 @@ else:
 
 # Some packages differ in Python 3
 # TODO windows compatible?
-if sys.version_info >= (3,0):
+if sys.version_info >= (3, 0):
     version_specific_packages = ["configparser"]
 else:
     version_specific_packages = ["ConfigParser"]
@@ -119,5 +119,4 @@ setup(name='HiDRA',
       description='',
       options={"build_exe": build_exe_options,
                "bdist_msi": bdist_msi_options},
-      executables=executables
-)
+      executables=executables)

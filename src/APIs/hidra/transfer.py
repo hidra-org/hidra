@@ -342,13 +342,15 @@ class Transfer():
                                        .format(host, ip[0]))
                         self.auth.allow(ip[0])
                     except socket.gaierror:
-                        self.log.error("Could not get IP of host {0}. Proceed.".format(host))
+                        self.log.error("Could not get IP of host {0}. Proceed."
+                                       .format(host))
                     except:
                         self.log.error("Error was: ", exc_info=True)
                         raise AuthenticationFailed(
                             "Could not get IP of host {0}".format(host))
             else:
-                raise FormatError("Whitelist has to be a list of IPs/DNS names")
+                raise FormatError("Whitelist has to be a list of "
+                                  "IPs/DNS names")
 
         socket_id_to_bind = (
             self.stream_started
@@ -788,7 +790,8 @@ class Transfer():
         # save all chunks to file
         while runLoop:
 
-            self.log.debug("file_descriptors={0}".format(self.file_descriptors))
+            self.log.debug("file_descriptors={0}"
+                           .format(self.file_descriptors))
             try:
                 [payload_metadata, payload] = self.get()
             except KeyboardInterrupt:
@@ -846,7 +849,8 @@ class Transfer():
                                            exc_info=True)
                 except KeyboardInterrupt:
                     # save the data in the file before quitting
-                    self.log.debug("KeyboardInterrupt received while writing data")
+                    self.log.debug("KeyboardInterrupt received while writing "
+                                   "data")
                     runLoop = False
                     # self.log.info("KeyboardInterrupt detected. Unable to "
                     #               "append multipart-content to file.")

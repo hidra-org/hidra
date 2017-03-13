@@ -26,7 +26,6 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
 
-
     # enable logging
     logfile_path = os.path.join(BASE_PATH, "logs")
     logfile = os.path.join(logfile_path, "testAPI.log")

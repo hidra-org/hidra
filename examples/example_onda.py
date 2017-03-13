@@ -22,7 +22,8 @@ helpers.init_logging(logfile, True, "DEBUG")
 
 
 class Worker(multiprocessing.Process):
-    def __init__(self, id, transfer_type, basepath, signal_host, target_host, port):
+    def __init__(self, id, transfer_type, basepath,
+                 signal_host, target_host, port):
 
         self.id = id
         self.port = port
@@ -85,9 +86,9 @@ if __name__ == "__main__":
                         help="Host where HiDRA is runnning",
                         default=socket.gethostname())
     parser.add_argument("--target_host",
-                    type=str,
-                    help="Host where the data should be send to",
-                    default=socket.gethostname())
+                        type=str,
+                        help="Host where the data should be send to",
+                        default=socket.gethostname())
     parser.add_argument("--procname",
                         type=str,
                         help="Name with which the service should be running",
@@ -110,7 +111,7 @@ if __name__ == "__main__":
     targets = []
 
     for n in range(number_of_worker):
-        p = str(50100 + n)
+        p = str(50200 + n)
 
         targets.append([arguments.target_host, p, 1, [".cbf"]])
 

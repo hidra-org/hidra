@@ -1,5 +1,4 @@
 import os
-import time
 
 path = "/tmp/fs_test"
 
@@ -24,5 +23,3 @@ while True:
             read_lines = f.read()
             f.close()
         """
-
-#    time.sleep(0.1)

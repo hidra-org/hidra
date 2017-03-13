@@ -330,7 +330,6 @@ def extend_whitelist(whitelist, log):
     log.info("Configured whitelist: {0}".format(whitelist))
     extended_whitelist = []
 
-
     if whitelist is not None:
         for host in whitelist:
 

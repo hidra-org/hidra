@@ -6,6 +6,7 @@ import argparse
 import zmq
 import zmq.devices
 import os
+import sys
 import logging
 import json
 import time
@@ -191,7 +192,7 @@ def argument_parsing():
                         type=str,
                         help="Fixed host and port to send the data to with "
                              "highest priority (only active if "
-                              "use_data_stream is set)")
+                             "use_data_stream is set)")
     parser.add_argument("--number_of_streams",
                         type=int,
                         help="Number of parallel data streams)")
@@ -417,13 +418,15 @@ class DataManager():
 
         if self.use_data_stream:
             if len(self.params["data_stream_targets"]) > 1:
-                self.log.error("Targets to send data stream to have more than one entry which is not supported")
-                self.log.debug("data_stream_targets: {0}".format(self.params["data_stream_targets"]))
+                self.log.error("Targets to send data stream to have more than "
+                               "one entry which is not supported")
+                self.log.debug("data_stream_targets: {0}"
+                               .format(self.params["data_stream_targets"]))
                 sys.exit(1)
 
             self.fixed_stream_id = ("{0}:{1}"
-                                    .format(self.params["data_stream_targets"][0][0],
-                                            self.params["data_stream_targets"][0][1]))
+                .format(self.params["data_stream_targets"][0][0],
+                        self.params["data_stream_targets"][0][1]))
         else:
             self.fixed_stream_id = None
 

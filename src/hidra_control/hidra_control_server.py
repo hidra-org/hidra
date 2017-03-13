@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #
 import time
-import threading
 import os
 import sys
 import socket
@@ -10,7 +9,7 @@ import logging
 import argparse
 import setproctitle
 from multiprocessing import Queue
-import tempfile
+# import tempfile
 import json
 import copy
 import zmq
@@ -108,12 +107,11 @@ class HidraController():
             self.master_config["whitelist"] = None
         """
 
-
         # connection depending hidra configuration, master config one is
         # overwritten with these parameters when start is executed
         self.all_configs = dict()
 
-        self.config_template = {
+        self.ctemplate = {
             "active": False,
             "beamline": self.beamline,
             "det_ip": None,
@@ -124,7 +122,6 @@ class HidraController():
             "remove_data": None,
             "whitelist": None
         }
-
 
     def get_logger(self, queue):
         # Create log and set handler to queue handle
@@ -142,17 +139,18 @@ class HidraController():
 
         # write configfile
         # /etc/hidra/P01.conf
-#        config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + self.beamline + ".conf")
         joined_path = os.path.join(CONFIG_PATH, CONFIG_PREFIX + self.beamline)
         config_files = glob.glob(joined_path + "_*.conf")
         self.log.info("Reading config files: {0}".format(config_files))
 
         for cfile in config_files:
-            #extract the detector id from the config file name (remove path, prefix, beamline and ending)
+            # extract the detector id from the config file name (remove path,
+            # prefix, beamline and ending)
             det_id = cfile.replace(joined_path + "_", "")[:-5]
             try:
                 config = helpers.read_config(cfile)
-                self.master_config[det_id] = parse_parameters(config)["asection"]
+                self.master_config[det_id] = (
+                    parse_parameters(config)["asection"])
             except IOError:
                 self.log.debug("Configuration file not readable: {0}"
                                .format(cfile))
@@ -202,8 +200,8 @@ class HidraController():
 
             self.log.debug("Received 'bye'")
             if msg[1] in self.all_configs:
-                if msg[2] in self.allconfigs[msd[1]]:
-                    del self.allconfigs[msd[1]][msg[2]]
+                if msg[2] in self.allconfigs[msg[1]]:
+                    del self.allconfigs[msg[1]][msg[2]]
 
                 # no configs for this host left
                 if not self.all_configs[msg[1]]:
@@ -221,7 +219,7 @@ class HidraController():
         if host_id not in self.all_configs:
             self.all_configs[host_id] = dict()
         if det_id not in self.all_configs[host_id]:
-            self.all_configs[host_id][det_id] = copy.deepcopy(self.config_template)
+            self.all_configs[host_id][det_id] = copy.deepcopy(self.ctemplate)
 
         # This is a pointer
         current_config = self.all_configs[host_id][det_id]
@@ -286,8 +284,8 @@ class HidraController():
         # parameters the current hidra instance is running, these should be
         # shown
         if host_id in self.all_configs \
-            and det_id in self.all_configs[host_id] \
-            and self.all_configs[host_id][det_id]["active"]:
+                and det_id in self.all_configs[host_id] \
+                and self.all_configs[host_id][det_id]["active"]:
             # This is a pointer
             current_config = self.all_configs[host_id][det_id]
         else:
@@ -386,8 +384,11 @@ class HidraController():
 
             # write configfile
             # /etc/hidra/P01.conf
-            #config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + "{0}.conf".format(self.beamline))
-            config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + "{0}_{1}.conf".format(self.beamline, det_id))
+            #config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + "{0}.conf"
+            #                           .format(self.beamline))
+            config_file = os.path.join(CONFIG_PATH,
+                                       CONFIG_PREFIX + "{0}_{1}.conf"
+                                       .format(self.beamline, det_id))
             self.log.info("Writing config file: {0}".format(config_file))
 
             with open(config_file, 'w') as f:
@@ -531,7 +532,8 @@ def call_hidra_service(cmd, beamline, det_id):
 
     # systems using systemd
     if os.path.exists("/usr/lib/systemd") \
-            and os.path.exists("/usr/lib/systemd/" + SYSTEMD_PREFIX + ".service"):
+            and os.path.exists("/usr/lib/systemd/{0}.service"
+                               .format(SYSTEMD_PREFIX)):
 
         svc = "{0}{1}_{2}.service".format(SYSTEMD_PREFIX, beamline, det_id)
         if cmd == "status":
@@ -544,7 +546,8 @@ def call_hidra_service(cmd, beamline, det_id):
             and os.path.exists("/etc/init.d/" + SERVICE_NAME):
         return subprocess.call(["service", SERVICE_NAME, cmd])
         # TODO implement beamline and det_id in hisdra.sh
-        # return subprocess.call(["service", SERVICE_NAME, "status", beamline, det_id])
+        # return subprocess.call(["service", SERVICE_NAME, "status",
+        #                         beamline, det_id])
 
 
 def hidra_status(beamline, det_id):

@@ -2,7 +2,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-import sys
 import time
 import multiprocessing
 import setproctitle
@@ -10,31 +9,12 @@ import socket
 import argparse
 
 from __init__ import BASE_PATH
-import helpers
-
-BASE_PATH = os.path.dirname(
-    os.path.dirname(
-        os.path.dirname(
-            os.path.realpath(__file__))))
-API_PATH = os.path.join(BASE_PATH, "src", "APIs")
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-
-if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
-
-try:
-    # search in global python modules first
-    from hidra import Transfer  # noqa F401
-except:
-    # then search in local modules
-    if API_PATH not in sys.path:
-        sys.path.append(API_PATH)
-
-    from hidra import Transfer
+from hidra import Transfer
 
 
 class Worker(multiprocessing.Process):
-    def __init__(self, id, transfer_type, signal_host, target_host, port, number_of_files):
+    def __init__(self, id, transfer_type, signal_host, target_host,   # noqa F811
+                 port, number_of_files):
 
         self.id = id
         self.basepath = os.path.join(BASE_PATH, "data", "target")
@@ -57,7 +37,6 @@ class Worker(multiprocessing.Process):
                     self.number_of_files.value += 1
         finally:
             self.stop()
-
 
     def stop(self):
         self.query.stop()

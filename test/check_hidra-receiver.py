@@ -5,6 +5,7 @@ import traceback
 import argparse
 #import nagiosplugin
 
+
 class LoggingFunction:
     def out(self, x, exc_info=None):
         if exc_info:
@@ -67,7 +68,7 @@ class AliveTest():
 
                 self.socket.send_multipart([b"ALIVE_TEST"])
                 if enable_logging:
-                    self.log.info("Sending test message to host {0} ... success"
+                    self.log.info("Sending test message to host {0}...success"
                                   .format(self.socket_id))
 
             else:
@@ -81,7 +82,7 @@ class AliveTest():
                                    .format(self.socket_id), exc_info=True)
                     return False
                 elif enable_logging:
-                    self.log.info("Sending test message to host {0} ... success"
+                    self.log.info("Sending test message to host {0}...success"
                                   .format(self.socket_id))
             return True
         except:

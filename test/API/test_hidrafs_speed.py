@@ -2,15 +2,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-import sys
 import time
 import multiprocessing
 import setproctitle
-import socket
 import argparse
 
-from __init__ import BASE_PATH
-import helpers
 
 class Worker(multiprocessing.Process):
     def __init__(self, id, port, number_of_files):
