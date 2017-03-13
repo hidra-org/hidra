@@ -16,13 +16,16 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 DESC="HiDRA"
 # Process name (for display)
 NAME=hidra
+SCRIPT_PROC_NAME=hidra
 BASEDIR=/opt/hidra
 DAEMON=$BASEDIR/src/sender/datamanager.py
 DAEMON_EXE=$BASEDIR/datamanager
-DAEMON_ARGS="--verbose"
-CONFIG_FILE=$BASEDIR/conf/datamanager.conf
+DAEMON_ARGS="--verbose --procname $NAME"
+CONFIG_PATH=$BASEDIR/conf
+CONFIG_FILE=$CONFIG_PATH/datamanager.conf
 DAEMON_EXE_ARGS="$DAEMON_ARGS --config_file $CONFIG_FILE --procname $NAME"
-PIDFILE=/opt/hidra/$NAME.pid
+PIDFILE_LOCATION=/opt/hidra
+PIDFILE=${PIDFILE_LOCATION}/$NAME.pid
 IPCPATH=/tmp/hidra
 PYTHON=/usr/bin/python
 LOG_DIRECTORY=/var/log/hidra
@@ -41,6 +44,17 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
     GREEN=$(tput setaf 2)
     RED=$(tput setaf 1)
 
+    if [ -n "$2" ] && [ -n "$3" ]
+    then
+        # set variables
+        BEAMLINE="$2"
+        DETECTOR="$3"
+        NAME=${SCRIPT_PROC_NAME}_${BEAMLINE}_${DETECTOR}
+        DAEMON_ARGS="--verbose --config_file ${CONFIG_PATH}/datamanager_${BEAMLINE}_${DETECTOR}.conf --procname $NAME"
+        PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
+    fi
+
+
     start()
     {
         status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
@@ -50,7 +64,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             return 0
         fi
 
-    	printf "%-50s" "Starting ${DESC}..."
+    	printf "%-50s" "Starting ${NAME}..."
 	    ${DAEMON} ${DAEMON_ARGS} &
     	RETVAL=$?
 
@@ -83,7 +97,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             return 0
         fi
 
-    	printf "%-50s" "Stopping ${DESC}..."
+    	printf "%-50s" "Stopping ${HIDRA}..."
         HIDRA_PID="`pidofproc ${NAME}`"
         # stop gracefully and wait up to 180 seconds.
         kill $HIDRA_PID > /dev/null 2>&1
@@ -121,7 +135,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             stop
             ;;
         restart)
-            printf "Restarting ${DESC}: \n"
+            printf "Restarting ${NAME}: \n"
             stop
             start
             ;;
@@ -151,7 +165,15 @@ elif [ -f /etc/debian_version ] ; then
     # and status_of_proc is working.
     . /lib/lsb/init-functions
 
-#    ln -s "$DAEMON" "$NAME"
+    if [ -n "$2" ] && [ -n "$3" ]
+    then
+        # set variables
+        BEAMLINE="$2"
+        DETECTOR="$3"
+        NAME=${SCRIPT_PROC_NAME}_${BEAMLINE}_${DETECTOR}
+        DAEMON_ARGS="--verbose --config_file ${CONFIG_PATH}/datamanager_${BEAMLINE}_${DETECTOR}.conf --procname $NAME"
+        PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
+    fi
 
     #
     # Function that starts the daemon/service
@@ -164,8 +186,7 @@ elif [ -f /etc/debian_version ] ; then
             # If the status is SUCCESS then don't need to start again.
             if [ $status = "1" ]; then
                 log_daemon_msg "$NAME is already running"
-                return 0
-                exit
+                exit 0
             fi
         fi
 
