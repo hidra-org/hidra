@@ -8,8 +8,7 @@ import json
 import shutil
 #import errno
 
-from send_helpers import __send_to_targets, DataHandlingError
-import helpers
+from send_helpers import send_to_targets, DataHandlingError
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -54,6 +53,14 @@ def get_metadata(log, targets, metadata, chunksize, local_target=None):
         log
         config (dict)
         targets (list):
+            A list of targets where the data or metadata should be sent to.
+            It is of the form:
+                [[<node_name>:<port>, <priority>,
+                  <list of file suffixes>, <request_type>], ...]
+            where
+                <list of file suffixes>: is a python of file types which should
+                                         be send to this target. e.g. [u'.cbf']
+                <request_type>: u'data' or u'metadata'
         metadata (dict): Dictionary created by the event detector containing:
             - filename
             - source_path
@@ -67,10 +74,15 @@ def get_metadata(log, targets, metadata, chunksize, local_target=None):
 
     """
 
-    source_file_path = os.path.normpath(  # noqa F841
-                            os.path.join(metadata["source_path"],
-                                         metadata["relative_path"],
-                                         metadata["filename"]))
+    if metadata["relative_path"].startswith("/"):
+        source_file = os.path.normpath(
+                        os.path.join(metadata["source_path"],
+                                     metadata["relative_path"][1:],
+                                     metadata["filename"]))
+    else:
+        source_file = os.path.normpath(os.path.join(metadata["source_path"],
+                                                    metadata["relative_path"],
+                                                    metadata["filename"]))
 
     # Build target file
     if local_target:
@@ -97,7 +109,15 @@ def send_data(log, targets, source_file, target_file, metadata,
 
     Args:
         log
-        targets (list)
+        targets (list):
+            A list of targets where the data or metadata should be sent to.
+            It is of the form:
+                [[<node_name>:<port>, <priority>,
+                  <list of file suffixes>, <request_type>], ...]
+            where
+                <list of file suffixes>: is a python of file types which should
+                                         be send to this target. e.g. [u'.cbf']
+                <request_type>: u'data' or u'metadata'
         source_file (str)
         target_file (str)
         metadata (dict): extendet metadata dictionary filled by function
@@ -116,33 +136,16 @@ def send_data(log, targets, source_file, target_file, metadata,
     targets_data = [i for i in targets if i[3] == "data"]
 
     if not targets_data:
-        config["remove_flag"] = True
         return
 
-    config["remove_flag"] = False
     chunksize = metadata["chunksize"]
-
-    chunk_number = 0
-
-    # reading source file into memory
-    try:
-        log.debug("Opening '{0}'...".format(source_file))
-        file_descriptor = open(str(source_file), "rb")
-    except:
-        log.error("Unable to read source file '{0}'".format(source_file),
-                  exc_info=True)
-        raise
 
     log.debug("Passing multipart-message for file '{0}'..."
               .format(source_file))
-    while True:
+    for i in range(5):
 
-        # read next chunk from file
-        file_content = file_descriptor.read(chunksize)
-
-        # detect if end of file has been reached
-        if not file_content:
-            break
+        chunk_number = i
+        file_content = b"test_data_{0}".format(chunk_number)
 
         try:
             # assemble metadata for zmq-message
@@ -158,7 +161,7 @@ def send_data(log, targets, source_file, target_file, metadata,
 
         # send message to data targets
         try:
-            __send_to_targets(log, targets_data, source_file, target_file,
+            send_to_targets(log, targets_data, source_file, target_file,
                               open_connections, None, chunk_payload, context)
         except DataHandlingError:
             log.error("Unable to send multipart-message for file '{0}' "
@@ -169,13 +172,6 @@ def send_data(log, targets, source_file, target_file, metadata,
                       "(chunk {1})".format(source_file, chunk_number),
                       exc_info=True)
 
-        chunk_number += 1
-
-
-def __datahandling(log, source_file, target_file, action_function, metadata,
-                   config):
-    pass
-
 
 def finish_datahandling(log, targets, source_file, target_file, metadata,
                         open_connections, context, config):
@@ -183,7 +179,15 @@ def finish_datahandling(log, targets, source_file, target_file, metadata,
 
     Args:
         log
-        targets (list)
+        targets (list):
+            A list of targets where the data or metadata should be sent to.
+            It is of the form:
+                [[<node_name>:<port>, <priority>,
+                  <list of file suffixes>, <request_type>], ...]
+            where
+                <list of file suffixes>: is a python of file types which should
+                                         be send to this target. e.g. [u'.cbf']
+                <request_type>: u'data' or u'metadata'
         source_file (str)
         target_file (str)
         metadata (dict)
@@ -197,46 +201,10 @@ def finish_datahandling(log, targets, source_file, target_file, metadata,
 
     targets_metadata = [i for i in targets if i[3] == "metadata"]
 
-    if (config["store_data"]
-            and config["remove_data"]
-            and config["remove_flag"]):
-
-        # move file
-        try:
-            __datahandling(log, source_file, target_file, shutil.move,
-                           metadata, config)
-            log.info("Moving file '{0}' ...success.".format(source_file))
-        except:
-            log.error("Could not move file {0} to {1}"
-                      .format(source_file, target_file), exc_info=True)
-            return
-
-    elif config["store_data"]:
-
-        # copy file
-        # (does not preserve file owner, group or ACLs)
-        try:
-            __datahandling(log, source_file, target_file, shutil.copy,
-                           metadata, config)
-            log.info("Copying file '{0}' ...success.".format(source_file))
-        except:
-            return
-
-    elif config["remove_data"] and config["remove_flag"]:
-        # remove file
-        try:
-            os.remove(source_file)
-            log.info("Removing file '{0}' ...success.".format(source_file))
-        except:
-            log.error("Unable to remove file {0}".format(source_file),
-                      exc_info=True)
-
-        config["remove_flag"] = False
-
     # send message to metadata targets
     if targets_metadata:
         try:
-            __send_to_targets(log, targets_metadata, source_file, target_file,
+            send_to_targets(log, targets_metadata, source_file, target_file,
                               open_connections, metadata, None, context,
                               config["send_timeout"])
             log.debug("Passing metadata multipart-message for file {0}...done."
@@ -261,7 +229,8 @@ if __name__ == '__main__':
     import time
     from shutil import copyfile
 
-    from datafetchers import BASE_PATH
+    from __init__ import BASE_PATH
+    import helpers
 
     logfile = os.path.join(BASE_PATH, "logs", "file_fetcher.log")
     logsize = 10485760
@@ -301,7 +270,7 @@ if __name__ == '__main__':
     copyfile(prework_source_file, prework_target_file)
     time.sleep(0.5)
 
-    workload = {
+    metadata = {
         "source_path": os.path.join(BASE_PATH, "data", "source"),
         "relative_path": os.sep + "local",
         "filename": "100.cbf"
@@ -310,13 +279,9 @@ if __name__ == '__main__':
                ['localhost:{0}'.format(receiving_port2), 0, [".cbf"], "data"]]
 
     chunksize = 10485760  # = 1024*1024*10 = 10 MiB
-    local_target = os.path.join(BASE_PATH, "data", "target")
     open_connections = dict()
 
     config = {
-        "fix_subdirs": ["commissioning", "current", "local"],
-        "store_data": False,
-        "remove_data": False
     }
 
     logging.debug("open_connections before function call: {0}"
@@ -324,10 +289,9 @@ if __name__ == '__main__':
 
     setup(logging, config)
 
-    source_file, target_file, metadata = get_metadata(logging, config,
-                                                      targets, workload,
-                                                      chunksize,
-                                                      local_target=None)
+    source_file, target_file = get_metadata(logging, targets,
+                                            metadata, chunksize,
+                                            local_target=None)
     send_data(logging, targets, source_file, target_file, metadata,
               open_connections, context, config)
 
