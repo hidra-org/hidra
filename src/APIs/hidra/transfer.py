@@ -855,28 +855,32 @@ class Transfer():
                     self.log.error("Failed to append payload to file: '{0}'"
                                    .format(target_filepath), exc_info=True)
 
-
                 # pointer for readability
                 m = payload_metadata
 
                 # Either the message is smaller than than expected (last chunk)
-                # or the size of the origin file was a multiple of the chunksize
-                # and this is the last expected chunk (chunk_number starts with 0)
+                # or the size of the origin file was a multiple of the
+                # chunksize and this is the last expected chunk (chunk_number
+                # starts with 0)
                 if len(payload) < m["chunksize"] \
-                    or (m["filesize"] % m["chunksize"] == 0 \
-                            and m["filesize"] / m["chunksize"] == m["chunk_number"] + 1):
+                    or (m["filesize"] % m["chunksize"] == 0
+                        and m["filesize"] / m["chunksize"] == m["chunk_number"] + 1):  # noqa E501
 
                     # indicated end of file. Leave loop
                     filename = self.generate_target_filepath(target_base_path,
                                                              payload_metadata)
                     file_mod_time = payload_metadata["file_mod_time"]
 
-                    self.file_descriptors[target_filepath].close()
-                    del self.file_descriptors[target_filepath]
+                    try:
+                        self.file_descriptors[target_filepath].close()
+                        del self.file_descriptors[target_filepath]
 
-                    self.log.info("New file with modification time {0} "
-                                  "received and saved: {1}"
-                                  .format(file_mod_time, filename))
+                        self.log.info("New file with modification time {0} "
+                                      "received and saved: {1}"
+                                      .format(file_mod_time, filename))
+                    except:
+                        self.log.error("File could not be closed: {0}"
+                                       .format(filename), exc_info=True)
                     break
 
     def generate_target_filepath(self, base_path, config_dict):
