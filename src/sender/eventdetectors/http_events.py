@@ -114,9 +114,9 @@ class EventDetector():
             # no new files received
             time.sleep(self.sleep_time)
 
-        for file in files_stored:
-            if file not in self.files_downloaded:
-                (relative_path, filename) = os.path.split(file)
+        for f in files_stored:
+            if f not in self.files_downloaded:
+                (relative_path, filename) = os.path.split(f)
                 event_message = {
                     "source_path": "http://{0}/data".format(self.det_ip),
                     "relative_path": relative_path,
@@ -124,7 +124,7 @@ class EventDetector():
                 }
                 self.log.debug("event_message {0}".format(event_message))
                 event_message_list.append(event_message)
-                self.files_downloaded.append(file)
+                self.files_downloaded.append(f)
 
         return event_message_list
 
