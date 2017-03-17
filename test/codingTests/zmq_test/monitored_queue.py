@@ -1,6 +1,5 @@
 import time
 import zmq
-from zmq.devices.basedevice import ProcessDevice
 from zmq.devices.monitoredqueuedevice import MonitoredQueue
 from zmq.utils.strtypes import asbytes
 from multiprocessing import Process
@@ -11,7 +10,7 @@ def monitordevice(in_con_id, out_con_id, mon_con_id):
     in_prefix=asbytes('in')
     out_prefix=asbytes('out')
                                       #   in       out      mon
-    monitoringdevice = MonitoredQueue(zmq.PULL, zmq.PUSH, zmq.PUB, in_prefix, out_prefix)
+    monitoringdevice = MonitoredQueue(zmq.PUSH, zmq.PULL, zmq.PUB, in_prefix, out_prefix)
 
     monitoringdevice.bind_in(in_con_id)
     monitoringdevice.bind_out(out_con_id)
@@ -23,19 +22,19 @@ def monitordevice(in_con_id, out_con_id, mon_con_id):
 def server(out_con_id):
     print "Program: Server connecting to device"
     context = zmq.Context()
-    socket = context.socket(zmq.PULL)
+    socket = context.socket(zmq.PUSH)
     socket.connect(out_con_id)
-    while True:
-        message = socket.recv()
-        print "Server: Received - %s" % message
+    for request_num in range(2):
+        socket.send ("Request #{0} from server".format(request_num))
 
 def client(in_con_id, client_id):
     print "Program: Worker #%s connecting to device" % client_id
     context = zmq.Context()
-    socket = context.socket(zmq.PUSH)
+    socket = context.socket(zmq.PULL)
     socket.connect(in_con_id)
-    request_num = 1
-    socket.send ("Request #%s from client#%s" % (request_num, client_id))
+    while True:
+        message = socket.recv()
+        print "Client #{0}: Received - {1}".format(client_id, message)
 
 def monitor(mon_con_id):
     print "Starting monitoring process"
@@ -47,7 +46,6 @@ def monitor(mon_con_id):
     while True:
         string = socket.recv_multipart()
         print "Monitoring Client: %s" % string
-
 
 if __name__ == "__main__":
     ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
@@ -79,11 +77,16 @@ if __name__ == "__main__":
     monitorclient_p.start()
     time.sleep(1)
 
+    client_p = []
     for client_id in range(number_of_workers):
-        Process(target=client, args=(in_con_id, client_id,)).start()
+        p = Process(target=client, args=(in_con_id, client_id,))
+        p.start()
+        client_p.append(p)
 
     time.sleep(2)
-    server_p.terminate()
+    for proc in client_p:
+        proc.terminate()
+#    server_p.terminate()
     monitorclient_p.terminate()
     monitoring_p.terminate()
 
