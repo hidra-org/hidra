@@ -2,9 +2,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-import zmq
 import logging
-import json
 import tempfile
 
 from logutils.queue import QueueHandler
@@ -73,7 +71,6 @@ class EventDetector():
 
 
 if __name__ == '__main__':
-    import time
     from multiprocessing import Queue
 
     logfile = os.path.join(BASE_PATH, "logs", "eventdetector_template.log")

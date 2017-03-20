@@ -126,17 +126,6 @@ class SignalHandler():
 
         self.control_sub_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
 
-        # create zmq socket for signal communication with receiver
-        try:
-            self.com_socket = self.context.socket(zmq.REP)
-            self.com_socket.bind(self.com_con_id)
-            self.log.info("Start com_socket (bind): '{0}'"
-                          .format(self.com_con_id))
-        except:
-            self.log.error("Failed to start com_socket (bind): '{0}'"
-                           .format(self.com_con_id), exc_info=True)
-            raise
-
         # setting up router for load-balancing worker-processes.
         # each worker-process will handle a file event
         try:
@@ -149,24 +138,41 @@ class SignalHandler():
                            .format(self.request_fw_con_id), exc_info=True)
             raise
 
-        # create socket to receive requests
-        try:
-            self.request_socket = self.context.socket(zmq.PULL)
-            self.request_socket.bind(self.request_con_id)
-            self.log.info("request_socket started (bind) for '{0}'"
-                          .format(self.request_con_id))
-        except:
-            self.log.error("Failed to start request_socket (bind): '{0}'"
-                           .format(self.request_con_id), exc_info=True)
-            raise
+        if self.whitelist != []:
+            # create zmq socket for signal communication with receiver
+            try:
+                self.com_socket = self.context.socket(zmq.REP)
+                self.com_socket.bind(self.com_con_id)
+                self.log.info("Start com_socket (bind): '{0}'"
+                              .format(self.com_con_id))
+            except:
+                self.log.error("Failed to start com_socket (bind): '{0}'"
+                               .format(self.com_con_id), exc_info=True)
+                raise
+
+            # create socket to receive requests
+            try:
+                self.request_socket = self.context.socket(zmq.PULL)
+                self.request_socket.bind(self.request_con_id)
+                self.log.info("request_socket started (bind) for '{0}'"
+                              .format(self.request_con_id))
+            except:
+                self.log.error("Failed to start request_socket (bind): '{0}'"
+                               .format(self.request_con_id), exc_info=True)
+                raise
+        else:
+            self.com_socket = None
+            self.log.info("Socket com_socket and request_socket not started "
+                          "since there is no host allowed to connect")
 
         # Poller to distinguish between start/stop signals and queries for the
         # next set of signals
         self.poller = zmq.Poller()
         self.poller.register(self.control_sub_socket, zmq.POLLIN)
-        self.poller.register(self.com_socket, zmq.POLLIN)
         self.poller.register(self.request_fw_socket, zmq.POLLIN)
-        self.poller.register(self.request_socket, zmq.POLLIN)
+        if self.whitelist != []:
+            self.poller.register(self.com_socket, zmq.POLLIN)
+            self.poller.register(self.request_socket, zmq.POLLIN)
 
     def run(self):
         """
