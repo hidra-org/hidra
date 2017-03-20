@@ -9,10 +9,10 @@ import zmq
 from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
 from zmq.utils.strtypes import asbytes
 
-from logutils.queue import QueueHandler
-
 from __init__ import BASE_PATH
 import helpers
+
+from logutils.queue import QueueHandler
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -129,10 +129,10 @@ class EventDetector():
 
         self.log.debug("waiting for new event")
         # the messages received are of the form ['in', '<metadata dict>', <data>]
-        metadata = self.mon_socket.recv_multipart()[1]
+        metadata = self.mon_socket.recv_multipart()[1].decode("utf-8")
         # the metadata were received as string and have to be converted into
         # a dictionary
-        metadata = json.loads(metadata).encode("utf-8")
+        metadata = json.loads(metadata)
         self.log.debug("Monitoring Client: {0}".format(metadata))
 
         # TODO receive more than this one metadata unit
@@ -202,17 +202,17 @@ if __name__ == '__main__':
         "ext_data_port": "5559"
     }
 
-    eventdetector = EventDetector(config, log_queue)
-
-    source_file = os.path.join(BASE_PATH, "test_file.cbf")
-    target_file_base = os.path.join(
-        BASE_PATH, "data", "source", "local", "raw") + os.sep
-
     if not os.path.exists(ipc_path):
         os.mkdir(ipc_path)
         os.chmod(ipc_path, 0o777)
         logging.info("Creating directory for IPC communication: {0}"
                      .format(ipc_path))
+
+    eventdetector = EventDetector(config, log_queue)
+
+    source_file = os.path.join(BASE_PATH, "test_file.cbf")
+    target_file_base = os.path.join(
+        BASE_PATH, "data", "source", "local", "raw") + os.sep
 
     in_con_str = "tcp://{0}:{1}".format(config["ext_ip"], config["ext_data_port"])
     out_con_str = "ipc://{0}/{1}_{2}".format(ipc_path, current_pid, "out")
@@ -238,7 +238,8 @@ if __name__ == '__main__':
                 "filepart": 0,
                 "chunksize": 10
             }
-            data_in_socket.send_multipart ([json.dumps(message).encode("utf-8")])
+            data_in_socket.send_multipart([json.dumps(message).encode("utf-8"),
+                                           b"incoming_data"])
 
             i += 1
             event_list = eventdetector.get_new_event()
