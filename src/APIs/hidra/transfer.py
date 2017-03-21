@@ -896,16 +896,26 @@ class Transfer():
             return None
 
         filename = config_dict["filename"]
+
         # TODO This is due to Windows path names, check if there has do be
         # done anything additionally to work
         # e.g. check source_path if it's a windows path
-        relative_path = config_dict["relative_path"].replace('\\', os.sep)
+        config_dict["relative_path"] = (
+            config_dict["relative_path"].replace('\\', os.sep))
 
-        if relative_path is '' or relative_path is None:
+        # if the relative path starts with a slash path.join will consider it
+        # as absolute path
+        if config_dict["relative_path"].startswith("/"):
+            config_dict["relative_path"] = config_dict["relative_path"][1:]
+
+
+
+        if (config_dict["relative_path"] is ''
+                or config_dict["relative_path"] is None):
             target_path = base_path
         else:
-            target_path = os.path.normpath(os.path.join(base_path,
-                                                        relative_path))
+            target_path = (os.path.normpath(
+                os.path.join(base_path, config_dict["relative_path"])))
 
         filepath = os.path.join(target_path, filename)
 
@@ -916,17 +926,19 @@ class Transfer():
         generates path where target file will saved to.
 
         """
+
         # TODO This is due to Windows path names, check if there has do be
         # done anything additionally to work
         # e.g. check source_path if it's a windows path
-        relative_path = config_dict["relative_path"].replace('\\', os.sep)
+        config_dict["relative_path"] = (
+            config_dict["relative_path"].replace('\\', os.sep))
 
         # if the relative path starts with a slash path.join will consider it
         # as absolute path
-        if relative_path.startswith("/"):
-            relative_path = relative_path[1:]
+        if config_dict["relative_path"].startswith("/"):
+            config_dict["relative_path"] = config_dict["relative_path"][1:]
 
-        target_path = os.path.join(base_path, relative_path)
+        target_path = os.path.join(base_path, config_dict["relative_path"])
 
         return target_path
 
