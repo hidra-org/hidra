@@ -37,11 +37,13 @@ def argument_parsing():
     supported_ed_types = ["inotifyx_events",
                           "watchdog_events",
                           "zmq_events",
-                          "http_events"]
+                          "http_events",
+                          "hidra_events"]
 
     supported_df_types = ["file_fetcher",
                           "zmq_fetcher",
-                          "http_fetcher"]
+                          "http_fetcher",
+                          "hidra_fetcher"]
 
     ##################################
     #   Get command line arguments   #
@@ -440,6 +442,7 @@ class DataManager():
             self.log.info("Configured local_target: {0}"
                           .format(self.local_target))
         except KeyError:
+            self.params["local_target"] = None
             self.local_target = None
 
         self.signalhandler_pr = None

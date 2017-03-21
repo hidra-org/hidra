@@ -22,6 +22,7 @@ except ImportError:
 try:
     # try to use the system module
     from logutils.queue import QueueListener
+    from logutils.queue import QueueHandler
 except:
     # there is no module logutils installed, fallback on the one in shared
     from shared import SHARED_PATH
@@ -29,6 +30,7 @@ except:
         sys.path.append(SHARED_PATH)
 
     from logutils.queue import QueueListener
+    from logutils.queue import QueueHandler
 
 
 def is_windows():
@@ -521,6 +523,17 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
 
     else:
         return h1
+
+
+def get_logger(logger_name, queue, log_level=logging.DEBUG):
+    # Create log and set handler to queue handle
+    h = QueueHandler(queue)  # Just the one handler needed
+    logger = logging.getLogger(logger_name)
+    logger.propagate = False
+    logger.addHandler(h)
+    logger.setLevel(log_level)
+
+    return logger
 
 
 def init_logging(filename_full_path, verbose, onscreen_log_level=False):

@@ -9,6 +9,7 @@ import requests
 import collections
 import socket
 
+from __init__ import BASE_PATH
 import helpers
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
@@ -141,8 +142,6 @@ class EventDetector():
 if __name__ == '__main__':
     from multiprocessing import Queue
 
-    from eventdetectors import BASE_PATH
-
     logfile = os.path.join(BASE_PATH, "logs", "http_events.log")
     logsize = 10485760
 
@@ -167,7 +166,7 @@ if __name__ == '__main__':
 #    filewriterDevice = "haspp10lab:10000/p10/eigerfilewriter/lab.01"
 #    filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
 #    det_ip          = "192.168.138.52"  # haspp11e1m
-    det_ip = "131.169.55.170"  # lsdma-lab04
+    det_ip = "asap3-mon"
     det_api_version = "1.5.0"
     config = {
         "det_ip": det_ip,

@@ -50,7 +50,14 @@ class DataDispatcher():
         self.log.info("Configuration for data fetcher: {0}"
                       .format(self.config))
 
-        datafetcher = self.config["data_fetcher_type"]
+        datafetcher_module = self.config["data_fetcher_type"]
+
+        self.log.info("Loading data fetcher: {0}".format(datafetcher_module))
+        self.datafetcher_module = __import__(datafetcher_module)
+
+        self.datafetcher = self.datafetcher_module.DataFetcher(self.config,
+                                                               log_queue,
+                                                               self.id)
 
         # dict with information of all open sockets to which a data stream is
         # opened (host, port,...)
@@ -66,12 +73,9 @@ class DataDispatcher():
                     and not self.config["context"]):
                 self.config["context"] = self.context
 
-        self.log.info("Loading data fetcher: {0}".format(datafetcher))
-        self.datafetcher = __import__(datafetcher)
-
         self.continue_run = True
 
-        if (self.datafetcher.setup(self.log, config)):
+        if (self.datafetcher.setup()):
             try:
                 self.__create_sockets()
 
@@ -255,11 +259,7 @@ class DataDispatcher():
                 try:
                     self.log.debug("Getting file paths and metadata")
                     # additional information is stored in the metadata dict
-                    source_file, target_file = (
-                        self.datafetcher.get_metadata(
-                            self.log, targets, metadata, self.chunksize,
-                            self.local_target)
-                    )
+                    self.datafetcher.get_metadata(targets, metadata)
 
                 except:
                     self.log.error("Building of metadata dictionary failed "
@@ -271,23 +271,17 @@ class DataDispatcher():
 
                 # send data
                 try:
-                    self.datafetcher.send_data(self.log, targets, source_file,
-                                               target_file, metadata,
+                    self.datafetcher.send_data(targets, metadata,
                                                self.open_connections,
-                                               self.context,
-                                               self.config)
+                                               self.context)
                 except:
                     self.log.error("DataDispatcher-{0}: Passing new file to "
                                    "data stream...failed".format(self.id),
                                    exc_info=True)
 
                 # finish data handling
-                self.datafetcher.finish_datahandling(self.log, targets,
-                                                     source_file, target_file,
-                                                     metadata,
-                                                     self.open_connections,
-                                                     self.context,
-                                                     self.config)
+                self.datafetcher.finish(targets, metadata,
+                                        self.open_connections, self.context)
 
             ######################################
             #         control commands           #
@@ -413,7 +407,7 @@ class DataDispatcher():
             self.router_socket.close(0)
             self.router_socket = None
 
-        self.datafetcher.clean(self.config)
+        self.datafetcher.clean()
 
         if not self.ext_context and self.context is not None:
             self.log.info("Destroying context")

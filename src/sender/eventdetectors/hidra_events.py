@@ -12,8 +12,6 @@ from zmq.utils.strtypes import asbytes
 from __init__ import BASE_PATH
 import helpers
 
-from logutils.queue import QueueHandler
-
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
@@ -29,28 +27,12 @@ class EventDetector():
                                "event_det_port",
                                "ext_data_port"
                                "data_fetch_port"]
-
-            self.in_con_str = "tcp://{0}:{1}".format(config["ext_ip"],
-                                                     config["ext_data_port"])
-            self.out_con_str = "tcp://{0}:{1}".format(config["ext_ip"],
-                                                      config["data_fetch_port"])
-            self.mon_con_str = "tcp://{0}:{1}".format(config["ext_ip"],
-                                                      config["event_det_port"])
         else:
             required_params = ["context",
                                "ext_ip",
                                "ipc_path",
                                "main_pid",
                                "ext_data_port"]
-
-            self.in_con_str = "tcp://{0}:{1}".format(config["ext_ip"],
-                                                     config["ext_data_port"])
-            self.out_con_str = "ipc://{0}/{1}_{2}".format(config["ipc_path"],
-                                                          config["main_pid"],
-                                                          "out")
-            self.mon_con_str = "ipc://{0}/{1}_{2}".format(config["ipc_path"],
-                                                          config["main_pid"],
-                                                          "mon")
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -61,14 +43,38 @@ class EventDetector():
         if check_passed:
             self.log.info("Configuration for event detector: {0}"
                           .format(config_reduced))
+
+            if helpers.is_windows():
+                self.in_con_str = ("tcp://{0}:{1}"
+                                   .format(config["ext_ip"],
+                                           config["ext_data_port"]))
+                self.out_con_str = ("tcp://{0}:{1}"
+                                    .format(config["ext_ip"],
+                                            config["data_fetch_port"]))
+                self.mon_con_str = ("tcp://{0}:{1}"
+                                    .format(config["ext_ip"],
+                                            config["event_det_port"]))
+            else:
+                self.in_con_str = ("tcp://{0}:{1}"
+                                   .format(config["ext_ip"],
+                                           config["ext_data_port"]))
+                self.out_con_str = ("ipc://{0}/{1}_{2}"
+                                    .format(config["ipc_path"],
+                                            config["main_pid"],
+                                            "out"))
+                self.mon_con_str = ("ipc://{0}/{1}_{2}"
+                                    .format(config["ipc_path"],
+                                            config["main_pid"],
+                                            "mon"))
+
         else:
             self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
 
-        # Set up monitored queue to get notification when new data is sent to the
-        # zmq queue
-        in_prefix=asbytes('in')
-        out_prefix=asbytes('out')
+        # Set up monitored queue to get notification when new data is sent to
+        # the zmq queue
+        in_prefix = asbytes('in')
+        out_prefix = asbytes('out')
                                                 #   in       out      mon
         monitoringdevice = ThreadMonitoredQueue(zmq.PULL, zmq.PUSH, zmq.PUB,
                                                 in_prefix, out_prefix)
@@ -124,12 +130,14 @@ class EventDetector():
                            .format(self.mon_con_str), exc_info=True)
             raise
 
-
     def get_new_event(self):
 
         self.log.debug("waiting for new event")
-        # the messages received are of the form ['in', '<metadata dict>', <data>]
-        metadata = self.mon_socket.recv_multipart()[1].decode("utf-8")
+        message = self.mon_socket.recv_multipart()
+        self.log.debug("Received message: {0}".format(message))
+        # the messages received are of the form
+        # ['in', '<metadata dict>', <data>]
+        metadata = message[1].decode("utf-8")
         # the metadata were received as string and have to be converted into
         # a dictionary
         metadata = json.loads(metadata)
@@ -167,8 +175,8 @@ class EventDetector():
 
 
 if __name__ == '__main__':
-    import time
-    from multiprocessing import Queue, Process
+    from multiprocessing import Queue
+    from logutils.queue import QueueHandler
 
     logfile = os.path.join(BASE_PATH, "logs", "hidra_events.log")
     logsize = 10485760
@@ -196,10 +204,11 @@ if __name__ == '__main__':
 
     config = {
         "context": context,
-        "ext_ip": "127.0.0.1",
+        "ext_ip": "131.169.185.121",
         "ipc_path": ipc_path,
-        "main_pid": current_pid,
-        "ext_data_port": "5559"
+        "main_pid": 12345,
+        #"main_pid": current_pid,
+        "ext_data_port": "50100"
     }
 
     if not os.path.exists(ipc_path):
@@ -212,9 +221,10 @@ if __name__ == '__main__':
 
     source_file = os.path.join(BASE_PATH, "test_file.cbf")
     target_file_base = os.path.join(
-        BASE_PATH, "data", "source", "local", "raw") + os.sep
+        BASE_PATH, "data", "source", "local") + os.sep
 
-    in_con_str = "tcp://{0}:{1}".format(config["ext_ip"], config["ext_data_port"])
+    in_con_str = "tcp://{0}:{1}".format(config["ext_ip"],
+                                        config["ext_data_port"])
     out_con_str = "ipc://{0}/{1}_{2}".format(ipc_path, current_pid, "out")
 
     # create zmq socket to send events
@@ -238,16 +248,16 @@ if __name__ == '__main__':
                 "filepart": 0,
                 "chunksize": 10
             }
-            data_in_socket.send_multipart([json.dumps(message).encode("utf-8"),
-                                           b"incoming_data"])
+#            data_in_socket.send_multipart(
+#                [json.dumps(message).encode("utf-8"), b"incoming_data"])
 
             i += 1
             event_list = eventdetector.get_new_event()
             if event_list:
                 logging.debug("event_list: {0}".format(event_list))
 
-            message = data_out_socket.recv_multipart()
-            logging.debug("Received - {0}".format(message))
+#            message = data_out_socket.recv_multipart()
+#            logging.debug("Received - {0}".format(message))
     except KeyboardInterrupt:
         pass
     finally:
