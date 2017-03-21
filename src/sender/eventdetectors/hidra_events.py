@@ -38,19 +38,20 @@ class MonitorDevice():
     def run (self):
         while True:
             msg = self.in_socket.recv_multipart()
-#            print ("[MonitoringDevice] In: Received message {0}".format(msg))
+#            print ("[MonitoringDevice] In: Received message {0}".format(msg[:20]))
 
-            mon_msg = [self.in_prefix] + msg
-#            print ("[MonitoringDevice] Mon: Sending {0}".format(mon_msg))
-            self.mon_socket.send_multipart(mon_msg)
-#            print ("[MonitoringDevice] Mon: Sent message {0}".format(mon_msg))
+            if msg != [b'ALIVE_TEST']:
 
-            self.out_socket.send_multipart(msg)
-#            print ("[MonitoringDevice] Out: Sent message {0}".format(msg))
+                mon_msg = [self.in_prefix] + msg
+                self.mon_socket.send_multipart(mon_msg)
+    #            print ("[MonitoringDevice] Mon: Sent message")
 
-            mon_msg = [self.out_prefix] + msg
-            self.mon_socket.send_multipart(mon_msg)
-#            print ("[MonitoringDevice] Mon: Sent message {0}".format(mon_msg))
+                self.out_socket.send_multipart(msg)
+    #            print ("[MonitoringDevice] Out: Sent message {0}".format(msg[:20]))
+
+                mon_msg = [self.out_prefix] + msg
+                self.mon_socket.send_multipart(mon_msg)
+    #            print ("[MonitoringDevice] Mon: Sent message")
 
 
 class EventDetector():
@@ -164,7 +165,6 @@ class EventDetector():
 
         self.log.debug("waiting for new event")
         message = self.mon_socket.recv_multipart()
-        self.log.debug("Received message: {0}".format(message))
         # the messages received are of the form
         # ['in', '<metadata dict>', <data>]
         metadata = message[1].decode("utf-8")
