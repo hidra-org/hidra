@@ -60,11 +60,11 @@ class DataFetcher():
             self.log.info("Configuration for data fetcher: {0}"
                           .format(config_reduced))
 
+            con_str = "ipc://{0}/{1}_{2}".format(self.config["ipc_path"],
+                                                 self.config["main_pid"],
+                                                 "out")
             # Create zmq socket to get events
             try:
-                con_str = "ipc://{0}/{1}_{2}".format(config["ipc_path"],
-                                                     config["main_pid"],
-                                                     "out")
                 self.config["data_fetch_socket"] = context.socket(zmq.PULL)
 #                self.config["data_fetch_socket"] = (
 #                    self.config["context"].socket(zmq.PULL))
@@ -124,15 +124,12 @@ class DataFetcher():
 
         # Build source file
         if metadata["relative_path"].startswith("/"):
-            self.source_file = (os.path.normpath(
-                os.path.join(metadata["source_path"],
-                             metadata["relative_path"][1:],
-                             metadata["filename"])))
-        else:
-            self.source_file = (os.path.normpath(
-                os.path.join(metadata["source_path"],
-                             metadata["relative_path"],
-                             metadata["filename"])))
+            metadata["relative_path"] = metadata["relative_path"][1:]
+
+        self.source_file = (os.path.normpath(
+            os.path.join(metadata["source_path"],
+                         metadata["relative_path"],
+                         metadata["filename"])))
 
         # Build target file
         if self.config["local_target"]:
@@ -160,7 +157,7 @@ class DataFetcher():
             if "chunksize" not in metadata:
                 self.log.error("Received metadata do not contain 'chunksize'. "
                                "Setting it to locally configured one")
-                metadata["chunksize"] = config["chunksize"]
+                metadata["chunksize"] = self.config["chunksize"]
 
     def send_data(self, targets, metadata, open_connections, context):
         """Reads data into buffer and sends it to all targets
@@ -347,10 +344,10 @@ if __name__ == '__main__':
                                             "out")
 
     # create zmq socket to send events
-    data_fw_socket = context.socket(zmq.PUSH)
-    data_fw_socket.bind(fw_con_str)
-    logging.info("Start data_fw_socket (bind): '{0}'"
-                 .format(fw_con_str))
+#    data_fw_socket = context.socket(zmq.PUSH)
+#    data_fw_socket.bind(fw_con_str)
+#    logging.info("Start data_fw_socket (bind): '{0}'"
+#                 .format(fw_con_str))
 
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
 
@@ -379,10 +376,10 @@ if __name__ == '__main__':
     datafetcher.setup()
 
     # simulatate data input sent by an other HiDRA instance
-    with open(prework_source_file, 'rb') as file_descriptor:
-        file_content = file_descriptor.read(chunksize)
-    data_fw_socket.send_multipart([json.dumps(metadata), file_content])
-    logging.debug("Incoming data sent")
+#    with open(prework_source_file, 'rb') as file_descriptor:
+#        file_content = file_descriptor.read(chunksize)
+#    data_fw_socket.send_multipart([json.dumps(metadata), file_content])
+#    logging.debug("Incoming data sent")
 
     datafetcher.get_metadata(targets, metadata)
 
@@ -406,5 +403,5 @@ if __name__ == '__main__':
     finally:
         receiving_socket.close(0)
         receiving_socket2.close(0)
-        data_fw_socket.close(0)
+#        data_fw_socket.close(0)
         context.destroy()

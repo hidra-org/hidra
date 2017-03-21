@@ -8,6 +8,7 @@ import tempfile
 import zmq
 from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
 from zmq.utils.strtypes import asbytes
+import multiprocessing
 
 from __init__ import BASE_PATH
 import helpers
@@ -15,11 +16,48 @@ import helpers
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
+class MonitorDevice():
+    def __init__ (self, in_con_str, out_con_str, mon_con_str):
+
+        self.in_prefix = asbytes('in')
+        self.out_prefix = asbytes('out')
+
+        self.context = zmq.Context()
+
+        self.in_socket = self.context.socket(zmq.PULL)
+        self.in_socket.bind(in_con_str)
+
+        self.out_socket = self.context.socket(zmq.PUSH)
+        self.out_socket.bind(out_con_str)
+
+        self.mon_socket = self.context.socket(zmq.PUSH)
+        self.mon_socket.bind(mon_con_str)
+
+        self.run()
+
+    def run (self):
+        while True:
+            msg = self.in_socket.recv_multipart()
+#            print ("[MonitoringDevice] In: Received message {0}".format(msg))
+
+            mon_msg = [self.in_prefix] + msg
+#            print ("[MonitoringDevice] Mon: Sending {0}".format(mon_msg))
+            self.mon_socket.send_multipart(mon_msg)
+#            print ("[MonitoringDevice] Mon: Sent message {0}".format(mon_msg))
+
+            self.out_socket.send_multipart(msg)
+#            print ("[MonitoringDevice] Out: Sent message {0}".format(msg))
+
+            mon_msg = [self.out_prefix] + msg
+            self.mon_socket.send_multipart(mon_msg)
+#            print ("[MonitoringDevice] Mon: Sent message {0}".format(mon_msg))
+
+
 class EventDetector():
 
     def __init__(self, config, log_queue):
 
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("hidra_events", log_queue)
 
         if helpers.is_windows():
             required_params = ["context",
@@ -73,8 +111,13 @@ class EventDetector():
 
         # Set up monitored queue to get notification when new data is sent to
         # the zmq queue
+
+        monitoringdevice = multiprocessing.Process(target=MonitorDevice, args=(self.in_con_str, self.out_con_str, self.mon_con_str))
+
+        """ original monitored queue from pyzmq is not working
         in_prefix = asbytes('in')
         out_prefix = asbytes('out')
+
                                                 #   in       out      mon
         monitoringdevice = ThreadMonitoredQueue(zmq.PULL, zmq.PUSH, zmq.PUB,
                                                 in_prefix, out_prefix)
@@ -82,16 +125,17 @@ class EventDetector():
         monitoringdevice.bind_in(self.in_con_str)
         monitoringdevice.bind_out(self.out_con_str)
         monitoringdevice.bind_mon(self.mon_con_str)
+        """
 
         monitoringdevice.start()
-        self.log.info("Monitoring device has started with\n"
+        self.log.info("Monitoring device has started with (bind)\n"
                       "in: {0}\nout: {1}\nmon: {2}"
                       .format(self.in_con_str,
                               self.out_con_str,
                               self.mon_con_str))
 
         # set up monitoring socket where the events are sent to
-        if config["context"]:
+        if config["context"] is not None:
             self.context = config["context"]
             self.ext_context = True
         else:
@@ -101,27 +145,13 @@ class EventDetector():
 
         self.create_sockets()
 
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("hidra_events")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
-
     def create_sockets(self):
 
         # Create zmq socket to get events
         try:
-            self.mon_socket = self.context.socket(zmq.SUB)
+            self.mon_socket = self.context.socket(zmq.PULL)
             self.mon_socket.connect(self.mon_con_str)
-            self.mon_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+#            self.mon_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
             self.log.info("Start monitoring socket (connect): '{0}'"
                           .format(self.mon_con_str))
