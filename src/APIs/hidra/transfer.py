@@ -13,6 +13,7 @@ import errno
 import os
 import traceback
 import tempfile
+import time
 from zmq.auth.thread import ThreadAuthenticator
 
 from ._version import __version__
@@ -329,6 +330,8 @@ class Transfer():
         # Receive data only from whitelisted nodes
         if whitelist:
             if type(whitelist) == list:
+                self.whitelist = whitelist
+
                 self.auth = ThreadAuthenticator(self.context)
                 self.auth.start()
                 for host in whitelist:
@@ -406,7 +409,7 @@ class Transfer():
                 self.log.info("IPv4 address detected: {0}.".format(ip))
                 socket_id_to_bind = "{0}:{1}".format(ip, port)
                 file_op_con_str = "tcp://{0}:{1}".format(ip, self.file_op_port)
-                is_ipv6 = False
+                self.is_ipv6 = False
             except socket.error:
                 self.log.info("Address '{0}' is not a IPv4 address, "
                               "asume it is an IPv6 address.".format(ip))
@@ -415,7 +418,7 @@ class Transfer():
 #                file_op_con_str= "tcp://0.0.0.0:{0}".format(self.file_op_port)
                 file_op_con_str = ("tcp://[{0}]:{1}"
                                    .format(ip, self.file_op_port))
-                is_ipv6 = True
+                self.is_ipv6 = True
 
             self.log.debug("socket_id_to_bind={0}".format(socket_id_to_bind))
             self.log.debug("file_op_con_str={0}".format(file_op_con_str))
@@ -425,24 +428,22 @@ class Transfer():
         self.data_socket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving
         # mechanism
-        connection_str = "tcp://{0}".format(socket_id_to_bind)
+        self.data_socket_con_str = "tcp://{0}".format(socket_id_to_bind)
 
         if whitelist:
             self.data_socket.zap_domain = b'global'
 
-        if is_ipv6:
+        if self.is_ipv6:
             self.data_socket.ipv6 = True
             self.log.debug("Enabling IPv6 socket")
 
         try:
-            self.data_socket.bind(connection_str)
-#            self.data_socket.bind(
-#                "tcp://[2003:ce:5bc0:a600:fa16:54ff:fef4:9fc0]:50102")
+            self.data_socket.bind(self.data_socket_con_str)
             self.log.info("Data socket of type {0} started (bind) for '{1}'"
-                          .format(self.connection_type, connection_str))
+                          .format(self.connection_type, self.data_socket_con_str))
         except:
             self.log.error("Failed to start Socket of type {0} (bind): '{1}'"
-                           .format(self.connection_type, connection_str),
+                           .format(self.connection_type, self.data_socket_con_str),
                            exc_info=True)
             raise
 
@@ -474,7 +475,7 @@ class Transfer():
             # nexus files
             self.file_op_socket = self.context.socket(zmq.REP)
 
-            if is_ipv6:
+            if self.is_ipv6:
                 self.file_op_socket.ipv6 = True
                 self.log.debug("Enabling IPv6 socket for file_op_socket")
 
@@ -511,6 +512,59 @@ class Transfer():
             self.nexus_started = socket_id
         else:
             self.stream_started = socket_id
+
+    def register(self, whitelist):
+
+        # to add hosts to the whitelist the authentcation thread has to be
+        # stopped and the socket closed
+        self.log.debug("Shutting down auth thread and data_socket")
+        self.auth.stop()
+        self.poller.unregister(self.data_socket)
+        self.data_socket.close()
+
+        self.log.debug("Starting down auth thread")
+        self.auth = ThreadAuthenticator(self.context)
+        self.auth.start()
+
+        for host in whitelist:
+            try:
+                # convert DNS names to IPs
+                if host == "localhost":
+                    ip = [socket.gethostbyname(host)]
+                else:
+                    # returns (hostname, aliaslist, ipaddrlist)
+                    ip = socket.gethostbyaddr(host)[2]
+
+                self.log.debug("Allowing host {0} ({1})".format(host, ip[0]))
+                self.auth.allow(ip[0])
+            except socket.gaierror:
+                self.log.error("Could not get IP of host {0}. Proceed."
+                               .format(host))
+            except:
+                self.log.error("Error was: ", exc_info=True)
+                raise AuthenticationFailed(
+                    "Could not get IP of host {0}".format(host))
+
+        # Recreate the socket (not with the new whitelist enables)
+        self.log.debug("Starting down data_socket")
+        self.data_socket = self.context.socket(zmq.PULL)
+        self.data_socket.zap_domain = b'global'
+
+        if self.is_ipv6:
+            self.data_socket.ipv6 = True
+            self.log.debug("Enabling IPv6 socket")
+
+        try:
+            self.data_socket.bind(self.data_socket_con_str)
+            self.log.info("Data socket of type {0} started (bind) for '{1}'"
+                          .format(self.connection_type, self.data_socket_con_str))
+        except:
+            self.log.error("Failed to start Socket of type {0} (bind): '{1}'"
+                           .format(self.connection_type, self.data_socket_con_str),
+                           exc_info=True)
+            raise
+
+        self.poller.register(self.data_socket, zmq.POLLIN)
 
     def read(self, callback_params, open_callback, read_callback,
              close_callback):
@@ -714,6 +768,8 @@ class Transfer():
                                exc_info=True)
                 return None, None
 
+        timestamp = time.time()
+
         while True:
             # receive data
             if timeout:
@@ -744,7 +800,14 @@ class Transfer():
                     return [None, None]
 
                 if multipart_message[0] == b"ALIVE_TEST":
-                    continue
+                    if timeout:
+                        # measure how much time is left from the timeout value
+                        # timeout is in ms, timestamp in s
+                        timeout -= (time.time() - timestamp) * 1000
+                    if timeout < 0:
+                        return [None, None]
+                    else:
+                        continue
                 elif len(multipart_message) < 2:
                     self.log.error("Received mutipart-message is too short. "
                                    "Either config or file content is missing.")
@@ -784,23 +847,22 @@ class Transfer():
 
                 return [None, None]
 
-    def store(self, target_base_path):
+    def store(self, target_base_path, timeout=None):
 
         runLoop = True
         # save all chunks to file
         while runLoop:
 
-            self.log.debug("file_descriptors={0}"
-                           .format(self.file_descriptors))
             try:
-                [payload_metadata, payload] = self.get()
+                # timeout (in ms) to be able to react on system signals
+                [payload_metadata, payload] = self.get(timeout)
             except KeyboardInterrupt:
                 raise
             except:
                 self.log.error("Getting data failed.", exc_info=True)
                 raise
 
-            if payload_metadata and payload:
+            if payload_metadata is not None and payload is not None:
 
                 # generate target filepath
                 target_filepath = self.generate_target_filepath(
@@ -886,6 +948,9 @@ class Transfer():
                         self.log.error("File could not be closed: {0}"
                                        .format(filename), exc_info=True)
                     break
+            else:
+#                self.log.debug("No data received. Break loop")
+                break
 
     def generate_target_filepath(self, base_path, config_dict):
         """

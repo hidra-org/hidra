@@ -460,6 +460,8 @@ class DataManager():
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
 
+        self.zmq_again_occured = 0
+
         try:
             if self.test_fixed_streaming_host(enable_logging=True):
                 self.create_sockets()
@@ -553,8 +555,36 @@ class DataManager():
                                       .format(self.fixed_stream_id))
 
                 else:
-                    tracker = self.test_socket.send_multipart(
-                        [b"ALIVE_TEST"], copy=False, track=True)
+                    # after unsuccessfully sending test messages try to
+                    # reestablish the connection
+                    if self.zmq_again_occured >= 600:
+                        self.test_socket.close()
+                        try:
+                            self.test_socket = self.context.socket(zmq.PUSH)
+                            con_str = "tcp://{0}".format(self.fixed_stream_id)
+
+                            self.test_socket.connect(con_str)
+                            self.log.info("Restart test_socket (connect): "
+                                          "'{0}'".format(con_str))
+                        except:
+                            self.log.error("Failed to restart test_socket "
+                                           "(connect): '{0}'".format(con_str),
+                                           exc_info=True)
+
+                        self.zmq_again_occured = 0
+
+                    try:
+                        tracker = self.test_socket.send_multipart(
+                            [b"ALIVE_TEST"], zmq.NOBLOCK, copy=False, track=True)
+                    except zmq.Again:
+                        _, exc_value, _ = sys.exc_info()
+                        if self.zmq_again_occured == 0:
+                            self.log.error("Failed to send test message to fixed "
+                                           "streaming host {0}"
+                                           .format(self.fixed_stream_id))
+                            self.log.debug("Error was: zmq.Again: {0}".format(exc_value))
+                        self.zmq_again_occured += 1
+                        return False
                     if not tracker.done:
                         tracker.wait(2)
 #                    self.log.debug("tracker.done = {0}".format(tracker.done))
@@ -568,6 +598,9 @@ class DataManager():
                         self.log.info("Sending test message to fixed "
                                       "streaming host {0} ... success"
                                       .format(self.fixed_stream_id))
+                        self.zmq_again_occured = 0
+            except KeyboardInterrupt:
+                raise
             except:
                 self.log.error("Failed to send test message to fixed "
                                "streaming host {0}"
@@ -644,9 +677,10 @@ class DataManager():
                 # Due to an unforseeable event there is no active receiver on
                 # the other side. Thus the processes should enter a waiting
                 # mode and no data should be send.
-                self.log.warning("Sending 'SLEEP' signal")
-                self.control_pub_socket.send_multipart([b"control", b"SLEEP"])
-                sleep_was_sent = True
+                if not sleep_was_sent:
+                    self.log.warning("Sending 'SLEEP' signal")
+                    self.control_pub_socket.send_multipart([b"control", b"SLEEP"])
+                    sleep_was_sent = True
 
             time.sleep(1)
 

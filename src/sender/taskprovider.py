@@ -239,13 +239,14 @@ class TaskProvider():
                         del message[0]
 
                         if message[0] == b"SLEEP":
+                            self.log.debug("Received sleep signal")
                             continue
                         elif message[0] == b"WAKEUP":
                             self.log.debug("Received wakeup signal")
                             # Wake up from sleeping
                             break
                         elif message[0] == b"EXIT":
-                            self.react_to_close_sockets_signal()
+                            self.log.debug("Received exit signal")
                             break_outer_loop = True
                             break
                         else:

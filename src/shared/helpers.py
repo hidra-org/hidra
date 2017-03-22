@@ -32,6 +32,9 @@ except:
     from logutils.queue import QueueListener
     from logutils.queue import QueueHandler
 
+DOMAIN = ".desy.de"
+LDAPURI = "it-ldap-slave.desy.de:1389"
+
 
 def is_windows():
     if platform.system() == "Windows":
@@ -112,13 +115,15 @@ def set_parameters(config_file, arguments):
 
 
 def excecute_ldapsearch(ldap_cn):
+    global LDAPURI
 
     p = subprocess.Popen(
         ["ldapsearch",
          "-x",
-         "-H ldap://it-ldap-slave.desy.de:1389",
+         "-H ldap://" + LDAPURI,
          "cn=" + ldap_cn, "-LLL"],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
     lines = p.stdout.readlines()
 
     match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
@@ -285,6 +290,7 @@ def check_version(version, log):
 
 
 def check_host(host, whitelist, log):
+    global DOMAIN
 
     if whitelist is None:
         return True
@@ -294,7 +300,7 @@ def check_host(host, whitelist, log):
         if type(host) == list:
             return_val = True
             for hostname in host:
-                host_modified = hostname.replace(".desy.de", "")
+                host_modified = hostname.replace(DOMAIN, "")
 
                 if (hostname not in whitelist
                         and host_modified not in whitelist):
@@ -305,7 +311,7 @@ def check_host(host, whitelist, log):
             return return_val
 
         else:
-            host_modified = host.replace(".desy.de", "")
+            host_modified = host.replace(DOMAIN, "")
 
             if host in whitelist or host_modified in whitelist:
                 return True
@@ -329,6 +335,8 @@ def check_ping(host, log=logging):
 
 # IP and DNS name should be both in the whitelist
 def extend_whitelist(whitelist, log):
+    global DOMAIN
+
     log.info("Configured whitelist: {0}".format(whitelist))
     extended_whitelist = []
 
@@ -341,7 +349,7 @@ def extend_whitelist(whitelist, log):
                 try:
                     hostname, tmp, ip = socket.gethostbyaddr(host)
 
-                    host_modified = hostname.replace(".desy.de", "")
+                    host_modified = hostname.replace(DOMAIN, "")
 
                     if host_modified not in whitelist:
                         extended_whitelist.append(host_modified)
