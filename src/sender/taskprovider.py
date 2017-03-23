@@ -36,10 +36,6 @@ class TaskProvider():
 
         self.config = config
 
-        eventdetector_module = self.config["event_detector_type"]
-        self.log.info("Configured type of event detector: {0}"
-                      .format(eventdetector_module))
-
         self.control_con_id = control_con_id
         self.request_fw_con_id = request_fw_con_id
         self.router_con_id = router_con_id
@@ -60,11 +56,11 @@ class TaskProvider():
             self.ext_context = False
 
         self.log.info("Loading event detector: {0}"
-                      .format(eventdetector_module))
-        self.eventdetector_module = __import__(eventdetector_module)
+                      .format(self.config["event_detector_type"]))
+        self.eventdetector_m = __import__(self.config["event_detector_type"])
 
-        self.eventdetector = self.eventdetector_module.EventDetector(
-            self.config, log_queue)
+        self.eventdetector = self.eventdetector_m.EventDetector(self.config,
+                                                                log_queue)
 
         self.continue_run = True
 

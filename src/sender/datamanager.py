@@ -238,34 +238,49 @@ def argument_parsing():
     #     Check given arguments      #
     ##################################
 
+    required_params = ["log_path",
+                       "log_name",
+                       "procname",
+                       "ext_ip",
+                       "event_detector_type",
+                       "data_fetcher_type",
+                       "store_data",
+                       "use_data_stream",
+                       "chunksize"]
+
+    # Check format of config
+    check_passed, config_reduced = helpers.check_config(required_params,
+                                                        params,
+                                                        logging)
+
+    if not check_passed:
+        logging.error("Wrong configuration")
+        sys.exit(1)
+
     # check if logfile is writable
     params["log_file"] = os.path.join(params["log_path"], params["log_name"])
     helpers.check_writable(params["log_file"])
 
     # check if the event_detector_type is supported
-    helpers.check_type(
-        params["event_detector_type"],
-        supported_ed_types,
-        "Event detector")
+    helpers.check_type(params["event_detector_type"],
+                       supported_ed_types,
+                       "Event detector")
 
     # check if the data_fetcher_type is supported
-    helpers.check_type(
-        params["data_fetcher_type"],
-        supported_df_types,
-        "Data fetcher")
+    helpers.check_type(params["data_fetcher_type"],
+                       supported_df_types,
+                       "Data fetcher")
 
     # check if directories exist
     helpers.check_existance(params["log_path"])
     if params["monitored_dir"]:
         helpers.check_existance(params["monitored_dir"])
-        helpers.check_all_sub_dir_exist(
-            params["monitored_dir"],
-            params["fix_subdirs"])
+        helpers.check_all_sub_dir_exist(params["monitored_dir"],
+                                        params["fix_subdirs"])
     if params["store_data"]:
         helpers.check_existance(params["local_target"])
-        helpers.check_all_sub_dir_exist(
-            params["local_target"],
-            params["fix_subdirs"])
+        helpers.check_all_sub_dir_exist(params["local_target"],
+                                        params["fix_subdirs"])
 
     if params["use_data_stream"]:
         helpers.check_ping(params["data_stream_targets"][0][0])
