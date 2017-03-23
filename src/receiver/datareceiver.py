@@ -163,7 +163,6 @@ class CheckNetgroup (threading.Thread):
             time.sleep(2)
 
     def stop(self):
-        print("setting run_loop to false")
         self.run_loop = False
 
 
