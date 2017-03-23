@@ -30,8 +30,6 @@ class DataFetcher():
         self.source_file = None
         self.target_file = None
 
-    def setup(self):
-
         required_params = ["session",
                            "store_data",
                            "remove_data",
@@ -51,7 +49,9 @@ class DataFetcher():
             self.config["session"] = requests.session()
             self.config["remove_flag"] = False
 
-        return check_passed
+        else:
+            self.log.debug("config={0}".format(self.config))
+            raise Exception("Wrong configuration")
 
     def get_metadata(self, targets, metadata):
 

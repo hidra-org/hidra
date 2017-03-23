@@ -28,8 +28,6 @@ class DataFetcher():
         self.source_file = None
         self.target_file = None
 
-    def setup(self):
-
         required_params = ["fix_subdirs",
                            "store_data",
                            ["remove_data", [True, False, "with_confirmation"]],
@@ -47,8 +45,9 @@ class DataFetcher():
 
             self.config["send_timeout"] = -1  # 10
             self.config["remove_flag"] = False
-
-        return check_passed
+        else:
+            self.log.debug("config={0}".format(config))
+            raise Exception("Wrong configuration")
 
     def get_metadata(self, targets, metadata):
 

@@ -17,6 +17,10 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 class DataFetcher():
 
     def __init__(self, config, log_queue, id):
+        """Initial setup for this module
+
+        Checks if all required parameters are set in the configuration
+        """
 
         self.id = id
         self.config = config
@@ -27,16 +31,6 @@ class DataFetcher():
         self.source_file = None
         self.target_file = None
 
-    def setup(self):
-        """Initial setup for this module
-
-        Checks if all required parameters are set in the configuration
-
-        Returns:
-
-            check_passed (bool): if all checks were successful or not
-
-        """
         if helpers.is_windows():
             required_params = ["context",
                                "data_fetch_port",
@@ -79,8 +73,6 @@ class DataFetcher():
         else:
             self.log.debug("config={0}".format(self.config))
             raise Exception("Wrong configuration")
-
-        return check_passed
 
     def get_metadata(self, targets, metadata):
         """Extends the given metadata and generates paths

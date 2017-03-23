@@ -50,15 +50,6 @@ class DataDispatcher():
         self.log.info("Configuration for data fetcher: {0}"
                       .format(self.config))
 
-        datafetcher_module = self.config["data_fetcher_type"]
-
-        self.log.info("Loading data fetcher: {0}".format(datafetcher_module))
-        self.datafetcher_module = __import__(datafetcher_module)
-
-        self.datafetcher = self.datafetcher_module.DataFetcher(self.config,
-                                                               log_queue,
-                                                               self.id)
-
         # dict with information of all open sockets to which a data stream is
         # opened (host, port,...)
         self.open_connections = dict()
@@ -73,23 +64,30 @@ class DataDispatcher():
                     and not self.config["context"]):
                 self.config["context"] = self.context
 
+        self.log.info("Loading data fetcher: {0}"
+                      .format(self.config["data_fetcher_type"]))
+        self.datafetcher_m = __import__(self.config["data_fetcher_type"])
+
+        self.datafetcher = self.datafetcher_m.DataFetcher(self.config,
+                                                          log_queue,
+                                                          self.id)
+
         self.continue_run = True
 
-        if (self.datafetcher.setup()):
-            try:
-                self.__create_sockets()
+        try:
+            self.__create_sockets()
 
-                self.run()
-            except zmq.ZMQError:
-                pass
-            except KeyboardInterrupt:
-                pass
-            except:
-                self.log.error("Stopping DataDispatcher-{0} due to unknown "
-                               "error condition.".format(self.id),
-                               exc_info=True)
-            finally:
-                self.stop()
+            self.run()
+        except zmq.ZMQError:
+            pass
+        except KeyboardInterrupt:
+            pass
+        except:
+            self.log.error("Stopping DataDispatcher-{0} due to unknown "
+                           "error condition.".format(self.id),
+                           exc_info=True)
+        finally:
+            self.stop()
 
     def __create_sockets(self):
 

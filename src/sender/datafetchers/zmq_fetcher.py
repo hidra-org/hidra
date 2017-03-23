@@ -27,8 +27,6 @@ class DataFetcher():
         self.source_file = None
         self.target_file = None
 
-    def setup(self):
-
         if helpers.is_windows():
             required_params = ["context",
                                "ext_ip",
@@ -67,8 +65,9 @@ class DataFetcher():
                 self.log.error("Failed to start com_socket (bind): '{0}'"
                                .format(con_str), exc_info=True)
                 raise
-
-        return check_passed
+        else:
+            self.log.debug("config={0}".format(self.config))
+            raise Exception("Wrong configuration")
 
     def get_metadata(self, targets, metadata):
 

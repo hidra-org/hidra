@@ -15,6 +15,10 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 class DataFetcher():
 
     def __init__(self, config, log_queue, id):
+        """Initial setup for this module
+
+        Checks if all required parameters are set in the configuration
+        """
 
         self.id = id
         self.config = config
@@ -24,17 +28,6 @@ class DataFetcher():
 
         self.source_file = None
         self.target_file = None
-
-    def setup(self):
-        """Initial setup for this module
-
-        Checks if all required parameters are set in the configuration
-
-        Returns:
-
-            check_passed (bool): if all checks were successful or not
-
-        """
 
         required_params = ["chunksize",
                            "local_target"]
@@ -47,8 +40,9 @@ class DataFetcher():
         if check_passed:
             self.log.info("Configuration for data fetcher: {0}"
                           .format(config_reduced))
-
-        return check_passed
+        else:
+            self.log.debug("config={0}".format(self.config))
+            raise Exception("Wrong configuration")
 
     def get_metadata(self, targets, metadata):
         """Extends the given metadata and generates paths
