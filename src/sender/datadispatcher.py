@@ -246,6 +246,8 @@ class DataDispatcher():
                     # additional information is stored in the metadata dict
                     self.datafetcher.get_metadata(targets, metadata)
 
+                except KeyboardInterrupt:
+                    break
                 except:
                     self.log.error("Building of metadata dictionary failed "
                                    "for metadata: {0}".format(metadata),

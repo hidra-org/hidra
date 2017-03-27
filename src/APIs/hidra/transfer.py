@@ -78,6 +78,109 @@ class DataSavingError(Exception):
     pass
 
 
+def generate_filepath(base_path, config_dict, add_filename=True):
+    """
+    Generates full path (including file name) where target file will saved to
+
+    """
+    if not config_dict:
+        return None
+
+    # TODO This is due to Windows path names, check if there has do be
+    # done anything additionally to work
+    # e.g. check source_path if it's a windows path
+    config_dict["relative_path"] = (
+        config_dict["relative_path"].replace('\\', os.sep))
+
+    # if the relative path starts with a slash path.join will consider it
+    # as absolute path
+    if config_dict["relative_path"].startswith("/"):
+        config_dict["relative_path"] = config_dict["relative_path"][1:]
+
+
+
+    if (config_dict["relative_path"] is ''
+            or config_dict["relative_path"] is None):
+        target_path = base_path
+    else:
+        target_path = (os.path.normpath(
+            os.path.join(base_path, config_dict["relative_path"])))
+
+    if add_filename:
+        filepath = os.path.join(target_path, config_dict["filename"])
+
+        return filepath
+    else:
+        return target_path
+
+
+def store_data_chunk(descriptors, filepath, payload, base_path, metadata, log):
+    """
+    Writes the data into a file
+    """
+    # append payload to file
+    try:
+        descriptors[filepath].write(payload)
+    # file was not open
+    except KeyError:
+        try:
+            descriptors[filepath] = open(filepath, "wb")
+            descriptors[filepath].write(payload)
+        except IOError as e:
+            # errno.ENOENT == "No such file or directory"
+            if e.errno == errno.ENOENT:
+                try:
+                    # TODO do not create commissioning, current
+                    # and local
+                    target_path = generate_filepath(base_path,
+                                                    metadata,
+                                                    add_filename=False)
+                    os.makedirs(target_path)
+
+                    descriptors[filepath] = open(filepath, "wb")
+                    log.info("New target directory created: {0}"
+                                  .format(target_path))
+                    descriptors[filepath].write(payload)
+                except:
+                    log.error("Unable to save payload to file: '{0}'"
+                              .format(filepath), exc_info=True)
+                    log.debug("target_path:{0}".format(target_path))
+            else:
+                log.error("Failed to append payload to file: '{0}'"
+                          .format(filepath), exc_info=True)
+    except KeyboardInterrupt:
+        # save the data in the file before quitting
+        self.log.debug("KeyboardInterrupt received while writing data")
+        return False
+    except:
+        self.log.error("Failed to append payload to file: '{0}'"
+                       .format(filepath), exc_info=True)
+
+    # pointer for readability
+    m = metadata
+
+    # Either the message is smaller than than expected (last chunk)
+    # or the size of the origin file was a multiple of the
+    # chunksize and this is the last expected chunk (chunk_number
+    # starts with 0)
+    if len(payload) < m["chunksize"] \
+        or (m["filesize"] % m["chunksize"] == 0
+            and m["filesize"] / m["chunksize"] == m["chunk_number"] + 1):
+
+        # indicates end of file. Leave loop
+        try:
+            descriptors[filepath].close()
+            del descriptors[filepath]
+
+            log.info("New file with modification time {0} received and saved: "
+                     "{1}".format(metadata["file_mod_time"], filepath))
+        except:
+            self.log.error("File could not be closed: {0}"
+                           .format(target_filepath), exc_info=True)
+            return False
+    return True
+
+
 class Transfer():
     def __init__(self, connection_type, signal_host=None, use_log=False,
                  context=None):
@@ -147,6 +250,10 @@ class Transfer():
         self.close_callback = None
 
         self.stopped_everything = False
+
+        # In older api versions this was a class method
+        # (further support for users)
+        self.generate_target_filepath = generate_filepath
 
         if connection_type in self.supported_connections:
             self.connection_type = connection_type
@@ -240,8 +347,7 @@ class Transfer():
                            .format(connection_str))
             raise
 
-        # using a Poller to implement the signal_socket timeout (in older
-        # ZMQ version there is no option RCVTIMEO)
+        # using a Poller to implement the signal_socket timeout
         self.poller.register(self.signal_socket, zmq.POLLIN)
 
     def __set_targets(self, targets):
@@ -865,147 +971,19 @@ class Transfer():
             if payload_metadata is not None and payload is not None:
 
                 # generate target filepath
-                target_filepath = self.generate_target_filepath(
-                    target_base_path, payload_metadata)
+                target_filepath = generate_filepath(target_base_path,
+                                                    payload_metadata)
                 self.log.debug("New chunk for file {0} received."
                                .format(target_filepath))
 
-                # append payload to file
                 # TODO: save message to file using a thread (avoids blocking)
-                try:
-                    self.file_descriptors[target_filepath].write(payload)
-                # File was not open
-                except KeyError:
-                    try:
-                        self.file_descriptors[target_filepath] = (
-                            open(target_filepath, "wb")
-                        )
-                        self.file_descriptors[target_filepath].write(payload)
-                    except IOError as e:
-                        # errno.ENOENT == "No such file or directory"
-                        if e.errno == errno.ENOENT:
-                            try:
-                                # TODO do not create commissioning, current
-                                # and local
-                                target_path = self.__generate_target_path(
-                                    target_base_path, payload_metadata)
-                                os.makedirs(target_path)
-
-                                self.file_descriptors[target_filepath] = (
-                                    open(target_filepath, "wb")
-                                )
-                                self.log.info("New target directory created: "
-                                              "{0}".format(target_path))
-                                self.file_descriptors[target_filepath].write(
-                                    payload)
-                            except:
-                                self.log.error("Unable to save payload to "
-                                               "file: '{0}'"
-                                               .format(target_filepath),
-                                               exc_info=True)
-                                self.log.debug("target_path:{0}"
-                                               .format(target_path))
-                        else:
-                            self.log.error("Failed to append payload to file:"
-                                           " '{0}'".format(target_filepath),
-                                           exc_info=True)
-                except KeyboardInterrupt:
-                    # save the data in the file before quitting
-                    self.log.debug("KeyboardInterrupt received while writing "
-                                   "data")
-                    runLoop = False
-                    # self.log.info("KeyboardInterrupt detected. Unable to "
-                    #               "append multipart-content to file.")
-                    # break
-                except:
-                    self.log.error("Failed to append payload to file: '{0}'"
-                                   .format(target_filepath), exc_info=True)
-
-                # pointer for readability
-                m = payload_metadata
-
-                # Either the message is smaller than than expected (last chunk)
-                # or the size of the origin file was a multiple of the
-                # chunksize and this is the last expected chunk (chunk_number
-                # starts with 0)
-                if len(payload) < m["chunksize"] \
-                    or (m["filesize"] % m["chunksize"] == 0
-                        and m["filesize"] / m["chunksize"] == m["chunk_number"] + 1):  # noqa E501
-
-                    # indicated end of file. Leave loop
-                    filename = self.generate_target_filepath(target_base_path,
-                                                             payload_metadata)
-                    file_mod_time = payload_metadata["file_mod_time"]
-
-                    try:
-                        self.file_descriptors[target_filepath].close()
-                        del self.file_descriptors[target_filepath]
-
-                        self.log.info("New file with modification time {0} "
-                                      "received and saved: {1}"
-                                      .format(file_mod_time, filename))
-                    except:
-                        self.log.error("File could not be closed: {0}"
-                                       .format(filename), exc_info=True)
+                if not store_data_chunk(self.file_descriptors, target_filepath,
+                                        payload, target_base_path,
+                                        payload_metadata, self.log):
                     break
             else:
 #                self.log.debug("No data received. Break loop")
                 break
-
-    def generate_target_filepath(self, base_path, config_dict):
-        """
-        Generates full path where target file will saved to.
-
-        """
-        if not config_dict:
-            return None
-
-        filename = config_dict["filename"]
-
-        # TODO This is due to Windows path names, check if there has do be
-        # done anything additionally to work
-        # e.g. check source_path if it's a windows path
-        config_dict["relative_path"] = (
-            config_dict["relative_path"].replace('\\', os.sep))
-
-        # if the relative path starts with a slash path.join will consider it
-        # as absolute path
-        if config_dict["relative_path"].startswith("/"):
-            config_dict["relative_path"] = config_dict["relative_path"][1:]
-
-
-
-        if (config_dict["relative_path"] is ''
-                or config_dict["relative_path"] is None):
-            target_path = base_path
-        else:
-            target_path = (os.path.normpath(
-                os.path.join(base_path, config_dict["relative_path"])))
-
-        filepath = os.path.join(target_path, filename)
-
-        return filepath
-
-    def __generate_target_path(self, base_path, config_dict):
-        """
-        generates path where target file will saved to.
-
-        """
-
-        # TODO This is due to Windows path names, check if there has do be
-        # done anything additionally to work
-        # e.g. check source_path if it's a windows path
-        config_dict["relative_path"] = (
-            config_dict["relative_path"].replace('\\', os.sep))
-
-        # if the relative path starts with a slash path.join will consider it
-        # as absolute path
-        if config_dict["relative_path"].startswith("/"):
-            config_dict["relative_path"] = config_dict["relative_path"][1:]
-
-        target_path = os.path.join(base_path, config_dict["relative_path"])
-
-        return target_path
 
     def stop(self):
         """
@@ -1016,10 +994,12 @@ class Transfer():
 
         """
 
+        # Close open file handler to prevent file corruption
         for target_filepath in list(self.file_descriptors.keys()):
             self.file_descriptors[target_filepath].close()
             del self.file_descriptors[target_filepath]
 
+        # Send signal that the application is quitting
         if self.signal_socket and self.signal_exchanged:
             self.log.info("Sending close signal")
             signal = None
@@ -1036,6 +1016,7 @@ class Transfer():
             self.stream_started = None
             self.query_next_started = None
 
+        # Close ZMQ connections
         try:
             if self.signal_socket:
                 self.log.info("closing signal_socket...")
@@ -1169,3 +1150,4 @@ class Transfer():
 
     def __del__(self):
         self.stop()
+

@@ -10,6 +10,7 @@ import time
 from send_helpers import send_to_targets, DataHandlingError
 from __init__ import BASE_PATH
 import helpers
+from hidra import Transfer, generate_filepath, store_data_chunk
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -30,18 +31,21 @@ class DataFetcher():
 
         self.source_file = None
         self.target_file = None
+        self.f_descriptors = dict()
 
         if helpers.is_windows():
             required_params = ["context",
                                "data_fetch_port",
                                "chunksize",
-                               "local_target"]
+                               "local_target",
+                               "store_data"]
         else:
             required_params = ["context",
                                "ipc_path",
                                "main_pid",
                                "chunksize",
-                               "local_target"]
+                               "local_target",
+                               "store_data"]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -54,9 +58,13 @@ class DataFetcher():
             self.log.info("Configuration for data fetcher: {0}"
                           .format(config_reduced))
 
+            self.metadata_r = None
+            self.data_r = None
+
             con_str = "ipc://{0}/{1}_{2}".format(self.config["ipc_path"],
                                                  self.config["main_pid"],
                                                  "out")
+
             # Create zmq socket to get events
             try:
                 self.config["data_fetch_socket"] = context.socket(zmq.PULL)
@@ -113,43 +121,64 @@ class DataFetcher():
             target_file (str): the absolute path for the target file
 
         """
+        # Get new data
+        self.metadata_r, self.data_r = (
+            self.config["data_fetch_socket"].recv_multipart())
+
+        # the metadata were received as string and have to be converted into
+        # a dictionary
+        self.metadata_r = json.loads(self.metadata_r.decode("utf-8"))
+
+        if ( metadata["relative_path"] != self.metadata_r["relative_path"]
+                or metadata["source_path"] != self.metadata_r["source_path"]
+                or metadata["filename"] != self.metadata_r["filename"]):
+            self.log.error("Received metadata do not match data")
+
+        # Use received data to prevent missmatch of metadata and data
+        # TODO handle case if file type requesed by target does not match
+
+        if self.metadata_r["relative_path"].startswith("/"):
+            self.metadata_r["relative_path"] = (
+                self.metadata_r["relative_path"][1:])
+            self.log.debug("Relative path starts with '/'. Convert")
 
         # Build source file
-        if metadata["relative_path"].startswith("/"):
-            metadata["relative_path"] = metadata["relative_path"][1:]
-
-        self.source_file = (os.path.normpath(
-            os.path.join(metadata["source_path"],
-                         metadata["relative_path"],
-                         metadata["filename"])))
+        self.source_file = generate_filepath(self.metadata_r["source_path"],
+                                             self.metadata_r)
+#        self.source_file = (os.path.normpath(
+#            os.path.join(self.metadata_r["source_path"],
+#                         self.metadata_r["relative_path"],
+#                         self.metadata_r["filename"])))
 
         # Build target file
         if self.config["local_target"]:
-            target_file_path = os.path.normpath(
-                os.path.join(self.config["local_target"],
-                             metadata["relative_path"]))
-            self.target_file = os.path.join(target_file_path,
-                                            metadata["filename"])
+            self.target_file = generate_filepath(self.config["local_target"],
+                                                 self.metadata_r)
+#            target_file_path = os.path.normpath(
+#                os.path.join(self.config["local_target"],
+#                             self.metadata_r["relative_path"]))
+#            self.target_file = os.path.join(target_file_path,
+#                                            self.metadata_r["filename"])
         else:
             self.target_file = None
 
         # Extends metadata
         if targets:
-            if "filesize" not in metadata:
+            if "filesize" not in self.metadata_r:
                 self.log.error("Received metadata do not contain 'filesize'")
-            if "file_mod_time" not in metadata:
+            if "file_mod_time" not in self.metadata_r:
                 self.log.error("Received metadata do not contain "
                                "'file_mod_time'. Setting it to current time")
-                metadata["file_mod_time"] = time.time()
-            if "file_create_time" not in metadata:
+                self.metadata_r["file_mod_time"] = time.time()
+            if "file_create_time" not in self.metadata_r:
                 self.log.error("Received metadata do not contain "
                                "'file_create_time'. Setting it to current "
                                "time")
-                metadata["file_create_time"] = time.time()
-            if "chunksize" not in metadata:
+                self.metadata_r["file_create_time"] = time.time()
+            if "chunksize" not in self.metadata_r:
                 self.log.error("Received metadata do not contain 'chunksize'. "
                                "Setting it to locally configured one")
-                metadata["chunksize"] = self.config["chunksize"]
+                self.metadata_r["chunksize"] = self.config["chunksize"]
 
     def send_data(self, targets, metadata, open_connections, context):
         """Reads data into buffer and sends it to all targets
@@ -182,17 +211,17 @@ class DataFetcher():
         if not targets_data:
             return
 
-        received_data = self.config["data_fetch_socket"].recv_multipart()[1]
         self.log.debug("Received data for file {0} (chunknumber {1})"
-                       .format(self.source_file, metadata["chunk_number"]))
+                       .format(self.source_file,
+                               self.metadata_r["chunk_number"]))
 
         self.log.debug("Passing multipart-message for file '{0}'..."
                        .format(self.source_file))
         for i in range(5):
 
             try:
-                chunk_payload = [json.dumps(metadata).encode("utf-8"),
-                                 received_data]
+                chunk_payload = [json.dumps(self.metadata_r).encode("utf-8"),
+                                 self.data_r]
             except:
                 self.log.error("Unable to pack multipart-message for file "
                                "'{0}'".format(self.source_file),
@@ -207,13 +236,13 @@ class DataFetcher():
                 self.log.error("Unable to send multipart-message for file "
                                "'{0}' (chunk {1})"
                                .format(self.source_file,
-                                       metadata["chunk_number"]),
+                                       self.metadata_r["chunk_number"]),
                                exc_info=True)
             except:
                 self.log.error("Unable to send multipart-message for file "
                                "'{0}' (chunk {1})"
                                .format(self.source_file,
-                                       metadata["chunk_number"]),
+                                       self.metadata_r["chunk_number"]),
                                exc_info=True)
 
     def finish(self, targets, metadata, open_connections, context):
@@ -255,7 +284,20 @@ class DataFetcher():
                                .format(self.source_file, targets_metadata),
                                exc_info=True)
 
+        # store data
+        if self.config["store_data"]:
+            # TODO: save message to file using a thread (avoids blocking)
+            store_data_chunk(self.f_descriptors, self.target_file,
+                             self.data_r, self.config["local_target"],
+                             self.metadata_r, self.log)
+
     def clean(self):
+
+        # Close open file handler to prevent file corruption
+        for target_file in list(self.f_descriptors.keys()):
+            self.f_descriptors[target_file].close()
+            del self.f_descriptors[target_file]
+
         # Close zmq socket
         if self.config["data_fetch_socket"]:
             self.config["data_fetch_socket"].close(0)
@@ -322,7 +364,8 @@ if __name__ == '__main__':
         "main_pid": current_pid,
         "ext_data_port": "50100",
         "chunksize": chunksize,
-        "local_target": None
+        "local_target":  os.path.join(BASE_PATH, "data", "zmq_target"),
+        "store_data": True
     }
 
     if not os.path.exists(ipc_path):

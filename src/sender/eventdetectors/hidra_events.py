@@ -37,8 +37,11 @@ class MonitorDevice():
 
     def run (self):
         while True:
-            msg = self.in_socket.recv_multipart()
-#            print ("[MonitoringDevice] In: Received message {0}".format(msg[:20]))
+            try:
+                msg = self.in_socket.recv_multipart()
+#                print ("[MonitoringDevice] In: Received message {0}".format(msg[:20]))
+            except KeyboardInterrupt:
+                break
 
             if msg != [b'ALIVE_TEST']:
 

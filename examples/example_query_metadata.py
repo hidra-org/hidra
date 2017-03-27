@@ -6,7 +6,7 @@ import socket
 import os
 
 from __init__ import BASE_PATH
-from hidra import Transfer
+from hidra import Transfer, generate_filepath
 
 if __name__ == "__main__":
 
@@ -41,7 +41,7 @@ if __name__ == "__main__":
             break
 
         print
-        print (query.generate_target_filepath(base_target_path, metadata))
+        print (generate_filepath(base_target_path, metadata))
         print
 
     query.stop()

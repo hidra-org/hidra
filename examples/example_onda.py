@@ -12,7 +12,7 @@ import argparse
 from __init__ import BASE_PATH
 import helpers
 
-from hidra import Transfer
+from hidra import Transfer, generate_filepath
 
 
 # enable logging
@@ -53,8 +53,7 @@ class Worker(multiprocessing.Process):
             if transfer_type in ["QUERY_METADATA", "STREAM_METADATA"]:
                 self.log.debug("Worker-{0}: metadata {1}"
                                .format(self.id, metadata["filename"]))
-                filepath = self.query.generate_target_filepath(self.basepath,
-                                                               metadata)
+                filepath = generate_filepath(self.basepath, metadata)
                 self.log.debug("Worker-{0}: filepath {1}"
                                .format(self.id, filepath))
 
@@ -63,6 +62,7 @@ class Worker(multiprocessing.Process):
                     self.log.debug("Worker-{0}: file {1} read"
                                    .format(self.id, filepath))
             else:
+                print ("filepath", generate_filepath(self.basepath, metadata))
                 print ("metadata", metadata)
 
             print ("data", str(data)[:100])
