@@ -246,7 +246,8 @@ def argument_parsing():
                        "data_fetcher_type",
                        "store_data",
                        "use_data_stream",
-                       "chunksize"]
+                       "chunksize",
+                       "local_target"]
 
     # Check format of config
     check_passed, config_reduced = helpers.check_config(required_params,
@@ -341,7 +342,7 @@ class DataManager():
             self.log_queue_listener.start()
 
         # Create log and set handler to queue handle
-        self.log = self.get_logger(self.log_queue)
+        self.log = helpers.get_logger("DataManager", self.log_queue)
 
         self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
         self.log.info("Configured ipc_path: {0}".format(self.ipc_path))
@@ -490,20 +491,6 @@ class DataManager():
                            exc_info=True)
         finally:
             self.stop()
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("DataManager")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def create_sockets(self):
 
@@ -826,7 +813,7 @@ class TestReceiverStream():
     def __init__(self, com_port, fixed_recv_port, receiving_port,
                  receiving_port2, log_queue):
 
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("TestReceiverStream", log_queue)
 
         context = zmq.Context.instance()
 
@@ -857,20 +844,6 @@ class TestReceiverStream():
         self.send_signal("START_STREAM", receiving_port2, 0)
 
         self.run()
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("TestReceiverStream")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def send_signal(self, signal, ports, prio=None):
         self.log.info("=== send_signal : {0}, {1}".format(signal, ports))

@@ -25,7 +25,7 @@ class SignalHandler():
         global DOMAIN
 
         # Send all logs to the main process
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("SignalHandler", log_queue)
 
         self.current_pid = os.getpid()
         self.log.debug("SignalHandler started (PID {0})."
@@ -83,20 +83,6 @@ class SignalHandler():
                            "condition.", exc_info=True)
         finally:
             self.stop()
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("SignalHandler")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def create_sockets(self):
 
@@ -729,7 +715,8 @@ class SignalHandler():
 class RequestPuller():
     def __init__(self, request_fw_con_id, log_queue, context=None):
 
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("RequestPuller", log_queue)
+
 
         # to give the signal handler to bind to the socket before the connect
         # is done
@@ -742,20 +729,6 @@ class RequestPuller():
                       "'{0}'".format(request_fw_con_id))
 
         self.run()
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("RequestPuller")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def run(self):
         self.log.info("[getRequests] Start run")

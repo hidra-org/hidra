@@ -17,7 +17,7 @@ class EventDetector():
 
     def __init__(self, config, log_queue):
 
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("eventdetector_template", log_queue)
 
         required_params = []
 
@@ -33,20 +33,6 @@ class EventDetector():
         else:
             self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("eventdetector_template")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def get_new_event(self):
 

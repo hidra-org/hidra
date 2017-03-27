@@ -8,6 +8,8 @@ import json
 import tempfile
 
 from logutils.queue import QueueHandler
+
+from __init__ import BASE_PATH
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -17,7 +19,7 @@ class EventDetector():
 
     def __init__(self, config, log_queue):
 
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("zmq_events", log_queue)
 
         if helpers.is_windows():
             required_params = ["context",
@@ -66,20 +68,6 @@ class EventDetector():
         else:
             self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("zmq_events")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def create_sockets(self):
 
@@ -135,8 +123,6 @@ class EventDetector():
 if __name__ == '__main__':
     import time
     from multiprocessing import Queue
-
-    from eventdetectors import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "zmqDetector.log")
     logsize = 10485760

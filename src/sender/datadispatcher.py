@@ -25,7 +25,8 @@ class DataDispatcher():
                  local_target=None, context=None):
 
         self.id = id
-        self.log = self.__get_logger(log_queue)
+        self.log = helpers.get_logger("DataDispatcher-{0}".format(self.id),
+                                      log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -119,20 +120,6 @@ class DataDispatcher():
         self.poller = zmq.Poller()
         self.poller.register(self.control_socket, zmq.POLLIN)
         self.poller.register(self.router_socket, zmq.POLLIN)
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def __get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("DataDispatcher-{0}".format(self.id))
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def run(self):
 
@@ -497,7 +484,9 @@ if __name__ == '__main__':
         "data_fetcher_type": "file_fetcher",
         "fix_subdirs": ["commissioning", "current", "local"],
         "store_data": False,
-        "remove_data": False
+        "remove_data": False,
+        "chunksize": chunksize,
+        "local_target": local_target
     }
 
     context = zmq.Context.instance()

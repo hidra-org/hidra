@@ -24,7 +24,7 @@ class TaskProvider():
                  router_con_id, log_queue, context=None):
         global BASE_PATH
 
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("TaskProvider", log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -77,20 +77,6 @@ class TaskProvider():
                            "condition.", exc_info=True)
         finally:
             self.stop()
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("TaskProvider")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def create_sockets(self):
 
@@ -304,7 +290,7 @@ class TaskProvider():
 class RequestResponder():
     def __init__(self, request_fw_port, log_queue, context=None):
         # Send all logs to the main process
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("RequestResponder", log_queue)
 
         self.context = context or zmq.Context.instance()
         self.request_fw_socket = self.context.socket(zmq.REP)
@@ -314,20 +300,6 @@ class RequestResponder():
                       "for '{0}'".format(connection_str))
 
         self.run()
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("RequestResponder")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def run(self):
         hostname = socket.gethostname()

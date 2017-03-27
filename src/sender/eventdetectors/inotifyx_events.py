@@ -12,6 +12,8 @@ import time
 import copy
 
 from logutils.queue import QueueHandler
+
+from __init__ import BASE_PATH
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -126,7 +128,8 @@ def get_event_message(path, filename, paths):
 class CleanUp (threading.Thread):
     def __init__(self, paths, mon_subdirs, mon_suffixes, cleanup_time,
                  action_time, lock, log_queue):
-        self.log = self.get_logger(log_queue)
+
+        self.log = helpers.get_logger("CleanUp", log_queue)
 
         self.log.debug("init")
         self.paths = paths
@@ -141,20 +144,6 @@ class CleanUp (threading.Thread):
 
         self.log.debug("threading.Thread init")
         threading.Thread.__init__(self)
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("CleanUp")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def run(self):
         global file_event_list
@@ -230,7 +219,7 @@ class EventDetector():
 
     def __init__(self, config, log_queue):
 
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("inotifyx_events", log_queue)
 
         required_params = ["monitored_dir",
                            "fix_subdirs",
@@ -327,20 +316,6 @@ class EventDetector():
             InotifyEvent(wd, mask, cookie, name)
             for wd, mask, cookie, name in binding.get_events(fd, *args)
         ]
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("inotifyx_events")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def add_watch(self):
         try:
@@ -556,8 +531,6 @@ class EventDetector():
 if __name__ == '__main__':
     from subprocess import call
     from multiprocessing import Queue
-
-    from eventdetectors import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "inotifyx_events.log")
     logsize = 10485760

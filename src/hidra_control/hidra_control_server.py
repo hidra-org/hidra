@@ -123,16 +123,6 @@ class HidraController():
             "whitelist": None
         }
 
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger(self.procname)
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
-
     def __read_config(self):
         global CONFIG_PREFIX
         global CONFIG_PATH
@@ -602,7 +592,7 @@ class ControlServer():
         self.log_queue_listener.start()
 
         # Create log and set handler to queue handle
-        self.log = self.get_logger(self.log_queue)
+        self.log = helpers.get_logger("ControlServer", self.log_queue)
 
         self.log.info("Init")
 
@@ -640,16 +630,6 @@ class ControlServer():
                             default=False)
 
         return parser.parse_args()
-
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("ControlServer")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def create_sockets(self):
 
