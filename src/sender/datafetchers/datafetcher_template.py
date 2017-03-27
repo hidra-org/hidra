@@ -216,14 +216,14 @@ class DataFetcher():
                                "file '{0}' to '{1}'".format(self.source_file,
                                targets_metadata), exc_info=True)
 
-    def clean(self):
+    def stop(self):
         pass
 
     def __exit__(self):
-        self.clean()
+        self.stop()
 
     def __del__(self):
-        self.clean()
+        self.stop()
 
 
 if __name__ == '__main__':

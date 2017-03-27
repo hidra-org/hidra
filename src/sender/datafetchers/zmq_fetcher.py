@@ -159,17 +159,17 @@ class DataFetcher():
     def finish(self, targets, metadata, open_connections, context):
         pass
 
-    def clean(self):
+    def stop(self):
         # Close zmq socket
         if self.socket is not None:
             self.socket.close(0)
             self.socket = None
 
     def __exit__(self):
-        self.clean()
+        self.stop()
 
     def __del__(self):
-        self.clean()
+        self.stop()
 
 
 if __name__ == '__main__':

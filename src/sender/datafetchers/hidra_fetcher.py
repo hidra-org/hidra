@@ -291,7 +291,7 @@ class DataFetcher():
                              self.data_r, self.config["local_target"],
                              self.metadata_r, self.log)
 
-    def clean(self):
+    def stop(self):
 
         # Close open file handler to prevent file corruption
         for target_file in list(self.f_descriptors.keys()):
@@ -304,10 +304,10 @@ class DataFetcher():
             self.config["data_fetch_socket"] = None
 
     def __exit__(self):
-        self.clean()
+        self.stop()
 
     def __del__(self):
-        self.clean()
+        self.stop()
 
 
 if __name__ == '__main__':
