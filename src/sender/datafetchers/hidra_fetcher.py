@@ -335,11 +335,14 @@ if __name__ == '__main__':
                                             config["main_pid"],
                                             "out")
 
-    # create zmq socket to send events
-#    data_fw_socket = context.socket(zmq.PUSH)
-#    data_fw_socket.bind(fw_con_str)
-#    logging.info("Start data_fw_socket (bind): '{0}'"
-#                 .format(fw_con_str))
+    data_input = True
+
+    if data_input:
+        # create zmq socket to send events
+        data_fw_socket = context.socket(zmq.PUSH)
+        data_fw_socket.bind(fw_con_str)
+        logging.info("Start data_fw_socket (bind): '{0}'"
+                     .format(fw_con_str))
 
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
 
@@ -365,13 +368,12 @@ if __name__ == '__main__':
 
     datafetcher = DataFetcher(config, log_queue, 0)
 
-    datafetcher.setup()
-
-    # simulatate data input sent by an other HiDRA instance
-#    with open(prework_source_file, 'rb') as file_descriptor:
-#        file_content = file_descriptor.read(chunksize)
-#    data_fw_socket.send_multipart([json.dumps(metadata), file_content])
-#    logging.debug("Incoming data sent")
+    if data_input:
+        # simulatate data input sent by an other HiDRA instance
+        with open(prework_source_file, 'rb') as file_descriptor:
+            file_content = file_descriptor.read(chunksize)
+        data_fw_socket.send_multipart([json.dumps(metadata), file_content])
+        logging.debug("Incoming data sent")
 
     datafetcher.get_metadata(targets, metadata)
 
@@ -395,5 +397,6 @@ if __name__ == '__main__':
     finally:
         receiving_socket.close(0)
         receiving_socket2.close(0)
-#        data_fw_socket.close(0)
+        if data_input:
+            data_fw_socket.close(0)
         context.destroy()

@@ -369,8 +369,6 @@ if __name__ == '__main__':
 
     datafetcher = DataFetcher(config, log_queue, 0)
 
-    datafetcher.setup()
-
     datafetcher.get_metadata(targets, metadata)
 #    source_file = "http://131.169.55.170/test_httpget/data/test_file.cbf"
 

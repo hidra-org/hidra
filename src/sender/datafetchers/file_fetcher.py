@@ -413,8 +413,6 @@ if __name__ == '__main__':
 
     datafetcher = DataFetcher(config, log_queue, 0)
 
-    datafetcher.setup()
-
     datafetcher.get_metadata(targets, metadata)
 
     datafetcher.send_data(targets, metadata, open_connections, context)
