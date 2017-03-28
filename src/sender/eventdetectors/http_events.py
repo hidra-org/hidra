@@ -2,25 +2,24 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-import logging
 import time
-from logutils.queue import QueueHandler
 import requests
 import collections
 import socket
 
-from __init__ import BASE_PATH
+from eventdetectorbase import EventDetectorBase
 import helpers
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan,garrevoet@desy.de>')
 
 
-class EventDetector():
+class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
 
-        self.log = helpers.get_logger("http_events", log_queue)
+        EventDetectorBase.__init__(self, config, log_queue,
+                                   "http_events")
 
         required_params = ["det_ip",
                            "det_api_version",
@@ -118,15 +117,12 @@ class EventDetector():
     def stop(self):
         pass
 
-    def __exit__(self):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
 
 if __name__ == '__main__':
     from multiprocessing import Queue
+    from __init__ import BASE_PATH
+    from logutils.queue import QueueHandler
+    import logging
 
     logfile = os.path.join(BASE_PATH, "logs", "http_events.log")
     logsize = 10485760
@@ -162,7 +158,7 @@ if __name__ == '__main__':
 
     eventdetector = EventDetector(config, log_queue)
 
-    for i in range(5):
+    for i in range(3):
         try:
             event_list = eventdetector.get_new_event()
             if event_list:

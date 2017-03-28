@@ -1,23 +1,18 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
-import logging
-import tempfile
-
-from logutils.queue import QueueHandler
-
-from __init__ import BASE_PATH
+from eventdetectorbase import EventDetectorBase
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class EventDetector():
+class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
 
-        self.log = helpers.get_logger("eventdetector_template", log_queue)
+        EventDetectorBase.__init__(self, config, log_queue,
+                                   "eventdetector_template")
 
         required_params = []
 
@@ -49,15 +44,14 @@ class EventDetector():
     def stop(self):
         pass
 
-    def __exit__(self):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
 
 if __name__ == '__main__':
     from multiprocessing import Queue
+    import os
+    import logging
+    import tempfile
+    from logutils.queue import QueueHandler
+    from __init__ import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "eventdetector_template.log")
     logsize = 10485760

@@ -13,9 +13,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 import threading
 import bisect
 
-from logutils.queue import QueueHandler
-
-from __init__ import BASE_PATH
+from eventdetectorbase import EventDetectorBase
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -325,10 +323,11 @@ class CheckModTime (threading.Thread):
         self.stop()
 
 
-class EventDetector():
+class EventDetector(EventDetectorBase):
     def __init__(self, config, log_queue):
 
-        self.log = helpers.get_logger("watchdog_events", log_queue)
+        EventDetectorBase.__init__(self, config, log_queue,
+                                   "watchdog_events")
 
         required_params = ["monitored_dir",
                            "fix_subdirs",
@@ -413,6 +412,8 @@ class EventDetector():
 if __name__ == '__main__':
     from shutil import copyfile
     from multiprocessing import Queue
+    from logutils.queue import QueueHandler
+    from __init__ import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "watchdogDetector.log")
     logsize = 10485760

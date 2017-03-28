@@ -22,7 +22,7 @@ class DataFetcher(DataFetcherBase):
         """
 
         DataFetcherBase.__init__(self, config, log_queue, id,
-                                 "eventdetector_template-{0}".format(id))
+                                 "datafetcher_template-{0}".format(id))
 
         required_params = []
 

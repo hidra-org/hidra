@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from six import iteritems
 
 import os
-import logging
 from inotifyx import binding
 # from inotifyx.distinfo import version as __version__
 import collections
@@ -11,9 +10,7 @@ import threading
 import time
 import copy
 
-from logutils.queue import QueueHandler
-
-from __init__ import BASE_PATH
+from eventdetectorbase import EventDetectorBase
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -215,11 +212,12 @@ class CleanUp (threading.Thread):
         return event_list
 
 
-class EventDetector():
+class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
 
-        self.log = helpers.get_logger("inotifyx_events", log_queue)
+        EventDetectorBase.__init__(self, config, log_queue,
+                                   "inotifyx_events")
 
         required_params = ["monitored_dir",
                            "fix_subdirs",
@@ -521,16 +519,13 @@ class EventDetector():
         finally:
             os.close(self.fd)
 
-    def __exit__(self):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
 
 if __name__ == '__main__':
     from subprocess import call
     from multiprocessing import Queue
+    from __init__ import BASE_PATH
+    from logutils.queue import QueueHandler
+    import logging
 
     logfile = os.path.join(BASE_PATH, "logs", "inotifyx_events.log")
     logsize = 10485760

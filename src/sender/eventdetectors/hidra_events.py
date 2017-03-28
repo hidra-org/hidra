@@ -2,7 +2,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-import logging
 import json
 import tempfile
 import zmq
@@ -10,7 +9,7 @@ from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
 from zmq.utils.strtypes import asbytes
 import multiprocessing
 
-from __init__ import BASE_PATH
+from eventdetectorbase import EventDetectorBase
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -57,11 +56,12 @@ class MonitorDevice():
     #            print ("[MonitoringDevice] Mon: Sent message")
 
 
-class EventDetector():
+class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
 
-        self.log = helpers.get_logger("hidra_events", log_queue)
+        EventDetectorBase.__init__(self, config, log_queue,
+                                   "hidra_events")
 
         if helpers.is_windows():
             required_params = ["context",
@@ -116,22 +116,22 @@ class EventDetector():
         # Set up monitored queue to get notification when new data is sent to
         # the zmq queue
 
-        monitoringdevice = multiprocessing.Process(target=MonitorDevice, args=(self.in_con_str, self.out_con_str, self.mon_con_str))
+        self.monitoringdevice = multiprocessing.Process(target=MonitorDevice, args=(self.in_con_str, self.out_con_str, self.mon_con_str))
 
         """ original monitored queue from pyzmq is not working
         in_prefix = asbytes('in')
         out_prefix = asbytes('out')
 
                                                 #   in       out      mon
-        monitoringdevice = ThreadMonitoredQueue(zmq.PULL, zmq.PUSH, zmq.PUB,
+        self.monitoringdevice = ThreadMonitoredQueue(zmq.PULL, zmq.PUSH, zmq.PUB,
                                                 in_prefix, out_prefix)
 
-        monitoringdevice.bind_in(self.in_con_str)
-        monitoringdevice.bind_out(self.out_con_str)
-        monitoringdevice.bind_mon(self.mon_con_str)
+        self.monitoringdevice.bind_in(self.in_con_str)
+        self.monitoringdevice.bind_out(self.out_con_str)
+        self.monitoringdevice.bind_mon(self.mon_con_str)
         """
 
-        monitoringdevice.start()
+        self.monitoringdevice.start()
         self.log.info("Monitoring device has started with (bind)\n"
                       "in: {0}\nout: {1}\nmon: {2}"
                       .format(self.in_con_str,
@@ -184,8 +184,12 @@ class EventDetector():
         return event_message_list
 
     def stop(self):
+
+        self.monitoringdevice.terminate()
+
         # close ZMQ
         if self.mon_socket:
+            self.log.info("Closing mon_socket")
             self.mon_socket.close(0)
             self.mon_socket = None
 
@@ -200,16 +204,12 @@ class EventDetector():
             except:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
-    def __exit__(self):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
 
 if __name__ == '__main__':
     from multiprocessing import Queue
     from logutils.queue import QueueHandler
+    from __init__ import BASE_PATH
+    import logging
 
     logfile = os.path.join(BASE_PATH, "logs", "hidra_events.log")
     logsize = 10485760
@@ -231,7 +231,8 @@ if __name__ == '__main__':
     root.addHandler(qh)
 
     ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
-    current_pid = os.getpid()
+#    current_pid = os.getpid()
+    current_pid = 12345
 
     context = zmq.Context()
 
@@ -239,8 +240,7 @@ if __name__ == '__main__':
         "context": context,
         "ext_ip": "131.169.185.121",
         "ipc_path": ipc_path,
-        "main_pid": 12345,
-        #"main_pid": current_pid,
+        "main_pid": current_pid,
         "ext_data_port": "50100"
     }
 
@@ -260,16 +260,21 @@ if __name__ == '__main__':
                                         config["ext_data_port"])
     out_con_str = "ipc://{0}/{1}_{2}".format(ipc_path, current_pid, "out")
 
-    # create zmq socket to send events
-    data_in_socket = context.socket(zmq.PUSH)
-    data_in_socket.connect(in_con_str)
-    logging.info("Start data_in_socket (connect): '{0}'"
-                 .format(in_con_str))
+    local_in = True
+    local_out = True
 
-    data_out_socket = context.socket(zmq.PULL)
-    data_out_socket.connect(out_con_str)
-    logging.info("Start data_out_socket (connect): '{0}'"
-                 .format(out_con_str))
+    if local_in:
+        # create zmq socket to send events
+        data_in_socket = context.socket(zmq.PUSH)
+        data_in_socket.connect(in_con_str)
+        logging.info("Start data_in_socket (connect): '{0}'"
+                     .format(in_con_str))
+
+    if local_out:
+        data_out_socket = context.socket(zmq.PULL)
+        data_out_socket.connect(out_con_str)
+        logging.info("Start data_out_socket (connect): '{0}'"
+                     .format(out_con_str))
 
     i = 100
     try:
@@ -281,21 +286,27 @@ if __name__ == '__main__':
                 "filepart": 0,
                 "chunksize": 10
             }
-#            data_in_socket.send_multipart(
-#                [json.dumps(message).encode("utf-8"), b"incoming_data"])
+
+            if local_in:
+                data_in_socket.send_multipart(
+                    [json.dumps(message).encode("utf-8"), b"incoming_data"])
 
             i += 1
             event_list = eventdetector.get_new_event()
             if event_list:
                 logging.debug("event_list: {0}".format(event_list))
 
-#            message = data_out_socket.recv_multipart()
-#            logging.debug("Received - {0}".format(message))
+            if local_out:
+                message = data_out_socket.recv_multipart()
+                logging.debug("Received - {0}".format(message))
     except KeyboardInterrupt:
         pass
     finally:
-        data_in_socket.close()
-        data_out_socket.close()
+        eventdetector.stop()
+        if local_in:
+            data_in_socket.close()
+        if local_out:
+            data_out_socket.close()
         context.destroy()
 
         log_queue.put_nowait(None)

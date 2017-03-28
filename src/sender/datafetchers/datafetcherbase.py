@@ -23,6 +23,7 @@ class DataHandlingError(Exception):
 
 
 class DataFetcherBase(ABC):
+
     def __init__(self, config, log_queue, id, logger_name):
         """Initial setup
 
