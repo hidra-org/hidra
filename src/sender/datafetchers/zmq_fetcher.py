@@ -7,37 +7,27 @@ import logging
 import json
 import time
 
-from send_helpers import send_to_targets
-from __init__ import BASE_PATH
+from datafetcherbase import DataFetcherBase, DataHandlingError
+from hidra import generate_filepath
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class DataFetcher():
+class DataFetcher(DataFetcherBase):
 
     def __init__(self, config, log_queue, id):
 
-        self.id = id
-        self.config = config
-
-        self.log = helpers.get_logger("zmq_fetcher-{0}".format(self.id),
-                                      log_queue)
-
-        self.source_file = None
-        self.target_file = None
+        DataFetcherBase.__init__(self, config, log_queue, id,
+                                 "zmq_fetcher-{0}".format(id))
 
         if helpers.is_windows():
             required_params = ["context",
                                "ext_ip",
-                               "data_fetcher_port",
-                               "chunksize",
-                               "local_target"]
+                               "data_fetcher_port"]
         else:
             required_params = ["context",
-                               "ipc_path",
-                               "chunksize",
-                               "local_target"]
+                               "ipc_path"]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -147,9 +137,8 @@ class DataFetcher():
 
         # send message
         try:
-            send_to_targets(self.log, targets, self.source_file,
-                            self.target_file, open_connections,
-                            metadata_extended, payload, context)
+            self.send_to_targets(targets, open_connections, metadata_extended,
+                                 payload, context)
             self.log.debug("Passing multipart-message for file '{0}'...done."
                            .format(self.source_file))
         except:
@@ -165,17 +154,12 @@ class DataFetcher():
             self.socket.close(0)
             self.socket = None
 
-    def __exit__(self):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
 
 if __name__ == '__main__':
     import tempfile
     from multiprocessing import Queue
     from logutils.queue import QueueHandler
+    from __init__ import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "zmq_fetcher.log")
     logsize = 10485760

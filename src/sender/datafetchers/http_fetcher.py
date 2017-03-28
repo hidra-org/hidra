@@ -9,33 +9,25 @@ import requests
 import time
 import errno
 
-from send_helpers import send_to_targets
-from __init__ import BASE_PATH
+from datafetcherbase import DataFetcherBase, DataHandlingError
+from hidra import generate_filepath
 import helpers
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan.garrevoet@desy.de>')
 
 
-class DataFetcher():
+class DataFetcher(DataFetcherBase):
 
     def __init__(self, config, log_queue, id):
 
-        self.id = id
-        self.config = config
-
-        self.log = helpers.get_logger("http_fetcher-{0}".format(self.id),
-                                      log_queue)
-
-        self.source_file = None
-        self.target_file = None
+        DataFetcherBase.__init__(self, config, log_queue, id,
+                                 "http_fetcher-{0}".format(id))
 
         required_params = ["session",
                            "store_data",
                            "remove_data",
-                           "fix_subdirs",
-                           "chunksize",
-                           "local_target"]
+                           "fix_subdirs"]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -55,32 +47,17 @@ class DataFetcher():
 
     def get_metadata(self, targets, metadata):
 
-        # extract fileEvent metadata
-        try:
-            # TODO validate metadata dict
-            filename = metadata["filename"]
-            source_path = metadata["source_path"]
-            relative_path = metadata["relative_path"]
-        except:
-            self.log.error("Invalid fileEvent message received.",
-                           exc_info=True)
-            self.log.debug("metadata={0}".format(metadata))
-            # skip all further instructions and continue with next iteration
-            raise
 
         # no normpath used because that would transform http://...
         # into http:/...
-        source_file_path = os.path.join(source_path, relative_path)
-        self.source_file = os.path.join(source_file_path, filename)
+        self.source_file = os.path.join(metadata["source_path"],
+                                        metadata["relative_path"],
+                                        metadata["filename"])
 
-        # TODO combine better with source_file... (for efficiency)
-        if self.config["local_target"]:
-            target_file_path = (
-                os.path.normpath(os.path.join(self.config["local_target"],
-                                              relative_path)))
-            self.target_file = os.path.join(target_file_path, filename)
-        else:
-            self.target_file = None
+        # Build target file
+        # if local_target is not set (== None) generate_filepath returns None
+        self.target_file = generate_filepath(self.config["local_target"],
+                                             metadata)
 
         metadata["chunksize"] = self.config["chunksize"]
 
@@ -217,9 +194,8 @@ class DataFetcher():
 
             # send message to data targets
             try:
-                send_to_targets(self.log, targets_data, self.source_file,
-                                self.target_file, open_connections,
-                                metadata_extended, payload, context)
+                self.send_to_targets(targets_data, open_connections,
+                                     metadata_extended, payload, context)
                 self.log.debug("Passing multipart-message for file {0}...done."
                                .format(self.source_file))
 
@@ -248,9 +224,8 @@ class DataFetcher():
 
             # send message to metadata targets
             try:
-                send_to_targets(self.log, targets_metadata, self.source_file,
-                                self.target_file, open_connections,
-                                metadata_extended, payload, context)
+                self.send_to_targets(targets_metadata, open_connections,
+                                     metadata_extended, payload, context)
                 self.log.debug("Passing metadata multipart-message for file "
                                "'{0}'...done.".format(self.source_file))
 
@@ -292,6 +267,7 @@ if __name__ == '__main__':
 #    import subprocess
     from multiprocessing import Queue
     from logutils.queue import QueueHandler
+    from __init__ import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "http_fetcher.log")
     logsize = 10485760

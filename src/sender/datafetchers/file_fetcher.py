@@ -8,31 +8,23 @@ import json
 import shutil
 import errno
 
-from send_helpers import send_to_targets, DataHandlingError
-from __init__ import BASE_PATH
+from datafetcherbase import DataFetcherBase, DataHandlingError
+from hidra import generate_filepath
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class DataFetcher():
+class DataFetcher(DataFetcherBase):
 
     def __init__(self, config, log_queue, id):
 
-        self.id = id
-        self.config = config
-
-        self.log = helpers.get_logger("file_fetcher-{0}".format(self.id),
-                                      log_queue)
-
-        self.source_file = None
-        self.target_file = None
+        DataFetcherBase.__init__(self, config, log_queue, id,
+                                 "file_fetcher-{0}".format(id))
 
         required_params = ["fix_subdirs",
                            "store_data",
-                           ["remove_data", [True, False, "with_confirmation"]],
-                           "chunksize",
-                           "local_target"]
+                           ["remove_data", [True, False, "with_confirmation"]]]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -51,37 +43,14 @@ class DataFetcher():
 
     def get_metadata(self, targets, metadata):
 
-        # extract fileEvent metadata
-        try:
-            # TODO validate metadata dict
-            filename = metadata["filename"]
-            source_path = metadata["source_path"]
-            relative_path = metadata["relative_path"]
-        except:
-            self.log.error("Invalid event message received.", exc_info=True)
-            self.log.debug("metadata={0}".format(metadata))
-            # skip all further instructions and continue with next iteration
-            raise
+        # Build source file
+        self.source_file = generate_filepath(metadata["source_path"],
+                                             metadata)
 
-        # filename = "img.tiff"
-        # filepath = "C:\dir"
-        #
-        # -->  source_file_path = 'C:\\dir\img.tiff'
-        if relative_path.startswith("/"):
-            source_file_path = (os.path.normpath(
-                os.path.join(source_path, relative_path[1:])))
-        else:
-            source_file_path = (os.path.normpath(
-                os.path.join(source_path, relative_path)))
-        self.source_file = os.path.join(source_file_path, filename)
-
-        # TODO combine better with source_file... (for efficiency)
-        if self.config["local_target"]:
-            target_file_path = (os.path.normpath(
-                os.path.join(self.config["local_target"], relative_path)))
-            self.target_file = os.path.join(target_file_path, filename)
-        else:
-            self.target_file = None
+        # Build target file
+        # if local_target is not set (== None) generate_filepath returns None
+        self.target_file = generate_filepath(self.config["local_target"],
+                                             metadata)
 
         if targets:
             try:
@@ -178,9 +147,8 @@ class DataFetcher():
 
             # send message to data targets
             try:
-                send_to_targets(self.log, targets_data, self.source_file,
-                                self.target_file, open_connections, None,
-                                chunk_payload, context)
+                self.send_to_targets(targets_data, open_connections, None,
+                                     chunk_payload, context)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
                                "'{0}' (chunk {1})".format(self.source_file,
@@ -263,7 +231,7 @@ class DataFetcher():
                 self.log.error("Unable to copy/move file '{0}' to '{1}'"
                                .format(self.source_file, self.target_file),
                                exc_info=True)
-                raise
+                raisesource_path
         except:
             self.log.error("Unable to copy/move file '{0}' to '{1}'"
                            .format(self.source_file, self.target_file),
@@ -316,9 +284,9 @@ class DataFetcher():
         # send message to metadata targets
         if targets_metadata:
             try:
-                send_to_targets(self.log, targets_metadata, self.source_file,
-                                self.target_file, open_connections, metadata,
-                                None, context, self.config["send_timeout"])
+                self.send_to_targets(targets_metadata, open_connections,
+                                     metadata, None, context,
+                                     self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
                                "{0}...done.".format(self.source_file))
 
@@ -331,18 +299,14 @@ class DataFetcher():
     def stop(self):
         pass
 
-    def __exit__(self):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
 
 if __name__ == '__main__':
     import time
     from shutil import copyfile
     from multiprocessing import Queue
     from logutils.queue import QueueHandler
+
+    from __init__ import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "file_fetcher.log")
     logsize = 10485760

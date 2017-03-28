@@ -415,7 +415,7 @@ class DataDispatcher():
             self.router_socket.close(0)
             self.router_socket = None
 
-        self.datafetcher.clean()
+        self.datafetcher.stop()
 
         if not self.ext_context and self.context is not None:
             self.log.info("Destroying context")

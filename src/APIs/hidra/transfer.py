@@ -83,7 +83,7 @@ def generate_filepath(base_path, config_dict, add_filename=True):
     Generates full path (including file name) where target file will saved to
 
     """
-    if not config_dict:
+    if not config_dict or base_path is None:
         return None
 
     # TODO This is due to Windows path names, check if there has do be

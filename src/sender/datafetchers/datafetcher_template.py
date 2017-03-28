@@ -7,12 +7,13 @@ import logging
 import json
 #import errno
 
-from send_helpers import send_to_targets, DataHandlingError
+from datafetcherbase import DataFetcherBase, DataHandlingError
+from hidra import generate_filepath
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class DataFetcher():
+class DataFetcher(DataFetcherBase):
 
     def __init__(self, config, log_queue, id):
         """Initial setup for this module
@@ -20,17 +21,10 @@ class DataFetcher():
         Checks if all required parameters are set in the configuration
         """
 
-        self.id = id
-        self.config = config
+        DataFetcherBase.__init__(self, config, log_queue, id,
+                                 "eventdetector_template-{0}".format(id))
 
-        self.log = helpers.get_logger("eventdetector_template-{0}"
-                                      .format(self.id), log_queue)
-
-        self.source_file = None
-        self.target_file = None
-
-        required_params = ["chunksize",
-                           "local_target"]
+        required_params = []
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -45,64 +39,15 @@ class DataFetcher():
             raise Exception("Wrong configuration")
 
     def get_metadata(self, targets, metadata):
-        """Extends the given metadata and generates paths
 
-        Reads the metadata dictionary from the event detector and extends it
-        with the mandatory entries:
-            - filesize (int):  the total size of the logical file (before
-                               chunking)
-            - file_mod_time (float, epoch time): modification time of the
-                                                 logical file in epoch
-            - file_create_time (float, epoch time): creation time of the
-                                                    logical file in epoch
-            - chunksize (int): the size of the chunks the logical message was
-                               split into
-
-        Additionally it generates the absolute source path and if a local
-        target is specified the absolute target path as well.
-
-        Args:
-            targets (list):
-                A list of targets where the data or metadata should be sent to.
-                It is of the form:
-                    [[<node_name>:<port>, <priority>,
-                      <list of file suffixes>, <request_type>], ...]
-                where
-                    <list of file suffixes>: is a python of file types which
-                                             should be send to this target.
-                                             e.g. [u'.cbf']
-                    <request_type>: u'data' or u'metadata'
-            metadata (dict): Dictionary created by the event detector
-                             containing:
-                                - filename
-                                - source_path
-                                - relative_path
-
-        Sets:
-            source_file (str): the absolute path of the source file
-            target_file (str): the absolute path for the target file
-
-        """
-        if metadata["relative_path"].startswith("/"):
-            self.source_file = os.path.normpath(
-                os.path.join(metadata["source_path"],
-                             metadata["relative_path"][1:],
-                             metadata["filename"]))
-        else:
-            self.source_file = os.path.normpath(
-                os.path.join(metadata["source_path"],
-                             metadata["relative_path"],
-                             metadata["filename"])
+        # Build source file
+        self.source_file = generate_filepath(metadata["source_path"],
+                                             metadata)
 
         # Build target file
-        if self.config["local_target"] is not None:
-            self.target_file = os.path.join(
-                os.path.normpath(
-                    os.path.join(local_target,
-                                 metadata["relative_path"])),
-                metadata["filename"])
-        else:
-            self.target_file = None
+        # if local_target is not set (== None) generate_filepath returns None
+        self.target_file = generate_filepath(self.config["local_target"],
+                                             metadata)
 
         # Extends metadata
         if targets:
@@ -112,27 +57,7 @@ class DataFetcher():
             metadata["chunksize"] = self.config["chunksize"]
 
     def send_data(self, targets, metadata, open_connections, context):
-        """Reads data into buffer and sends it to all targets
 
-        Args:
-            targets (list):
-                A list of targets where the data or metadata should be sent to.
-                It is of the form:
-                    [[<node_name>:<port>, <priority>,
-                      <list of file suffixes>, <request_type>], ...]
-                where
-                    <list of file suffixes>: is a python of file types which
-                                             should be send to this target.
-                                             e.g. [u'.cbf']
-                    <request_type>: u'data' or u'metadata'
-            metadata (dict): extendet metadata dictionary filled by function
-                             get_metadata
-            open_connections (dict)
-            context: zmq context
-
-        Returns:
-            Nothing
-        """
         if not targets:
             return
 
@@ -163,9 +88,8 @@ class DataFetcher():
 
             # send message to data targets
             try:
-                send_to_targets(self.log, targets_data, self.source_file,
-                                self.target_file, open_connections, None,
-                                chunk_payload, context)
+                self.send_to_targets(targets_data, open_connections, None,
+                                     chunk_payload, context)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
                                "'{0}' (chunk {1})".format(self.source_file,
@@ -176,38 +100,15 @@ class DataFetcher():
                                chunk_number), exc_info=True)
 
     def finish(self, targets, metadata, open_connections, context):
-        """
-
-        Args:
-            targets (list):
-                A list of targets where the data or metadata should be sent to.
-                It is of the form:
-                    [[<node_name>:<port>, <priority>,
-                      <list of file suffixes>, <request_type>], ...]
-                where
-                    <list of file suffixes>: is a python of file types which
-                                             should be send to this target.
-                                             e.g. [u'.cbf']
-                    <request_type>: u'data' or u'metadata'
-            metadata (dict)
-            open_connections
-            context
-
-        Returns:
-            Nothing
-        """
-
-    def finish_datahandling(log, targets, source_file, target_file, metadata,
-                            open_connections, context, config):
 
         targets_metadata = [i for i in targets if i[3] == "metadata"]
 
         # send message to metadata targets
         if targets_metadata:
             try:
-                send_to_targets(self.log, targets_metadata, self.source_file,
-                                self.target_file, open_connections, metadata,
-                                None, context, self.config["send_timeout"])
+                self.send_to_targets(targets_metadata, open_connections,
+                                     metadata, None, context,
+                                     self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
                                "{0}...done.".format(self.source_file))
 
@@ -218,12 +119,6 @@ class DataFetcher():
 
     def stop(self):
         pass
-
-    def __exit__(self):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
 
 
 if __name__ == '__main__':
@@ -301,8 +196,6 @@ if __name__ == '__main__':
                   .format(open_connections))
 
     datafetcher = DataFetcher(config, log_queue, 0)
-
-    datafetcher.setup()
 
     datafetcher.get_metadata(targets, metadata)
 
