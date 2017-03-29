@@ -208,6 +208,7 @@ class Transfer():
         self.signal_port = "50000"
         self.request_port = "50001"
         self.file_op_port = "50050"
+        self.test_port = "50007"
         self.data_host = None
         self.data_port = None
         self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
@@ -230,9 +231,7 @@ class Transfer():
 
         self.signal_exchanged = None
 
-        self.stream_started = None
-        self.query_next_started = None
-        self.nexus_started = None
+        self.started_connections = dict()
 
         self.socket_response_timeout = 1000
 
@@ -431,6 +430,63 @@ class Transfer():
 
         return message
 
+    def __get_socked_id(self, data_socket):
+        ip = "0.0.0.0"           # TODO use IP of hostname?
+
+        host = ""
+        port = ""
+
+        if data_socket:
+            self.log.debug("Specified data_socket: {0}"
+                           .format(data_socket))
+
+            if type(data_socket) == list:
+                # socket_bind_id = "tcp://{0}:{1}".format(data_socket[0],
+                #                                         data_socket[1])
+                host = data_socket[0]
+                ip = socket.gethostbyaddr(host)[2][0]
+                port = data_socket[1]
+            else:
+                port = str(data_socket)
+
+                host = socket.gethostname()
+                socket_id = "{0}:{1}".format(host, port).encode("utf-8")
+                ip_from_host = socket.gethostbyaddr(host)[2]
+                if len(ip_from_host) == 1:
+                    ip = ip_from_host[0]
+
+        elif self.targets:
+            if len(self.targets) == 1:
+                host, port = self.targets[0][0].split(":")
+                ip_from_host = socket.gethostbyaddr(host)[2]
+                if len(ip_from_host) == 1:
+                    ip = ip_from_host[0]
+
+            else:
+                raise FormatError("Multipe possible ports. "
+                                  "Please choose which one to use.")
+        else:
+                raise FormatError("No target specified.")
+
+        socket_id = "{0}:{1}".format(host, port).encode("utf-8")
+
+        try:
+            socket.inet_aton(ip)
+            self.log.info("IPv4 address detected: {0}.".format(ip))
+            socket_bind_id = "{0}:{1}".format(ip, port)
+            file_op_bind_id = "{0}:{1}".format(ip, self.file_op_port)
+            self.is_ipv6 = False
+        except socket.error:
+            self.log.info("Address '{0}' is not a IPv4 address, "
+                          "asume it is an IPv6 address.".format(ip))
+#            socket_bind_id = "0.0.0.0:{0}".format(port)
+            socket_bind_id = "[{0}]:{1}".format(ip, port)
+#            file_op_bind_str= "0.0.0.0:{0}".format(self.file_op_port)
+            file_op_bind_id = "[{0}]:{1}".format(ip, self.file_op_port)
+            self.is_ipv6 = True
+
+        return socket_id, socket_bind_id, file_op_bind_id
+
     def start(self, data_socket=False, whitelist=None):
 
         # Receive data only from whitelisted nodes
@@ -461,80 +517,28 @@ class Transfer():
                 raise FormatError("Whitelist has to be a list of "
                                   "IPs/DNS names")
 
-        socket_id_to_bind = (
-            self.stream_started
-            or self.query_next_started
-            or self.nexus_started
-        )
+        socket_bind_id = False
+        for t in ["STEAM", "QUERY_NEXT", "NEXUS"]:
+            if t in self.started_connections:
+                socket_bind_id = self.started_connections[t]["bind_id"]
 
-        if socket_id_to_bind:
+        if socket_bind_id:
             self.log.info("Reopening already started connection.")
         else:
 
-            ip = "0.0.0.0"           # TODO use IP of hostname?
+            socket_id, socket_bind_id, file_op_id = (
+                self.__get_socked_id(data_socket))
 
-            host = ""
-            port = ""
+        socket_bind_str = "tcp://{0}".format(socket_bind_id)
+        file_op_bind_str = "tcp://{0}".format(file_op_id)
 
-            if data_socket:
-                self.log.debug("Specified data_socket: {0}"
-                               .format(data_socket))
-
-                if type(data_socket) == list:
-                    # socket_id_to_bind = "{0}:{1}".format(data_socket[0],
-                    #                                      data_socket[1])
-                    host = data_socket[0]
-                    ip = socket.gethostbyaddr(host)[2][0]
-                    port = data_socket[1]
-                else:
-                    port = str(data_socket)
-
-                    host = socket.gethostname()
-                    socket_id = "{0}:{1}".format(host, port).encode("utf-8")
-                    ip_from_host = socket.gethostbyaddr(host)[2]
-                    if len(ip_from_host) == 1:
-                        ip = ip_from_host[0]
-
-            elif self.targets:
-                if len(self.targets) == 1:
-                    host, port = self.targets[0][0].split(":")
-                    ip_from_host = socket.gethostbyaddr(host)[2]
-                    if len(ip_from_host) == 1:
-                        ip = ip_from_host[0]
-
-                else:
-                    raise FormatError("Multipe possible ports. "
-                                      "Please choose which one to use.")
-            else:
-                    raise FormatError("No target specified.")
-
-            socket_id = "{0}:{1}".format(host, port).encode("utf-8")
-
-            try:
-                socket.inet_aton(ip)
-                self.log.info("IPv4 address detected: {0}.".format(ip))
-                socket_id_to_bind = "{0}:{1}".format(ip, port)
-                file_op_con_str = "tcp://{0}:{1}".format(ip, self.file_op_port)
-                self.is_ipv6 = False
-            except socket.error:
-                self.log.info("Address '{0}' is not a IPv4 address, "
-                              "asume it is an IPv6 address.".format(ip))
-#                socket_id_to_bind = "0.0.0.0:{0}".format(port)
-                socket_id_to_bind = "[{0}]:{1}".format(ip, port)
-#                file_op_con_str= "tcp://0.0.0.0:{0}".format(self.file_op_port)
-                file_op_con_str = ("tcp://[{0}]:{1}"
-                                   .format(ip, self.file_op_port))
-                self.is_ipv6 = True
-
-            self.log.debug("socket_id_to_bind={0}".format(socket_id_to_bind))
-            self.log.debug("file_op_con_str={0}".format(file_op_con_str))
-
-#            socket_id_to_bind = "192.168.178.25:{0}".format(port)
+        self.log.debug("socket_id_bind_str={0}".format(socket_bind_str))
+        self.log.debug("file_op_bind_str={0}".format(file_op_bind_str))
 
         self.data_socket = self.context.socket(zmq.PULL)
         # An additional socket is needed to establish the data retriving
         # mechanism
-        self.data_socket_con_str = "tcp://{0}".format(socket_id_to_bind)
+        self.data_socket_con_str = socket_bind_str
 
         if whitelist:
             self.data_socket.zap_domain = b'global'
@@ -573,7 +577,10 @@ class Transfer():
                                exc_info=True)
                 raise
 
-            self.query_next_started = socket_id
+            self.started_connections["QUERY_NEXT"] = {
+                "id": socket_id,
+                "bind_id": socket_bind_id
+            }
 
         elif self.connection_type in ["NEXUS"]:
 
@@ -586,13 +593,13 @@ class Transfer():
                 self.log.debug("Enabling IPv6 socket for file_op_socket")
 
             try:
-                self.file_op_socket.bind(file_op_con_str)
+                self.file_op_socket.bind(file_op_bind_str)
                 self.log.info("File operation socket started (bind) for '{0}'"
-                              .format(file_op_con_str))
+                              .format(file_op_bind_str))
             except:
                 self.log.error("Failed to start Socket of type {0} (bind): "
                                "'{1}'".format(self.connection_type,
-                                              file_op_con_str),
+                                              file_op_bind_str),
                                exc_info=True)
 
             if not os.path.exists(self.ipc_path):
@@ -615,9 +622,16 @@ class Transfer():
             self.poller.register(self.file_op_socket, zmq.POLLIN)
             self.poller.register(self.control_socket, zmq.POLLIN)
 
-            self.nexus_started = socket_id
+            self.started_connections["NEXUS"] = {
+                "id": socket_id,
+                "bind_id": socket_bind_id
+            }
         else:
-            self.stream_started = socket_id
+            self.started_connections["STREAM"] = {
+                "id": socket_id,
+                "bind_id": socket_bind_id
+            }
+
 
     def register(self, whitelist):
 
@@ -675,7 +689,8 @@ class Transfer():
     def read(self, callback_params, open_callback, read_callback,
              close_callback):
 
-        if not self.connection_type == "NEXUS" or not self.nexus_started:
+        if (not self.connection_type == "NEXUS"
+                or "NEXUS" not in self.started_connections):
             raise UsageError("Wrong connection type (current: {0}) or session"
                              " not started.".format(self.connection_type))
 
@@ -859,14 +874,16 @@ class Transfer():
 
         """
 
-        if not self.stream_started and not self.query_next_started:
+        if ("STREAM" not in self.started_connections
+                and "QUERY_NEXT" not in self.started_connections):
             self.log.info("Could not communicate, no connection was "
                           "initialized.")
             return None, None
 
-        if self.query_next_started:
+        if "QUERY_NEXT" in self.started_connections:
 
-            send_message = [b"NEXT", self.query_next_started]
+            send_message = [b"NEXT",
+                            self.started_connections["QUERY_NEXT"]["id"]]
             try:
                 self.request_socket.send_multipart(send_message)
             except Exception:
@@ -943,10 +960,11 @@ class Transfer():
             else:
                 # self.log.warning("Could not receive data in the given time.")
 
-                if self.query_next_started:
+                if "QUERY_NEXT" in self.started_connections:
                     try:
                         self.request_socket.send_multipart(
-                            [b"CANCEL", self.query_next_started])
+                            [b"CANCEL",
+                             self.started_connections["QUERY_NEXT"]["id"]])
                     except Exception:
                         self.log.error("Could not cancel the next query",
                                        exc_info=True)
@@ -1003,9 +1021,10 @@ class Transfer():
         if self.signal_socket and self.signal_exchanged:
             self.log.info("Sending close signal")
             signal = None
-            if self.stream_started or (b"STREAM" in self.signal_exchanged):
+            if ("STREAM" in self.started_connections
+                    or (b"STREAM" in self.signal_exchanged)):
                 signal = b"STOP_STREAM"
-            elif (self.query_next_started
+            elif ("QUERY_NEXT" in self.started_connections
                     or (b"QUERY" in self.signal_exchanged)):
                 signal = b"STOP_QUERY_NEXT"
 
@@ -1013,8 +1032,14 @@ class Transfer():
             # TODO need to check correctness of signal?
 #            message = self.__send_signal(signal)
 
-            self.stream_started = None
-            self.query_next_started = None
+            try:
+                del self.started_connections["STREAM"]
+            except KeyError:
+                pass
+            try:
+                del self.started_connections["QUERY_NEXT"]
+            except KeyError:
+                pass
 
         # Close ZMQ connections
         try:
