@@ -717,7 +717,6 @@ class RequestPuller():
 
         self.log = helpers.get_logger("RequestPuller", log_queue)
 
-
         # to give the signal handler to bind to the socket before the connect
         # is done
         time.sleep(0.5)

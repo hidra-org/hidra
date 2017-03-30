@@ -5,7 +5,7 @@ import os
 import json
 import tempfile
 import zmq
-from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
+#from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
 from zmq.utils.strtypes import asbytes
 import multiprocessing
 
@@ -16,7 +16,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class MonitorDevice():
-    def __init__ (self, in_con_str, out_con_str, mon_con_str):
+    def __init__(self, in_con_str, out_con_str, mon_con_str):
 
         self.in_prefix = asbytes('in')
         self.out_prefix = asbytes('out')
@@ -34,11 +34,12 @@ class MonitorDevice():
 
         self.run()
 
-    def run (self):
+    def run(self):
         while True:
             try:
                 msg = self.in_socket.recv_multipart()
-#                print ("[MonitoringDevice] In: Received message {0}".format(msg[:20]))
+#                print ("[MonitoringDevice] In: Received message {0}"
+#                       .format(msg[:20]))
             except KeyboardInterrupt:
                 break
 
@@ -46,14 +47,15 @@ class MonitorDevice():
 
                 mon_msg = [self.in_prefix] + msg
                 self.mon_socket.send_multipart(mon_msg)
-    #            print ("[MonitoringDevice] Mon: Sent message")
+#                print ("[MonitoringDevice] Mon: Sent message")
 
                 self.out_socket.send_multipart(msg)
-    #            print ("[MonitoringDevice] Out: Sent message {0}".format(msg[:20]))
+#                print ("[MonitoringDevice] Out: Sent message {0}"
+#                       .format(msg[:20]))
 
                 mon_msg = [self.out_prefix] + msg
                 self.mon_socket.send_multipart(mon_msg)
-    #            print ("[MonitoringDevice] Mon: Sent message")
+#                print ("[MonitoringDevice] Mon: Sent message")
 
 
 class EventDetector(EventDetectorBase):
@@ -116,15 +118,19 @@ class EventDetector(EventDetectorBase):
         # Set up monitored queue to get notification when new data is sent to
         # the zmq queue
 
-        self.monitoringdevice = multiprocessing.Process(target=MonitorDevice, args=(self.in_con_str, self.out_con_str, self.mon_con_str))
+        self.monitoringdevice = multiprocessing.Process(
+            target=MonitorDevice,
+            args=(self.in_con_str,
+                  self.out_con_str,
+                  self.mon_con_str))
 
         """ original monitored queue from pyzmq is not working
         in_prefix = asbytes('in')
         out_prefix = asbytes('out')
 
-                                                #   in       out      mon
-        self.monitoringdevice = ThreadMonitoredQueue(zmq.PULL, zmq.PUSH, zmq.PUB,
-                                                in_prefix, out_prefix)
+        self.monitoringdevice = ThreadMonitoredQueue(
+            #   in       out      mon
+            zmq.PULL, zmq.PUSH, zmq.PUB, in_prefix, out_prefix)
 
         self.monitoringdevice.bind_in(self.in_con_str)
         self.monitoringdevice.bind_out(self.out_con_str)

@@ -3,13 +3,14 @@ from __future__ import unicode_literals
 import sys
 import abc
 
-# source: http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5
+# source:
+# http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
 if sys.version_info[0] >= 3 and sys.version_info[1] >= 4:
     ABC = abc.ABC
 else:
     ABC = abc.ABCMeta(str("ABC"), (), {})
 
-from __init__ import BASE_PATH
+from __init__ import BASE_PATH  # noqa F401
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

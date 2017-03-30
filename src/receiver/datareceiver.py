@@ -24,6 +24,7 @@ CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 whitelist = None
 changed_netgroup = False
 
+
 def argument_parsing():
     default_config = os.path.join(CONFIG_PATH, "datareceiver.conf")
 
@@ -99,6 +100,7 @@ def argument_parsing():
 
     return params
 
+
 def excecute_ldapsearch_(netgroup):
     global whitelist
 
@@ -123,9 +125,10 @@ def excecute_ldapsearch_(netgroup):
     else:
         return whitelist
 
+
 class CheckNetgroup (threading.Thread):
     def __init__(self, netgroup, lock):
-        self.log = logger = logging.getLogger("CheckNetgroup")
+        self.log = logging.getLogger("CheckNetgroup")
 
         self.log.debug("init")
         self.netgroup = netgroup
@@ -206,7 +209,8 @@ class DataReceiver:
 
         self.lock = threading.Lock()
 
-        if params["whitelist"] is not None and type(params["whitelist"]) == str:
+        if (params["whitelist"] is not None
+                and type(params["whitelist"]) == str):
             self.lock.acquire()
             whitelist = helpers.excecute_ldapsearch(params["whitelist"])
             self.log.info("Configured whitelist: {0}".format(whitelist))
@@ -284,7 +288,6 @@ class DataReceiver:
             self.checking_thread.join()
             self.log.debug("checking_thread stopped")
             self.checking_thread = None
-
 
     def signal_term_handler(self, signal, frame):
         self.log.debug('got SIGTERM')

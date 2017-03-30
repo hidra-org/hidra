@@ -7,8 +7,7 @@ import logging
 import json
 import time
 
-from datafetcherbase import DataFetcherBase, DataHandlingError
-from hidra import generate_filepath
+from datafetcherbase import DataFetcherBase
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

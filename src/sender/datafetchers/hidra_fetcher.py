@@ -8,7 +8,7 @@ import json
 import time
 
 from datafetcherbase import DataFetcherBase, DataHandlingError
-from hidra import Transfer, generate_filepath, store_data_chunk
+from hidra import generate_filepath, store_data_chunk
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -82,7 +82,7 @@ class DataFetcher(DataFetcherBase):
         # a dictionary
         self.metadata_r = json.loads(self.metadata_r.decode("utf-8"))
 
-        if ( metadata["relative_path"] != self.metadata_r["relative_path"]
+        if (metadata["relative_path"] != self.metadata_r["relative_path"]
                 or metadata["source_path"] != self.metadata_r["source_path"]
                 or metadata["filename"] != self.metadata_r["filename"]):
             self.log.error("Received metadata do not match data")
@@ -254,7 +254,7 @@ if __name__ == '__main__':
         "main_pid": current_pid,
         "ext_data_port": "50100",
         "chunksize": chunksize,
-        "local_target":  os.path.join(BASE_PATH, "data", "zmq_target"),
+        "local_target": os.path.join(BASE_PATH, "data", "zmq_target"),
         "store_data": True
     }
 

@@ -22,9 +22,12 @@ class DataFetcher(DataFetcherBase):
         DataFetcherBase.__init__(self, config, log_queue, id,
                                  "file_fetcher-{0}".format(id))
 
-        required_params = ["fix_subdirs",
-                           "store_data",
-                           ["remove_data", [True, False, "with_confirmation"]]]
+        required_params = [
+            "fix_subdirs",
+            "store_data",
+            ["remove_data", [True, False, "deferred_error_handling",
+                             "with_confirmation"]]
+        ]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -231,7 +234,7 @@ class DataFetcher(DataFetcherBase):
                 self.log.error("Unable to copy/move file '{0}' to '{1}'"
                                .format(self.source_file, self.target_file),
                                exc_info=True)
-                raisesource_path
+                raise
         except:
             self.log.error("Unable to copy/move file '{0}' to '{1}'"
                            .format(self.source_file, self.target_file),

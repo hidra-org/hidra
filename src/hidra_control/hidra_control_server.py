@@ -5,7 +5,6 @@ import os
 import sys
 import socket
 import subprocess
-import logging
 import argparse
 import setproctitle
 from multiprocessing import Queue

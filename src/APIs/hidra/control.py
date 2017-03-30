@@ -243,3 +243,25 @@ class Control():
 
     def __del__(self):
         self.stop()
+
+def reset_receiver_status(host, port):
+    context = zmq.Context()
+
+    try:
+        reset_socket = context.socket(zmq.REQ)
+        con_str = "tcp://{0}:{1}".format(host, port)
+
+        reset_socket.connect(con_str)
+        print("Start reset_socket (connect): '{0}'".format(con_str))
+    except:
+        print("Failed to start reset_socket (connect): '{0}'".format(con_str),
+              exc_info=True)
+
+    reset_socket.send_multipart([b"RESET_STATUS"])
+    print ("Reset request sent")
+
+    responce = reset_socket.recv_multipart()
+    print ("Responce: {0}".format(responce))
+
+    reset_socket.close()
+    context.destroy()

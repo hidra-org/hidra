@@ -92,12 +92,14 @@ class DataFetcher(DataFetcherBase):
                                      chunk_payload, context)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{0}' (chunk {1})".format(self.source_file,
-                               chunk_number), exc_info=True)
+                               "'{0}' (chunk {1})"
+                               .format(self.source_file, chunk_number),
+                               exc_info=True)
             except:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{0}' (chunk {1})".format(self.source_file,
-                               chunk_number), exc_info=True)
+                               "'{0}' (chunk {1})"
+                               .format(self.source_file, chunk_number),
+                               exc_info=True)
 
     def finish(self, targets, metadata, open_connections, context):
 
@@ -114,8 +116,9 @@ class DataFetcher(DataFetcherBase):
 
             except:
                 self.log.error("Unable to send metadata multipart-message for "
-                               "file '{0}' to '{1}'".format(self.source_file,
-                               targets_metadata), exc_info=True)
+                               "file '{0}' to '{1}'"
+                               .format(self.source_file, targets_metadata),
+                               exc_info=True)
 
     def stop(self):
         pass
@@ -130,7 +133,6 @@ if __name__ == '__main__':
 
     from multiprocessing import Queue
     from logutils.queue import QueueHandler
-
 
     logfile = os.path.join(BASE_PATH, "logs", "file_fetcher.log")
     logsize = 10485760

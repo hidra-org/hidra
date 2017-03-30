@@ -9,7 +9,7 @@ import requests
 import time
 import errno
 
-from datafetcherbase import DataFetcherBase, DataHandlingError
+from datafetcherbase import DataFetcherBase
 from hidra import generate_filepath
 import helpers
 
@@ -46,7 +46,6 @@ class DataFetcher(DataFetcherBase):
             raise Exception("Wrong configuration")
 
     def get_metadata(self, targets, metadata):
-
 
         # no normpath used because that would transform http://...
         # into http:/...

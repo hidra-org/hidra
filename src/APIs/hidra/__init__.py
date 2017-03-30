@@ -12,4 +12,4 @@ from ._constants import connection_list
 
 __all__ = ["Transfer", "Control", "Ingest", "check_netgroup", "__version__",
            "connection_list", "LoggingFunction", "generate_filepath",
-           "store_data_chunk"]
+           "store_data_chunk", "reset_receiver_status"]

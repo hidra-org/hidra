@@ -532,6 +532,7 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
     else:
         return h1
 
+
 # Send all logs to the main process
 # The worker configuration is done at the start of the worker process run.
 # Note that on Windows you can't rely on fork semantics, so each process
