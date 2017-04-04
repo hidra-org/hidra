@@ -25,7 +25,7 @@ class DataHandlingError(Exception):
 
 class DataFetcherBase(ABC):
 
-    def __init__(self, config, log_queue, id, logger_name):
+    def __init__(self, config, log_queue, id, logger_name, context):
         """Initial setup
 
         Checks if all required parameters are set in the configuration
@@ -33,14 +33,20 @@ class DataFetcherBase(ABC):
 
         self.id = id
         self.config = config
+        self.context = context
 
         self.log = helpers.get_logger(logger_name, log_queue)
 
         self.source_file = None
         self.target_file = None
 
-        required_params = ["chunksize",
-                           "local_target"]
+        required_params = [
+            "chunksize",
+            "local_target",
+            ["remove_data", [True, False, "deferred_error_handling",
+                             "with_confirmation"]],
+            "cleaner_job_con_str"
+        ]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -50,12 +56,30 @@ class DataFetcherBase(ABC):
         if check_passed:
             self.log.info("Configuration for data fetcher: {0}"
                           .format(config_reduced))
+
+            if self.config["remove_data"] == "with_confirmation":
+                #creates socket
+                try:
+                    self.cleaner_job_socket = self.context.socket(zmq.PUSH)
+                    self.cleaner_job_socket.connect(
+                        self.config["cleaner_job_con_str"])
+                    self.log.info("Start cleaner job_socket (connect): {0}"
+                                  .format(self.config["cleaner_job_con_str"]))
+                except:
+                    self.log.error("Failed to start cleaner job socket "
+                                   "(connect): '{0}'".format(
+                                       self.config["cleaner_job_con_str"]),
+                                   exc_info=True)
+                    raise
+            else:
+                self.cleaner_job_socket = None
+
         else:
             self.log.debug("config={0}".format(self.config))
             raise Exception("Wrong configuration")
 
     def send_to_targets(self, targets, open_connections, metadata, payload,
-                        context, timeout=-1):
+                        timeout=-1):
 
         for target, prio, suffixes, send_type in targets:
 
@@ -65,7 +89,7 @@ class DataFetcherBase(ABC):
                 if target not in open_connections:
                     # open socket
                     try:
-                        socket = context.socket(zmq.PUSH)
+                        socket = self.context.socket(zmq.PUSH)
                         connection_str = "tcp://{0}".format(target)
 
                         socket.connect(connection_str)
@@ -119,7 +143,7 @@ class DataFetcherBase(ABC):
                 # socket not known
                 if target not in open_connections:
                     # open socket
-                    socket = context.socket(zmq.PUSH)
+                    socket = self.context.socket(zmq.PUSH)
                     connection_str = "tcp://{0}".format(target)
 
                     socket.connect(connection_str)
@@ -190,7 +214,7 @@ class DataFetcherBase(ABC):
         pass
 
     @abc.abstractmethod
-    def send_data(self, targets, metadata, open_connections, context):
+    def send_data(self, targets, metadata, open_connections):
         """Reads data into buffer and sends it to all targets
 
         Args:
@@ -207,7 +231,6 @@ class DataFetcherBase(ABC):
             metadata (dict): extendet metadata dictionary filled by function
                              get_metadata
             open_connections (dict)
-            context: zmq context
 
         Returns:
             Nothing
@@ -215,7 +238,7 @@ class DataFetcherBase(ABC):
         pass
 
     @abc.abstractmethod
-    def finish(self, targets, metadata, open_connections, context):
+    def finish(self, targets, metadata, open_connections):
         """
 
         Args:
@@ -231,12 +254,16 @@ class DataFetcherBase(ABC):
                     <request_type>: u'data' or u'metadata'
             metadata (dict)
             open_connections
-            context
 
         Returns:
             Nothing
         """
         pass
+
+    def close_socket(self):
+        if self.cleaner_job_socket is not None:
+            self.cleaner_job_socket.close(0)
+            self.cleaner_job_socket = None
 
     @abc.abstractmethod
     def stop(self):

@@ -18,6 +18,7 @@ confpath = os.path.join(basepath, "conf")
 libzmq_path = os.path.join(get_python_lib(), "zmq")
 platform_specific_files = []
 
+# Windows specific packages and config
 if platform.system() == "Windows":
 #    libzmq_path = "C:\Python27\Lib\site-packages\zmq"
     platform_specific_packages = ["watchdog"]
@@ -26,6 +27,8 @@ if platform.system() == "Windows":
         # config
         (os.path.join(confpath, "datamanager_windows.conf"),
             os.path.join("conf", "datamanager.conf"))]
+
+# Linux specific packages and config
 else:
 #    libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
     platform_specific_packages = ["inotifyx"]

@@ -10,6 +10,7 @@ import time
 import errno
 
 from datafetcherbase import DataFetcherBase
+from cleanerbase import CleanerBase
 from hidra import generate_filepath
 import helpers
 
@@ -19,10 +20,11 @@ __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
 
 class DataFetcher(DataFetcherBase):
 
-    def __init__(self, config, log_queue, id):
+    def __init__(self, config, log_queue, id, context):
 
         DataFetcherBase.__init__(self, config, log_queue, id,
-                                 "http_fetcher-{0}".format(id))
+                                 "http_fetcher-{0}".format(id),
+                                 context)
 
         required_params = ["session",
                            "store_data",
@@ -41,6 +43,10 @@ class DataFetcher(DataFetcherBase):
             self.config["session"] = requests.session()
             self.config["remove_flag"] = False
 
+            if self.config["remove_data"] == "with_confirmation":
+                self.finish = self.finish_with_cleaner
+            else:
+                self.finish = self.finish_without_cleaner
         else:
             self.log.debug("config={0}".format(self.config))
             raise Exception("Wrong configuration")
@@ -81,7 +87,7 @@ class DataFetcher(DataFetcherBase):
                                exc_info=True)
                 raise
 
-    def send_data(self, targets, metadata, open_connections, context):
+    def send_data(self, targets, metadata, open_connections):
 
         response = self.config["session"].get(self.source_file)
         try:
@@ -194,7 +200,7 @@ class DataFetcher(DataFetcherBase):
             # send message to data targets
             try:
                 self.send_to_targets(targets_data, open_connections,
-                                     metadata_extended, payload, context)
+                                     metadata_extended, payload)
                 self.log.debug("Passing multipart-message for file {0}...done."
                                .format(self.source_file))
 
@@ -224,7 +230,7 @@ class DataFetcher(DataFetcherBase):
             # send message to metadata targets
             try:
                 self.send_to_targets(targets_metadata, open_connections,
-                                     metadata_extended, payload, context)
+                                     metadata_extended, payload)
                 self.log.debug("Passing metadata multipart-message for file "
                                "'{0}'...done.".format(self.source_file))
 
@@ -239,7 +245,16 @@ class DataFetcher(DataFetcherBase):
         else:
             self.config["remove_flag"] = file_send
 
-    def finish(self, targets, metadata, open_connections, context):
+    def finish(self, targets, metadata, open_connections):
+        # is overwritten when class is instantiated depending if a cleaner
+        # class is used or not
+        pass
+
+    def finish_with_cleaner(self, targets, metadata, open_connections):
+        self.cleaner_job_socket.send_string(self.source_file)
+        self.log.debug("Forwarded to cleaner {0}".format(self.source_file))
+
+    def finish_without_cleaner(self, targets, metadata, open_connections):
 
         if self.config["remove_data"] and self.config["remove_flag"]:
             responce = requests.delete(self.source_file)
@@ -262,12 +277,29 @@ class DataFetcher(DataFetcherBase):
         self.stop()
 
 
+class Cleaner(CleanerBase):
+    def remove_element(self, source_file):
+        # remove file
+        responce = requests.delete(source_file)
+
+        try:
+            responce.raise_for_status()
+            self.log.debug("Deleting file '{0}' succeeded."
+                           .format(source_file))
+        except:
+            self.log.error("Deleting file '{0}' failed."
+                           .format(source_file), exc_info=True)
+
+
 if __name__ == '__main__':
-#    import subprocess
+    import subprocess
     from multiprocessing import Queue
     from logutils.queue import QueueHandler
     from __init__ import BASE_PATH
+    import socket
+    import tempfile
 
+    ### Set up logging ###
     logfile = os.path.join(BASE_PATH, "logs", "http_fetcher.log")
     logsize = 10485760
 
@@ -287,12 +319,56 @@ if __name__ == '__main__':
     qh = QueueHandler(log_queue)
     root.addHandler(qh)
 
-    receiving_port = "6005"
-    receiving_port2 = "6006"
-    ext_ip = "0.0.0.0"
-    dataFwPort = "50010"
+    ### determine socket connection strings ###
+    con_ip = socket.gethostname()
+    ext_ip = socket.gethostbyaddr(con_ip)[2][0]
+    #ext_ip = "0.0.0.0"
+
+    current_pid = os.getpid()
+
+    cleaner_port = 50051
+    confirmation_port = 50052
+
+    ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
+    if not os.path.exists(ipc_path):
+        os.mkdir(ipc_path)
+        # the permission have to changed explicitly because
+        # on some platform they are ignored when called within mkdir
+        os.chmod(ipc_path, 0o777)
+        logging.info("Creating directory for IPC communication: {0}"
+                     .format(ipc_path))
+
+    if helpers.is_windows():
+        job_con_str = "tcp://{0}:{1}".format(con_ip, cleaner_port)
+        job_bind_str = "tcp://{0}:{1}".format(ext_ip, cleaner_port)
+    else:
+        job_con_str = ("ipc://{0}/{1}_{2}".format(ipc_path,
+                                                  current_pid,
+                                                  "cleaner"))
+        job_bind_str = job_con_str
+
+    conf_con_str = "tcp://{0}:{1}".format(con_ip, confirmation_port)
+    conf_bind_str = "tcp://{0}:{1}".format(ext_ip, confirmation_port)
+
+    ### Set up config ###
+    config = {
+        "session": None,
+        "fix_subdirs": ["commissioning", "current", "local"],
+        "store_data": True,
+        "remove_data": False,
+        "cleaner_job_con_str": job_bind_str,
+        "cleaner_conf_con_str": conf_bind_str,
+        "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
+        "local_target": os.path.join(BASE_PATH, "data", "target")
+    }
 
     context = zmq.Context.instance()
+
+    ### Set up receiver simulator ###
+    receiving_port = "6005"
+    receiving_port2 = "6006"
+    dataFwPort = "50010"
+
 
     receiving_socket = context.socket(zmq.PULL)
     connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port)
@@ -306,50 +382,36 @@ if __name__ == '__main__':
     logging.info("=== receiving_socket2 connected to {0}"
                  .format(connection_str))
 
+    ### Test file fetcher ###
+    filename = "test01.cbf"
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
-    local_target = os.path.join(BASE_PATH, "data", "target")
 
     # read file to send it in data pipe
     logging.debug("=== copy file to asap3-mon")
 #    os.system('scp "%s" "%s:%s"' % (localfile, remotehost, remotefile) )
-#    subprocess.call("scp {0} root@asap3-mon:/var/www/html/data"
-#                    .format(prework_source_file), shell=True)
+    subprocess.call("scp {0} root@asap3-mon:/var/www/html/data/{1}"
+                    .format(prework_source_file, filename), shell=True)
 
-#    metadata = {
-#            "source_path"  : "http://192.168.138.37/data",
-#            "relative_path": "",
-#            "filename"    : "35_data_000170.h5"
-#            }
     metadata = {
         "source_path": "http://asap3-mon/data",
         "relative_path": "",
-        "filename": "test_file.cbf"
+        "filename": filename
     }
-    targets = [['localhost:{0}'.format(receiving_port), 1, [".cbf", ".tif"],
+    targets = [['{0}:{1}'.format(ext_ip, receiving_port), 1, [".cbf", ".tif"],
                 "data"],
-               ['localhost:{0}'.format(receiving_port2), 1, [".cbf", ".tif"],
+               ['{0}:{1}'.format(ext_ip, receiving_port2), 1, [".cbf", ".tif"],
                 "data"]]
 
-    chunksize = 10485760  # = 1024*1024*10 = 10 MiB
     open_connections = dict()
 
-    config = {
-        "session": None,
-        "fix_subdirs": ["commissioning", "current", "local"],
-        "store_data": True,
-        "remove_data": False,
-        "chunksize": chunksize,
-        "local_target": local_target
-    }
-
-    datafetcher = DataFetcher(config, log_queue, 0)
+    datafetcher = DataFetcher(config, log_queue, 0, context)
 
     datafetcher.get_metadata(targets, metadata)
 #    source_file = "http://131.169.55.170/test_httpget/data/test_file.cbf"
 
-    datafetcher.send_data(targets, metadata, open_connections, context)
+    datafetcher.send_data(targets, metadata, open_connections)
 
-    datafetcher.finish(targets, metadata, open_connections, context)
+    datafetcher.finish(targets, metadata, open_connections)
 
     logging.debug("open_connections after function call: {0}"
                   .format(open_connections))
@@ -365,6 +427,10 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
     finally:
+
+        subprocess.call('ssh root@asap3-mon rm "/var/www/html/data/{0}"'
+                        .format(filename), shell=True)
+
         receiving_socket.close(0)
         receiving_socket2.close(0)
         context.destroy()

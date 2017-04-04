@@ -15,14 +15,15 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 class DataFetcher(DataFetcherBase):
 
-    def __init__(self, config, log_queue, id):
+    def __init__(self, config, log_queue, id, context):
         """Initial setup for this module
 
         Checks if all required parameters are set in the configuration
         """
 
         DataFetcherBase.__init__(self, config, log_queue, id,
-                                 "datafetcher_template-{0}".format(id))
+                                 "datafetcher_template-{0}".format(id),
+                                 context)
 
         required_params = []
 

@@ -71,7 +71,8 @@ class DataDispatcher():
 
         self.datafetcher = self.datafetcher_m.DataFetcher(self.config,
                                                           log_queue,
-                                                          self.id)
+                                                          self.id,
+                                                          self.context)
 
         self.continue_run = True
 
@@ -259,8 +260,7 @@ class DataDispatcher():
                 # send data
                 try:
                     self.datafetcher.send_data(targets, metadata,
-                                               self.open_connections,
-                                               self.context)
+                                               self.open_connections)
                 except:
                     self.log.error("DataDispatcher-{0}: Passing new file to "
                                    "data stream...failed".format(self.id),
@@ -268,7 +268,7 @@ class DataDispatcher():
 
                 # finish data handling
                 self.datafetcher.finish(targets, metadata,
-                                        self.open_connections, self.context)
+                                        self.open_connections)
 
             ######################################
             #         control commands           #

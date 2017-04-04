@@ -15,18 +15,17 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 class DataFetcher(DataFetcherBase):
 
-    def __init__(self, config, log_queue, id):
+    def __init__(self, config, log_queue, id, context):
 
         DataFetcherBase.__init__(self, config, log_queue, id,
-                                 "zmq_fetcher-{0}".format(id))
+                                 "zmq_fetcher-{0}".format(id),
+                                 context)
 
         if helpers.is_windows():
-            required_params = ["context",
-                               "ext_ip",
+            required_params = ["ext_ip",
                                "data_fetcher_port"]
         else:
-            required_params = ["context",
-                               "ipc_path"]
+            required_params = ["ipc_path"]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -47,7 +46,7 @@ class DataFetcher(DataFetcherBase):
 
             # Create zmq socket
             try:
-                self.socket = config["context"].socket(zmq.PULL)
+                self.socket = self.context.socket(zmq.PULL)
                 self.socket.bind(con_str)
                 self.log.info("Start socket (bind): '{0}'".format(con_str))
             except:
@@ -98,7 +97,7 @@ class DataFetcher(DataFetcherBase):
                                exc_info=True)
                 raise
 
-    def send_data(self, targets, metadata, open_connections, context):
+    def send_data(self, targets, metadata, open_connections):
 
         if not targets:
             return
@@ -137,14 +136,14 @@ class DataFetcher(DataFetcherBase):
         # send message
         try:
             self.send_to_targets(targets, open_connections, metadata_extended,
-                                 payload, context)
+                                 payload)
             self.log.debug("Passing multipart-message for file '{0}'...done."
                            .format(self.source_file))
         except:
             self.log.error("Unable to send multipart-message for file '{0}'"
                            .format(self.source_file), exc_info=True)
 
-    def finish(self, targets, metadata, open_connections, context):
+    def finish(self, targets, metadata, open_connections):
         pass
 
     def stop(self):
@@ -159,7 +158,9 @@ if __name__ == '__main__':
     from multiprocessing import Queue
     from logutils.queue import QueueHandler
     from __init__ import BASE_PATH
+    import socket
 
+    ### Set up logging ###
     logfile = os.path.join(BASE_PATH, "logs", "zmq_fetcher.log")
     logsize = 10485760
 
@@ -179,13 +180,58 @@ if __name__ == '__main__':
     qh = QueueHandler(log_queue)
     root.addHandler(qh)
 
+    ### determine socket connection strings ###
+    con_ip = socket.gethostname()
+    ext_ip = socket.gethostbyaddr(con_ip)[2][0]
+    #ext_ip = "0.0.0.0"
+
+    current_pid = os.getpid()
+
+    cleaner_port = 50051
+    confirmation_port = 50052
+
+    ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
+    if not os.path.exists(ipc_path):
+        os.mkdir(ipc_path)
+        # the permission have to changed explicitly because
+        # on some platform they are ignored when called within mkdir
+        os.chmod(ipc_path, 0o777)
+        logging.info("Creating directory for IPC communication: {0}"
+                     .format(ipc_path))
+
+    if helpers.is_windows():
+        job_con_str = "tcp://{0}:{1}".format(con_ip, cleaner_port)
+        job_bind_str = "tcp://{0}:{1}".format(ext_ip, cleaner_port)
+    else:
+        job_con_str = ("ipc://{0}/{1}_{2}".format(ipc_path,
+                                                  current_pid,
+                                                  "cleaner"))
+        job_bind_str = job_con_str
+
+    conf_con_str = "tcp://{0}:{1}".format(con_ip, confirmation_port)
+    conf_bind_str = "tcp://{0}:{1}".format(ext_ip, confirmation_port)
+
+    ### Set up config ###
+    context = zmq.Context()
+    local_target = os.path.join(BASE_PATH, "data", "target")
+
+    config = {
+        "type": "getFromZmq",
+        "context": context,
+        "ipc_path": ipc_path,
+        "ext_ip": ext_ip,
+        "remove_data": False,
+        "cleaner_job_con_str": job_bind_str,
+        "cleaner_conf_con_str": conf_bind_str,
+        "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
+        "local_target": None
+    }
+
+    ### Set up receiver simulator ###
     receiving_port = "6005"
     receiving_port2 = "6006"
-    ext_ip = "0.0.0.0"
-    ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
-    data_fetch_con_str = ("ipc://{0}/{1}".format(ipc_path, "dataFetch"))
 
-    context = zmq.Context()
+    data_fetch_con_str = "ipc://{0}/{1}".format(ipc_path, "dataFetch")
 
     data_fw_socket = context.socket(zmq.PUSH)
     data_fw_socket.connect(data_fetch_con_str)
@@ -206,6 +252,7 @@ if __name__ == '__main__':
     logging.info("=== receiving_socket2 connected to {0}"
                  .format(connection_str))
 
+    ### Test file fetcher ###
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
 
     # read file to send it in data pipe
@@ -222,34 +269,23 @@ if __name__ == '__main__':
         "relative_path": os.sep + "local" + os.sep + "raw",
         "filename": "100.cbf"
     }
-    targets = [['localhost:{0}'.format(receiving_port), 1, [".cbf", ".tif"],
+    targets = [['{0}:{1}'.format(ext_ip, receiving_port), 1, [".cbf", ".tif"],
                 "data"],
-               ['localhost:{0}'.format(receiving_port2), 0, [".cbf", ".tif"],
+               ['{0}:{1}'.format(ext_ip, receiving_port2), 1, [".cbf", ".tif"],
                 "data"]]
 
-    chunksize = 10485760  # = 1024*1024*10 = 10 MiB
-    local_target = os.path.join(BASE_PATH, "data", "target")
     open_connections = dict()
-
-    config = {
-        "type": "getFromZmq",
-        "context": context,
-        "ipc_path": ipc_path,
-        "ext_ip": "0.0.0.0",
-        "chunksize": chunksize,
-        "local_target": None
-    }
 
     logging.debug("open_connections before function call: {0}"
                   .format(open_connections))
 
-    datafetcher = DataFetcher(config, log_queue, 0)
+    datafetcher = DataFetcher(config, log_queue, 0, context)
 
     datafetcher.get_metadata(targets, metadata)
 
-    datafetcher.send_data(targets, metadata, open_connections, context)
+    datafetcher.send_data(targets, metadata, open_connections)
 
-    datafetcher.finish(targets, metadata, open_connections, context)
+    datafetcher.finish(targets, metadata, open_connections)
 
     logging.debug("open_connections after function call: {0}"
                   .format(open_connections))
@@ -264,8 +300,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
     finally:
-        #wait till all messages were received
-        time.sleep(0.1)
         data_fw_socket.close(0)
         receiving_socket.close(0)
         receiving_socket2.close(0)

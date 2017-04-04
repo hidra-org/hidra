@@ -382,6 +382,8 @@ class DataManager():
         else:
             self.ext_ip = socket.gethostbyaddr(self.params["ext_ip"])[2][0]
 
+        self.use_cleaner = (self.params["remove_data"] == "with_confirmation")
+
         # Make ipc_path accessible for modules
         self.params["ext_ip"] = self.ext_ip
         self.params["ipc_path"] = self.ipc_path
@@ -390,48 +392,67 @@ class DataManager():
         self.params["context"] = None
         self.params["session"] = None
 
+        if self.use_cleaner:
+            self.params["cleaner_conf_con_str"] = "tcp://{0}:{1}".format(
+                self.ext_ip, self.params["confirmation_port"])
+        else:
+            self.params["cleaner_conf_con_str"] = None
+
         self.com_port = self.params["com_port"]
         self.request_port = self.params["request_port"]
 
-        self.com_con_id = ("tcp://{0}:{1}"
-                           .format(self.ext_ip, self.params["com_port"]))
-        self.request_con_id = ("tcp://{0}:{1}"
-                               .format(self.ext_ip,
-                                       self.params["request_port"]))
+        self.com_con_str = ("tcp://{0}:{1}"
+                            .format(self.ext_ip, self.params["com_port"]))
+        self.request_con_str = ("tcp://{0}:{1}"
+                                .format(self.ext_ip,
+                                        self.params["request_port"]))
 
         if helpers.is_windows():
             self.log.info("Using tcp for internal communication.")
-            self.control_pub_con_id = (
+            self.control_pub_con_str = (
                 "tcp://{0}:{1}".format(self.localhost,
                                        self.params["control_pub_port"]))
-            self.control_sub_con_id = (
+            self.control_sub_con_str = (
                 "tcp://{0}:{1}".format(self.localhost,
                                        self.params["control_sub_port"]))
-            self.request_fw_con_id = (
+            self.request_fw_con_str = (
                 "tcp://{0}:{1}".format(self.localhost,
                                        self.params["request_fw_port"]))
-            self.router_con_id = (
+            self.router_con_str = (
                 "tcp://{0}:{1}".format(self.localhost,
                                        self.params["router_port"]))
+            if self.use_cleaner:
+                self.params["cleaner_job_con_str"] = (
+                    "tcp://{0}:{1}".format(self.localhost,
+                                           self.params["cleaner_port"]))
+            else:
+                self.params["cleaner_job_con_str"] = None
 
         else:
             self.log.info("Using ipc for internal communication.")
-            self.control_pub_con_id = ("ipc://{0}/{1}_{2}"
+            self.control_pub_con_str = ("ipc://{0}/{1}_{2}"
+                                        .format(self.ipc_path,
+                                                self.current_pid,
+                                                "controlPub"))
+            self.control_sub_con_str = ("ipc://{0}/{1}_{2}"
+                                        .format(self.ipc_path,
+                                                self.current_pid,
+                                                "controlSub"))
+            self.request_fw_con_str = ("ipc://{0}/{1}_{2}"
                                        .format(self.ipc_path,
                                                self.current_pid,
-                                               "controlPub"))
-            self.control_sub_con_id = ("ipc://{0}/{1}_{2}"
-                                       .format(self.ipc_path,
+                                               "requestFw"))
+            self.router_con_str = ("ipc://{0}/{1}_{2}"
+                                   .format(self.ipc_path,
+                                           self.current_pid,
+                                           "router"))
+            if self.use_cleaner:
+                self.params["cleaner_job_con_str"] = (
+                    "ipc://{0}/{1}_{2}".format(self.ipc_path,
                                                self.current_pid,
-                                               "controlSub"))
-            self.request_fw_con_id = ("ipc://{0}/{1}_{2}"
-                                      .format(self.ipc_path,
-                                              self.current_pid,
-                                              "requestFw"))
-            self.router_con_id = ("ipc://{0}/{1}_{2}"
-                                  .format(self.ipc_path,
-                                          self.current_pid,
-                                          "router"))
+                                               "cleaner"))
+            else:
+                self.params["cleaner_job_con_str"] = None
 
         self.whitelist = self.params["whitelist"]
 
@@ -478,6 +499,7 @@ class DataManager():
 
         self.signalhandler_pr = None
         self.taskprovider_pr = None
+        self.cleaner_pr = None
         self.datadispatcher_pr = []
 
         self.log.info("Version: {0}".format(__version__))
@@ -513,30 +535,30 @@ class DataManager():
         try:
             self.device = zmq.devices.ThreadDevice(
                 zmq.FORWARDER, zmq.SUB, zmq.PUB)
-            self.device.bind_in(self.control_pub_con_id)
-            self.device.bind_out(self.control_sub_con_id)
+            self.device.bind_in(self.control_pub_con_str)
+            self.device.bind_out(self.control_sub_con_str)
             self.device.setsockopt_in(zmq.SUBSCRIBE, b"")
             self.device.start()
             self.log.info("Start thead device forwarding messages "
                           "from '{0}' to '{1}'"
-                          .format(self.control_pub_con_id,
-                                  self.control_sub_con_id))
+                          .format(self.control_pub_con_str,
+                                  self.control_sub_con_str))
         except:
             self.log.error("Failed to start thead device forwarding messages "
                            "from '{0}' to '{1}'"
-                           .format(self.control_pub_con_id,
-                                   self.control_sub_con_id), exc_info=True)
+                           .format(self.control_pub_con_str,
+                                   self.control_sub_con_str), exc_info=True)
             raise
 
         # socket for control signals
         try:
             self.control_pub_socket = self.context.socket(zmq.PUB)
-            self.control_pub_socket.connect(self.control_pub_con_id)
+            self.control_pub_socket.connect(self.control_pub_con_str)
             self.log.info("Start control_pub_socket (connect): '{0}'"
-                          .format(self.control_pub_con_id))
+                          .format(self.control_pub_con_str))
         except:
             self.log.error("Failed to start control_pub_socket (connect): "
-                           "'{0}'".format(self.control_pub_con_id),
+                           "'{0}'".format(self.control_pub_con_str),
                            exc_info=True)
             raise
 
@@ -792,14 +814,15 @@ class DataManager():
         return True
 
     def run(self):
+        ### SignalHandler ###
         self.signalhandler_pr = threading.Thread(target=SignalHandler,
                                                  args=(
-                                                     self.control_pub_con_id,
-                                                     self.control_sub_con_id,
+                                                     self.control_pub_con_str,
+                                                     self.control_sub_con_str,
                                                      self.whitelist,
-                                                     self.com_con_id,
-                                                     self.request_fw_con_id,
-                                                     self.request_con_id,
+                                                     self.com_con_str,
+                                                     self.request_fw_con_str,
+                                                     self.request_con_str,
                                                      self.log_queue,
                                                      self.context)
                                                  )
@@ -812,26 +835,41 @@ class DataManager():
         if not self.signalhandler_pr.is_alive():
             return
 
+        ### TaskProvider ###
         self.taskprovider_pr = Process(target=TaskProvider,
                                        args=(
                                            self.params,
-                                           self.control_sub_con_id,
-                                           self.request_fw_con_id,
-                                           self.router_con_id,
+                                           self.control_sub_con_str,
+                                           self.request_fw_con_str,
+                                           self.router_con_str,
                                            self.log_queue)
                                        )
         self.taskprovider_pr.start()
 
+        ### Cleaner ###
+        if self.use_cleaner:
+            self.log.info("Loading cleaner from data fetcher module: {0}"
+                      .format(self.params["data_fetcher_type"]))
+            self.cleaner_m = __import__(self.params["data_fetcher_type"])
+
+            self.cleaner_pr = Process(target=self.cleaner_m.Cleaner,
+                                      args=(self.params,
+                                            self.log_queue,
+                                            self.params["cleaner_job_con_str"],
+                                            self.params["cleaner_conf_con_str"]))
+            self.cleaner_pr.start()
+
         self.log.info("Configured Type of data fetcher: {0}"
                       .format(self.params["data_fetcher_type"]))
 
+        ### DataDispatcher ###
         for i in range(self.number_of_streams):
             id = b"{0}/{1}".format(i, self.number_of_streams)
             pr = Process(target=DataDispatcher,
                          args=(
                              id,
-                             self.control_sub_con_id,
-                             self.router_con_id,
+                             self.control_sub_con_str,
+                             self.router_con_str,
                              self.chunksize,
                              self.fixed_stream_id,
                              self.params,
@@ -844,10 +882,19 @@ class DataManager():
         # indicates if the processed are sent to waiting mode
         sleep_was_sent = False
 
-        while self.signalhandler_pr.is_alive() and \
-            self.taskprovider_pr.is_alive() and \
-            all(datadispatcher.is_alive()
-                for datadispatcher in self.datadispatcher_pr):
+        if self.use_cleaner:
+            run_loop = (self.signalhandler_pr.is_alive() and \
+                        self.taskprovider_pr.is_alive() and \
+                        self.cleaner_pr.is_alive() and \
+                        all(datadispatcher.is_alive()
+                            for datadispatcher in self.datadispatcher_pr))
+        else:
+            run_loop = (self.signalhandler_pr.is_alive() and \
+                        self.taskprovider_pr.is_alive() and \
+                        all(datadispatcher.is_alive()
+                            for datadispatcher in self.datadispatcher_pr))
+
+        while run_loop:
 
             if self.check_target_host():
                 if sleep_was_sent:
@@ -875,11 +922,25 @@ class DataManager():
 
             time.sleep(1)
 
+            if self.use_cleaner:
+                run_loop = (self.signalhandler_pr.is_alive() and \
+                            self.taskprovider_pr.is_alive() and \
+                            self.cleaner_pr.is_alive() and \
+                            all(datadispatcher.is_alive()
+                                for datadispatcher in self.datadispatcher_pr))
+            else:
+                run_loop = (self.signalhandler_pr.is_alive() and \
+                            self.taskprovider_pr.is_alive() and \
+                            all(datadispatcher.is_alive()
+                                for datadispatcher in self.datadispatcher_pr))
+
         # notify which subprocess terminated
         if not self.signalhandler_pr.is_alive():
             self.log.info("SignalHandler terminated.")
         if not self.taskprovider_pr.is_alive():
             self.log.info("TaskProvider terminated.")
+        if (self.use_cleaner and not self.cleaner_pr.is_alive()):
+            self.log.info("Cleaner terminated.")
         if not any(datadispatcher.is_alive()
                    for datadispatcher in self.datadispatcher_pr):
             self.log.info("One DataDispatcher terminated.")
