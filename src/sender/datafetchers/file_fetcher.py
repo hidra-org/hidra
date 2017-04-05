@@ -39,6 +39,8 @@ class DataFetcher(DataFetcherBase):
             self.config["send_timeout"] = -1  # 10
             self.config["remove_flag"] = False
 
+            self.is_windows = helpers.is_windows()
+
             if self.config["remove_data"] == "with_confirmation":
                 self.finish = self.finish_with_cleaner
             else:
@@ -79,13 +81,19 @@ class DataFetcher(DataFetcherBase):
                 self.log.debug("create metadata for source file...")
                 # metadata = {
                 #        "filename"       : ...,
-                #        "source_path"     : ...,
-                #        "relative_path"   : ...,
+                #        "source_path"     : ...,  # in unix format
+                #        "relative_path"   : ...,  # in unix format
                 #        "filesize"       : ...,
                 #        "file_mod_time"    : ...,
                 #        "file_create_time" : ...,
                 #        "chunksize"      : ...
                 #        }
+                if self.is_windows:
+                    # path convertions is save, see:
+                    # http://softwareengineering.stackexchange.com/questions/245156/is-it-safe-to-convert-windows-file-paths-to-unix-file-paths-with-a-simple-replac  # noqa E501
+                    metadata["source_path"] = metadata["source_path"].replace("\\", "/")
+                    metadata["relative_path"] = metadata["relative_path"].replace("\\", "/")
+
                 metadata["filesize"] = filesize
                 metadata["file_mod_time"] = file_mod_time
                 metadata["file_create_time"] = file_create_time
