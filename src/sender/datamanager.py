@@ -483,6 +483,7 @@ class DataManager():
                 self.check_target_host = self.test_fixed_streaming_host
 
         else:
+            self.check_target_host = lambda enable_logging=False: True
             self.fixed_stream_id = None
             self.test_signal_id = None
 
