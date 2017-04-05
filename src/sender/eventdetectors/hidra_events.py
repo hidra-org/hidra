@@ -94,7 +94,7 @@ class EventDetector(EventDetectorBase):
                                            config["ext_data_port"]))
                 self.out_con_str = ("tcp://{0}:{1}"
                                     .format(config["ext_ip"],
-                                            config["data_fetch_port"]))
+                                            config["data_fetcher_port"]))
                 self.mon_con_str = ("tcp://{0}:{1}"
                                     .format(config["ext_ip"],
                                             config["event_det_port"]))
