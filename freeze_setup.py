@@ -85,6 +85,8 @@ build_exe_options = {
         (os.path.join(sharedpath, "cfel_optarg.py"), "cfel_optarg.py"),
         (os.path.join(sharedpath, "_version.py"), "_version.py"),
         # event detectors
+        (os.path.join(senderpath, "eventdetectors", "eventdetectorbase.py"),
+            os.path.join("eventdetectors", "eventdetectorbase.py")),
         (os.path.join(senderpath, "eventdetectors", "inotifyx_events.py"),
             os.path.join("eventdetectors", "inotifyx_events.py")),
         (os.path.join(senderpath, "eventdetectors", "watchdog_events.py"),
@@ -94,14 +96,16 @@ build_exe_options = {
         (os.path.join(senderpath, "eventdetectors", "zmq_events.py"),
             os.path.join("eventdetectors", "zmq_events.py")),
         # data fetchers
+        (os.path.join(senderpath, "datafetchers", "datafetcherbase.py"),
+            os.path.join("datafetchers", "datafetcherbase.py")),
         (os.path.join(senderpath, "datafetchers", "file_fetcher.py"),
             os.path.join("datafetchers", "file_fetcher.py")),
         (os.path.join(senderpath, "datafetchers", "http_fetcher.py"),
             os.path.join("datafetchers", "http_fetcher.py")),
         (os.path.join(senderpath, "datafetchers", "zmq_fetcher.py"),
             os.path.join("datafetchers", "zmq_fetcher.py")),
-        (os.path.join(senderpath, "datafetchers", "send_helpers.py"),
-            os.path.join("datafetchers", "send_helpers.py"))
+        (os.path.join(senderpath, "datafetchers", "cleanerbase.py"),
+            os.path.join("datafetchers", "cleanerbase.py"))
     ] + platform_specific_files,
 }
 
