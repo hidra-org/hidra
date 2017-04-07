@@ -87,20 +87,16 @@ def generate_filepath(base_path, config_dict, add_filename=True):
     if not config_dict or base_path is None:
         return None
 
-    # TODO This is due to Windows path names, check if there has do be
-    # done anything additionally to work
-    # e.g. check source_path if it's a windows path
-    config_dict["relative_path"] = (
-        config_dict["relative_path"].replace('\\', os.sep))
+    if (config_dict["relative_path"] == ""
+            or config_dict["relative_path"] is None):
+        target_path = base_path
 
     # if the relative path starts with a slash path.join will consider it
     # as absolute path
-    if config_dict["relative_path"].startswith("/"):
-        config_dict["relative_path"] = config_dict["relative_path"][1:]
+    elif config_dict["relative_path"].startswith("/"):
+        target_path = (os.path.normpath(
+            os.path.join(base_path, config_dict["relative_path"][1:])))
 
-    if (config_dict["relative_path"] is ''
-            or config_dict["relative_path"] is None):
-        target_path = base_path
     else:
         target_path = (os.path.normpath(
             os.path.join(base_path, config_dict["relative_path"])))
