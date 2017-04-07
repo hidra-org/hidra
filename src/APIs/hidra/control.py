@@ -138,7 +138,7 @@ class Control():
 
         self.beamline = beamline
         self.detector = detector
-        self.signal_socket = None
+        self.socket = None
 
         self.host = socket.gethostname()
 
@@ -221,7 +221,7 @@ class Control():
         return reply
 
     def stop(self):
-        if self.socket:
+        if self.socket is not None:
             self.log.info("Sending close signal")
             msg = [b"bye", self.host, self.detector]
 
