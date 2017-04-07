@@ -325,7 +325,7 @@ class HidraController():
             return self.restart(det_id)
 
         elif key == "status":
-            return hidra_status(self.beamline, det_id)
+            return hidra_status(self.beamline, det_id, self.log)
 
         else:
             return "ERROR"
@@ -462,7 +462,7 @@ class HidraController():
         '''
 
         # check if service is running
-        if hidra_status(self.beamline, det_id) == "RUNNING":
+        if hidra_status(self.beamline, det_id, self.log) == "RUNNING":
             return "ALREADY_RUNNING"
 
         try:
@@ -472,7 +472,7 @@ class HidraController():
             return "ERROR"
 
         # start service
-        if call_hidra_service("start", self.beamline, det_id) != 0:
+        if call_hidra_service("start", self.beamline, det_id, self.log) != 0:
             self.log.error("Could not start the service.")
             return "ERROR"
 
@@ -480,7 +480,7 @@ class HidraController():
         time.sleep(1)
 
         # check if really running before return
-        if hidra_status(self.beamline, det_id) == "RUNNING":
+        if hidra_status(self.beamline, det_id, self.log) == "RUNNING":
             return "DONE"
         else:
             self.log.error("Service is not running after triggering start.")
@@ -491,11 +491,11 @@ class HidraController():
         stop ...
         '''
         # check if really running before return
-        if hidra_status(self.beamline, det_id) != "RUNNING":
+        if hidra_status(self.beamline, det_id, self.log) != "RUNNING":
             return "ARLEADY_STOPPED"
 
         # stop service
-        if call_hidra_service("stop", self.beamline, det_id) == 0:
+        if call_hidra_service("stop", self.beamline, det_id, self.log) == 0:
             return "DONE"
         else:
             self.log.error("Could not stop the service.")
@@ -515,16 +515,19 @@ class HidraController():
             return "ERROR"
 
 
-def call_hidra_service(cmd, beamline, det_id):
+def call_hidra_service(cmd, beamline, det_id, log):
     SYSTEMD_PREFIX = "hidra@"
     SERVICE_NAME = "hidra"
 
     # systems using systemd
     if os.path.exists("/usr/lib/systemd") \
-            and os.path.exists("/usr/lib/systemd/{0}.service"
-                               .format(SYSTEMD_PREFIX)):
+            and (os.path.exists("/usr/lib/systemd/{0}.service"
+                               .format(SYSTEMD_PREFIX))
+                    or os.path.exists("/etc/systemd/system/{0}.service"
+                                      .format(SYSTEMD_PREFIX))):
 
         svc = "{0}{1}_{2}.service".format(SYSTEMD_PREFIX, beamline, det_id)
+        log.debug("Call: systemctl {0} {1}".format(cmd, svc))
         if cmd == "status":
             return subprocess.call(["systemctl", "is-active", svc])
         else:
@@ -533,16 +536,17 @@ def call_hidra_service(cmd, beamline, det_id):
     # systems using init scripts
     elif os.path.exists("/etc/init.d") \
             and os.path.exists("/etc/init.d/" + SERVICE_NAME):
+        log.debug("Call: service {0} {1}".format(cmd, svc))
         return subprocess.call(["service", SERVICE_NAME, cmd])
         # TODO implement beamline and det_id in hisdra.sh
         # return subprocess.call(["service", SERVICE_NAME, "status",
         #                         beamline, det_id])
 
 
-def hidra_status(beamline, det_id):
+def hidra_status(beamline, det_id, log):
 
     try:
-        p = call_hidra_service("status", beamline, det_id)
+        p = call_hidra_service("status", beamline, det_id, log)
     except:
         return "ERROR"
 
