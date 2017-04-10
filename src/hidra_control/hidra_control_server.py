@@ -147,6 +147,8 @@ class HidraController():
 
     def exec_msg(self, msg):
         '''
+        [b"IS_ALIVE"]
+            return "OK"
         [b"set", host_id, det_id, "local_target", "/gpfs/current/raw"]
             return "DONE"
         [b"get", host_id, det_id, "local_target"]
@@ -158,7 +160,10 @@ class HidraController():
         if len(msg) == 0:
             return "ERROR"
 
-        if msg[0] == b"set":
+        if msg[0] == b"IS_ALIVE":
+            return b"OK"
+
+        elif msg[0] == b"set":
             if len(msg) < 4:
                 return "ERROR"
 

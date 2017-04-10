@@ -28,24 +28,56 @@ class LoggingFunction:
         else:
             print (x)
 
-    def __init__(self):
-        self.debug = lambda x, exc_info=None: self.out(x, exc_info)
-        self.info = lambda x, exc_info=None: self.out(x, exc_info)
-        self.warning = lambda x, exc_info=None: self.out(x, exc_info)
-        self.error = lambda x, exc_info=None: self.out(x, exc_info)
-        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-
-
-class NoLoggingFunction:
-    def out(self, x, exc_info=None):
+    def no_out(self, x, exc_info=None):
         pass
 
-    def __init__(self):
-        self.debug = lambda x, exc_info=None: self.out(x, exc_info)
-        self.info = lambda x, exc_info=None: self.out(x, exc_info)
-        self.warning = lambda x, exc_info=None: self.out(x, exc_info)
-        self.error = lambda x, exc_info=None: self.out(x, exc_info)
-        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+    def __init__(self, level="debug"):
+        if level == "debug":
+            # using output
+            self.debug = lambda x, exc_info=None: self.out(x, exc_info)
+            self.info = lambda x, exc_info=None: self.out(x, exc_info)
+            self.warning = lambda x, exc_info=None: self.out(x, exc_info)
+            self.error = lambda x, exc_info=None: self.out(x, exc_info)
+            self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+        elif level == "info":
+            # using no output
+            self.debug = lambda x, exc_info=None: self.no_out(x, exc_info)
+            # using output
+            self.info = lambda x, exc_info=None: self.out(x, exc_info)
+            self.warning = lambda x, exc_info=None: self.out(x, exc_info)
+            self.error = lambda x, exc_info=None: self.out(x, exc_info)
+            self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+        elif level == "warning":
+            # using no output
+            self.debug = lambda x, exc_info=None: self.no_out(x, exc_info)
+            self.info = lambda x, exc_info=None: self.no_out(x, exc_info)
+            # using output
+            self.warning = lambda x, exc_info=None: self.out(x, exc_info)
+            self.error = lambda x, exc_info=None: self.out(x, exc_info)
+            self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+        elif level == "error":
+            # using no output
+            self.debug = lambda x, exc_info=None: self.no_out(x, exc_info)
+            self.info = lambda x, exc_info=None: self.no_out(x, exc_info)
+            self.warning = lambda x, exc_info=None: self.no_out(x, exc_info)
+            # using output
+            self.error = lambda x, exc_info=None: self.out(x, exc_info)
+            self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+        elif level == "critical":
+            # using no output
+            self.debug = lambda x, exc_info=None: self.no_out(x, exc_info)
+            self.info = lambda x, exc_info=None: self.no_out(x, exc_info)
+            self.warning = lambda x, exc_info=None: self.no_out(x, exc_info)
+            self.error = lambda x, exc_info=None: self.no_out(x, exc_info)
+            # using output
+            self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+        elif level == None:
+            # using no output
+            self.debug = lambda x, exc_info=None: self.no_out(x, exc_info)
+            self.info = lambda x, exc_info=None: self.no_out(x, exc_info)
+            self.warning = lambda x, exc_info=None: self.no_out(x, exc_info)
+            self.error = lambda x, exc_info=None: self.no_out(x, exc_info)
+            self.critical = lambda x, exc_info=None: self.no_out(x, exc_info)
 
 
 class NotSupported(Exception):
@@ -104,9 +136,11 @@ def check_netgroup(hostname, beamline, log=None):
     global DOMAIN
 
     if log is None:
-        log = NoLoggingFunction()
+        log = LoggingFunction(None)
+    elif log:
+        pass
     else:
-        log = LoggingFunction()
+        log = LoggingFunction("debug")
 
     netgroup_name = "a3{0}-hosts".format(beamline)
 
@@ -127,12 +161,18 @@ def check_netgroup(hostname, beamline, log=None):
 class Control():
     def __init__(self, beamline, detector, use_log=False):
 
-        if use_log:
+        # print messages of certain level to screen
+        if use_log in ["debug", "info", "warning", "error", "critical"]:
+            self.log = LoggingFunction(use_log)
+        # use logging
+        elif use_log:
             self.log = logging.getLogger("Control")
+        # use no logging at all
         elif use_log is None:
-            self.log = NoLoggingFunction()
+            self.log = LoggingFunction(None)
+        # print everything to screen
         else:
-            self.log = LoggingFunction()
+            self.log = LoggingFunction("debug")
 
         self.current_pid = os.getpid()
 
@@ -156,6 +196,8 @@ class Control():
 
         self.__create_sockets()
 
+        self.__check_responding()
+
     def __create_sockets(self):
 
         #Create ZeroMQ context
@@ -172,6 +214,33 @@ class Control():
             self.log.error("Failed to start socket (connect): '{0}'"
                            .format(self.con_id), exc_info=True)
             raise
+
+    def __check_responding(self):
+        test_signal = b"IS_ALIVE"
+        tracker = self.socket.send_multipart([test_signal], zmq.NOBLOCK,
+                                             copy=False, track=True)
+
+        # test if someone picks up the test message in the next 2 sec
+        if not tracker.done:
+            try:
+                tracker.wait(1)
+            except zmq.error.NotDone:
+                pass
+
+        # no one picked up the test message
+        if not tracker.done:
+            self.log.error("HiDRA control server is not answering.")
+            self.stop(unregister=False)
+            sys.exit(1)
+
+        responce = self.socket.recv()
+        if responce == b"OK":
+            self.log.info("HiDRA control server up and answering.")
+        else:
+            self.log.error("HiDRA control server is in failed state.")
+            self.stop(unregister=False)
+            sys.exit(1)
+
 
     def get(self, attribute, timeout=None):
         msg = [b"get", self.host, self.detector, attribute]
@@ -220,20 +289,21 @@ class Control():
 
         return reply
 
-    def stop(self):
+    def stop(self, unregister=True):
         if self.socket is not None:
-            self.log.info("Sending close signal")
-            msg = [b"bye", self.host, self.detector]
+            if unregister:
+                self.log.info("Sending close signal")
+                msg = [b"bye", self.host, self.detector]
 
-            self.socket.send_multipart(msg)
-            self.log.debug("sent: {0}".format(msg))
+                self.socket.send_multipart(msg)
+                self.log.debug("sent: {0}".format(msg))
 
-            reply = self.socket.recv()
-            self.log.debug("recv: {0} ".format(reply))
+                reply = self.socket.recv()
+                self.log.debug("recv: {0} ".format(reply))
 
             try:
                 self.log.info("closing socket...")
-                self.socket.close()
+                self.socket.close(0)
                 self.socket = None
             except:
                 self.log.error("closing sockets...failed.", exc_info=True)
