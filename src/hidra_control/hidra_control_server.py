@@ -397,8 +397,10 @@ class HidraController():
                 f.write("request_port         = 50001\n")
 
                 f.write("event_detector_type  = {0}\n".format(eventdetector))
-                f.write('fix_subdirs          = ["commissioning", "current", '
-                        '"local"]\n')
+                f.write('fix_subdirs          = ["commissioning/raw", '
+                        '"commissioning/scratch_bl", "current/raw", '
+                        '"current/scratch_bl", "local"]\n')
+
                 f.write("monitored_dir        = {0}/data/source\n"
                         .format(BASEDIR))
                 f.write('monitored_events     = {"IN_CLOSE_WRITE" : [".tif", '
