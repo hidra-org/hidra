@@ -281,8 +281,11 @@ def argument_parsing():
                                         params["fix_subdirs"])
     if params["store_data"]:
         helpers.check_existance(params["local_target"])
-        helpers.check_all_sub_dir_exist(params["local_target"],
-                                        params["fix_subdirs"])
+        # check if local_target contains fixed_subdirs
+        if not helpers.check_sub_dir_contained(params["local_target"],
+                                               params["fix_subdirs"]):
+            helpers.check_all_sub_dir_exist(params["local_target"],
+                                            params["fix_subdirs"])
 
     if params["use_data_stream"]:
         helpers.check_ping(params["data_stream_targets"][0][0])

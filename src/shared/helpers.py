@@ -239,6 +239,15 @@ def check_any_sub_dir_exists(dir_path, subdirs):
         sys.exit(1)
 
 
+def check_sub_dir_contained(dir_path, subdirs):
+    subdir_contained = False
+    for subdir in subdirs:
+        if dir_path[-len(subdir):] == subdir:
+            subdir_contained = True
+
+    return subdir_contained
+
+
 def check_all_sub_dir_exist(dir_path, subdirs):
 
     dir_path = os.path.normpath(dir_path)
