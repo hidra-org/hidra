@@ -155,7 +155,7 @@ class HidraController():
             return "/gpfs/current/raw"
         [b"do", host_id, det_id, b"start"]
             return "DONE"
-        [b"bye", host_id]
+        [b"bye", host_id, detector]
         '''
         if len(msg) == 0:
             return "ERROR"
@@ -189,13 +189,14 @@ class HidraController():
             return self.do(msg[1], msg[2], msg[3])
 
         elif msg[0] == b"bye":
-            if len(msg) != 2:
+            if len(msg) != 3:
                 return "ERROR"
 
-            self.log.debug("Received 'bye'")
+            self.log.debug("Received 'bye' from host {0} for detector {1}"
+                           .format(msg[1], msg[2]))
             if msg[1] in self.all_configs:
-                if msg[2] in self.allconfigs[msg[1]]:
-                    del self.allconfigs[msg[1]][msg[2]]
+                if msg[2] in self.all_configs[msg[1]]:
+                    del self.all_configs[msg[1]][msg[2]]
 
                 # no configs for this host left
                 if not self.all_configs[msg[1]]:

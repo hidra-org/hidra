@@ -238,6 +238,7 @@ class Control():
             self.log.info("HiDRA control server up and answering.")
         else:
             self.log.error("HiDRA control server is in failed state.")
+            self.log.debug("responce was: {0}".format(responce))
             self.stop(unregister=False)
             sys.exit(1)
 
