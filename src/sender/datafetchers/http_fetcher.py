@@ -192,6 +192,8 @@ class DataFetcher(DataFetcherBase):
             if self.config["store_data"]:
                 try:
                     file_descriptor.write(data)
+                    self.log.debug("Writing data for file '{0}' (chunk {1})"
+                                   .format(self.source_file, chunk_number))
                 except:
                     self.log.error("Unable write data for file '{0}'"
                                    .format(self.source_file), exc_info=True)
