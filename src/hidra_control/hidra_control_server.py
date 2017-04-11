@@ -430,11 +430,10 @@ class HidraController():
                 f.write("whitelist            = {0}\n"
                         .format(current_config["whitelist"]))
 
-                self.log.debug("Started with ext_ip: {0}".format(external_ip))
-                self.log.debug("Started with event detector: {0}"
-                               .format(eventdetector))
-                self.log.debug("Started with data fetcher: {0}"
-                               .format(datafetcher))
+                self.log.info("Started with ext_ip: {0}, event detector: {1},"
+                              " data fetcher: {2}".format(external_ip,
+                                                          eventdetector,
+                                                          datafetcher))
 
                 # store the configuration parameters globally
                 self.log.debug("config = {0}".format(current_config))
