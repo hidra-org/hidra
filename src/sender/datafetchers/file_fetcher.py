@@ -273,8 +273,22 @@ class DataFetcher(DataFetcherBase):
                 return
 
         elif self.config["remove_data"]:
-            self.cleaner_job_socket.send_string(self.source_file)
-            self.log.debug("Forwarded to cleaner {0}".format(self.source_file))
+
+            # generate file identifier
+            if (metadata["relative_path"] == ""
+                    or metadata["relative_path"] is None):
+                file_id = metadata["filename"]
+            # if the relative path starts with a slash path.join will consider it
+            # as absolute path
+            elif metadata["relative_path"].startswith("/"):
+                file_id = os.path.join(metadata["relative_path"][1:],
+                                       metadata["filename"])
+            else:
+                file_id = os.path.join(metadata["relative_path"],
+                                       metadata["filename"])
+
+            self.cleaner_job_socket.send_multipart([metadata["source_path"].encode("utf-8"), file_id.encode("utf-8")])
+            self.log.debug("Forwarded to cleaner {0}".format(file_id))
 
         # send message to metadata targets
         if targets_metadata:
@@ -353,7 +367,11 @@ class DataFetcher(DataFetcherBase):
 
 
 class Cleaner(CleanerBase):
-    def remove_element(self, source_file):
+    def remove_element(self, base_path, file_id):
+
+        # generate file path
+        source_file = os.path.join(base_path, file_id)
+
         # remove file
         try:
             os.remove(source_file)
@@ -504,8 +522,17 @@ if __name__ == '__main__':
     datafetcher.finish(targets, metadata, open_connections)
 
     if use_cleaner:
-        confirmation_socket.send(prework_target_file.encode("utf-8"))
-        logging.debug("=== confirmation sent {0}".format(prework_target_file))
+        # generate file identifier
+        if metadata["relative_path"].startswith("/"):
+            file_id = os.path.join(metadata["relative_path"][1:],
+                                   metadata["filename"])
+        else:
+            file_id = os.path.join(metadata["relative_path"],
+                                   metadata["filename"])
+
+        # send file identifier to cleaner
+        confirmation_socket.send(file_id.encode("utf-8"))
+        logging.debug("=== confirmation sent {0}".format(file_id))
 
     logging.debug("open_connections after function call: {0}"
                   .format(open_connections))

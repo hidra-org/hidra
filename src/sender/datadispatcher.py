@@ -20,7 +20,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 #
 class DataDispatcher():
 
-    def __init__(self, id, control_con_id, router_con_id, chunksize,
+    def __init__(self, id, control_con_str, router_con_str, chunksize,
                  fixed_stream_id, config, log_queue,
                  local_target=None, context=None):
 
@@ -34,8 +34,8 @@ class DataDispatcher():
         self.log.debug("DataDispatcher-{0} started (PID {1})."
                        .format(self.id, self.current_pid))
 
-        self.control_con_id = control_con_id
-        self.router_con_id = router_con_id
+        self.control_con_str = control_con_str
+        self.router_con_str = router_con_str
 
         self.control_socket = None
         self.router_socket = None
@@ -96,12 +96,12 @@ class DataDispatcher():
         # socket for control signals
         try:
             self.control_socket = self.context.socket(zmq.SUB)
-            self.control_socket.connect(self.control_con_id)
+            self.control_socket.connect(self.control_con_str)
             self.log.info("Start control_socket (connect): '{0}'"
-                          .format(self.control_con_id))
+                          .format(self.control_con_str))
         except:
             self.log.error("Failed to start control_socket (connect): '{0}'"
-                           .format(self.control_con_id), exc_info=True)
+                           .format(self.control_con_str), exc_info=True)
             raise
 
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
@@ -110,12 +110,12 @@ class DataDispatcher():
         # socket to get new workloads from
         try:
             self.router_socket = self.context.socket(zmq.PULL)
-            self.router_socket.connect(self.router_con_id)
+            self.router_socket.connect(self.router_con_str)
             self.log.info("Start router_socket (connect): '{0}'"
-                          .format(self.router_con_id))
+                          .format(self.router_con_str))
         except:
             self.log.error("Failed to start router_socket (connect): '{0}'"
-                           .format(self.router_con_id), exc_info=True)
+                           .format(self.router_con_str), exc_info=True)
             raise
 
         self.poller = zmq.Poller()
@@ -470,8 +470,8 @@ if __name__ == '__main__':
     control_port = "50005"
     router_port = "7000"
 
-    control_con_id = "tcp://{0}:{1}".format(localhost, control_port)
-    router_con_id = "tcp://{0}:{1}".format(localhost, router_port)
+    control_con_str = "tcp://{0}:{1}".format(localhost, control_port)
+    router_con_str = "tcp://{0}:{1}".format(localhost, router_port)
 
     receiving_port = "6005"
     receiving_port2 = "6006"
@@ -494,7 +494,7 @@ if __name__ == '__main__':
     context = zmq.Context.instance()
 
     datadispatcher_pr = Process(target=DataDispatcher,
-                                args=(1, control_con_id, router_con_id,
+                                args=(1, control_con_str, router_con_str,
                                       chunksize, fixed_stream_id, config,
                                       log_queue, local_target, context))
     datadispatcher_pr.start()

@@ -860,7 +860,8 @@ class DataManager():
                                       args=(self.params,
                                             self.log_queue,
                                             self.params["cleaner_job_con_str"],
-                                            self.params["cleaner_conf_con_str"]))
+                                            self.params["cleaner_conf_con_str"],
+                                            self.control_sub_con_str))
             self.cleaner_pr.start()
 
         self.log.info("Configured Type of data fetcher: {0}"

@@ -257,6 +257,12 @@ class DataReceiver:
             self.log.error("Could not initiate stream", exc_info=True)
             raise
 
+        # enable status check requests from any sender
+        self.transfer.setopt("status_check")
+        # enable confirmation reply if this is requested in a received data
+        # packet
+        self.transfer.setopt("confirmation")
+
         self.log.debug("Waiting for new messages...")
         # run loop, and wait for incoming messages
         while True:
