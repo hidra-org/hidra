@@ -526,9 +526,7 @@ class SignalHandler():
 
         for socket_conf in socket_ids:
 
-            socket_id = socket_conf[0].replace(DOMAIN, ":")
-            self.log.debug("socket_id={0}".format(socket_id))
-            self.log.debug("list_to_check={0}".format(list_to_check))
+            socket_id = socket_conf[0].replace(DOMAIN, "")
 
             for sublist in list_to_check:
                 for element in sublist:
