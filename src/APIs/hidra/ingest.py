@@ -14,33 +14,7 @@ import tempfile
 import socket
 
 # from ._version import __version__
-
-
-class LoggingFunction:
-    def out(self, x, exc_info=None):
-        if exc_info:
-            print (x, traceback.format_exc())
-        else:
-            print (x)
-
-    def __init__(self):
-        self.debug = lambda x, exc_info=None: self.out(x, exc_info)
-        self.info = lambda x, exc_info=None: self.out(x, exc_info)
-        self.warning = lambda x, exc_info=None: self.out(x, exc_info)
-        self.error = lambda x, exc_info=None: self.out(x, exc_info)
-        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-
-
-class NoLoggingFunction:
-    def out(self, x, exc_info=None):
-        pass
-
-    def __init__(self):
-        self.debug = lambda x, exc_info=None: self.out(x, exc_info)
-        self.info = lambda x, exc_info=None: self.out(x, exc_info)
-        self.warning = lambda x, exc_info=None: self.out(x, exc_info)
-        self.error = lambda x, exc_info=None: self.out(x, exc_info)
-        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+from ._shared_helpers import LoggingFunction
 
 
 def is_windows():
@@ -54,12 +28,18 @@ class Ingest():
     # return error code
     def __init__(self, use_log=False, context=None):
 
-        if use_log:
+        # print messages of certain level to screen
+        if use_log in ["debug", "info", "warning", "error", "critical"]:
+            self.log = LoggingFunction(use_log)
+        # use logging
+        elif use_log:
             self.log = logging.getLogger("Ingest")
+        # use no logging at all
         elif use_log is None:
-            self.log = NoLoggingFunction()
+            self.log = LoggingFunction(None)
+        # print everything to screen
         else:
-            self.log = LoggingFunction()
+            self.log = LoggingFunction("debug")
 
         # ZMQ applications always start by creating a context,
         # and then using that for creating sockets

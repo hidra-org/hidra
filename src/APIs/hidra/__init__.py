@@ -6,7 +6,7 @@ from .transfer import store_data_chunk
 from .ingest import Ingest  # noqa F401
 from .control import Control  # noqa F401
 from .control import check_netgroup
-from .control import LoggingFunction
+from ._shared_helpers import LoggingFunction
 from ._version import __version__
 from ._constants import connection_list
 
