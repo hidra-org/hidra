@@ -25,7 +25,8 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class CheckJobs (threading.Thread):
-    def __init__(self, job_bind_str, lock, log_queue, context=None):
+    def __init__(self, job_bind_str, control_con_str, lock, log_queue,
+                 context=None):
 
         threading.Thread.__init__(self)
 
@@ -33,6 +34,9 @@ class CheckJobs (threading.Thread):
 
         self.lock = lock
         self.job_bind_str = job_bind_str
+        self.control_con_str = control_con_str
+
+        self.run_loop = True
 
         if context:
             self.context = context
@@ -41,6 +45,11 @@ class CheckJobs (threading.Thread):
             self.context = zmq.Context()
             self.ext_context = False
 
+        self.create_sockets()
+
+    def create_sockets(self):
+        # socket to get information about data to be removed after
+        # confirmation is received
         try:
             self.job_socket = self.context.socket(zmq.PULL)
             self.job_socket.bind(self.job_bind_str)
@@ -50,27 +59,92 @@ class CheckJobs (threading.Thread):
             self.log.error("Failed to start job_socket (bind): '{0}'"
                            .format(self.job_bind_str), exc_info=True)
 
+        # socket for control signals
+        try:
+            self.control_socket = self.context.socket(zmq.SUB)
+            self.control_socket.connect(self.control_con_str)
+            self.log.info("Start control_socket (connect): '{0}'"
+                          .format(self.control_con_str))
+        except:
+            self.log.error("Failed to start control_socket (connect): '{0}'"
+                           .format(self.control_con_str), exc_info=True)
+            raise
+
+        self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
+        self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "signal")
+
+        # register sockets at poller
+        self.poller = zmq.Poller()
+        self.poller.register(self.job_socket, zmq.POLLIN)
+        self.poller.register(self.control_socket, zmq.POLLIN)
+
     def run(self):
         global new_jobs
 
-        while True:
-            self.log.debug("Waiting for job")
-            message = self.job_socket.recv_string()
-            self.log.debug("New job received: {0}".format(message))
+        while self.run_loop:
 
-            self.lock.acquire()
-            new_jobs.append(message)
-    #        new_jobs.add(message)
-            self.lock.release()
+            socks = dict(self.poller.poll())
+
+            ######################################
+            #     messages from DataFetcher      #
+            ######################################
+            if (self.job_socket in socks
+                    and socks[self.job_socket] == zmq.POLLIN):
+
+                self.log.debug("Waiting for job")
+                message = self.job_socket.recv_multipart()
+                self.log.debug("New job received: {0}".format(message))
+
+                self.lock.acquire()
+                new_jobs.append(message)
+#                new_jobs.add(message)
+                self.lock.release()
+
+            ######################################
+            #         control commands           #
+            ######################################
+            if (self.control_socket in socks
+                    and socks[self.control_socket] == zmq.POLLIN):
+                try:
+                    message = self.control_socket.recv_multipart()
+                    self.log.debug("Control signal received")
+                    self.log.debug("message = {0}".format(message))
+                except:
+                    self.log.error("Receiving control signal...failed",
+                                   exc_info=True)
+                    continue
+
+                # remove subsription topic
+                del message[0]
+
+                if message[0] == b"SLEEP":
+                    self.log.debug("Received sleep signal")
+                    continue
+                elif message[0] == b"WAKEUP":
+                    self.log.debug("Received wakeup signal")
+                    # Wake up from sleeping
+                    continue
+                elif message[0] == b"EXIT":
+                    self.log.debug("Received exit signal")
+                    break
+                else:
+                    self.log.error("Unhandled control signal received: {0}"
+                                   .format(message))
 
     def stop(self):
         if self.job_socket is not None:
             self.job_socket.close(0)
             self.job_socket = None
 
+        if self.control_socket is not None:
+            self.control_socket.close(0)
+            self.control_socket = None
+
         if not self.ext_context and self.context is not None:
             self.context.destroy(0)
             self.context = None
+
+        self.run_loop = False
 
     def __exit__(self):
         self.stop()
@@ -135,13 +209,14 @@ class CheckJobs (threading.Thread):
 
 class CleanerBase(ABC):
     def __init__(self, config, log_queue, job_bind_str, conf_bind_str,
-                 context=None):
+                 control_con_str, context=None):
 
         self.log = helpers.get_logger("Cleaner", log_queue)
 
         self.config = config
         self.job_bind_str = job_bind_str
         self.conf_bind_str = conf_bind_str
+        self.control_con_str = control_con_str
 
         self.lock = threading.Lock()
         self.new_jobs = []
@@ -155,6 +230,7 @@ class CleanerBase(ABC):
             self.ext_context = False
 
         self.job_checking_thread = CheckJobs(self.job_bind_str,
+                                             self.control_con_str,
                                              self.lock,
                                              log_queue,
                                              context)
@@ -164,6 +240,15 @@ class CleanerBase(ABC):
 #                                                       log_queue,
 #                                                       context)
 
+        self.create_sockets()
+
+        try:
+            self.run()
+        except KeyboardInterrupt:
+            pass
+
+    def create_sockets(self):
+        # socket to receive confirmation that data can be removed/discarded
         try:
             self.confirmation_socket = self.context.socket(zmq.PULL)
 
@@ -171,13 +256,27 @@ class CleanerBase(ABC):
             self.log.info("Start confirmation_socket (bind): '{0}'"
                           .format(self.conf_bind_str))
         except:
-            self.log.error("Failed to start confirmation_socket (bind): "
-                           "'{0}'".format(self.conf_bind_str), exc_info=True)
+            self.log.error("Failed to start confirmation_socket (bind): '{0}'"
+                           .format(self.conf_bind_str), exc_info=True)
+            raise
 
+        # socket for control signals
         try:
-            self.run()
-        except KeyboardInterrupt:
-            pass
+            self.control_socket = self.context.socket(zmq.SUB)
+            self.control_socket.connect(self.control_con_str)
+            self.log.info("Start control_socket (connect): '{0}'"
+                          .format(self.control_con_str))
+        except:
+            self.log.error("Failed to start control_socket (connect): '{0}'"
+                           .format(self.control_con_str), exc_info=True)
+            raise
+
+        self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
+
+        # register sockets at poller
+        self.poller = zmq.Poller()
+        self.poller.register(self.confirmation_socket, zmq.POLLIN)
+        self.poller.register(self.control_socket, zmq.POLLIN)
 
     def run(self):
         global new_jobs
@@ -201,47 +300,101 @@ class CleanerBase(ABC):
 #                new_jobs.discard(element)
 #                new_confirmations.discard(element)
 #
-#            if len(removable_elements) == 0:
+#            # do not loop too offen if there is nothing to process
+#            if not removable_elements:
 #                time.sleep(0.1)
 
-            self.log.debug("Waiting for confirmation")
-            element = self.confirmation_socket.recv().decode("utf-8")
-            self.log.debug("New confirmation received: {0}".format(element))
-            self.log.debug("new_jobs={0}".format(new_jobs))
-            self.log.debug("old_confirmations={0}".format(old_confirmations))
+            socks = dict(self.poller.poll())
 
-            if element in new_jobs:
-                self.remove_element(element)
+            ######################################
+            #       messages from receiver       #
+            ######################################
+            if (self.confirmation_socket in socks
+                    and socks[self.confirmation_socket] == zmq.POLLIN):
 
-                self.lock.acquire()
-                new_jobs.remove(element)
-                self.lock.release()
-
+                self.log.debug("Waiting for confirmation")
+                element = self.confirmation_socket.recv().decode("utf-8")
+                self.log.debug("New confirmation received: {0}".format(element))
                 self.log.debug("new_jobs={0}".format(new_jobs))
-            elif element in old_confirmations:
-                self.remove_element(element)
+                self.log.debug("old_confirmations={0}".format(old_confirmations))
 
-                old_confirmations.remove(element)
-                self.log.debug("old_confirmations={0}"
-                               .format(old_confirmations))
-            else:
-                old_confirmations.append(element)
-                self.log.error("confirmations without job notification "
-                               "received: {0}".format(element))
+                for base_path, file_id in new_jobs:
+                    if element == file_id:
+                        self.remove_element(base_path, file_id)
+
+                        self.lock.acquire()
+                        new_jobs.remove([base_path, file_id])
+                        self.lock.release()
+
+                        self.log.debug("new_jobs={0}".format(new_jobs))
+                    elif element in old_confirmations:
+                        self.remove_element(element)
+
+                        old_confirmations.remove(element)
+                        self.log.debug("old_confirmations={0}"
+                                       .format(old_confirmations))
+                    else:
+                        old_confirmations.append(element)
+                        self.log.error("confirmations without job notification "
+                                       "received: {0}".format(element))
+
+            ######################################
+            #         control commands           #
+            ######################################
+            if (self.control_socket in socks
+                    and socks[self.control_socket] == zmq.POLLIN):
+                try:
+                    message = self.control_socket.recv_multipart()
+                    self.log.debug("Control signal received")
+                    self.log.debug("message = {0}".format(message))
+                except:
+                    self.log.error("Receiving control signal...failed",
+                                   exc_info=True)
+                    continue
+
+                # remove subsription topic
+                del message[0]
+
+                if message[0] == b"SLEEP":
+                    self.log.debug("Received sleep signal")
+                    continue
+                elif message[0] == b"WAKEUP":
+                    self.log.debug("Received wakeup signal")
+                    # Wake up from sleeping
+                    continue
+                elif message[0] == b"EXIT":
+                    self.log.debug("Received exit signal")
+                    break
+                else:
+                    self.log.error("Unhandled control signal received: {0}"
+                                   .format(message))
 
     @abc.abstractmethod
-    def remove_element(self, source_file):
+    def remove_element(self, source_file_id):
         pass
 
     def stop(self):
-        self.job_checking_thread.stop()
-        self.job_checking_thread.join()
+        if self.job_checking_thread is not None:
+            # give control signal time to arrive
+            time.sleep(0.1)
+
+            self.log.debug("Stopping job checking thread")
+            self.job_checking_thread.stop()
+            self.job_checking_thread.join()
+            self.job_checking_thread = None
 
         if self.confirmation_socket is not None:
+            self.log.debug("Closing confirmation socket")
             self.confirmation_socket.close(0)
             self.confirmation_socket = None
 
+        if self.control_socket is not None:
+            self.log.debug("Closing control socket")
+            self.control_socket.close(0)
+            self.control_socket = None
+
         if not self.ext_context and self.context is not None:
+            self.log.debug("Destroying context")
             self.context.destroy(0)
             self.context = None
 
@@ -300,7 +453,8 @@ if __name__ == '__main__':
         "ipc_path": os.path.join(tempfile.gettempdir(), "hidra"),
         "current_pid": os.getpid(),
         "cleaner_port": 50051,
-        "confirmation_port": 50052
+        "confirmation_port": 50052,
+        "control_port": "50005"
     }
 
     con_ip = "zitpcx19282"
@@ -308,15 +462,30 @@ if __name__ == '__main__':
 
     context = zmq.Context.instance()
 
+    # create ipc path
+    if not os.path.exists(config["ipc_path"]):
+        os.mkdir(config["ipc_path"])
+        # the permission have to changed explicitly because
+        # on some platform they are ignored when called within mkdir
+        os.chmod(config["ipc_path"], 0o777)
+        logging.info("Creating directory for IPC communication: {0}"
+                     .format(config["ipc_path"]))
+
     ### determine socket connection strings ###
     if helpers.is_windows():
         job_con_str = "tcp://{0}:{1}".format(con_ip, config["cleaner_port"])
         job_bind_str = "tcp://{0}:{1}".format(ext_ip, config["cleaner_port"])
+
+        control_con_str = "tcp://{0}:{1}".format(ext_ip, config["control_port"])
     else:
         job_con_str = ("ipc://{0}/{1}_{2}".format(config["ipc_path"],
                                                   config["current_pid"],
                                                   "cleaner"))
         job_bind_str = job_con_str
+
+        control_con_str = "ipc://{0}/{1}_{2}".format(config["ipc_path"],
+                                                     config["current_pid"],
+                                                     "control")
 
     conf_con_str = "tcp://{0}:{1}".format(con_ip, config["confirmation_port"])
     conf_bind_str = "tcp://{0}:{1}".format(ext_ip, config["confirmation_port"])
@@ -327,6 +496,7 @@ if __name__ == '__main__':
                                log_queue,
                                job_bind_str,
                                conf_bind_str,
+                               control_con_str,
                                context))
     cleaner_pr.start()
 
