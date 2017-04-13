@@ -274,20 +274,11 @@ class DataFetcher(DataFetcherBase):
 
         elif self.config["remove_data"]:
 
-            # generate file identifier
-            if (metadata["relative_path"] == ""
-                    or metadata["relative_path"] is None):
-                file_id = metadata["filename"]
-            # if the relative path starts with a slash path.join will consider it
-            # as absolute path
-            elif metadata["relative_path"].startswith("/"):
-                file_id = os.path.join(metadata["relative_path"][1:],
-                                       metadata["filename"])
-            else:
-                file_id = os.path.join(metadata["relative_path"],
-                                       metadata["filename"])
+            file_id = self.generate_file_id(metadata)
 
-            self.cleaner_job_socket.send_multipart([metadata["source_path"].encode("utf-8"), file_id.encode("utf-8")])
+            self.cleaner_job_socket.send_multipart(
+                    [metadata["source_path"].encode("utf-8"),
+                     file_id.encode("utf-8")])
             self.log.debug("Forwarded to cleaner {0}".format(file_id))
 
         # send message to metadata targets

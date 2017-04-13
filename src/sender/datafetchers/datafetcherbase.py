@@ -4,6 +4,7 @@ import zmq
 import json
 import sys
 import abc
+import os
 
 # source:
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
@@ -170,6 +171,23 @@ class DataFetcherBase(ABC):
                                   "'{0}' to '{1}' with priority {2}"
                                   .format(self.source_file, target, prio))
                     self.log.debug("metadata={0}".format(metadata))
+
+    def generate_file_id(self, metadata):
+        """Generates a file id consisting of relative path and file name
+        """
+        # generate file identifier
+        if (metadata["relative_path"] == ""
+                or metadata["relative_path"] is None):
+            file_id = metadata["filename"]
+        # if the relative path starts with a slash path.join will consider it
+        # as absolute path
+        elif metadata["relative_path"].startswith("/"):
+            file_id = os.path.join(metadata["relative_path"][1:],
+                                   metadata["filename"])
+        else:
+            file_id = os.path.join(metadata["relative_path"],
+                                   metadata["filename"])
+        return file_id
 
     @abc.abstractmethod
     def get_metadata(self, targets, metadata):

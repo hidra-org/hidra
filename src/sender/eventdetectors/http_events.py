@@ -78,6 +78,8 @@ class EventDetector(EventDetectorBase):
 
         try:
             response = self.session.get(self.det_url)
+        except KeyboardInterrupt:
+            return event_message_list
         except:
             self.log.error("Error in getting file list from {0}"
                            .format(self.det_url), exc_info=True)

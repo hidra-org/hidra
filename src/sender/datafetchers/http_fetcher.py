@@ -80,6 +80,8 @@ class DataFetcher(DataFetcherBase):
                 #        }
                 metadata["file_mod_time"] = time.time()
                 metadata["file_create_time"] = time.time()
+                metadata["confirmation_required"] = (
+                    self.config["remove_data"] == "with_confirmation")
 
                 self.log.debug("metadata = {0}".format(metadata))
             except:
@@ -253,8 +255,13 @@ class DataFetcher(DataFetcherBase):
         pass
 
     def finish_with_cleaner(self, targets, metadata, open_connections):
-        self.cleaner_job_socket.send_string(self.source_file)
-        self.log.debug("Forwarded to cleaner {0}".format(self.source_file))
+
+        file_id = self.generate_file_id(metadata)
+
+        self.cleaner_job_socket.send_multipart(
+                [metadata["source_path"].encode("utf-8"),
+                 file_id.encode("utf-8")])
+        self.log.debug("Forwarded to cleaner {0}".format(file_id))
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
 
@@ -280,7 +287,11 @@ class DataFetcher(DataFetcherBase):
 
 
 class Cleaner(CleanerBase):
-    def remove_element(self, source_file):
+    def remove_element(self, base_path, file_id):
+
+        # generate file path
+        source_file = os.path.join(base_path, file_id)
+
         # remove file
         responce = requests.delete(source_file)
 
