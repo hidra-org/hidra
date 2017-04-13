@@ -14,7 +14,7 @@ BuildRequires:	python-setuptools
 BuildRequires:	systemd-units
 Requires:	systemd
 Requires:	python-logutils
-Requires:	python-zmq >= 14.1.0
+Requires:	python-zmq >= 14.5.0
 Requires:	python-inotifyx
 Requires:	python-setproctitle
 Requires:	python-six
