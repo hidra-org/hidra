@@ -6,9 +6,10 @@ import os
 import logging
 import json
 import time
+from zmq.devices.basedevice import ProcessDevice
 
 from datafetcherbase import DataFetcherBase, DataHandlingError
-from hidra import generate_filepath, store_data_chunk
+from hidra import generate_filepath, Transfer
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -28,15 +29,16 @@ class DataFetcher(DataFetcherBase):
 
         self.f_descriptors = dict()
 
+        required_params = ["context",
+                           "store_data",
+                           "status_check_resp_port",
+                           "confirmation_resp_port"]
+
         if helpers.is_windows():
-            required_params = ["context",
-                               "data_fetch_port",
-                               "store_data"]
+            required_params += ["data_fetch_port"]
         else:
-            required_params = ["context",
-                               "ipc_path",
-                               "main_pid",
-                               "store_data"]
+            required_params += ["ipc_path",
+                               "main_pid"]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -52,23 +54,23 @@ class DataFetcher(DataFetcherBase):
             self.metadata_r = None
             self.data_r = None
 
-            con_str = "ipc://{0}/{1}_{2}".format(self.config["ipc_path"],
-                                                 self.config["main_pid"],
-                                                 "out")
+            self.transfer = Transfer("STREAM", use_log=log_queue)
 
-            # Create zmq socket to get events
-            try:
-                self.config["data_fetch_socket"] = context.socket(zmq.PULL)
-#                self.config["data_fetch_socket"] = (
-#                    self.config["context"].socket(zmq.PULL))
-                self.config["data_fetch_socket"].connect(con_str)
+            self.transfer.start([self.config["ipc_path"],
+                                 "{0}_{1}".format(self.config["main_pid"], "out")],
+                                 protocol="ipc", data_con_style="connect")
 
-                self.log.info("Start data fetcher socket (connect): '{0}'"
-                              .format(con_str))
-            except:
-                self.log.error("Failed to start data fetcher socket (connect):"
-                               " '{0}'".format(con_str), exc_info=True)
-                raise
+            # enable status check requests from any sender
+            self.transfer.setopt("status_check",
+                                 [self.config["ext_ip"],
+                                  self.config["status_check_resp_port"]])
+
+            # enable confirmation reply if this is requested in a received data
+            # packet
+            self.transfer.setopt("confirmation",
+                                 [self.config["ext_ip"],
+                                  self.config["confirmation_resp_port"]])
+
         else:
             self.log.debug("config={0}".format(self.config))
             raise Exception("Wrong configuration")
@@ -76,12 +78,7 @@ class DataFetcher(DataFetcherBase):
     def get_metadata(self, targets, metadata):
 
         # Get new data
-        self.metadata_r, self.data_r = (
-            self.config["data_fetch_socket"].recv_multipart())
-
-        # the metadata were received as string and have to be converted into
-        # a dictionary
-        self.metadata_r = json.loads(self.metadata_r.decode("utf-8"))
+        self.metadata_r, self.data_r = self.transfer.get()
 
         if (metadata["relative_path"] != self.metadata_r["relative_path"]
                 or metadata["source_path"] != self.metadata_r["source_path"]
@@ -179,12 +176,19 @@ class DataFetcher(DataFetcherBase):
                                .format(self.source_file, targets_metadata),
                                exc_info=True)
 
-        # store data
         if self.config["store_data"]:
-            # TODO: save message to file using a thread (avoids blocking)
-            store_data_chunk(self.f_descriptors, self.target_file,
-                             self.data_r, self.config["local_target"],
-                             self.metadata_r, self.log)
+            # store data
+            try:
+                # TODO: save message to file using a thread (avoids blocking)
+                self.transfer.store_data_chunk(self.f_descriptors,
+                                               self.target_file,
+                                               self.data_r,
+                                               self.config["local_target"],
+                                               self.metadata_r)
+            except:
+                self.log.error("Storing multipart message for file '{0}' "
+                               "failed".format(self.source_file),
+                               exc_info=True)
 
     def stop(self):
 
@@ -193,10 +197,8 @@ class DataFetcher(DataFetcherBase):
             self.f_descriptors[target_file].close()
             del self.f_descriptors[target_file]
 
-        # Close zmq socket
-        if self.config["data_fetch_socket"]:
-            self.config["data_fetch_socket"].close(0)
-            self.config["data_fetch_socket"] = None
+        # close zmq sockets
+        self.transfer.stop()
 
 
 if __name__ == '__main__':

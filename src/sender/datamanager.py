@@ -474,9 +474,9 @@ class DataManager():
             self.fixed_stream_id = ("{0}:{1}"
                 .format(self.params["data_stream_targets"][0][0],
                         self.params["data_stream_targets"][0][1]))
-            self.test_signal_id = ("{0}:{1}"
+            self.status_check_id = ("{0}:{1}"
                 .format(self.params["data_stream_targets"][0][0],
-                        self.params["test_port"]))
+                        self.params["status_check_port"]))
 
             if self.params["remove_data"] == "deferred_error_handling":
                 self.log.info("Enabled receiver checking")
@@ -488,7 +488,7 @@ class DataManager():
         else:
             self.check_target_host = lambda enable_logging=False: True
             self.fixed_stream_id = None
-            self.test_signal_id = None
+            self.status_check_id = None
 
         self.number_of_streams = self.params["number_of_streams"]
         self.chunksize = self.params["chunksize"]
@@ -577,7 +577,7 @@ class DataManager():
                 # socket
                 try:
                     self.test_socket = self.context.socket(zmq.REQ)
-                    con_str = "tcp://{0}".format(self.test_signal_id)
+                    con_str = "tcp://{0}".format(self.status_check_id)
 
                     self.test_socket.connect(con_str)
                     self.log.info("Start test_socket (connect): '{0}'"
@@ -602,13 +602,13 @@ class DataManager():
                     if enable_logging:
                         self.log.info("Sending status check to fixed streaming"
                                       " host {0} ... success"
-                                      .format(self.fixed_stream_id))
+                                      .format(self.status_check_id))
 
                     status = self.test_socket.recv_multipart()
                     if enable_logging:
                         self.log.info("Received responce for status check of "
                                       "fixed streaming host {0}"
-                                      .format(self.fixed_stream_id))
+                                      .format(self.status_check_id))
                 else:
                     self.socket_reconnected = False
 
@@ -622,7 +622,7 @@ class DataManager():
                         # reopen it
                         try:
                             self.test_socket = self.context.socket(zmq.REQ)
-                            con_str = "tcp://{0}".format(self.test_signal_id)
+                            con_str = "tcp://{0}".format(self.status_check_id)
 
                             self.test_socket.connect(con_str)
                             self.log.info("Restart test_socket (connect): "
@@ -644,7 +644,7 @@ class DataManager():
                         if enable_logging:
                             self.log.info("Sent status check to fixed "
                                           "streaming host {0}"
-                                          .format(self.fixed_stream_id))
+                                          .format(self.status_check_id))
 
                     # The receiver may have dropped authentication or
                     # previous status check was not answered
@@ -655,7 +655,7 @@ class DataManager():
                         if self.zmq_again_occured == 0:
                             self.log.error("Failed to send test message to "
                                            "fixed streaming host {0}"
-                                           .format(self.fixed_stream_id))
+                                           .format(self.status_check_id))
                             self.log.debug("Error was: {0}: {0}"
                                            .format(exc_type, exc_value))
                         self.zmq_again_occured += 1
@@ -672,18 +672,24 @@ class DataManager():
                     if not tracker.done:
                         self.log.error("Failed check status of fixed"
                                        "streaming host {0}"
-                                       .format(self.fixed_stream_id),
+                                       .format(self.status_check_id),
                                        exc_info=True)
                         return False
 
                     # test message was successfully sent
-                    elif enable_logging:
+                    if enable_logging:
                         self.log.info("Sending status test to fixed "
                                       "streaming host {0} ... success"
-                                      .format(self.fixed_stream_id))
+                                      .format(self.status_check_id))
                         self.zmq_again_occured = 0
 
+                        self.log.debug("Receiving responce...")
+
                     status = self.test_socket.recv_multipart()
+
+                    if enable_logging:
+                        self.log.debug("Received responce: {0}".format(status))
+
 
                     # responce to test message was successfully received
                     # TODO check status + react
@@ -695,14 +701,14 @@ class DataManager():
                     elif enable_logging:
                         self.log.info("Responce for status check of fixed "
                                       "streaming host {0}: {1}"
-                                      .format(self.fixed_stream_id, status))
+                                      .format(self.status_check_id, status))
 
             except KeyboardInterrupt:
                 raise
             except:
                 self.log.error("Failed to check status of fixed "
                                "streaming host {0}"
-                               .format(self.fixed_stream_id), exc_info=True)
+                               .format(self.status_check_id), exc_info=True)
                 return False
         return True
 

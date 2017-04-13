@@ -39,23 +39,26 @@ class MonitorDevice():
             try:
                 msg = self.in_socket.recv_multipart()
 #                print ("[MonitoringDevice] In: Received message {0}"
-#                       .format(msg[:20]))
+#                        .format(msg[0][:20]))
             except KeyboardInterrupt:
                 break
 
             if msg != [b'ALIVE_TEST']:
 
-                mon_msg = [self.in_prefix] + msg
-                self.mon_socket.send_multipart(mon_msg)
-#                print ("[MonitoringDevice] Mon: Sent message")
+                try:
+                    mon_msg = [self.in_prefix] + msg
+                    self.mon_socket.send_multipart(mon_msg)
+#                    print ("[MonitoringDevice] Mon: Sent message")
 
-                self.out_socket.send_multipart(msg)
-#                print ("[MonitoringDevice] Out: Sent message {0}"
-#                       .format(msg[:20]))
+                    self.out_socket.send_multipart(msg)
+#                    print ("[MonitoringDevice] Out: Sent message {0}"
+#                            .format([msg[0], msg[1][:20]]))
 
-                mon_msg = [self.out_prefix] + msg
-                self.mon_socket.send_multipart(mon_msg)
-#                print ("[MonitoringDevice] Mon: Sent message")
+                    mon_msg = [self.out_prefix] + msg
+                    self.mon_socket.send_multipart(mon_msg)
+#                    print ("[MonitoringDevice] Mon: Sent message")
+                except KeyboardInterrupt:
+                    break
 
 
 class EventDetector(EventDetectorBase):
