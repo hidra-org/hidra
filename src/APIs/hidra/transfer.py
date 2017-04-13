@@ -120,94 +120,6 @@ def generate_file_identifier(config_dict):
     return file_id
 
 
-def store_data_chunk(descriptors, filepath, payload, base_path, metadata, log,
-                     confirmation_socket):
-    """
-    Writes the data into a file
-    """
-    # append payload to file
-    try:
-        descriptors[filepath].write(payload)
-    # file was not open
-    except KeyError:
-        try:
-            descriptors[filepath] = open(filepath, "wb")
-            # write data
-            descriptors[filepath].write(payload)
-        except IOError as e:
-            # errno.ENOENT == "No such file or directory"
-            if e.errno == errno.ENOENT:
-                try:
-                    # TODO do not create commissioning, current
-                    # and local
-                    target_path = generate_filepath(base_path,
-                                                    metadata,
-                                                    add_filename=False)
-                    os.makedirs(target_path)
-
-                    descriptors[filepath] = open(filepath, "wb")
-                    log.info("New target directory created: {0}"
-                             .format(target_path))
-                    # write data
-                    descriptors[filepath].write(payload)
-                except:
-                    log.error("Unable to save payload to file: '{0}'"
-                              .format(filepath), exc_info=True)
-                    log.debug("target_path:{0}".format(target_path))
-                    raise
-            else:
-                log.error("Failed to append payload to file: '{0}'"
-                          .format(filepath), exc_info=True)
-                raise
-
-        if ("confirmation_required" in metadata
-                and metadata["confirmation_required"]):
-            file_id = generate_file_identifier(metadata)
-            # send confirmation
-            try:
-                confirmation_socket.send(file_id.encode("utf-8"))
-                log.debug("Sending confirmation for chunk {0} of file '{1}'"
-                          .format(metadata["chunk_number"], file_id))
-            except:
-                if confirmation_socket is None:
-                    log.error("Correct data handling is requested to be "
-                              "confirmed. Please enable option 'confirmation'")
-                    raise UsageError("Option 'confirmation' is not enabled")
-                else:
-                    raise
-
-    except KeyboardInterrupt:
-        # save the data in the file before quitting
-        log.debug("KeyboardInterrupt received while writing data")
-        raise
-    except:
-        log.error("Failed to append payload to file: '{0}'".format(filepath),
-                  exc_info=True)
-        raise
-
-    # pointer for readability
-    m = metadata
-
-    # Either the message is smaller than than expected (last chunk)
-    # or the size of the origin file was a multiple of the
-    # chunksize and this is the last expected chunk (chunk_number
-    # starts with 0)
-    if len(payload) < m["chunksize"] \
-        or (m["filesize"] % m["chunksize"] == 0
-            and m["filesize"] / m["chunksize"] == m["chunk_number"] + 1):
-
-        # indicates end of file. Leave loop
-        try:
-            descriptors[filepath].close()
-            del descriptors[filepath]
-
-            log.info("New file with modification time {0} received and saved: "
-                     "{1}".format(metadata["file_mod_time"], filepath))
-        except:
-            log.error("File could not be closed: {0}".format(filepath),
-                      exc_info=True)
-            raise
-
 
 class Transfer():
     def __init__(self, connection_type, signal_host=None, use_log=False,
@@ -247,6 +159,10 @@ class Transfer():
         self.status_check_port = "50050"
         self.confirmation_port = "50052"
         self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
+
+        self.is_ipv6 = False
+
+        self.data_con_style = "bind"
 
         self.signal_socket = None
         self.request_socket = None
@@ -487,66 +403,83 @@ class Transfer():
         host = ""
         port = ""
 
-        # determine IP
+        # determine host (may be DNS name) and port
         if data_socket_prop:
             self.log.debug("Specified data_socket_prop: {0}"
                            .format(data_socket_prop))
 
             if type(data_socket_prop) == list:
-                # socket_bind_id = "tcp://{0}:{1}".format(data_socket_prop[0],
-                #                                         data_socket_prop[1])
-                host = data_socket_prop[0]
-                self.ip = socket.gethostbyaddr(host)[2][0]
-                port = data_socket_prop[1]
+                if len(data_socket_prop) == 2:
+                    host = data_socket_prop[0]
+                    port = data_socket_prop[1]
+                else:
+                    self.log.debug("data_socket_prop={0}"
+                                   .format(data_socket_prop))
+                    raise FormatError("Socket information have to be of the"
+                                      "form [<host>, <port>].")
             else:
-                port = str(data_socket_prop)
-
                 host = socket.gethostname()
-                socket_id = "{0}:{1}".format(host, port).encode("utf-8")
-                ip_from_host = socket.gethostbyaddr(host)[2]
-                if len(ip_from_host) == 1:
-                    self.ip = ip_from_host[0]
+                port = str(data_socket_prop)
 
         elif self.targets:
             if len(self.targets) == 1:
                 host, port = self.targets[0][0].split(":")
-                ip_from_host = socket.gethostbyaddr(host)[2]
-                if len(ip_from_host) == 1:
-                    self.ip = ip_from_host[0]
-
             else:
                 raise FormatError("Multipe possible ports. "
                                   "Please choose which one to use.")
         else:
                 raise FormatError("No target specified.")
 
+        # ZMQ transport protocol IPC has a different syntax than TCP
+        if self.zmq_protocol == "ipc":
+            socket_id = "{0}/{1}".format(host, port).encode("utf-8")
+            socket_bind_id = "{0}/{1}".format(host, port)
+
+            return socket_id, socket_bind_id
+
+        # determine IP to bind to
+        ip_from_host = socket.gethostbyaddr(host)[2]
+        if len(ip_from_host) == 1:
+            self.ip = ip_from_host[0]
+
+        # determine socket identifier (might use DNS name)
         socket_id = "{0}:{1}".format(host, port).encode("utf-8")
 
+        # Distinguish between IPv4 and IPv6 addresses
         try:
             socket.inet_aton(self.ip)
             self.log.info("IPv4 address detected: {0}.".format(self.ip))
-            socket_bind_id = "{0}:{1}".format(self.ip, port)
             self.is_ipv6 = False
         except socket.error:
             self.log.info("Address '{0}' is not an IPv4 address, "
                           "asume it is an IPv6 address.".format(ip))
-#            socket_bind_id = "0.0.0.0:{0}".format(port)
-            socket_bind_id = "[{0}]:{1}".format(self.ip, port)
             self.is_ipv6 = True
+
+        # determine socket identifier to bind to (uses IP)
+        socket_bind_id = self.__get_socket_id(self.ip, port)
 
         return socket_id, socket_bind_id
 
-    def __get_socket_id(self, port):
+    def __get_socket_id(self, ip, port):
         """ Determines socket ID for the given port
 
-        If the IP is an IPV6 address the apropriet zeromq syntax is used
+        If the IP is an IPV6 address the appropriate zeromq syntax is used
         """
         if self.is_ipv6:
-            return "[{0}]:{1}".format(self.ip, port)
+            return "[{0}]:{1}".format(ip, port)
         else:
-            return "{0}:{1}".format(self.ip, port)
+            return "{0}:{1}".format(ip, port)
 
-    def start(self, data_socket_id=False, whitelist=None):
+    def start(self, data_socket_id=False, whitelist=None, protocol="tcp",
+              data_con_style="bind"):
+
+        if protocol in ["tcp", "ipc"]:
+            self.zmq_protocol = protocol
+        else:
+            raise NotSupported("Protocol {0} is not supported."
+                               .format(protocol))
+
+        self.data_con_style = data_con_style
 
         # Receive data only from whitelisted nodes
         if whitelist:
@@ -586,7 +519,7 @@ class Transfer():
         else:
             socket_id, socket_bind_id = self.__get_data_socked_id(data_socket_id)
 
-        socket_bind_str = "tcp://{0}".format(socket_bind_id)
+        socket_bind_str = "{0}://{1}".format(self.zmq_protocol, socket_bind_id)
 
         self.log.debug("socket_id_bind_str={0}".format(socket_bind_str))
 
@@ -604,13 +537,21 @@ class Transfer():
             self.log.debug("Enabling IPv6 socket")
 
         try:
-            self.data_socket.bind(self.data_socket_con_str)
-            self.log.info("Data socket of type {0} started (bind) for '{1}'"
+            if self.data_con_style == "bind":
+                self.data_socket.bind(self.data_socket_con_str)
+            elif self.data_con_style == "connect":
+                self.data_socket.connect(self.data_socket_con_str)
+            else:
+                raise NotSupported("Connection style '{0}' is not supported.")
+
+            self.log.info("Data socket of type {0} started ({1}) for '{2}'"
                           .format(self.connection_type,
+                                  data_con_style,
                                   self.data_socket_con_str))
         except:
-            self.log.error("Failed to start Socket of type {0} (bind): '{1}'"
+            self.log.error("Failed to start Socket of type {0} ({1}): '{2}'"
                            .format(self.connection_type,
+                                   data_con_style,
                                    self.data_socket_con_str),
                            exc_info=True)
             raise
@@ -691,8 +632,12 @@ class Transfer():
                 "confirmation": enable and configure socket to use for
                                 confirmation that individual data packets where
                                 handled without problems
-            value (optional, int): port to be used for set up of specified
-                                   option
+            value (optional):
+                - int: port to be used for setup of specified option
+                - list of len 2: ip and port to be used for setup of specified
+                                 option [<ip>, <port>]
+                - list of len 3: ip and port to be used for setup of specified
+                                 option [<protocol>, <ip>, <port>]
         """
         if option == "status_check":
             if self.status_check_socket is not None:
@@ -700,10 +645,29 @@ class Transfer():
                                "{0})".format(self.status_check_port))
                 return
 
-            if value is not None:
-                self.status_check_port = port
+            self.status_check_protocol = "tcp"
+            self.status_check_ip = self.ip
 
-            bind_str = "tcp://{0}".format(self.__get_socket_id(self.status_check_port))
+            if value is not None:
+                if type(value) == list:
+                    if len(value) == 2:
+                        self.status_check_ip = value[0]
+                        self.status_check_port = value[1]
+                    elif len(value) == 3:
+                        self.status_check_protocol = value[0]
+                        self.status_check_ip = value[1]
+                        self.status_check_port = value[2]
+                    else:
+                        self.log.debug("value={0}".format(value))
+                        raise FormatError("Socket information have to be of the"
+                                          "form [<host>, <port>].")
+                else:
+                    self.status_check_port = value
+
+            bind_str = "{0}://{1}".format(
+                self.status_check_protocol,
+                self.__get_socket_id(self.status_check_ip,
+                                     self.status_check_port))
 
             ######## status check socket ########
             # socket to get signals to get status check requests. this socket is
@@ -730,10 +694,29 @@ class Transfer():
                                "{0})".format(self.confirmation_port))
                 return
 
-            if value is not None:
-                self.confirmation_port = port
+            self.confirmation_protocol = "tcp"
+            self.confirmation_ip = self.ip
 
-            con_str = "tcp://{0}".format(self.__get_socket_id(self.confirmation_port))
+            if value is not None:
+                if type(value) == list:
+                    if len(value) == 2:
+                        self.confirmation_ip = value[0]
+                        self.confirmation_port = value[1]
+                    elif len(value) == 3:
+                        self.confirmation_protocol = value[0]
+                        self.confirmation_ip = value[1]
+                        self.confirmation_port = value[2]
+                    else:
+                        self.log.debug("value={0}".format(value))
+                        raise FormatError("Socket information have to be of the"
+                                          "form [<host>, <port>].")
+                else:
+                    self.confirmation_port = value
+
+            con_str = "{0}://{1}".format(
+                self.confirmation_protocol,
+                self.__get_socket_id(self.confirmation_ip,
+                                     self.confirmation_port))
 
             ######## confirmation socket ########
             # to send the a confirmation to the sender that the data packages was
@@ -1127,6 +1110,96 @@ class Transfer():
 
                 return [None, None]
 
+    def store_data_chunk(self, descriptors, filepath, payload, base_path, metadata):
+        """
+        Writes the data into a file
+        """
+        # append payload to file
+        try:
+            descriptors[filepath].write(payload)
+        # file was not open
+        except KeyError:
+            try:
+                descriptors[filepath] = open(filepath, "wb")
+                # write data
+                descriptors[filepath].write(payload)
+            except IOError as e:
+                # errno.ENOENT == "No such file or directory"
+                if e.errno == errno.ENOENT:
+                    try:
+                        # TODO do not create commissioning, current
+                        # and local
+                        target_path = generate_filepath(base_path,
+                                                        metadata,
+                                                        add_filename=False)
+                        os.makedirs(target_path)
+
+                        descriptors[filepath] = open(filepath, "wb")
+                        self.log.info("New target directory created: {0}"
+                                      .format(target_path))
+                        # write data
+                        descriptors[filepath].write(payload)
+                    except:
+                        self.log.error("Unable to save payload to file: '{0}'"
+                                       .format(filepath), exc_info=True)
+                        self.log.debug("target_path:{0}".format(target_path))
+                        raise
+                else:
+                    self.log.error("Failed to append payload to file: '{0}'"
+                                   .format(filepath), exc_info=True)
+                    raise
+
+            if ("confirmation_required" in metadata
+                    and metadata["confirmation_required"]):
+                file_id = generate_file_identifier(metadata)
+                # send confirmation
+                try:
+                    self.confirmation_socket.send(file_id.encode("utf-8"))
+                    self.log.debug("Sending confirmation for chunk {0} of "
+                                   "file '{1}'"
+                                   .format(metadata["chunk_number"], file_id))
+                except:
+                    if self.confirmation_socket is None:
+                        self.log.error("Correct data handling is requested to "
+                                       "be confirmed. Please enable option "
+                                       "'confirmation'")
+                        raise UsageError("Option 'confirmation' is not enabled")
+                    else:
+                        raise
+
+        except KeyboardInterrupt:
+            # save the data in the file before quitting
+            self.log.debug("KeyboardInterrupt received while writing data")
+            raise
+        except:
+            self.log.error("Failed to append payload to file: '{0}'"
+                           .format(filepath), exc_info=True)
+            raise
+
+        # pointer for readability
+        m = metadata
+
+        # Either the message is smaller than than expected (last chunk)
+        # or the size of the origin file was a multiple of the
+        # chunksize and this is the last expected chunk (chunk_number
+        # starts with 0)
+        if len(payload) < m["chunksize"] \
+            or (m["filesize"] % m["chunksize"] == 0
+                and m["filesize"] / m["chunksize"] == m["chunk_number"] + 1):
+
+            # indicates end of file. Leave loop
+            try:
+                descriptors[filepath].close()
+                del descriptors[filepath]
+
+                self.log.info("New file with modification time {0} received "
+                              "and saved: {1}"
+                              .format(metadata["file_mod_time"], filepath))
+            except:
+                self.log.error("File could not be closed: {0}"
+                               .format(filepath), exc_info=True)
+                raise
+
     def store(self, target_base_path, timeout=None):
 
         runLoop = True
@@ -1152,9 +1225,9 @@ class Transfer():
 
                 # TODO: save message to file using a thread (avoids blocking)
                 try:
-                    store_data_chunk(self.file_descriptors, target_filepath,
+                    self.store_data_chunk(self.file_descriptors, target_filepath,
                                      payload, target_base_path,
-                                     payload_metadata, self.log, self.confirmation_socket)
+                                     payload_metadata)
                     # for testing
 #                    try:
 #                        a = 5/0
