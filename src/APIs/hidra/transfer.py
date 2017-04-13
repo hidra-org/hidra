@@ -15,6 +15,7 @@ import sys
 import traceback
 import tempfile
 import time
+import multiprocessing
 from zmq.auth.thread import ThreadAuthenticator
 
 from ._version import __version__
@@ -51,6 +52,19 @@ class CommunicationFailed(Exception):
 
 class DataSavingError(Exception):
     pass
+
+
+def get_logger(logger_name, queue, log_level=logging.DEBUG):
+    from logutils.queue import QueueHandler
+
+    # Create log and set handler to queue handle
+    h = QueueHandler(queue)  # Just the one handler needed
+    logger = logging.getLogger(logger_name)
+    logger.propagate = False
+    logger.addHandler(h)
+    logger.setLevel(log_level)
+
+    return logger
 
 
 def generate_filepath(base_path, config_dict, add_filename=True):
@@ -202,6 +216,9 @@ class Transfer():
         # print messages of certain level to screen
         if use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(use_log)
+        # use logutils queue
+        elif type(use_log) == multiprocessing.queues.Queue:
+            self.log = get_logger("Transfer", use_log)
         # use logging
         elif use_log:
             self.log = logging.getLogger("Transfer")
