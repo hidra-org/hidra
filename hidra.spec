@@ -18,9 +18,20 @@ Requires:	python-zmq >= 14.5.0
 Requires:	python-inotifyx
 Requires:	python-setproctitle
 Requires:	python-six
+Requires:	python-hidra
 
 %description
 HiDRA is a generic tool set for high performance data multiplexing with different qualities of service and is based on Python and ZeroMQ. It can be used to directly store the data in the storage system but also to send it to some kind of online monitoring or analysis framework. Together with OnDA, data can be analyzed with a delay of seconds resulting in an increase of the quality of the generated scientific data by 20 %. The modular architecture of the tool (divided into event detectors, data fetchers and receivers) makes it easily extendible and even gives the possibility to adapt the software to specific detectors directly (for example, Eiger and Lambda detector).
+
+%package -n python-hidra
+Summary:	Python libraries for HiDRA (High performance data multiplexing tool)
+
+BuildArch:	noarch
+
+Requires:	python-zmq >= 14.5.0
+
+%description -n python-hidra
+Python libraries for HiDRA, a generic tool set for high performance data multiplexing with different qualities of service which is based on Python and ZeroMQ.
 
 %prep
 %setup -q -c %{name}-%{version}
@@ -67,7 +78,6 @@ mkdir -p %{buildroot}/var/log/%{name}
 
 %files
 %doc docs/*
-%{python_sitelib}/*
 /opt/%{name}/conf/*
 %attr(0755,root,root) /opt/%{name}/src/receiver/*
 /opt/%{name}/src/sender/*
@@ -78,7 +88,12 @@ mkdir -p %{buildroot}/var/log/%{name}
 %config(noreplace) /opt/%{name}/conf/*
 %attr(1777,root,root) /var/log/%{name}
 
+%files -n python-hidra
+%{python_sitelib}/*
+
 %changelog
+* Mon Apr 17 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-3
+- Seperated lib package
 * Mon Jan 30 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-2
 - Change log directory
 * Tue Dec 20 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-1
