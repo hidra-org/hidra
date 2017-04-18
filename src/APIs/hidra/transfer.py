@@ -15,7 +15,7 @@ import sys
 import traceback
 import tempfile
 import time
-import multiprocessing
+from multiprocessing import Queue
 from zmq.auth.thread import ThreadAuthenticator
 
 from ._version import __version__
@@ -129,7 +129,7 @@ class Transfer():
         if use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(use_log)
         # use logutils queue
-        elif type(use_log) == multiprocessing.queues.Queue:
+        elif type(use_log) == Queue:
             self.log = get_logger("Transfer", use_log)
         # use logging
         elif use_log:
