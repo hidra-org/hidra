@@ -247,8 +247,8 @@ def argument_parsing():
                        "data_fetcher_type",
                        "store_data",
                        "use_data_stream",
-                       "chunksize",
-                       "local_target"]
+                       "chunksize"]
+#                       "local_target"]
 
     # Check format of config
     check_passed, config_reduced = helpers.check_config(required_params,
@@ -474,14 +474,17 @@ class DataManager():
             self.fixed_stream_id = ("{0}:{1}"
                 .format(self.params["data_stream_targets"][0][0],
                         self.params["data_stream_targets"][0][1]))
-            self.status_check_id = ("{0}:{1}"
-                .format(self.params["data_stream_targets"][0][0],
-                        self.params["status_check_port"]))
 
             if self.params["remove_data"] == "deferred_error_handling":
+                self.status_check_id = ("{0}:{1}"
+                    .format(self.params["data_stream_targets"][0][0],
+                            self.params["status_check_port"]))
+
                 self.log.info("Enabled receiver checking")
                 self.check_target_host = self.check_status_receiver
             else:
+                self.status_check_id = None
+
                 self.log.info("Enabled alive test")
                 self.check_target_host = self.test_fixed_streaming_host
 

@@ -14,6 +14,7 @@ import platform
 basepath = os.path.dirname(os.path.abspath(__file__))
 senderpath = os.path.join(basepath, "src", "sender")
 sharedpath = os.path.join(basepath, "src", "shared")
+apipath = os.path.join(basepath, "src", "APIs", "hidra")
 confpath = os.path.join(basepath, "conf")
 libzmq_path = os.path.join(get_python_lib(), "zmq")
 platform_specific_files = []
@@ -105,7 +106,9 @@ build_exe_options = {
         (os.path.join(senderpath, "datafetchers", "zmq_fetcher.py"),
             os.path.join("datafetchers", "zmq_fetcher.py")),
         (os.path.join(senderpath, "datafetchers", "cleanerbase.py"),
-            os.path.join("datafetchers", "cleanerbase.py"))
+            os.path.join("datafetchers", "cleanerbase.py")),
+        # apis
+        (apipath, "hidra"),
     ] + platform_specific_files,
 }
 
