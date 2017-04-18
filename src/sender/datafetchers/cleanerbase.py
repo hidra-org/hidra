@@ -288,11 +288,11 @@ class CleanerBase(ABC):
         self.job_checking_thread.start()
 #        self.conf_checking_thread.start()
 
-
         while True:
 #            # intersect
 #            removable_elements = new_jobs & new_confirmations
-#            self.log.debug("removable_elements={0}".format(removable_elements))
+#            self.log.debug("removable_elements={0}"
+#                           .format(removable_elements))
 #
 #            for element in removable_elements:
 #                self.remove_element(element)
@@ -314,9 +314,11 @@ class CleanerBase(ABC):
 
                 self.log.debug("Waiting for confirmation")
                 element = self.confirmation_socket.recv().decode("utf-8")
-                self.log.debug("New confirmation received: {0}".format(element))
+                self.log.debug("New confirmation received: {0}"
+                               .format(element))
                 self.log.debug("new_jobs={0}".format(new_jobs))
-                self.log.debug("old_confirmations={0}".format(old_confirmations))
+                self.log.debug("old_confirmations={0}"
+                               .format(old_confirmations))
 
                 for base_path, file_id in new_jobs:
                     if element == file_id:
@@ -335,8 +337,9 @@ class CleanerBase(ABC):
                                        .format(old_confirmations))
                     else:
                         old_confirmations.append(element)
-                        self.log.error("confirmations without job notification "
-                                       "received: {0}".format(element))
+                        self.log.error("confirmations without job "
+                                       "notification received: {0}"
+                                       .format(element))
 
             ######################################
             #         control commands           #
@@ -476,7 +479,8 @@ if __name__ == '__main__':
         job_con_str = "tcp://{0}:{1}".format(con_ip, config["cleaner_port"])
         job_bind_str = "tcp://{0}:{1}".format(ext_ip, config["cleaner_port"])
 
-        control_con_str = "tcp://{0}:{1}".format(ext_ip, config["control_port"])
+        control_con_str = "tcp://{0}:{1}".format(ext_ip,
+                                                 config["control_port"])
     else:
         job_con_str = ("ipc://{0}/{1}_{2}".format(config["ipc_path"],
                                                   config["current_pid"],
@@ -508,7 +512,8 @@ if __name__ == '__main__':
     ### Set up receiver simulator ###
     confirmation_socket = context.socket(zmq.PUSH)
     confirmation_socket.connect(conf_con_str)
-    logging.info("=== Start confirmation_socket (connect): {0}".format(conf_con_str))
+    logging.info("=== Start confirmation_socket (connect): {0}"
+                 .format(conf_con_str))
 
     # to give init time to finish
     time.sleep(0.5)

@@ -8,7 +8,6 @@ import os
 import platform
 import zmq
 import logging
-import traceback
 import json
 import tempfile
 import socket
@@ -213,8 +212,8 @@ class Ingest():
             self.file_op_socket.send_multipart(send_message)
             self.log.info("Sending signal to close the file to file_op_socket")
         except:
-            raise Exception("Sending signal to close the file to file_op_socket"
-                            "...failed")
+            raise Exception("Sending signal to close the file to "
+                            "file_op_socket...failed")
 
         # send close-signal to event Detector
         try:

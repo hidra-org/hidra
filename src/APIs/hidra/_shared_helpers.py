@@ -1,3 +1,6 @@
+import traceback
+
+
 class LoggingFunction:
     def out(self, x, exc_info=None):
         if exc_info:
@@ -48,12 +51,10 @@ class LoggingFunction:
             self.error = lambda x, exc_info=None: self.no_out(x, exc_info)
             # using output
             self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-        elif level == None:
+        elif level is None:
             # using no output
             self.debug = lambda x, exc_info=None: self.no_out(x, exc_info)
             self.info = lambda x, exc_info=None: self.no_out(x, exc_info)
             self.warning = lambda x, exc_info=None: self.no_out(x, exc_info)
             self.error = lambda x, exc_info=None: self.no_out(x, exc_info)
             self.critical = lambda x, exc_info=None: self.no_out(x, exc_info)
-
-

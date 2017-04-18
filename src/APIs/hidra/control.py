@@ -8,7 +8,6 @@ import socket
 import logging
 import os
 import sys
-import traceback
 import subprocess
 import re
 import json
@@ -184,7 +183,6 @@ class Control():
             self.stop(unregister=False)
             sys.exit(1)
 
-
     def get(self, attribute, timeout=None):
         msg = [b"get", self.host, self.detector, attribute]
 
@@ -256,6 +254,7 @@ class Control():
 
     def __del__(self):
         self.stop()
+
 
 def reset_receiver_status(host, port):
     context = zmq.Context()

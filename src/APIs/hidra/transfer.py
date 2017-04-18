@@ -12,7 +12,6 @@ import json
 import errno
 import os
 import sys
-import traceback
 import tempfile
 import time
 from multiprocessing import Queue
@@ -118,7 +117,6 @@ def generate_file_identifier(config_dict):
         file_id = os.path.join(config_dict["relative_path"],
                                config_dict["filename"])
     return file_id
-
 
 
 class Transfer():
@@ -454,7 +452,7 @@ class Transfer():
             self.is_ipv6 = False
         except socket.error:
             self.log.info("Address '{0}' is not an IPv4 address, "
-                          "asume it is an IPv6 address.".format(ip))
+                          "asume it is an IPv6 address.".format(self.ip))
             self.is_ipv6 = True
 
         # determine socket identifier to bind to (uses IP)
@@ -519,7 +517,8 @@ class Transfer():
         if socket_bind_id:
             self.log.info("Reopening already started connection.")
         else:
-            socket_id, socket_bind_id = self.__get_data_socked_id(data_socket_id)
+            socket_id, socket_bind_id = (
+                self.__get_data_socked_id(data_socket_id))
 
         socket_bind_str = "{0}://{1}".format(self.zmq_protocol, socket_bind_id)
 
@@ -663,8 +662,8 @@ class Transfer():
                         self.status_check_port = value[2]
                     else:
                         self.log.debug("value={0}".format(value))
-                        raise FormatError("Socket information have to be of the"
-                                          "form [<host>, <port>].")
+                        raise FormatError("Socket information have to be of "
+                                          "the form [<host>, <port>].")
                 else:
                     self.status_check_port = value
 
@@ -674,12 +673,12 @@ class Transfer():
                                      self.status_check_port))
 
             ######## status check socket ########
-            # socket to get signals to get status check requests. this socket is
-            # also used to get signals to open and close nexus files
+            # socket to get signals to get status check requests. this socket
+            # is also used to get signals to open and close nexus files
             self.status_check_socket = self.context.socket(zmq.REP)
 
             if self.is_ipv6:
-                self.status_check_socket.ipv6 = true
+                self.status_check_socket.ipv6 = True
                 self.log.debug("enabling ipv6 socket for status_check_socket")
             try:
                 self.status_check_socket.bind(bind_str)
@@ -687,7 +686,7 @@ class Transfer():
                               .format(bind_str))
             except:
                 self.log.error("Failed to start status check socket (bind) "
-                               "for '{0}'".format(bind_str), exc_info=true)
+                               "for '{0}'".format(bind_str), exc_info=True)
 
             self.poller.register(self.status_check_socket, zmq.POLLIN)
             #####################################
@@ -712,8 +711,8 @@ class Transfer():
                         self.file_op_port = value[2]
                     else:
                         self.log.debug("value={0}".format(value))
-                        raise FormatError("Socket information have to be of the"
-                                          "form [<host>, <port>].")
+                        raise FormatError("Socket information have to be of "
+                                          "the form [<host>, <port>].")
                 else:
                     self.file_op_port = value
 
@@ -723,12 +722,12 @@ class Transfer():
                                      self.file_op_port))
 
             ######## status check socket ########
-            # socket to get signals to get status check requests. this socket is
-            # also used to get signals to open and close nexus files
+            # socket to get signals to get status check requests. this socket
+            # is also used to get signals to open and close nexus files
             self.file_op_socket = self.context.socket(zmq.REP)
 
             if self.is_ipv6:
-                self.file_op_socket.ipv6 = true
+                self.file_op_socket.ipv6 = True
                 self.log.debug("enabling ipv6 socket for file_op_socket")
             try:
                 self.file_op_socket.bind(bind_str)
@@ -736,7 +735,7 @@ class Transfer():
                               .format(bind_str))
             except:
                 self.log.error("Failed to start status check socket (bind) "
-                               "for '{0}'".format(bind_str), exc_info=true)
+                               "for '{0}'".format(bind_str), exc_info=True)
 
             self.poller.register(self.file_op_socket, zmq.POLLIN)
             #####################################
@@ -761,8 +760,8 @@ class Transfer():
                         self.confirmation_port = value[2]
                     else:
                         self.log.debug("value={0}".format(value))
-                        raise FormatError("Socket information have to be of the"
-                                          "form [<host>, <port>].")
+                        raise FormatError("Socket information have to be of "
+                                          "the form [<host>, <port>].")
                 else:
                     self.confirmation_port = value
 
@@ -772,8 +771,8 @@ class Transfer():
                                      self.confirmation_port))
 
             ######## confirmation socket ########
-            # to send the a confirmation to the sender that the data packages was
-            # stored successfully
+            # to send the a confirmation to the sender that the data packages
+            # was stored successfully
             self.confirmation_socket = self.context.socket(zmq.PUSH)
 
             try:
@@ -881,8 +880,8 @@ class Transfer():
                 if message[0] == b"CLOSE_FILE":
                     if self.all_close_recvd:
                         self.status_check_socket.send_multipart(message)
-                        logging.debug("status_check_socket (file operation) send: {0}"
-                                      .format(message))
+                        logging.debug("status_check_socket (file operation) "
+                                      "send: {0}".format(message))
                         self.all_close_recvd = False
 
                         self.close_callback(self.callback_params,
@@ -894,7 +893,8 @@ class Transfer():
                 # request to open a new file
                 elif message[0] == b"OPEN_FILE":
                     self.status_check_socket.send_multipart(message)
-                    self.log.debug("status_check_socket (file operation) send: {0}".format(message))
+                    self.log.debug("status_check_socket (file operation) "
+                                   "send: {0}".format(message))
 
                     try:
                         self.open_callback(self.callback_params, message[1])
@@ -981,9 +981,11 @@ class Transfer():
             if len(self.recvd_close_from) == self.number_of_streams:
                 self.log.info("All close-file-signals arrived")
                 if self.reply_to_signal:
-                    self.status_check_socket.send_multipart(self.reply_to_signal)
-                    self.log.debug("status_check_socket (file operation) send: {0}"
-                                   .format(self.reply_to_signal))
+                    self.status_check_socket.send_multipart(
+                        self.reply_to_signal)
+                    self.log.debug("status_check_socket (file operation) "
+                                   "send: {0}".format(self.reply_to_signal))
+
                     self.reply_to_signal = False
                     self.recvd_close_from = []
 
@@ -1045,7 +1047,7 @@ class Transfer():
         if ("STREAM" not in self.started_connections
                 and "QUERY_NEXT" not in self.started_connections):
             self.log.error("Could not communicate, no connection was "
-                          "initialized.")
+                           "initialized.")
             return None, None
 
         if "QUERY_NEXT" in self.started_connections:
@@ -1085,7 +1087,8 @@ class Transfer():
                     and socks[self.status_check_socket] == zmq.POLLIN):
 
                 message = self.status_check_socket.recv_multipart()
-#                self.log.debug("status_check_socket recv: {0}".format(message))
+#                self.log.debug("status_check_socket recv: {0}"
+#                               .format(message))
 
                 # request to close the open file
                 if message[0] == b"STATUS_CHECK":
@@ -1163,7 +1166,8 @@ class Transfer():
 
                 return [None, None]
 
-    def store_data_chunk(self, descriptors, filepath, payload, base_path, metadata):
+    def store_data_chunk(self, descriptors, filepath, payload, base_path,
+                         metadata):
         """
         Writes the data into a file
         """
@@ -1216,7 +1220,8 @@ class Transfer():
                         self.log.error("Correct data handling is requested to "
                                        "be confirmed. Please enable option "
                                        "'confirmation'")
-                        raise UsageError("Option 'confirmation' is not enabled")
+                        raise UsageError("Option 'confirmation' is not "
+                                         "enabled")
                     else:
                         raise
 
@@ -1278,9 +1283,10 @@ class Transfer():
 
                 # TODO: save message to file using a thread (avoids blocking)
                 try:
-                    self.store_data_chunk(self.file_descriptors, target_filepath,
-                                     payload, target_base_path,
-                                     payload_metadata)
+                    self.store_data_chunk(self.file_descriptors,
+                                          target_filepath,
+                                          payload, target_base_path,
+                                          payload_metadata)
                     # for testing
 #                    try:
 #                        a = 5/0
@@ -1291,7 +1297,8 @@ class Transfer():
 #                        self.status = [b"ERROR",
 #                                       str(exc_type).encode("utf-8"),
 #                                       str(exc_value).encode("utf-8")]
-#                        self.log.debug("Status changed to: {0}".format(self.status))
+#                        self.log.debug("Status changed to: {0}"
+#                                       .format(self.status))
                 except:
                     self.log.debug("Stopping data storing loop")
 
@@ -1303,7 +1310,8 @@ class Transfer():
                     self.status = [b"ERROR",
                                    str(exc_type).encode("utf-8"),
                                    str(exc_value).encode("utf-8")]
-                    self.log.debug("Status changed to: {0}".format(self.status))
+                    self.log.debug("Status changed to: {0}"
+                                   .format(self.status))
 
                     break
             else:

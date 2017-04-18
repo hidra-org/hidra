@@ -91,8 +91,10 @@ class DataFetcher(DataFetcherBase):
                 if self.is_windows:
                     # path convertions is save, see:
                     # http://softwareengineering.stackexchange.com/questions/245156/is-it-safe-to-convert-windows-file-paths-to-unix-file-paths-with-a-simple-replac  # noqa E501
-                    metadata["source_path"] = metadata["source_path"].replace("\\", "/")
-                    metadata["relative_path"] = metadata["relative_path"].replace("\\", "/")
+                    metadata["source_path"] = (
+                        metadata["source_path"].replace("\\", "/"))
+                    metadata["relative_path"] = (
+                        metadata["relative_path"].replace("\\", "/"))
 
                 metadata["filesize"] = filesize
                 metadata["file_mod_time"] = file_mod_time
@@ -277,8 +279,8 @@ class DataFetcher(DataFetcherBase):
             file_id = self.generate_file_id(metadata)
 
             self.cleaner_job_socket.send_multipart(
-                    [metadata["source_path"].encode("utf-8"),
-                     file_id.encode("utf-8")])
+                [metadata["source_path"].encode("utf-8"),
+                 file_id.encode("utf-8")])
             self.log.debug("Forwarded to cleaner {0}".format(file_id))
 
         # send message to metadata targets
@@ -307,8 +309,8 @@ class DataFetcher(DataFetcherBase):
             # move file
             try:
                 self._datahandling(shutil.move, metadata)
-                self.log.info("Moving file '{0}' ...success."
-                              .format(self.source_file))
+                self.log.info("Moving file '{0}' to '{1}'...success."
+                              .format(self.source_file, self.target_file))
             except:
                 self.log.error("Could not move file {0} to {1}"
                                .format(self.source_file, self.target_file),
@@ -439,13 +441,14 @@ if __name__ == '__main__':
     config = {
         "fix_subdirs": ["commissioning", "current", "local"],
         "store_data": False,
-        "remove_data": "with_confirmation",
-#        "remove_data": False,
+        "remove_data": False,
         "cleaner_job_con_str": job_bind_str,
         "cleaner_conf_con_str": conf_bind_str,
         "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
         "local_target": None
     }
+
+    config["remove_data"] = "with_confirmation"
 
     context = zmq.Context.instance()
 
@@ -481,7 +484,6 @@ if __name__ == '__main__':
     confirmation_socket.connect(config["cleaner_conf_con_str"])
     logging.info("=== Start confirmation_socket (connect): {0}"
                  .format(config["cleaner_conf_con_str"]))
-
 
     ### Test file fetcher ###
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")

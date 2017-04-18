@@ -527,11 +527,11 @@ def call_hidra_service(cmd, beamline, det_id, log):
     SERVICE_NAME = "hidra"
 
     # systems using systemd
-    if os.path.exists("/usr/lib/systemd") \
+    if (os.path.exists("/usr/lib/systemd")
             and (os.path.exists("/usr/lib/systemd/{0}.service"
-                               .format(SYSTEMD_PREFIX))
-                    or os.path.exists("/etc/systemd/system/{0}.service"
-                                      .format(SYSTEMD_PREFIX))):
+                                .format(SYSTEMD_PREFIX))
+                 or os.path.exists("/etc/systemd/system/{0}.service"
+                                   .format(SYSTEMD_PREFIX)))):
 
         svc = "{0}{1}_{2}.service".format(SYSTEMD_PREFIX, beamline, det_id)
         log.debug("Call: systemctl {0} {1}".format(cmd, svc))

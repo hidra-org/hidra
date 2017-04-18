@@ -662,7 +662,6 @@ class DataManager():
                         self.socket_reconnected = False
                         return False
 
-
                     # test if someone picks up the test message in the next
                     # 2 sec
                     if not tracker.done:
@@ -689,7 +688,6 @@ class DataManager():
 
                     if enable_logging:
                         self.log.debug("Received responce: {0}".format(status))
-
 
                     # responce to test message was successfully received
                     # TODO check status + react
@@ -859,15 +857,16 @@ class DataManager():
         ### Cleaner ###
         if self.use_cleaner:
             self.log.info("Loading cleaner from data fetcher module: {0}"
-                      .format(self.params["data_fetcher_type"]))
+                          .format(self.params["data_fetcher_type"]))
             self.cleaner_m = __import__(self.params["data_fetcher_type"])
 
-            self.cleaner_pr = Process(target=self.cleaner_m.Cleaner,
-                                      args=(self.params,
-                                            self.log_queue,
-                                            self.params["cleaner_job_con_str"],
-                                            self.params["cleaner_conf_con_str"],
-                                            self.control_sub_con_str))
+            self.cleaner_pr = Process(
+                target=self.cleaner_m.Cleaner,
+                args=(self.params,
+                      self.log_queue,
+                      self.params["cleaner_job_con_str"],
+                      self.params["cleaner_conf_con_str"],
+                      self.control_sub_con_str))
             self.cleaner_pr.start()
 
         self.log.info("Configured Type of data fetcher: {0}"
@@ -894,16 +893,16 @@ class DataManager():
         sleep_was_sent = False
 
         if self.use_cleaner:
-            run_loop = (self.signalhandler_pr.is_alive() and \
-                        self.taskprovider_pr.is_alive() and \
-                        self.cleaner_pr.is_alive() and \
-                        all(datadispatcher.is_alive()
-                            for datadispatcher in self.datadispatcher_pr))
+            run_loop = (self.signalhandler_pr.is_alive()
+                        and self.taskprovider_pr.is_alive()
+                        and self.cleaner_pr.is_alive()
+                        and all(datadispatcher.is_alive()
+                                for datadispatcher in self.datadispatcher_pr))
         else:
-            run_loop = (self.signalhandler_pr.is_alive() and \
-                        self.taskprovider_pr.is_alive() and \
-                        all(datadispatcher.is_alive()
-                            for datadispatcher in self.datadispatcher_pr))
+            run_loop = (self.signalhandler_pr.is_alive()
+                        and self.taskprovider_pr.is_alive()
+                        and all(datadispatcher.is_alive()
+                                for datadispatcher in self.datadispatcher_pr))
 
         while run_loop:
 
@@ -934,16 +933,18 @@ class DataManager():
             time.sleep(1)
 
             if self.use_cleaner:
-                run_loop = (self.signalhandler_pr.is_alive() and \
-                            self.taskprovider_pr.is_alive() and \
-                            self.cleaner_pr.is_alive() and \
-                            all(datadispatcher.is_alive()
-                                for datadispatcher in self.datadispatcher_pr))
+                run_loop = (self.signalhandler_pr.is_alive()
+                            and self.taskprovider_pr.is_alive()
+                            and self.cleaner_pr.is_alive()
+                            and all(datadispatcher.is_alive()
+                                    for datadispatcher
+                                    in self.datadispatcher_pr))
             else:
-                run_loop = (self.signalhandler_pr.is_alive() and \
-                            self.taskprovider_pr.is_alive() and \
-                            all(datadispatcher.is_alive()
-                                for datadispatcher in self.datadispatcher_pr))
+                run_loop = (self.signalhandler_pr.is_alive()
+                            and self.taskprovider_pr.is_alive()
+                            and all(datadispatcher.is_alive()
+                                    for datadispatcher
+                                    in self.datadispatcher_pr))
 
         # notify which subprocess terminated
         if not self.signalhandler_pr.is_alive():

@@ -6,7 +6,6 @@ import os
 import logging
 import json
 import time
-from zmq.devices.basedevice import ProcessDevice
 
 from datafetcherbase import DataFetcherBase, DataHandlingError
 from hidra import generate_filepath, Transfer
@@ -38,7 +37,7 @@ class DataFetcher(DataFetcherBase):
             required_params += ["data_fetch_port"]
         else:
             required_params += ["ipc_path",
-                               "main_pid"]
+                                "main_pid"]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -57,8 +56,9 @@ class DataFetcher(DataFetcherBase):
             self.transfer = Transfer("STREAM", use_log=log_queue)
 
             self.transfer.start([self.config["ipc_path"],
-                                 "{0}_{1}".format(self.config["main_pid"], "out")],
-                                 protocol="ipc", data_con_style="connect")
+                                 "{0}_{1}".format(self.config["main_pid"],
+                                                  "out")],
+                                protocol="ipc", data_con_style="connect")
 
             # enable status check requests from any sender
             self.transfer.setopt("status_check",
@@ -320,9 +320,10 @@ if __name__ == '__main__':
         "chunk_number": 0,
     }
 
-#    targets = [['{0}:{1}'.format(ext_ip, receiving_port), 1, [".cbf"], "data"]]
-    targets = [['{0}:{1}'.format(ext_ip, receiving_port), 1, [".cbf"], "data"],
-               ['{0}:{1}'.format(ext_ip, receiving_port2), 1, [".cbf"], "data"]]
+    targets = [
+        ['{0}:{1}'.format(ext_ip, receiving_port), 1, [".cbf"], "data"],
+        ['{0}:{1}'.format(ext_ip, receiving_port2), 1, [".cbf"], "data"]
+    ]
 
     open_connections = dict()
 

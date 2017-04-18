@@ -259,8 +259,8 @@ class DataFetcher(DataFetcherBase):
         file_id = self.generate_file_id(metadata)
 
         self.cleaner_job_socket.send_multipart(
-                [metadata["source_path"].encode("utf-8"),
-                 file_id.encode("utf-8")])
+            [metadata["source_path"].encode("utf-8"),
+             file_id.encode("utf-8")])
         self.log.debug("Forwarded to cleaner {0}".format(file_id))
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
@@ -381,7 +381,6 @@ if __name__ == '__main__':
     receiving_port = "6005"
     receiving_port2 = "6006"
     dataFwPort = "50010"
-
 
     receiving_socket = context.socket(zmq.PULL)
     connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port)
