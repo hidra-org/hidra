@@ -285,6 +285,13 @@ def check_writable(file_to_check):
 
 
 def check_version(version, log):
+    """ Compares version depending on the minor releases
+
+    Args:
+        version (str): version string of the form
+                       <major release>.<minor release>.<patch level>
+        log: logging handler
+    """
     log.debug("remote version: {0}, local version: {1}"
               .format(version, __version__))
 

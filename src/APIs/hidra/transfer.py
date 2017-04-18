@@ -643,7 +643,7 @@ class Transfer():
                                  option [<protocol>, <ip>, <port>]
         """
         if option == "status_check":
-            # TODO create Thread shich handles this asynchroniously
+            # TODO create Thread which handles this asynchroniously
             if self.status_check_socket is not None:
                 self.log.error("Status check is already enabled (used port: "
                                "{0})".format(self.status_check_port))

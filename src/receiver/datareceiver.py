@@ -101,7 +101,7 @@ def argument_parsing():
     return params
 
 
-def excecute_ldapsearch_(netgroup):
+def excecute_ldapsearch_test(netgroup):
     global whitelist
 
     import zmq
@@ -143,7 +143,7 @@ class CheckNetgroup (threading.Thread):
         global changed_netgroup
 
         while self.run_loop:
-#            new_whitelist = excecute_ldapsearch_(self.netgroup)
+#            new_whitelist = excecute_ldapsearch_test(self.netgroup)
             new_whitelist = helpers.excecute_ldapsearch(self.netgroup)
 
             # new elements added to whitelist

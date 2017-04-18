@@ -307,7 +307,7 @@ class DataManager():
 
         self.current_pid = os.getpid()
 
-        self.reestablish_time = 600
+        self.reestablish_time = 600  # in sec
 
         try:
             self.params = argument_parsing()
