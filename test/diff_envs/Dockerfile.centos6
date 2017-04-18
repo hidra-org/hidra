@@ -1,0 +1,22 @@
+FROM centos:6
+
+RUN yum update -y && yum install -y \
+    git \
+    gcc \
+    epel-release \
+    python-devel && \
+    yum groupinstall -y "Development Tools" && \
+    yum install -y python-pip
+RUN pip install \
+    pyzmq \
+    setproctitle \
+    six \
+    inotifyx \
+    argparse
+RUN cd /opt && \
+    git clone https://stash.desy.de/scm/hidra/hidra.git && \
+    cd hidra && \
+    git checkout develop && \
+    mkdir /var/log/hidra && \
+    cp /opt/hidra/initscripts/hidra.sh /etc/init.d/hidra
+
