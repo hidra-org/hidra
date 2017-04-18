@@ -113,9 +113,9 @@ mkdir -p %{buildroot}/var/log/%{name}
 
 %changelog
 * Tue Apr 18 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-4
-- Seperated control client package
+- Separated control client package
 * Mon Apr 17 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-3
-- Seperated lib package
+- Separated lib package
 * Mon Jan 30 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-2
 - Change log directory
 * Tue Dec 20 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-1
