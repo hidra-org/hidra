@@ -18,20 +18,23 @@ Requires:	python-zmq >= 14.5.0
 Requires:	python-inotifyx
 Requires:	python-setproctitle
 Requires:	python-six
-Requires:	python-hidra
+Requires:	python-hidra = %{version}
 
 %description
 HiDRA is a generic tool set for high performance data multiplexing with different qualities of service and is based on Python and ZeroMQ. It can be used to directly store the data in the storage system but also to send it to some kind of online monitoring or analysis framework. Together with OnDA, data can be analyzed with a delay of seconds resulting in an increase of the quality of the generated scientific data by 20 %. The modular architecture of the tool (divided into event detectors, data fetchers and receivers) makes it easily extendible and even gives the possibility to adapt the software to specific detectors directly (for example, Eiger and Lambda detector).
 
 %package -n python-hidra
-Summary:	Python libraries for HiDRA (High performance data multiplexing tool)
+Summary:	High performance data multiplexing tool - Python Library
 
 BuildArch:	noarch
 
+BuildRequires:	python-devel
+BuildRequires:	python-setuptools
+#Requires:	python-logutils
 Requires:	python-zmq >= 14.5.0
 
 %description -n python-hidra
-Python libraries for HiDRA, a generic tool set for high performance data multiplexing with different qualities of service which is based on Python and ZeroMQ.
+This package contains only the API for developing tools against HiDRA.
 
 %prep
 %setup -q -c %{name}-%{version}
