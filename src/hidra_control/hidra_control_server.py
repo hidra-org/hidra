@@ -538,7 +538,7 @@ def call_hidra_service(cmd, beamline, det_id, log):
         if cmd == "status":
             return subprocess.call(["systemctl", "is-active", svc])
         else:
-            return subprocess.call(["sudo", "systemctl", cmd, svc])
+            return subprocess.call(["sudo", "-n",  "systemctl", cmd, svc])
 
     # systems using init scripts
     elif os.path.exists("/etc/init.d") \
