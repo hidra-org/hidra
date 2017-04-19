@@ -1,4 +1,5 @@
 HiDRA develop
+HiDRA 3.1.1
 HiDRA 3.1.0
 
 - Adjusted host names in mapping for control API
