@@ -1,5 +1,5 @@
 Name:		hidra
-Version:	3.1.0
+Version:	3.1.1
 Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
@@ -101,6 +101,8 @@ mkdir -p %{buildroot}/var/log/%{name}
 %attr(0755,root,root) /opt/%{name}/src/sender/datamanager.py
 /opt/%{name}/src/shared/*
 /opt/%{name}/src/hidra_control/hidra_control_server.py
+/opt/%{name}/src/hidra_control/hidra_control_server.pyc
+/opt/%{name}/src/hidra_control/hidra_control_server.pyo
 %{_unitdir}/*.service
 %config(noreplace) /opt/%{name}/conf/*
 %attr(1777,root,root) /var/log/%{name}
@@ -110,9 +112,12 @@ mkdir -p %{buildroot}/var/log/%{name}
 
 %files -n hidra-control-client
 /opt/%{name}/src/hidra_control/hidra_control_client.py
-/opt/%{name}/src/hidra_control/_README
+/opt/%{name}/src/hidra_control/hidra_control_client.pyc
+/opt/%{name}/src/hidra_control/hidra_control_client.pyo
 
 %changelog
+* Wed Apr 19 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.1.1-1
+- Bump version
 * Wed Apr 19 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.1.0-1
 - Bump version
 * Tue Apr 18 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-4
