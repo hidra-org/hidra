@@ -100,7 +100,7 @@ mkdir -p %{buildroot}/var/log/%{name}
 /opt/%{name}/src/sender/*
 %attr(0755,root,root) /opt/%{name}/src/sender/datamanager.py
 /opt/%{name}/src/shared/*
-/opt/%{name}/src/hidra_control/*
+/opt/%{name}/src/hidra_control/hidra_control_server.py
 %{_unitdir}/*.service
 %config(noreplace) /opt/%{name}/conf/*
 %attr(1777,root,root) /var/log/%{name}
@@ -110,6 +110,7 @@ mkdir -p %{buildroot}/var/log/%{name}
 
 %files -n hidra-control-client
 /opt/%{name}/src/hidra_control/hidra_control_client.py
+/opt/%{name}/src/hidra_control/_README
 
 %changelog
 * Wed Apr 19 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.1.0-1
