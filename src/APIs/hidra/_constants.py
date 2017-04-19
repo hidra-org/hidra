@@ -1,55 +1,54 @@
 connection_list = {
     "p00": {
-        "host": "zitpcx22614w",
-        # "host": "asap3-p00",
+        "host": "asap3-p00",
         "port": 51000
     },
     "p01": {
-        "host": "asap3-bl-prx07",
-        "port": 51001
+        "host": "asap3-p01",
+        "port": 51000
     },
     "p02.1": {
-        "host": "asap3-bl-prx07",
-        "port": 51002
+        "host": "asap3-p02-1",
+        "port": 51000
     },
     "p02.2": {
-        "host": "asap3-bl-prx07",
-        "port": 51003
+        "host": "asap3-p02-2",
+        "port": 51000
     },
     "p03": {
-        "host": "asap3-bl-prx07",
-        "port": 51004
+        "host": "asap3-p03",
+        "port": 51000
     },
     "p04": {
-        "host": "asap3-bl-prx07",
-        "port": 51005
+        "host": "asap3-p04",
+        "port": 51000
     },
     "p05": {
-        "host": "asap3-bl-prx07",
-        "port": 51006
+        "host": "asap3-p05",
+        "port": 51000
     },
     "p06": {
-        "host": "asap3-bl-prx07",
-        "port": 51007
+        "host": "asap3-p06",
+        "port": 51000
     },
     "p07": {
-        "host": "asap3-bl-prx07",
-        "port": 51008
+        "host": "asap3-p07",
+        "port": 51000
     },
     "p08": {
-        "host": "asap3-bl-prx07",
-        "port": 51009
+        "host": "asap3-p08",
+        "port": 51000
     },
     "p09": {
-        "host": "asap3-bl-prx07",
-        "port": 51010
+        "host": "asap3-p09",
+        "port": 51000
     },
     "p10": {
-        "host": "asap3-bl-prx07",
-        "port": 51011
+        "host": "asap3-p10",
+        "port": 51000
     },
     "p11": {
-        "host": "asap3-bl-prx07",
-        "port": 51012
+        "host": "asap3-p11",
+        "port": 51000
     },
 }

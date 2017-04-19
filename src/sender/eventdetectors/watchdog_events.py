@@ -13,7 +13,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 import threading
 import bisect
 
-from logutils.queue import QueueHandler
+from eventdetectorbase import EventDetectorBase
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -27,8 +27,13 @@ event_list_to_observe_tmp = []
 class WatchdogEventHandler (PatternMatchingEventHandler):
     def __init__(self, id, config, log_queue):
         self.id = id
-        self.log = self.get_logger(log_queue)
 
+        # Suppress logging messages of watchdog observer
+        logging.getLogger("watchdog.observers.inotify_buffer").setLevel(
+            logging.WARNING)
+
+        self.log = helpers.get_logger("WatchdogEventHandler-{0}"
+                                      .format(self.id), log_queue)
         self.log.debug("init")
 
         self.paths = [config["monitored_dir"]]
@@ -74,24 +79,6 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
 
         self.log.debug("self.detect_close={0}, self.detect_move={1}"
                        .format(self.detect_close, self.detect_move))
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Suppress logging messages of watchdog observer
-        logging.getLogger("watchdog.observers.inotify_buffer").setLevel(
-            logging.WARNING)
-
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("WatchdogEventHandler-{0}".format(self.id))
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def process(self, event):
         self.log.debug("process")
@@ -201,7 +188,7 @@ def split_file_path(filepath, paths):
 class CheckModTime (threading.Thread):
     def __init__(self, number_of_threads, time_till_closed, mon_dir,
                  action_time, lock, log_queue):
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("CheckModTime", log_queue)
 
         self.log.debug("init")
         # Make the Pool of workers
@@ -215,20 +202,6 @@ class CheckModTime (threading.Thread):
 
         self.log.debug("threading.Thread init")
         threading.Thread.__init__(self)
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("CheckModTime")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def run(self):
         global event_list_to_observe
@@ -350,14 +323,15 @@ class CheckModTime (threading.Thread):
         self.stop()
 
 
-class EventDetector():
+class EventDetector(EventDetectorBase):
     def __init__(self, config, log_queue):
 
-        self.log = self.get_logger(log_queue)
+        EventDetectorBase.__init__(self, config, log_queue,
+                                   "watchdog_events")
 
         required_params = ["monitored_dir",
                            "fix_subdirs",
-                           "monitored_events",
+                           ["monitored_events", dict],
                            "time_till_closed",
                            "action_time"]
 
@@ -408,20 +382,6 @@ class EventDetector():
             self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
 
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("watchdog_events")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
-
     def get_new_event(self):
         global event_message_list
 
@@ -452,8 +412,8 @@ class EventDetector():
 if __name__ == '__main__':
     from shutil import copyfile
     from multiprocessing import Queue
-
-    from eventdetectors import BASE_PATH
+    from logutils.queue import QueueHandler
+    from __init__ import BASE_PATH
 
     logfile = os.path.join(BASE_PATH, "logs", "watchdogDetector.log")
     logsize = 10485760

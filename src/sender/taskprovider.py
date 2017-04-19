@@ -24,7 +24,7 @@ class TaskProvider():
                  router_con_id, log_queue, context=None):
         global BASE_PATH
 
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("TaskProvider", log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -35,10 +35,6 @@ class TaskProvider():
         self.eventdetector = None
 
         self.config = config
-
-        eventdetector_module = self.config["event_detector_type"]
-        self.log.info("Configured type of event detector: {0}"
-                      .format(eventdetector_module))
 
         self.control_con_id = control_con_id
         self.request_fw_con_id = request_fw_con_id
@@ -60,11 +56,11 @@ class TaskProvider():
             self.ext_context = False
 
         self.log.info("Loading event detector: {0}"
-                      .format(eventdetector_module))
-        self.eventdetector_module = __import__(eventdetector_module)
+                      .format(self.config["event_detector_type"]))
+        self.eventdetector_m = __import__(self.config["event_detector_type"])
 
-        self.eventdetector = self.eventdetector_module.EventDetector(
-            self.config, log_queue)
+        self.eventdetector = self.eventdetector_m.EventDetector(self.config,
+                                                                log_queue)
 
         self.continue_run = True
 
@@ -81,20 +77,6 @@ class TaskProvider():
                            "condition.", exc_info=True)
         finally:
             self.stop()
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("TaskProvider")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def create_sockets(self):
 
@@ -190,7 +172,7 @@ class TaskProvider():
                                    exc_info=True)
                     continue
 
-                # send the file to the fileMover
+                # send the file to the dataDispatcher
                 try:
                     self.log.debug("Sending message...")
                     message = [message_dict]
@@ -221,6 +203,49 @@ class TaskProvider():
                 if message[0] == b"EXIT":
                     self.log.debug("Requested to shutdown.")
                     break
+
+                elif message[0] == b"SLEEP":
+                    self.log.debug("Received sleep signal")
+                    break_outer_loop = False
+
+                    # if there are problems on the receiving side no data
+                    # should be processed till the problem is solved
+                    while True:
+                        try:
+                            message = self.control_socket.recv_multipart()
+                        except:
+                            self.log.error("Receiving control signal...failed")
+                            continue
+
+                        # remove subsription topic
+                        del message[0]
+
+                        if message[0] == b"SLEEP":
+                            self.log.debug("Received sleep signal")
+                            continue
+                        elif message[0] == b"WAKEUP":
+                            self.log.debug("Received wakeup signal")
+                            # Wake up from sleeping
+                            break
+                        elif message[0] == b"EXIT":
+                            self.log.debug("Received exit signal")
+                            break_outer_loop = True
+                            break
+                        else:
+                            self.log.error("Unhandled control signal received:"
+                                           " {0}".format(message))
+
+                    # the exit signal should become effective
+                    if break_outer_loop:
+                        break
+                    else:
+                        continue
+
+                elif message[0] == b"WAKEUP":
+                    self.log.debug("Received wakeup signal without sleeping. "
+                                   "Do nothing.")
+                    continue
+
                 else:
                     self.log.error("Unhandled control signal received: {0}"
                                    .format(message))
@@ -265,7 +290,7 @@ class TaskProvider():
 class RequestResponder():
     def __init__(self, request_fw_port, log_queue, context=None):
         # Send all logs to the main process
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("RequestResponder", log_queue)
 
         self.context = context or zmq.Context.instance()
         self.request_fw_socket = self.context.socket(zmq.REP)
@@ -275,20 +300,6 @@ class RequestResponder():
                       "for '{0}'".format(connection_str))
 
         self.run()
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("RequestResponder")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def run(self):
         hostname = socket.gethostname()

@@ -14,18 +14,18 @@ import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+DOMAIN = ".desy.de"
 
-#
-#  --------------------------  class: SignalHandler  --------------------------
-#
+
 class SignalHandler():
 
     def __init__(self, control_pub_con_id, control_sub_con_id, whitelist,
                  com_con_id, request_fw_con_id, request_con_id, log_queue,
                  context=None):
+        global DOMAIN
 
         # Send all logs to the main process
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("SignalHandler", log_queue)
 
         self.current_pid = os.getpid()
         self.log.debug("SignalHandler started (PID {0})."
@@ -45,10 +45,13 @@ class SignalHandler():
         # to rotate through the open permanent requests
         self.next_requ_node = []
 
-        self.whitelist = []
+        if whitelist is not None:
+            self.whitelist = []
 
-        for host in whitelist:
-            self.whitelist.append(host.replace(".desy.de", ""))
+            for host in whitelist:
+                self.whitelist.append(host.replace(DOMAIN, ""))
+        else:
+            self.whitelist = None
 
         # sockets
         self.control_pub_socket = None
@@ -81,20 +84,6 @@ class SignalHandler():
         finally:
             self.stop()
 
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("SignalHandler")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
-
     def create_sockets(self):
 
         # socket to send control signals to
@@ -123,17 +112,6 @@ class SignalHandler():
 
         self.control_sub_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
 
-        # create zmq socket for signal communication with receiver
-        try:
-            self.com_socket = self.context.socket(zmq.REP)
-            self.com_socket.bind(self.com_con_id)
-            self.log.info("Start com_socket (bind): '{0}'"
-                          .format(self.com_con_id))
-        except:
-            self.log.error("Failed to start com_socket (bind): '{0}'"
-                           .format(self.com_con_id), exc_info=True)
-            raise
-
         # setting up router for load-balancing worker-processes.
         # each worker-process will handle a file event
         try:
@@ -146,26 +124,82 @@ class SignalHandler():
                            .format(self.request_fw_con_id), exc_info=True)
             raise
 
-        # create socket to receive requests
-        try:
-            self.request_socket = self.context.socket(zmq.PULL)
-            self.request_socket.bind(self.request_con_id)
-            self.log.info("request_socket started (bind) for '{0}'"
-                          .format(self.request_con_id))
-        except:
-            self.log.error("Failed to start request_socket (bind): '{0}'"
-                           .format(self.request_con_id), exc_info=True)
-            raise
+        if self.whitelist != []:
+            # create zmq socket for signal communication with receiver
+            try:
+                self.com_socket = self.context.socket(zmq.REP)
+                self.com_socket.bind(self.com_con_id)
+                self.log.info("Start com_socket (bind): '{0}'"
+                              .format(self.com_con_id))
+            except:
+                self.log.error("Failed to start com_socket (bind): '{0}'"
+                               .format(self.com_con_id), exc_info=True)
+                raise
+
+            # create socket to receive requests
+            try:
+                self.request_socket = self.context.socket(zmq.PULL)
+                self.request_socket.bind(self.request_con_id)
+                self.log.info("request_socket started (bind) for '{0}'"
+                              .format(self.request_con_id))
+            except:
+                self.log.error("Failed to start request_socket (bind): '{0}'"
+                               .format(self.request_con_id), exc_info=True)
+                raise
+        else:
+            self.com_socket = None
+            self.log.info("Socket com_socket and request_socket not started "
+                          "since there is no host allowed to connect")
 
         # Poller to distinguish between start/stop signals and queries for the
         # next set of signals
         self.poller = zmq.Poller()
         self.poller.register(self.control_sub_socket, zmq.POLLIN)
-        self.poller.register(self.com_socket, zmq.POLLIN)
         self.poller.register(self.request_fw_socket, zmq.POLLIN)
-        self.poller.register(self.request_socket, zmq.POLLIN)
+        if self.whitelist != []:
+            self.poller.register(self.com_socket, zmq.POLLIN)
+            self.poller.register(self.request_socket, zmq.POLLIN)
 
     def run(self):
+        """
+        possible incomming signals:
+        com_socket
+            (start/stop command from external)
+            START_STREAM: Add request for all incoming data packets
+                          (no  further requests needed)
+            STOP_STREAM: Remove assignment for all incoming data packets
+            START_STREAM_METADATA: Add request for metadata only of all
+                                   incoming data packets
+                                   (no  further requests needed)
+            STOP_STREAM_METADATA: Remove assignment for metadata of all
+                                  incoming data packets
+            START_QUERY_NEXT: Enable requests for individual data packets
+            STOP_QUERY_NEXT: Disable requests for individual data packets
+            START_QUERY_METADATA: Enable requests for metadata of individual
+                                  data packets
+            STOP_QUERY_METADATA: Disable requests for metadata of individual
+                                 data packets
+
+        request_socket
+            (requests from external)
+            NEXT: Request for the next incoming data packet
+            CANCEL: Cancel the previous request
+
+        request_fw_socket
+            (internal forwarding of requests which came fromexternal)
+            GET_REQUESTS: TaskProvider asks to get the next set of open
+                          requests
+
+        control_sub_socket
+            (internal control messages)
+            SLEEP: receiver is currently not available
+                   -> this does not affect this class
+            WAKEUP: receiver is back online
+                    -> this does not affect this class
+            EXIT: shutdown everything
+        """
+        global DOMAIN
+
         # run loop, and wait for incoming messages
         self.log.debug("Waiting for new signals or requests.")
         while True:
@@ -260,7 +294,7 @@ class SignalHandler():
                     incoming_socket_id = (
                         in_message[1]
                         .decode("utf-8")
-                        .replace(".desy.de:", ":")
+                        .replace(DOMAIN, "")
                     )
 
                     for index in range(len(self.allowed_queries)):
@@ -277,7 +311,7 @@ class SignalHandler():
                     incoming_socket_id = (
                         in_message[1]
                         .decode("utf-8")
-                        .replace(".desy.de:", ":")
+                        .replace(DOMAIN, "")
                     )
 
                     still_requested = []
@@ -290,18 +324,6 @@ class SignalHandler():
                         still_requested.append(vari_per_group)
 
                     self.open_requ_vari = still_requested
-
-#                    self.open_requ_vari_old = [
-#                        [
-#                            b
-#                            for b in self.open_requ_vari[a]
-#                            if incoming_socket_id != b[0]]
-#                        for a in range(len(self.open_requ_vari))]
-
-#                    self.log.debug("open_requ_vari_old ={0}"
-#                                   .format(self.open_requ_vari_old))
-#                    self.log.debug("open_requ_vari     ={0}"
-#                                   .format(self.open_requ_vari))
 
                     self.log.info("Remove all occurences from {0} from "
                                   "variable request list."
@@ -318,7 +340,7 @@ class SignalHandler():
 
                 try:
                     message = self.control_sub_socket.recv_multipart()
-                    self.log.debug("Control signal received.")
+                    # self.log.debug("Control signal received.")
                 except:
                     self.log.error("Waiting for control signal...failed",
                                    exc_info=True)
@@ -330,6 +352,12 @@ class SignalHandler():
                 if message[0] == b"EXIT":
                     self.log.info("Requested to shutdown.")
                     break
+                elif message[0] == b"SLEEP":
+                    # self.log.debug("Received sleep signal. Do nothing.")
+                    continue
+                elif message[0] == b"WAKEUP":
+                    self.log.debug("Received wakeup signal. Do nothing.")
+                    continue
                 else:
                     self.log.error("Unhandled control signal received: {0}"
                                    .format(message[0]))
@@ -386,10 +414,11 @@ class SignalHandler():
 
     def __start_signal(self, signal, send_type, socket_ids, list_to_check,
                        vari_list, corresp_list):
+        global DOMAIN
 
         # make host naming consistent
         for socket_conf in socket_ids:
-            socket_conf[0] = socket_conf[0].replace(".desy.de:", ":")
+            socket_conf[0] = socket_conf[0].replace(DOMAIN, "")
 
         overwrite_index = None
         flatlist_nested = [set([j[0] for j in sublist])
@@ -453,7 +482,7 @@ class SignalHandler():
 
 #        for socket_conf in socket_ids:
 #
-#            socket_conf[0] = socket_conf[0].replace(".desy.de:",":")
+#            socket_conf[0] = socket_conf[0].replace(DOMAIN, "")
 #
 #            socket_id = socket_conf[0]
 #            self.log.debug("socket_id: {0}".format(socket_id))
@@ -488,6 +517,7 @@ class SignalHandler():
 
     def __stop_signal(self, signal, socket_ids, list_to_check, vari_list,
                       corresp_list):
+        global DOMAIN
 
         connection_not_found = False
         tmp_remove_index = []
@@ -496,7 +526,7 @@ class SignalHandler():
 
         for socket_conf in socket_ids:
 
-            socket_id = socket_conf[0].replace(".desy.de:", ":")
+            socket_id = socket_conf[0].replace(DOMAIN, "")
 
             for sublist in list_to_check:
                 for element in sublist:
@@ -685,9 +715,13 @@ class SignalHandler():
 class RequestPuller():
     def __init__(self, request_fw_con_id, log_queue, context=None):
 
-        self.log = self.get_logger(log_queue)
+        self.log = helpers.get_logger("RequestPuller", log_queue)
 
-        self.context = context or zmq.Context.instance()
+        # to give the signal handler to bind to the socket before the connect
+        # is done
+        time.sleep(0.5)
+
+        self.context = context or zmq.Context()
         self.request_fw_socket = self.context.socket(zmq.REQ)
         self.request_fw_socket.connect(request_fw_con_id)
         self.log.info("[getRequests] request_fw_socket started (connect) for "
@@ -695,30 +729,15 @@ class RequestPuller():
 
         self.run()
 
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("RequestPuller")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
-
     def run(self):
         self.log.info("[getRequests] Start run")
+        filename = "test_file.cbf"
         while True:
             try:
-                self.request_fw_socket.send_multipart([b"GET_REQUESTS"])
+                self.request_fw_socket.send_multipart(
+                    [b"GET_REQUESTS", json.dumps(filename).encode("utf-8")])
                 self.log.info("[getRequests] send")
-                requests = (
-                    json.loads(
-                        self.request_fw_socket.recv().decode("utf-8"))
-                )
+                requests = json.loads(self.request_fw_socket.recv_string())
                 self.log.info("[getRequests] Requests: {0}".format(requests))
                 time.sleep(0.25)
             except Exception as e:
@@ -795,15 +814,20 @@ if __name__ == '__main__':
     logging.info("=== control_pub_socket connect to: '{0}'"
                  .format(control_pub_con_id))
 
-    signalhandler_pr = threading.Thread(
-        target=SignalHandler,
-        args=(control_pub_con_id, control_sub_con_id, whitelist, com_con_id,
-              request_fw_con_id, request_con_id, log_queue, context))
+    signalhandler_pr = threading.Thread(target=SignalHandler,
+                                        args=(control_pub_con_id,
+                                              control_sub_con_id,
+                                              whitelist,
+                                              com_con_id,
+                                              request_fw_con_id,
+                                              request_con_id,
+                                              log_queue,
+                                              context))
     signalhandler_pr.start()
 
-    request_puller_pr = Process(
-        target=RequestPuller,
-        args=(request_fw_con_id, log_queue))
+    request_puller_pr = Process(target=RequestPuller,
+                                args=(request_fw_con_id,
+                                      log_queue))
     request_puller_pr.start()
 
     def send_signal(socket, signal, ports, prio=None):
@@ -812,9 +836,9 @@ if __name__ == '__main__':
         targets = []
         if type(ports) == list:
             for port in ports:
-                targets.append(["zitpcx19282:{0}".format(port), prio])
+                targets.append(["zitpcx19282:{0}".format(port), prio, [""]])
         else:
-            targets.append(["zitpcx19282:{0}".format(ports), prio])
+            targets.append(["zitpcx19282:{0}".format(ports), prio, [""]])
         targets = json.dumps(targets).encode("utf-8")
         send_message.append(targets)
         socket.send_multipart(send_message)
@@ -840,11 +864,6 @@ if __name__ == '__main__':
     request_socket = context.socket(zmq.PUSH)
     request_socket.connect(request_con_id)
     logging.info("=== request_socket connected to {0}". format(request_con_id))
-
-    request_fw_socket = context.socket(zmq.REQ)
-    request_fw_socket.connect(request_fw_con_id)
-    logging.info("=== request_fw_socket connected to {0}"
-                 .format(request_fw_con_id))
 
     time.sleep(1)
 
@@ -881,7 +900,6 @@ if __name__ == '__main__':
 
     com_socket.close(0)
     request_socket.close(0)
-    request_fw_socket.close(0)
 
     context.destroy()
 

@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from six import iteritems
 
 import os
-import logging
 from inotifyx import binding
 # from inotifyx.distinfo import version as __version__
 import collections
@@ -11,7 +10,7 @@ import threading
 import time
 import copy
 
-from logutils.queue import QueueHandler
+from eventdetectorbase import EventDetectorBase
 import helpers
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -126,7 +125,8 @@ def get_event_message(path, filename, paths):
 class CleanUp (threading.Thread):
     def __init__(self, paths, mon_subdirs, mon_suffixes, cleanup_time,
                  action_time, lock, log_queue):
-        self.log = self.get_logger(log_queue)
+
+        self.log = helpers.get_logger("CleanUp", log_queue)
 
         self.log.debug("init")
         self.paths = paths
@@ -141,20 +141,6 @@ class CleanUp (threading.Thread):
 
         self.log.debug("threading.Thread init")
         threading.Thread.__init__(self)
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("CleanUp")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def run(self):
         global file_event_list
@@ -226,25 +212,44 @@ class CleanUp (threading.Thread):
         return event_list
 
 
-class EventDetector():
+class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
 
-        self.log = self.get_logger(log_queue)
+        EventDetectorBase.__init__(self, config, log_queue,
+                                   "inotifyx_events")
 
         required_params = ["monitored_dir",
                            "fix_subdirs",
-                           "monitored_events",
+                           ["monitored_events", dict],
                            # "event_timeout",
                            "history_size",
-                           "use_cleanup",
-                           "time_till_closed",
-                           "action_time"]
+                           "use_cleanup"]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
                                                             config,
                                                             self.log)
+
+        if config["use_cleanup"]:
+            required_params2 = ["time_till_closed", "action_time"]
+
+            # Check format of config
+            # the second set of parameters only has to be checked if cleanup
+            # is enabled
+            check_passed2, config_reduced2 = (
+                helpers.check_config(required_params2,
+                                     config,
+                                     self.log))
+            if check_passed2:
+                # To merge them the braces have to be removed
+                config_reduced = (config_reduced[:-1]
+                                  + ", "
+                                  + config_reduced2[1:])
+        else:
+            check_passed2 = True
+
+        check_passed = check_passed and check_passed2
 
         self.wd_to_path = {}
         self.fd = binding.init()
@@ -272,14 +277,14 @@ class EventDetector():
 
             self.history = collections.deque(maxlen=config["history_size"])
 
-            self.cleanup_time = config["time_till_closed"]
-            self.action_time = config["action_time"]
-
             self.lock = threading.Lock()
 
             self.add_watch()
 
             if config["use_cleanup"]:
+                self.cleanup_time = config["time_till_closed"]
+                self.action_time = config["action_time"]
+
                 self.cleanup_thread = CleanUp(self.paths, self.mon_subdirs,
                                               self.mon_suffixes,
                                               self.cleanup_time,
@@ -309,20 +314,6 @@ class EventDetector():
             InotifyEvent(wd, mask, cookie, name)
             for wd, mask, cookie, name in binding.get_events(fd, *args)
         ]
-
-    # Send all logs to the main process
-    # The worker configuration is done at the start of the worker process run.
-    # Note that on Windows you can't rely on fork semantics, so each process
-    # will run the logging configuration code when it starts.
-    def get_logger(self, queue):
-        # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger("inotifyx_events")
-        logger.propagate = False
-        logger.addHandler(h)
-        logger.setLevel(logging.DEBUG)
-
-        return logger
 
     def add_watch(self):
         try:
@@ -528,18 +519,13 @@ class EventDetector():
         finally:
             os.close(self.fd)
 
-    def __exit__(self):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
 
 if __name__ == '__main__':
     from subprocess import call
     from multiprocessing import Queue
-
-    from eventdetectors import BASE_PATH
+    from __init__ import BASE_PATH
+    from logutils.queue import QueueHandler
+    import logging
 
     logfile = os.path.join(BASE_PATH, "logs", "inotifyx_events.log")
     logsize = 10485760

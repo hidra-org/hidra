@@ -9,18 +9,20 @@ import logging.handlers
 import shutil
 import subprocess
 import socket
-import json
 import re
 from _version import __version__
+from cfel_optarg import parse_parameters
 
 try:
     import ConfigParser
-except:
+except ImportError:
+    # The ConfigParser module has been renamed to configparser in Python 3
     import configparser as ConfigParser
 
 try:
     # try to use the system module
     from logutils.queue import QueueListener
+    from logutils.queue import QueueHandler
 except:
     # there is no module logutils installed, fallback on the one in shared
     from shared import SHARED_PATH
@@ -28,6 +30,10 @@ except:
         sys.path.append(SHARED_PATH)
 
     from logutils.queue import QueueListener
+    from logutils.queue import QueueHandler
+
+DOMAIN = ".desy.de"
+LDAPURI = "it-ldap-slave.desy.de:1389"
 
 
 def is_windows():
@@ -71,126 +77,6 @@ def str2bool(v):
     return v.lower() == "true"
 
 
-# modified version of the cfelpyutils module
-def parse_config(config):
-    """Sets correct types for parameter dictionaries.
-
-    Reads a parameter dictionary returned by the ConfigParser python module,
-    and assigns correct types to parameters, without changing the structure of
-    the dictionary.
-
-    The parser tries to interpret each entry in the dictionary according to
-    the following rules:
-
-    - If the entry starts and ends with a single quote, it is interpreted as a
-      string.
-    - If the entry starts and ends with a square bracket, it is interpreted as
-      a list.
-    - If the entry starts and ends with a brace, it is interpreted as a
-      dictionary.
-    - If the entry is the word None, without quotes, then the entry is
-      interpreted as NoneType.
-    - If the entry is the word False, without quotes, then the entry is
-      interpreted as a boolean False.
-    - If the entry is the word True, without quotes, then the entry is
-      interpreted as a boolean True.
-    - If non of the previous options match the content of the entry, the
-      parser tries to interpret the entry in order as:
-
-        - An integer number.
-        - A float number.
-        - A string.
-
-      The first choice that succeeds determines the entry type.
-
-    Args:
-
-        config (class RawConfigParser): ConfigParser instance.
-
-    Returns:
-
-        config_params (dict): dictionary with the same structure as the input
-        dictionary, but with correct types assigned to each entry.
-    """
-
-    config_params = {}
-
-    for sect in config.sections():
-        config_params[sect] = {}
-        for op in config.options(sect):
-            config_params[sect][op] = config.get(sect, op)
-
-            if (config_params[sect][op].startswith("'")
-                    and config_params[sect][op].endswith("'")):
-                config_params[sect][op] = config_params[sect][op][1:-1]
-                if sys.version_info[0] == 2:
-                    try:
-                        config_params[sect][op] = (
-                            unicode(config_params[sect][op]))
-                    except UnicodeDecodeError:
-                        raise RuntimeError('Error parsing parameters. Only '
-                                           'ASCII characters are allowed in '
-                                           'parameter names and values.')
-                continue
-            elif (config_params[sect][op].startswith('"')
-                    and config_params[sect][op].endswith('"')):
-                config_params[sect][op] = config_params[sect][op][1:-1]
-                try:
-                    config_params[sect][op] = unicode(config_params[sect][op])
-                except UnicodeDecodeError:
-                    raise RuntimeError('Error parsing parameters. Only ASCII '
-                                       'characters are allowed in parameter '
-                                       'names and values.')
-                continue
-            elif (config_params[sect][op].startswith("[")
-                    and config_params[sect][op].endswith("]")):
-                try:
-                    config_params[sect][op] = json.loads(config.get(sect, op)
-                                                         .replace("'", '"'))
-                except UnicodeDecodeError:
-                    raise RuntimeError('Error parsing parameters. Only ASCII '
-                                       'characters are allowed in parameter '
-                                       'names and values.')
-                continue
-            elif (config_params[sect][op].startswith("{")
-                    and config_params[sect][op].endswith("}")):
-                try:
-                    config_params[sect][op] = json.loads(config.get(sect, op)
-                                                         .replace("'", '"'))
-                except UnicodeDecodeError:
-                    raise RuntimeError('Error parsing parameters. Only ASCII '
-                                       'characters are allowed in parameter '
-                                       'names and values.')
-                continue
-            elif config_params[sect][op] == 'None':
-                config_params[sect][op] = None
-                continue
-            elif config_params[sect][op] == 'False':
-                config_params[sect][op] = False
-                continue
-            elif config_params[sect][op] == 'True':
-                config_params[sect][op] = True
-                continue
-
-            try:
-                config_params[sect][op] = int(config_params[sect][op])
-                continue
-            except ValueError:
-                try:
-                    config_params[sect][op] = float(config_params[sect][op])
-                    continue
-                except ValueError:
-                    config_params[sect][op] = config_params[sect][op]
-#                    raise RuntimeError('Error parsing parameters. The '
-#                                       'parameter {0}/{1} parameter has an '
-#                                       'invalid type. Allowed types are '
-#                                       'None, int, float, bool and str. '
-#                                       'Strings must be single-quoted.'
-#                                       .format(sect, op))
-
-    return config_params
-
-
 def read_config(config_file):
 
     config = ConfigParser.RawConfigParser()
@@ -206,7 +92,7 @@ def read_config(config_file):
 
 def set_parameters(config_file, arguments):
 
-    params = parse_config(read_config(config_file))["asection"]
+    params = parse_parameters(read_config(config_file))["asection"]
 
     # arguments set when the program is called have a higher priority than
     # the ones in the config file
@@ -229,13 +115,15 @@ def set_parameters(config_file, arguments):
 
 
 def excecute_ldapsearch(ldap_cn):
+    global LDAPURI
 
     p = subprocess.Popen(
         ["ldapsearch",
          "-x",
-         "-H ldap://it-ldap-slave.desy.de:1389",
+         "-H ldap://" + LDAPURI,
          "cn=" + ldap_cn, "-LLL"],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
     lines = p.stdout.readlines()
 
     match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
@@ -351,6 +239,15 @@ def check_any_sub_dir_exists(dir_path, subdirs):
         sys.exit(1)
 
 
+def check_sub_dir_contained(dir_path, subdirs):
+    subdir_contained = False
+    for subdir in subdirs:
+        if dir_path[-len(subdir):] == subdir:
+            subdir_contained = True
+
+    return subdir_contained
+
+
 def check_all_sub_dir_exist(dir_path, subdirs):
 
     dir_path = os.path.normpath(dir_path)
@@ -359,7 +256,8 @@ def check_all_sub_dir_exist(dir_path, subdirs):
 
     for d in dirs_to_check:
         if not os.path.exists(d):
-            logging.warning("Dir '{0}' does not exist.".format(d))
+            logging.error("Dir '{0}' does not exist. Abort.".format(d))
+            sys.exit(1)
 
 
 def check_existance(path):
@@ -387,6 +285,13 @@ def check_writable(file_to_check):
 
 
 def check_version(version, log):
+    """ Compares version depending on the minor releases
+
+    Args:
+        version (str): version string of the form
+                       <major release>.<minor release>.<patch level>
+        log: logging handler
+    """
     log.debug("remote version: {0}, local version: {1}"
               .format(version, __version__))
 
@@ -401,13 +306,17 @@ def check_version(version, log):
 
 
 def check_host(host, whitelist, log):
+    global DOMAIN
+
+    if whitelist is None:
+        return True
 
     if host and whitelist:
 
         if type(host) == list:
             return_val = True
             for hostname in host:
-                host_modified = hostname.replace(".desy.de", "")
+                host_modified = hostname.replace(DOMAIN, "")
 
                 if (hostname not in whitelist
                         and host_modified not in whitelist):
@@ -418,7 +327,7 @@ def check_host(host, whitelist, log):
             return return_val
 
         else:
-            host_modified = host.replace(".desy.de", "")
+            host_modified = host.replace(DOMAIN, "")
 
             if host in whitelist or host_modified in whitelist:
                 return True
@@ -442,42 +351,88 @@ def check_ping(host, log=logging):
 
 # IP and DNS name should be both in the whitelist
 def extend_whitelist(whitelist, log):
+    global DOMAIN
+
     log.info("Configured whitelist: {0}".format(whitelist))
     extended_whitelist = []
 
-    for host in whitelist:
+    if whitelist is not None:
+        for host in whitelist:
 
-        if host == "localhost":
-            extended_whitelist.append(socket.gethostbyname(host))
-        else:
-            try:
-                hostname, tmp, ip = socket.gethostbyaddr(host)
+            if host == "localhost":
+                extended_whitelist.append(socket.gethostbyname(host))
+            else:
+                try:
+                    hostname, tmp, ip = socket.gethostbyaddr(host)
 
-                host_modified = hostname.replace(".desy.de", "")
+                    host_modified = hostname.replace(DOMAIN, "")
 
-                if host_modified not in whitelist:
-                    extended_whitelist.append(host_modified)
+                    if host_modified not in whitelist:
+                        extended_whitelist.append(host_modified)
 
-                if ip[0] not in whitelist:
-                    extended_whitelist.append(ip[0])
-            except:
-                pass
+                    if ip[0] not in whitelist:
+                        extended_whitelist.append(ip[0])
+                except:
+                    pass
 
-    for host in extended_whitelist:
-        whitelist.append(host)
+        for host in extended_whitelist:
+            whitelist.append(host)
 
-    log.debug("Extended whitelist: {0}".format(whitelist))
+        log.debug("Extended whitelist: {0}".format(whitelist))
 
 
 def check_config(required_params, config, log):
+    """
+    Check the configuration
+
+    Args:
+
+        required_params (list): list which can contain multiple formats
+            - string: check if the parameter is contained
+            - list of the format [<name>, <format>]: checks if the parameter
+                is contained and has the right format
+            - list of the format [<name>, <list of options>]: checks if the
+                parameter is contained and set to supported values
+        config (dict): dictionary where the configuration is stored
+        log (class Logger): Logger instance of the module logging
+
+    Returns:
+
+        check_passed: if all checks were successfull
+        config_reduced (string): string to print all required parameters with
+            their values
+    """
 
     check_passed = True
     config_reduced = "{"
 
     for param in required_params:
-        if param not in config:
-            log.error("Configuration of wrong format. "
-                      "Missing parameter: '{0}'".format(param))
+        # multiple checks have to be done
+        if type(param) == list:
+            # checks if the parameter is contained in the config dict
+            if param[0] not in config:
+                log.error("Configuration of wrong format. "
+                          "Missing parameter '{0}'".format(param[0]))
+                check_passed = False
+            # check if the parameter is one of the supported values
+            elif type(param[1]) == list:
+                if config[param[0]] not in param[1]:
+                    log.error("Configuration of wrong format. Options for "
+                              "parameter '{0}' are {1}"
+                              .format(param[0], param[1]))
+                    log.debug("parameter '{0}' = {1}"
+                              .format(param[0], config[param[0]]))
+                    check_passed = False
+            # check if the parameter has the supported type
+            elif type(config[param[0]]) != param[1]:
+                log.error("Configuration of wrong format. Parameter '{0}' is "
+                          "of format '{1}' but should be of format '{2}'"
+                          .format(param[0], type(config[param[0]]), param[1]))
+                check_passed = False
+        # checks if the parameter is contained in the config dict
+        elif param not in config:
+            log.error("Configuration of wrong format. Missing parameter: '{0}'"
+                      .format(param))
             check_passed = False
         else:
             config_reduced += "{0}: {1}, ".format(param, config[param])
@@ -592,6 +547,21 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
 
     else:
         return h1
+
+
+# Send all logs to the main process
+# The worker configuration is done at the start of the worker process run.
+# Note that on Windows you can't rely on fork semantics, so each process
+# will run the logging configuration code when it starts.
+def get_logger(logger_name, queue, log_level=logging.DEBUG):
+    # Create log and set handler to queue handle
+    h = QueueHandler(queue)  # Just the one handler needed
+    logger = logging.getLogger(logger_name)
+    logger.propagate = False
+    logger.addHandler(h)
+    logger.setLevel(log_level)
+
+    return logger
 
 
 def init_logging(filename_full_path, verbose, onscreen_log_level=False):

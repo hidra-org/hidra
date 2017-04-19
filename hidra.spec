@@ -1,11 +1,11 @@
 Name:		hidra
-Version:	3.0.2
+Version:	3.1.0
 Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
 License:	AGPLv3
-URL:		https://stash.desy.de/projects/LSDMA/repos/hidra
-Source0:	hidra-%{version}.zip
+URL:		https://stash.desy.de/projects/HIDRA/repos/hidra
+Source0:	hidra-v%{version}.zip
 #Source1:	hidra.service
 
 BuildArch:	noarch
@@ -14,16 +14,44 @@ BuildRequires:	python-setuptools
 BuildRequires:	systemd-units
 Requires:	systemd
 Requires:	python-logutils
-Requires:	python-zmq >= 14.1.0
+Requires:	python-zmq >= 14.5.0
 Requires:	python-inotifyx
 Requires:	python-setproctitle
 Requires:	python-six
+Requires:	python-hidra = %{version}
 
 %description
 HiDRA is a generic tool set for high performance data multiplexing with different qualities of service and is based on Python and ZeroMQ. It can be used to directly store the data in the storage system but also to send it to some kind of online monitoring or analysis framework. Together with OnDA, data can be analyzed with a delay of seconds resulting in an increase of the quality of the generated scientific data by 20 %. The modular architecture of the tool (divided into event detectors, data fetchers and receivers) makes it easily extendible and even gives the possibility to adapt the software to specific detectors directly (for example, Eiger and Lambda detector).
 
+# python libraries
+%package -n python-hidra
+Summary:	High performance data multiplexing tool - Python Library
+
+BuildArch:	noarch
+
+BuildRequires:	python-devel
+BuildRequires:	python-setuptools
+#Requires:	python-logutils
+Requires:	python-zmq >= 14.5.0
+
+%description -n python-hidra
+This package contains only the API for developing tools against HiDRA.
+
+# control client
+%package -n hidra-control-client
+Summary:	High performance data multiplexing tool - control client
+
+BuildArch:	noarch
+
+BuildRequires:	python-devel
+BuildRequires:	python-setuptools
+Requires:	python-hidra = %{version}
+
+%description -n hidra-control-client
+This package contains only the client to interact with the control server in the HIDRA package.
+
 %prep
-%setup -q -n %{name}-%{version}
+%setup -q -c %{name}-%{version}
 
 #%build
 #%{__python} setup.py build
@@ -45,14 +73,14 @@ cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
-cp conf/datamanager.conf conf/dataReceiver.conf conf/nexusReceiver.conf %{buildroot}/opt/%{name}/conf/
+cp conf/datamanager.conf conf/datareceiver.conf %{buildroot}/opt/%{name}/conf/
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
 cp initscripts/*.service %{buildroot}/%{_unitdir}/
 
 # log directory
-mkdir -p %{buildroot}/opt/%{name}/logs
+mkdir -p %{buildroot}/var/log/%{name}
 
 #%{__python} setup.py install -O1 --skip-build --root %{buildroot}
 
@@ -67,7 +95,6 @@ mkdir -p %{buildroot}/opt/%{name}/logs
 
 %files
 %doc docs/*
-%{python_sitelib}/*
 /opt/%{name}/conf/*
 %attr(0755,root,root) /opt/%{name}/src/receiver/*
 /opt/%{name}/src/sender/*
@@ -76,14 +103,28 @@ mkdir -p %{buildroot}/opt/%{name}/logs
 /opt/%{name}/src/hidra_control/*
 %{_unitdir}/*.service
 %config(noreplace) /opt/%{name}/conf/*
-%attr(1777,root,root) /opt/%{name}/logs
+%attr(1777,root,root) /var/log/%{name}
+
+%files -n python-hidra
+%{python_sitelib}/*
+
+%files -n hidra-control-client
+/opt/%{name}/src/hidra_control/hidra_control_client.py
 
 %changelog
-Tue Dec 20 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-1
-Bump version
-Fri Dec 16 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.1-1
-Bump version
-Wed Dec 14 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.0-1
-Bump version
+* Wed Apr 19 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.1.0-1
+- Bump version
+* Tue Apr 18 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-4
+- Separated control client package
+* Mon Apr 17 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-3
+- Separated lib package
+* Mon Jan 30 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-2
+- Change log directory
+* Tue Dec 20 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.2-1
+- Bump version
+* Fri Dec 16 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.1-1
+- Bump version
+* Wed Dec 14 2016 Manuela Kuhn <manuela.kuhn@desy.de> - 3.0.0-1
+- Bump version
 * Tue Nov 22 2016 Stefan Dietrich <stefan.dietrich@desy.de> - 2.4.2-1
 - Initial packaging

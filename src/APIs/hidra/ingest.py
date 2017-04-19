@@ -8,39 +8,12 @@ import os
 import platform
 import zmq
 import logging
-import traceback
 import json
 import tempfile
 import socket
 
 # from ._version import __version__
-
-
-class LoggingFunction:
-    def out(self, x, exc_info=None):
-        if exc_info:
-            print (x, traceback.format_exc())
-        else:
-            print (x)
-
-    def __init__(self):
-        self.debug = lambda x, exc_info=None: self.out(x, exc_info)
-        self.info = lambda x, exc_info=None: self.out(x, exc_info)
-        self.warning = lambda x, exc_info=None: self.out(x, exc_info)
-        self.error = lambda x, exc_info=None: self.out(x, exc_info)
-        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-
-
-class NoLoggingFunction:
-    def out(self, x, exc_info=None):
-        pass
-
-    def __init__(self):
-        self.debug = lambda x, exc_info=None: self.out(x, exc_info)
-        self.info = lambda x, exc_info=None: self.out(x, exc_info)
-        self.warning = lambda x, exc_info=None: self.out(x, exc_info)
-        self.error = lambda x, exc_info=None: self.out(x, exc_info)
-        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+from ._shared_helpers import LoggingFunction
 
 
 def is_windows():
@@ -54,12 +27,18 @@ class Ingest():
     # return error code
     def __init__(self, use_log=False, context=None):
 
-        if use_log:
+        # print messages of certain level to screen
+        if use_log in ["debug", "info", "warning", "error", "critical"]:
+            self.log = LoggingFunction(use_log)
+        # use logging
+        elif use_log:
             self.log = logging.getLogger("Ingest")
+        # use no logging at all
         elif use_log is None:
-            self.log = NoLoggingFunction()
+            self.log = LoggingFunction(None)
+        # print everything to screen
         else:
-            self.log = LoggingFunction()
+            self.log = LoggingFunction("debug")
 
         # ZMQ applications always start by creating a context,
         # and then using that for creating sockets
@@ -123,7 +102,7 @@ class Ingest():
 #                                             self.current_pid,
 #                                             "dataFetch"))
 
-        self.signal_socket = None
+        self.file_op_socket = None
         self.eventdet_socket = None
         self.datafetch_socket = None
 
@@ -140,23 +119,23 @@ class Ingest():
 
         # To send file open and file close notification, a communication
         # socket is needed
-        self.signal_socket = self.context.socket(zmq.REQ)
+        self.file_op_socket = self.context.socket(zmq.REQ)
 
         # time to wait for the sender to give a confirmation of the signal
-#        self.signal_socket.RCVTIMEO = self.response_timeout
+#        self.file_op_socket.RCVTIMEO = self.response_timeout
         try:
-            self.signal_socket.connect(self.signal_con_id)
-            self.log.info("signal_socket started (connect) for '{0}'"
+            self.file_op_socket.connect(self.signal_con_id)
+            self.log.info("file_op_socket started (connect) for '{0}'"
                           .format(self.signal_con_id))
         except Exception:
-            self.log.error("Failed to start signal_socket (connect): '{0}'"
+            self.log.error("Failed to start file_op_socket (connect): '{0}'"
                            .format(self.signal_con_id), exc_info=True)
             raise
 
-        # using a Poller to implement the signal_socket timeout
+        # using a Poller to implement the file_op_socket timeout
         # (in older ZMQ version there is no option RCVTIMEO)
 #        self.poller = zmq.Poller()
-        self.poller.register(self.signal_socket, zmq.POLLIN)
+        self.poller.register(self.file_op_socket, zmq.POLLIN)
 
         self.eventdet_socket = self.context.socket(zmq.PUSH)
         self.datafetch_socket = self.context.socket(zmq.PUSH)
@@ -194,10 +173,10 @@ class Ingest():
             raise Exception("File {0} already opened.".format(filename))
 
         # send notification to receiver
-        self.signal_socket.send_multipart([signal, filename])
+        self.file_op_socket.send_multipart([signal, filename])
         self.log.info("Sending signal to open a new file.")
 
-        message = self.signal_socket.recv_multipart()
+        message = self.file_op_socket.recv_multipart()
         self.log.debug("Received responce: {0}".format(message))
 
         if signal == message[0] and filename == message[1]:
@@ -230,11 +209,11 @@ class Ingest():
         # send close-signal to signal socket
         send_message = [b"CLOSE_FILE", self.filename]
         try:
-            self.signal_socket.send_multipart(send_message)
-            self.log.info("Sending signal to close the file to signal_socket")
+            self.file_op_socket.send_multipart(send_message)
+            self.log.info("Sending signal to close the file to file_op_socket")
         except:
-            raise Exception("Sending signal to close the file to signal_socket"
-                            "...failed")
+            raise Exception("Sending signal to close the file to "
+                            "file_op_socket...failed")
 
         # send close-signal to event Detector
         try:
@@ -254,11 +233,11 @@ class Ingest():
 
         # if there was a response
         if (socks
-                and self.signal_socket in socks
-                and socks[self.signal_socket] == zmq.POLLIN):
+                and self.file_op_socket in socks
+                and socks[self.file_op_socket] == zmq.POLLIN):
             self.log.info("Received answer to signal...")
             #  Get the reply.
-            recv_message = self.signal_socket.recv_multipart()
+            recv_message = self.file_op_socket.recv_multipart()
             self.log.info("Received answer to signal: {0}"
                           .format(recv_message))
         else:
@@ -280,10 +259,10 @@ class Ingest():
 
         """
         try:
-            if self.signal_socket:
-                self.log.info("closing signal_socket...")
-                self.signal_socket.close(linger=0)
-                self.signal_socket = None
+            if self.file_op_socket:
+                self.log.info("closing file_op_socket...")
+                self.file_op_socket.close(linger=0)
+                self.file_op_socket = None
             if self.eventdet_socket:
                 self.log.info("closing eventdet_socket...")
                 self.eventdet_socket.close(linger=0)

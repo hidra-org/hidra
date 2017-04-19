@@ -1,0 +1,8 @@
+FROM centos:7
+
+ADD desy-common_sl7.repo /etc/yum.repos.d/desy-common.repo
+RUN yum update -y && \
+    yum install -y wget \
+    epel-release && \
+    wget http://nims.desy.de/extra/hidra/hidra-3.0.2-1.el7.noarch.rpm && \
+    yum install -y hidra-3.0.2-1.el7.noarch.rpm
