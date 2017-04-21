@@ -241,7 +241,8 @@ class DataReceiver:
         except KeyboardInterrupt:
             pass
         except:
-            self.log.error("Stopping due to unknown error condition")
+            self.log.error("Stopping due to unknown error condition",
+                           exc_info=True)
             raise
         finally:
             self.stop()
