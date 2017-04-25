@@ -254,26 +254,26 @@ class Transfer():
 
         message = self.__send_signal(signal)
 
-        if message and message == b"VERSION_CONFLICT":
+        if message and message[0] == b"VERSION_CONFLICT":
             self.stop()
-            raise VersionError("Versions are conflicting.")
+            raise VersionError("Versions are conflicting. Sender version: {0}, API version: {1}".format(message[1], __version__))
 
-        elif message and message == b"NO_VALID_HOST":
+        elif message and message[0] == b"NO_VALID_HOST":
             self.stop()
             raise AuthenticationFailed("Host is not allowed to connect.")
 
-        elif message and message == b"CONNECTION_ALREADY_OPEN":
+        elif message and message[0] == b"CONNECTION_ALREADY_OPEN":
             self.stop()
             raise CommunicationFailed("Connection is already open.")
 
-        elif message and message == b"NO_VALID_SIGNAL":
+        elif message and message[0] == b"NO_VALID_SIGNAL":
             self.stop()
             raise CommunicationFailed("Connection type is not supported for "
                                       "this kind of sender.")
 
         # if there was no response or the response was of the wrong format,
         # the receiver should be shut down
-        elif message and message.startswith(signal):
+        elif message and message[0].startswith(signal):
             self.log.info("Received signal confirmation ...")
             self.signal_exchanged = signal
 
@@ -371,7 +371,7 @@ class Transfer():
                 and socks[self.signal_socket] == zmq.POLLIN):
             try:
                 #  Get the reply.
-                message = self.signal_socket.recv()
+                message = self.signal_socket.recv_multipart()
                 self.log.info("Received answer to signal: {0}"
                               .format(message))
 
@@ -1467,26 +1467,26 @@ class Transfer():
 
         message = self.__send_signal(signal)
 
-        if message and message == b"VERSION_CONFLICT":
+        if message and message[0] == b"VERSION_CONFLICT":
             self.stop()
             raise VersionError("Versions are conflicting.")
 
-        elif message and message == b"NO_VALID_HOST":
+        elif message and message[0] == b"NO_VALID_HOST":
             self.stop()
             raise AuthenticationFailed("Host is not allowed to connect.")
 
-        elif message and message == b"CONNECTION_ALREADY_OPEN":
+        elif message and message[0] == b"CONNECTION_ALREADY_OPEN":
             self.stop()
             raise CommunicationFailed("Connection is already open.")
 
-        elif message and message == b"NO_VALID_SIGNAL":
+        elif message and message[0] == b"NO_VALID_SIGNAL":
             self.stop()
             raise CommunicationFailed("Connection type is not supported for "
                                       "this kind of sender.")
 
         # if there was no response or the response was of the wrong format,
         # the receiver should be shut down
-        elif message and message.startswith(signal):
+        elif message and message[0].startswith(signal):
             self.log.info("Received confirmation ...")
 
     def __exit__(self):

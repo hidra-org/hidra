@@ -9,6 +9,7 @@ import copy
 import json
 
 from __init__ import BASE_PATH
+from _version import __version__
 from logutils.queue import QueueHandler
 import helpers
 
@@ -369,7 +370,7 @@ class SignalHandler():
             self.log.warning("Received signal is of the wrong format")
             self.log.debug("Received signal is too short or too long: {0}"
                            .format(in_message))
-            return b"NO_VALID_SIGNAL", None, None
+            return [b"NO_VALID_SIGNAL"], None, None
 
         else:
 
@@ -383,14 +384,14 @@ class SignalHandler():
             try:
                 host = [t[0].split(":")[0] for t in target]
             except:
-                return b"NO_VALID_SIGNAL", None, None
+                return [b"NO_VALID_SIGNAL"], None, None
 
             if version:
                 if helpers.check_version(version, self.log):
                     self.log.info("Versions are compatible")
                 else:
                     self.log.warning("Version are not compatible")
-                    return b"VERSION_CONFLICT", None, None
+                    return [b"VERSION_CONFLICT", __version__], None, None
 
             if signal and host:
 
@@ -404,13 +405,13 @@ class SignalHandler():
                     self.log.warning("One of the hosts is not allowed to "
                                      "connect.")
                     self.log.debug("hosts: {0}".format(host))
-                    return b"NO_VALID_HOST", None, None
+                    return [b"NO_VALID_HOST"], None, None
 
         return False, signal, target
 
     def send_response(self, signal):
             self.log.debug("Send response back: {0}".format(signal))
-            self.com_socket.send(signal, zmq.NOBLOCK)
+            self.com_socket.send_multipart(signal, zmq.NOBLOCK)
 
     def __start_signal(self, signal, send_type, socket_ids, list_to_check,
                        vari_list, corresp_list):
@@ -472,7 +473,7 @@ class SignalHandler():
                        .format(list_to_check))
 
         # send signal back to receiver
-        self.send_response(signal)
+        self.send_response([signal])
 
 #        connection_found = False
 #        tmp_allowed = []
@@ -501,7 +502,7 @@ class SignalHandler():
 
 #        if not connection_found:
 #            # send signal back to receiver
-#            self.send_response(signal)
+#            self.send_response([signal])
 #            list_to_check.append(copy.deepcopy(sorted(tmp_allowed)))
 #            if corresp_list != None:
 #                corresp_list.append(0)
@@ -511,9 +512,9 @@ class SignalHandler():
 #                vari_list.append([])
 #        else:
 #            # send error back to receiver
-# #           self.send_response("CONNECTION_ALREADY_OPEN")
+# #           self.send_response(["CONNECTION_ALREADY_OPEN"])
 #            # "reopen" the connection and confirm to receiver
-#            self.send_response(signal)
+#            self.send_response([signal])
 
     def __stop_signal(self, signal, socket_ids, list_to_check, vari_list,
                       corresp_list):
@@ -537,12 +538,12 @@ class SignalHandler():
                 connection_not_found = True
 
         if connection_not_found:
-            self.send_response(b"NO_OPEN_CONNECTION_FOUND")
+            self.send_response([b"NO_OPEN_CONNECTION_FOUND"])
             self.log.info("No connection to close was found for {0}"
                           .format(socket_conf))
         else:
             # send signal back to receiver
-            self.send_response(signal)
+            self.send_response([signal])
 
             for element in tmp_remove_element:
 
@@ -669,7 +670,7 @@ class SignalHandler():
         else:
             self.log.info("Received signal: {0} for hosts {1}"
                           .format(signal, socket_ids))
-            self.send_response(b"NO_VALID_SIGNAL")
+            self.send_response([b"NO_VALID_SIGNAL"])
 
     def stop(self):
         self.log.debug("Closing sockets for SignalHandler")
@@ -752,7 +753,6 @@ class RequestPuller():
 if __name__ == '__main__':
     from multiprocessing import Process, freeze_support, Queue
     import threading
-    from _version import __version__
 
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     freeze_support()
