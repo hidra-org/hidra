@@ -174,6 +174,8 @@ class DataReceiver:
         global whitelist
 
         self.transfer = None
+        self.checking_thread = None
+        self.timeout = 2000
 
         try:
             params = argument_parsing()
@@ -234,7 +236,6 @@ class DataReceiver:
         else:
             self.log.debug("Checking thread not started: {0}"
                            .format(params["whitelist"]))
-            self.checking_thread = None
 
         try:
             self.run()
@@ -277,7 +278,7 @@ class DataReceiver:
                 self.lock.release()
 
             try:
-                self.transfer.store(self.target_dir, 2000)
+                self.transfer.store(self.target_dir, self.timeout)
             except KeyboardInterrupt:
                 break
             except:
