@@ -266,8 +266,9 @@ class DataReceiver:
         self.transfer.setopt("confirmation")
 
         self.log.debug("Waiting for new messages...")
+        self.run_loop = True
         # run loop, and wait for incoming messages
-        while True:
+        while self.run_loop:
             if changed_netgroup:
                 self.log.debug("Reregistering whitelist")
                 self.transfer.register(whitelist)
@@ -286,6 +287,8 @@ class DataReceiver:
                 raise
 
     def stop(self):
+        self.run_loop = False
+
         if self.transfer is not None:
             self.log.info("Shutting down receiver...")
             self.transfer.stop()

@@ -201,6 +201,7 @@ class Transfer():
         self.read_callback = None
         self.close_callback = None
 
+        self.run_loop = True
         self.stopped_everything = False
 
         # In older api versions this was a class method
@@ -256,7 +257,9 @@ class Transfer():
 
         if message and message[0] == b"VERSION_CONFLICT":
             self.stop()
-            raise VersionError("Versions are conflicting. Sender version: {0}, API version: {1}".format(message[1], __version__))
+            raise VersionError("Versions are conflicting. Sender version: {0},"
+                               " API version: {1}"
+                               .format(message[1], __version__))
 
         elif message and message[0] == b"NO_VALID_HOST":
             self.stop()
@@ -1069,8 +1072,11 @@ class Transfer():
                 try:
                     socks = dict(self.poller.poll(timeout))
                 except:
-                    self.log.error("Could not poll for new message")
-                    raise
+                    if self.stopped_everything:
+                        raise KeyboardInterrupt
+                    else:
+                        self.log.error("Could not poll for new message")
+                        raise
             else:
                 try:
                     socks = dict(self.poller.poll())
@@ -1205,6 +1211,10 @@ class Transfer():
                     self.log.error("Failed to append payload to file: '{0}'"
                                    .format(filepath), exc_info=True)
                     raise
+            except:
+                self.log.error("Failed to append payload to file: '{0}'"
+                               .format(filepath), exc_info=True)
+                raise
 
             if ("confirmation_required" in metadata
                     and metadata["confirmation_required"]):
@@ -1260,9 +1270,8 @@ class Transfer():
 
     def store(self, target_base_path, timeout=None):
 
-        runLoop = True
         # save all chunks to file
-        while runLoop:
+        while self.run_loop:
 
             try:
                 # timeout (in ms) to be able to react on system signals
@@ -1270,8 +1279,11 @@ class Transfer():
             except KeyboardInterrupt:
                 raise
             except:
-                self.log.error("Getting data failed.", exc_info=True)
-                raise
+                if self.stopped_everything:
+                    break
+                else:
+                    self.log.error("Getting data failed.", exc_info=True)
+                    raise
 
             if payload_metadata is not None and payload is not None:
 
@@ -1326,6 +1338,8 @@ class Transfer():
         * Destroying context
 
         """
+
+        self.runLoop = False
 
         # Close open file handler to prevent file corruption
         for target_filepath in list(self.file_descriptors.keys()):
