@@ -201,7 +201,6 @@ class Transfer():
         self.read_callback = None
         self.close_callback = None
 
-        self.run_loop = True
         self.stopped_everything = False
 
         # In older api versions this was a class method
@@ -374,7 +373,7 @@ class Transfer():
                 and socks[self.signal_socket] == zmq.POLLIN):
             try:
                 #  Get the reply.
-                message = self.signal_socket.recv_multipart()
+                message = self.signal_socket.recv()
                 self.log.info("Received answer to signal: {0}"
                               .format(message))
 
@@ -1267,11 +1266,16 @@ class Transfer():
                 self.log.error("File could not be closed: {0}"
                                .format(filepath), exc_info=True)
                 raise
+            return False
+	else:
+            return True
 
     def store(self, target_base_path, timeout=None):
 
+        run_loop = True
+
         # save all chunks to file
-        while self.run_loop:
+        while run_loop:
 
             try:
                 # timeout (in ms) to be able to react on system signals
@@ -1295,10 +1299,10 @@ class Transfer():
 
                 # TODO: save message to file using a thread (avoids blocking)
                 try:
-                    self.store_data_chunk(self.file_descriptors,
-                                          target_filepath,
-                                          payload, target_base_path,
-                                          payload_metadata)
+                    run_loop = self.store_data_chunk(self.file_descriptors,
+                                                     target_filepath,
+                                                     payload, target_base_path,
+                                                     payload_metadata)
                     # for testing
 #                    try:
 #                        a = 5/0
@@ -1339,8 +1343,6 @@ class Transfer():
 
         """
 
-        self.runLoop = False
-
         # Close open file handler to prevent file corruption
         for target_filepath in list(self.file_descriptors.keys()):
             self.file_descriptors[target_filepath].close()
@@ -1378,7 +1380,7 @@ class Transfer():
                 self.signal_socket = None
             if self.data_socket is not None:
                 self.log.info("closing data_socket...")
-                self.data_socket.close(linger=0)
+                self.data_socket.close()
                 self.data_socket = None
             if self.request_socket is not None:
                 self.log.info("closing request_socket...")
