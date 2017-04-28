@@ -1,5 +1,5 @@
-hidra (3.0.2-1) unstable; urgency=low
+hidra (3.1.1-1) jessie; urgency=low
 
-  * Initial release
+  * NMU
 
- -- Stefan Dietrich <stefan.dietrich@desy.de>  Mon, 13 Feb 2017 08:42:14 +0100
+ -- J. Blume <johannes.blume@desy.de>  Thu, 19 Apr 2017 14:38:14 +0200
