@@ -373,7 +373,7 @@ class Transfer():
                 and socks[self.signal_socket] == zmq.POLLIN):
             try:
                 #  Get the reply.
-                message = self.signal_socket.recv()
+                message = self.signal_socket.recv_multipart()
                 self.log.info("Received answer to signal: {0}"
                               .format(message))
 
