@@ -257,6 +257,7 @@ class DataReceiver:
 #            self.transfer.start(self.data_port)
         except:
             self.log.error("Could not initiate stream", exc_info=True)
+            self.stop(store=False)
             raise
 
         # enable status check requests from any sender
@@ -286,22 +287,23 @@ class DataReceiver:
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise
 
-    def stop(self):
+    def stop(self, store=True):
         self.run_loop = False
 
         if self.transfer is not None:
             self.transfer.status = [b"ERROR", "receiver is shutting down"]
 
-            start_time = time.time()
-            diff_time = (time.time() - start_time) * 1000
-            self.log.debug("Storing remaining data.")
-            while diff_time < self.timeout:
-                try:
-                    self.log.debug("Storing remaining data...")
-                    self.transfer.store(self.target_dir, self.timeout)
-                except:
-                    self.log.error("Storing data...failed.", exc_info=True)
-                diff_time = (time.time() - start_time)*1000
+            if store:
+                start_time = time.time()
+                diff_time = (time.time() - start_time) * 1000
+                self.log.debug("Storing remaining data.")
+                while diff_time < self.timeout:
+                    try:
+                        self.log.debug("Storing remaining data...")
+                        self.transfer.store(self.target_dir, self.timeout)
+                    except:
+                        self.log.error("Storing data...failed.", exc_info=True)
+                    diff_time = (time.time() - start_time)*1000
 
             self.log.info("Shutting down receiver...")
             self.transfer.stop()
