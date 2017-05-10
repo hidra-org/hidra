@@ -355,7 +355,7 @@ class Transfer():
                         file_suffix = file_suffix[:-1]
 
                         if file_suffix:
-                            regex += "[{0}$]".format(file_suffix)
+                            regex += "[{0}]$".format(file_suffix)
                     # a regex was given
                     else:
                         regex = suffixes
