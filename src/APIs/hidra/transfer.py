@@ -142,7 +142,7 @@ class Transfer():
         # ZMQ applications always start by creating a context,
         # and then using that for creating sockets
         # (source: ZeroMQ, Messaging for Many Applications by Pieter Hintjens)
-        if context:
+        if context is not None:
             self.context = context
             self.ext_context = True
         else:
@@ -327,14 +327,43 @@ class Transfer():
         # [[host, port, prio], ...] or [[host, port, prio, suffixes], ...]
         else:
             for t in targets:
-                if type(t) == list and len(t) == 3:
-                    host, port, prio = t
+                len_t = len(t)
+                if (type(t) == list
+                        and (len_t == 3 or len_t == 4)
+                        and type(t[0]) != list
+                        and type(t[1]) != list
+                        and type(t[2]) != list):
+
+                    if len_t == 3:
+                        host, port, prio = t
+                        suffixes = [""]
+                    else:
+                        host, port, prio, suffixes = t
+
+                    # Convert list into regex
+                    if type(suffixes) == list:
+                        regex = ".*"
+
+                        file_suffix = ""
+                        for s in suffixes:
+                            if s:
+                                # not an empty string
+                                file_suffix += s
+                            file_suffix += "|"
+
+                        # remove the last "|"
+                        file_suffix = file_suffix[:-1]
+
+                        if file_suffix:
+                            regex += "[{0}$]".format(file_suffix)
+                    # a regex was given
+                    else:
+                        regex = suffixes
+
+                    self.log.debug("regex={0}".format(regex))
+
                     self.targets.append(
-                        ["{0}:{1}".format(host, port), prio, [""]])
-                elif type(t) == list and len(t) == 4 and type(t[3]):
-                    host, port, prio, suffixes = t
-                    self.targets.append(
-                        ["{0}:{1}".format(host, port), prio, suffixes])
+                        ["{0}:{1}".format(host, port), prio, regex])
                 else:
                     self.stop()
                     self.log.debug("targets={0}".format(targets))

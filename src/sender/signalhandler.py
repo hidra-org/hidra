@@ -7,6 +7,7 @@ import logging
 import os
 import copy
 import json
+import re
 
 from __init__ import BASE_PATH
 from _version import __version__
@@ -227,10 +228,15 @@ class SignalHandler():
                                 socket_id, prio, pattern, send_type = (
                                     request_set[self.next_requ_node[index]])
 
-                                # Check if filename suffix matches requested
-                                # suffix
-                                if filename.endswith(tuple(tmp[2])):
-                                    open_requests.append([socket_id, prio, send_type])
+                                # Check if filename matches requested
+                                # regex
+#                                if filename.endswith(tuple(pattern)):
+                                if pattern.match(filename):
+                                    # do not send pattern
+                                    open_requests.append([socket_id,
+                                                         prio,
+                                                         send_type])
+
                                     # distribute in round-robin order
                                     self.next_requ_node[index] = (
                                         (self.next_requ_node[index] + 1)
@@ -240,10 +246,16 @@ class SignalHandler():
                         for request_set in self.open_requ_vari:
                             # Check if filename suffix matches requested suffix
                             if (request_set
-                                    and filename.endswith(
-                                        tuple(request_set[0][2]))):
-                                socket_id, prio, pattern, send_type = request_set.pop(0)
-                                open_requests.append([socket_id, prio, send_type])
+                                    and request_set[0][2].match(filename)):
+#                            if (request_set
+#                                    and filename.endswith(
+#                                        tuple(request_set[0][2]))):
+                                socket_id, prio, pattern, send_type = (
+                                    request_set.pop(0))
+                                # do not send pattern
+                                open_requests.append([socket_id,
+                                                      prio,
+                                                      send_type])
 
                         if open_requests:
                             self.request_fw_socket.send_string(
@@ -422,7 +434,6 @@ class SignalHandler():
         global DOMAIN
 
         # socket_ids is of the format [[<host>, <prio>, <suffix>], ...]
-        self.log.debug("socket_ids={0}".format(socket_ids))
         for socket_conf in socket_ids:
             # make host naming consistent
             socket_conf[0] = socket_conf[0].replace(DOMAIN, "")
@@ -462,6 +473,13 @@ class SignalHandler():
 
             list_to_check[overwrite_index] = copy.deepcopy(
                 sorted([i + [send_type] for i in socket_ids]))
+
+            # compile regex
+            # This cannot be done before because deepcopy does not support for
+            # python versions < 3.7, see http://bugs.python.org/issue10076
+            for socket_conf in list_to_check[overwrite_index]:
+                socket_conf[2] = re.compile(socket_conf[2])
+
             if corresp_list is not None:
                 corresp_list[overwrite_index] = 0
 
@@ -470,6 +488,13 @@ class SignalHandler():
         else:
             list_to_check.append(copy.deepcopy(
                 sorted([i + [send_type] for i in socket_ids])))
+
+            # compile regex
+            # This cannot be done before because deepcopy does not support for
+            # python versions < 3.7, see http://bugs.python.org/issue10076
+            for socket_conf in list_to_check[-1]:
+                socket_conf[2] = re.compile(socket_conf[2])
+
             if corresp_list is not None:
                 corresp_list.append(0)
 
