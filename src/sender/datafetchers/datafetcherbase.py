@@ -82,7 +82,7 @@ class DataFetcherBase(ABC):
     def send_to_targets(self, targets, open_connections, metadata, payload,
                         timeout=-1):
 
-        for target, prio, suffixes, send_type in targets:
+        for target, prio, send_type in targets:
 
             # send data to the data stream to store it in the storage system
             if prio == 0:
@@ -211,12 +211,8 @@ class DataFetcherBase(ABC):
             targets (list):
                 A list of targets where the data or metadata should be sent to.
                 It is of the form:
-                    [[<node_name>:<port>, <priority>,
-                      <list of file suffixes>, <request_type>], ...]
+                    [[<node_name>:<port>, <priority>, <request_type>], ...]
                 where
-                    <list of file suffixes>: is a python of file types which
-                                             should be send to this target.
-                                             e.g. [u'.cbf']
                     <request_type>: u'data' or u'metadata'
             metadata (dict): Dictionary created by the event detector
                              containing:
@@ -239,12 +235,8 @@ class DataFetcherBase(ABC):
             targets (list):
                 A list of targets where the data or metadata should be sent to.
                 It is of the form:
-                    [[<node_name>:<port>, <priority>,
-                      <list of file suffixes>, <request_type>], ...]
+                    [[<node_name>:<port>, <priority>, <request_type>], ...]
                 where
-                    <list of file suffixes>: is a python of file types which
-                                             should be send to this target.
-                                             e.g. [u'.cbf']
                     <request_type>: u'data' or u'metadata'
             metadata (dict): extendet metadata dictionary filled by function
                              get_metadata
@@ -263,12 +255,8 @@ class DataFetcherBase(ABC):
             targets (list):
                 A list of targets where the data or metadata should be sent to.
                 It is of the form:
-                    [[<node_name>:<port>, <priority>,
-                      <list of file suffixes>, <request_type>], ...]
+                    [[<node_name>:<port>, <priority>, <request_type>], ...]
                 where
-                    <list of file suffixes>: is a python of file types which
-                                             should be send to this target.
-                                             e.g. [u'.cbf']
                     <request_type>: u'data' or u'metadata'
             metadata (dict)
             open_connections

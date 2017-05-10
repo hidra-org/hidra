@@ -124,7 +124,7 @@ class DataDispatcher():
 
     def run(self):
 
-        fixed_stream_id = [self.fixed_stream_id, 0, [""], "data"]
+        fixed_stream_id = [self.fixed_stream_id, 0, "data"]
 
         while self.continue_run:
             self.log.debug("DataDispatcher-{0}: waiting for new job"

@@ -121,7 +121,8 @@ class DataFetcher(DataFetcherBase):
         if not targets:
             return
 
-        targets_data = [i for i in targets if i[3] == "data"]
+        # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
+        targets_data = [i for i in targets if i[2] == "data"]
 
         if not targets_data:
             return
@@ -160,7 +161,8 @@ class DataFetcher(DataFetcherBase):
 
     def finish(self, targets, metadata, open_connections):
 
-        targets_metadata = [i for i in targets if i[3] == "metadata"]
+        # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
+        targets_metadata = [i for i in targets if i[2] == "metadata"]
 
         # send message to metadata targets
         if targets_metadata:
@@ -327,8 +329,8 @@ if __name__ == '__main__':
     }
 
     targets = [
-        ['{0}:{1}'.format(ext_ip, receiving_port), 1, [".cbf"], "data"],
-        ['{0}:{1}'.format(ext_ip, receiving_port2), 1, [".cbf"], "data"]
+        ['{0}:{1}'.format(ext_ip, receiving_port), 1, "data"],
+        ['{0}:{1}'.format(ext_ip, receiving_port2), 1, "data"]
     ]
 
     open_connections = dict()

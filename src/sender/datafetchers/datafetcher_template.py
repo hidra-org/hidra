@@ -62,13 +62,15 @@ class DataFetcher(DataFetcherBase):
         if not targets:
             return
 
-        targets_data = [i for i in targets if i[3] == "data"]
+        # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
+        targets_data = [i for i in targets if i[2] == "data"]
 
         if not targets_data:
             return
 
         self.log.debug("Passing multipart-message for file '{0}'..."
                        .format(self.source_file))
+
         for i in range(5):
 
             chunk_number = i
@@ -104,7 +106,8 @@ class DataFetcher(DataFetcherBase):
 
     def finish(self, targets, metadata, open_connections, context):
 
-        targets_metadata = [i for i in targets if i[3] == "metadata"]
+        # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
+        targets_metadata = [i for i in targets if i[2] == "metadata"]
 
         # send message to metadata targets
         if targets_metadata:
@@ -186,8 +189,8 @@ if __name__ == '__main__':
         "relative_path": os.sep + "local",
         "filename": "100.cbf"
     }
-    targets = [['localhost:{0}'.format(receiving_port), 1, [".cbf"], "data"],
-               ['localhost:{0}'.format(receiving_port2), 0, [".cbf"], "data"]]
+    targets = [['localhost:{0}'.format(receiving_port), 1, "data"],
+               ['localhost:{0}'.format(receiving_port2), 1, "data"]]
 
     chunksize = 10485760  # = 1024*1024*10 = 10 MiB
     open_connections = dict()

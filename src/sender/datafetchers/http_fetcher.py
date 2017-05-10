@@ -167,8 +167,9 @@ class DataFetcher(DataFetcherBase):
                 self.log.error("Unable to open target file '{0}'."
                                .format(self.target_file), exc_info=True)
 
-        targets_data = [i for i in targets if i[3] == "data"]
-        targets_metadata = [i for i in targets if i[3] == "metadata"]
+        # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
+        targets_data = [i for i in targets if i[2] == "data"]
+        targets_metadata = [i for i in targets if i[2] == "metadata"]
         chunk_number = 0
 
         self.log.debug("Getting data for file '{0}'..."
@@ -409,10 +410,8 @@ if __name__ == '__main__':
         "relative_path": "",
         "filename": filename
     }
-    targets = [['{0}:{1}'.format(ext_ip, receiving_port), 1, [".cbf", ".tif"],
-                "data"],
-               ['{0}:{1}'.format(ext_ip, receiving_port2), 1, [".cbf", ".tif"],
-                "data"]]
+    targets = [['{0}:{1}'.format(ext_ip, receiving_port), 1, "data"],
+               ['{0}:{1}'.format(ext_ip, receiving_port2), 1, "data"]]
 
     open_connections = dict()
 

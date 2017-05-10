@@ -222,11 +222,15 @@ class SignalHandler():
                         for request_set in self.open_requ_perm:
                             if request_set:
                                 index = self.open_requ_perm.index(request_set)
-                                tmp = request_set[self.next_requ_node[index]]
+
+                                # [<host:port>, <prio>, <suffix_list>, <metadata|data>]
+                                socket_id, prio, pattern, send_type = (
+                                    request_set[self.next_requ_node[index]])
+
                                 # Check if filename suffix matches requested
                                 # suffix
                                 if filename.endswith(tuple(tmp[2])):
-                                    open_requests.append(copy.deepcopy(tmp))
+                                    open_requests.append([socket_id, prio, send_type])
                                     # distribute in round-robin order
                                     self.next_requ_node[index] = (
                                         (self.next_requ_node[index] + 1)
@@ -238,8 +242,8 @@ class SignalHandler():
                             if (request_set
                                     and filename.endswith(
                                         tuple(request_set[0][2]))):
-                                tmp = request_set.pop(0)
-                                open_requests.append(tmp)
+                                socket_id, prio, pattern, send_type = request_set.pop(0)
+                                open_requests.append([socket_id, prio, send_type])
 
                         if open_requests:
                             self.request_fw_socket.send_string(
@@ -417,13 +421,17 @@ class SignalHandler():
                        vari_list, corresp_list):
         global DOMAIN
 
-        # make host naming consistent
+        # socket_ids is of the format [[<host>, <prio>, <suffix>], ...]
+        self.log.debug("socket_ids={0}".format(socket_ids))
         for socket_conf in socket_ids:
+            # make host naming consistent
             socket_conf[0] = socket_conf[0].replace(DOMAIN, "")
 
         overwrite_index = None
+        # [set(<host>, <host>, ...), set(...), ...] created from list_to_check
         flatlist_nested = [set([j[0] for j in sublist])
                            for sublist in list_to_check]
+        # set(<host>, <host>, ...) created from target list (=socket_ids)
         socket_ids_flatlist = set([socket_conf[0]
                                    for socket_conf in socket_ids])
 

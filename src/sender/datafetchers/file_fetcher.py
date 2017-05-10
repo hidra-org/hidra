@@ -117,7 +117,8 @@ class DataFetcher(DataFetcherBase):
             return
 
         # find the targets requesting for data
-        targets_data = [i for i in targets if i[3] == "data"]
+        # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
+        targets_data = [i for i in targets if i[2] == "data"]
 
         # no targets to send data to
         if not targets_data:
@@ -261,7 +262,8 @@ class DataFetcher(DataFetcherBase):
 
     def finish_with_cleaner(self, targets, metadata, open_connections):
 
-        targets_metadata = [i for i in targets if i[3] == "metadata"]
+        # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
+        targets_metadata = [i for i in targets if i[2] == "metadata"]
 
         if self.config["store_data"]:
 
@@ -300,7 +302,8 @@ class DataFetcher(DataFetcherBase):
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
 
-        targets_metadata = [i for i in targets if i[3] == "metadata"]
+        # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
+        targets_metadata = [i for i in targets if i[2] == "metadata"]
 
         if (self.config["store_data"]
                 and self.config["remove_data"]
@@ -500,8 +503,8 @@ if __name__ == '__main__':
         "relative_path": os.sep + "local",
         "filename": "100.cbf"
     }
-    targets = [['localhost:{0}'.format(receiving_port), 1, [".cbf"], "data"],
-               ['localhost:{0}'.format(receiving_port2), 0, [".cbf"], "data"]]
+    targets = [['localhost:{0}'.format(receiving_port), 1, "data"],
+               ['localhost:{0}'.format(receiving_port2), 0, "data"]]
 
     open_connections = dict()
 

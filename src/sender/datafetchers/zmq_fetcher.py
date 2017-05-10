@@ -269,10 +269,8 @@ if __name__ == '__main__':
         "relative_path": os.sep + "local" + os.sep + "raw",
         "filename": "100.cbf"
     }
-    targets = [['{0}:{1}'.format(ext_ip, receiving_port), 1, [".cbf", ".tif"],
-                "data"],
-               ['{0}:{1}'.format(ext_ip, receiving_port2), 1, [".cbf", ".tif"],
-                "data"]]
+    targets = [['{0}:{1}'.format(ext_ip, receiving_port), 1, "data"],
+               ['{0}:{1}'.format(ext_ip, receiving_port2), 1, "data"]]
 
     open_connections = dict()
 
