@@ -27,6 +27,7 @@ class DataFetcher(DataFetcherBase):
                                  context)
 
         self.f_descriptors = dict()
+        self.transfer = None
 
         required_params = ["context",
                            "store_data",
@@ -198,7 +199,8 @@ class DataFetcher(DataFetcherBase):
             del self.f_descriptors[target_file]
 
         # close zmq sockets
-        self.transfer.stop()
+        if self.transfer is not None:
+            self.transfer.stop()
 
 
 if __name__ == '__main__':
@@ -209,13 +211,15 @@ if __name__ == '__main__':
     import socket
 
     ### Set up logging ###
-    logfile = os.path.join(BASE_PATH, "logs", "hidra_fetcher.log")
-    logsize = 10485760
+    log_file = os.path.join(BASE_PATH, "logs", "hidra_fetcher.log")
+    log_size = 10485760
 
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
+    h1, h2 = helpers.get_log_handlers(log_file,
+                                      log_size,
+                                      verbose=True,
                                       onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
@@ -273,7 +277,9 @@ if __name__ == '__main__':
         "local_target": os.path.join(BASE_PATH, "data", "zmq_target"),
         "store_data": True,
         "remove_data": False,
-        "cleaner_job_con_str": None
+        "cleaner_job_con_str": None,
+        "status_check_resp_port": "50011",
+        "confirmation_resp_port": "50012"
     }
 
     ### Set up receiver simulator ###
@@ -364,3 +370,9 @@ if __name__ == '__main__':
         if data_input:
             data_fw_socket.close(0)
         context.destroy()
+
+        if log_queue_listener:
+            logging.info("Stopping log_queue")
+            log_queue.put_nowait(None)
+            log_queue_listener.stop()
+            log_queue_listener = None

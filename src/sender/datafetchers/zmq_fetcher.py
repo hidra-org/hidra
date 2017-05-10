@@ -304,3 +304,9 @@ if __name__ == '__main__':
         receiving_socket.close(0)
         receiving_socket2.close(0)
         context.destroy()
+
+        if log_queue_listener:
+            logging.info("Stopping log_queue")
+            log_queue.put_nowait(None)
+            log_queue_listener.stop()
+            log_queue_listener = None

@@ -135,13 +135,15 @@ if __name__ == '__main__':
     from multiprocessing import Queue
     from logutils.queue import QueueHandler
 
-    logfile = os.path.join(BASE_PATH, "logs", "file_fetcher.log")
-    logsize = 10485760
+    log_file = os.path.join(BASE_PATH, "logs", "datafetcher_template.log")
+    log_size = 10485760
 
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
+    h1, h2 = helpers.get_log_handlers(log_file,
+                                      log_size,
+                                      verbose=True,
                                       onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
@@ -192,13 +194,15 @@ if __name__ == '__main__':
 
     config = {
         "chunksize": chunksize,
-        "local_target": None
+        "local_target": None,
+        "remove_data": False,
+        "cleaner_job_con_str": None
     }
 
     logging.debug("open_connections before function call: {0}"
                   .format(open_connections))
 
-    datafetcher = DataFetcher(config, log_queue, 0)
+    datafetcher = DataFetcher(config, log_queue, 0, context)
 
     datafetcher.get_metadata(targets, metadata)
 
@@ -222,3 +226,9 @@ if __name__ == '__main__':
         receiving_socket.close(0)
         receiving_socket2.close(0)
         context.destroy()
+
+        if log_queue_listener:
+            logging.info("Stopping log_queue")
+            log_queue.put_nowait(None)
+            log_queue_listener.stop()
+            log_queue_listener = None

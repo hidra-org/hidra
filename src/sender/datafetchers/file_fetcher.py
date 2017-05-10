@@ -386,13 +386,15 @@ if __name__ == '__main__':
     from __init__ import BASE_PATH
 
     ### Set up logging ###
-    logfile = os.path.join(BASE_PATH, "logs", "file_fetcher.log")
-    logsize = 10485760
+    log_file = os.path.join(BASE_PATH, "logs", "file_fetcher.log")
+    log_size = 10485760
 
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
+    h1, h2 = helpers.get_log_handlers(log_file,
+                                      log_size,
+                                      verbose=True,
                                       onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
@@ -549,3 +551,9 @@ if __name__ == '__main__':
         if use_cleaner:
             cleaner_pr.terminate()
         context.destroy()
+
+        if log_queue_listener:
+            logging.info("Stopping log_queue")
+            log_queue.put_nowait(None)
+            log_queue_listener.stop()
+            log_queue_listener = None
