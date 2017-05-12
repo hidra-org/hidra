@@ -277,15 +277,24 @@ def argument_parsing():
     helpers.check_existance(params["log_path"])
     if params["monitored_dir"]:
         helpers.check_existance(params["monitored_dir"])
+        # the subdirs have to exist because handles can only be added to
+        # directories inside a directory in which a handle was already set,
+        # e.g. handlers set to current/raw, local:
+        # - all subdirs created are detected + handlers are set
+        # - new directory on the same as monitored dir
+        #   (e.g. current/scratch_bl) cannot be detected
         helpers.check_all_sub_dir_exist(params["monitored_dir"],
                                         params["fix_subdirs"])
     if params["store_data"]:
         helpers.check_existance(params["local_target"])
         # check if local_target contains fixed_subdirs
-        if not helpers.check_sub_dir_contained(params["local_target"],
-                                               params["fix_subdirs"]):
-            helpers.check_all_sub_dir_exist(params["local_target"],
-                                            params["fix_subdirs"])
+        # e.g. local_target = /beamline/p01/current/raw and
+        #      fix_subdirs contain current/raw
+#        if not helpers.check_sub_dir_contained(params["local_target"],
+#                                               params["fix_subdirs"]):
+            # not in Eiger mode
+#            helpers.check_all_sub_dir_exist(params["local_target"],
+#                                            params["fix_subdirs"])
 
     if params["use_data_stream"]:
         helpers.check_ping(params["data_stream_targets"][0][0])
