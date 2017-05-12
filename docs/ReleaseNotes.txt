@@ -1,5 +1,11 @@
 HiDRA develop
+HiDRA 3.1.2
+- Removed check for fix_subdirs in local_dir
+
 HiDRA 3.1.1
+- Disabled interactive shell in systemctl call (control server)
+- Fixed missing files in spe
+
 HiDRA 3.1.0
 
 - Adjusted host names in mapping for control API
