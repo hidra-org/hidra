@@ -240,6 +240,10 @@ def check_any_sub_dir_exists(dir_path, subdirs):
 
 
 def check_sub_dir_contained(dir_path, subdirs):
+    """ Checks for dir_path contains one of the subdirs
+        e.g. dir_path=/gpfs, subdirs=[current/raw] -> False
+             dir_path=/beamline/p01/current/raw, subdirs=[current/raw] -> True
+    """
     subdir_contained = False
     for subdir in subdirs:
         if dir_path[-len(subdir):] == subdir:
