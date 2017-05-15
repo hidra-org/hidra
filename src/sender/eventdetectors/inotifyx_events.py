@@ -12,6 +12,7 @@ import copy
 
 from eventdetectorbase import EventDetectorBase
 import helpers
+from hidra import convert_suffix_list_to_regex
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -123,7 +124,7 @@ def get_event_message(path, filename, paths):
 
 
 class CleanUp (threading.Thread):
-    def __init__(self, paths, mon_subdirs, mon_suffixes, cleanup_time,
+    def __init__(self, paths, mon_subdirs, mon_regex, cleanup_time,
                  action_time, lock, log_queue):
 
         self.log = helpers.get_logger("CleanUp", log_queue)
@@ -132,7 +133,7 @@ class CleanUp (threading.Thread):
         self.paths = paths
 
         self.mon_subdirs = mon_subdirs
-        self.mon_suffixes = mon_suffixes
+        self.mon_regex = mon_regex
 
         self.cleanup_time = cleanup_time
         self.action_time = action_time
@@ -169,7 +170,7 @@ class CleanUp (threading.Thread):
 
         for root, directories, files in os.walk(dirname):
             for filename in files:
-                if not filename.endswith(self.mon_suffixes):
+                if self.mon_regex.match(filename) is None:
                     # self.log.debug("File ending not in monitored Suffixes: "
                     #               "{0}".format(filename))
                     continue
@@ -261,15 +262,24 @@ class EventDetector(EventDetectorBase):
 
             # TODO why is this necessary
             self.paths = [config["monitored_dir"]]
-
             self.mon_subdirs = config["fix_subdirs"]
+
+            self.mon_regex_per_event = config["monitored_events"]
+            self.log.debug("monitored_events={0}"
+                           .format(config["monitored_events"]))
 
             suffix_list = []
             for key, value in iteritems(config["monitored_events"]):
+                self.mon_regex_per_event[key] = (
+                    convert_suffix_list_to_regex(value,
+                                                 compile_regex=True,
+                                                 log=self.log))
                 suffix_list += value
-            self.mon_suffixes = tuple(suffix_list)
 
-            self.mon_events = config["monitored_events"]
+            self.log.debug("suffix_list={0}".format(suffix_list))
+            self.mon_regex = convert_suffix_list_to_regex(suffix_list,
+                                                          compile_regex=True,
+                                                          log=self.log)
 
             # TODO decide if this should go into config
 #            self.timeout = config["event_timeout"]
@@ -286,7 +296,7 @@ class EventDetector(EventDetectorBase):
                 self.action_time = config["action_time"]
 
                 self.cleanup_thread = CleanUp(self.paths, self.mon_subdirs,
-                                              self.mon_suffixes,
+                                              self.mon_regex,
                                               self.cleanup_time,
                                               self.action_time,
                                               self.lock, log_queue)
@@ -386,9 +396,10 @@ class EventDetector(EventDetectorBase):
             is_moved_to = ("IN_MOVED_TO" in parts_array)
 
             current_mon_event = None
-            for key, value in iteritems(self.mon_events):
+            for key, value in iteritems(self.mon_regex_per_event):
                 if key in parts_array:
                     current_mon_event = key
+                    current_mon_regex = self.mon_regex_per_event[key]
 
 #            if not is_dir:
 #                self.log.debug("{0} {1} {2}".format(path, event.name, parts)
@@ -439,13 +450,14 @@ class EventDetector(EventDetectorBase):
                         self.log.debug("files: {0}".format(files))
                         for filename in files:
                             # self.log.debug("filename: {0}".format(filename))
-                            if not filename.endswith(self.mon_suffixes):
-                                self.log.debug("File ending not in monitored "
-                                               "Suffixes: {0}"
+                            if self.mon_regex.match(filename) is None:
+                                self.log.debug("File does not match monitored "
+                                               "regex: {0}"
                                                .format(filename))
                                 self.log.debug("detected events were: {0}"
                                                .format(parts))
                                 continue
+
                             event_message = self.get_event_message(path,
                                                                    filename,
                                                                    self.paths)
@@ -489,12 +501,13 @@ class EventDetector(EventDetectorBase):
                 # self.log.debug("current_mon_event: {0}"
                 #                .format(current_mon_event))
                 # self.log.debug("{0} {1} {2}".format(path, event.name, parts)
-                # self.log.debug(event.name)
+                # self.log.debug("filename: {0}".format(event.name))
+                # self.log.debug("regex match: {0}".format(
+                #                current_mon_regex.match(event.name)))
 
-                # only files ending with a suffix specified with the current
+                # only files matching the regex specified with the current
                 # event are monitored
-                if (not event.name.endswith(
-                        tuple(self.mon_events[current_mon_event]))):
+                if current_mon_regex.match(event.name) is None:
                     # self.log.debug("File ending not in monitored Suffixes: "
                     #                "{0}".format(event.name))
                     # self.log.debug("detected events were: {0}".format(parts))
