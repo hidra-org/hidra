@@ -230,12 +230,11 @@ class SignalHandler():
 
                                 # Check if filename matches requested
                                 # regex
-#                                if filename.endswith(tuple(pattern)):
-                                if pattern.match(filename):
+                                if pattern.match(filename) is not None:
                                     # do not send pattern
                                     open_requests.append([socket_id,
-                                                         prio,
-                                                         send_type])
+                                                          prio,
+                                                          send_type])
 
                                     # distribute in round-robin order
                                     self.next_requ_node[index] = (
@@ -245,11 +244,8 @@ class SignalHandler():
 
                         for request_set in self.open_requ_vari:
                             # Check if filename suffix matches requested suffix
-                            if (request_set
-                                    and request_set[0][2].match(filename)):
-#                            if (request_set
-#                                    and filename.endswith(
-#                                        tuple(request_set[0][2]))):
+                            if (request_set and (request_set[0][2]
+                                    .match(filename) is not None)):
                                 socket_id, prio, pattern, send_type = (
                                     request_set.pop(0))
                                 # do not send pattern

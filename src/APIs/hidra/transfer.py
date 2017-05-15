@@ -14,6 +14,7 @@ import os
 import sys
 import tempfile
 import time
+import re
 from multiprocessing import Queue
 from zmq.auth.thread import ThreadAuthenticator
 
@@ -117,6 +118,49 @@ def generate_file_identifier(config_dict):
         file_id = os.path.join(config_dict["relative_path"],
                                config_dict["filename"])
     return file_id
+
+
+def convert_suffix_list_to_regex(suffix_list, compile_regex=False, log=None):
+    """
+    Takes a list of suffixes and converts it into a corresponding regex
+    If input is a string nothing is done
+
+    Args:
+        suffix_list (list or string): a list of suffixes or a string
+
+    Returns:
+        regex (regex object): compiled regular expression of the style
+                              ".*[<suffix>|...]$"
+    """
+    # Convert list into regex
+    if type(suffix_list) == list:
+
+        regex = ".*"
+
+        file_suffix = ""
+        for s in suffix_list:
+            if s:
+                # not an empty string
+                file_suffix += s
+            file_suffix += "|"
+
+        # remove the last "|"
+        file_suffix = file_suffix[:-1]
+
+        if file_suffix:
+            regex += "({0})$".format(file_suffix)
+
+    # a regex was given
+    else:
+        regex = suffix_list
+
+    if log:
+        log.debug("converted regex={0}".format(regex))
+
+    if compile_regex:
+        return re.compile(regex)
+    else:
+        return regex
 
 
 class Transfer():
@@ -340,27 +384,8 @@ class Transfer():
                     else:
                         host, port, prio, suffixes = t
 
-                    # Convert list into regex
-                    if type(suffixes) == list:
-                        regex = ".*"
-
-                        file_suffix = ""
-                        for s in suffixes:
-                            if s:
-                                # not an empty string
-                                file_suffix += s
-                            file_suffix += "|"
-
-                        # remove the last "|"
-                        file_suffix = file_suffix[:-1]
-
-                        if file_suffix:
-                            regex += "[{0}]$".format(file_suffix)
-                    # a regex was given
-                    else:
-                        regex = suffixes
-
-                    self.log.debug("regex={0}".format(regex))
+                    regex = convert_suffix_list_to_regex(suffixes,
+                                                         log=self.log)
 
                     self.targets.append(
                         ["{0}:{1}".format(host, port), prio, regex])
