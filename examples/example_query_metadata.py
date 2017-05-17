@@ -26,7 +26,7 @@ if __name__ == "__main__":
     targets = [[arguments.target_host, "50101", 0]]
     base_target_path = os.path.join(BASE_PATH, "data", "target")
 
-    print ("\n==== TEST: Query for the newest filename ====\n")
+    print("\n==== TEST: Query for the newest filename ====\n")
 
     query = Transfer("QUERY_METADATA", arguments.signal_host)
 
@@ -41,9 +41,9 @@ if __name__ == "__main__":
             break
 
         print
-        print (generate_filepath(base_target_path, metadata))
+        print(generate_filepath(base_target_path, metadata))
         print
 
     query.stop()
 
-    print ("\n==== TEST END: Query for the newest filename ====\n")
+    print("\n==== TEST END: Query for the newest filename ====\n")

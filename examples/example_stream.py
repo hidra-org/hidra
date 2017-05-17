@@ -22,9 +22,10 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
 
-    targets = [arguments.target_host, "50101", 0]
+#    targets = [arguments.target_host, "50101", 0]
+    targets = [[arguments.target_host, "50101", 0, ".*[tif|cbf]$"]]
 
-    print ("\n==== TEST: Stream all files ====\n")
+    print("\n==== TEST: Stream all files ====\n")
 
     query = Transfer("STREAM", arguments.signal_host)
 
@@ -39,10 +40,10 @@ if __name__ == "__main__":
             break
 
         print
-        print ("metadata", metadata["filename"])
+        print("metadata", metadata["filename"])
     #    print ("data", str(data)[:10])
         print
 
     query.stop()
 
-    print ("\n==== TEST END: Stream all files ====\n")
+    print("\n==== TEST END: Stream all files ====\n")

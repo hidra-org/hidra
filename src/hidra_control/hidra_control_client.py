@@ -24,8 +24,8 @@ except:
 
 # the list transformation is needed for Python 3 compliance
 allowed_beamlines = list(hidra.connection_list.keys())
-#allowed_beamlines = ["p00", "p01", "p02.1", "p02.2", "p03", "p04", "p05",
-#                     "p06", "p07", "p08", "p09", "p10", "p11"]
+# allowed_beamlines = ["p00", "p01", "p02.1", "p02.2", "p03", "p04", "p05",
+#                      "p06", "p07", "p08", "p09", "p10", "p11"]
 
 
 def argument_parsing():
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     arguments = parser.parse_args()
 
     if arguments.version:
-        print ("Hidra version: {0}".format(hidra.__version__))
+        print("Hidra version: {0}".format(hidra.__version__))
         sys.exit(0)
 
     beamline = arguments.beamline
@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
     if (arguments.target
             and os.path.normpath(arguments.target) not in supported_targets):
-        print ("ERROR: target not supported")
+        print("ERROR: target not supported")
         sys.exit(1)
 
     obj = hidra.Control(beamline, arguments.det, use_log="warning")
@@ -118,37 +118,37 @@ if __name__ == '__main__':
             obj.set("remove_data", False)
             obj.set("whitelist", "localhost")
 
-            print ("Starting HiDRA (detector mode):", obj.do("start"))
+            print("Starting HiDRA (detector mode):", obj.do("start"))
 
 #        elif arguments.restart:
 #            print ("Restarting HiDRA (detector mode):", obj.do("restart"))
 
         elif arguments.status:
-            print ("Status of HiDRA (detector mode):", obj.do("status"))
+            print("Status of HiDRA (detector mode):", obj.do("status"))
 
         elif arguments.stop:
-            print ("Stopping HiDRA (detector mode):", obj.do("stop"))
+            print("Stopping HiDRA (detector mode):", obj.do("stop"))
 
         elif arguments.getsettings:
 
             if obj.do("status") == "RUNNING":
-                print ("Configured settings:")
-                print ("Data is written to:            {0}"
-                       .format(obj.get("local_target")))
-                print ("Detector IP:                   {0}"
-                       .format(obj.get("det_ip")))
-                print ("Detector API version:          {0}"
-                       .format(obj.get("det_api_version")))
-                print ("History size:                  {0}"
-                       .format(obj.get("history_size")))
-                print ("Store data:                    {0}"
-                       .format(obj.get("store_data")))
-                print ("Remove data from the detector: {0}"
-                       .format(obj.get("remove_data")))
-                print ("Whitelist:                     {0}"
-                       .format(obj.get("whitelist")))
+                print("Configured settings:")
+                print("Data is written to:            {0}"
+                      .format(obj.get("local_target")))
+                print("Detector IP:                   {0}"
+                      .format(obj.get("det_ip")))
+                print("Detector API version:          {0}"
+                      .format(obj.get("det_api_version")))
+                print("History size:                  {0}"
+                      .format(obj.get("history_size")))
+                print("Store data:                    {0}"
+                      .format(obj.get("store_data")))
+                print("Remove data from the detector: {0}"
+                      .format(obj.get("remove_data")))
+                print("Whitelist:                     {0}"
+                      .format(obj.get("whitelist")))
             else:
-                print ("HiDRA is not running")
+                print("HiDRA is not running")
 
     finally:
         obj.stop()

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 
 path = "/tmp/fs_test"
@@ -15,7 +16,7 @@ while True:
 
     try:
         for f in os.listdir(path):
-            print f
+            print(f)
             """
             filename = os.path.join(path, f)
             if os.path.isfile(filename):

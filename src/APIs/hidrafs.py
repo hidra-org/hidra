@@ -91,7 +91,7 @@ class Passthrough(Operations):
             }
 
     def readdir(self, path, fh):
-#        if self.metadata is None and self.data is None:
+        # if self.metadata is None and self.data is None:
         [self.metadata, self.data] = self.query.get(self.timeout)
 
         if self.metadata is None:
@@ -150,7 +150,7 @@ class Passthrough(Operations):
     # flags and possibly its mode according to mode.The default mode is 0777
     # (octal), and the current umask value is first masked out.
     def open(self, path, flags):
-        #self.log.debug("open")
+        # self.log.debug("open")
         if self.metadata is None and self.data is None:
             self.log.debug("get")
             [self.metadata, self.data] = self.query.get(self.timeout)
@@ -164,7 +164,7 @@ class Passthrough(Operations):
     """
 
     def read(self, path, length, offset, fh):
-#        self.log.debug("read")
+        # self.log.debug("read")
 
         self.read_pointer += length
         return self.data[self.read_pointer - length:self.read_pointer]
@@ -187,7 +187,7 @@ class Passthrough(Operations):
     """
 
     def release(self, path, fh):
-        #self.log.debug("release")
+        # self.log.debug("release")
         self.metadata = None
         self.data = None
 

@@ -16,7 +16,7 @@ logfile_path = os.path.join(BASE_PATH, "logs")
 logfile = os.path.join(logfile_path, "test_ingest.log")
 helpers.init_logging(logfile, True, "DEBUG")
 
-print ("\n==== TEST: Ingest ====\n")
+print("\n==== TEST: Ingest ====\n")
 
 source_file = os.path.join(BASE_PATH, "test_file.cbf")
 chunksize = 524288
@@ -39,7 +39,7 @@ obj.create_file(os.path.join("test", "1.h5"))
 
 # Open file
 source_fp = open(source_file, "rb")
-print ("Opened file:", source_file)
+print("Opened file:", source_file)
 
 while True:
     try:
@@ -72,4 +72,4 @@ logging.info("Stopping")
 
 obj.stop()
 
-print ("\n==== TEST END: Ingest ====\n")
+print("\n==== TEST END: Ingest ====\n")

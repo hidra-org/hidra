@@ -388,7 +388,7 @@ if __name__ == '__main__':
 
     from __init__ import BASE_PATH
 
-    ### Set up logging ###
+    """ Set up logging """
     log_file = os.path.join(BASE_PATH, "logs", "file_fetcher.log")
     log_size = 10485760
 
@@ -410,7 +410,7 @@ if __name__ == '__main__':
     qh = QueueHandler(log_queue)
     root.addHandler(qh)
 
-    ### determine socket connection strings ###
+    """ determine socket connection strings """
     con_ip = socket.gethostname()
     ext_ip = socket.gethostbyaddr(con_ip)[2][0]
 
@@ -440,7 +440,7 @@ if __name__ == '__main__':
     conf_con_str = "tcp://{0}:{1}".format(con_ip, confirmation_port)
     conf_bind_str = "tcp://{0}:{1}".format(ext_ip, confirmation_port)
 
-    ### Set up config ###
+    """ Set up config """
     local_target = os.path.join(BASE_PATH, "data", "target")
 
     config = {
@@ -457,7 +457,7 @@ if __name__ == '__main__':
 
     context = zmq.Context.instance()
 
-    ### Set up cleaner ###
+    """ Set up cleaner """
     use_cleaner = (config["remove_data"] == "with_confirmation")
     if use_cleaner:
         cleaner_pr = Process(target=Cleaner,
@@ -468,7 +468,7 @@ if __name__ == '__main__':
                                    context))
         cleaner_pr.start()
 
-    ### Set up receiver simulator ###
+    """ Set up receiver simulator """
     receiving_port = "6005"
     receiving_port2 = "6006"
     ext_ip = "0.0.0.0"
@@ -490,7 +490,7 @@ if __name__ == '__main__':
     logging.info("=== Start confirmation_socket (connect): {0}"
                  .format(config["cleaner_conf_con_str"]))
 
-    ### Test file fetcher ###
+    """ Test file fetcher """
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
     prework_target_file = os.path.join(
         BASE_PATH, "data", "source", "local", "100.cbf")

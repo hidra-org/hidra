@@ -18,8 +18,8 @@ else:
 
 
 new_jobs = []
-#new_jobs = set()
-#new_confirmations = set()
+# new_jobs = set()
+# new_confirmations = set()
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -152,59 +152,60 @@ class CheckJobs (threading.Thread):
     def __del__(self):
         self.stop()
 
+"""
+class CheckConfirmations (threading.Thread):
+    def __init__(self, conf_bind_str, lock, log_queue, context=None):
 
-#class CheckConfirmations (threading.Thread):
-#    def __init__(self, conf_bind_str, lock, log_queue, context=None):
-#
-#        threading.Thread.__init__(self)
-#
-#        self.log = helpers.get_logger("CheckConfirmations", log_queue)
-#
-#        self.lock = lock
-#        self.conf_bind_str = conf_bind_str
-#
-#        if context:
-#            self.context = context
-#            self.ext_context = True
-#        else:
-#            self.context = zmq.Context()
-#            self.ext_context = False
-#
-#        try:
-#            self.confirmation_socket = self.context.socket(zmq.PULL)
-#
-#            self.confirmation_socket.connect(self.conf_bind_str)
-#            self.log.info("Start confirmation_socket (connect): '{0}'"
-#                          .format(self.conf_bind_str))
-#        except:
-#            self.log.error("Failed to start confirmation_socket (connect): "
-#                           "'{0}'".format(self.conf_bind_str), exc_info=True)
-#
-#    def run(self):
-#        global new_confirmations
-#
-#        self.log.debug("Waiting for confirmation")
-#        message = self.confirmation_socket.recv().decode("utf-8")
-#        self.log.debug("New confirmation received: {0}".format(message))
-#
-#        self.lock.acquire()
-#        new_confirmations.add(message)
-#        self.lock.release()
-#
-#    def stop(self):
-#        if self.confirmation_socket is not None:
-#            self.confirmation_socket.close(0)
-#            self.confirmation_socket = None
-#
-#        if not self.ext_context and self.context is not None:
-#            self.context.destroy(0)
-#            self.context = None
-#
-#    def __exit__(self):
-#        self.stop()
-#
-#    def __del__(self):
-#        self.stop()
+        threading.Thread.__init__(self)
+
+        self.log = helpers.get_logger("CheckConfirmations", log_queue)
+
+        self.lock = lock
+        self.conf_bind_str = conf_bind_str
+
+        if context:
+            self.context = context
+            self.ext_context = True
+        else:
+            self.context = zmq.Context()
+            self.ext_context = False
+
+        try:
+            self.confirmation_socket = self.context.socket(zmq.PULL)
+
+            self.confirmation_socket.connect(self.conf_bind_str)
+            self.log.info("Start confirmation_socket (connect): '{0}'"
+                          .format(self.conf_bind_str))
+        except:
+            self.log.error("Failed to start confirmation_socket (connect): "
+                           "'{0}'".format(self.conf_bind_str), exc_info=True)
+
+    def run(self):
+        global new_confirmations
+
+        self.log.debug("Waiting for confirmation")
+        message = self.confirmation_socket.recv().decode("utf-8")
+        self.log.debug("New confirmation received: {0}".format(message))
+
+        self.lock.acquire()
+        new_confirmations.add(message)
+        self.lock.release()
+
+    def stop(self):
+        if self.confirmation_socket is not None:
+            self.confirmation_socket.close(0)
+            self.confirmation_socket = None
+
+        if not self.ext_context and self.context is not None:
+            self.context.destroy(0)
+            self.context = None
+
+    def __exit__(self):
+        self.stop()
+
+    def __del__(self):
+        self.stop()
+"""
 
 
 class CleanerBase(ABC):
@@ -289,20 +290,22 @@ class CleanerBase(ABC):
 #        self.conf_checking_thread.start()
 
         while True:
-#            # intersect
-#            removable_elements = new_jobs & new_confirmations
-#            self.log.debug("removable_elements={0}"
-#                           .format(removable_elements))
-#
-#            for element in removable_elements:
-#                self.remove_element(element)
-#
-#                new_jobs.discard(element)
-#                new_confirmations.discard(element)
-#
-#            # do not loop too offen if there is nothing to process
-#            if not removable_elements:
-#                time.sleep(0.1)
+            """
+            # intersect
+            removable_elements = new_jobs & new_confirmations
+            self.log.debug("removable_elements={0}"
+                           .format(removable_elements))
+
+            for element in removable_elements:
+                self.remove_element(element)
+
+                new_jobs.discard(element)
+                new_confirmations.discard(element)
+
+            # do not loop too offen if there is nothing to process
+            if not removable_elements:
+                time.sleep(0.1)
+            """
 
             socks = dict(self.poller.poll())
 
@@ -419,7 +422,7 @@ if __name__ == '__main__':
     from logutils.queue import QueueHandler
     import socket
 
-    ### Implement abstract class cleaner ###
+    """ Implement abstract class cleaner """
     class Cleaner(CleanerBase):
         def remove_element(self, source_file):
             # remove file
@@ -431,7 +434,7 @@ if __name__ == '__main__':
                 self.log.error("Unable to remove file {0}".format(source_file),
                                exc_info=True)
 
-    ### Set up logging ###
+    """ Set up logging """
     logfile = os.path.join(BASE_PATH, "logs", "cleaner.log")
     logsize = 10485760
 
@@ -451,7 +454,7 @@ if __name__ == '__main__':
     qh = QueueHandler(log_queue)
     root.addHandler(qh)
 
-    ### Set up config ###
+    """ Set up config """
     config = {
         "ipc_path": os.path.join(tempfile.gettempdir(), "hidra"),
         "current_pid": os.getpid(),
@@ -474,7 +477,7 @@ if __name__ == '__main__':
         logging.info("Creating directory for IPC communication: {0}"
                      .format(config["ipc_path"]))
 
-    ### determine socket connection strings ###
+    """ determine socket connection strings """
     if helpers.is_windows():
         job_con_str = "tcp://{0}:{1}".format(con_ip, config["cleaner_port"])
         job_bind_str = "tcp://{0}:{1}".format(ext_ip, config["cleaner_port"])
@@ -494,7 +497,7 @@ if __name__ == '__main__':
     conf_con_str = "tcp://{0}:{1}".format(con_ip, config["confirmation_port"])
     conf_bind_str = "tcp://{0}:{1}".format(ext_ip, config["confirmation_port"])
 
-    ### Instantiate cleaner as additional process ###
+    """ Instantiate cleaner as additional process """
     cleaner_pr = Process(target=Cleaner,
                          args=(config,
                                log_queue,
@@ -504,12 +507,12 @@ if __name__ == '__main__':
                                context))
     cleaner_pr.start()
 
-    ### Set up datafetcher simulator ###
+    """ Set up datafetcher simulator """
     job_socket = context.socket(zmq.PUSH)
     job_socket.connect(job_con_str)
     logging.info("=== Start job_socket (connect): {0}".format(job_con_str))
 
-    ### Set up receiver simulator ###
+    """ Set up receiver simulator """
     confirmation_socket = context.socket(zmq.PUSH)
     confirmation_socket.connect(conf_con_str)
     logging.info("=== Start confirmation_socket (connect): {0}"
@@ -518,7 +521,7 @@ if __name__ == '__main__':
     # to give init time to finish
     time.sleep(0.5)
 
-    ### Test cleaner ###
+    """ Test cleaner """
     source_file = os.path.join(BASE_PATH, "test_file.cbf")
     target_path = os.path.join(BASE_PATH, "data", "source", "local")
 

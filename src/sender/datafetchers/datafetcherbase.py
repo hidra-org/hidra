@@ -6,16 +6,15 @@ import sys
 import abc
 import os
 
+from __init__ import BASE_PATH  # noqa F401
+import helpers
+
 # source:
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
 if sys.version_info[0] >= 3 and sys.version_info[1] >= 4:
     ABC = abc.ABC
 else:
     ABC = abc.ABCMeta(str("ABC"), (), {})
-
-from __init__ import BASE_PATH  # noqa F401
-import helpers
-
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -59,7 +58,7 @@ class DataFetcherBase(ABC):
                           .format(config_reduced))
 
             if self.config["remove_data"] == "with_confirmation":
-                #creates socket
+                # create socket
                 try:
                     self.cleaner_job_socket = self.context.socket(zmq.PUSH)
                     self.cleaner_job_socket.connect(

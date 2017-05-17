@@ -212,7 +212,7 @@ if __name__ == '__main__':
     from __init__ import BASE_PATH
     import socket
 
-    ### Set up logging ###
+    """ Set up logging """
     log_file = os.path.join(BASE_PATH, "logs", "hidra_fetcher.log")
     log_size = 10485760
 
@@ -234,12 +234,12 @@ if __name__ == '__main__':
     qh = QueueHandler(log_queue)
     root.addHandler(qh)
 
-    ### determine socket connection strings ###
+    """ determine socket connection strings """
     con_ip = socket.gethostname()
     ext_ip = socket.gethostbyaddr(con_ip)[2][0]
-    #ext_ip = "0.0.0.0"
+    # ext_ip = "0.0.0.0"
 
-    #current_pid = os.getpid()
+    # current_pid = os.getpid()
     current_pid = 12345
 
     cleaner_port = 50051
@@ -266,7 +266,7 @@ if __name__ == '__main__':
     conf_con_str = "tcp://{0}:{1}".format(con_ip, confirmation_port)
     conf_bind_str = "tcp://{0}:{1}".format(ext_ip, confirmation_port)
 
-    ### Set up config ###
+    """ Set up config """
     context = zmq.Context()
 
     config = {
@@ -284,7 +284,7 @@ if __name__ == '__main__':
         "confirmation_resp_port": "50012"
     }
 
-    ### Set up receiver simulator ###
+    """ Set up receiver simulator """
     receiving_port = "6005"
     receiving_port2 = "6006"
 
@@ -300,7 +300,7 @@ if __name__ == '__main__':
     logging.info("=== receiving_socket2 connected to {0}"
                  .format(connection_str))
 
-    ### Set up data forwarding simulator
+    """ Set up data forwarding simulator """
     fw_con_str = "ipc://{0}/{1}_{2}".format(config["ipc_path"],
                                             config["main_pid"],
                                             "out")
@@ -314,7 +314,7 @@ if __name__ == '__main__':
         logging.info("Start data_fw_socket (bind): '{0}'"
                      .format(fw_con_str))
 
-    ### Test file fetcher ###
+    """ Test file fetcher """
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
 
     metadata = {

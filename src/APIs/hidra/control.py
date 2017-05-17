@@ -141,7 +141,7 @@ class Control():
 
     def __create_sockets(self):
 
-        #Create ZeroMQ context
+        # Create ZeroMQ context
         self.log.info("Registering ZMQ context")
         self.context = zmq.Context()
 
@@ -270,10 +270,10 @@ def reset_receiver_status(host, port):
               exc_info=True)
 
     reset_socket.send_multipart([b"RESET_STATUS"])
-    print ("Reset request sent")
+    print("Reset request sent")
 
     responce = reset_socket.recv_multipart()
-    print ("Responce: {0}".format(responce))
+    print("Responce: {0}".format(responce))
 
     reset_socket.close()
     context.destroy()

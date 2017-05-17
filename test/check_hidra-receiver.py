@@ -3,15 +3,15 @@
 import zmq
 import traceback
 import argparse
-#import nagiosplugin
+# import nagiosplugin
 
 
 class LoggingFunction:
     def out(self, x, exc_info=None):
         if exc_info:
-            print (x, traceback.format_exc())
+            print(x, traceback.format_exc())
         else:
-            print (x)
+            print(x)
 
     def __init__(self):
         self.debug = lambda x, exc_info=None: self.out(x, exc_info)
@@ -128,6 +128,6 @@ if __name__ == '__main__':
     test = AliveTest(socket_id, NoLoggingFunction())
 
     if test.run():
-        print "Test successfull"
+        print("Test successfull")
     else:
-        print "Test failed"
+        print("Test failed")

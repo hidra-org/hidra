@@ -160,7 +160,7 @@ if __name__ == '__main__':
     from __init__ import BASE_PATH
     import socket
 
-    ### Set up logging ###
+    """ Set up logging """
     logfile = os.path.join(BASE_PATH, "logs", "zmq_fetcher.log")
     logsize = 10485760
 
@@ -180,10 +180,10 @@ if __name__ == '__main__':
     qh = QueueHandler(log_queue)
     root.addHandler(qh)
 
-    ### determine socket connection strings ###
+    """ determine socket connection strings """
     con_ip = socket.gethostname()
     ext_ip = socket.gethostbyaddr(con_ip)[2][0]
-    #ext_ip = "0.0.0.0"
+    # ext_ip = "0.0.0.0"
 
     current_pid = os.getpid()
 
@@ -211,7 +211,7 @@ if __name__ == '__main__':
     conf_con_str = "tcp://{0}:{1}".format(con_ip, confirmation_port)
     conf_bind_str = "tcp://{0}:{1}".format(ext_ip, confirmation_port)
 
-    ### Set up config ###
+    """ Set up config """
     context = zmq.Context()
     local_target = os.path.join(BASE_PATH, "data", "target")
 
@@ -227,7 +227,7 @@ if __name__ == '__main__':
         "local_target": None
     }
 
-    ### Set up receiver simulator ###
+    """ Set up receiver simulator """
     receiving_port = "6005"
     receiving_port2 = "6006"
 
@@ -252,7 +252,7 @@ if __name__ == '__main__':
     logging.info("=== receiving_socket2 connected to {0}"
                  .format(connection_str))
 
-    ### Test file fetcher ###
+    """ Test file fetcher """
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
 
     # read file to send it in data pipe

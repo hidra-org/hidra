@@ -54,7 +54,7 @@ if not logutils_imported:
     from logutils.queue import QueueHandler  # noqa F811
 
 import helpers  # noqa E402
-from cfel_optarg import parse_parameters
+from cfel_optarg import parse_parameters  # noqa E402
 
 
 BASEDIR = "/opt/hidra"
@@ -63,7 +63,7 @@ CONFIG_PATH = "/opt/hidra/conf"
 CONFIG_PREFIX = "datamanager_"
 
 LOGPATH = os.path.join("/var", "log", "hidra")
-#LOGPATH = os.path.join(tempfile.gettempdir(), "hidra", "logs")
+# LOGPATH = os.path.join(tempfile.gettempdir(), "hidra", "logs")
 
 beamline_config = dict()
 
@@ -378,9 +378,7 @@ class HidraController():
                 datafetcher = "http_fetcher"
 
             # write configfile
-            # /etc/hidra/P01.conf
-            #config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + "{0}.conf"
-            #                           .format(self.beamline))
+            # /etc/hidra/P01_eiger01.conf
             config_file = os.path.join(CONFIG_PATH,
                                        CONFIG_PREFIX + "{0}_{1}.conf"
                                        .format(self.beamline, det_id))
@@ -538,7 +536,7 @@ def call_hidra_service(cmd, beamline, det_id, log):
         if cmd == "status":
             return subprocess.call(["systemctl", "is-active", svc])
         else:
-            return subprocess.call(["sudo", "-n",  "systemctl", cmd, svc])
+            return subprocess.call(["sudo", "-n", "systemctl", cmd, svc])
 
     # systems using init scripts
     elif os.path.exists("/etc/init.d") \
@@ -643,7 +641,7 @@ class ControlServer():
 
     def create_sockets(self):
 
-        #Create ZeroMQ context
+        # Create ZeroMQ context
         self.log.info("Registering ZMQ context")
         self.context = zmq.Context()
 

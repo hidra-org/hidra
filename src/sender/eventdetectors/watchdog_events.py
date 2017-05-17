@@ -457,7 +457,7 @@ if __name__ == '__main__':
         try:
             event_list = eventdetector.get_new_event()
             if event_list:
-                print ("event_list:", event_list)
+                print("event_list:", event_list)
             if copyFlag:
                 target_file = "{0}{1}.cbf".format(target_file_base, i)
                 logging.debug("copy to {0}".format(target_file))

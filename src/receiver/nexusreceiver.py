@@ -156,26 +156,26 @@ class NexusReceiver:
             if e.errno == errno.ENOENT:
                 try:
                     target_path = os.path.split(target_file)[0]
-                    print ("target_path", target_path)
+                    print("target_path", target_path)
                     os.makedirs(target_path)
 
                     params["target_fp"] = open(target_file, "wb")
-                    print ("New target directory created:", target_path)
+                    print("New target directory created:", target_path)
                 except:
                     raise
             else:
                     raise
-        print (params, filename)
+        print(params, filename)
 
     def read_callback(self, params, received_data):
         metadata = received_data[0]
         data = received_data[1]
-        print (params, metadata)
+        print(params, metadata)
 
         params["target_fp"].write(data)
 
     def close_callback(self, params, data):
-        print (params, data)
+        print(params, data)
         params["target_fp"].close()
 
     def run(self):

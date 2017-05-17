@@ -21,7 +21,7 @@ platform_specific_files = []
 
 # Windows specific packages and config
 if platform.system() == "Windows":
-#    libzmq_path = "C:\Python27\Lib\site-packages\zmq"
+    # libzmq_path = "C:\Python27\Lib\site-packages\zmq"
     platform_specific_packages = ["watchdog"]
 
     platform_specific_files += [
@@ -31,7 +31,7 @@ if platform.system() == "Windows":
 
 # Linux specific packages and config
 else:
-#    libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
+    # libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
     platform_specific_packages = ["inotifyx"]
 
     platform_specific_files += [

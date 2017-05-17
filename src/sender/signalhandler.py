@@ -224,7 +224,8 @@ class SignalHandler():
                             if request_set:
                                 index = self.open_requ_perm.index(request_set)
 
-                                # [<host:port>, <prio>, <suffix_list>, <metadata|data>]
+                                # [<host:port>, <prio>, <suffix_list>,
+                                #  <metadata|data>]
                                 socket_id, prio, pattern, send_type = (
                                     request_set[self.next_requ_node[index]])
 
@@ -244,8 +245,9 @@ class SignalHandler():
 
                         for request_set in self.open_requ_vari:
                             # Check if filename suffix matches requested suffix
-                            if (request_set and (request_set[0][2]
-                                    .match(filename) is not None)):
+                            if (request_set
+                                    and (request_set[0][2].match(filename)
+                                         is not None)):
                                 socket_id, prio, pattern, send_type = (
                                     request_set.pop(0))
                                 # do not send pattern

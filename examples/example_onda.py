@@ -62,10 +62,10 @@ class Worker(multiprocessing.Process):
                     self.log.debug("Worker-{0}: file {1} read"
                                    .format(self.id, filepath))
             else:
-                print ("filepath", generate_filepath(self.basepath, metadata))
-                print ("metadata", metadata)
+                print("filepath", generate_filepath(self.basepath, metadata))
+                print("metadata", metadata)
 
-            print ("data", str(data)[:100])
+            print("data", str(data)[:100])
 
     def stop(self):
         self.query.stop()

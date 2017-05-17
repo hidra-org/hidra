@@ -20,9 +20,9 @@ from ._constants import connection_list
 class LoggingFunction:
     def out(self, x, exc_info=None):
         if exc_info:
-            print (x, traceback.format_exc())
+            print(x, traceback.format_exc())
         else:
-            print (x)
+            print(x)
 
     def __init__(self):
         self.debug = lambda x, exc_info=None: self.out(x, exc_info)

@@ -16,7 +16,7 @@ helpers.init_logging(logfile, True, "DEBUG")
 
 data_port = "50100"
 
-print ("\n==== TEST: Fixed stream ====\n")
+print("\n==== TEST: Fixed stream ====\n")
 
 query = Transfer("STREAM", use_log=True)
 
@@ -28,15 +28,15 @@ while True:
     except KeyboardInterrupt:
         break
     except Exception as e:
-        print ("Getting data failed.")
-        print ("Error was: {0}".format(e))
+        print("Getting data failed.")
+        print("Error was: {0}".format(e))
         break
 
     print
-    print ("metadata of file", metadata["filename"])
-    print ("data", str(data)[:10])
+    print("metadata of file", metadata["filename"])
+    print("data", str(data)[:10])
     print
 
 query.stop()
 
-print ("\n==== TEST END: Fixed Stream ====\n")
+print("\n==== TEST END: Fixed Stream ====\n")

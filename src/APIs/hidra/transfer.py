@@ -580,7 +580,7 @@ class Transfer():
 
         self.log.debug("socket_id_bind_str={0}".format(socket_bind_str))
 
-        ############ data socket ############
+        """ ######## data socket ############ """
         # Socket to retrieve data
         self.data_socket = self.context.socket(zmq.PULL)
         # remember the bind string for reestablishment of the connection
@@ -614,11 +614,11 @@ class Transfer():
             raise
 
         self.poller.register(self.data_socket, zmq.POLLIN)
-        #####################################
+        """ ##################################### """
 
         if self.connection_type in ["QUERY_NEXT", "QUERY_METADATA"]:
 
-            ########## request socket ###########
+            """ ########## request socket ########### """
             # An additional socket is needed to establish the data retriving
             # mechanism
             self.request_socket = self.context.socket(zmq.PUSH)
@@ -632,7 +632,7 @@ class Transfer():
                 self.log.error("Failed to start request socket (connect):"
                                " '{0}'".format(con_str), exc_info=True)
                 raise
-            #####################################
+            """ ##################################### """
 
             self.started_connections["QUERY_NEXT"] = {
                 "id": socket_id,
@@ -641,13 +641,13 @@ class Transfer():
 
         elif self.connection_type in ["NEXUS"]:
 
-            ####### file operation socket #######
+            """ ####### file operation socket ####### """
             # Reuse status check socket to get signals to open and close
             # nexus files
             self.setopt("status_check")
-            #####################################
+            """ ##################################### """
 
-            ########## control socket ###########
+            """ ########## control socket ########### """
             # Socket to retrieve control signals from control API
             if not os.path.exists(self.ipc_path):
                 os.makedirs(self.ipc_path)
@@ -667,7 +667,7 @@ class Transfer():
                                exc_info=True)
 
             self.poller.register(self.control_socket, zmq.POLLIN)
-            #####################################
+            """ ##################################### """
 
             self.started_connections["NEXUS"] = {
                 "id": socket_id,
@@ -728,7 +728,7 @@ class Transfer():
                 self.__get_socket_id(self.status_check_ip,
                                      self.status_check_port))
 
-            ######## status check socket ########
+            """ ######## status check socket ######## """
             # socket to get signals to get status check requests. this socket
             # is also used to get signals to open and close nexus files
             self.status_check_socket = self.context.socket(zmq.REP)
@@ -745,7 +745,7 @@ class Transfer():
                                "for '{0}'".format(bind_str), exc_info=True)
 
             self.poller.register(self.status_check_socket, zmq.POLLIN)
-            #####################################
+            """ ##################################### """
 
         elif option == "file_op":
             if self.file_op_socket is not None:
@@ -777,7 +777,7 @@ class Transfer():
                 self.__get_socket_id(self.file_op_ip,
                                      self.file_op_port))
 
-            ######## status check socket ########
+            """ ######## status check socket ######## """
             # socket to get signals to get status check requests. this socket
             # is also used to get signals to open and close nexus files
             self.file_op_socket = self.context.socket(zmq.REP)
@@ -794,7 +794,7 @@ class Transfer():
                                "for '{0}'".format(bind_str), exc_info=True)
 
             self.poller.register(self.file_op_socket, zmq.POLLIN)
-            #####################################
+            """ ##################################### """
 
         elif option == "confirmation":
             if self.confirmation_socket is not None:
@@ -826,7 +826,7 @@ class Transfer():
                 self.__get_socket_id(self.confirmation_ip,
                                      self.confirmation_port))
 
-            ######## confirmation socket ########
+            """ ######## confirmation socket ######## """
             # to send the a confirmation to the sender that the data packages
             # was stored successfully
             self.confirmation_socket = self.context.socket(zmq.PUSH)
@@ -838,7 +838,7 @@ class Transfer():
             except:
                 self.log.error("Failed to start confirmation socket (connect) "
                                "for '{0}'".format(con_str), exc_info=True)
-            #####################################
+            """ ##################################### """
         else:
             raise NotSupported("Option {0} is not supported".format(option))
 
@@ -877,7 +877,7 @@ class Transfer():
         # Recreate the socket (not with the new whitelist enables)
         self.log.debug("Starting down data_socket")
 
-        ########## data socket ###########
+        """ ########## data socket ########### """
         self.data_socket = self.context.socket(zmq.PULL)
         self.data_socket.zap_domain = b'global'
 
@@ -898,7 +898,7 @@ class Transfer():
             raise
 
         self.poller.register(self.data_socket, zmq.POLLIN)
-        #####################################
+        """ ##################################### """
 
     def read(self, callback_params, open_callback, read_callback,
              close_callback):
@@ -1321,7 +1321,7 @@ class Transfer():
                                .format(filepath), exc_info=True)
                 raise
             return False
-	else:
+        else:
             return True
 
     def store(self, target_base_path, timeout=None):
@@ -1385,7 +1385,7 @@ class Transfer():
 
                     break
             else:
-#                self.log.debug("No data received. Break loop")
+                # self.log.debug("No data received. Break loop")
                 break
 
     def stop(self):

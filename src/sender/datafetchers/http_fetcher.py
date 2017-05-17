@@ -313,7 +313,7 @@ if __name__ == '__main__':
     import socket
     import tempfile
 
-    ### Set up logging ###
+    """ Set up logging """
     logfile = os.path.join(BASE_PATH, "logs", "http_fetcher.log")
     logsize = 10485760
 
@@ -333,10 +333,10 @@ if __name__ == '__main__':
     qh = QueueHandler(log_queue)
     root.addHandler(qh)
 
-    ### determine socket connection strings ###
+    """ determine socket connection strings """
     con_ip = socket.gethostname()
     ext_ip = socket.gethostbyaddr(con_ip)[2][0]
-    #ext_ip = "0.0.0.0"
+    # ext_ip = "0.0.0.0"
 
     current_pid = os.getpid()
 
@@ -364,7 +364,7 @@ if __name__ == '__main__':
     conf_con_str = "tcp://{0}:{1}".format(con_ip, confirmation_port)
     conf_bind_str = "tcp://{0}:{1}".format(ext_ip, confirmation_port)
 
-    ### Set up config ###
+    """ Set up config """
     config = {
         "session": None,
         "fix_subdirs": ["commissioning", "current", "local"],
@@ -378,7 +378,7 @@ if __name__ == '__main__':
 
     context = zmq.Context.instance()
 
-    ### Set up receiver simulator ###
+    """ Set up receiver simulator """
     receiving_port = "6005"
     receiving_port2 = "6006"
     dataFwPort = "50010"
@@ -395,13 +395,13 @@ if __name__ == '__main__':
     logging.info("=== receiving_socket2 connected to {0}"
                  .format(connection_str))
 
-    ### Test file fetcher ###
+    """ Test file fetcher """
     filename = "test01.cbf"
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
 
     # read file to send it in data pipe
     logging.debug("=== copy file to asap3-mon")
-#    os.system('scp "%s" "%s:%s"' % (localfile, remotehost, remotefile) )
+    # os.system('scp "%s" "%s:%s"' % (localfile, remotehost, remotefile) )
     subprocess.call("scp {0} root@asap3-mon:/var/www/html/data/{1}"
                     .format(prework_source_file, filename), shell=True)
 
@@ -418,7 +418,7 @@ if __name__ == '__main__':
     datafetcher = DataFetcher(config, log_queue, 0, context)
 
     datafetcher.get_metadata(targets, metadata)
-#    source_file = "http://131.169.55.170/test_httpget/data/test_file.cbf"
+    # source_file = "http://131.169.55.170/test_httpget/data/test_file.cbf"
 
     datafetcher.send_data(targets, metadata, open_connections)
 

@@ -5,7 +5,7 @@ import zmq
 import os
 import logging
 import json
-#import errno
+# import errno
 
 from datafetcherbase import DataFetcherBase, DataHandlingError
 from hidra import generate_filepath

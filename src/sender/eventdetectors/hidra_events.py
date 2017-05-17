@@ -5,7 +5,7 @@ import os
 import json
 import tempfile
 import zmq
-#from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
+# from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
 from zmq.utils.strtypes import asbytes
 import multiprocessing
 

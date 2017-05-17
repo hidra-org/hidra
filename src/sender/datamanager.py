@@ -480,14 +480,14 @@ class DataManager():
                                .format(self.params["data_stream_targets"]))
                 sys.exit(1)
 
-            self.fixed_stream_id = ("{0}:{1}"
-                .format(self.params["data_stream_targets"][0][0],
-                        self.params["data_stream_targets"][0][1]))
+            self.fixed_stream_id = (
+                "{0}:{1}".format(self.params["data_stream_targets"][0][0],
+                                 self.params["data_stream_targets"][0][1]))
 
             if self.params["remove_data"] == "deferred_error_handling":
-                self.status_check_id = ("{0}:{1}"
-                    .format(self.params["data_stream_targets"][0][0],
-                            self.params["status_check_port"]))
+                self.status_check_id = (
+                    "{0}:{1}".format(self.params["data_stream_targets"][0][0],
+                                     self.params["status_check_port"]))
 
                 self.log.info("Enabled receiver checking")
                 self.check_target_host = self.check_status_receiver
@@ -834,7 +834,7 @@ class DataManager():
         return True
 
     def run(self):
-        ### SignalHandler ###
+        """ SignalHandler """
         self.signalhandler_pr = threading.Thread(target=SignalHandler,
                                                  args=(
                                                      self.control_pub_con_str,
@@ -855,7 +855,7 @@ class DataManager():
         if not self.signalhandler_pr.is_alive():
             return
 
-        ### TaskProvider ###
+        """ TaskProvider """
         self.taskprovider_pr = Process(target=TaskProvider,
                                        args=(
                                            self.params,
@@ -866,7 +866,7 @@ class DataManager():
                                        )
         self.taskprovider_pr.start()
 
-        ### Cleaner ###
+        """ Cleaner """
         if self.use_cleaner:
             self.log.info("Loading cleaner from data fetcher module: {0}"
                           .format(self.params["data_fetcher_type"]))
@@ -884,7 +884,7 @@ class DataManager():
         self.log.info("Configured Type of data fetcher: {0}"
                       .format(self.params["data_fetcher_type"]))
 
-        ### DataDispatcher ###
+        """ DataDispatcher """
         for i in range(self.number_of_streams):
             id = b"{0}/{1}".format(i, self.number_of_streams)
             pr = Process(target=DataDispatcher,

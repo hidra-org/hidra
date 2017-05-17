@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     targets = [arguments.target_host, "50100", 0]
 
-    print ("\n==== TEST: Stream all files and store them ====\n")
+    print("\n==== TEST: Stream all files and store them ====\n")
 
     query = Transfer("STREAM", arguments.signal_host, use_log=True)
 
@@ -47,17 +47,17 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             break
         except Exception as e:
-            print ("Getting data failed.")
-            print ("Error was:", e)
+            print("Getting data failed.")
+            print("Error was:", e)
             break
 
         try:
             query.store("/opt/hidra/data/target/testStore", result)
         except Exception as e:
-            print ("Storing data failed.")
-            print ("Error was:", e)
+            print("Storing data failed.")
+            print("Error was:", e)
             break
 
     query.stop()
 
-    print ("\n==== TEST END: Stream all files and store them ====\n")
+    print("\n==== TEST END: Stream all files and store them ====\n")

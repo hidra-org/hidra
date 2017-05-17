@@ -3,11 +3,11 @@
 from __future__ import print_function
 
 import subprocess
-#import re
+# import re
 import socket
 import os
 import StringIO
-#import platform
+# import platform
 try:
     import ConfigParser
 except ImportError:
@@ -132,8 +132,8 @@ def get_bls_to_check():
              for f in os.listdir(CONFIG_PATH)
              if f.startswith(CONFIG_PREFIX) and f.endswith(CONFIG_POSTFIX)]
 
-    print ("Config files")
-    print (files)
+    print("Config files")
+    print(files)
 
     beamlines_to_activate = []
     beamlines_to_deactivate = []
@@ -171,14 +171,14 @@ if __name__ == '__main__':
 
     # Get IP addresses
     active_ips = get_ip_addr()
-    print ("Active Ips\n", active_ips)
+    print("Active Ips\n", active_ips)
 
     # mapping ip/hostname to beamline
     beamlines_to_activate, beamlines_to_deactivate = get_bls_to_check()
-    print ("List of beamline receivers to check (activate)\n",
-           beamlines_to_activate)
-    print ("List of beamline receivers to check (deactivate)\n",
-           beamlines_to_deactivate)
+    print("List of beamline receivers to check (activate)\n",
+          beamlines_to_activate)
+    print("List of beamline receivers to check (deactivate)\n",
+          beamlines_to_deactivate)
 
     # check if hidra runs for this beamline
     # and start it if that is not the case
@@ -186,9 +186,9 @@ if __name__ == '__main__':
         p = call_initsystem(bl, "status")
 
         if p != 0:
-            print ("service", bl, "is not running")
+            print("service", bl, "is not running")
         else:
-            print ("service", bl, "is running, but has to be stopped")
+            print("service", bl, "is running, but has to be stopped")
             # stop service
 #            p = call_initsystem(bl, "stop")
 
@@ -198,8 +198,8 @@ if __name__ == '__main__':
         p = call_initsystem(bl, "status")
 
         if p != 0:
-            print ("service", bl, "is not running, but has to be started")
+            print("service", bl, "is not running, but has to be started")
             # start service
 #            p = call_initsystem(bl, "start")
         else:
-            print ("service", bl, "is running")
+            print("service", bl, "is running")

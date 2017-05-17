@@ -591,7 +591,7 @@ if __name__ == '__main__':
 
             event_list = eventdetector.get_new_event()
             if event_list:
-                print ("event_list:", event_list)
+                print("event_list:", event_list)
 
             time.sleep(1)
         except KeyboardInterrupt:

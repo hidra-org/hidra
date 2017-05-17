@@ -4,9 +4,9 @@ import traceback
 class LoggingFunction:
     def out(self, x, exc_info=None):
         if exc_info:
-            print (x, traceback.format_exc())
+            print(x, traceback.format_exc())
         else:
-            print (x)
+            print(x)
 
     def no_out(self, x, exc_info=None):
         pass

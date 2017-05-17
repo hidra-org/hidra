@@ -143,7 +143,7 @@ class CheckNetgroup (threading.Thread):
         global changed_netgroup
 
         while self.run_loop:
-#            new_whitelist = excecute_ldapsearch_test(self.netgroup)
+            # new_whitelist = excecute_ldapsearch_test(self.netgroup)
             new_whitelist = helpers.excecute_ldapsearch(self.netgroup)
 
             # new elements added to whitelist
@@ -294,16 +294,17 @@ class DataReceiver:
             self.transfer.status = [b"ERROR", "receiver is shutting down"]
 
             if store:
+                stop_timeout = 0.5
                 start_time = time.time()
                 diff_time = (time.time() - start_time) * 1000
                 self.log.debug("Storing remaining data.")
-                while diff_time < self.timeout:
+                while diff_time < stop_timeout:
                     try:
                         self.log.debug("Storing remaining data...")
                         self.transfer.store(self.target_dir, self.timeout)
                     except:
                         self.log.error("Storing data...failed.", exc_info=True)
-                    diff_time = (time.time() - start_time)*1000
+                    diff_time = (time.time() - start_time) * 1000
 
             self.log.info("Shutting down receiver...")
             self.transfer.stop()

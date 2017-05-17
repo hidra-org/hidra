@@ -18,7 +18,7 @@ logfile_path = os.path.join(os.path.join(BASE_PATH, "logs"))
 logfile = os.path.join(logfile_path, "example_nexus_transfer.log")
 helpers.init_logging(logfile, True, "DEBUG")
 
-print ("\n==== TEST: nexus transfer ====\n")
+print("\n==== TEST: nexus transfer ====\n")
 
 
 class SenderAsThread (threading.Thread):
@@ -105,16 +105,16 @@ class SenderAsThread (threading.Thread):
 
 
 def open_callback(params, retrieved_params):
-    print (params, retrieved_params)
+    print(params, retrieved_params)
 
 
 def close_callback(params, retrieved_params):
     params["run_loop"] = False
-    print (params, retrieved_params)
+    print(params, retrieved_params)
 
 
 def read_callback(params, retrieved_params):
-    print (params, retrieved_params)
+    print(params, retrieved_params)
 
 
 senderThread = SenderAsThread()
@@ -141,4 +141,4 @@ finally:
     senderThread.stop()
     obj.stop()
 
-print ("\n==== TEST END: nexus transfer ====\n")
+print("\n==== TEST END: nexus transfer ====\n")

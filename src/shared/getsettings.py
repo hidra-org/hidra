@@ -7,4 +7,4 @@ CONFIG_FILE = "/opt/hidra/conf/datamanager.conf"
 
 params = helpers.parse_parameters(helpers.read_config(CONFIG_FILE))["asection"]
 
-print ("Configured subdirectories are:", params["fix_subdirs"])
+print("Configured subdirectories are:", params["fix_subdirs"])

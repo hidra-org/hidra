@@ -141,7 +141,7 @@ if __name__ == '__main__':
     ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
 
     event_det_con_str = "ipc://{0}/{1}".format(ipc_path, "eventDet")
-    print ("event_det_con_str", event_det_con_str)
+    print("event_det_con_str", event_det_con_str)
     number_of_streams = 1
     config = {
         "context": None,

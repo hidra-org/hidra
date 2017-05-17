@@ -20,7 +20,7 @@ logfile_path = os.path.join(BASE_PATH, "logs")
 logfile = os.path.join(logfile_path, "test_nexus_ingest_with_transfer.log")
 helpers.init_logging(logfile, True, "DEBUG")
 
-print ("\n==== TEST: hidraIngest together with nexus transfer ====\n")
+print("\n==== TEST: hidraIngest together with nexus transfer ====\n")
 
 
 class HidraSimulation (threading.Thread):
@@ -162,16 +162,16 @@ def hidra_ingest(numb_to_send):
 
 
 def open_callback(params, retrieved_params):
-    print ("open_callback", params, retrieved_params)
+    print("open_callback", params, retrieved_params)
 
 
 def close_callback(params, retrieved_params):
     params["run_loop"] = False
-    print ("close_callback", params, retrieved_params)
+    print("close_callback", params, retrieved_params)
 
 
 def read_callback(params, retrieved_params):
-    print ("read_callback", params, retrieved_params)
+    print("read_callback", params, retrieved_params)
 
 
 def nexus_transfer():
@@ -218,4 +218,4 @@ nexus_transfer_thread.join()
 if use_test:
     hidra_simulation_thread.stop()
 
-print ("\n==== TEST END: hidraIngest together with nexus transfer ====\n")
+print("\n==== TEST END: hidraIngest together with nexus transfer ====\n")

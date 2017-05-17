@@ -168,7 +168,7 @@ def confirm(prompt=None, resp=False):
 
     while True:
         try:
-            ans = raw_input(prompt)
+            ans = raw_input(prompt)  # noqa F821
         except KeyboardInterrupt:
             logging.error("Keyboard Interruption detected.")
         except Exception as e:
