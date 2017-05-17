@@ -9,6 +9,7 @@ import collections
 import threading
 import time
 import copy
+import re
 
 from eventdetectorbase import EventDetectorBase
 import helpers
@@ -268,16 +269,23 @@ class EventDetector(EventDetectorBase):
             self.log.debug("monitored_events={0}"
                            .format(config["monitored_events"]))
 
-            suffix_list = []
+            regexes = []
             for key, value in iteritems(config["monitored_events"]):
                 self.mon_regex_per_event[key] = (
                     convert_suffix_list_to_regex(value,
-                                                 compile_regex=True,
+                                                 compile_regex=False,
                                                  log=self.log))
-                suffix_list += value
 
-            self.log.debug("suffix_list={0}".format(suffix_list))
-            self.mon_regex = convert_suffix_list_to_regex(suffix_list,
+                regexes.append(self.mon_regex_per_event[key])
+
+                # cannot be compiled before because regexes needs to be a list
+                # of string
+                self.mon_regex_per_event[key] = (
+                    re.compile(self.mon_regex_per_event[key]))
+
+            self.log.debug("regexes={0}".format(regexes))
+            self.mon_regex = convert_suffix_list_to_regex(regexes,
+                                                          suffix=False,
                                                           compile_regex=True,
                                                           log=self.log)
 
