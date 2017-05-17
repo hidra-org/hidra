@@ -22,8 +22,9 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
 
-    # targets = [[arguments.target_host, "50101", 1]]
-    targets = [[arguments.target_host, "50101", 1, ".*[tif|cbf]$"]]
+#    targets = [[arguments.target_host, "50101", 1]]
+    targets = [[arguments.target_host, "50101", 1, ".*(tif|cbf)$"]]
+#    targets = [[arguments.target_host, "50101", 1, [".tif", ".cbf"]]]
 
     print("\n==== TEST: Query for the newest filename ====\n")
 

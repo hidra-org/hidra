@@ -23,7 +23,8 @@ if __name__ == "__main__":
     arguments = parser.parse_args()
 
 #    targets = [arguments.target_host, "50101", 0]
-    targets = [[arguments.target_host, "50101", 0, ".*[tif|cbf]$"]]
+    targets = [[arguments.target_host, "50101", 0, ".*(tif|cbf)$"]]
+#    targets = [[arguments.target_host, "50101", 0, [".tif", ".cbf"]]]
 
     print("\n==== TEST: Stream all files ====\n")
 

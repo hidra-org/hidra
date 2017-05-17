@@ -13,6 +13,7 @@ from __init__ import BASE_PATH
 from _version import __version__
 from logutils.queue import QueueHandler
 import helpers
+from hidra import convert_suffix_list_to_regex
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -435,6 +436,12 @@ class SignalHandler():
         for socket_conf in socket_ids:
             # make host naming consistent
             socket_conf[0] = socket_conf[0].replace(DOMAIN, "")
+            # for compatibility with API versions 3.1.2 or older
+            self.log.debug("suffix={0}".format(socket_conf[2]))
+            socket_conf[2] = convert_suffix_list_to_regex(socket_conf[2],
+                                                          suffix=True,
+                                                          compile_regex=False,
+                                                          log=self.log)
 
         overwrite_index = None
         # [set(<host>, <host>, ...), set(...), ...] created from list_to_check
