@@ -7,7 +7,7 @@ import logging
 
 import time
 from watchdog.observers import Observer
-from watchdog.events import PatternMatchingEventHandler
+from watchdog.events import RegexMatchingEventHandler
 import copy
 from multiprocessing.dummy import Pool as ThreadPool
 import threading
@@ -15,16 +15,24 @@ import bisect
 
 from eventdetectorbase import EventDetectorBase
 import helpers
+from hidra import convert_suffix_list_to_regex
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+
+# Define WindowsError for non Windows systems
+# try:
+#     WindowsError
+# except NameError:
+#     WindowsError = None
 
 event_message_list = []
 event_list_to_observe = []
 event_list_to_observe_tmp = []
 
 
-class WatchdogEventHandler (PatternMatchingEventHandler):
+# documentation of watchdog: https://pythonhosted.org/watchdog/api.html
+class WatchdogEventHandler (RegexMatchingEventHandler):
     def __init__(self, id, config, log_queue):
         self.id = id
 
@@ -38,17 +46,6 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
 
         self.paths = [config["monitored_dir"]]
 
-        patterns = []
-        for event, suffix in iteritems(config["monitored_events"]):
-            for s in suffix:
-                # TODO check format
-                patterns.append("*" + s)
-
-        WatchdogEventHandler.patterns = patterns
-
-        self.log.debug("init: super")
-        super(WatchdogEventHandler, self,).__init__()
-
         # learn what events to detect
         self.detect_all = False
         self.detect_create = False
@@ -57,25 +54,38 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
         self.detect_move = False
         self.detect_close = False
 
-        for event, suffix in iteritems(config["monitored_events"]):
+        regexes = []
+        for event, regex in iteritems(config["monitored_events"]):
+            self.log.debug("event: {0}, pattern: {1}".format(event, regex))
+            regex = convert_suffix_list_to_regex(regex,
+                                                 compile_regex=True,
+                                                 log=self.log)
+
+            regexes.append(regex)
+
             if "all" in event.lower():
                 self.log.info("Activate all event types")
-                self.detect_all = tuple(suffix)
+                self.detect_all = regex
             elif "create" in event.lower():
                 self.log.info("Activate on create event types")
-                self.detect_create = tuple(suffix)
+                self.detect_create = regex
             elif "modify" in event.lower():
                 self.log.info("Activate on modify event types")
-                self.detect_modify = tuple(suffix)
+                self.detect_modify = regex
             elif "delete" in event.lower():
                 self.log.info("Activate on delete event types")
-                self.detect_delete = tuple(suffix)
+                self.detect_delete = regex
             elif "move" in event.lower():
                 self.log.info("Activate on move event types")
-                self.detect_move = tuple(suffix)
+                self.detect_move = regex
             elif "close" in event.lower():
                 self.log.info("Activate on close event types")
-                self.detect_close = tuple(suffix)
+                self.detect_close = regex
+
+        WatchdogEventHandler.regexes = regexes
+
+        self.log.debug("init: super")
+        super(WatchdogEventHandler, self,).__init__()
 
         self.log.debug("self.detect_close={0}, self.detect_move={1}"
                        .format(self.detect_close, self.detect_move))
@@ -93,18 +103,18 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
             event_message_list.append(event_message)
 
     def on_any_event(self, event):
-        if self.detect_all and event.src_path.endswith(self.detect_all):
+        if self.detect_all and self.detect_all.match(event.src_path):
             self.log.debug("Any event detected")
             self.process(event)
 
     def on_created(self, event):
         global event_list_to_observe
 
-        if self.detect_create and event.src_path.endswith(self.detect_create):
+        if self.detect_create and self.detect_create.match(event.src_path):
             # TODO only fire for file-event. skip directory-events.
             self.log.debug("On move event detected")
             self.process(event)
-        if self.detect_close and event.src_path.endswith(self.detect_close):
+        if self.detect_close and self.detect_close.match(event.src_path):
             self.log.debug("On close event detected (from create)")
             self.log.debug("event.src_path={0}".format(event.src_path))
             if not event.is_directory:
@@ -116,10 +126,10 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
     def on_modified(self, event):
         global event_list_to_observe
 
-        if self.detect_modify and event.src_path.endswith(self.detect_modify):
+        if self.detect_modify and self.detect_modify.match(event.src_path):
             self.log.debug("On modify event detected")
             self.process(event)
-        if self.detect_close and event.src_path.endswith(self.detect_close):
+        if self.detect_close and self.detect_close.match(event.src_path):
             if (not event.is_directory
                     and event.src_path not in event_list_to_observe):
                 self.log.debug("On close event detected (from modify)")
@@ -127,12 +137,12 @@ class WatchdogEventHandler (PatternMatchingEventHandler):
                 bisect.insort_left(event_list_to_observe, event.src_path)
 
     def on_deleted(self, event):
-        if self.detect_delete and event.src_path.endswith(self.detect_delete):
+        if self.detect_delete and self.detect_delete.match(event.src_path):
             self.log.debug("On delete event detected")
             self.process(event)
 
     def on_moved(self, event):
-        if self.detect_move and event.src_path.endswith(self.detect_move):
+        if self.detect_move and self.detect_move.match(event.src_path):
             self.log.debug("On move event detected")
             self.process(event)
 
@@ -262,17 +272,21 @@ class CheckModTime (threading.Thread):
         try:
             # check modification time
             time_last_modified = os.stat(filepath).st_mtime
-        except WindowsError:
+#        except WindowsError:
+#            self.log.error("Unable to get modification time for file: {0}"
+#                           .format(filepath), exc_info=True)
+            # remove the file from the observing list
+#            self.lock.acquire()
+#            event_list_to_observe_tmp.append(filepath)
+#            self.lock.release()
+#            return
+        except:
             self.log.error("Unable to get modification time for file: {0}"
                            .format(filepath), exc_info=True)
             # remove the file from the observing list
             self.lock.acquire()
             event_list_to_observe_tmp.append(filepath)
             self.lock.release()
-            return
-        except:
-            self.log.error("Unable to get modification time for file: {0}"
-                           .format(filepath), exc_info=True)
             return
 
         try:

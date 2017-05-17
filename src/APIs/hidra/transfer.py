@@ -120,25 +120,32 @@ def generate_file_identifier(config_dict):
     return file_id
 
 
-def convert_suffix_list_to_regex(suffix_list, compile_regex=False, log=None):
+def convert_suffix_list_to_regex(pattern, suffix=True, compile_regex=False,
+                                 log=None):
     """
     Takes a list of suffixes and converts it into a corresponding regex
     If input is a string nothing is done
 
     Args:
-        suffix_list (list or string): a list of suffixes or a string
+        pattern (list or string): a list of suffixes, regexes or a string
+        suffix (boolean): if a list of regexes is given which should be merged
+        compile_regex (boolean): if the regex should be compiled
+        log: logging handler (optional)
 
     Returns:
         regex (regex object): compiled regular expression of the style
-                              ".*[<suffix>|...]$"
+                              ".*(<suffix>|...)$ resp. (<regex>|<regex>)"
     """
     # Convert list into regex
-    if type(suffix_list) == list:
+    if type(pattern) == list:
 
-        regex = ".*"
+        if suffix:
+            regex = ".*"
+        else:
+            regex = ""
 
         file_suffix = ""
-        for s in suffix_list:
+        for s in pattern:
             if s:
                 # not an empty string
                 file_suffix += s
@@ -152,7 +159,7 @@ def convert_suffix_list_to_regex(suffix_list, compile_regex=False, log=None):
 
     # a regex was given
     else:
-        regex = suffix_list
+        regex = pattern
 
     if log:
         log.debug("converted regex={0}".format(regex))
