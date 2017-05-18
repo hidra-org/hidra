@@ -79,6 +79,7 @@ class HidraController():
         self.beamline = beamline
 
         self.procname = "hidra_{0}".format(self.beamline)
+        self.username = "{0}user".format(self.beamline)
 
         # Set log handler
         self.log = log
@@ -390,6 +391,7 @@ class HidraController():
                         .format(self.beamline))
                 f.write("log_size             = 10485760\n")
                 f.write("procname             = {0}\n".format(self.procname))
+                f.write("username             = {0}\n".format(self.username))
                 f.write("ext_ip               = {0}\n".format(external_ip))
                 f.write("com_port             = 50000\n")
                 f.write("request_port         = 50001\n")
