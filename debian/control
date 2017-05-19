@@ -8,7 +8,7 @@ Homepage: https://stash.desy.de/projects/LSDMA/repos/hidra/browse
 
 Package: hidra
 Architecture: any
-Depends: python-hidra (= ${binary:Version}), python, systemd, python-logutils, python-inotifyx, python-setproctitle, python-six
+Depends: python-hidra (= ${binary:Version}), python, systemd, python-logutils, python-inotifyx (>= 0.2.2), python-setproctitle, python-six
 Description: High performance data multiplexing tool
  HiDRA is a generic tool set for high performance data multiplexing
  with different qualities of service and is based on Python and ZeroMQ.
