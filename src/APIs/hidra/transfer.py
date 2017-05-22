@@ -1232,6 +1232,18 @@ class Transfer():
 
                 return [None, None]
 
+    def check_file_closed(self, payload, m):
+        # Either the message is smaller than than expected (last chunk)
+        # or the size of the origin file was a multiple of the
+        # chunksize and this is the last expected chunk (chunk_number
+        # starts with 0)
+        if len(payload) < m["chunksize"] \
+            or (m["filesize"] % m["chunksize"] == 0
+                and m["filesize"] / m["chunksize"] == m["chunk_number"] + 1):
+            return True
+        else:
+            return False
+
     def store_data_chunk(self, descriptors, filepath, payload, base_path,
                          metadata):
         """
@@ -1304,17 +1316,7 @@ class Transfer():
                            .format(filepath), exc_info=True)
             raise
 
-        # pointer for readability
-        m = metadata
-
-        # Either the message is smaller than than expected (last chunk)
-        # or the size of the origin file was a multiple of the
-        # chunksize and this is the last expected chunk (chunk_number
-        # starts with 0)
-        if len(payload) < m["chunksize"] \
-            or (m["filesize"] % m["chunksize"] == 0
-                and m["filesize"] / m["chunksize"] == m["chunk_number"] + 1):
-
+        if self.check_file_closed(payload, metadata):
             # indicates end of file. Leave loop
             try:
                 descriptors[filepath].close()
