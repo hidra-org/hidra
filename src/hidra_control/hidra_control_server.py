@@ -532,6 +532,8 @@ def call_hidra_service(cmd, beamline, det_id, log):
     if (os.path.exists("/usr/lib/systemd")
             and (os.path.exists("/usr/lib/systemd/{0}.service"
                                 .format(SYSTEMD_PREFIX))
+                 or os.path.exists("/usr/lib/systemd/system/{0}.service"
+                                .format(SYSTEMD_PREFIX))
                  or os.path.exists("/etc/systemd/system/{0}.service"
                                    .format(SYSTEMD_PREFIX)))):
 
