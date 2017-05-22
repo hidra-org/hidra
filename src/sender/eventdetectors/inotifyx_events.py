@@ -248,8 +248,11 @@ class EventDetector(EventDetectorBase):
                 config_reduced = (config_reduced[:-1]
                                   + ", "
                                   + config_reduced2[1:])
+
+            self.get_remaining_events = self.get_events_from_cleanup
         else:
             check_passed2 = True
+            self.get_remaining_events = self.get_no_events
 
         check_passed = check_passed and check_passed2
 
@@ -367,9 +370,13 @@ class EventDetector(EventDetectorBase):
 
         return monitored_dirs
 
-    def get_new_event(self):
+    def get_no_events(self):
+        return []
+
+    def get_events_from_cleanup(self):
         global file_event_list
 
+        event_message_list = []
         try:
             self.lock.acquire()
             # get missed files
@@ -381,6 +388,11 @@ class EventDetector(EventDetectorBase):
         if event_message_list:
             self.log.info("Added missed files: {0}".format(event_message_list))
 
+        return event_message_list
+
+    def get_new_event(self):
+
+        event_message_list = self.get_remaining_events()
         event_message = {}
 
         events = self.get_events(self.fd, self.timeout)
