@@ -305,12 +305,12 @@ class CheckModTime (threading.Thread):
 
             # add to result list
             self.lock.acquire()
-            self.log.debug("check_last_modified-{0} event_message_list {1}"
-                           .format(thread_name, event_message_list))
+#            self.log.debug("check_last_modified-{0} event_message_list {1}"
+#                           .format(thread_name, event_message_list))
             event_message_list.append(event_message)
             event_list_to_observe_tmp.append(filepath)
-            self.log.debug("check_last_modified-{0} event_message_list {1}"
-                           .format(thread_name, event_message_list))
+#            self.log.debug("check_last_modified-{0} event_message_list {1}"
+#                           .format(thread_name, event_message_list))
 #            self.log.debug("check_last_modified-{0} "
 #                           "event_list_to_observe_tmp "{1}"
 #                           .format(thread_name, event_list_to_observe_tmp))
