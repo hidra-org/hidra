@@ -559,9 +559,12 @@ if __name__ == '__main__':
     from __init__ import BASE_PATH
     from logutils.queue import QueueHandler
     import logging
+    import setproctitle
 
     logfile = os.path.join(BASE_PATH, "logs", "inotifyx_events.log")
     logsize = 10485760
+
+    setproctitle.setproctitle("inotifyx_events")
 
     log_queue = Queue(-1)
 

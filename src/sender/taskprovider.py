@@ -325,6 +325,7 @@ if __name__ == '__main__':
     from multiprocessing import Process, freeze_support, Queue
     import time
     from shutil import copyfile
+    import setproctitle
 
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     freeze_support()
@@ -354,6 +355,8 @@ if __name__ == '__main__':
     control_con_id = "tcp://{0}:{1}".format(localhost, control_port)
     request_fw_con_id = "tcp://{0}:{1}".format(localhost, request_fw_port)
     router_con_id = "tcp://{0}:{1}".format(localhost, router_port)
+
+    setproctitle.setproctitle("taskprovider")
 
     log_queue = Queue(-1)
 

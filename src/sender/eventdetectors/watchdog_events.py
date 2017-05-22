@@ -428,9 +428,12 @@ if __name__ == '__main__':
     from multiprocessing import Queue
     from logutils.queue import QueueHandler
     from __init__ import BASE_PATH
+    import setproctitle
 
     logfile = os.path.join(BASE_PATH, "logs", "watchdogDetector.log")
     logsize = 10485760
+
+    setproctitle.setproctitle("watchdog_events")
 
     log_queue = Queue(-1)
 
