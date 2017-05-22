@@ -1,4 +1,5 @@
 HiDRA develop
+HiDRA 3.1.3
 HiDRA 3.1.2
 - Removed check for fix_subdirs in local_dir
 

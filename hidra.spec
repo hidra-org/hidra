@@ -1,5 +1,5 @@
 Name:		hidra
-Version:	3.1.2
+Version:	3.1.3
 Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
@@ -116,6 +116,8 @@ mkdir -p %{buildroot}/var/log/%{name}
 /opt/%{name}/src/hidra_control/hidra_control_client.pyo
 
 %changelog
+* Mon May 22 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.1.3-1
+- Bump version
 * Fri May 12 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.1.2-1
 - Bump version
 * Wed Apr 19 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.1.1-1
