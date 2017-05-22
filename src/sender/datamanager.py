@@ -275,7 +275,7 @@ def argument_parsing():
 
     # check if directories exist
     helpers.check_existance(params["log_path"])
-    if params["monitored_dir"]:
+    if "monitored_dir" in params:
         helpers.check_existance(params["monitored_dir"])
         # the subdirs have to exist because handles can only be added to
         # directories inside a directory in which a handle was already set,
