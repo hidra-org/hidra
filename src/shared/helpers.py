@@ -358,31 +358,36 @@ def extend_whitelist(whitelist, log):
     global DOMAIN
 
     log.info("Configured whitelist: {0}".format(whitelist))
-    extended_whitelist = []
 
     if whitelist is not None:
-        for host in whitelist:
+        if type(whitelist) == str:
+            whitelist = excecute_ldapsearch(whitelist)
+            log.info("Whitelist after ldapsearch: {0}".format(whitelist))
+        else:
+            extended_whitelist = []
 
-            if host == "localhost":
-                extended_whitelist.append(socket.gethostbyname(host))
-            else:
-                try:
-                    hostname, tmp, ip = socket.gethostbyaddr(host)
+            for host in whitelist:
 
-                    host_modified = hostname.replace(DOMAIN, "")
+                if host == "localhost":
+                    extended_whitelist.append(socket.gethostbyname(host))
+                else:
+                    try:
+                        hostname, tmp, ip = socket.gethostbyaddr(host)
 
-                    if host_modified not in whitelist:
-                        extended_whitelist.append(host_modified)
+                        host_modified = hostname.replace(DOMAIN, "")
 
-                    if ip[0] not in whitelist:
-                        extended_whitelist.append(ip[0])
-                except:
-                    pass
+                        if host_modified not in whitelist:
+                            extended_whitelist.append(host_modified)
 
-        for host in extended_whitelist:
-            whitelist.append(host)
+                        if ip[0] not in whitelist:
+                            extended_whitelist.append(ip[0])
+                    except:
+                        pass
 
-        log.debug("Extended whitelist: {0}".format(whitelist))
+            for host in extended_whitelist:
+                whitelist.append(host)
+
+            log.debug("Extended whitelist: {0}".format(whitelist))
 
 
 def check_config(required_params, config, log):
