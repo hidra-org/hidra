@@ -554,12 +554,24 @@ class EventDetector(EventDetectorBase):
 
 
 if __name__ == '__main__':
-    from subprocess import call
     from multiprocessing import Queue
     from __init__ import BASE_PATH
     from logutils.queue import QueueHandler
     import logging
     import setproctitle
+    from shutil import copyfile
+
+    determine_mem_usage = False
+
+    if determine_mem_usage:
+        import resource
+        import gc
+        gc.collect()  # don't care about stuff that would be garbage collected properly
+        from guppy import hpy
+
+        log_level = "info"
+    else:
+        log_level = "debug"
 
     logfile = os.path.join(BASE_PATH, "logs", "inotifyx_events.log")
     logsize = 10485760
@@ -570,7 +582,7 @@ if __name__ == '__main__':
 
     # Get the log Configuration for the lisener
     h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onscreen_log_level="debug")
+                                      onscreen_log_level=log_level)
 
     # Start queue listener using the stream handler above
     log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
@@ -585,7 +597,7 @@ if __name__ == '__main__':
     config = {
         "monitored_dir": os.path.join(BASE_PATH, "data", "source"),
         "fix_subdirs": ["commissioning", "current", "local"],
-        "monitored_events": {"IN_CLOSE_WRITE": [".tif", ".cbf"],
+        "monitored_events": {"IN_CLOSE_WRITE": [".tif", ".cbf", ".file"],
                              "IN_MOVED_TO": [".log"]},
         # "event_timeout": 0.1,
         "history_size": 0,
@@ -594,7 +606,7 @@ if __name__ == '__main__':
         "action_time": 120
     }
 
-    source_file = os.path.join(BASE_PATH, "test_file.cbf")
+    source_file = os.path.join(BASE_PATH, "test_1024B.file")
     target_file_base = os.path.join(
         BASE_PATH, "data", "source", "local", "raw") + os.sep
 
@@ -603,27 +615,59 @@ if __name__ == '__main__':
 
     eventdetector = EventDetector(config, log_queue)
 
-    i = 100
-    while i <= 110:
-        try:
-            logging.debug("copy")
-            target_file = "{0}{1}.cbf".format(target_file_base, i)
-            call(["cp", source_file, target_file])
-#            copyfile(source_file, target_file)
-            i += 1
+    if determine_mem_usage:
+        min_loop = 100
+        max_loop = 20000
+        steps = 10
 
-            event_list = eventdetector.get_new_event()
-            if event_list:
-                print("event_list:", event_list)
+        memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        print("Memory usage at start: {0} (kb)".format(memory_usage_old))
 
-            time.sleep(1)
-        except KeyboardInterrupt:
-            break
+        hp = hpy()
+        hp.setrelheap()
+    else:
+        min_loop = 100
+        max_loop = 110
+        steps = 1
 
-    for number in range(100, i):
-        target_file = "{0}{1}.cbf".format(target_file_base, number)
-        logging.debug("remove {0}".format(target_file))
-        os.remove(target_file)
+    step_loop = (max_loop-min_loop)/steps
+    print("Used steps:", steps)
+
+    try:
+        for s in range(steps):
+            start = min_loop + s * step_loop
+            stop = start + step_loop
+#            print ("start=", start, "stop=", stop)
+            for i in range(start, stop):
+
+                logging.debug("copy")
+                target_file = "{0}{1}.cbf".format(target_file_base, i)
+                copyfile(source_file, target_file)
+
+                if i%100 == 0 or not determine_mem_usage:
+                    event_list = eventdetector.get_new_event()
+                    if event_list:
+                        print("event_list:", event_list)
+
+#                time.sleep(0.5)
+            if determine_mem_usage:
+                memory_usage_new = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                print("Memory usage in iteration {0}: {1} (kb)"
+                      .format(s, memory_usage_new))
+                if memory_usage_new > memory_usage_old:
+                    memory_usage_old = memory_usage_new
+                    print(hp.heap())
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        for number in range(min_loop, stop):
+            try:
+                target_file = "{0}{1}.cbf".format(target_file_base, number)
+                logging.debug("remove {0}".format(target_file))
+                os.remove(target_file)
+            except OSError:
+                pass
 
     log_queue.put_nowait(None)
     log_queue_listener.stop()

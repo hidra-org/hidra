@@ -397,6 +397,7 @@ if __name__ == '__main__':
     if not os.path.exists(target_file_base):
         os.makedirs(target_file_base)
 
+    #time.sleep(5)
     i = 100
     try:
         while i <= 105:
