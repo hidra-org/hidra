@@ -116,7 +116,6 @@ class WatchdogEventHandler (RegexMatchingEventHandler):
             self.process(event)
         if self.detect_close and self.detect_close.match(event.src_path):
             self.log.debug("On close event detected (from create)")
-            self.log.debug("event.src_path={0}".format(event.src_path))
             if not event.is_directory:
                 self.log.debug("Append event to event_list_to_observe: {0}"
                                .format(event.src_path))
@@ -207,7 +206,7 @@ class CheckModTime (threading.Thread):
         self.time_till_closed = time_till_closed  # s
         self.action_time = action_time
         self.lock = lock
-        self._stop = threading.Event()
+        self._stopper = threading.Event()
         self._pool_running = True
 
         self.log.debug("threading.Thread init")
@@ -324,11 +323,11 @@ class CheckModTime (threading.Thread):
         # close the pool and wait for the work to finish
         self.pool.close()
         self.pool.join()
-        self._stop.set()
+        self._stopper.set()
         self._pool_running = False
 
     def stopped(self):
-        return self._stop.isSet()
+        return self._stopper.is_set()
 
     def __exit__(self):
         self.stop()
@@ -436,7 +435,7 @@ if __name__ == '__main__':
         import resource
         import gc
         gc.collect()  # don't care about stuff that would be garbage collected properly
-        from guppy import hpy
+#        from guppy import hpy
 
         log_level = "info"
     else:
@@ -481,14 +480,14 @@ if __name__ == '__main__':
 
     if determine_mem_usage:
         min_loop = 100
-        max_loop = 2000
+        max_loop = 20000
         steps = 5
 
         memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         print("Memory usage at start: {0} (kb)".format(memory_usage_old))
 
-        hp = hpy()
-        hp.setrelheap()
+#        hp = hpy()
+#        hp.setrelheap()
     else:
         min_loop = 100
         max_loop = 110
@@ -499,18 +498,19 @@ if __name__ == '__main__':
 
     try:
         for s in range(steps):
-            start = min_loop + s * step_loop
-            stop = start + step_loop
+            start = int(min_loop + s * step_loop)
+            stop = int(start + step_loop)
 #            print ("start=", start, "stop=", stop)
             for i in range(start, stop):
 
                 target_file = "{0}{1}.cbf".format(target_file_base, i)
-                logging.debug("copy to {0}".format(target_file))
+                if not determine_mem_usage:
+                    logging.debug("copy to {0}".format(target_file))
                 copyfile(source_file, target_file)
 
                 if i%100 == 0 or not determine_mem_usage:
                     event_list = eventdetector.get_new_event()
-                    if event_list:
+                    if event_list and not determine_mem_usage:
                         print("event_list:", event_list)
 
 #                time.sleep(0.5)
@@ -520,7 +520,7 @@ if __name__ == '__main__':
                       .format(s, memory_usage_new))
                 if memory_usage_new > memory_usage_old:
                     memory_usage_old = memory_usage_new
-                    print(hp.heap())
+#                    print(hp.heap())
 
     except KeyboardInterrupt:
         pass
