@@ -75,7 +75,7 @@ class DataFetcherBase(ABC):
                 self.cleaner_job_socket = None
 
         else:
-            self.log.debug("config={0}".format(self.config))
+            #self.log.debug("config={0}".format(self.config))
             raise Exception("Wrong configuration")
 
     def send_to_targets(self, targets, open_connections, metadata, payload,

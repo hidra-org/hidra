@@ -115,7 +115,7 @@ class EventDetector(EventDetectorBase):
                                             "mon"))
 
         else:
-            self.log.debug("config={0}".format(config))
+            #self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
 
         # Set up monitored queue to get notification when new data is sent to

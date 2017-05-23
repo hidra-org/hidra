@@ -36,7 +36,7 @@ class DataFetcher(DataFetcherBase):
             self.log.info("Configuration for data fetcher: {0}"
                           .format(config_reduced))
         else:
-            self.log.debug("config={0}".format(self.config))
+            #self.log.debug("config={0}".format(self.config))
             raise Exception("Wrong configuration")
 
     def get_metadata(self, targets, metadata):

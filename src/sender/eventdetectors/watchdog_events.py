@@ -393,7 +393,7 @@ class EventDetector(EventDetectorBase):
             self.checking_thread.start()
 
         else:
-            self.log.debug("config={0}".format(config))
+            #self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
 
     def get_new_event(self):

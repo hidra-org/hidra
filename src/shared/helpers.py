@@ -441,8 +441,12 @@ def check_config(required_params, config, log):
         else:
             config_reduced += "{0}: {1}, ".format(param, config[param])
 
-    # Remove redundant divider
-    config_reduced = config_reduced[:-2] + "}"
+
+    if config_reduced == "{":
+        config_reduced = config_reduced + "}"
+    else:
+        # Remove redundant divider
+        config_reduced = config_reduced[:-2] + "}"
 
     return check_passed, config_reduced
 

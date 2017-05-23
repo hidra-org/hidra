@@ -63,7 +63,7 @@ class EventDetector(EventDetectorBase):
             self.create_sockets()
 
         else:
-            self.log.debug("config={0}".format(config))
+            #self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
 
     def create_sockets(self):

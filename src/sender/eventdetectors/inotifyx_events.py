@@ -314,7 +314,7 @@ class EventDetector(EventDetectorBase):
                 self.cleanup_thread.start()
 
         else:
-            self.log.debug("config={0}".format(config))
+            # self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
 
     # Modification of the inotifyx example found inside inotifyx library
