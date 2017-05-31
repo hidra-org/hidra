@@ -128,7 +128,7 @@ class CleanUp (threading.Thread):
     def __init__(self, paths, mon_subdirs, mon_regex, cleanup_time,
                  action_time, lock, log_queue):
 
-        self.log = helpers.get_logger("CleanUp", log_queue)
+        self.log = helpers.get_logger("CleanUp", log_queue, log_level="info")
 
         self.log.debug("init")
         self.paths = paths

@@ -54,7 +54,7 @@ class DataSavingError(Exception):
     pass
 
 
-def get_logger(logger_name, queue, log_level=logging.DEBUG):
+def get_logger(logger_name, queue, log_level="debug"):
     from logutils.queue import QueueHandler
 
     # Create log and set handler to queue handle
@@ -62,7 +62,19 @@ def get_logger(logger_name, queue, log_level=logging.DEBUG):
     logger = logging.getLogger(logger_name)
     logger.propagate = False
     logger.addHandler(h)
-    logger.setLevel(log_level)
+
+    log_level_lower = log_level.lower()
+    if log_level_lower == "debug":
+        logger.setLevel(logging.DEBUG)
+    elif log_level_lower == "info":
+        logger.setLevel(logging.INFO)
+    elif log_level_lower == "warning":
+        logger.setLevel(logging.WARNING)
+    elif log_level_lower == "error":
+        logger.setLevel(logging.ERROR)
+    elif log_level_lower == "critical":
+        logger.setLevel(logging.CRITICAL)
+
 
     return logger
 

@@ -197,7 +197,8 @@ def split_file_path(filepath, paths):
 class CheckModTime (threading.Thread):
     def __init__(self, number_of_threads, time_till_closed, mon_dir,
                  action_time, lock, log_queue):
-        self.log = helpers.get_logger("CheckModTime", log_queue)
+        self.log = helpers.get_logger("CheckModTime", log_queue,
+                                      log_level="info")
 
         self.log.debug("init")
         # Make the Pool of workers
