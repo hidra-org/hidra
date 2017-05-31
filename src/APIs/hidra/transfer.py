@@ -1560,7 +1560,9 @@ class Transfer():
 
         if message and message[0] == b"VERSION_CONFLICT":
             self.stop()
-            raise VersionError("Versions are conflicting.")
+            raise VersionError("Versions are conflicting. Sender version: {0},"
+                               " API version: {1}"
+                               .format(message[1], __version__))
 
         elif message and message[0] == b"NO_VALID_HOST":
             self.stop()
