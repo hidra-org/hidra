@@ -116,6 +116,10 @@ def argument_parsing():
                              "data to (only needed if event detector is "
                              "inotifyx_events or watchdog_events "
                              "and data fetcher is file_fetcher)")
+    parser.add_argument("--create_fix_subdirs",
+                        type=str,
+                        help="Flag describing if the subdirectories should be "
+                             "created if they do not exist")
 
     parser.add_argument("--monitored_dir",
                         type=str,
@@ -277,14 +281,19 @@ def argument_parsing():
     helpers.check_existance(params["log_path"])
     if "monitored_dir" in params:
         helpers.check_existance(params["monitored_dir"])
-        # the subdirs have to exist because handles can only be added to
-        # directories inside a directory in which a handle was already set,
-        # e.g. handlers set to current/raw, local:
-        # - all subdirs created are detected + handlers are set
-        # - new directory on the same as monitored dir
-        #   (e.g. current/scratch_bl) cannot be detected
-        helpers.check_all_sub_dir_exist(params["monitored_dir"],
-                                        params["fix_subdirs"])
+        if "create_fix_subdirs" in params and params["create_fix_subdirs"]:
+            # create the subdirectories which do not exist already
+            helpers.create_sub_dirs(params["monitored_dir"],
+                                    params["fix_subdirs"])
+        else:
+            # the subdirs have to exist because handles can only be added to
+            # directories inside a directory in which a handle was already set,
+            # e.g. handlers set to current/raw, local:
+            # - all subdirs created are detected + handlers are set
+            # - new directory on the same as monitored dir
+            #   (e.g. current/scratch_bl) cannot be detected
+            helpers.check_all_sub_dir_exist(params["monitored_dir"],
+                                            params["fix_subdirs"])
     if params["store_data"]:
         helpers.check_existance(params["local_target"])
         # check if local_target contains fixed_subdirs

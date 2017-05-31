@@ -353,6 +353,20 @@ def check_ping(host, log=logging):
         sys.exit(1)
 
 
+def create_sub_dirs(dir_path, subdirs):
+
+    dir_path = os.path.normpath(dir_path)
+    dirs_to_check = [os.path.join(dir_path, directory)
+                     for directory in subdirs]
+
+    for d in dirs_to_check:
+        try:
+            os.mkdir(d)
+            logging.debug("Dir '{0}' does not exist. Create it.".format(d))
+        except IOError:
+            pass
+
+
 # IP and DNS name should be both in the whitelist
 def extend_whitelist(whitelist, log):
     global DOMAIN
