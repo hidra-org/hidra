@@ -481,8 +481,8 @@ if __name__ == '__main__':
 
     if determine_mem_usage:
         min_loop = 100
-        max_loop = 20000
-        steps = 5
+        max_loop = 30000
+        steps = 10
 
         memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         print("Memory usage at start: {0} (kb)".format(memory_usage_old))

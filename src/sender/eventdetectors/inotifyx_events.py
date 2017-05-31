@@ -613,6 +613,11 @@ if __name__ == '__main__':
         "action_time": 120
     }
 
+#    config["use_cleanup"] = True
+#    config["monitored_events"] = {"Some_supid_event": [".tif", ".cbf", ".file"]}
+#    config["time_till_closed"] = 0.2
+#    config["action_time"] = 0.5
+
     source_file = os.path.join(BASE_PATH, "test_1024B.file")
     target_file_base = os.path.join(
         BASE_PATH, "data", "source", "local", "raw") + os.sep
@@ -624,7 +629,7 @@ if __name__ == '__main__':
 
     if determine_mem_usage:
         min_loop = 100
-        max_loop = 20000
+        max_loop = 30000
         steps = 10
 
         memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
@@ -650,11 +655,12 @@ if __name__ == '__main__':
                 logging.debug("copy")
                 target_file = "{0}{1}.cbf".format(target_file_base, i)
                 copyfile(source_file, target_file)
+                time.sleep(0.1)
 
                 if i%100 == 0 or not determine_mem_usage:
                     event_list = eventdetector.get_new_event()
-                    if event_list:
-                        print("event_list:", event_list)
+#                    if event_list and not determine_mem_usage:
+#                        print("event_list:", event_list)
 
 #                time.sleep(0.5)
             if determine_mem_usage:
@@ -668,6 +674,29 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
     finally:
+        if determine_mem_usage and config["use_cleanup"]:
+            time.sleep(4)
+            event_list = eventdetector.get_new_event()
+            print("len of event_list={0}".format(len(event_list)))
+
+            memory_usage_new = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            print("Memory usage: {0} (kb)".format(memory_usage_new))
+            time.sleep(1)
+
+            event_list = eventdetector.get_new_event()
+            print("len of event_list={0}".format(len(event_list)))
+
+            memory_usage_new = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            print("Memory usage: {0} (kb)".format(memory_usage_new))
+
+            event_list = eventdetector.get_new_event()
+            print("len of event_list={0}".format(len(event_list)))
+
+        if determine_mem_usage:
+            memory_usage_new = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            print("Memory usage before stop: {0} (kb)".format(memory_usage_new))
+            time.sleep(5)
+
         eventdetector.stop()
         for number in range(min_loop, stop):
             try:
