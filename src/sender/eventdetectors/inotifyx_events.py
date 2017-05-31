@@ -140,6 +140,7 @@ class CleanUp (threading.Thread):
         self.action_time = action_time
 
         self.lock = lock
+        self.run_loop = True
 
         self.log.debug("threading.Thread init")
         threading.Thread.__init__(self)
@@ -150,7 +151,7 @@ class CleanUp (threading.Thread):
                                                       directory))
                         for directory in self.mon_subdirs]
 
-        while True:
+        while self.run_loop:
             try:
                 result = []
                 for dirname in dirs_to_walk:
@@ -213,6 +214,8 @@ class CleanUp (threading.Thread):
 
         return event_list
 
+    def stop(self):
+        self.run_loop = False
 
 class EventDetector(EventDetectorBase):
 
@@ -258,6 +261,8 @@ class EventDetector(EventDetectorBase):
 
         self.wd_to_path = {}
         self.fd = binding.init()
+
+        self.cleanup_thread = None
 
         # Only proceed if the configuration was correct
         if check_passed:
@@ -542,6 +547,8 @@ class EventDetector(EventDetectorBase):
         return event_message_list
 
     def stop(self):
+        if self.cleanup_thread is not None:
+            self.cleanup_thread.stop()
         try:
             for wd in self.wd_to_path:
                 try:
@@ -661,6 +668,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
     finally:
+        eventdetector.stop()
         for number in range(min_loop, stop):
             try:
                 target_file = "{0}{1}.cbf".format(target_file_base, number)
