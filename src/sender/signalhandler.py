@@ -362,7 +362,7 @@ class SignalHandler():
                                    exc_info=True)
                     continue
 
-                # remove subsription topic
+                # remove subscription topic
                 del message[0]
 
                 if message[0] == b"EXIT":
@@ -425,8 +425,11 @@ class SignalHandler():
         return False, signal, target
 
     def send_response(self, signal):
-            self.log.debug("Send response back: {0}".format(signal))
-            self.com_socket.send_multipart(signal, zmq.NOBLOCK)
+        if type(signal) != list:
+            signal = [signal]
+
+        self.log.debug("Send response back: {0}".format(signal))
+        self.com_socket.send_multipart(signal, zmq.NOBLOCK)
 
     def __start_signal(self, signal, send_type, socket_ids, list_to_check,
                        vari_list, corresp_list):
@@ -626,7 +629,16 @@ class SignalHandler():
         ###########################
         #       START_STREAM      #
         ###########################
-        if signal == b"START_STREAM":
+        if signal == b"GET_VERSION":
+            self.log.info("Received signal: {0}".format(signal))
+
+            self.send_response([signal, __version__])
+            return
+
+        ###########################
+        #       START_STREAM      #
+        ###########################
+        elif signal == b"START_STREAM":
             self.log.info("Received signal: {0} for hosts {1}"
                           .format(signal, socket_ids))
 

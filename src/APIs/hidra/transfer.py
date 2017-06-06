@@ -275,6 +275,24 @@ class Transfer():
         else:
             raise NotSupported("Chosen type of connection is not supported.")
 
+    def get_remote_version(self):
+        self.__create_signal_socket(self.signal_port)
+        if self.targets is None:
+            self.targets = []
+
+        signal = b"GET_VERSION"
+        message = self.__send_signal(signal)
+
+        # if there was no response or the response was of the wrong format,
+        # the receiver should be shut down
+        if message and message[0].startswith(signal):
+            self.log.info("Received signal confirmation ...")
+            return message[1]
+        else:
+            self.log.error("Invalid confirmation received...")
+            self.log.debug("message={0}".format(message))
+            return None
+
     # targets: [host, port, prio] or [[host, port, prio], ...]
     def initiate(self, targets):
         if self.connection_type == "NEXUS":
@@ -1436,7 +1454,7 @@ class Transfer():
                 signal = b"STOP_QUERY_NEXT"
 
             self.__send_signal(signal)
-            # TODO need to check correctness of signal?
+            # TODO: need to check correctness of signal?
 #            message = self.__send_signal(signal)
 
             try:
