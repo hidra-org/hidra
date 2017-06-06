@@ -467,6 +467,11 @@ class Transfer():
             self.stop()
             raise CommunicationFailed("Connection is already open.")
 
+        elif message and message[0] == b"STORING_DISABLED":
+            self.stop()
+            raise CommunicationFailed("Data storing is disabled on sender "
+                                      "side")
+
         elif message and message[0] == b"NO_VALID_SIGNAL":
             self.stop()
             raise CommunicationFailed("Connection type is not supported for "

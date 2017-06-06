@@ -849,6 +849,7 @@ class DataManager():
         """ SignalHandler """
         self.signalhandler_pr = threading.Thread(target=SignalHandler,
                                                  args=(
+                                                     self.params,
                                                      self.control_pub_con_str,
                                                      self.control_sub_con_str,
                                                      self.whitelist,

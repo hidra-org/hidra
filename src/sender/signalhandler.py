@@ -22,9 +22,9 @@ DOMAIN = ".desy.de"
 
 class SignalHandler():
 
-    def __init__(self, control_pub_con_id, control_sub_con_id, whitelist,
-                 com_con_id, request_fw_con_id, request_con_id, log_queue,
-                 context=None):
+    def __init__(self, params, control_pub_con_id, control_sub_con_id,
+                 whitelist, com_con_id, request_fw_con_id, request_con_id,
+                 log_queue, context=None):
         global DOMAIN
 
         # Send all logs to the main process
@@ -34,6 +34,7 @@ class SignalHandler():
         self.log.debug("SignalHandler started (PID {0})."
                        .format(self.current_pid))
 
+        self.params = params
         self.control_pub_con_id = control_pub_con_id
         self.control_sub_con_id = control_sub_con_id
         self.com_con_id = com_con_id
@@ -654,10 +655,13 @@ class SignalHandler():
         elif signal == b"START_STREAM_METADATA":
             self.log.info("Received signal: {0} for hosts {1}"
                           .format(signal, socket_ids))
-
-            self.__start_signal(signal, "metadata", socket_ids,
-                                self.open_requ_perm, None,
-                                self.next_requ_node)
+            if not self.params["store_data"]:
+                self.log.debug("Send notification that store_data is disabled")
+                self.send_response([b"STORING_DISABLED", __version__])
+            else:
+                self.__start_signal(signal, "metadata", socket_ids,
+                                    self.open_requ_perm, None,
+                                    self.next_requ_node)
 
             return
 
@@ -696,9 +700,13 @@ class SignalHandler():
             self.log.info("Received signal: {0} for hosts {1}"
                           .format(signal, socket_ids))
 
-            self.__start_signal(signal, "metadata", socket_ids,
-                                self.allowed_queries,
-                                self.open_requ_vari, None)
+            if not self.params["store_data"]:
+                self.log.debug("Send notification that store_data is disabled")
+                self.send_response([b"STORING_DISABLED", __version__])
+            else:
+                self.__start_signal(signal, "metadata", socket_ids,
+                                    self.allowed_queries,
+                                    self.open_requ_vari, None)
 
             return
 
