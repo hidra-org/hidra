@@ -4,8 +4,7 @@ from __future__ import unicode_literals
 import os
 from inotifyx import binding
 from inotifyx.distinfo import version as __version__
-import time
-import sys
+# import time
 
 print("inotifyx_version", __version__)
 
@@ -93,9 +92,9 @@ class EventDetector():
 
         events = [
             InotifyEvent(wd, mask, cookie, name)
-            for wd, mask, cookie, name in binding.get_events(self.fd, self.timeout)
+            for wd, mask, cookie, name in binding.get_events(self.fd,
+                                                             self.timeout)
         ]
-
 
         for event in events:
 
@@ -133,7 +132,8 @@ if __name__ == '__main__':
     import setproctitle
     import resource
 #    import gc
-#    gc.collect()  # don't care about stuff that would be garbage collected properly
+#    # don't care about stuff that would be garbage collected properly
+#    gc.collect()
 #    import objgraph
 #    from guppy import hpy
 
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     min_loop = 100
     max_loop = 20000
     steps = 10
-    step_loop = max_loop/steps
+    step_loop = max_loop / steps
     print("Used steps:", steps)
 
     memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
@@ -169,18 +169,19 @@ if __name__ == '__main__':
                 target_file = "{0}{1}.cbf".format(target_file_base, i)
                 call(["cp", source_file, target_file])
 
-                if i%100 == 0:
+                if i % 100 == 0:
                     event_list = eventdetector.get_new_event()
 #                    if event_list:
 #                        print("event_list:", event_list)
 
 #                time.sleep(1)
-            memory_usage_new = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            memory_usage_new = (
+                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
             print("Memory usage in iteration {0}: {1} (kb)"
                   .format(s, memory_usage_new))
             if memory_usage_new > memory_usage_old and s != 0:
                 memory_usage_old = memory_usage_new
-                #objgraph.show_most_common_types()
+                # objgraph.show_most_common_types()
 #                print(hp.heap())
 
     except KeyboardInterrupt:

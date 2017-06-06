@@ -75,7 +75,6 @@ def get_logger(logger_name, queue, log_level="debug"):
     elif log_level_lower == "critical":
         logger.setLevel(logging.CRITICAL)
 
-
     return logger
 
 
@@ -453,7 +452,7 @@ class Transfer():
                 self.log.error("Could not receive answer to signal")
                 raise
 
-        #check correctness of message
+        # check correctness of message
         if message and message[0] == b"VERSION_CONFLICT":
             self.stop()
             raise VersionError("Versions are conflicting. Sender version: {0},"

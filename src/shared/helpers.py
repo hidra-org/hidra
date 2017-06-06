@@ -460,7 +460,6 @@ def check_config(required_params, config, log):
         else:
             config_reduced += "{0}: {1}, ".format(param, config[param])
 
-
     if config_reduced == "{":
         config_reduced = config_reduced + "}"
     else:

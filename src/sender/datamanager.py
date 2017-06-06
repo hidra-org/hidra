@@ -280,6 +280,9 @@ def argument_parsing():
     # check if directories exist
     helpers.check_existance(params["log_path"])
     if "monitored_dir" in params:
+        # get rid of formating errors
+        params["monitored_dir"] = os.path.normpath(params["monitored_dir"])
+
         helpers.check_existance(params["monitored_dir"])
         if "create_fix_subdirs" in params and params["create_fix_subdirs"]:
             # create the subdirectories which do not exist already
@@ -301,7 +304,7 @@ def argument_parsing():
         #      fix_subdirs contain current/raw
 #        if not helpers.check_sub_dir_contained(params["local_target"],
 #                                               params["fix_subdirs"]):
-            # not in Eiger mode
+#            # not in Eiger mode
 #            helpers.check_all_sub_dir_exist(params["local_target"],
 #                                            params["fix_subdirs"])
 

@@ -73,7 +73,7 @@ class DataFetcher(DataFetcherBase):
                                   self.config["confirmation_resp_port"]])
 
         else:
-            #self.log.debug("config={0}".format(self.config))
+            # self.log.debug("config={0}".format(self.config))
             raise Exception("Wrong configuration")
 
     def get_metadata(self, targets, metadata):

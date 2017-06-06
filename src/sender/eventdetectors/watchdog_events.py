@@ -267,7 +267,7 @@ class CheckModTime (threading.Thread):
         global event_message_list
         global event_list_to_observe_tmp
 
-        thread_name = threading.current_thread().name
+#        thread_name = threading.current_thread().name
 
         try:
             # check modification time
@@ -393,7 +393,7 @@ class EventDetector(EventDetectorBase):
             self.checking_thread.start()
 
         else:
-            #self.log.debug("config={0}".format(config))
+            # self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
 
     def get_new_event(self):
@@ -435,7 +435,8 @@ if __name__ == '__main__':
     if determine_mem_usage:
         import resource
         import gc
-        gc.collect()  # don't care about stuff that would be garbage collected properly
+        # don't care about stuff that would be garbage collected properly
+        gc.collect()
 #        from guppy import hpy
 
         log_level = "info"
@@ -494,7 +495,7 @@ if __name__ == '__main__':
         max_loop = 110
         steps = 1
 
-    step_loop = (max_loop-min_loop)/steps
+    step_loop = (max_loop - min_loop) / steps
     print("Used steps:", steps)
 
     try:
@@ -509,14 +510,15 @@ if __name__ == '__main__':
                     logging.debug("copy to {0}".format(target_file))
                 copyfile(source_file, target_file)
 
-                if i%100 == 0 or not determine_mem_usage:
+                if i % 100 == 0 or not determine_mem_usage:
                     event_list = eventdetector.get_new_event()
                     if event_list and not determine_mem_usage:
                         print("event_list:", event_list)
 
 #                time.sleep(0.5)
             if determine_mem_usage:
-                memory_usage_new = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                memory_usage_new = (
+                    resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
                 print("Memory usage in iteration {0}: {1} (kb)"
                       .format(s, memory_usage_new))
                 if memory_usage_new > memory_usage_old:

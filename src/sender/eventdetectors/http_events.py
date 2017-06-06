@@ -54,7 +54,7 @@ class EventDetector(EventDetectorBase):
                 maxlen=config["history_size"])
 
         else:
-            #self.log.debug("config={0}".format(config))
+            # self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
 
     def get_new_event(self):

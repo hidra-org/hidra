@@ -47,7 +47,7 @@ class DataFetcher(DataFetcherBase):
                 self.finish = self.finish_without_cleaner
 
         else:
-            #self.log.debug("config={0}".format(config))
+            # self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
 
     def get_metadata(self, targets, metadata):

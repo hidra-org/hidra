@@ -404,8 +404,8 @@ class HidraController():
                 if eventdetector == "inotifyx_events":
                     f.write("monitored_dir        = {0}/data/source\n"
                             .format(BASEDIR))
-                    f.write('monitored_events     = {"IN_CLOSE_WRITE" : [".tif", '
-                            '".cbf", ".nxs"]}\n')
+                    f.write('monitored_events     = {"IN_CLOSE_WRITE" : '
+                            '[".tif", ".cbf", ".nxs"]}\n')
                 f.write("use_cleanup          = False\n")
                 f.write("action_time          = 150\n")
                 f.write("time_till_closed     = 2\n")
@@ -430,7 +430,7 @@ class HidraController():
                         .format(current_config["remove_data"]))
                 f.write("whitelist            = {0}\n"
                         .format(current_config["whitelist"]))
-		f.write('cleaner_job_con_str  = ""')
+                f.write('cleaner_job_con_str  = ""')
 
                 self.log.info("Started with ext_ip: {0}, event detector: {1},"
                               " data fetcher: {2}".format(external_ip,
@@ -533,7 +533,7 @@ def call_hidra_service(cmd, beamline, det_id, log):
             and (os.path.exists("/usr/lib/systemd/{0}.service"
                                 .format(SYSTEMD_PREFIX))
                  or os.path.exists("/usr/lib/systemd/system/{0}.service"
-                                .format(SYSTEMD_PREFIX))
+                                   .format(SYSTEMD_PREFIX))
                  or os.path.exists("/etc/systemd/system/{0}.service"
                                    .format(SYSTEMD_PREFIX)))):
 

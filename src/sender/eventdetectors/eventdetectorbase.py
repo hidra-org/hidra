@@ -37,7 +37,7 @@ class EventDetectorBase():
             self.log.info("Configuration for event detector: {0}"
                           .format(config_reduced))
         else:
-            #self.log.debug("config={0}".format(config))
+            # self.log.debug("config={0}".format(config))
             raise Exception("Wrong configuration")
 
     @abc.abstractmethod

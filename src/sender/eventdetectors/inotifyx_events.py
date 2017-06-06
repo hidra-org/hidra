@@ -217,6 +217,7 @@ class CleanUp (threading.Thread):
     def stop(self):
         self.run_loop = False
 
+
 class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
@@ -390,8 +391,9 @@ class EventDetector(EventDetectorBase):
         finally:
             self.lock.release()
 
-        if event_message_list:
-            self.log.info("Added missed files: {0}".format(event_message_list))
+#        if event_message_list:
+#            self.log.info("Added missed files: {0}"
+#                          .format(event_message_list))
 
         return event_message_list
 
@@ -427,7 +429,7 @@ class EventDetector(EventDetectorBase):
                     current_mon_regex = self.mon_regex_per_event[key]
 
 #            if not is_dir:
-#                self.log.debug("{0} {1} {2}".format(path, event.name, parts)
+#                self.log.debug("{0} {1} {2}".format(path, event.name, parts))
 #                self.log.debug("current_mon_event: {0}"
 #                               .format(current_mon_event))
 #            self.log.debug(event.name)
@@ -525,7 +527,7 @@ class EventDetector(EventDetectorBase):
                 # self.log.debug("not is_dir")
                 # self.log.debug("current_mon_event: {0}"
                 #                .format(current_mon_event))
-                # self.log.debug("{0} {1} {2}".format(path, event.name, parts)
+                # self.log.debug("{0} {1} {2}".format(path, event.name, parts))
                 # self.log.debug("filename: {0}".format(event.name))
                 # self.log.debug("regex match: {0}".format(
                 #                current_mon_regex.match(event.name)))
@@ -573,7 +575,8 @@ if __name__ == '__main__':
     if determine_mem_usage:
         import resource
         import gc
-        gc.collect()  # don't care about stuff that would be garbage collected properly
+        # don't care about stuff that would be garbage collected properly
+        gc.collect()
         from guppy import hpy
 
         log_level = "info"
@@ -614,7 +617,8 @@ if __name__ == '__main__':
     }
 
 #    config["use_cleanup"] = True
-#    config["monitored_events"] = {"Some_supid_event": [".tif", ".cbf", ".file"]}
+#    config["monitored_events"] = {
+#        "Some_supid_event": [".tif", ".cbf", ".file"]}
 #    config["time_till_closed"] = 0.2
 #    config["action_time"] = 0.5
 
@@ -642,7 +646,7 @@ if __name__ == '__main__':
         max_loop = 110
         steps = 1
 
-    step_loop = (max_loop-min_loop)/steps
+    step_loop = (max_loop - min_loop) / steps
     print("Used steps:", steps)
 
     try:
@@ -657,14 +661,15 @@ if __name__ == '__main__':
                 copyfile(source_file, target_file)
                 time.sleep(0.1)
 
-                if i%100 == 0 or not determine_mem_usage:
+                if i % 100 == 0 or not determine_mem_usage:
                     event_list = eventdetector.get_new_event()
 #                    if event_list and not determine_mem_usage:
 #                        print("event_list:", event_list)
 
 #                time.sleep(0.5)
             if determine_mem_usage:
-                memory_usage_new = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                memory_usage_new = (
+                    resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
                 print("Memory usage in iteration {0}: {1} (kb)"
                       .format(s, memory_usage_new))
                 if memory_usage_new > memory_usage_old:
@@ -679,22 +684,26 @@ if __name__ == '__main__':
             event_list = eventdetector.get_new_event()
             print("len of event_list={0}".format(len(event_list)))
 
-            memory_usage_new = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            memory_usage_new = (
+                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
             print("Memory usage: {0} (kb)".format(memory_usage_new))
             time.sleep(1)
 
             event_list = eventdetector.get_new_event()
             print("len of event_list={0}".format(len(event_list)))
 
-            memory_usage_new = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            memory_usage_new = (
+                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
             print("Memory usage: {0} (kb)".format(memory_usage_new))
 
             event_list = eventdetector.get_new_event()
             print("len of event_list={0}".format(len(event_list)))
 
         if determine_mem_usage:
-            memory_usage_new = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-            print("Memory usage before stop: {0} (kb)".format(memory_usage_new))
+            memory_usage_new = (
+                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+            print("Memory usage before stop: {0} (kb)"
+                  .format(memory_usage_new))
             time.sleep(5)
 
         eventdetector.stop()
