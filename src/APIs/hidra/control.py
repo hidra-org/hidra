@@ -12,14 +12,13 @@ import subprocess
 import re
 import json
 import zmq
+import socket
 
 # from ._version import __version__
 from ._constants import connection_list
 from ._shared_helpers import LoggingFunction
 
-DOMAIN = ".desy.de"
 LDAPURI = "it-ldap-slave.desy.de:1389"
-
 
 class NotSupported(Exception):
     pass
@@ -74,7 +73,6 @@ def excecute_ldapsearch(ldap_cn):
 
 
 def check_netgroup(hostname, beamline, log=None):
-    global DOMAIN
 
     if log is None:
         log = LoggingFunction(None)
@@ -87,13 +85,10 @@ def check_netgroup(hostname, beamline, log=None):
 
     netgroup = excecute_ldapsearch(netgroup_name)
 
-    # not all hosts are configuered with a fully qualified DNS name
-    hostname = hostname.replace(DOMAIN, "")
-    netgroup_modified = []
-    for host in netgroup:
-        netgroup_modified.append(host.replace(DOMAIN, ""))
+    # convert host to fully qualified DNS name
+    hostname = socket.getfqdn(hostname)
 
-    if hostname not in netgroup_modified:
+    if hostname not in netgroup:
         log.error("Host {0} is not contained in netgroup of "
                   "beamline {1}".format(hostname, beamline))
         sys.exit(1)
