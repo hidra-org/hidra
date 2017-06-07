@@ -13,12 +13,14 @@ import re
 import json
 import zmq
 import socket
+from string import Template
 
 # from ._version import __version__
 from ._constants import connection_list
 from ._shared_helpers import LoggingFunction
 
 LDAPURI = "it-ldap-slave.desy.de:1389"
+NETGROUP_TEMPLATE = Template("a3${bl}-hosts")
 
 class NotSupported(Exception):
     pass
@@ -81,8 +83,7 @@ def check_netgroup(hostname, beamline, log=None):
     else:
         log = LoggingFunction("debug")
 
-    netgroup_name = "a3{0}-hosts".format(beamline)
-
+    netgroup_name = NETGROUP_TEMPLATE.substitute(bl=beamline)
     netgroup = excecute_ldapsearch(netgroup_name)
 
     # convert host to fully qualified DNS name
