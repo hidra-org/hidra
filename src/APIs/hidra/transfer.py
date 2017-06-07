@@ -15,6 +15,7 @@ import sys
 import tempfile
 import time
 import re
+import socket
 from multiprocessing import Queue
 from zmq.auth.thread import ThreadAuthenticator
 
@@ -213,7 +214,7 @@ class Transfer():
 
         self.current_pid = os.getpid()
 
-        self.signal_host = signal_host
+        self.signal_host = socket.getfqdn(signal_host)
         self.signal_port = "50000"
         self.request_port = "50001"
         self.file_op_port = "50050"
@@ -374,7 +375,9 @@ class Transfer():
                 and type(targets[1]) != list
                 and type(targets[2]) != list):
             host, port, prio = targets
-            self.targets = [["{0}:{1}".format(host, port), prio, [""]]]
+            self.targets = [["{0}:{1}".format(socket.getfqdn(host), port),
+                             prio,
+                             [""]]]
 
         # [host, port, prio, suffixes]
         elif (len(targets) == 4
@@ -383,7 +386,9 @@ class Transfer():
                 and type(targets[2]) != list
                 and type(targets[3]) == list):
             host, port, prio, suffixes = targets
-            self.targets = [["{0}:{1}".format(host, port), prio, suffixes]]
+            self.targets = [["{0}:{1}".format(socket.getfqdn(host), port),
+                             prio,
+                             suffixes]]
 
         # [[host, port, prio], ...] or [[host, port, prio, suffixes], ...]
         else:
@@ -405,7 +410,9 @@ class Transfer():
                                                          log=self.log)
 
                     self.targets.append(
-                        ["{0}:{1}".format(host, port), prio, regex])
+                        ["{0}:{1}".format(socket.getfqdn(host), port),
+                         prio,
+                         regex])
                 else:
                     self.stop()
                     self.log.debug("targets={0}".format(targets))
