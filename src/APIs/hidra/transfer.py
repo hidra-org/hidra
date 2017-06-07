@@ -377,7 +377,7 @@ class Transfer():
             host, port, prio = targets
             self.targets = [["{0}:{1}".format(socket.getfqdn(host), port),
                              prio,
-                             [""]]]
+                             ".*"]]
 
         # [host, port, prio, suffixes]
         elif (len(targets) == 4
@@ -386,9 +386,13 @@ class Transfer():
                 and type(targets[2]) != list
                 and type(targets[3]) == list):
             host, port, prio, suffixes = targets
+
+            regex = convert_suffix_list_to_regex(suffixes,
+                                     log=self.log)
+
             self.targets = [["{0}:{1}".format(socket.getfqdn(host), port),
                              prio,
-                             suffixes]]
+                             regex]]
 
         # [[host, port, prio], ...] or [[host, port, prio, suffixes], ...]
         else:
