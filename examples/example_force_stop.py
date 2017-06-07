@@ -31,6 +31,7 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
 
+#    targets = [[arguments.target_host, "50101", 1, ".*(tif|cbf)$"]]
     targets = [[arguments.target_host, "50100", 1, [".cbf"]],
                [arguments.target_host, "50101", 1, [".cbf"]],
                [arguments.target_host, "50102", 1, [".cbf"]]]

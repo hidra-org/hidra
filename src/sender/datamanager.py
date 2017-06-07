@@ -533,7 +533,7 @@ class DataManager():
         self.log.info("Version: {0}".format(__version__))
 
         # IP and DNS name should be both in the whitelist
-        helpers.extend_whitelist(self.whitelist, self.log)
+        self.whitelist = helpers.extend_whitelist(self.whitelist, self.log)
 
         # Create zmq context
         # there should be only one context in one process

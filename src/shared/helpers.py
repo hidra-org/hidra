@@ -32,7 +32,6 @@ except:
     from logutils.queue import QueueListener
     from logutils.queue import QueueHandler
 
-DOMAIN = ".desy.de"
 LDAPURI = "it-ldap-slave.desy.de:1389"
 
 
@@ -112,30 +111,6 @@ def set_parameters(config_file, arguments):
                 params[arg] = arg_value
 
     return params
-
-
-def excecute_ldapsearch(ldap_cn):
-    global LDAPURI
-
-    p = subprocess.Popen(
-        ["ldapsearch",
-         "-x",
-         "-H ldap://" + LDAPURI,
-         "cn=" + ldap_cn, "-LLL"],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-    lines = p.stdout.readlines()
-
-    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
-                            re.M | re.I)
-    netgroup = []
-
-    for line in lines:
-        if match_host.match(line):
-            if match_host.match(line).group(1) not in netgroup:
-                netgroup.append(match_host.match(line).group(1))
-
-    return netgroup
 
 
 # http://code.activestate.com/recipes/541096-prompt-the-user-for-confirmation/
@@ -310,20 +285,17 @@ def check_version(version, log):
 
 
 def check_host(host, whitelist, log):
-    global DOMAIN
 
     if whitelist is None:
         return True
 
     if host and whitelist:
-
         if type(host) == list:
             return_val = True
             for hostname in host:
-                host_modified = hostname.replace(DOMAIN, "")
+                host_modified = socket.getfqdn(hostname)
 
-                if (hostname not in whitelist
-                        and host_modified not in whitelist):
+                if (host_modified not in whitelist):
                     log.info("Host {0} is not allowed to connect"
                              .format(hostname))
                     return_val = False
@@ -331,9 +303,9 @@ def check_host(host, whitelist, log):
             return return_val
 
         else:
-            host_modified = host.replace(DOMAIN, "")
+            host_modified = socket.getfqdn(host)
 
-            if host in whitelist or host_modified in whitelist:
+            if host_modified in whitelist:
                 return True
             else:
                 log.info("Host {0} is not allowed to connect".format(host))
@@ -365,43 +337,6 @@ def create_sub_dirs(dir_path, subdirs):
             logging.debug("Dir '{0}' does not exist. Create it.".format(d))
         except IOError:
             pass
-
-
-# IP and DNS name should be both in the whitelist
-def extend_whitelist(whitelist, log):
-    global DOMAIN
-
-    log.info("Configured whitelist: {0}".format(whitelist))
-
-    if whitelist is not None:
-        if type(whitelist) == str:
-            whitelist = excecute_ldapsearch(whitelist)
-            log.info("Whitelist after ldapsearch: {0}".format(whitelist))
-        else:
-            extended_whitelist = []
-
-            for host in whitelist:
-
-                if host == "localhost":
-                    extended_whitelist.append(socket.gethostbyname(host))
-                else:
-                    try:
-                        hostname, tmp, ip = socket.gethostbyaddr(host)
-
-                        host_modified = hostname.replace(DOMAIN, "")
-
-                        if host_modified not in whitelist:
-                            extended_whitelist.append(host_modified)
-
-                        if ip[0] not in whitelist:
-                            extended_whitelist.append(ip[0])
-                    except:
-                        pass
-
-            for host in extended_whitelist:
-                whitelist.append(host)
-
-            log.debug("Extended whitelist: {0}".format(whitelist))
 
 
 def check_config(required_params, config, log):
@@ -467,6 +402,71 @@ def check_config(required_params, config, log):
         config_reduced = config_reduced[:-2] + "}"
 
     return check_passed, config_reduced
+
+
+def extend_whitelist(whitelist, log):
+    """
+    Only fully qualified domain named should be in the whitlist
+    """
+
+    log.info("Configured whitelist: {0}".format(whitelist))
+
+    if whitelist is not None:
+        if type(whitelist) == str:
+            whitelist = excecute_ldapsearch(whitelist)
+            log.info("Whitelist after ldapsearch: {0}".format(whitelist))
+        else:
+            whitelist = [socket.getfqdn(host) for host in whitelist]
+            log.debug("Converted whitelist: {0}".format(whitelist))
+
+    return whitelist
+
+
+def convert_socket_to_fqdn(socketids, log):
+    """
+    Converts hosts to fully qualified domain name
+    e.g. [["my_host:50101", ...], ...] -> [["my_host.desy.de:50101", ...], ...]
+    or "my_host:50101" -> "my_host.desy.de:50101"
+    """
+    if type(socketids) == list:
+        for target in socketids:
+            # socketids had the format
+            # [["cfeld-pcx27533:50101", 1, ".*(tif|cbf)$"], ...]
+            if type(target) == list:
+                host, port = target[0].split(":")
+                new_target = "{0}:{1}".format(socket.getfqdn(host), port)
+                target[0] = new_target
+    else:
+        host, port = socketids.split(":")
+        socketids = "{0}:{1}".format(socket.getfqdn(host), port)
+
+    log.debug("converted socketids={}".format(socketids))
+
+    return socketids
+
+
+def excecute_ldapsearch(ldap_cn):
+    global LDAPURI
+
+    p = subprocess.Popen(
+        ["ldapsearch",
+         "-x",
+         "-H ldap://" + LDAPURI,
+         "cn=" + ldap_cn, "-LLL"],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    lines = p.stdout.readlines()
+
+    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+                            re.M | re.I)
+    netgroup = []
+
+    for line in lines:
+        if match_host.match(line):
+            if match_host.match(line).group(1) not in netgroup:
+                netgroup.append(match_host.match(line).group(1))
+
+    return netgroup
 
 
 # http://stackoverflow.com/questions/25585518/

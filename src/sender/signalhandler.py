@@ -17,15 +17,12 @@ from hidra import convert_suffix_list_to_regex
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-DOMAIN = ".desy.de"
-
 
 class SignalHandler():
 
     def __init__(self, params, control_pub_con_id, control_sub_con_id,
                  whitelist, com_con_id, request_fw_con_id, request_con_id,
                  log_queue, context=None):
-        global DOMAIN
 
         # Send all logs to the main process
         self.log = helpers.get_logger("SignalHandler", log_queue)
@@ -49,13 +46,7 @@ class SignalHandler():
         # to rotate through the open permanent requests
         self.next_requ_node = []
 
-        if whitelist is not None:
-            self.whitelist = []
-
-            for host in whitelist:
-                self.whitelist.append(host.replace(DOMAIN, ""))
-        else:
-            self.whitelist = None
+        self.whitelist = helpers.extend_whitelist(whitelist, self.log)
 
         # sockets
         self.control_pub_socket = None
@@ -202,7 +193,6 @@ class SignalHandler():
                     -> this does not affect this class
             EXIT: shutdown everything
         """
-        global DOMAIN
 
         # run loop, and wait for incoming messages
         self.log.debug("Waiting for new signals or requests.")
@@ -308,11 +298,8 @@ class SignalHandler():
                 self.log.debug("Received request: {0}".format(in_message))
 
                 if in_message[0] == b"NEXT":
-                    incoming_socket_id = (
-                        in_message[1]
-                        .decode("utf-8")
-                        .replace(DOMAIN, "")
-                    )
+                    incoming_socket_id = helpers.convert_socket_to_fqdn(
+                        in_message[1].decode("utf-8"), self.log)
 
                     for index in range(len(self.allowed_queries)):
                         for i in range(len(self.allowed_queries[index])):
@@ -325,11 +312,8 @@ class SignalHandler():
                                                   index][i]))
 
                 elif in_message[0] == b"CANCEL":
-                    incoming_socket_id = (
-                        in_message[1]
-                        .decode("utf-8")
-                        .replace(DOMAIN, "")
-                    )
+                    incoming_socket_id = helpers.convert_socket_to_fqdn(
+                        in_message[1].decode("utf-8"), self.log)
 
                     still_requested = []
                     for a in range(len(self.open_requ_vari)):
@@ -397,6 +381,8 @@ class SignalHandler():
             )
             target = json.loads(target)
 
+            target = helpers.convert_socket_to_fqdn(target, self.log)
+
             try:
                 host = [t[0].split(":")[0] for t in target]
             except:
@@ -421,6 +407,7 @@ class SignalHandler():
                     self.log.warning("One of the hosts is not allowed to "
                                      "connect.")
                     self.log.debug("hosts: {0}".format(host))
+                    self.log.debug("whitelist: {0}".format(self.whitelist))
                     return [b"NO_VALID_HOST"], None, None
 
         return False, signal, target
@@ -434,12 +421,12 @@ class SignalHandler():
 
     def __start_signal(self, signal, send_type, socket_ids, list_to_check,
                        vari_list, corresp_list):
-        global DOMAIN
+
+        socket_ids = helpers.convert_socket_to_fqdn(socket_ids,
+                                                    self.log)
 
         # socket_ids is of the format [[<host>, <prio>, <suffix>], ...]
         for socket_conf in socket_ids:
-            # make host naming consistent
-            socket_conf[0] = socket_conf[0].replace(DOMAIN, "")
             # for compatibility with API versions 3.1.2 or older
             self.log.debug("suffix={0}".format(socket_conf[2]))
             socket_conf[2] = convert_suffix_list_to_regex(socket_conf[2],
@@ -525,7 +512,7 @@ class SignalHandler():
 
 #        for socket_conf in socket_ids:
 #
-#            socket_conf[0] = socket_conf[0].replace(DOMAIN, "")
+#            socket_conf[0] = socket.getfqdn(socket_conf[0])
 #
 #            socket_id = socket_conf[0]
 #            self.log.debug("socket_id: {0}".format(socket_id))
@@ -560,16 +547,18 @@ class SignalHandler():
 
     def __stop_signal(self, signal, socket_ids, list_to_check, vari_list,
                       corresp_list):
-        global DOMAIN
 
         connection_not_found = False
         tmp_remove_index = []
         tmp_remove_element = []
         found = False
 
+        socket_ids = helpers.convert_socket_to_fqdn(socket_ids,
+                                                    self.log)
+
         for socket_conf in socket_ids:
 
-            socket_id = socket_conf[0].replace(DOMAIN, "")
+            socket_id = socket_conf[0]
 
             for sublist in list_to_check:
                 for element in sublist:
