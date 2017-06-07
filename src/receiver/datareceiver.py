@@ -211,10 +211,11 @@ class DataReceiver:
 
         self.lock = threading.Lock()
 
-        if (params["whitelist"] is not None
-                and type(params["whitelist"]) == str):
+        if params["whitelist"] is not None:
             self.lock.acquire()
-            whitelist = helpers.excecute_ldapsearch(params["whitelist"])
+            self.log.debug("params['whitelist']={0}"
+                           .format(params["whitelist"]))
+            whitelist = helpers.extend_whitelist(params["whitelist"], self.log)
             self.log.info("Configured whitelist: {0}".format(whitelist))
             self.lock.release()
 
@@ -228,7 +229,7 @@ class DataReceiver:
 
         # only start the thread if a netgroup was configured
         if (params["whitelist"] is not None
-                and type(params["whitelist"]) is not list):
+                and type(params["whitelist"]) == str):
             self.log.debug("Starting checking thread")
             self.checking_thread = CheckNetgroup(params["whitelist"],
                                                  self.lock)
