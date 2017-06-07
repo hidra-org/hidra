@@ -23,18 +23,21 @@ except:
     import hidra
 
 # the list transformation is needed for Python 3 compliance
-allowed_beamlines = list(hidra.connection_list.keys())
-# allowed_beamlines = ["p00", "p01", "p02.1", "p02.2", "p03", "p04", "p05",
+ALLOWED_BEAMLINES = list(hidra.connection_list.keys())
+# ALLOWED_BEAMLINES = ["p00", "p01", "p02.1", "p02.2", "p03", "p04", "p05",
 #                      "p06", "p07", "p08", "p09", "p10", "p11"]
 
+NETGROUP_TEMPLATE = Template("a3${bl}-hosts")
 
 def argument_parsing():
+    global ALLOWED_BEAMLINES
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--beamline",
                         type=str,
                         required=True,
-                        choices=allowed_beamlines,
+                        choices=ALLOWED_BEAMLINES,
                         help="Beamline for which the HiDRA server (detector "
                              "mode) should be operated")
 
@@ -116,7 +119,7 @@ if __name__ == '__main__':
             obj.set("history_size", 2000)
             obj.set("store_data", True)
             obj.set("remove_data", True)
-            obj.set("whitelist", "localhost")
+            obj.set("whitelist", NETGROUP_TEMPLATE)
 
             print("Starting HiDRA (detector mode):", obj.do("start"))
 
