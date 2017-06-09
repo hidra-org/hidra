@@ -214,7 +214,10 @@ class Transfer():
 
         self.current_pid = os.getpid()
 
-        self.signal_host = socket.getfqdn(signal_host)
+        if signal_host is not None:
+            self.signal_host = socket.getfqdn(signal_host)
+        else:
+            self.signal_host = None
         self.signal_port = "50000"
         self.request_port = "50001"
         self.file_op_port = "50050"
