@@ -55,11 +55,11 @@ if __name__ == "__main__":
     parser.add_argument("--signal_host",
                         type=str,
                         help="Host where HiDRA is runnning",
-                        default=socket.gethostname())
+                        default=socket.getfqdn())
     parser.add_argument("--target_host",
                         type=str,
                         help="Host where the data should be send to",
-                        default=socket.gethostname())
+                        default=socket.getfqdn())
     parser.add_argument("--procname",
                         type=str,
                         help="Name with which the service should be running",

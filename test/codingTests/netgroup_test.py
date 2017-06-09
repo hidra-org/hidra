@@ -25,7 +25,7 @@ def excecute_ldapsearch(ldap_cn):
 
 beamline = "p01"
 netgroup_name = "a3{0}-hosts".format(beamline)
-hostname = socket.gethostname()
+hostname = socket.getfqdn()
 
 netgroup = excecute_ldapsearch(netgroup_name)
 print netgroup

@@ -302,7 +302,7 @@ class RequestResponder():
         self.run()
 
     def run(self):
-        hostname = socket.gethostname()
+        hostname = socket.getfqdn()
         self.log.info("[RequestResponder] Start run")
         open_requests = [['{0}:6003'.format(hostname), 1, [".cbf"]],
                          ['{0}:6004'.format(hostname), 0, [".cbf"]]]

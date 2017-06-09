@@ -22,7 +22,7 @@ class Passthrough(Operations):
         self.timeout = 2000
         self.read_pointer = 0
 
-        targets = [socket.gethostname(), "50101", 1]
+        targets = [socket.getfqdn(), "50101", 1]
 
         # create HiDRA Transfer instance which wants data by request only
         self.query = Transfer("QUERY_NEXT", signal_host)
@@ -203,7 +203,7 @@ if __name__ == '__main__':
     parser.add_argument("--signal_host",
                         type=str,
                         help="Host where HiDRA is runnning",
-                        default=socket.gethostname())
+                        default=socket.getfqdn())
     parser.add_argument("--mount",
                         type=str,
                         help="Mount point under which hidrafs should be"

@@ -181,7 +181,7 @@ if __name__ == '__main__':
     root.addHandler(qh)
 
     """ determine socket connection strings """
-    con_ip = socket.gethostname()
+    con_ip = socket.getfqdn()
     ext_ip = socket.gethostbyaddr(con_ip)[2][0]
     # ext_ip = "0.0.0.0"
 

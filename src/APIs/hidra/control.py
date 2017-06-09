@@ -117,7 +117,7 @@ class Control():
         self.detector = detector
         self.socket = None
 
-        self.host = socket.gethostname()
+        self.host = socket.getfqdn()
 
         check_netgroup(self.host, self.beamline, self.log)
         check_netgroup(self.detector, self.beamline, self.log)

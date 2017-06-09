@@ -530,7 +530,7 @@ class Transfer():
                     raise FormatError("Socket information have to be of the"
                                       "form [<host>, <port>].")
             else:
-                host = socket.gethostname()
+                host = socket.getfqdn()
                 port = str(data_socket_prop)
 
         elif self.targets:
