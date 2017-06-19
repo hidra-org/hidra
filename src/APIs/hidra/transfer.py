@@ -15,7 +15,6 @@ import sys
 import tempfile
 import time
 import re
-import socket
 from multiprocessing import Queue
 from zmq.auth.thread import ThreadAuthenticator
 
@@ -391,7 +390,7 @@ class Transfer():
             host, port, prio, suffixes = targets
 
             regex = convert_suffix_list_to_regex(suffixes,
-                                     log=self.log)
+                                                 log=self.log)
 
             self.targets = [["{0}:{1}".format(socket.getfqdn(host), port),
                              prio,
@@ -537,7 +536,7 @@ class Transfer():
             if len(self.targets) == 1:
                 host, port = self.targets[0][0].split(":")
             else:
-                raise FormatError("Multipe possible ports. "
+                raise FormatError("Multiple possible ports. "
                                   "Please choose which one to use.")
         else:
                 raise FormatError("No target specified.")

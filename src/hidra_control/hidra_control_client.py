@@ -27,7 +27,8 @@ ALLOWED_BEAMLINES = list(hidra.connection_list.keys())
 # ALLOWED_BEAMLINES = ["p00", "p01", "p02.1", "p02.2", "p03", "p04", "p05",
 #                      "p06", "p07", "p08", "p09", "p10", "p11"]
 
-NETGROUP_TEMPLATE = Template("a3${bl}-hosts")
+NETGROUP_TEMPLATE = Template("a3${bl}-hosts")  # noqa F821
+
 
 def argument_parsing():
     global ALLOWED_BEAMLINES

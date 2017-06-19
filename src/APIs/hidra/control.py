@@ -12,7 +12,6 @@ import subprocess
 import re
 import json
 import zmq
-import socket
 from string import Template
 
 # from ._version import __version__
@@ -21,6 +20,7 @@ from ._shared_helpers import LoggingFunction
 
 LDAPURI = "it-ldap-slave.desy.de:1389"
 NETGROUP_TEMPLATE = Template("a3${bl}-hosts")
+
 
 class NotSupported(Exception):
     pass
