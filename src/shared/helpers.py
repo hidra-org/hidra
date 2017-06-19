@@ -12,6 +12,7 @@ import socket
 import re
 from _version import __version__
 from cfel_optarg import parse_parameters
+from hidra import LoggingFunction
 
 try:
     import ConfigParser
@@ -579,24 +580,28 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
 # The worker configuration is done at the start of the worker process run.
 # Note that on Windows you can't rely on fork semantics, so each process
 # will run the logging configuration code when it starts.
-def get_logger(logger_name, queue, log_level="debug"):
-    # Create log and set handler to queue handle
-    h = QueueHandler(queue)  # Just the one handler needed
-    logger = logging.getLogger(logger_name)
-    logger.propagate = False
-    logger.addHandler(h)
-
+def get_logger(logger_name, queue=False, log_level="debug"):
     log_level_lower = log_level.lower()
-    if log_level_lower == "debug":
-        logger.setLevel(logging.DEBUG)
-    elif log_level_lower == "info":
-        logger.setLevel(logging.INFO)
-    elif log_level_lower == "warning":
-        logger.setLevel(logging.WARNING)
-    elif log_level_lower == "error":
-        logger.setLevel(logging.ERROR)
-    elif log_level_lower == "critical":
-        logger.setLevel(logging.CRITICAL)
+
+    if queue:
+        # Create log and set handler to queue handle
+        h = QueueHandler(queue)  # Just the one handler needed
+        logger = logging.getLogger(logger_name)
+        logger.propagate = False
+        logger.addHandler(h)
+
+        if log_level_lower == "debug":
+            logger.setLevel(logging.DEBUG)
+        elif log_level_lower == "info":
+            logger.setLevel(logging.INFO)
+        elif log_level_lower == "warning":
+            logger.setLevel(logging.WARNING)
+        elif log_level_lower == "error":
+            logger.setLevel(logging.ERROR)
+        elif log_level_lower == "critical":
+            logger.setLevel(logging.CRITICAL)
+    else:
+        logger = LoggingFunction(log_level_lower)
 
     return logger
 
