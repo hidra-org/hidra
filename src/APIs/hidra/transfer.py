@@ -316,6 +316,9 @@ class Transfer():
             self.context = zmq.Context()
             self.ext_context = False
 
+        if self.poller is None:
+            self.poller = zmq.Poller()
+
         signal = None
         # Signal exchange
         if self.connection_type == "STREAM":
@@ -360,7 +363,7 @@ class Transfer():
         self.signal_socket = self.context.socket(zmq.REQ)
 
         # time to wait for the sender to give a confirmation of the signal
-#        self.signal_socket.RCVTIMEO = self.socket_response_timeout
+        # self.signal_socket.RCVTIMEO = self.socket_response_timeout
         connection_str = "tcp://{0}:{1}".format(self.signal_host, signal_port)
         try:
             self.signal_socket.connect(connection_str)
@@ -1488,6 +1491,10 @@ class Transfer():
                 del self.started_connections["QUERY_NEXT"]
             except KeyError:
                 pass
+
+        # unregister sockets from poller
+        self.poller = None
+
 
         # Close ZMQ connections
         try:
