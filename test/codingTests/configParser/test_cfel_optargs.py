@@ -11,7 +11,7 @@ BASE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_PATH)))
 SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
 if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
+    sys.path.insert(0, SHARED_PATH)
 del SHARED_PATH
 
 from cfel_optarg import parse_parameters

@@ -35,7 +35,7 @@ CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 API_PATH = os.path.join(BASE_PATH, "src", "APIs")
 
 if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
+    sys.path.insert(0, SHARED_PATH)
 del SHARED_PATH
 del CONFIG_PATH
 
@@ -45,7 +45,7 @@ try:
 except:
     # then search in local modules
     if API_PATH not in sys.path:
-        sys.path.append(API_PATH)
+        sys.path.insert(0, API_PATH)
     del API_PATH
 
     import hidra

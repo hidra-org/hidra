@@ -28,7 +28,7 @@ except:
     # there is no module logutils installed, fallback on the one in shared
     from shared import SHARED_PATH
     if SHARED_PATH not in sys.path:
-        sys.path.append(SHARED_PATH)
+        sys.path.insert(0, SHARED_PATH)
 
     from logutils.queue import QueueListener
     from logutils.queue import QueueHandler

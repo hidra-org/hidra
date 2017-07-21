@@ -9,7 +9,7 @@ SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 # print(BASE_PATH)
 
 if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
+    sys.path.insert(0, SHARED_PATH)
 
 try:
     # search in global python modules first
@@ -17,4 +17,4 @@ try:
 except:
     # then search in local modules
     if API_PATH not in sys.path:
-        sys.path.append(API_PATH)
+        sys.path.insert(0, API_PATH)

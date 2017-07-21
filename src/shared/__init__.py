@@ -19,4 +19,4 @@ except:
 SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
 
 if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
+    sys.path.insert(0, SHARED_PATH)

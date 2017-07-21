@@ -17,7 +17,7 @@ except:
     API_PATH = os.path.join(BASE_PATH, "src", "APIs")
 
     if API_PATH not in sys.path:
-        sys.path.append(API_PATH)
+        sys.path.insert(0, API_PATH)
     del API_PATH
 
     import hidra

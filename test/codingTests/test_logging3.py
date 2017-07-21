@@ -17,7 +17,7 @@ except:
 SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
 
 if not SHARED_PATH in sys.path:
-    sys.path.append ( SHARED_PATH )
+    sys.path.insert(0, SHARED_PATH )
 del SHARED_PATH
 
 

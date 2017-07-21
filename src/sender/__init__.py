@@ -19,13 +19,13 @@ DATAFETCHER_PATH = os.path.join(CURRENT_DIR, "datafetchers")
 API_PATH = os.path.join(BASE_PATH, "src", "APIs")
 
 if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
+    sys.path.insert(0, SHARED_PATH)
 
 if EVENTDETECTOR_PATH not in sys.path:
-    sys.path.append(EVENTDETECTOR_PATH)
+    sys.path.insert(0, EVENTDETECTOR_PATH)
 
 if DATAFETCHER_PATH not in sys.path:
-    sys.path.append(DATAFETCHER_PATH)
+    sys.path.insert(0, DATAFETCHER_PATH)
 
 try:
     # search in global python modules first
@@ -33,4 +33,4 @@ try:
 except:
     # then search in local modules
     if API_PATH not in sys.path:
-        sys.path.append(API_PATH)
+        sys.path.insert(0, API_PATH)
