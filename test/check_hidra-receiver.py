@@ -119,13 +119,20 @@ if __name__ == '__main__':
                         type=int,
                         help="Port the HiDRA receiver is bound to",
                         default=50100)
+    parser.add_argument("-v", "--verbose",
+                        help="Logs details about the test",
+                        action="store_true")
+
 
     args = parser.parse_args()
 
     socket_id = "{0}:{1}".format(args.host, args.port)
 
-    #test = AliveTest(socket_id)
-    test = AliveTest(socket_id, NoLoggingFunction())
+    test = None
+    if args.verbose:
+        test = AliveTest(socket_id, LoggingFunction())
+    else:
+        test = AliveTest(socket_id, NoLoggingFunction())
 
     if test.run():
         print("Test successfull")
