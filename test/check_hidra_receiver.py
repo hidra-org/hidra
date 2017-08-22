@@ -101,7 +101,7 @@ class AliveTest():
             self.context.destroy(0)
             self.context = None
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, traceback):
         self.stop()
 
     def __del__(self):
@@ -134,10 +134,9 @@ if __name__ == '__main__':
     else:
         test = AliveTest(socket_id, NoLoggingFunction())
 
-    if test.run():
+    if test.run(args.verbose):
         print("Test successfull")
         sys.exit(0)
     else:
         print("Test failed")
         sys.exit(1)
-
