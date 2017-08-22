@@ -1,10 +1,10 @@
-#!python
+#!/usr/bin/env python
 
-import zmq
-import traceback
 import argparse
-# import nagiosplugin
-
+#import nagiosplugin
+import sys
+import traceback
+import zmq
 
 class LoggingFunction:
     def out(self, x, exc_info=None):
@@ -124,10 +124,13 @@ if __name__ == '__main__':
 
     socket_id = "{0}:{1}".format(args.host, args.port)
 
-#    test = AliveTest(socket_id)
+    #test = AliveTest(socket_id)
     test = AliveTest(socket_id, NoLoggingFunction())
 
     if test.run():
         print("Test successfull")
+        sys.exit(0)
     else:
         print("Test failed")
+        sys.exit(1)
+
