@@ -552,6 +552,8 @@ def call_hidra_service(cmd, beamline, det_id, log):
         # TODO implement beamline and det_id in hisdra.sh
         # return subprocess.call(["service", SERVICE_NAME, "status",
         #                         beamline, det_id])
+    else:
+        log.debug("Call: no service to call found")
 
 
 def hidra_status(beamline, det_id, log):

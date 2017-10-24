@@ -412,7 +412,7 @@ class DataManager():
         self.params["ext_ip"] = self.ext_ip
         self.params["ipc_path"] = self.ipc_path
         self.params["main_pid"] = self.current_pid
-        # TODO this should not be set here (it belong to the moduls)
+        # TODO: this should not be set here (it belong to the moduls)
         self.params["context"] = None
         self.params["session"] = None
 
