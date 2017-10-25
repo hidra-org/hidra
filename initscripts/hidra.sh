@@ -23,7 +23,6 @@ PIDFILE=${PIDFILE_LOCATION}/$NAME.pid
 CONFIG_PATH=$BASEDIR/conf
 IPCPATH=/tmp/hidra
 PYTHON=/usr/bin/python
-LOG_DIRECTORY=/var/log/hidra
 
 SCRIPTNAME=/etc/init.d/$NAME
 
@@ -109,10 +108,12 @@ if [ "${USE_EXE}" == "false" ]
 then
     DAEMON=${BASEDIR}/src/sender/datamanager.py
     DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"
+    LOG_DIRECTORY=/var/log/hidra
     getsettings=${BASEDIR}/src/shared/getsettings.py
 else
     DAEMON=${BASEDIR}/datamanager
     DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"
+    LOG_DIRECTORY=${BASEDIR}/logs
     getsettings=${BASEDIR}/getsettings
 fi
 
