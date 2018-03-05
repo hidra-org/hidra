@@ -156,6 +156,8 @@ class EventDetector(EventDetectorBase):
             self.context = zmq.Context()
             self.ext_context = False
 
+        self.mon_socket = None
+
         self.create_sockets()
 
     def create_sockets(self):

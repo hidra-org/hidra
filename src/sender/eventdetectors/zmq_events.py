@@ -26,7 +26,8 @@ class EventDetector(EventDetectorBase):
         else:
             required_params = ["context",
                                "number_of_streams",
-                               "ipc_path"]
+                               "ipc_path",
+                               "main_pid"]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -39,12 +40,13 @@ class EventDetector(EventDetectorBase):
                           .format(config_reduced))
 
             if helpers.is_windows():
-                self.event_det_con_str = ("tcp://{0}:{1}"
+                self.event_det_con_str = ("tcp://{}:{}"
                                           .format(config["ext_ip"],
                                                   config["event_det_port"]))
             else:
-                self.event_det_con_str = ("ipc://{0}/{1}"
+                self.event_det_con_str = ("ipc://{}/{}_{}"
                                           .format(config["ipc_path"],
+                                                  config["main_pid"],
                                                   "eventDet"))
 
             self.event_socket = None
@@ -140,7 +142,7 @@ if __name__ == '__main__':
 
     ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
 
-    event_det_con_str = "ipc://{0}/{1}".format(ipc_path, "eventDet")
+    event_det_con_str = "ipc://{}/{}".format(ipc_path, "eventDet")
     print("event_det_con_str", event_det_con_str)
     number_of_streams = 1
     config = {
@@ -169,7 +171,7 @@ if __name__ == '__main__':
     while i <= 101:
         try:
             logging.debug("generate event")
-            target_file = "{0}{1}.cbf".format(target_file_base, i)
+            target_file = "{}{}.cbf".format(target_file_base, i)
             message = {
                 "filename": target_file,
                 "filepart": 0,
@@ -191,7 +193,7 @@ if __name__ == '__main__':
         [b"CLOSE_FILE", "test_file.cbf".encode("utf8")])
 
     event_list = eventdetector.get_new_event()
-    logging.debug("event_list: {0}".format(event_list))
+    logging.debug("event_list: {}".format(event_list))
 
     log_queue.put_nowait(None)
     log_queue_listener.stop()

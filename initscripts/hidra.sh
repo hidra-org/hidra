@@ -7,7 +7,7 @@
 # Required-Stop:     $syslog networking
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Start the ZMQ data transfer
+# Short-Description: Start the HiDRA
 ### END INIT INFO
 
 

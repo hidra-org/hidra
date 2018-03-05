@@ -1157,7 +1157,8 @@ if __name__ == '__main__':
         log_queue = Queue(-1)
 
         # Get the log Configuration for the lisener
-        h1, h2 = helpers.get_log_handlers(logfile, logsize,
+        h1, h2 = helpers.get_log_handlers(logfile,
+                                          logsize,
                                           verbose=True,
                                           onscreen_log_level="debug")
 
@@ -1177,18 +1178,20 @@ if __name__ == '__main__':
         receiving_port2 = "50102"
 
         testPr = Process(target=TestReceiverStream,
-                         args=(
-                             com_port,
-                             fixed_recv_port,
-                             receiving_port,
-                             receiving_port2,
-                             log_queue))
+                         args=(com_port,
+                               fixed_recv_port,
+                               receiving_port,
+                               receiving_port2,
+                               log_queue))
         testPr.start()
         logging.debug("test receiver started")
 
         source_file = os.path.join(BASE_PATH, "test_file.cbf")
-        target_file_base = os.path.join(
-            BASE_PATH, "data", "source", "local", "raw") + os.sep
+        target_file_base = os.path.join(BASE_PATH,
+                                        "data",
+                                        "source",
+                                        "local",
+                                        "raw") + os.sep
 
         try:
             sender = DataManager(log_queue)
@@ -1200,24 +1203,24 @@ if __name__ == '__main__':
             i = 100
             try:
                 while i <= 105:
-                    target_file = "{0}{1}.cbf".format(target_file_base, i)
-                    logging.debug("copy to {0}".format(target_file))
+                    target_file = "{}{}.cbf".format(target_file_base, i)
+                    logging.debug("copy to {}".format(target_file))
                     copyfile(source_file, target_file)
                     i += 1
 
                     time.sleep(1)
             except Exception as e:
-                logging.error("Exception detected: {0}".format(e),
+                logging.error("Exception detected: {}".format(e),
                               exc_info=True)
             finally:
                 time.sleep(3)
                 testPr.terminate()
 
                 for number in range(100, i):
-                    target_file = "{0}{1}.cbf".format(target_file_base, number)
+                    target_file = "{}{}.cbf".format(target_file_base, number)
                     try:
                         os.remove(target_file)
-                        logging.debug("remove {0}".format(target_file))
+                        logging.debug("remove {}".format(target_file))
                     except:
                         pass
 

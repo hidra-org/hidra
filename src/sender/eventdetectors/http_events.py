@@ -11,7 +11,7 @@ from eventdetectorbase import EventDetectorBase
 import helpers
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
-              'Jan Garrevoet <jan,garrevoet@desy.de>')
+              'Jan Garrevoet <jan.garrevoet@desy.de>')
 
 
 class EventDetector(EventDetectorBase):

@@ -34,7 +34,8 @@ if __name__ == "__main__":
 
     query.start()
 
-    while True:
+    #while True:
+    for i in range(2):
         try:
             [metadata, data] = query.get(2000)
         except:
