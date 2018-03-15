@@ -23,7 +23,7 @@ class DataFetcher(DataFetcherBase):
     def __init__(self, config, log_queue, id, context):
 
         DataFetcherBase.__init__(self, config, log_queue, id,
-                                 "http_fetcher-{0}".format(id),
+                                 "http_fetcher-{}".format(id),
                                  context)
 
         required_params = ["session",
@@ -83,7 +83,7 @@ class DataFetcher(DataFetcherBase):
                 metadata["confirmation_required"] = (
                     self.config["remove_data"] == "with_confirmation")
 
-                self.log.debug("metadata = {0}".format(metadata))
+                self.log.debug("metadata = {}".format(metadata))
             except:
                 self.log.error("Unable to assemble multi-part message.",
                                exc_info=True)
@@ -94,10 +94,10 @@ class DataFetcher(DataFetcherBase):
         response = self.config["session"].get(self.source_file)
         try:
             response.raise_for_status()
-            self.log.debug("Initiating http get for file '{0}' succeeded."
+            self.log.debug("Initiating http get for file '{}' succeeded."
                            .format(self.source_file))
         except:
-            self.log.error("Initiating http get for file '{0}' failed."
+            self.log.error("Initiating http get for file '{}' failed."
                            .format(self.source_file), exc_info=True)
             return
 
@@ -113,26 +113,27 @@ class DataFetcher(DataFetcherBase):
 
         if self.config["store_data"]:
             try:
-                self.log.debug("Opening '{0}'...".format(self.target_file))
+                self.log.debug("Opening '{}'...".format(self.target_file))
                 file_descriptor = open(self.target_file, "wb")
                 file_opened = True
             except IOError as e:
                 # errno.ENOENT == "No such file or directory"
                 if e.errno == errno.ENOENT:
 
+                    # the directories current, commissioning and local should not be created
                     subdir, tmp = os.path.split(metadata["relative_path"])
 
                     if metadata["relative_path"] in self.config["fix_subdirs"]:
-                        self.log.error("Unable to move file '{0}' to '{1}': "
-                                       "Directory {2} is not available."
+                        self.log.error("Unable to move file '{}' to '{}': "
+                                       "Directory {} is not available."
                                        .format(self.source_file,
                                                self.target_file,
                                                metadata["relative_path"]),
                                        exc_info=True)
 
                     elif subdir in self.config["fix_subdirs"]:
-                        self.log.error("Unable to move file '{0}' to '{1}': "
-                                       "Directory {2} is not available."
+                        self.log.error("Unable to move file '{}' to '{}': "
+                                       "Directory {} is not available."
                                        .format(self.source_file,
                                                self.target_file,
                                                subdir),
@@ -143,28 +144,27 @@ class DataFetcher(DataFetcherBase):
                                 os.path.split(self.target_file))
                             os.makedirs(target_path)
                             file_descriptor = open(self.target_file, "wb")
-                            self.log.info("New target directory created: {0}"
+                            self.log.info("New target directory created: {}"
                                           .format(target_path))
                             file_opened = True
                         except OSError as e:
                             self.log.info("Target directory creation failed, "
                                           "was already created in the "
-                                          "meantime: {0}"
-                                          .format(target_path))
+                                          "meantime: {}".format(target_path))
                             file_descriptor = open(self.target_file, "wb")
                             file_opened = True
                         except:
-                            self.log.error("Unable to open target file '{0}'."
+                            self.log.error("Unable to open target file '{}'."
                                            .format(self.target_file),
                                            exc_info=True)
-                            self.log.debug("target_path: {0}"
+                            self.log.debug("target_path: {}"
                                            .format(target_path))
                             raise
                 else:
-                    self.log.error("Unable to open target file '{0}'."
+                    self.log.error("Unable to open target file '{}'."
                                    .format(self.target_file), exc_info=True)
             except:
-                self.log.error("Unable to open target file '{0}'."
+                self.log.error("Unable to open target file '{}'."
                                .format(self.target_file), exc_info=True)
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
@@ -172,11 +172,11 @@ class DataFetcher(DataFetcherBase):
         targets_metadata = [i for i in targets if i[2] == "metadata"]
         chunk_number = 0
 
-        self.log.debug("Getting data for file '{0}'..."
+        self.log.debug("Getting data for file '{}'..."
                        .format(self.source_file))
         # reading source file into memory
         for data in response.iter_content(chunk_size=chunksize):
-            self.log.debug("Packing multipart-message for file '{0}'..."
+            self.log.debug("Packing multipart-message for file '{}'..."
                            .format(self.source_file))
 
             try:
@@ -189,16 +189,16 @@ class DataFetcher(DataFetcherBase):
                 payload.append(data)
             except:
                 self.log.error("Unable to pack multipart-message for file "
-                               "'{0}'".format(self.source_file),
+                               "'{}'".format(self.source_file),
                                exc_info=True)
 
             if self.config["store_data"]:
                 try:
                     file_descriptor.write(data)
-                    self.log.debug("Writing data for file '{0}' (chunk {1})"
+                    self.log.debug("Writing data for file '{}' (chunk {})"
                                    .format(self.source_file, chunk_number))
                 except:
-                    self.log.error("Unable write data for file '{0}'"
+                    self.log.error("Unable write data for file '{}'"
                                    .format(self.source_file), exc_info=True)
                     file_written = False
 
@@ -206,11 +206,11 @@ class DataFetcher(DataFetcherBase):
             try:
                 self.send_to_targets(targets_data, open_connections,
                                      metadata_extended, payload)
-                self.log.debug("Passing multipart-message for file {0}...done."
+                self.log.debug("Passing multipart-message for file {}...done."
                                .format(self.source_file))
 
             except:
-                self.log.error("Unable to send multipart-message for file {0}"
+                self.log.error("Unable to send multipart-message for file {}"
                                .format(self.source_file), exc_info=True)
                 file_send = False
 
@@ -218,11 +218,11 @@ class DataFetcher(DataFetcherBase):
 
         if self.config["store_data"]:
             try:
-                self.log.debug("Closing '{0}'...".format(self.target_file))
+                self.log.debug("Closing '{}'...".format(self.target_file))
                 file_descriptor.close()
                 file_closed = True
             except:
-                self.log.error("Unable to close target file '{0}'."
+                self.log.error("Unable to close target file '{}'."
                                .format(self.target_file), exc_info=True)
                 raise
 
@@ -237,11 +237,11 @@ class DataFetcher(DataFetcherBase):
                 self.send_to_targets(targets_metadata, open_connections,
                                      metadata_extended, payload)
                 self.log.debug("Passing metadata multipart-message for file "
-                               "'{0}'...done.".format(self.source_file))
+                               "'{}'...done.".format(self.source_file))
 
             except:
                 self.log.error("Unable to send metadata multipart-message for "
-                               "file '{0}'".format(self.source_file),
+                               "file '{}'".format(self.source_file),
                                exc_info=True)
 
             self.config["remove_flag"] = (file_opened
@@ -262,7 +262,7 @@ class DataFetcher(DataFetcherBase):
         self.cleaner_job_socket.send_multipart(
             [metadata["source_path"].encode("utf-8"),
              file_id.encode("utf-8")])
-        self.log.debug("Forwarded to cleaner {0}".format(file_id))
+        self.log.debug("Forwarded to cleaner {}".format(file_id))
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
 
@@ -271,10 +271,10 @@ class DataFetcher(DataFetcherBase):
 
             try:
                 responce.raise_for_status()
-                self.log.debug("Deleting file '{0}' succeeded."
+                self.log.debug("Deleting file '{}' succeeded."
                                .format(self.source_file))
             except:
-                self.log.error("Deleting file '{0}' failed."
+                self.log.error("Deleting file '{}' failed."
                                .format(self.source_file), exc_info=True)
 
     def stop(self):

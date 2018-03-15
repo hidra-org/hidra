@@ -513,7 +513,7 @@ class CustomQueueListener (QueueListener):
             self.handlers.remove(hdlr)
 
 
-# Get the log Configuration for the lisener
+# Get the log Configuration for the listener
 def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
     # Enable more detailed logging if verbose-option has been set
     loglevel = logging.INFO

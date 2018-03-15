@@ -23,7 +23,8 @@ class EventDetector(EventDetectorBase):
 
         required_params = ["det_ip",
                            "det_api_version",
-                           "history_size"]
+                           "history_size",
+                           "fix_subdirs"]
 
         # Check format of config
         check_passed, config_reduced = helpers.check_config(required_params,
@@ -32,7 +33,7 @@ class EventDetector(EventDetectorBase):
 
         # Only proceed if the configuration was correct
         if check_passed:
-            self.log.info("Configuration for event detector: {0}"
+            self.log.info("Configuration for event detector: {}"
                           .format(config_reduced))
 
             self.session = requests.session()
@@ -40,11 +41,13 @@ class EventDetector(EventDetectorBase):
             # Enable specification via IP and DNS name
             self.det_ip = socket.gethostbyaddr(config["det_ip"])[2][0]
             self.det_api_version = config["det_api_version"]
-            self.det_url = ("http://{0}/filewriter/api/{1}/files"
+            self.det_url = ("http://{}/filewriter/api/{}/files"
                             .format(self.det_ip,
                                     self.det_api_version))
-            self.log.debug("Getting files from: {0}".format(self.det_url))
+            self.log.debug("Getting files from: {}".format(self.det_url))
 #            http://192.168.138.37/filewriter/api/1.6.0/files
+
+            self.fix_subdirs = config["fix_subdirs"]
 
             # time to sleep after detector returned emtpy file list
             self.sleep_time = 0.5
@@ -88,9 +91,9 @@ class EventDetector(EventDetectorBase):
 
         try:
             response.raise_for_status()
-#            self.log.debug("response: {0}".format(response.text))
+#            self.log.debug("response: {}".format(response.text))
             files_stored = response.json()
-#            self.log.debug("files_stored: {0}".format(files_stored))
+#            self.log.debug("files_stored: {}".format(files_stored))
         except:
             self.log.error("Getting file list...failed.", exc_info=True)
             # Wait till next try to prevent denial of service
@@ -103,14 +106,15 @@ class EventDetector(EventDetectorBase):
             time.sleep(self.sleep_time)
 
         for f in files_stored:
-            if f not in self.files_downloaded:
+            if (f.startswith(tuple(self.fix_subdirs))
+                    and f not in self.files_downloaded):
                 (relative_path, filename) = os.path.split(f)
                 event_message = {
-                    "source_path": "http://{0}/data".format(self.det_ip),
+                    "source_path": "http://{}/data".format(self.det_ip),
                     "relative_path": relative_path,
                     "filename": filename
                 }
-                self.log.debug("event_message {0}".format(event_message))
+                self.log.debug("event_message {}".format(event_message))
                 event_message_list.append(event_message)
                 self.files_downloaded.append(f)
 
