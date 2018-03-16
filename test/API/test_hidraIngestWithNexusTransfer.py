@@ -9,7 +9,7 @@ import json
 import tempfile
 
 from __init__ import BASE_PATH
-import helpers
+import utils
 
 from hidra import Transfer
 from hidra import Ingest
@@ -18,7 +18,7 @@ from hidra import Ingest
 # enable logging
 logfile_path = os.path.join(BASE_PATH, "logs")
 logfile = os.path.join(logfile_path, "test_nexus_ingest_with_transfer.log")
-helpers.init_logging(logfile, True, "DEBUG")
+utils.init_logging(logfile, True, "DEBUG")
 
 print("\n==== TEST: hidraIngest together with nexus transfer ====\n")
 

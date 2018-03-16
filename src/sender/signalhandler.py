@@ -12,7 +12,7 @@ import re
 from __init__ import BASE_PATH
 from _version import __version__
 from logutils.queue import QueueHandler
-import helpers
+import utils
 from hidra import convert_suffix_list_to_regex
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -25,7 +25,7 @@ class SignalHandler():
                  log_queue, context=None):
 
         # Send all logs to the main process
-        self.log = helpers.get_logger("SignalHandler", log_queue)
+        self.log = utils.get_logger("SignalHandler", log_queue)
 
         self.current_pid = os.getpid()
         self.log.debug("SignalHandler started (PID {0})."
@@ -46,7 +46,7 @@ class SignalHandler():
         # to rotate through the open permanent requests
         self.next_requ_node = []
 
-        self.whitelist = helpers.extend_whitelist(whitelist, self.log)
+        self.whitelist = utils.extend_whitelist(whitelist, self.log)
 
         # sockets
         self.control_pub_socket = None
@@ -298,7 +298,7 @@ class SignalHandler():
                 self.log.debug("Received request: {0}".format(in_message))
 
                 if in_message[0] == b"NEXT":
-                    incoming_socket_id = helpers.convert_socket_to_fqdn(
+                    incoming_socket_id = utils.convert_socket_to_fqdn(
                         in_message[1].decode("utf-8"), self.log)
 
                     for index in range(len(self.allowed_queries)):
@@ -312,7 +312,7 @@ class SignalHandler():
                                                   index][i]))
 
                 elif in_message[0] == b"CANCEL":
-                    incoming_socket_id = helpers.convert_socket_to_fqdn(
+                    incoming_socket_id = utils.convert_socket_to_fqdn(
                         in_message[1].decode("utf-8"), self.log)
 
                     still_requested = []
@@ -381,7 +381,7 @@ class SignalHandler():
             )
             target = json.loads(target)
 
-            target = helpers.convert_socket_to_fqdn(target, self.log)
+            target = utils.convert_socket_to_fqdn(target, self.log)
 
             try:
                 host = [t[0].split(":")[0] for t in target]
@@ -389,7 +389,7 @@ class SignalHandler():
                 return [b"NO_VALID_SIGNAL"], None, None
 
             if version:
-                if helpers.check_version(version, self.log):
+                if utils.check_version(version, self.log):
                     self.log.info("Versions are compatible")
                 else:
                     self.log.warning("Version are not compatible")
@@ -400,7 +400,7 @@ class SignalHandler():
                 # Checking signal sending host
                 self.log.debug("Check if host to send data to are in "
                                "whitelist...")
-                if helpers.check_host(host, self.whitelist, self.log):
+                if utils.check_host(host, self.whitelist, self.log):
                     self.log.info("Hosts are allowed to connect.")
                     self.log.debug("hosts: {0}".format(host))
                 else:
@@ -422,8 +422,8 @@ class SignalHandler():
     def __start_signal(self, signal, send_type, socket_ids, list_to_check,
                        vari_list, corresp_list):
 
-        socket_ids = helpers.convert_socket_to_fqdn(socket_ids,
-                                                    self.log)
+        socket_ids = utils.convert_socket_to_fqdn(socket_ids,
+                                                  self.log)
 
         # socket_ids is of the format [[<host>, <prio>, <suffix>], ...]
         for socket_conf in socket_ids:
@@ -553,8 +553,8 @@ class SignalHandler():
         tmp_remove_element = []
         found = False
 
-        socket_ids = helpers.convert_socket_to_fqdn(socket_ids,
-                                                    self.log)
+        socket_ids = utils.convert_socket_to_fqdn(socket_ids,
+                                                  self.log)
 
         for socket_conf in socket_ids:
 
@@ -763,7 +763,7 @@ class SignalHandler():
 class RequestPuller():
     def __init__(self, request_fw_con_id, log_queue, context=None):
 
-        self.log = helpers.get_logger("RequestPuller", log_queue)
+        self.log = utils.get_logger("RequestPuller", log_queue)
 
         # to give the signal handler to bind to the socket before the connect
         # is done
@@ -832,11 +832,11 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
+                                    onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
     log_queue_listener.start()
 
     # Create log and set handler to queue handle

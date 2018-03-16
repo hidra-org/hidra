@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import zmq
 import threading
 from __init__ import BASE_PATH
-import helpers
+import utils
 import os
 import sys
 import time
@@ -30,7 +30,7 @@ class CheckJobs (threading.Thread):
 
         threading.Thread.__init__(self)
 
-        self.log = helpers.get_logger("CheckJobs", log_queue)
+        self.log = utils.get_logger("CheckJobs", log_queue)
 
         self.lock = lock
         self.job_bind_str = job_bind_str
@@ -158,7 +158,7 @@ class CheckConfirmations (threading.Thread):
 
         threading.Thread.__init__(self)
 
-        self.log = helpers.get_logger("CheckConfirmations", log_queue)
+        self.log = utils.get_logger("CheckConfirmations", log_queue)
 
         self.lock = lock
         self.conf_bind_str = conf_bind_str
@@ -212,7 +212,7 @@ class CleanerBase(ABC):
     def __init__(self, config, log_queue, job_bind_str, conf_bind_str,
                  control_con_str, context=None):
 
-        self.log = helpers.get_logger("Cleaner", log_queue)
+        self.log = utils.get_logger("Cleaner", log_queue)
 
         self.config = config
         self.job_bind_str = job_bind_str
@@ -441,11 +441,11 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
+    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
                                       onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
     log_queue_listener.start()
 
     # Create log and set handler to queue handle
@@ -478,7 +478,7 @@ if __name__ == '__main__':
                      .format(config["ipc_path"]))
 
     """ determine socket connection strings """
-    if helpers.is_windows():
+    if utils.is_windows():
         job_con_str = "tcp://{0}:{1}".format(con_ip, config["cleaner_port"])
         job_bind_str = "tcp://{0}:{1}".format(ext_ip, config["cleaner_port"])
 

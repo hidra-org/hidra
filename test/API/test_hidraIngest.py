@@ -8,13 +8,13 @@ import logging
 import tempfile
 
 from __init__ import BASE_PATH
-import helpers
+import utils
 
 
 # enable logging
 logfile_path = os.path.join(BASE_PATH, "logs")
 logfile = os.path.join(logfile_path, "test_ingest.log")
-helpers.init_logging(logfile, True, "DEBUG")
+utils.init_logging(logfile, True, "DEBUG")
 
 
 class Receiver ():

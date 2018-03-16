@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import sys
 import abc
 from __init__ import BASE_PATH  # noqa F401
-import helpers
+import utils
 
 # source:
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
@@ -23,14 +23,14 @@ class EventDetectorBase():
         Checks if all required parameters are set in the configuration
         """
 
-        self.log = helpers.get_logger(logger_name, log_queue)
+        self.log = utils.get_logger(logger_name, log_queue)
 
         required_params = []
 
         # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            config,
-                                                            self.log)
+        check_passed, config_reduced = utils.check_config(required_params,
+                                                          config,
+                                                          self.log)
 
         # Only proceed if the configuration was correct
         if check_passed:

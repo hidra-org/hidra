@@ -8,7 +8,7 @@ import collections
 import socket
 
 from eventdetectorbase import EventDetectorBase
-import helpers
+import utils
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan.garrevoet@desy.de>')
@@ -27,9 +27,9 @@ class EventDetector(EventDetectorBase):
                            "fix_subdirs"]
 
         # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            config,
-                                                            self.log)
+        check_passed, config_reduced = utils.check_config(required_params,
+                                                          config,
+                                                          self.log)
 
         # Only proceed if the configuration was correct
         if check_passed:
@@ -136,11 +136,11 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
+                                    onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
     log_queue_listener.start()
 
     # Create log and set handler to queue handle

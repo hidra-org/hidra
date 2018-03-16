@@ -11,7 +11,7 @@ import errno
 from datafetcherbase import DataFetcherBase, DataHandlingError
 from cleanerbase import CleanerBase
 from hidra import generate_filepath
-import helpers
+import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -28,9 +28,9 @@ class DataFetcher(DataFetcherBase):
                            "store_data"]
 
         # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            self.config,
-                                                            self.log)
+        check_passed, config_reduced = utils.check_config(required_params,
+                                                          self.config,
+                                                          self.log)
 
         if check_passed:
             self.log.info("Configuration for data fetcher: {0}"
@@ -39,7 +39,7 @@ class DataFetcher(DataFetcherBase):
             self.config["send_timeout"] = -1  # 10
             self.config["remove_flag"] = False
 
-            self.is_windows = helpers.is_windows()
+            self.is_windows = utils.is_windows()
 
             if self.config["remove_data"] == "with_confirmation":
                 self.finish = self.finish_with_cleaner
@@ -395,13 +395,13 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(log_file,
-                                      log_size,
-                                      verbose=True,
-                                      onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(log_file,
+                                    log_size,
+                                    verbose=True,
+                                    onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
     log_queue_listener.start()
 
     # Create log and set handler to queue handle
@@ -428,7 +428,7 @@ if __name__ == '__main__':
         logging.info("Creating directory for IPC communication: {0}"
                      .format(ipc_path))
 
-    if helpers.is_windows():
+    if utils.is_windows():
         job_con_str = "tcp://{0}:{1}".format(con_ip, cleaner_port)
         job_bind_str = "tcp://{0}:{1}".format(ext_ip, cleaner_port)
     else:

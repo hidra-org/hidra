@@ -14,7 +14,7 @@ import threading
 import bisect
 
 from eventdetectorbase import EventDetectorBase
-import helpers
+import utils
 from hidra import convert_suffix_list_to_regex
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -40,8 +40,8 @@ class WatchdogEventHandler (RegexMatchingEventHandler):
         logging.getLogger("watchdog.observers.inotify_buffer").setLevel(
             logging.WARNING)
 
-        self.log = helpers.get_logger("WatchdogEventHandler-{0}"
-                                      .format(self.id), log_queue)
+        self.log = utils.get_logger("WatchdogEventHandler-{0}"
+                                    .format(self.id), log_queue)
         self.log.debug("init")
 
         self.paths = [config["monitored_dir"]]
@@ -197,8 +197,8 @@ def split_file_path(filepath, paths):
 class CheckModTime (threading.Thread):
     def __init__(self, number_of_threads, time_till_closed, mon_dir,
                  action_time, lock, log_queue):
-        self.log = helpers.get_logger("CheckModTime", log_queue,
-                                      log_level="info")
+        self.log = utils.get_logger("CheckModTime", log_queue,
+                                    log_level="info")
 
         self.log.debug("init")
         # Make the Pool of workers
@@ -350,9 +350,9 @@ class EventDetector(EventDetectorBase):
                            "action_time"]
 
         # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            config,
-                                                            self.log)
+        check_passed, config_reduced = utils.check_config(required_params,
+                                                          config,
+                                                          self.log)
 
         # Only proceed if the configuration was correct
         if check_passed:
@@ -451,11 +451,11 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onscreen_log_level=log_level)
+    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
+                                    onscreen_log_level=log_level)
 
     # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
     log_queue_listener.start()
 
     # Create log and set handler to queue handle

@@ -23,7 +23,7 @@ from datadispatcher import DataDispatcher
 
 from __init__ import BASE_PATH
 from logutils.queue import QueueHandler
-import helpers
+import utils
 from _version import __version__
 
 CONFIG_PATH = os.path.join(BASE_PATH, "conf")
@@ -231,13 +231,13 @@ def argument_parsing():
     arguments.config_file = arguments.config_file or default_config
 
     # check if config_file exist
-    helpers.check_existance(arguments.config_file)
+    utils.check_existance(arguments.config_file)
 
     ##################################################
     # Get arguments from config file and comand line #
     ##################################################
 
-    params = helpers.set_parameters(arguments.config_file, arguments)
+    params = utils.set_parameters(arguments.config_file, arguments)
 
     ##################################
     #     Check given arguments      #
@@ -255,9 +255,9 @@ def argument_parsing():
 #                       "local_target"]
 
     # Check format of config
-    check_passed, config_reduced = helpers.check_config(required_params,
-                                                        params,
-                                                        logging)
+    check_passed, config_reduced = utils.check_config(required_params,
+                                                      params,
+                                                      logging)
 
     if not check_passed:
         logging.error("Wrong configuration")
@@ -265,29 +265,29 @@ def argument_parsing():
 
     # check if logfile is writable
     params["log_file"] = os.path.join(params["log_path"], params["log_name"])
-    helpers.check_writable(params["log_file"])
+    utils.check_writable(params["log_file"])
 
     # check if the event_detector_type is supported
-    helpers.check_type(params["event_detector_type"],
-                       supported_ed_types,
-                       "Event detector")
+    utils.check_type(params["event_detector_type"],
+                     supported_ed_types,
+                     "Event detector")
 
     # check if the data_fetcher_type is supported
-    helpers.check_type(params["data_fetcher_type"],
-                       supported_df_types,
-                       "Data fetcher")
+    utils.check_type(params["data_fetcher_type"],
+                     supported_df_types,
+                     "Data fetcher")
 
     # check if directories exist
-    helpers.check_existance(params["log_path"])
+    utils.check_existance(params["log_path"])
     if "monitored_dir" in params:
         # get rid of formating errors
         params["monitored_dir"] = os.path.normpath(params["monitored_dir"])
 
-        helpers.check_existance(params["monitored_dir"])
+        utils.check_existance(params["monitored_dir"])
         if "create_fix_subdirs" in params and params["create_fix_subdirs"]:
             # create the subdirectories which do not exist already
-            helpers.create_sub_dirs(params["monitored_dir"],
-                                    params["fix_subdirs"])
+            utils.create_sub_dirs(params["monitored_dir"],
+                                  params["fix_subdirs"])
         else:
             # the subdirs have to exist because handles can only be added to
             # directories inside a directory in which a handle was already set,
@@ -295,21 +295,21 @@ def argument_parsing():
             # - all subdirs created are detected + handlers are set
             # - new directory on the same as monitored dir
             #   (e.g. current/scratch_bl) cannot be detected
-            helpers.check_all_sub_dir_exist(params["monitored_dir"],
-                                            params["fix_subdirs"])
+            utils.check_all_sub_dir_exist(params["monitored_dir"],
+                                          params["fix_subdirs"])
     if params["store_data"]:
-        helpers.check_existance(params["local_target"])
+        utils.check_existance(params["local_target"])
         # check if local_target contains fixed_subdirs
         # e.g. local_target = /beamline/p01/current/raw and
         #      fix_subdirs contain current/raw
-#        if not helpers.check_sub_dir_contained(params["local_target"],
-#                                               params["fix_subdirs"]):
+#        if not utils.check_sub_dir_contained(params["local_target"],
+#                                             params["fix_subdirs"]):
 #            # not in Eiger mode
-#            helpers.check_all_sub_dir_exist(params["local_target"],
-#                                            params["fix_subdirs"])
+#            utils.check_all_sub_dir_exist(params["local_target"],
+#                                          params["fix_subdirs"])
 
     if params["use_data_stream"]:
-        helpers.check_ping(params["data_stream_targets"][0][0])
+        utils.check_ping(params["data_stream_targets"][0][0])
 
     return params
 
@@ -348,28 +348,28 @@ class DataManager():
 
             # Get the log Configuration for the lisener
             if self.params["onscreen"]:
-                h1, h2 = helpers.get_log_handlers(self.params["log_file"],
-                                                  self.params["log_size"],
-                                                  self.params["verbose"],
-                                                  self.params["onscreen"])
+                h1, h2 = utils.get_log_handlers(self.params["log_file"],
+                                                self.params["log_size"],
+                                                self.params["verbose"],
+                                                self.params["onscreen"])
 
                 # Start queue listener using the stream handler above.
-                self.log_queue_listener = helpers.CustomQueueListener(
+                self.log_queue_listener = utils.CustomQueueListener(
                     self.log_queue, h1, h2)
             else:
-                h1 = helpers.get_log_handlers(self.params["log_file"],
-                                              self.params["log_size"],
-                                              self.params["verbose"],
-                                              self.params["onscreen"])
+                h1 = utils.get_log_handlers(self.params["log_file"],
+                                            self.params["log_size"],
+                                            self.params["verbose"],
+                                            self.params["onscreen"])
 
                 # Start queue listener using the stream handler above
                 self.log_queue_listener = (
-                    helpers.CustomQueueListener(self.log_queue, h1))
+                    utils.CustomQueueListener(self.log_queue, h1))
 
             self.log_queue_listener.start()
 
         # Create log and set handler to queue handle
-        self.log = helpers.get_logger("DataManager", self.log_queue)
+        self.log = utils.get_logger("DataManager", self.log_queue)
 
         self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
         self.log.info("Configured ipc_path: {0}".format(self.ipc_path))
@@ -378,9 +378,9 @@ class DataManager():
         self.params["ipc_path"] = self.ipc_path
 
         # set process name
-        check_passed, _ = helpers.check_config(["procname"],
-                                               self.params,
-                                               self.log)
+        check_passed, _ = utils.check_config(["procname"],
+                                             self.params,
+                                             self.log)
         if not check_passed:
             raise Exception("Configuration check failed")
         setproctitle.setproctitle(self.params["procname"])
@@ -431,7 +431,7 @@ class DataManager():
                                 .format(self.ext_ip,
                                         self.params["request_port"]))
 
-        if helpers.is_windows():
+        if utils.is_windows():
             self.log.info("Using tcp for internal communication.")
             self.control_pub_con_str = (
                 "tcp://{0}:{1}".format(self.localhost,
@@ -533,7 +533,7 @@ class DataManager():
         self.log.info("Version: {0}".format(__version__))
 
         # IP and DNS name should be both in the whitelist
-        self.whitelist = helpers.extend_whitelist(self.whitelist, self.log)
+        self.whitelist = utils.extend_whitelist(self.whitelist, self.log)
 
         # Create zmq context
         # there should be only one context in one process
@@ -1073,7 +1073,7 @@ class TestReceiverStream():
     def __init__(self, com_port, fixed_recv_port, receiving_port,
                  receiving_port2, log_queue):
 
-        self.log = helpers.get_logger("TestReceiverStream", log_queue)
+        self.log = utils.get_logger("TestReceiverStream", log_queue)
 
         context = zmq.Context.instance()
 
@@ -1157,13 +1157,13 @@ if __name__ == '__main__':
         log_queue = Queue(-1)
 
         # Get the log Configuration for the lisener
-        h1, h2 = helpers.get_log_handlers(logfile,
-                                          logsize,
-                                          verbose=True,
-                                          onscreen_log_level="debug")
+        h1, h2 = utils.get_log_handlers(logfile,
+                                        logsize,
+                                        verbose=True,
+                                        onscreen_log_level="debug")
 
         # Start queue listener using the stream handler above
-        log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+        log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
         log_queue_listener.start()
 
         # Create log and set handler to queue handle

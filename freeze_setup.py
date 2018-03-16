@@ -82,7 +82,7 @@ build_exe_options = {
         (os.path.join(senderpath, "signalhandler.py"), "signalhandler.py"),
         (os.path.join(senderpath, "datadispatcher.py"), "datadispatcher.py"),
         (os.path.join(sharedpath, "logutils"), "logutils"),
-        (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
+        (os.path.join(sharedpath, "utils.py"), "utils.py"),
         (os.path.join(sharedpath, "cfel_optarg.py"), "cfel_optarg.py"),
         (os.path.join(sharedpath, "_version.py"), "_version.py"),
         # event detectors

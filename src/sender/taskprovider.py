@@ -10,7 +10,7 @@ import errno
 
 from __init__ import BASE_PATH
 from logutils.queue import QueueHandler
-import helpers
+import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -24,7 +24,7 @@ class TaskProvider():
                  router_con_id, log_queue, context=None):
         global BASE_PATH
 
-        self.log = helpers.get_logger("TaskProvider", log_queue)
+        self.log = utils.get_logger("TaskProvider", log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -290,7 +290,7 @@ class TaskProvider():
 class RequestResponder():
     def __init__(self, request_fw_port, log_queue, context=None):
         # Send all logs to the main process
-        self.log = helpers.get_logger("RequestResponder", log_queue)
+        self.log = utils.get_logger("RequestResponder", log_queue)
 
         self.context = context or zmq.Context.instance()
         self.request_fw_socket = self.context.socket(zmq.REP)
@@ -361,11 +361,11 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
+                                    onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
     log_queue_listener.start()
 
     # Create log and set handler to queue handle

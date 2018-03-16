@@ -32,7 +32,7 @@ class Passthrough(Operations):
         self.metadata = None
         self.data = None
 
-    # helpers
+    # utils
     # ==================
 
     def __get_logger(self):

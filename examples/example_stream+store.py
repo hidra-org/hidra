@@ -6,7 +6,7 @@ import socket
 import os
 
 from __init__ import BASE_PATH
-import helpers
+import utils
 
 from hidra import Transfer
 
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     # enable logging
     logfile_path = os.path.join(BASE_PATH, "logs")
     logfile = os.path.join(logfile_path, "testAPI.log")
-    helpers.init_logging(logfile, True, "DEBUG")
+    utils.init_logging(logfile, True, "DEBUG")
 
     targets = [arguments.target_host, "50100", 0]
 

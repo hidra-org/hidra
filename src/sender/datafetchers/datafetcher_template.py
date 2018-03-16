@@ -28,9 +28,9 @@ class DataFetcher(DataFetcherBase):
         required_params = []
 
         # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            self.config,
-                                                            self.log)
+        check_passed, config_reduced = utils.check_config(required_params,
+                                                          self.config,
+                                                          self.log)
 
         if check_passed:
             self.log.info("Configuration for data fetcher: {0}"
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     from shutil import copyfile
 
     from __init__ import BASE_PATH
-    import helpers
+    import utils
 
     from multiprocessing import Queue
     from logutils.queue import QueueHandler
@@ -144,13 +144,13 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(log_file,
-                                      log_size,
-                                      verbose=True,
-                                      onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(log_file,
+                                    log_size,
+                                    verbose=True,
+                                    onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
     log_queue_listener.start()
 
     # Create log and set handler to queue handle

@@ -19,7 +19,7 @@ from multiprocessing import Queue
 from zmq.auth.thread import ThreadAuthenticator
 
 from ._version import __version__
-from ._shared_helpers import LoggingFunction
+from ._shared_utils import LoggingFunction
 
 
 class NotSupported(Exception):

@@ -13,7 +13,7 @@ import tempfile
 import socket
 
 # from ._version import __version__
-from ._shared_helpers import LoggingFunction
+from ._shared_utils import LoggingFunction
 
 
 def is_windows():

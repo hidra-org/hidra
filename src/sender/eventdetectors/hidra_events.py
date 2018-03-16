@@ -10,7 +10,7 @@ from zmq.utils.strtypes import asbytes
 import multiprocessing
 
 from eventdetectorbase import EventDetectorBase
-import helpers
+import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -68,7 +68,7 @@ class EventDetector(EventDetectorBase):
         EventDetectorBase.__init__(self, config, log_queue,
                                    "hidra_events")
 
-        if helpers.is_windows():
+        if utils.is_windows():
             required_params = ["context",
                                "ext_ip",
                                "event_det_port",
@@ -82,16 +82,16 @@ class EventDetector(EventDetectorBase):
                                "ext_data_port"]
 
         # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            config,
-                                                            self.log)
+        check_passed, config_reduced = utils.check_config(required_params,
+                                                          config,
+                                                          self.log)
 
         # Only proceed if the configuration was correct
         if check_passed:
             self.log.info("Configuration for event detector: {0}"
                           .format(config_reduced))
 
-            if helpers.is_windows():
+            if utils.is_windows():
                 self.in_con_str = ("tcp://{0}:{1}"
                                    .format(config["ext_ip"],
                                            config["ext_data_port"]))
@@ -228,11 +228,11 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
+                                    onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
     log_queue_listener.start()
 
     # Create log and set handler to queue handle

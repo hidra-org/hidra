@@ -16,7 +16,7 @@ from string import Template
 
 # from ._version import __version__
 from ._constants import connection_list
-from ._shared_helpers import LoggingFunction
+from ._shared_utils import LoggingFunction
 
 LDAPURI = "it-ldap-slave.desy.de:1389"
 NETGROUP_TEMPLATE = Template("a3${bl}-hosts")

@@ -6,7 +6,7 @@ import argparse
 import socket
 
 from __init__ import BASE_PATH
-import helpers
+import utils
 
 from hidra import Transfer
 
@@ -14,7 +14,7 @@ from hidra import Transfer
 # enable logging
 logfile_path = os.path.join(BASE_PATH, "logs")
 logfile = os.path.join(logfile_path, "example_get_remote_version.log")
-helpers.init_logging(logfile, True, "DEBUG")
+utils.init_logging(logfile, True, "DEBUG")
 
 if __name__ == "__main__":
 

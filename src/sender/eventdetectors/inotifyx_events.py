@@ -12,7 +12,7 @@ import copy
 import re
 
 from eventdetectorbase import EventDetectorBase
-import helpers
+import utils
 from hidra import convert_suffix_list_to_regex
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -128,7 +128,7 @@ class CleanUp (threading.Thread):
     def __init__(self, paths, mon_subdirs, mon_regex, cleanup_time,
                  action_time, lock, log_queue):
 
-        self.log = helpers.get_logger("CleanUp", log_queue, log_level="info")
+        self.log = utils.get_logger("CleanUp", log_queue, log_level="info")
 
         self.log.debug("init")
         self.paths = paths
@@ -233,9 +233,9 @@ class EventDetector(EventDetectorBase):
                            "use_cleanup"]
 
         # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            config,
-                                                            self.log)
+        check_passed, config_reduced = utils.check_config(required_params,
+                                                          config,
+                                                          self.log)
 
         if config["use_cleanup"]:
             required_params2 = ["time_till_closed", "action_time"]
@@ -244,9 +244,9 @@ class EventDetector(EventDetectorBase):
             # the second set of parameters only has to be checked if cleanup
             # is enabled
             check_passed2, config_reduced2 = (
-                helpers.check_config(required_params2,
-                                     config,
-                                     self.log))
+                utils.check_config(required_params2,
+                                   config,
+                                   self.log))
             if check_passed2:
                 # To merge them the braces have to be removed
                 config_reduced = (config_reduced[:-1]
@@ -591,11 +591,11 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onscreen_log_level=log_level)
+    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
+                                    onscreen_log_level=log_level)
 
     # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
     log_queue_listener.start()
 
     # Create log and set handler to queue handle

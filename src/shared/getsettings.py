@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 import __init__
-import helpers
+import utils
 import argparse
 
 def get_arguments():
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     args = get_arguments()
 
     config_file = args.config_file
-    params = helpers.parse_parameters(helpers.read_config(config_file))["asection"]
+    params = utils.parse_parameters(utils.read_config(config_file))["asection"]
 
     print("Configured settings:")
     print("Monitored direcory:            {}".format(params["monitored_dir"]))

@@ -10,7 +10,7 @@ import socket
 import argparse
 
 from __init__ import BASE_PATH
-import helpers
+import utils
 
 from hidra import Transfer, generate_filepath
 
@@ -18,7 +18,7 @@ from hidra import Transfer, generate_filepath
 # enable logging
 logfile_path = os.path.join(BASE_PATH, "logs")
 logfile = os.path.join(logfile_path, "test_onda.log")
-helpers.init_logging(logfile, True, "DEBUG")
+utils.init_logging(logfile, True, "DEBUG")
 
 
 class Worker(multiprocessing.Process):

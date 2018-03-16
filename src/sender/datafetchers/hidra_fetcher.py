@@ -9,7 +9,7 @@ import time
 
 from datafetcherbase import DataFetcherBase, DataHandlingError
 from hidra import generate_filepath, Transfer
-import helpers
+import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -34,16 +34,16 @@ class DataFetcher(DataFetcherBase):
                            "status_check_resp_port",
                            "confirmation_resp_port"]
 
-        if helpers.is_windows():
+        if utils.is_windows():
             required_params += ["data_fetch_port"]
         else:
             required_params += ["ipc_path",
                                 "main_pid"]
 
         # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            self.config,
-                                                            self.log)
+        check_passed, config_reduced = utils.check_config(required_params,
+                                                          self.config,
+                                                          self.log)
 
         context = zmq.Context()
 
@@ -219,13 +219,13 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(log_file,
-                                      log_size,
-                                      verbose=True,
-                                      onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(log_file,
+                                    log_size,
+                                    verbose=True,
+                                    onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
     log_queue_listener.start()
 
     # Create log and set handler to queue handle
@@ -254,7 +254,7 @@ if __name__ == '__main__':
         logging.info("Creating directory for IPC communication: {0}"
                      .format(ipc_path))
 
-    if helpers.is_windows():
+    if utils.is_windows():
         job_con_str = "tcp://{0}:{1}".format(con_ip, cleaner_port)
         job_bind_str = "tcp://{0}:{1}".format(ext_ip, cleaner_port)
     else:

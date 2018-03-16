@@ -7,7 +7,7 @@ import abc
 import os
 
 from __init__ import BASE_PATH  # noqa F401
-import helpers
+import utils
 
 # source:
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
@@ -35,7 +35,7 @@ class DataFetcherBase(ABC):
         self.config = config
         self.context = context
 
-        self.log = helpers.get_logger(logger_name, log_queue)
+        self.log = utils.get_logger(logger_name, log_queue)
 
         self.source_file = None
         self.target_file = None
@@ -49,9 +49,9 @@ class DataFetcherBase(ABC):
         ]
 
         # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            self.config,
-                                                            self.log)
+        check_passed, config_reduced = utils.check_config(required_params,
+                                                          self.config,
+                                                          self.log)
 
         if check_passed:
             self.log.info("Configuration for data fetcher: {0}"

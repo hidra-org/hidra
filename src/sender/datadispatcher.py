@@ -10,7 +10,7 @@ from multiprocessing import Process
 
 from logutils.queue import QueueHandler
 from __init__ import BASE_PATH
-import helpers
+import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -25,8 +25,8 @@ class DataDispatcher():
                  local_target=None, context=None):
 
         self.id = id
-        self.log = helpers.get_logger("DataDispatcher-{0}".format(self.id),
-                                      log_queue)
+        self.log = utils.get_logger("DataDispatcher-{0}".format(self.id),
+                                    log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -446,12 +446,12 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize,
-                                      verbose=True,
-                                      onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(logfile, logsize,
+                                    verbose=True,
+                                    onscreen_log_level="debug")
 
     # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
+    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
     log_queue_listener.start()
 
     # Create log and set handler to queue handle

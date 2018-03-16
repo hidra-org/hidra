@@ -8,7 +8,7 @@ import threading
 import json
 
 from __init__ import BASE_PATH
-import helpers
+import utils
 
 from hidra import Transfer
 
@@ -16,7 +16,7 @@ from hidra import Transfer
 # enable logging
 logfile_path = os.path.join(os.path.join(BASE_PATH, "logs"))
 logfile = os.path.join(logfile_path, "example_nexus_transfer.log")
-helpers.init_logging(logfile, True, "DEBUG")
+utils.init_logging(logfile, True, "DEBUG")
 
 print("\n==== TEST: nexus transfer ====\n")
 

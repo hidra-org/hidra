@@ -53,7 +53,7 @@ except:
 if not logutils_imported:
     from logutils.queue import QueueHandler  # noqa F811
 
-import helpers  # noqa E402
+import utils  # noqa E402
 from cfel_optarg import parse_parameters  # noqa E402
 
 
@@ -138,7 +138,7 @@ class HidraController():
             # prefix, beamline and ending)
             det_id = cfile.replace(joined_path + "_", "")[:-5]
             try:
-                config = helpers.read_config(cfile)
+                config = utils.read_config(cfile)
                 self.master_config[det_id] = (
                     parse_parameters(config)["asection"])
             except IOError:
@@ -589,26 +589,26 @@ class ControlServer():
 
         # Get the log Configuration for the lisener
         if arguments.onscreen:
-            h1, h2 = helpers.get_log_handlers(logfile, logsize,
+            h1, h2 = utils.get_log_handlers(logfile, logsize,
                                               arguments.verbose,
                                               arguments.onscreen)
 
             # Start queue listener using the stream handler above.
             self.log_queue_listener = (
-                helpers.CustomQueueListener(self.log_queue, h1, h2))
+                utils.CustomQueueListener(self.log_queue, h1, h2))
         else:
-            h1 = helpers.get_log_handlers(logfile, logsize,
+            h1 = utils.get_log_handlers(logfile, logsize,
                                           arguments.verbose,
                                           arguments.onscreen)
 
             # Start queue listener using the stream handler above
             self.log_queue_listener = (
-                helpers.CustomQueueListener(self.log_queue, h1))
+                utils.CustomQueueListener(self.log_queue, h1))
 
         self.log_queue_listener.start()
 
         # Create log and set handler to queue handle
-        self.log = helpers.get_logger("ControlServer", self.log_queue)
+        self.log = utils.get_logger("ControlServer", self.log_queue)
 
         self.log.info("Init")
 

@@ -13,7 +13,7 @@ import time
 
 from __init__ import BASE_PATH
 
-import helpers
+import utils
 from hidra import Transfer
 
 
@@ -79,24 +79,24 @@ def argument_parsing():
     arguments.config_file = arguments.config_file or default_config
 
     # check if config_file exist
-    helpers.check_existance(arguments.config_file)
+    utils.check_existance(arguments.config_file)
 
     ##################################
     # Get arguments from config file #
     ##################################
 
-    params = helpers.set_parameters(arguments.config_file, arguments)
+    params = utils.set_parameters(arguments.config_file, arguments)
 
     ##################################
     #     Check given arguments      #
     ##################################
 
     # check target directory for existance
-    helpers.check_existance(params["target_dir"])
+    utils.check_existance(params["target_dir"])
 
     # check if logfile is writable
     params["log_file"] = os.path.join(params["log_path"], params["log_name"])
-    helpers.check_writable(params["log_file"])
+    utils.check_writable(params["log_file"])
 
     return params
 
@@ -144,7 +144,7 @@ class CheckNetgroup (threading.Thread):
 
         while self.run_loop:
             # new_whitelist = excecute_ldapsearch_test(self.netgroup)
-            new_whitelist = helpers.excecute_ldapsearch(self.netgroup)
+            new_whitelist = utils.excecute_ldapsearch(self.netgroup)
 
             # new elements added to whitelist
             new_elements = [e for e in new_whitelist if e not in whitelist]
@@ -187,10 +187,10 @@ class DataReceiver:
         root = logging.getLogger()
         root.setLevel(logging.DEBUG)
 
-        handlers = helpers.get_log_handlers(params["log_file"],
-                                            params["log_size"],
-                                            params["verbose"],
-                                            params["onscreen"])
+        handlers = utils.get_log_handlers(params["log_file"],
+                                          params["log_size"],
+                                          params["verbose"],
+                                          params["onscreen"])
 
         if type(handlers) == tuple:
             for h in handlers:
@@ -201,7 +201,7 @@ class DataReceiver:
         self.log = logging.getLogger("DataReceiver")
 
         # set process name
-        check_passed, _ = helpers.check_config(["procname"], params, self.log)
+        check_passed, _ = utils.check_config(["procname"], params, self.log)
         if not check_passed:
             raise Exception("Configuration check failed")
         setproctitle.setproctitle(params["procname"])
@@ -215,7 +215,7 @@ class DataReceiver:
             self.lock.acquire()
             self.log.debug("params['whitelist']={0}"
                            .format(params["whitelist"]))
-            whitelist = helpers.extend_whitelist(params["whitelist"], self.log)
+            whitelist = utils.extend_whitelist(params["whitelist"], self.log)
             self.log.info("Configured whitelist: {0}".format(whitelist))
             self.lock.release()
 

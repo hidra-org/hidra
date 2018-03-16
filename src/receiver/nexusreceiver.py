@@ -7,7 +7,7 @@ import errno
 
 from __init__ import BASE_PATH
 
-import helpers
+import utils
 from hidra import Transfer
 
 
@@ -67,16 +67,16 @@ def argument_parsing():
         or default_config
 
     # check if config_file exist
-    helpers.check_existance(arguments.config_file)
+    utils.check_existance(arguments.config_file)
 
     ##################################
     # Get arguments from config file #
     ##################################
 
-    params = helpers.set_parameters(arguments.config_file, arguments)
+    params = utils.set_parameters(arguments.config_file, arguments)
 
     if params["whitelist"] is not None and type(params["whitelist"]) == str:
-        params["whitelist"] = helpers.excecute_ldapsearch(params["whitelist"])
+        params["whitelist"] = utils.excecute_ldapsearch(params["whitelist"])
 
     ##################################
     #     Check given arguments      #
@@ -88,8 +88,8 @@ def argument_parsing():
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
 
-    handlers = helpers.get_log_handlers(logfile, params["log_size"],
-                                        params["verbose"], params["onscreen"])
+    handlers = utils.get_log_handlers(logfile, params["log_size"],
+                                      params["verbose"], params["onscreen"])
 
     if type(handlers) == tuple:
         for h in handlers:
@@ -98,11 +98,11 @@ def argument_parsing():
         root.addHandler(handlers)
 
     # check target directory for existance
-    helpers.check_existance(params["target_dir"])
+    utils.check_existance(params["target_dir"])
 
     # check if logfile is writable
     params["log_file"] = os.path.join(params["log_path"], params["log_name"])
-    helpers.check_writable(params["log_file"])
+    utils.check_writable(params["log_file"])
 
     return params
 
