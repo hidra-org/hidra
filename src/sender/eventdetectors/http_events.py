@@ -155,11 +155,12 @@ if __name__ == '__main__':
 #    filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
 #    det_ip          = "192.168.138.52"  # haspp11e1m
     det_ip = "asap3-mon"
-    det_api_version = "1.5.0"
+    det_api_version = "1.6.0"
     config = {
         "det_ip": det_ip,
         "det_api_version": det_api_version,
-        "history_size": 1000
+        "history_size": 1000,
+        "fix_subdirs": ["local"]
     }
 
     eventdetector = EventDetector(config, log_queue)

@@ -192,7 +192,7 @@ class DataFetcher(DataFetcherBase):
                                "'{}'".format(self.source_file),
                                exc_info=True)
 
-            if self.config["store_data"]:
+            if self.config["store_data"] and file_opened:
                 try:
                     file_descriptor.write(data)
                     self.log.debug("Writing data for file '{}' (chunk {})"
@@ -216,7 +216,7 @@ class DataFetcher(DataFetcherBase):
 
             chunk_number += 1
 
-        if self.config["store_data"]:
+        if self.config["store_data"] and file_opened:
             try:
                 self.log.debug("Closing '{}'...".format(self.target_file))
                 file_descriptor.close()
