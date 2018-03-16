@@ -49,9 +49,9 @@ def argument_parsing():
                         help="IP (or DNS name) of the detector")
     parser.add_argument("--detapi",
                         type=str,
-                        default="1.5.0",
+                        default="1.6.0",
                         help="API version of the detector "
-                             "(default: 1.5.0)")
+                             "(default: 1.6.0)")
 
     parser.add_argument("--start",
                         help="Starts the HiDRA server (detector mode)",
@@ -121,7 +121,6 @@ if __name__ == '__main__':
                                  NETGROUP_TEMPLATE.format(bl=beamline),
                                  log=hidra.LoggingFunction())
 
-            obj.set("local_target", arguments.target)
             obj.set("det_ip", arguments.det)
             obj.set("det_api_version", arguments.detapi)
             obj.set("history_size", 2000)
@@ -145,8 +144,6 @@ if __name__ == '__main__':
 
             if obj.do("status") == "RUNNING":
                 print("Configured settings:")
-                print("Data is written to:            {}"
-                      .format(obj.get("local_target")))
                 print("Detector IP:                   {}"
                       .format(obj.get("det_ip")))
                 print("Detector API version:          {}"
@@ -161,6 +158,8 @@ if __name__ == '__main__':
                       .format(obj.get("whitelist")))
                 print("Ldapuri:                       {}"
                       .format(obj.get("ldapuri")))
+                print("fix_subdirs:                   {}"
+                      .format(obj.get("fix_subdirs")))
             else:
                 print("HiDRA is not running")
 

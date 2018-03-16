@@ -84,11 +84,12 @@ class HidraController():
         # Set log handler
         self.log = log
 
-        self.supported_local_targets = ["current/raw",
-                                        "current/scratch_bl",
-                                        "commissioning/raw",
-                                        "commissioning/scratch_bl",
-                                        "local"]
+        self.fix_subdirs = ["current/raw",
+                            "current/scratch_bl",
+                            "commissioning/raw",
+                            "commissioning/scratch_bl",
+                            "local"]
+        self.local_target =  os.path.join("/beamline", self.beamline)
 
         self.master_config = dict()
 
@@ -104,7 +105,6 @@ class HidraController():
             "det_ip": None,
             "det_api_version": None,
             "history_size": None,
-            "local_target": None,
             "store_data": None,
             "remove_data": None,
             "whitelist": None,
@@ -138,10 +138,6 @@ class HidraController():
         """
         [b"IS_ALIVE"]
             return "OK"
-        [b"set", host_id, det_id, "local_target", "/gpfs/current/raw"]
-            return "DONE"
-        [b"get", host_id, det_id, "local_target"]
-            return "/gpfs/current/raw"
         [b"do", host_id, det_id, b"start"]
             return "DONE"
         [b"bye", host_id, detector]
@@ -227,15 +223,7 @@ class HidraController():
             "ldapuri"
         ]
 
-        # Target to move the files into
-        # e.g. /beamline/p11/current/raw
-        if key == "local_target" and value in self.supported_local_targets:
-            current_config["local_target"] = os.path.join("/beamline",
-                                                          self.beamline,
-                                                          value)
-            return_val = "DONE"
-
-        elif key in supported_keys:
+        if key in supported_keys:
             current_config[key] = value
             return_val = "DONE"
 
@@ -276,11 +264,9 @@ class HidraController():
                           "whitelist",
                           "ldapuri"]
 
-        if key == "local_target":
-            if current_config["local_target"] is None:
-                return None
-            return os.path.relpath(current_config["local_target"],
-                                   os.path.join("/beamline", self.beamline))
+        print("key", key)
+        if key == "fix_subdirs":
+            return str(self.fix_subdirs)
 
         elif key in supported_keys:
             return current_config[key]
@@ -335,7 +321,6 @@ class HidraController():
         if (current_config["det_ip"]
                 and current_config["det_api_version"]
                 and current_config["history_size"]
-                and current_config["local_target"]
                 and current_config["store_data"] is not None
                 and current_config["remove_data"] is not None
                 and current_config["whitelist"]
@@ -370,9 +355,7 @@ class HidraController():
                 f.write("request_port = 50001\n")
 
                 f.write("event_detector_type = {}\n".format(eventdetector))
-                f.write('fix_subdirs = ["commissioning/raw", '
-                        '"commissioning/scratch_bl", "current/raw", '
-                        '"current/scratch_bl", "local"]\n')
+                f.write("fix_subdirs = {}\n".format(self.fix_subdirs))
 
                 if eventdetector == "inotifyx_events":
                     f.write("monitored_dir = {}/data/source\n".format(BASEDIR))
@@ -387,6 +370,8 @@ class HidraController():
                 f.write("number_of_streams = 32\n")
                 f.write("use_data_stream = False\n")
                 f.write("chunksize = 10485760\n")
+
+                f.write("local_target = {}\n".format(self.local_target))
 
                 for key in current_config:
                     f.write(key + " = {}\n".format(current_config[key]))
@@ -475,6 +460,8 @@ class HidraController():
 def call_hidra_service(cmd, beamline, det_id, log):
     SYSTEMD_PREFIX = "hidra@"
     SERVICE_NAME = "hidra"
+
+#    return subprocess.call(["/home/kuhnm/Arbeit/projects/hidra/initscripts/hidra.sh", "--beamline", "p00", "--detector", "asap3-mon", "--"+cmd])
 
     # systems using systemd
     if (os.path.exists("/usr/lib/systemd")

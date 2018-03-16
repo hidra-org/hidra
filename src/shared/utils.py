@@ -239,6 +239,10 @@ def check_all_sub_dir_exist(dir_path, subdirs):
 
 
 def check_existance(path):
+    if path == None:
+        logging.error("No path to check found (path={}). Abort.".format(path))
+        sys.exit(1)
+
     # Check path for existance.
     # Exits if it does not exist
     if os.path.isdir(path):
