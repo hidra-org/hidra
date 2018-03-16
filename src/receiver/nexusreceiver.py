@@ -76,7 +76,8 @@ def argument_parsing():
     params = utils.set_parameters(arguments.config_file, arguments)
 
     if params["whitelist"] is not None and type(params["whitelist"]) == str:
-        params["whitelist"] = utils.excecute_ldapsearch(params["whitelist"])
+        params["whitelist"] = utils.excecute_ldapsearch(params["whitelist"],
+                                                        params["ldapuri"])
 
     ##################################
     #     Check given arguments      #

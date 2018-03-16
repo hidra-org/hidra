@@ -4,22 +4,18 @@ from __future__ import print_function
 # from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import socket
+import json
 import logging
 import os
-import sys
-import subprocess
 import re
-import json
+import socket
+import subprocess
+import sys
 import zmq
-from string import Template
 
 # from ._version import __version__
 from ._constants import connection_list
 from ._shared_utils import LoggingFunction
-
-LDAPURI = "it-ldap-slave.desy.de:1389"
-NETGROUP_TEMPLATE = Template("a3${bl}-hosts")
 
 
 class NotSupported(Exception):
@@ -50,13 +46,12 @@ class CommunicationFailed(Exception):
     pass
 
 
-def excecute_ldapsearch(ldap_cn):
-    global LDAPURI
+def excecute_ldapsearch(ldap_cn, ldapuri):
 
     p = subprocess.Popen(
         ["ldapsearch",
          "-x",
-         "-H ldap://" + LDAPURI,
+         "-H ldap://" + ldapuri,
          "cn=" + ldap_cn, "-LLL"],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -74,7 +69,7 @@ def excecute_ldapsearch(ldap_cn):
     return netgroup
 
 
-def check_netgroup(hostname, beamline, log=None):
+def check_netgroup(hostname, beamline, ldapuri, netgroup_template, log=None):
 
     if log is None:
         log = LoggingFunction(None)
@@ -83,20 +78,25 @@ def check_netgroup(hostname, beamline, log=None):
     else:
         log = LoggingFunction("debug")
 
-    netgroup_name = NETGROUP_TEMPLATE.substitute(bl=beamline)
-    netgroup = excecute_ldapsearch(netgroup_name)
+    netgroup_name = netgroup_template.format(bl=beamline)
+    netgroup = excecute_ldapsearch(netgroup_name, ldapuri)
 
     # convert host to fully qualified DNS name
     hostname = socket.getfqdn(hostname)
 
     if hostname not in netgroup:
-        log.error("Host {0} is not contained in netgroup of "
-                  "beamline {1}".format(hostname, beamline))
+        log.error("Host {} is not contained in netgroup of "
+                  "beamline {}".format(hostname, beamline))
         sys.exit(1)
 
 
 class Control():
-    def __init__(self, beamline, detector, use_log=False):
+    def __init__(self,
+                 beamline,
+                 detector,
+                 ldapuri,
+                 netgroup_template,
+                 use_log=False):
 
         # print messages of certain level to screen
         if use_log in ["debug", "info", "warning", "error", "critical"]:
@@ -117,18 +117,29 @@ class Control():
         self.detector = detector
         self.socket = None
 
+        self.ldapuri = ldapuri
+        self.netgroup_template = netgroup_template
+
         self.host = socket.getfqdn()
 
-        check_netgroup(self.host, self.beamline, self.log)
-        check_netgroup(self.detector, self.beamline, self.log)
+        check_netgroup(self.host,
+                       self.beamline,
+                       self.ldapuri,
+                       self.netgroup_template,
+                       self.log)
+        check_netgroup(self.detector,
+                       self.beamline,
+                       self.ldapuri,
+                       self.netgroup_template,
+                       self.log)
 
         try:
-            self.con_id = "tcp://{0}:{1}".format(
+            self.con_id = "tcp://{}:{}".format(
                 connection_list[self.beamline]["host"],
                 connection_list[self.beamline]["port"])
-            self.log.info("Starting connection to {0}".format(self.con_id))
+            self.log.info("Starting connection to {}".format(self.con_id))
         except:
-            self.log.error("Beamline {0} not supported".format(self.beamline))
+            self.log.error("Beamline {} not supported".format(self.beamline))
             sys.exit(1)
 
         self.__create_sockets()
@@ -145,10 +156,10 @@ class Control():
         try:
             self.socket = self.context.socket(zmq.REQ)
             self.socket.connect(self.con_id)
-            self.log.info("Start socket (connect): '{0}'"
+            self.log.info("Start socket (connect): '{}'"
                           .format(self.con_id))
         except:
-            self.log.error("Failed to start socket (connect): '{0}'"
+            self.log.error("Failed to start socket (connect): '{}'"
                            .format(self.con_id), exc_info=True)
             raise
 
@@ -175,7 +186,7 @@ class Control():
             self.log.info("HiDRA control server up and answering.")
         else:
             self.log.error("HiDRA control server is in failed state.")
-            self.log.debug("responce was: {0}".format(responce))
+            self.log.debug("responce was: {}".format(responce))
             self.stop(unregister=False)
             sys.exit(1)
 
@@ -183,10 +194,10 @@ class Control():
         msg = [b"get", self.host, self.detector, attribute]
 
         self.socket.send_multipart(msg)
-        self.log.debug("sent: {0}".format(msg))
+        self.log.debug("sent: {}".format(msg))
 
         reply = self.socket.recv()
-        self.log.debug("recv: {0}".format(reply))
+        self.log.debug("recv: {}".format(reply))
 
         return json.loads(reply)
 
@@ -198,7 +209,11 @@ class Control():
             value = [item for sublist in value for item in sublist]
 
         if attribute == "det_ip":
-            check_netgroup(value[0], self.beamline, self.log)
+            check_netgroup(value[0],
+                           self.beamline,
+                           self.ldapuri,
+                           self.netgroup_template,
+                           self.log)
 
         if attribute == "whitelist":
             msg = [b"set", self.host, self.detector, attribute,
@@ -208,10 +223,10 @@ class Control():
                    json.dumps(value[0])]
 
         self.socket.send_multipart(msg)
-        self.log.debug("sent: {0}".format(msg))
+        self.log.debug("sent: {}".format(msg))
 
         reply = self.socket.recv()
-        self.log.debug("recv: {0}".format(reply))
+        self.log.debug("recv: {}".format(reply))
 
         return reply
 
@@ -219,10 +234,10 @@ class Control():
         msg = [b"do", self.host, self.detector, command]
 
         self.socket.send_multipart(msg)
-        self.log.debug("sent: {0}".format(msg))
+        self.log.debug("sent: {}".format(msg))
 
         reply = self.socket.recv()
-        self.log.debug("recv: {0}".format(reply))
+        self.log.debug("recv: {}".format(reply))
 
         return reply
 
@@ -233,10 +248,10 @@ class Control():
                 msg = [b"bye", self.host, self.detector]
 
                 self.socket.send_multipart(msg)
-                self.log.debug("sent: {0}".format(msg))
+                self.log.debug("sent: {}".format(msg))
 
                 reply = self.socket.recv()
-                self.log.debug("recv: {0} ".format(reply))
+                self.log.debug("recv: {} ".format(reply))
 
             try:
                 self.log.info("closing socket...")
@@ -257,19 +272,19 @@ def reset_receiver_status(host, port):
 
     try:
         reset_socket = context.socket(zmq.REQ)
-        con_str = "tcp://{0}:{1}".format(host, port)
+        con_str = "tcp://{}:{}".format(host, port)
 
         reset_socket.connect(con_str)
-        print("Start reset_socket (connect): '{0}'".format(con_str))
+        print("Start reset_socket (connect): '{}'".format(con_str))
     except:
-        print("Failed to start reset_socket (connect): '{0}'".format(con_str),
+        print("Failed to start reset_socket (connect): '{}'".format(con_str),
               exc_info=True)
 
     reset_socket.send_multipart([b"RESET_STATUS"])
     print("Reset request sent")
 
     responce = reset_socket.recv_multipart()
-    print("Responce: {0}".format(responce))
+    print("Responce: {}".format(responce))
 
     reset_socket.close()
     context.destroy()

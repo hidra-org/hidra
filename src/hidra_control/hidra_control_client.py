@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
+import argparse
 import os
 import sys
-import argparse
 
 try:
     # search in global python modules first
@@ -27,7 +27,8 @@ ALLOWED_BEAMLINES = list(hidra.connection_list.keys())
 # ALLOWED_BEAMLINES = ["p00", "p01", "p02.1", "p02.2", "p03", "p04", "p05",
 #                      "p06", "p07", "p08", "p09", "p10", "p11"]
 
-NETGROUP_TEMPLATE = Template("a3${bl}-hosts")  # noqa F821
+LDAPURI = "it-ldap-slave.desy.de:1389"
+NETGROUP_TEMPLATE = "a3{bl}-hosts"
 
 
 def argument_parsing():
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     arguments = parser.parse_args()
 
     if arguments.version:
-        print("Hidra version: {0}".format(hidra.__version__))
+        print("Hidra version: {}".format(hidra.__version__))
         sys.exit(0)
 
     beamline = arguments.beamline
@@ -105,13 +106,19 @@ if __name__ == '__main__':
         print("ERROR: target not supported")
         sys.exit(1)
 
-    obj = hidra.Control(beamline, arguments.det, use_log="warning")
+    obj = hidra.Control(beamline,
+                        arguments.det,
+                        LDAPURI,
+                        NETGROUP_TEMPLATE,
+                        use_log="warning")
 
     try:
         if arguments.start:
             # check if beamline is allowed to get data from this detector
             hidra.check_netgroup(arguments.det,
                                  beamline,
+                                 LDAPURI,
+                                 NETGROUP_TEMPLATE.format(bl=beamline),
                                  log=hidra.LoggingFunction())
 
             obj.set("local_target", arguments.target)
@@ -120,7 +127,8 @@ if __name__ == '__main__':
             obj.set("history_size", 2000)
             obj.set("store_data", True)
             obj.set("remove_data", True)
-            obj.set("whitelist", NETGROUP_TEMPLATE)
+            obj.set("whitelist", NETGROUP_TEMPLATE.format(bl=beamline))
+            obj.set("ldapuri", LDAPURI)
 
             print("Starting HiDRA (detector mode):", obj.do("start"))
 
@@ -137,20 +145,22 @@ if __name__ == '__main__':
 
             if obj.do("status") == "RUNNING":
                 print("Configured settings:")
-                print("Data is written to:            {0}"
+                print("Data is written to:            {}"
                       .format(obj.get("local_target")))
-                print("Detector IP:                   {0}"
+                print("Detector IP:                   {}"
                       .format(obj.get("det_ip")))
-                print("Detector API version:          {0}"
+                print("Detector API version:          {}"
                       .format(obj.get("det_api_version")))
-                print("History size:                  {0}"
+                print("History size:                  {}"
                       .format(obj.get("history_size")))
-                print("Store data:                    {0}"
+                print("Store data:                    {}"
                       .format(obj.get("store_data")))
-                print("Remove data from the detector: {0}"
+                print("Remove data from the detector: {}"
                       .format(obj.get("remove_data")))
-                print("Whitelist:                     {0}"
+                print("Whitelist:                     {}"
                       .format(obj.get("whitelist")))
+                print("Ldapuri:                       {}"
+                      .format(obj.get("ldapuri")))
             else:
                 print("HiDRA is not running")
 

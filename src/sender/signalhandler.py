@@ -21,8 +21,8 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 class SignalHandler():
 
     def __init__(self, params, control_pub_con_id, control_sub_con_id,
-                 whitelist, com_con_id, request_fw_con_id, request_con_id,
-                 log_queue, context=None):
+                 whitelist, ldapuri, com_con_id, request_fw_con_id,
+                 request_con_id, log_queue, context=None):
 
         # Send all logs to the main process
         self.log = utils.get_logger("SignalHandler", log_queue)
@@ -46,7 +46,7 @@ class SignalHandler():
         # to rotate through the open permanent requests
         self.next_requ_node = []
 
-        self.whitelist = utils.extend_whitelist(whitelist, self.log)
+        self.whitelist = utils.extend_whitelist(whitelist, ldapuri, self.log)
 
         # sockets
         self.control_pub_socket = None

@@ -33,8 +33,6 @@ except:
     from logutils.queue import QueueListener
     from logutils.queue import QueueHandler
 
-LDAPURI = "it-ldap-slave.desy.de:1389"
-
 
 def is_windows():
     if platform.system() == "Windows":
@@ -149,7 +147,7 @@ def confirm(prompt=None, resp=False):
             logging.error("Keyboard Interruption detected.")
         except Exception as e:
             logging.error("Something went wrong with the confirmation.")
-            logging.debug("Error was: {0}".format(e))
+            logging.debug("Error was: {}".format(e))
             break
 
         if not ans:
@@ -168,9 +166,9 @@ def check_type(specified_type, supported_types, log_string):
     specified_type = specified_type.lower()
 
     if specified_type in supported_types:
-        logging.debug("{0} '{1}' is ok.".format(log_string, specified_type))
+        logging.debug("{} '{}' is ok.".format(log_string, specified_type))
     else:
-        logging.error("{0} '{1}' is not supported."
+        logging.error("{} '{}' is not supported."
                       .format(log_string, specified_type))
         sys.exit(1)
 
@@ -179,8 +177,8 @@ def check_dir_empty(dir_path):
 
     # check if directory is empty
     if os.listdir(dir_path):
-        logging.debug("Directory '{0}' is not empty.".format(dir_path))
-        if confirm(prompt="Directory {0} is not empty.\n"
+        logging.debug("Directory '{}' is not empty.".format(dir_path))
+        if confirm(prompt="Directory {} is not empty.\n"
                           "Should its content be removed?".format(dir_path),
                    resp=True):
             for element in os.listdir(dir_path):
@@ -192,7 +190,7 @@ def check_dir_empty(dir_path):
                         shutil.rmtree(path)
                 else:
                     os.remove(path)
-            logging.info("All elements of directory {0} were removed."
+            logging.info("All elements of directory {} were removed."
                          .format(dir_path))
 
 
@@ -210,8 +208,8 @@ def check_any_sub_dir_exists(dir_path, subdirs):
 
     if no_subdir:
         logging.error("There are none of the specified subdirectories inside "
-                      "'{0}'. Abort.".format(dir_path))
-        logging.error("Checked paths: {0}".format(dirs_to_check))
+                      "'{}'. Abort.".format(dir_path))
+        logging.error("Checked paths: {}".format(dirs_to_check))
         sys.exit(1)
 
 
@@ -236,7 +234,7 @@ def check_all_sub_dir_exist(dir_path, subdirs):
 
     for d in dirs_to_check:
         if not os.path.exists(d):
-            logging.error("Dir '{0}' does not exist. Abort.".format(d))
+            logging.error("Dir '{}' does not exist. Abort.".format(d))
             sys.exit(1)
 
 
@@ -249,7 +247,7 @@ def check_existance(path):
         obj_type = "File"
 
     if not os.path.exists(path):
-        logging.error("{0} '{1}' does not exist. Abort."
+        logging.error("{} '{}' does not exist. Abort."
                       .format(obj_type, path))
         sys.exit(1)
 
@@ -260,7 +258,7 @@ def check_writable(file_to_check):
         file_descriptor = open(file_to_check, "a")
         file_descriptor.close()
     except:
-        logging.error("Unable to create the file {0}".format(file_to_check))
+        logging.error("Unable to create the file {}".format(file_to_check))
         sys.exit(1)
 
 
@@ -272,7 +270,7 @@ def check_version(version, log):
                        <major release>.<minor release>.<patch level>
         log: logging handler
     """
-    log.debug("remote version: {0}, local version: {1}"
+    log.debug("remote version: {}, local version: {}"
               .format(version, __version__))
 
     if version.rsplit(".", 1)[0] < __version__.rsplit(".", 1)[0]:
@@ -297,7 +295,7 @@ def check_host(host, whitelist, log):
                 host_modified = socket.getfqdn(hostname)
 
                 if (host_modified not in whitelist):
-                    log.info("Host {0} is not allowed to connect"
+                    log.info("Host {} is not allowed to connect"
                              .format(hostname))
                     return_val = False
 
@@ -309,7 +307,7 @@ def check_host(host, whitelist, log):
             if host_modified in whitelist:
                 return True
             else:
-                log.info("Host {0} is not allowed to connect".format(host))
+                log.info("Host {} is not allowed to connect".format(host))
 
     return False
 
@@ -371,21 +369,21 @@ def check_config(required_params, config, log):
             # checks if the parameter is contained in the config dict
             if param[0] not in config:
                 log.error("Configuration of wrong format. "
-                          "Missing parameter '{0}'".format(param[0]))
+                          "Missing parameter '{}'".format(param[0]))
                 check_passed = False
             # check if the parameter is one of the supported values
             elif type(param[1]) == list:
                 if config[param[0]] not in param[1]:
                     log.error("Configuration of wrong format. Options for "
-                              "parameter '{0}' are {1}"
+                              "parameter '{}' are {}"
                               .format(param[0], param[1]))
-                    log.debug("parameter '{0}' = {1}"
+                    log.debug("parameter '{}' = {}"
                               .format(param[0], config[param[0]]))
                     check_passed = False
             # check if the parameter has the supported type
             elif type(config[param[0]]) != param[1]:
-                log.error("Configuration of wrong format. Parameter '{0}' is "
-                          "of format '{1}' but should be of format '{2}'"
+                log.error("Configuration of wrong format. Parameter '{}' is "
+                          "of format '{}' but should be of format '{}'"
                           .format(param[0], type(config[param[0]]), param[1]))
                 check_passed = False
         # checks if the parameter is contained in the config dict
@@ -394,7 +392,7 @@ def check_config(required_params, config, log):
                       .format(param))
             check_passed = False
         else:
-            config_reduced += "{0}: {1}, ".format(param, config[param])
+            config_reduced += "{}: {}, ".format(param, config[param])
 
     if config_reduced == "{":
         config_reduced = config_reduced + "}"
@@ -405,20 +403,20 @@ def check_config(required_params, config, log):
     return check_passed, config_reduced
 
 
-def extend_whitelist(whitelist, log):
+def extend_whitelist(whitelist, ldapuri, log):
     """
     Only fully qualified domain named should be in the whitlist
     """
 
-    log.info("Configured whitelist: {0}".format(whitelist))
+    log.info("Configured whitelist: {}".format(whitelist))
 
     if whitelist is not None:
         if type(whitelist) == str:
-            whitelist = excecute_ldapsearch(whitelist)
-            log.info("Whitelist after ldapsearch: {0}".format(whitelist))
+            whitelist = excecute_ldapsearch(whitelist, ldapuri)
+            log.info("Whitelist after ldapsearch: {}".format(whitelist))
         else:
             whitelist = [socket.getfqdn(host) for host in whitelist]
-            log.debug("Converted whitelist: {0}".format(whitelist))
+            log.debug("Converted whitelist: {}".format(whitelist))
 
     return whitelist
 
@@ -435,24 +433,23 @@ def convert_socket_to_fqdn(socketids, log):
             # [["cfeld-pcx27533:50101", 1, ".*(tif|cbf)$"], ...]
             if type(target) == list:
                 host, port = target[0].split(":")
-                new_target = "{0}:{1}".format(socket.getfqdn(host), port)
+                new_target = "{}:{}".format(socket.getfqdn(host), port)
                 target[0] = new_target
     else:
         host, port = socketids.split(":")
-        socketids = "{0}:{1}".format(socket.getfqdn(host), port)
+        socketids = "{}:{}".format(socket.getfqdn(host), port)
 
     log.debug("converted socketids={}".format(socketids))
 
     return socketids
 
 
-def excecute_ldapsearch(ldap_cn):
-    global LDAPURI
+def excecute_ldapsearch(ldap_cn, ldapuri):
 
     p = subprocess.Popen(
         ["ldapsearch",
          "-x",
-         "-H ldap://" + LDAPURI,
+         "-H ldap://" + ldapuri,
          "cn=" + ldap_cn, "-LLL"],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -568,7 +565,7 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
 
             return h1, h2
         else:
-            logging.error("Logging on Screen: Option {0} is not supported."
+            logging.error("Logging on Screen: Option {} is not supported."
                           .format(onscreen_log_level))
             exit(1)
 
@@ -683,5 +680,5 @@ def init_logging(filename_full_path, verbose, onscreen_log_level=False):
             console.setFormatter(screen_handler_format)
             logging.getLogger("").addHandler(console)
         else:
-            logging.error("Logging on Screen: Option {0} is not supported."
+            logging.error("Logging on Screen: Option {} is not supported."
                           .format(onscreen_log_level))

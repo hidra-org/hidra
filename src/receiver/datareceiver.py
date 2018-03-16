@@ -127,13 +127,14 @@ def excecute_ldapsearch_test(netgroup):
 
 
 class CheckNetgroup (threading.Thread):
-    def __init__(self, netgroup, lock):
+    def __init__(self, netgroup, lock, ldapuri):
         self.log = logging.getLogger("CheckNetgroup")
 
         self.log.debug("init")
         self.netgroup = netgroup
         self.lock = lock
         self.run_loop = True
+        self.ldapuri = ldapuri
 
         self.log.debug("threading.Thread init")
         threading.Thread.__init__(self)
@@ -144,7 +145,8 @@ class CheckNetgroup (threading.Thread):
 
         while self.run_loop:
             # new_whitelist = excecute_ldapsearch_test(self.netgroup)
-            new_whitelist = utils.excecute_ldapsearch(self.netgroup)
+            new_whitelist = utils.excecute_ldapsearch(self.netgroup,
+                                                      self.ldapuri)
 
             # new elements added to whitelist
             new_elements = [e for e in new_whitelist if e not in whitelist]
@@ -215,7 +217,9 @@ class DataReceiver:
             self.lock.acquire()
             self.log.debug("params['whitelist']={0}"
                            .format(params["whitelist"]))
-            whitelist = utils.extend_whitelist(params["whitelist"], self.log)
+            whitelist = utils.extend_whitelist(params["whitelist"],
+                                               params["ldapuri"],
+                                               self.log)
             self.log.info("Configured whitelist: {0}".format(whitelist))
             self.lock.release()
 
@@ -232,7 +236,8 @@ class DataReceiver:
                 and type(params["whitelist"]) == str):
             self.log.debug("Starting checking thread")
             self.checking_thread = CheckNetgroup(params["whitelist"],
-                                                 self.lock)
+                                                 self.lock,
+                                                 params["ldapuri"])
             self.checking_thread.start()
         else:
             self.log.debug("Checking thread not started: {0}"

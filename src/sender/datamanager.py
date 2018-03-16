@@ -425,9 +425,9 @@ class DataManager():
         self.com_port = self.params["com_port"]
         self.request_port = self.params["request_port"]
 
-        self.com_con_str = ("tcp://{0}:{1}"
+        self.com_con_str = ("tcp://{}:{}"
                             .format(self.ext_ip, self.params["com_port"]))
-        self.request_con_str = ("tcp://{0}:{1}"
+        self.request_con_str = ("tcp://{}:{}"
                                 .format(self.ext_ip,
                                         self.params["request_port"]))
 
@@ -479,6 +479,7 @@ class DataManager():
                 self.params["cleaner_job_con_str"] = None
 
         self.whitelist = self.params["whitelist"]
+        self.ldapuri = self.params["ldapuri"]
 
         self.use_data_stream = self.params["use_data_stream"]
         self.log.info("Usage of data stream set to '{0}'"
@@ -533,7 +534,9 @@ class DataManager():
         self.log.info("Version: {0}".format(__version__))
 
         # IP and DNS name should be both in the whitelist
-        self.whitelist = utils.extend_whitelist(self.whitelist, self.log)
+        self.whitelist = utils.extend_whitelist(self.whitelist,
+                                                self.ldapuri,
+                                                self.log)
 
         # Create zmq context
         # there should be only one context in one process
@@ -853,6 +856,7 @@ class DataManager():
                                                      self.control_pub_con_str,
                                                      self.control_sub_con_str,
                                                      self.whitelist,
+                                                     self.ldapuri,
                                                      self.com_con_str,
                                                      self.request_fw_con_str,
                                                      self.request_con_str,
