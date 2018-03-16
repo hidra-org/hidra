@@ -28,6 +28,12 @@ SCRIPTNAME=/etc/init.d/$NAME
 
 USE_EXE=false
 
+usage()
+{
+    printf "Usage: $SCRIPTNAME --beamline|--bl <beamline> [--detector|--det <detector>] [--config_file <config_file>] {--start|--stop|--status|--restart|--getsettings}\n" >&2
+    RETVAL=3
+}
+
 beamline=
 detector=
 config_file=
@@ -75,12 +81,6 @@ do
     esac
     shift
 done
-
-usage()
-{
-    printf "Usage: $SCRIPTNAME --beamline|--bl <beamline> {--start|--stop|--status|--restart|--getsettings}\n" >&2
-    RETVAL=3
-}
 
 if [ -z ${action+x} ]
 then
@@ -416,7 +416,7 @@ elif [ -f /etc/SuSE-release ] ; then
     do_start()
     {
         printf "Starting $NAME"
-        export LD_LIBRARY_PATH=/opt/hidra:$LD_LIBRARY_PATH
+        export LD_LIBRARY_PATH=${BASE_DIR}:$LD_LIBRARY_PATH
 
         # Checking if the process is already running
         /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"
