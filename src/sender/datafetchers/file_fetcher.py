@@ -21,7 +21,7 @@ class DataFetcher(DataFetcherBase):
     def __init__(self, config, log_queue, id, context):
 
         DataFetcherBase.__init__(self, config, log_queue, id,
-                                 "file_fetcher-{0}".format(id),
+                                 "file_fetcher-{}".format(id),
                                  context)
 
         required_params = ["fix_subdirs",
@@ -33,7 +33,7 @@ class DataFetcher(DataFetcherBase):
                                                           self.log)
 
         if check_passed:
-            self.log.info("Configuration for data fetcher: {0}"
+            self.log.info("Configuration for data fetcher: {}"
                           .format(config_reduced))
 
             self.config["send_timeout"] = -1  # 10
@@ -47,7 +47,7 @@ class DataFetcher(DataFetcherBase):
                 self.finish = self.finish_without_cleaner
 
         else:
-            # self.log.debug("config={0}".format(config))
+            # self.log.debug("config={}".format(config))
             raise Exception("Wrong configuration")
 
     def get_metadata(self, targets, metadata):
@@ -63,14 +63,14 @@ class DataFetcher(DataFetcherBase):
 
         if targets:
             try:
-                self.log.debug("get filesize for '{0}'..."
+                self.log.debug("get filesize for '{}'..."
                                .format(self.source_file))
                 filesize = os.path.getsize(self.source_file)
                 file_mod_time = os.stat(self.source_file).st_mtime
                 file_create_time = os.stat(self.source_file).st_ctime
-                self.log.debug("filesize({0}) = {1}"
+                self.log.debug("filesize({}) = {}"
                                .format(self.source_file, filesize))
-                self.log.debug("file_mod_time({0}) = {1}"
+                self.log.debug("file_mod_time({}) = {}"
                                .format(self.source_file, file_mod_time))
 
             except:
@@ -103,7 +103,7 @@ class DataFetcher(DataFetcherBase):
                 metadata["confirmation_required"] = (
                     self.config["remove_data"] == "with_confirmation")
 
-                self.log.debug("metadata = {0}".format(metadata))
+                self.log.debug("metadata = {}".format(metadata))
             except:
                 self.log.error("Unable to assemble multi-part message.")
                 raise
@@ -133,14 +133,14 @@ class DataFetcher(DataFetcherBase):
 
         # reading source file into memory
         try:
-            self.log.debug("Opening '{0}'...".format(self.source_file))
+            self.log.debug("Opening '{}'...".format(self.source_file))
             file_descriptor = open(str(self.source_file), "rb")
         except:
-            self.log.error("Unable to read source file '{0}'"
+            self.log.error("Unable to read source file '{}'"
                            .format(self.source_file), exc_info=True)
             raise
 
-        self.log.debug("Passing multipart-message for file '{0}'..."
+        self.log.debug("Passing multipart-message for file '{}'..."
                        .format(self.source_file))
         # sending data divided into chunks
         while True:
@@ -163,7 +163,7 @@ class DataFetcher(DataFetcherBase):
                 chunk_payload.append(file_content)
             except:
                 self.log.error("Unable to pack multipart-message for file "
-                               "'{0}'".format(self.source_file), exc_info=True)
+                               "'{}'".format(self.source_file), exc_info=True)
 
             # send message to data targets
             try:
@@ -171,24 +171,24 @@ class DataFetcher(DataFetcherBase):
                                      chunk_payload)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{0}' (chunk {1})".format(self.source_file,
-                                                          chunk_number),
+                               "'{}' (chunk {})".format(self.source_file,
+                                                        chunk_number),
                                exc_info=True)
                 send_error = True
             except:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{0}' (chunk {1})".format(self.source_file,
-                                                          chunk_number),
+                               "'{}' (chunk {})".format(self.source_file,
+                                                        chunk_number),
                                exc_info=True)
 
             chunk_number += 1
 
         # close file
         try:
-            self.log.debug("Closing '{0}'...".format(self.source_file))
+            self.log.debug("Closing '{}'...".format(self.source_file))
             file_descriptor.close()
         except:
-            self.log.error("Unable to close target file '{0}'"
+            self.log.error("Unable to close target file '{}'"
                            .format(self.source_file), exc_info=True)
             raise
 
@@ -213,15 +213,15 @@ class DataFetcher(DataFetcherBase):
                     self.target_file.split(subdir + os.sep)[0], subdir)
 
                 if metadata["relative_path"] in self.config["fix_subdirs"]:
-                    self.log.error("Unable to copy/move file '{0}' to '{1}': "
-                                   "Directory {2} is not available"
+                    self.log.error("Unable to copy/move file '{}' to '{}': "
+                                   "Directory {} is not available"
                                    .format(self.source_file, self.target_file,
                                            metadata["relative_path"]))
                     raise
                 elif (subdir in self.config["fix_subdirs"]
                         and not os.path.isdir(target_base_path)):
-                    self.log.error("Unable to copy/move file '{0}' to '{1}': "
-                                   "Directory {2} is not available"
+                    self.log.error("Unable to copy/move file '{}' to '{}': "
+                                   "Directory {} is not available"
                                    .format(self.source_file,
                                            self.target_file,
                                            subdir))
@@ -230,27 +230,26 @@ class DataFetcher(DataFetcherBase):
                     try:
                         target_path, filename = os.path.split(self.target_file)
                         os.makedirs(target_path)
-                        self.log.info("New target directory created: {0}"
+                        self.log.info("New target directory created: {}"
                                       .format(target_path))
                         action_function(self.source_file, self.target_file)
                     except OSError as e:
                         self.log.info("Target directory creation failed, was "
-                                      "already created in the meantime: {0}"
+                                      "already created in the meantime: {}"
                                       .format(target_path))
                         action_function(self.source_file, self.target_file)
                     except:
-                        self.log.error("Unable to copy/move file '{0}' to "
-                                       "'{1}'".format(self.source_file,
-                                                      self.target_file),
+                        self.log.error("Unable to copy/move file '{}' to '{}'"
+                                       .format(self.source_file, self.target_file),
                                        exc_info=True)
-                        self.log.debug("target_path: {0}".format(target_path))
+                        self.log.debug("target_path: {}".format(target_path))
             else:
-                self.log.error("Unable to copy/move file '{0}' to '{1}'"
+                self.log.error("Unable to copy/move file '{}' to '{}'"
                                .format(self.source_file, self.target_file),
                                exc_info=True)
                 raise
         except:
-            self.log.error("Unable to copy/move file '{0}' to '{1}'"
+            self.log.error("Unable to copy/move file '{}' to '{}'"
                            .format(self.source_file, self.target_file),
                            exc_info=True)
             raise
@@ -271,7 +270,7 @@ class DataFetcher(DataFetcherBase):
             # (does not preserve file owner, group or ACLs)
             try:
                 self._datahandling(shutil.copy, metadata)
-                self.log.info("Copying file '{0}' ...success."
+                self.log.info("Copying file '{}' ...success."
                               .format(self.source_file))
             except:
                 return
@@ -283,7 +282,7 @@ class DataFetcher(DataFetcherBase):
             self.cleaner_job_socket.send_multipart(
                 [metadata["source_path"].encode("utf-8"),
                  file_id.encode("utf-8")])
-            self.log.debug("Forwarded to cleaner {0}".format(file_id))
+            self.log.debug("Forwarded to cleaner {}".format(file_id))
 
         # send message to metadata targets
         if targets_metadata:
@@ -292,11 +291,11 @@ class DataFetcher(DataFetcherBase):
                                      metadata, None,
                                      self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
-                               "{0}...done.".format(self.source_file))
+                               "{}...done.".format(self.source_file))
 
             except:
                 self.log.error("Unable to send metadata multipart-message for "
-                               "file '{0}' to '{1}'"
+                               "file '{}' to '{}'"
                                .format(self.source_file, targets_metadata),
                                exc_info=True)
 
@@ -312,10 +311,10 @@ class DataFetcher(DataFetcherBase):
             # move file
             try:
                 self._datahandling(shutil.move, metadata)
-                self.log.info("Moving file '{0}' to '{1}'...success."
+                self.log.info("Moving file '{}' to '{}'...success."
                               .format(self.source_file, self.target_file))
             except:
-                self.log.error("Could not move file {0} to {1}"
+                self.log.error("Could not move file {} to {}"
                                .format(self.source_file, self.target_file),
                                exc_info=True)
                 return
@@ -326,7 +325,7 @@ class DataFetcher(DataFetcherBase):
             # (does not preserve file owner, group or ACLs)
             try:
                 self._datahandling(shutil.copy, metadata)
-                self.log.info("Copying file '{0}' ...success."
+                self.log.info("Copying file '{}' ...success."
                               .format(self.source_file))
             except:
                 return
@@ -335,10 +334,10 @@ class DataFetcher(DataFetcherBase):
             # remove file
             try:
                 os.remove(self.source_file)
-                self.log.info("Removing file '{0}' ...success."
+                self.log.info("Removing file '{}' ...success."
                               .format(self.source_file))
             except:
-                self.log.error("Unable to remove file {0}"
+                self.log.error("Unable to remove file {}"
                                .format(self.source_file), exc_info=True)
 
             self.config["remove_flag"] = False
@@ -350,11 +349,11 @@ class DataFetcher(DataFetcherBase):
                                      metadata, None,
                                      self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
-                               "{0}...done.".format(self.source_file))
+                               "{}...done.".format(self.source_file))
 
             except:
                 self.log.error("Unable to send metadata multipart-message for "
-                               "file '{0}' to '{1}'"
+                               "file '{}' to '{}'"
                                .format(self.source_file, targets_metadata),
                                exc_info=True)
 
@@ -371,10 +370,10 @@ class Cleaner(CleanerBase):
         # remove file
         try:
             os.remove(source_file)
-            self.log.info("Removing file '{0}' ...success"
+            self.log.info("Removing file '{}' ...success"
                           .format(source_file))
         except:
-            self.log.error("Unable to remove file {0}".format(source_file),
+            self.log.error("Unable to remove file {}".format(source_file),
                            exc_info=True)
 
 
@@ -388,7 +387,7 @@ if __name__ == '__main__':
 
     from __init__ import BASE_PATH
 
-    """ Set up logging """
+    # Set up logging
     log_file = os.path.join(BASE_PATH, "logs", "file_fetcher.log")
     log_size = 10485760
 
@@ -410,7 +409,7 @@ if __name__ == '__main__':
     qh = QueueHandler(log_queue)
     root.addHandler(qh)
 
-    """ determine socket connection strings """
+    # determine socket connection strings
     con_ip = socket.getfqdn()
     ext_ip = socket.gethostbyaddr(con_ip)[2][0]
 
@@ -425,7 +424,7 @@ if __name__ == '__main__':
         # the permission have to changed explicitly because
         # on some platform they are ignored when called within mkdir
         os.chmod(ipc_path, 0o777)
-        logging.info("Creating directory for IPC communication: {0}"
+        logging.info("Creating directory for IPC communication: {}"
                      .format(ipc_path))
 
     if utils.is_windows():
@@ -437,10 +436,10 @@ if __name__ == '__main__':
                                                   "cleaner"))
         job_bind_str = job_con_str
 
-    conf_con_str = "tcp://{0}:{1}".format(con_ip, confirmation_port)
-    conf_bind_str = "tcp://{0}:{1}".format(ext_ip, confirmation_port)
+    conf_con_str = "tcp://{}:{}".format(con_ip, confirmation_port)
+    conf_bind_str = "tcp://{}:{}".format(ext_ip, confirmation_port)
 
-    """ Set up config """
+    # Set up config #
     local_target = os.path.join(BASE_PATH, "data", "target")
 
     config = {
@@ -457,7 +456,7 @@ if __name__ == '__main__':
 
     context = zmq.Context.instance()
 
-    """ Set up cleaner """
+    # Set up cleaner
     use_cleaner = (config["remove_data"] == "with_confirmation")
     if use_cleaner:
         cleaner_pr = Process(target=Cleaner,
@@ -468,29 +467,29 @@ if __name__ == '__main__':
                                    context))
         cleaner_pr.start()
 
-    """ Set up receiver simulator """
+    # Set up receiver simulator
     receiving_port = "6005"
     receiving_port2 = "6006"
     ext_ip = "0.0.0.0"
 
     receiving_socket = context.socket(zmq.PULL)
-    connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port)
+    connection_str = "tcp://{}:{}".format(ext_ip, receiving_port)
     receiving_socket.bind(connection_str)
-    logging.info("=== receiving_socket connected to {0}"
+    logging.info("=== receiving_socket connected to {}"
                  .format(connection_str))
 
     receiving_socket2 = context.socket(zmq.PULL)
-    connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port2)
+    connection_str = "tcp://{}:{}".format(ext_ip, receiving_port2)
     receiving_socket2.bind(connection_str)
-    logging.info("=== receiving_socket2 connected to {0}"
+    logging.info("=== receiving_socket2 connected to {}"
                  .format(connection_str))
 
     confirmation_socket = context.socket(zmq.PUSH)
     confirmation_socket.connect(config["cleaner_conf_con_str"])
-    logging.info("=== Start confirmation_socket (connect): {0}"
+    logging.info("=== Start confirmation_socket (connect): {}"
                  .format(config["cleaner_conf_con_str"]))
 
-    """ Test file fetcher """
+    # Test file fetcher
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
     prework_target_file = os.path.join(
         BASE_PATH, "data", "source", "local", "100.cbf")
@@ -503,12 +502,12 @@ if __name__ == '__main__':
         "relative_path": os.sep + "local",
         "filename": "100.cbf"
     }
-    targets = [['localhost:{0}'.format(receiving_port), 1, "data"],
-               ['localhost:{0}'.format(receiving_port2), 0, "data"]]
+    targets = [['localhost:{}'.format(receiving_port), 1, "data"],
+               ['localhost:{}'.format(receiving_port2), 0, "data"]]
 
     open_connections = dict()
 
-    logging.debug("open_connections before function call: {0}"
+    logging.debug("open_connections before function call: {}"
                   .format(open_connections))
 
     datafetcher = DataFetcher(config, log_queue, 0, context)
@@ -530,17 +529,17 @@ if __name__ == '__main__':
 
         # send file identifier to cleaner
         confirmation_socket.send(file_id.encode("utf-8"))
-        logging.debug("=== confirmation sent {0}".format(file_id))
+        logging.debug("=== confirmation sent {}".format(file_id))
 
-    logging.debug("open_connections after function call: {0}"
+    logging.debug("open_connections after function call: {}"
                   .format(open_connections))
 
     try:
         recv_message = receiving_socket.recv_multipart()
-        logging.info("=== received: {0}"
+        logging.info("=== received: {}"
                      .format(json.loads(recv_message[0].decode("utf-8"))))
         recv_message = receiving_socket2.recv_multipart()
-        logging.info("=== received 2: {0}"
+        logging.info("=== received 2: {}"
                      .format(json.loads(recv_message[0].decode("utf-8"))))
     except KeyboardInterrupt:
         pass

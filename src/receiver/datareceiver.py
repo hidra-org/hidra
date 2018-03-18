@@ -67,6 +67,10 @@ def argument_parsing():
     parser.add_argument("--target_dir",
                         type=str,
                         help="Where incoming data will be stored to")
+    parser.add_argument("--fix_subdirs",
+                        type=str,
+                        help="Subdirectories which should not be created when "
+                             "data is stored")
     parser.add_argument("--data_stream_ip",
                         type=str,
                         help="Ip of dataStream-socket to pull new files from")
@@ -119,7 +123,7 @@ def excecute_ldapsearch_test(netgroup):
     if socks and socks.get(my_socket) == zmq.POLLIN:
         print("Waiting for new whitelist")
         new_whitelist = my_socket.recv_multipart(zmq.NOBLOCK)
-        print("New whitelist received: {0}".format(whitelist))
+        print("New whitelist received: {}".format(whitelist))
 
         return new_whitelist
     else:
@@ -162,7 +166,7 @@ class CheckNetgroup (threading.Thread):
                 changed_netgroup = True
                 self.lock.release()
 
-                self.log.info("Netgroup has changed. New whitelist: {0}"
+                self.log.info("Netgroup has changed. New whitelist: {}"
                               .format(whitelist))
 
             time.sleep(2)
@@ -208,6 +212,8 @@ class DataReceiver:
             raise Exception("Configuration check failed")
         setproctitle.setproctitle(params["procname"])
 
+        self.fix_subdirs = params["fix_subdirs"]
+
         # for proper clean up if kill is called
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -215,21 +221,23 @@ class DataReceiver:
 
         if params["whitelist"] is not None:
             self.lock.acquire()
-            self.log.debug("params['whitelist']={0}"
+            self.log.debug("params['whitelist']={}"
                            .format(params["whitelist"]))
             whitelist = utils.extend_whitelist(params["whitelist"],
                                                params["ldapuri"],
                                                self.log)
-            self.log.info("Configured whitelist: {0}".format(whitelist))
+            self.log.info("Configured whitelist: {}".format(whitelist))
             self.lock.release()
 
         self.target_dir = os.path.normpath(params["target_dir"])
         self.data_ip = params["data_stream_ip"]
         self.data_port = params["data_stream_port"]
 
-        self.log.info("Writing to directory '{0}'".format(self.target_dir))
+        self.log.info("Writing to directory '{}'".format(self.target_dir))
 
-        self.transfer = Transfer("STREAM", use_log=True)
+        self.transfer = Transfer(connection_type="STREAM",
+                                 use_log=True,
+                                 dirs_not_to_create=self.fix_subdirs)
 
         # only start the thread if a netgroup was configured
         if (params["whitelist"] is not None
@@ -240,7 +248,7 @@ class DataReceiver:
                                                  params["ldapuri"])
             self.checking_thread.start()
         else:
-            self.log.debug("Checking thread not started: {0}"
+            self.log.debug("Checking thread not started: {}"
                            .format(params["whitelist"]))
 
         try:
