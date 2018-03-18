@@ -40,11 +40,11 @@ class WatchdogEventHandler (RegexMatchingEventHandler):
         logging.getLogger("watchdog.observers.inotify_buffer").setLevel(
             logging.WARNING)
 
-        self.log = utils.get_logger("WatchdogEventHandler-{0}"
+        self.log = utils.get_logger("WatchdogEventHandler-{}"
                                     .format(self.id), log_queue)
         self.log.debug("init")
 
-        self.paths = [config["monitored_dir"]]
+        self.paths = [os.path.normpath(config["monitored_dir"])]
 
         # learn what events to detect
         self.detect_all = False
@@ -56,7 +56,7 @@ class WatchdogEventHandler (RegexMatchingEventHandler):
 
         regexes = []
         for event, regex in iteritems(config["monitored_events"]):
-            self.log.debug("event: {0}, pattern: {1}".format(event, regex))
+            self.log.debug("event: {}, pattern: {}".format(event, regex))
             regex = convert_suffix_list_to_regex(regex,
                                                  compile_regex=True,
                                                  log=self.log)
@@ -87,7 +87,7 @@ class WatchdogEventHandler (RegexMatchingEventHandler):
         self.log.debug("init: super")
         super(WatchdogEventHandler, self,).__init__()
 
-        self.log.debug("self.detect_close={0}, self.detect_move={1}"
+        self.log.debug("self.detect_close={}, self.detect_move={}"
                        .format(self.detect_close, self.detect_move))
 
     def process(self, event):
@@ -117,7 +117,7 @@ class WatchdogEventHandler (RegexMatchingEventHandler):
         if self.detect_close and self.detect_close.match(event.src_path):
             self.log.debug("On close event detected (from create)")
             if not event.is_directory:
-                self.log.debug("Append event to event_list_to_observe: {0}"
+                self.log.debug("Append event to event_list_to_observe: {}"
                                .format(event.src_path))
 #                event_list_to_observe.append(event.src_path)
                 bisect.insort_left(event_list_to_observe, event.src_path)
@@ -195,9 +195,15 @@ def split_file_path(filepath, paths):
 
 
 class CheckModTime (threading.Thread):
-    def __init__(self, number_of_threads, time_till_closed, mon_dir,
-                 action_time, lock, log_queue):
-        self.log = utils.get_logger("CheckModTime", log_queue,
+    def __init__(self,
+                 number_of_threads,
+                 time_till_closed,
+                 mon_dir,
+                 action_time,
+                 lock,
+                 log_queue):
+        self.log = utils.get_logger("CheckModTime",
+                                    log_queue,
                                     log_level="info")
 
         self.log.debug("init")
@@ -225,9 +231,9 @@ class CheckModTime (threading.Thread):
                 self.lock.release()
 
                 # Open the urls in their own threads
-#                self.log.debug("List to observe: {0}"
+#                self.log.debug("List to observe: {}"
 #                               .format(event_list_to_observe))
-#                self.log.debug("event_message_list: {0}"
+#                self.log.debug("event_message_list: {}"
 #                               .format(event_message_list))
                 if self._pool_running:
                     self.pool.map(self.check_last_modified,
@@ -235,23 +241,23 @@ class CheckModTime (threading.Thread):
                 else:
                     self.log.info("Pool was already closed")
                     break
-#                self.log.debug("event_message_list: {0}"
+#                self.log.debug("event_message_list: {}"
 #                               .format(event_message_list))
 
-#                self.log.debug("List to observe tmp: {0}"
+#                self.log.debug("List to observe tmp: {}"
 #                               .format(event_list_to_observe_tmp))
 
                 self.lock.acquire()
                 for event in event_list_to_observe_tmp:
                     try:
                         event_list_to_observe.remove(event)
-                        self.log.debug("Removing event: {0}".format(event))
+                        self.log.debug("Removing event: {}".format(event))
                     except:
-                        self.log.error("Removing event failed: {0}"
+                        self.log.error("Removing event failed: {}"
                                        .format(event), exc_info=True)
-                        self.log.debug("event_list_to_observe_tmp={0}"
+                        self.log.debug("event_list_to_observe_tmp={}"
                                        .format(event_list_to_observe_tmp))
-                        self.log.debug("event_list_to_observe={0}"
+                        self.log.debug("event_list_to_observe={}"
                                        .format(event_list_to_observe))
                 event_list_to_observe_tmp = []
                 self.lock.release()
@@ -273,7 +279,7 @@ class CheckModTime (threading.Thread):
             # check modification time
             time_last_modified = os.stat(filepath).st_mtime
 #        except WindowsError:
-#            self.log.error("Unable to get modification time for file: {0}"
+#            self.log.error("Unable to get modification time for file: {}"
 #                           .format(filepath), exc_info=True)
             # remove the file from the observing list
 #            self.lock.acquire()
@@ -281,7 +287,7 @@ class CheckModTime (threading.Thread):
 #            self.lock.release()
 #            return
         except:
-            self.log.error("Unable to get modification time for file: {0}"
+            self.log.error("Unable to get modification time for file: {}"
                            .format(filepath), exc_info=True)
             # remove the file from the observing list
             self.lock.acquire()
@@ -293,15 +299,15 @@ class CheckModTime (threading.Thread):
             # get current time
             time_current = time.time()
         except:
-            self.log.error("Unable to get current time for file: {0}"
+            self.log.error("Unable to get current time for file: {}"
                            .format(filepath), exc_info=True)
 
         # compare ( >= limit)
         if time_current - time_last_modified >= self.time_till_closed:
-            self.log.debug("New closed file detected: {0}".format(filepath))
+            self.log.debug("New closed file detected: {}".format(filepath))
 
             event_message = split_file_path(filepath, self.mon_dir)
-            self.log.debug("event_message: {0}".format(event_message))
+            self.log.debug("event_message: {}".format(event_message))
 
             # add to result list
             self.lock.acquire()
@@ -356,11 +362,11 @@ class EventDetector(EventDetectorBase):
 
         # Only proceed if the configuration was correct
         if check_passed:
-            self.log.info("Configuration for event detector: {0}"
+            self.log.info("Configuration for event detector: {}"
                           .format(config_reduced))
 
             self.config = config
-            self.mon_dir = self.config["monitored_dir"]
+            self.mon_dir = os.path.normpath(self.config["monitored_dir"])
             self.mon_subdirs = self.config["fix_subdirs"]
 
             self.paths = [os.path.normpath(os.path.join(self.mon_dir,
@@ -381,15 +387,20 @@ class EventDetector(EventDetectorBase):
                     WatchdogEventHandler(observer_id, self.config, log_queue),
                     path, recursive=True)
                 observer.start()
-                self.log.info("Started observer for directory: {0}"
+                self.log.info("Started observer for directory: {}"
                               .format(path))
 
                 self.observer_threads.append(observer)
                 observer_id += 1
 
-            self.checking_thread = CheckModTime(4, self.time_till_closed,
-                                                self.mon_dir, self.action_time,
-                                                self.lock, log_queue)
+            self.checking_thread = CheckModTime(
+                number_of_threads=4,
+                time_till_closed=self.time_till_closed,
+                mon_dir=self.mon_dir,
+                action_time=self.action_time,
+                lock=self.lock,
+                log_queue=log_queue
+            )
             self.checking_thread.start()
 
         else:
@@ -486,7 +497,7 @@ if __name__ == '__main__':
         steps = 10
 
         memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        print("Memory usage at start: {0} (kb)".format(memory_usage_old))
+        print("Memory usage at start: {} (kb)".format(memory_usage_old))
 
 #        hp = hpy()
 #        hp.setrelheap()
@@ -505,9 +516,9 @@ if __name__ == '__main__':
 #            print ("start=", start, "stop=", stop)
             for i in range(start, stop):
 
-                target_file = "{0}{1}.cbf".format(target_file_base, i)
+                target_file = "{}{}.cbf".format(target_file_base, i)
                 if not determine_mem_usage:
-                    logging.debug("copy to {0}".format(target_file))
+                    logging.debug("copy to {}".format(target_file))
                 copyfile(source_file, target_file)
 
                 if i % 100 == 0 or not determine_mem_usage:
@@ -519,7 +530,7 @@ if __name__ == '__main__':
             if determine_mem_usage:
                 memory_usage_new = (
                     resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-                print("Memory usage in iteration {0}: {1} (kb)"
+                print("Memory usage in iteration {}: {} (kb)"
                       .format(s, memory_usage_new))
                 if memory_usage_new > memory_usage_old:
                     memory_usage_old = memory_usage_new
@@ -532,8 +543,8 @@ if __name__ == '__main__':
         eventdetector.stop()
         for number in range(min_loop, stop):
             try:
-                target_file = "{0}{1}.cbf".format(target_file_base, number)
-                logging.debug("remove {0}".format(target_file))
+                target_file = "{}{}.cbf".format(target_file_base, number)
+                logging.debug("remove {}".format(target_file))
                 os.remove(target_file)
             except OSError:
                 pass
