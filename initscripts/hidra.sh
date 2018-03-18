@@ -17,22 +17,35 @@ DESC="HiDRA"
 # Process name (for display)
 NAME=hidra
 SCRIPT_PROC_NAME=hidra
-BASEDIR=/opt/hidra
+IPCPATH=/tmp/hidra
+PYTHON=/usr/bin/python
+CURRENTPATH="$(readlink --canonicalize-existing -- "$0")"
+
+USE_EXE=false
+
+if [ "${USE_EXE}" == "false" ]
+then
+    BASEDIR=/opt/hidra
+    SCRIPTNAME=/etc/init.d/$NAME
+else
+    BASEDIR="${CURRENTPATH%/*}"
+    SCRIPTNAME="${CURRENTPATH##*/}"
+
+#    printf "CURRENTPATH: ${CURRENTPATH}\n"
+#    printf "BASEDIR: ${BASEDIR}\n"
+#    printf "SCRIPTNAME: ${SCRIPTNAME}\n"
+fi
+
 PIDFILE_LOCATION=${BASEDIR}
 PIDFILE=${PIDFILE_LOCATION}/$NAME.pid
 CONFIG_PATH=$BASEDIR/conf
-IPCPATH=/tmp/hidra
-PYTHON=/usr/bin/python
-
-SCRIPTNAME=/etc/init.d/$NAME
-
-USE_EXE=false
 
 usage()
 {
     printf "Usage: $SCRIPTNAME --beamline|--bl <beamline> [--detector|--det <detector>] [--config_file <config_file>] {--start|--stop|--status|--restart|--getsettings}\n" >&2
     RETVAL=3
 }
+
 
 beamline=
 detector=
