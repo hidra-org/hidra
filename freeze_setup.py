@@ -62,6 +62,17 @@ if sys.version_info >= (3, 0):
 else:
     version_specific_packages = ["ConfigParser"]
 
+# reuse the init file for installed HiDRA to reduce amount of maintenance
+initscript = os.path.join(basepath, "initscripts", "hidra.sh"
+exescript = os.path.join(basepath, "initscripts", "hidra_exe.sh"
+with open(initscript, "r") as f:
+    with open(exescript, "w") as f_exe:
+        for line in f:
+            if line == "USE_EXE=false\n":
+                f_exe.write("USE_EXE=true\n"),
+            else:
+                f_exe.write(line)
+
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
     # zmq.backend.cython seems to be left out by default
@@ -76,7 +87,7 @@ build_exe_options = {
     # "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
         (libzmq_path, "zmq"),
-        (os.path.join(basepath, "initscripts", "hidra.sh"), "hidra.sh"),
+        (os.path.join(basepath, "initscripts", "hidra_exe.sh"), "hidra.sh"),
         (os.path.join(senderpath, "__init__.py"), "__init__.py"),
         (os.path.join(senderpath, "taskprovider.py"), "taskprovider.py"),
         (os.path.join(senderpath, "signalhandler.py"), "signalhandler.py"),
