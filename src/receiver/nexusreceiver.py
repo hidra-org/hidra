@@ -73,7 +73,9 @@ def argument_parsing():
     # Get arguments from config file #
     ##################################
 
-    params = utils.set_parameters(arguments.config_file, arguments)
+    params = utils.set_parameters(base_config_file=arguments.config_file,
+                                  config_file=None,
+                                  argumetns=arguments)
 
     if params["whitelist"] is not None and type(params["whitelist"]) == str:
         params["whitelist"] = utils.excecute_ldapsearch(params["whitelist"],

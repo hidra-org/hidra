@@ -43,7 +43,9 @@ class DataFetcherBase(ABC):
         required_params = [
             "chunksize",
             "local_target",
-            ["remove_data", [True, False, "deferred_error_handling",
+            ["remove_data", [True,
+                             False,
+                             "stop_on_error",
                              "with_confirmation"]],
             "cleaner_job_con_str"
         ]
@@ -54,7 +56,7 @@ class DataFetcherBase(ABC):
                                                           self.log)
 
         if check_passed:
-            self.log.info("Configuration for data fetcher: {0}"
+            self.log.info("Configuration for data fetcher: {}"
                           .format(config_reduced))
 
             if self.config["remove_data"] == "with_confirmation":
@@ -90,17 +92,17 @@ class DataFetcherBase(ABC):
                     # open socket
                     try:
                         socket = self.context.socket(zmq.PUSH)
-                        connection_str = "tcp://{0}".format(target)
+                        connection_str = "tcp://{}".format(target)
 
                         socket.connect(connection_str)
-                        self.log.info("Start socket (connect): '{0}'"
+                        self.log.info("Start socket (connect): '{}'"
                                       .format(connection_str))
 
                         # register socket
                         open_connections[target] = socket
                     except:
                         raise DataHandlingError("Failed to start socket "
-                                                "(connect): '{0}'"
+                                                "(connect): '{}'"
                                                 .format(connection_str))
 
                 # send data
@@ -108,8 +110,8 @@ class DataFetcherBase(ABC):
                     if send_type == "data":
                         tracker = open_connections[target].send_multipart(
                             payload, copy=False, track=True)
-                        self.log.info("Sending message part from file '{0}' "
-                                      "to '{1}' with priority {2}"
+                        self.log.info("Sending message part from file '{}' "
+                                      "to '{}' with priority {}"
                                       .format(self.source_file, target, prio))
 
                     elif send_type == "metadata":
@@ -119,23 +121,23 @@ class DataFetcherBase(ABC):
                              json.dumps(None).encode("utf-8")],
                             copy=False, track=True)
                         self.log.info("Sending metadata of message part from "
-                                      "file '{0}' to '{1}' with priority {2}"
+                                      "file '{}' to '{}' with priority {}"
                                       .format(self.source_file, target, prio))
-                        self.log.debug("metadata={0}".format(metadata))
+                        self.log.debug("metadata={}".format(metadata))
 
                     if not tracker.done:
-                        self.log.debug("Message part from file '{0}' has not "
+                        self.log.debug("Message part from file '{}' has not "
                                        "been sent yet, waiting..."
                                        .format(self.source_file))
                         tracker.wait(timeout)
-                        self.log.debug("Message part from file '{0}' has not "
+                        self.log.debug("Message part from file '{}' has not "
                                        "been sent yet, waiting...done"
                                        .format(self.source_file))
 
                 except:
                     raise DataHandlingError("Sending (metadata of) message "
-                                            "part from file '{0}' to '{1}' "
-                                            "with priority {2} failed."
+                                            "part from file '{}' to '{}' "
+                                            "with priority {} failed."
                                             .format(self.source_file, target,
                                                     prio))
 
@@ -144,10 +146,10 @@ class DataFetcherBase(ABC):
                 if target not in open_connections:
                     # open socket
                     socket = self.context.socket(zmq.PUSH)
-                    connection_str = "tcp://{0}".format(target)
+                    connection_str = "tcp://{}".format(target)
 
                     socket.connect(connection_str)
-                    self.log.info("Start socket (connect): '{0}'"
+                    self.log.info("Start socket (connect): '{}'"
                                   .format(connection_str))
 
                     # register socket
@@ -157,8 +159,8 @@ class DataFetcherBase(ABC):
                 if send_type == "data":
                     open_connections[target].send_multipart(payload,
                                                             zmq.NOBLOCK)
-                    self.log.info("Sending message part from file '{0}' to "
-                                  "'{1}' with priority {2}"
+                    self.log.info("Sending message part from file '{}' to "
+                                  "'{}' with priority {}"
                                   .format(self.source_file, target, prio))
 
                 elif send_type == "metadata":
@@ -167,9 +169,9 @@ class DataFetcherBase(ABC):
                          json.dumps(None).encode("utf-8")],
                         zmq.NOBLOCK)
                     self.log.info("Sending metadata of message part from file "
-                                  "'{0}' to '{1}' with priority {2}"
+                                  "'{}' to '{}' with priority {}"
                                   .format(self.source_file, target, prio))
-                    self.log.debug("metadata={0}".format(metadata))
+                    self.log.debug("metadata={}".format(metadata))
 
     def generate_file_id(self, metadata):
         """Generates a file id consisting of relative path and file name

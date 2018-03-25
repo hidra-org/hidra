@@ -537,7 +537,7 @@ class Transfer():
                 else:
                     self.log.debug("data_socket_prop={}"
                                    .format(data_socket_prop))
-                    raise FormatError("Socket information have to be of the"
+                    raise FormatError("Socket information have to be of the "
                                       "form [<host>, <port>].")
             else:
                 host = socket.getfqdn()

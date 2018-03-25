@@ -88,9 +88,15 @@ def read_config(config_file):
     return config
 
 
-def set_parameters(config_file, arguments):
+def set_parameters(base_config_file, config_file, arguments):
+    base_config = parse_parameters(read_config(base_config_file))["asection"]
 
-    params = parse_parameters(read_config(config_file))["asection"]
+    if config_file is not None:
+        config = parse_parameters(read_config(config_file))["asection"]
+
+        # overwrite base config parameters with the ones in the config_file
+        for key in config:
+            base_config[key] = config[key]
 
     # arguments set when the program is called have a higher priority than
     # the ones in the config file
@@ -99,17 +105,17 @@ def set_parameters(config_file, arguments):
         if arg_value is not None:
             if type(arg_value) is str:
                 if arg_value.lower() == "none":
-                    params[arg] = None
+                    base_config[arg] = None
                 elif arg_value.lower() == "false":
-                    params[arg] = False
+                    base_config[arg] = False
                 elif arg_value.lower() == "true":
-                    params[arg] = True
+                    base_config[arg] = True
                 else:
-                    params[arg] = arg_value
+                    base_config[arg] = arg_value
             else:
-                params[arg] = arg_value
+                base_config[arg] = arg_value
 
-    return params
+    return base_config
 
 
 # http://code.activestate.com/recipes/541096-prompt-the-user-for-confirmation/

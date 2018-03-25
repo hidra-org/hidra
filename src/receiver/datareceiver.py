@@ -89,7 +89,9 @@ def argument_parsing():
     # Get arguments from config file #
     ##################################
 
-    params = utils.set_parameters(arguments.config_file, arguments)
+    params = utils.set_parameters(base_config_file=arguments.config_file,
+                                  config_file=None,
+                                  arguments=arguments)
 
     ##################################
     #     Check given arguments      #

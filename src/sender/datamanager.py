@@ -32,7 +32,8 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 def argument_parsing():
-    default_config = os.path.join(CONFIG_PATH, "datamanager.conf")
+    base_config_file = os.path.join(CONFIG_PATH, "base.conf")
+    default_config_file = os.path.join(CONFIG_PATH, "datamanager.conf")
 
     supported_ed_types = ["inotifyx_events",
                           "watchdog_events",
@@ -224,20 +225,25 @@ def argument_parsing():
                         help="Flag describing if the files should be removed "
                              "from the source (needed if data_fetcher_type is "
                              "file_fetcher or http_fetcher)",
-                        choices=["True", "False", "deferred_error_handling",
+                        choices=["True",
+                                 "False",
+                                 "stop_on_error",
                                  "with_confirmation"])
 
     arguments = parser.parse_args()
-    arguments.config_file = arguments.config_file or default_config
+    arguments.config_file = arguments.config_file or default_config_file
 
     # check if config_file exist
+    utils.check_existance(base_config_file)
     utils.check_existance(arguments.config_file)
 
     ##################################################
     # Get arguments from config file and comand line #
     ##################################################
 
-    params = utils.set_parameters(arguments.config_file, arguments)
+    params = utils.set_parameters(base_config_file=base_config_file,
+                                  config_file=arguments.config_file,
+                                  arguments=arguments)
 
     ##################################
     #     Check given arguments      #
@@ -497,7 +503,7 @@ class DataManager():
                 "{}:{}".format(self.params["data_stream_targets"][0][0],
                                self.params["data_stream_targets"][0][1]))
 
-            if self.params["remove_data"] == "deferred_error_handling":
+            if self.params["remove_data"] == "stop_on_error":
                 self.status_check_id = (
                     "{}:{}".format(self.params["data_stream_targets"][0][0],
                                    self.params["status_check_port"]))
@@ -564,8 +570,9 @@ class DataManager():
 
         # initiate forwarder for control signals (multiple pub, multiple sub)
         try:
-            self.device = zmq.devices.ThreadDevice(
-                zmq.FORWARDER, zmq.SUB, zmq.PUB)
+            self.device = zmq.devices.ThreadDevice(zmq.FORWARDER,
+                                                   zmq.SUB,
+                                                   zmq.PUB)
             self.device.bind_in(self.control_pub_con_str)
             self.device.bind_out(self.control_sub_con_str)
             self.device.setsockopt_in(zmq.SUBSCRIBE, b"")
