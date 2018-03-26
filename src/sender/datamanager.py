@@ -32,7 +32,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 def argument_parsing():
-    base_config_file = os.path.join(CONFIG_PATH, "base.conf")
+    base_config_file = os.path.join(CONFIG_PATH, "base_sender.conf")
     default_config_file = os.path.join(CONFIG_PATH, "datamanager.conf")
 
     supported_ed_types = ["inotifyx_events",

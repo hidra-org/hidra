@@ -26,7 +26,8 @@ changed_netgroup = False
 
 
 def argument_parsing():
-    default_config = os.path.join(CONFIG_PATH, "datareceiver.conf")
+    base_config_file = os.path.join(CONFIG_PATH, "base_receiver.conf")
+    default_config_file = os.path.join(CONFIG_PATH, "datareceiver.conf")
 
     ##################################
     #   Get command line arguments   #
@@ -80,7 +81,7 @@ def argument_parsing():
                              "files from")
 
     arguments = parser.parse_args()
-    arguments.config_file = arguments.config_file or default_config
+    arguments.config_file = arguments.config_file or default_config_file
 
     # check if config_file exist
     utils.check_existance(arguments.config_file)
@@ -89,8 +90,8 @@ def argument_parsing():
     # Get arguments from config file #
     ##################################
 
-    params = utils.set_parameters(base_config_file=arguments.config_file,
-                                  config_file=None,
+    params = utils.set_parameters(base_config_file=base_config_file,
+                                  config_file=arguments.config_file,
                                   arguments=arguments)
 
     ##################################
