@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
 
-import zmq
-import json
-import sys
 import abc
+import json
 import os
+import socket
+import sys
+import zmq
 
 from __init__ import BASE_PATH  # noqa F401
 import utils
@@ -47,7 +48,8 @@ class DataFetcherBase(ABC):
                              False,
                              "stop_on_error",
                              "with_confirmation"]],
-            "cleaner_job_con_str"
+            "cleaner_job_con_str",
+            "main_pid"
         ]
 
         # Check format of config
@@ -73,6 +75,10 @@ class DataFetcherBase(ABC):
                                        self.config["cleaner_job_con_str"]),
                                    exc_info=True)
                     raise
+
+                self.confirmation_topic = (
+                    utils.generate_sender_id(self.config["main_pid"])
+                )
             else:
                 self.cleaner_job_socket = None
 

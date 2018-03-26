@@ -100,8 +100,10 @@ class DataFetcher(DataFetcherBase):
                 metadata["file_mod_time"] = file_mod_time
                 metadata["file_create_time"] = file_create_time
                 metadata["chunksize"] = self.config["chunksize"]
-                metadata["confirmation_required"] = (
-                    self.config["remove_data"] == "with_confirmation")
+                if self.config["remove_data"] == "with_confirmation":
+                    metadata["confirmation_required"] = self.confirmation_topic
+                else:
+                    metadata["confirmation_required"] = False
 
                 self.log.debug("metadata = {}".format(metadata))
             except:
@@ -370,8 +372,7 @@ class Cleaner(CleanerBase):
         # remove file
         try:
             os.remove(source_file)
-            self.log.info("Removing file '{}' ...success"
-                          .format(source_file))
+            self.log.info("Removing file '{}' ...success".format(source_file))
         except:
             self.log.error("Unable to remove file {}".format(source_file),
                            exc_info=True)
@@ -428,12 +429,12 @@ if __name__ == '__main__':
                      .format(ipc_path))
 
     if utils.is_windows():
-        job_con_str = "tcp://{0}:{1}".format(con_ip, cleaner_port)
-        job_bind_str = "tcp://{0}:{1}".format(ext_ip, cleaner_port)
+        job_con_str = "tcp://{}:{}".format(con_ip, cleaner_port)
+        job_bind_str = "tcp://{}:{}".format(ext_ip, cleaner_port)
     else:
-        job_con_str = ("ipc://{0}/{1}_{2}".format(ipc_path,
-                                                  current_pid,
-                                                  "cleaner"))
+        job_con_str = ("ipc://{}/{}_{}".format(ipc_path,
+                                               current_pid,
+                                               "cleaner"))
         job_bind_str = job_con_str
 
     conf_con_str = "tcp://{}:{}".format(con_ip, confirmation_port)

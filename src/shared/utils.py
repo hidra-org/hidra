@@ -477,6 +477,18 @@ def excecute_ldapsearch(ldap_cn, ldapuri):
     return netgroup
 
 
+def generate_sender_id(main_pid):
+    """ Generates an unique id to identify the running datamanager.
+
+    Args:
+        main_pid: The PID of the datamanager
+    Return:
+        A byte string containing the identifier
+    """
+
+    return b"{}_{}".format(socket.getfqdn(), main_pid)
+
+
 # http://stackoverflow.com/questions/25585518/
 #        python-logging-logutils-with-queuehandler-and-queuelistener#25594270
 class CustomQueueListener (QueueListener):

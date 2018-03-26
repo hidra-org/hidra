@@ -18,14 +18,18 @@ else:
 
 
 new_jobs = []
-# new_jobs = set()
-# new_confirmations = set()
+old_confirmations = []
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class CheckJobs (threading.Thread):
-    def __init__(self, job_bind_str, control_con_str, lock, log_queue,
+    def __init__(self,
+                 job_bind_str,
+                 cleaner_trigger_con_str,
+                 control_con_str,
+                 lock,
+                 log_queue,
                  context=None):
 
         threading.Thread.__init__(self)
@@ -34,6 +38,7 @@ class CheckJobs (threading.Thread):
 
         self.lock = lock
         self.job_bind_str = job_bind_str
+        self.cleaner_trigger_con_str = cleaner_trigger_con_str
         self.control_con_str = control_con_str
 
         self.run_loop = True
@@ -59,6 +64,16 @@ class CheckJobs (threading.Thread):
             self.log.error("Failed to start job_socket (bind): '{}'"
                            .format(self.job_bind_str), exc_info=True)
 
+        # socket to trigger cleaner to remove old confirmations
+        try:
+            self.cleaner_trigger_socket = self.context.socket(zmq.PUSH)
+            self.cleaner_trigger_socket.connect(self.cleaner_trigger_con_str)
+            self.log.info("Start trigger_cleaner_socket (connect): '{}'"
+                          .format(self.cleaner_trigger_con_str))
+        except:
+            self.log.error("Failed to start trigger_cleaner_socket (connect): '{}'"
+                           .format(self.cleaner_trigger_con_str), exc_info=True)
+
         # socket for control signals
         try:
             self.control_socket = self.context.socket(zmq.SUB)
@@ -80,6 +95,7 @@ class CheckJobs (threading.Thread):
 
     def run(self):
         global new_jobs
+        global old_confirmations
 
         while self.run_loop:
 
@@ -99,6 +115,11 @@ class CheckJobs (threading.Thread):
                 new_jobs.append(message)
 #                new_jobs.add(message)
                 self.lock.release()
+
+                if message[1] in old_confirmations:
+                    # notify cleaner
+                    self.log.debug("sending cleaner trigger, message={}".format(message))
+                    self.cleaner_trigger_socket.send_multipart(message)
 
             ######################################
             #         control commands           #
@@ -135,6 +156,10 @@ class CheckJobs (threading.Thread):
         if self.job_socket is not None:
             self.job_socket.close(0)
             self.job_socket = None
+
+        if cleaner_trigger_socket is not None:
+            self.cleaner_trigger_socket.close(0)
+            self.cleaner_trigger_socket = None
 
         if self.control_socket is not None:
             self.control_socket.close(0)
@@ -208,13 +233,20 @@ class CheckJobs (threading.Thread):
 
 
 class CleanerBase(ABC):
-    def __init__(self, config, log_queue, job_bind_str, conf_bind_str,
-                 control_con_str, context=None):
+    def __init__(self,
+                 config,
+                 log_queue,
+                 job_bind_str,
+                 cleaner_trigger_con_str,
+                 conf_bind_str,
+                 control_con_str,
+                 context=None):
 
         self.log = utils.get_logger("Cleaner", log_queue)
 
         self.config = config
         self.job_bind_str = job_bind_str
+        self.cleaner_trigger_con_str = cleaner_trigger_con_str
         self.conf_bind_str = conf_bind_str
         self.control_con_str = control_con_str
 
@@ -230,6 +262,7 @@ class CleanerBase(ABC):
             self.ext_context = False
 
         self.job_checking_thread = CheckJobs(self.job_bind_str,
+                                             self.cleaner_trigger_con_str,
                                              self.control_con_str,
                                              self.lock,
                                              log_queue,
@@ -249,16 +282,39 @@ class CleanerBase(ABC):
 
     def create_sockets(self):
         # socket to receive confirmation that data can be removed/discarded
+#        try:
+#            self.confirmation_socket = self.context.socket(zmq.PULL)
+#
+#            self.confirmation_socket.bind(self.conf_bind_str)
+#            self.log.info("Start confirmation_socket (bind): '{}'"
+#                          .format(self.conf_bind_str))
+#        except:
+#            self.log.error("Failed to start confirmation_socket (bind): '{}'"
+#                           .format(self.conf_bind_str), exc_info=True)
+#            raise
         try:
-            self.confirmation_socket = self.context.socket(zmq.PULL)
+            self.confirmation_socket = self.context.socket(zmq.SUB)
 
-            self.confirmation_socket.bind(self.conf_bind_str)
-            self.log.info("Start confirmation_socket (bind): '{}'"
+            self.confirmation_socket.connect(self.conf_bind_str)
+            topic = utils.generate_sender_id(self.config["main_pid"])
+            #topic = b"test"
+            self.confirmation_socket.setsockopt(zmq.SUBSCRIBE, topic)
+            self.log.info("Start confirmation_socket (connect): '{}'"
                           .format(self.conf_bind_str))
         except:
-            self.log.error("Failed to start confirmation_socket (bind): '{}'"
+            self.log.error("Failed to start confirmation_socket (connect: '{}'"
                            .format(self.conf_bind_str), exc_info=True)
             raise
+
+        # socket to trigger cleaner to remove old confirmations
+        try:
+            self.cleaner_trigger_socket = self.context.socket(zmq.PULL)
+            self.cleaner_trigger_socket.bind(self.cleaner_trigger_con_str)
+            self.log.info("Start trigger_cleaner_socket (bind): '{}'"
+                          .format(self.cleaner_trigger_con_str))
+        except:
+            self.log.error("Failed to start trigger_cleaner_socket (bind): '{}'"
+                           .format(self.cleaner_trigger_con_str), exc_info=True)
 
         # socket for control signals
         try:
@@ -276,14 +332,14 @@ class CleanerBase(ABC):
         # register sockets at poller
         self.poller = zmq.Poller()
         self.poller.register(self.confirmation_socket, zmq.POLLIN)
+        self.poller.register(self.cleaner_trigger_socket, zmq.POLLIN)
         self.poller.register(self.control_socket, zmq.POLLIN)
 
     def run(self):
         global new_jobs
-#        global new_confirmations
+        global old_confirmations
 
 #        removable_elements = None
-        old_confirmations = []
 
         self.job_checking_thread.start()
 #        self.conf_checking_thread.start()
@@ -313,9 +369,10 @@ class CleanerBase(ABC):
                     and socks[self.confirmation_socket] == zmq.POLLIN):
 
                 self.log.debug("Waiting for confirmation")
-                element = self.confirmation_socket.recv().decode("utf-8")
-                self.log.debug("New confirmation received: {}"
-                               .format(element))
+                topic, element = self.confirmation_socket.recv_multipart()
+                element = element.decode("utf-8")
+                self.log.debug("topic={}".format(topic))
+                self.log.debug("New confirmation received: {}".format(element))
                 self.log.debug("new_jobs={}".format(new_jobs))
                 self.log.debug("old_confirmations={}"
                                .format(old_confirmations))
@@ -329,17 +386,32 @@ class CleanerBase(ABC):
                         self.lock.release()
 
                         self.log.debug("new_jobs={}".format(new_jobs))
-                    elif element in old_confirmations:
-                        self.remove_element(element)
+                        continue
 
-                        old_confirmations.remove(element)
-                        self.log.debug("old_confirmations={}"
-                                       .format(old_confirmations))
-                    else:
-                        old_confirmations.append(element)
-                        self.log.error("confirmations without job "
-                                       "notification received: {}"
-                                       .format(element))
+                self.lock.acquire()
+                old_confirmations.append(element)
+                self.lock.release()
+                self.log.error("confirmations without job notification "
+                               "received: {}".format(element))
+
+            ######################################
+            #       messages from checkJobs      #
+            ######################################
+            if (self.cleaner_trigger_socket in socks
+                    and socks[self.cleaner_trigger_socket] == zmq.POLLIN):
+
+                base_path, element = self.cleaner_trigger_socket.recv_multipart()
+                self.log.debug("Received trigger to remove old confirmation")
+                self.log.debug("message=[{}, {}]".format(base_path, element))
+                self.remove_element(base_path, element)
+
+                self.lock.acquire()
+                new_jobs.remove([base_path, element])
+                self.lock.release()
+
+                self.lock.acquire()
+                old_confirmations.remove(element)
+                self.lock.release()
 
             ######################################
             #         control commands           #
@@ -373,7 +445,7 @@ class CleanerBase(ABC):
                                    .format(message))
 
     @abc.abstractmethod
-    def remove_element(self, source_file_id):
+    def remove_element(self, base_path, source_file_id):
         pass
 
     def stop(self):
@@ -390,6 +462,10 @@ class CleanerBase(ABC):
             self.log.debug("Closing confirmation socket")
             self.confirmation_socket.close(0)
             self.confirmation_socket = None
+
+        if cleaner_trigger_socket is not None:
+            self.cleaner_trigger_socket.close(0)
+            self.cleaner_trigger_socket = None
 
         if self.control_socket is not None:
             self.log.debug("Closing control socket")

@@ -423,8 +423,10 @@ class DataManager():
         self.params["session"] = None
 
         if self.use_cleaner:
-            self.params["cleaner_conf_con_str"] = "tcp://{}:{}".format(
-                self.ext_ip, self.params["confirmation_port"])
+            self.params["cleaner_conf_con_str"] = (
+                "tcp://{}:{}".format(self.params["data_stream_targets"][0][0],
+                                     self.params["confirmation_port"])
+            )
         else:
             self.params["cleaner_conf_con_str"] = None
 
@@ -455,8 +457,12 @@ class DataManager():
                 self.params["cleaner_job_con_str"] = (
                     "tcp://{}:{}".format(self.localhost,
                                            self.params["cleaner_port"]))
+                self.params["cleaner_tigger_con_str"] = (
+                    "tcp://{}:{}".format(self.localhost,
+                                           self.params["cleaner_trigger_port"]))
             else:
                 self.params["cleaner_job_con_str"] = None
+                self.params["cleaner_trigger_con_str"] = None
 
         else:
             self.log.info("Using ipc for internal communication.")
@@ -481,8 +487,13 @@ class DataManager():
                     "ipc://{}/{}_{}".format(self.ipc_path,
                                             self.current_pid,
                                             "cleaner"))
+                self.params["cleaner_trigger_con_str"] = (
+                    "ipc://{}/{}_{}".format(self.ipc_path,
+                                            self.current_pid,
+                                            "cleaner_trigger"))
             else:
                 self.params["cleaner_job_con_str"] = None
+                self.params["cleaner_trigger_con_str"] = None
 
         self.whitelist = self.params["whitelist"]
         self.ldapuri = self.params["ldapuri"]
@@ -901,6 +912,7 @@ class DataManager():
                 args=(self.params,
                       self.log_queue,
                       self.params["cleaner_job_con_str"],
+                      self.params["cleaner_trigger_con_str"],
                       self.params["cleaner_conf_con_str"],
                       self.control_sub_con_str))
             self.cleaner_pr.start()
