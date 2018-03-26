@@ -53,20 +53,20 @@ class CheckJobs (threading.Thread):
         try:
             self.job_socket = self.context.socket(zmq.PULL)
             self.job_socket.bind(self.job_bind_str)
-            self.log.info("Start job_socket (bind): '{0}'"
+            self.log.info("Start job_socket (bind): '{}'"
                           .format(self.job_bind_str))
         except:
-            self.log.error("Failed to start job_socket (bind): '{0}'"
+            self.log.error("Failed to start job_socket (bind): '{}'"
                            .format(self.job_bind_str), exc_info=True)
 
         # socket for control signals
         try:
             self.control_socket = self.context.socket(zmq.SUB)
             self.control_socket.connect(self.control_con_str)
-            self.log.info("Start control_socket (connect): '{0}'"
+            self.log.info("Start control_socket (connect): '{}'"
                           .format(self.control_con_str))
         except:
-            self.log.error("Failed to start control_socket (connect): '{0}'"
+            self.log.error("Failed to start control_socket (connect): '{}'"
                            .format(self.control_con_str), exc_info=True)
             raise
 
@@ -93,7 +93,7 @@ class CheckJobs (threading.Thread):
 
                 self.log.debug("Waiting for job")
                 message = self.job_socket.recv_multipart()
-                self.log.debug("New job received: {0}".format(message))
+                self.log.debug("New job received: {}".format(message))
 
                 self.lock.acquire()
                 new_jobs.append(message)
@@ -108,7 +108,7 @@ class CheckJobs (threading.Thread):
                 try:
                     message = self.control_socket.recv_multipart()
                     self.log.debug("Control signal received")
-                    self.log.debug("message = {0}".format(message))
+                    self.log.debug("message = {}".format(message))
                 except:
                     self.log.error("Receiving control signal...failed",
                                    exc_info=True)
@@ -128,7 +128,7 @@ class CheckJobs (threading.Thread):
                     self.log.debug("Received exit signal")
                     break
                 else:
-                    self.log.error("Unhandled control signal received: {0}"
+                    self.log.error("Unhandled control signal received: {}"
                                    .format(message))
 
     def stop(self):
@@ -152,60 +152,59 @@ class CheckJobs (threading.Thread):
     def __del__(self):
         self.stop()
 
-"""
-class CheckConfirmations (threading.Thread):
-    def __init__(self, conf_bind_str, lock, log_queue, context=None):
 
-        threading.Thread.__init__(self)
-
-        self.log = utils.get_logger("CheckConfirmations", log_queue)
-
-        self.lock = lock
-        self.conf_bind_str = conf_bind_str
-
-        if context:
-            self.context = context
-            self.ext_context = True
-        else:
-            self.context = zmq.Context()
-            self.ext_context = False
-
-        try:
-            self.confirmation_socket = self.context.socket(zmq.PULL)
-
-            self.confirmation_socket.connect(self.conf_bind_str)
-            self.log.info("Start confirmation_socket (connect): '{0}'"
-                          .format(self.conf_bind_str))
-        except:
-            self.log.error("Failed to start confirmation_socket (connect): "
-                           "'{0}'".format(self.conf_bind_str), exc_info=True)
-
-    def run(self):
-        global new_confirmations
-
-        self.log.debug("Waiting for confirmation")
-        message = self.confirmation_socket.recv().decode("utf-8")
-        self.log.debug("New confirmation received: {0}".format(message))
-
-        self.lock.acquire()
-        new_confirmations.add(message)
-        self.lock.release()
-
-    def stop(self):
-        if self.confirmation_socket is not None:
-            self.confirmation_socket.close(0)
-            self.confirmation_socket = None
-
-        if not self.ext_context and self.context is not None:
-            self.context.destroy(0)
-            self.context = None
-
-    def __exit__(self):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-"""
+#class CheckConfirmations (threading.Thread):
+#    def __init__(self, conf_bind_str, lock, log_queue, context=None):
+#
+#        threading.Thread.__init__(self)
+#
+#        self.log = utils.get_logger("CheckConfirmations", log_queue)
+#
+#        self.lock = lock
+#        self.conf_bind_str = conf_bind_str
+#
+#        if context:
+#            self.context = context
+#            self.ext_context = True
+#        else:
+#            self.context = zmq.Context()
+#            self.ext_context = False
+#
+#        try:
+#            self.confirmation_socket = self.context.socket(zmq.PULL)
+#
+#            self.confirmation_socket.connect(self.conf_bind_str)
+#            self.log.info("Start confirmation_socket (connect): '{0}'"
+#                          .format(self.conf_bind_str))
+#        except:
+#            self.log.error("Failed to start confirmation_socket (connect): "
+#                           "'{0}'".format(self.conf_bind_str), exc_info=True)
+#
+#    def run(self):
+#        global new_confirmations
+#
+#        self.log.debug("Waiting for confirmation")
+#        message = self.confirmation_socket.recv().decode("utf-8")
+#        self.log.debug("New confirmation received: {0}".format(message))
+#
+#        self.lock.acquire()
+#        new_confirmations.add(message)
+#        self.lock.release()
+#
+#    def stop(self):
+#        if self.confirmation_socket is not None:
+#            self.confirmation_socket.close(0)
+#            self.confirmation_socket = None
+#
+#        if not self.ext_context and self.context is not None:
+#            self.context.destroy(0)
+#            self.context = None
+#
+#    def __exit__(self):
+#        self.stop()
+#
+#    def __del__(self):
+#        self.stop()
 
 
 class CleanerBase(ABC):
@@ -254,10 +253,10 @@ class CleanerBase(ABC):
             self.confirmation_socket = self.context.socket(zmq.PULL)
 
             self.confirmation_socket.bind(self.conf_bind_str)
-            self.log.info("Start confirmation_socket (bind): '{0}'"
+            self.log.info("Start confirmation_socket (bind): '{}'"
                           .format(self.conf_bind_str))
         except:
-            self.log.error("Failed to start confirmation_socket (bind): '{0}'"
+            self.log.error("Failed to start confirmation_socket (bind): '{}'"
                            .format(self.conf_bind_str), exc_info=True)
             raise
 
@@ -265,10 +264,10 @@ class CleanerBase(ABC):
         try:
             self.control_socket = self.context.socket(zmq.SUB)
             self.control_socket.connect(self.control_con_str)
-            self.log.info("Start control_socket (connect): '{0}'"
+            self.log.info("Start control_socket (connect): '{}'"
                           .format(self.control_con_str))
         except:
-            self.log.error("Failed to start control_socket (connect): '{0}'"
+            self.log.error("Failed to start control_socket (connect): '{}'"
                            .format(self.control_con_str), exc_info=True)
             raise
 
@@ -290,22 +289,20 @@ class CleanerBase(ABC):
 #        self.conf_checking_thread.start()
 
         while True:
-            """
-            # intersect
-            removable_elements = new_jobs & new_confirmations
-            self.log.debug("removable_elements={0}"
-                           .format(removable_elements))
-
-            for element in removable_elements:
-                self.remove_element(element)
-
-                new_jobs.discard(element)
-                new_confirmations.discard(element)
-
-            # do not loop too offen if there is nothing to process
-            if not removable_elements:
-                time.sleep(0.1)
-            """
+#            # intersect
+#            removable_elements = new_jobs & new_confirmations
+#            self.log.debug("removable_elements={}"
+#                           .format(removable_elements))
+#
+#            for element in removable_elements:
+#                self.remove_element(element)
+#
+#                new_jobs.discard(element)
+#                new_confirmations.discard(element)
+#
+#            # do not loop too offen if there is nothing to process
+#            if not removable_elements:
+#                time.sleep(0.1)
 
             socks = dict(self.poller.poll())
 
@@ -317,10 +314,10 @@ class CleanerBase(ABC):
 
                 self.log.debug("Waiting for confirmation")
                 element = self.confirmation_socket.recv().decode("utf-8")
-                self.log.debug("New confirmation received: {0}"
+                self.log.debug("New confirmation received: {}"
                                .format(element))
-                self.log.debug("new_jobs={0}".format(new_jobs))
-                self.log.debug("old_confirmations={0}"
+                self.log.debug("new_jobs={}".format(new_jobs))
+                self.log.debug("old_confirmations={}"
                                .format(old_confirmations))
 
                 for base_path, file_id in new_jobs:
@@ -331,17 +328,17 @@ class CleanerBase(ABC):
                         new_jobs.remove([base_path, file_id])
                         self.lock.release()
 
-                        self.log.debug("new_jobs={0}".format(new_jobs))
+                        self.log.debug("new_jobs={}".format(new_jobs))
                     elif element in old_confirmations:
                         self.remove_element(element)
 
                         old_confirmations.remove(element)
-                        self.log.debug("old_confirmations={0}"
+                        self.log.debug("old_confirmations={}"
                                        .format(old_confirmations))
                     else:
                         old_confirmations.append(element)
                         self.log.error("confirmations without job "
-                                       "notification received: {0}"
+                                       "notification received: {}"
                                        .format(element))
 
             ######################################
@@ -352,7 +349,7 @@ class CleanerBase(ABC):
                 try:
                     message = self.control_socket.recv_multipart()
                     self.log.debug("Control signal received")
-                    self.log.debug("message = {0}".format(message))
+                    self.log.debug("message = {}".format(message))
                 except:
                     self.log.error("Receiving control signal...failed",
                                    exc_info=True)
@@ -372,7 +369,7 @@ class CleanerBase(ABC):
                     self.log.debug("Received exit signal")
                     break
                 else:
-                    self.log.error("Unhandled control signal received: {0}"
+                    self.log.error("Unhandled control signal received: {}"
                                    .format(message))
 
     @abc.abstractmethod

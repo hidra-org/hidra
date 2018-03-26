@@ -1335,6 +1335,7 @@ class Transfer():
                                            "Directory {} is not available"
                                            .format(filepath,
                                                    metadata["relative_path"]))
+                            target_path = None
                             raise
 
                         target_path = generate_filepath(base_path,

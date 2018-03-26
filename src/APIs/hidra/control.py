@@ -284,7 +284,7 @@ def reset_receiver_status(host, port):
     print("Reset request sent")
 
     responce = reset_socket.recv_multipart()
-    print("Responce: {}".format(responce))
+    print("Response: {}".format(responce))
 
     reset_socket.close()
     context.destroy()
