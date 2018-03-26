@@ -324,13 +324,13 @@ def check_host(host, whitelist, log):
 
 def check_ping(host, log=logging):
     if is_windows():
-        response = os.system("ping -n 1 -w 2 {0}".format(host))
+        response = os.system("ping -n 1 -w 2 {}".format(host))
     else:
-        response = os.system("ping -c 1 -w 2 {0} > /dev/null 2>&1"
+        response = os.system("ping -c 1 -w 2 {} > /dev/null 2>&1"
                              .format(host))
 
     if response != 0:
-        log.error("{0} is not pingable.".format(host))
+        log.error("{} is not pingable.".format(host))
         sys.exit(1)
 
 
@@ -343,8 +343,8 @@ def create_sub_dirs(dir_path, subdirs):
     for d in dirs_to_check:
         try:
             os.mkdir(d)
-            logging.debug("Dir '{0}' does not exist. Create it.".format(d))
-        except IOError:
+            logging.debug("Dir '{}' does not exist. Create it.".format(d))
+        except OSError:
             pass
 
 
