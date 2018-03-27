@@ -130,6 +130,7 @@ class DataFetcher(DataFetcherBase):
                                                self.target_file,
                                                metadata["relative_path"]),
                                        exc_info=True)
+                        raise
 
                     elif subdir in self.config["fix_subdirs"]:
                         self.log.error("Unable to move file '{}' to '{}': "
@@ -138,6 +139,7 @@ class DataFetcher(DataFetcherBase):
                                                self.target_file,
                                                subdir),
                                        exc_info=True)
+                        raise
                     else:
                         try:
                             target_path, filename = (
@@ -163,17 +165,18 @@ class DataFetcher(DataFetcherBase):
                 else:
                     self.log.error("Unable to open target file '{}'."
                                    .format(self.target_file), exc_info=True)
+                    raise
             except:
                 self.log.error("Unable to open target file '{}'."
                                .format(self.target_file), exc_info=True)
+                raise
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
         targets_data = [i for i in targets if i[2] == "data"]
         targets_metadata = [i for i in targets if i[2] == "metadata"]
         chunk_number = 0
 
-        self.log.debug("Getting data for file '{}'..."
-                       .format(self.source_file))
+        self.log.debug("Getting data for file '{}'...".format(self.source_file))
         # reading source file into memory
         for data in response.iter_content(chunk_size=chunksize):
             self.log.debug("Packing multipart-message for file '{}'..."
@@ -202,17 +205,18 @@ class DataFetcher(DataFetcherBase):
                                    .format(self.source_file), exc_info=True)
                     file_written = False
 
-            # send message to data targets
-            try:
-                self.send_to_targets(targets_data, open_connections,
-                                     metadata_extended, payload)
-                self.log.debug("Passing multipart-message for file {}...done."
-                               .format(self.source_file))
+            if targets_data != []:
+                # send message to data targets
+                try:
+                    self.send_to_targets(targets_data, open_connections,
+                                         metadata_extended, payload)
+                    self.log.debug("Passing multipart-message for file {}...done."
+                                   .format(self.source_file))
 
-            except:
-                self.log.error("Unable to send multipart-message for file {}"
-                               .format(self.source_file), exc_info=True)
-                file_send = False
+                except:
+                    self.log.error("Unable to send multipart-message for file {}"
+                                   .format(self.source_file), exc_info=True)
+                    file_send = False
 
             chunk_number += 1
 
@@ -232,17 +236,18 @@ class DataFetcher(DataFetcherBase):
             metadata_extended["file_create_time"] = (
                 os.stat(self.target_file).st_ctime)
 
-            # send message to metadata targets
-            try:
-                self.send_to_targets(targets_metadata, open_connections,
-                                     metadata_extended, payload)
-                self.log.debug("Passing metadata multipart-message for file "
-                               "'{}'...done.".format(self.source_file))
+            if targets_metadata != []:
+                # send message to metadata targets
+                try:
+                    self.send_to_targets(targets_metadata, open_connections,
+                                         metadata_extended, payload)
+                    self.log.debug("Passing metadata multipart-message for file "
+                                   "'{}'...done.".format(self.source_file))
 
-            except:
-                self.log.error("Unable to send metadata multipart-message for "
-                               "file '{}'".format(self.source_file),
-                               exc_info=True)
+                except:
+                    self.log.error("Unable to send metadata multipart-message for "
+                                   "file '{}'".format(self.source_file),
+                                   exc_info=True)
 
             self.config["remove_flag"] = (file_opened
                                           and file_written

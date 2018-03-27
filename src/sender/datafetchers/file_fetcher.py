@@ -245,6 +245,7 @@ class DataFetcher(DataFetcherBase):
                                        .format(self.source_file, self.target_file),
                                        exc_info=True)
                         self.log.debug("target_path: {}".format(target_path))
+                        raise
             else:
                 self.log.error("Unable to copy/move file '{}' to '{}'"
                                .format(self.source_file, self.target_file),
