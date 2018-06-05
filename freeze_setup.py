@@ -63,8 +63,8 @@ else:
     version_specific_packages = ["ConfigParser"]
 
 # reuse the init file for installed HiDRA to reduce amount of maintenance
-initscript = os.path.join(basepath, "initscripts", "hidra.sh"
-exescript = os.path.join(basepath, "initscripts", "hidra_exe.sh"
+initscript = os.path.join(basepath, "initscripts", "hidra.sh")
+exescript = os.path.join(basepath, "initscripts", "hidra_exe.sh")
 with open(initscript, "r") as f:
     with open(exescript, "w") as f_exe:
         for line in f:

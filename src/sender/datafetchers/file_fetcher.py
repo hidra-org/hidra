@@ -241,9 +241,9 @@ class DataFetcher(DataFetcherBase):
                                       .format(target_path))
                         action_function(self.source_file, self.target_file)
                     except:
-                        self.log.error("Unable to copy/move file '{}' to '{}'"
-                                       .format(self.source_file, self.target_file),
-                                       exc_info=True)
+                        err_msg = ("Unable to copy/move file '{}' to '{}'"
+                                   .format(self.source_file, self.target_file))
+                        self.log.error(err_msg, exc_info=True)
                         self.log.debug("target_path: {}".format(target_path))
                         raise
             else:

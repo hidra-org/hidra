@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import __init__
+import __init__  # noqa F401
 import utils
 import argparse
+
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -26,13 +27,18 @@ if __name__ == "__main__":
     print("Configured settings:")
     print("Monitored direcory:            {}".format(params["monitored_dir"]))
     print("Watched subdirectories are:    {}".format(params["fix_subdirs"]))
+
+    msg = "Data is written to:            {}"
     if params["store_data"]:
-        print("Data is written to:            {}".format(params["local_target"]))
+        print(msg.format(params["local_target"]))
     else:
-        print("Data is written to:            Data is not stored locally")
+        print(msg.format("Data is not stored locally"))
+
+    msg = "Data is sent to:               {}"
     if params["use_data_stream"]:
-        print("Data is sent to:               {}".format(params["data_stream_targets"]))
+        print(msg.format(params["data_stream_targets"]))
     else:
-        print("Data is sent to:               Data is not sent as priority stream anywhere")
+        print(msg.format("Data is not sent as priority stream anywhere"))
+
     print("Remove data from the detector: {}".format(params["remove_data"]))
     print("Whitelist:                     {}".format(params["whitelist"]))

@@ -261,9 +261,9 @@ def argument_parsing():
 #                       "local_target"]
 
     # Check format of config
-    check_passed, config_reduced = utils.check_config(required_params,
-                                                      params,
-                                                      logging)
+    check_passed, _ = utils.check_config(required_params,
+                                         params,
+                                         logging)
 
     if not check_passed:
         logging.error("Wrong configuration")
@@ -443,23 +443,23 @@ class DataManager():
             self.log.info("Using tcp for internal communication.")
             self.control_pub_con_str = (
                 "tcp://{}:{}".format(self.localhost,
-                                       self.params["control_pub_port"]))
+                                     self.params["control_pub_port"]))
             self.control_sub_con_str = (
                 "tcp://{}:{}".format(self.localhost,
-                                       self.params["control_sub_port"]))
+                                     self.params["control_sub_port"]))
             self.request_fw_con_str = (
                 "tcp://{}:{}".format(self.localhost,
-                                       self.params["request_fw_port"]))
+                                     self.params["request_fw_port"]))
             self.router_con_str = (
                 "tcp://{}:{}".format(self.localhost,
-                                       self.params["router_port"]))
+                                     self.params["router_port"]))
             if self.use_cleaner:
                 self.params["cleaner_job_con_str"] = (
                     "tcp://{}:{}".format(self.localhost,
-                                           self.params["cleaner_port"]))
+                                         self.params["cleaner_port"]))
                 self.params["cleaner_tigger_con_str"] = (
                     "tcp://{}:{}".format(self.localhost,
-                                           self.params["cleaner_trigger_port"]))
+                                         self.params["cleaner_trigger_port"]))
             else:
                 self.params["cleaner_job_con_str"] = None
                 self.params["cleaner_trigger_con_str"] = None
@@ -683,8 +683,11 @@ class DataManager():
                     # send test message
                     try:
                         tracker = self.test_socket.send_multipart(
-                            [test_signal], zmq.NOBLOCK,
-                            copy=False, track=True)
+                            [test_signal],
+                            zmq.NOBLOCK,
+                            copy=False,
+                            track=True
+                        )
 
                         if enable_logging:
                             self.log.info("Sent status check to fixed "
@@ -697,14 +700,17 @@ class DataManager():
                     except (zmq.Again, zmq.error.ZMQError):
                         # returns a tuple (type, value, traceback)
                         exc_type, exc_value, _ = sys.exc_info()
+
                         if self.zmq_again_occured == 0:
                             self.log.error("Failed to send test message to "
                                            "fixed streaming host {}"
                                            .format(self.status_check_id))
                             self.log.debug("Error was: {}: {}"
                                            .format(exc_type, exc_value))
+
                         self.zmq_again_occured += 1
                         self.socket_reconnected = False
+
                         return False
 
                     # test if someone picks up the test message in the next
@@ -999,7 +1005,7 @@ class DataManager():
             self.log.info("SignalHandler terminated.")
         if not self.taskprovider_pr.is_alive():
             self.log.info("TaskProvider terminated.")
-        if (self.use_cleaner and not self.cleaner_pr.is_alive()):
+        if self.use_cleaner and not self.cleaner_pr.is_alive():
             self.log.info("Cleaner terminated.")
         if not any(datadispatcher.is_alive()
                    for datadispatcher in self.datadispatcher_pr):

@@ -183,10 +183,10 @@ def check_dir_empty(dir_path):
 
     # check if directory is empty
     if os.listdir(dir_path):
-        logging.debug("Directory '{}' is not empty.".format(dir_path))
-        if confirm(prompt="Directory {} is not empty.\n"
-                          "Should its content be removed?".format(dir_path),
-                   resp=True):
+        msg = "Directory '{}' is not empty.".format(dir_path)
+        logging.debug(msg)
+        prompt = msg +  "\nShould its content be removed?"
+        if confirm(prompt=prompt, resp=True):
             for element in os.listdir(dir_path):
                 path = os.path.join(dir_path, element)
                 if os.path.isdir(path):
@@ -245,7 +245,7 @@ def check_all_sub_dir_exist(dir_path, subdirs):
 
 
 def check_existance(path):
-    if path == None:
+    if path is None:
         logging.error("No path to check found (path={}). Abort.".format(path))
         sys.exit(1)
 

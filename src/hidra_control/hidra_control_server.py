@@ -89,7 +89,7 @@ class HidraController():
                             "commissioning/raw",
                             "commissioning/scratch_bl",
                             "local"]
-        self.local_target =  os.path.join("/beamline", self.beamline)
+        self.local_target = os.path.join("/beamline", self.beamline)
 
         self.master_config = dict()
 
@@ -461,15 +461,19 @@ def call_hidra_service(cmd, beamline, det_id, log):
     SYSTEMD_PREFIX = "hidra@"
     SERVICE_NAME = "hidra"
 
-#    return subprocess.call(["/home/kuhnm/Arbeit/projects/hidra/initscripts/hidra.sh", "--beamline", "p00", "--detector", "asap3-mon", "--"+cmd])
+#    sys_cmd = ["/home/kuhnm/Arbeit/projects/hidra/initscripts/hidra.sh",
+#               "--beamline", "p00",
+#               "--detector", "asap3-mon",
+#               "--"+cmd]
+#    return subprocess.call(sys_cmd)
 
     # systems using systemd
     if (os.path.exists("/usr/lib/systemd")
-            and (os.path.exists("/usr/lib/systemd/{0}.service"
+            and (os.path.exists("/usr/lib/systemd/{}.service"
                                 .format(SYSTEMD_PREFIX))
-                 or os.path.exists("/usr/lib/systemd/system/{0}.service"
+                 or os.path.exists("/usr/lib/systemd/system/{}.service"
                                    .format(SYSTEMD_PREFIX))
-                 or os.path.exists("/etc/systemd/system/{0}.service"
+                 or os.path.exists("/etc/systemd/system/{}.service"
                                    .format(SYSTEMD_PREFIX)))):
 
         svc = "{}{}_{}.service".format(SYSTEMD_PREFIX, beamline, det_id)
@@ -524,16 +528,16 @@ class ControlServer():
         # Get the log Configuration for the lisener
         if arguments.onscreen:
             h1, h2 = utils.get_log_handlers(logfile, logsize,
-                                              arguments.verbose,
-                                              arguments.onscreen)
+                                            arguments.verbose,
+                                            arguments.onscreen)
 
             # Start queue listener using the stream handler above.
             self.log_queue_listener = (
                 utils.CustomQueueListener(self.log_queue, h1, h2))
         else:
             h1 = utils.get_log_handlers(logfile, logsize,
-                                          arguments.verbose,
-                                          arguments.onscreen)
+                                        arguments.verbose,
+                                        arguments.onscreen)
 
             # Start queue listener using the stream handler above
             self.log_queue_listener = (

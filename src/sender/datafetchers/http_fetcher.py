@@ -120,7 +120,8 @@ class DataFetcher(DataFetcherBase):
                 # errno.ENOENT == "No such file or directory"
                 if e.errno == errno.ENOENT:
 
-                    # the directories current, commissioning and local should not be created
+                    # the directories current, commissioning and local should
+                    # not be created
                     subdir, tmp = os.path.split(metadata["relative_path"])
 
                     if metadata["relative_path"] in self.config["fix_subdirs"]:
@@ -176,7 +177,8 @@ class DataFetcher(DataFetcherBase):
         targets_metadata = [i for i in targets if i[2] == "metadata"]
         chunk_number = 0
 
-        self.log.debug("Getting data for file '{}'...".format(self.source_file))
+        self.log.debug("Getting data for file '{}'..."
+                       .format(self.source_file))
         # reading source file into memory
         for data in response.iter_content(chunk_size=chunksize):
             self.log.debug("Packing multipart-message for file '{}'..."
@@ -208,14 +210,18 @@ class DataFetcher(DataFetcherBase):
             if targets_data != []:
                 # send message to data targets
                 try:
-                    self.send_to_targets(targets_data, open_connections,
-                                         metadata_extended, payload)
-                    self.log.debug("Passing multipart-message for file {}...done."
-                                   .format(self.source_file))
+                    self.send_to_targets(targets_data,
+                                         open_connections,
+                                         metadata_extended,
+                                         payload)
+                    msg = ("Passing multipart-message for file {}...done."
+                           .format(self.source_file))
+                    self.log.debug(msg)
 
                 except:
-                    self.log.error("Unable to send multipart-message for file {}"
-                                   .format(self.source_file), exc_info=True)
+                    msg = ("Unable to send multipart-message for file {}"
+                           .format(self.source_file))
+                    self.log.error(msg, exc_info=True)
                     file_send = False
 
             chunk_number += 1
@@ -241,12 +247,13 @@ class DataFetcher(DataFetcherBase):
                 try:
                     self.send_to_targets(targets_metadata, open_connections,
                                          metadata_extended, payload)
-                    self.log.debug("Passing metadata multipart-message for file "
-                                   "'{}'...done.".format(self.source_file))
+                    self.log.debug("Passing metadata multipart-message for "
+                                   "file '{}'...done."
+                                   .format(self.source_file))
 
                 except:
-                    self.log.error("Unable to send metadata multipart-message for "
-                                   "file '{}'".format(self.source_file),
+                    self.log.error("Unable to send metadata multipart-message "
+                                   "for file '{}'".format(self.source_file),
                                    exc_info=True)
 
             self.config["remove_flag"] = (file_opened

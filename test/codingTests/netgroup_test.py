@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import socket
 import subprocess
 import re
@@ -28,6 +30,6 @@ netgroup_name = "a3{0}-hosts".format(beamline)
 hostname = socket.getfqdn()
 
 netgroup = excecute_ldapsearch(netgroup_name)
-print netgroup
+print(netgroup)
 
-print "Host", hostname, "is in netgroup:", hostname in netgroup
+print("Host", hostname, "is in netgroup:", hostname in netgroup)

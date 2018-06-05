@@ -197,25 +197,28 @@ def nexus_transfer():
     finally:
         obj.stop()
 
-use_test = True
-# use_test = False
 
-if use_test:
-    hidra_simulation_thread = HidraSimulation()
-    hidra_simulation_thread.start()
+if __name__ == "__main__":
+    use_test = True
+    # use_test = False
 
-number = 5
+    if use_test:
+        hidra_simulation_thread = HidraSimulation()
+        hidra_simulation_thread.start()
 
-hidra_ingest_thread = threading.Thread(target=hidra_ingest, args=(number, ))
-nexus_transfer_thread = threading.Thread(target=nexus_transfer)
+    number = 5
 
-hidra_ingest_thread.start()
-nexus_transfer_thread.start()
+    hidra_ingest_thread = threading.Thread(target=hidra_ingest,
+                                           args=(number, ))
+    nexus_transfer_thread = threading.Thread(target=nexus_transfer)
 
-hidra_ingest_thread.join()
-nexus_transfer_thread.join()
+    hidra_ingest_thread.start()
+    nexus_transfer_thread.start()
 
-if use_test:
-    hidra_simulation_thread.stop()
+    hidra_ingest_thread.join()
+    nexus_transfer_thread.join()
 
-print("\n==== TEST END: hidraIngest together with nexus transfer ====\n")
+    if use_test:
+        hidra_simulation_thread.stop()
+
+    print("\n==== TEST END: hidraIngest together with nexus transfer ====\n")

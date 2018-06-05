@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import abc
 import json
 import os
-import socket
 import sys
 import zmq
 
