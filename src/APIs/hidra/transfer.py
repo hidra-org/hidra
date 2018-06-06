@@ -4,17 +4,17 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-
-import zmq
-import socket
-import logging
-import json
+import copy
 import errno
+import json
+import logging
 import os
+import re
+import socket
 import sys
 import tempfile
 import time
-import re
+import zmq
 from multiprocessing import Queue
 from zmq.auth.thread import ThreadAuthenticator
 
@@ -252,7 +252,10 @@ class Transfer():
                                       "QUERY_NEXT", "QUERY_METADATA",
                                       "NEXUS"]
 
-        self.dirs_not_to_create = tuple(dirs_not_to_create)
+        if dirs_not_to_create is None:
+            self.dirs_not_to_create = dirs_not_to_create
+        else:
+            self.dirs_not_to_create = tuple(dirs_not_to_create)
 
         self.signal_exchanged = None
 
@@ -1037,7 +1040,7 @@ class Transfer():
 
                 try:
                     multipart_message = self.data_socket.recv_multipart()
-#                    self.log.debug("multipart_message={0}"
+#                    self.log.debug("multipart_message={}"
 #                                    .format(multipart_message[:100]))
                 except:
                     self.log.error("Could not receive data due to unknown "
@@ -1049,7 +1052,7 @@ class Transfer():
                 if len(multipart_message) < 2:
                     self.log.error("Received mutipart-message is too short. "
                                    "Either config or file content is missing.")
-#                    self.log.debug("multipart_message={0}"
+#                    self.log.debug("multipart_message={}"
 #                                   .format(multipart_message[:100]))
                     # TODO return errorcode
 
@@ -1151,17 +1154,22 @@ class Transfer():
 
         return True
 
-    def get(self, timeout=None):
+    def get_chunk(self, timeout=None):
         """
-         Receives or queries for new files depending on the connection
-         initialized
+        Receives or queries for chunks of the new files depending on the
+        connection initialized.
 
-         returns either
-            the newest file
+        Args:
+            timout (optional): The time (in ms) to wait for new messages to
+                               come before aborting.
+
+        Returns:
+            Either
+            the newest data chunk
                 (if connection type "QUERY_NEXT" or "STREAM" was choosen)
-            the path of the newest file
+            the metadata of the newest data chunk
                 (if connection type "QUERY_METADATA" or "STREAM_METADATA" was
-                 choosen)
+                choosen)
 
         """
 
@@ -1303,14 +1311,83 @@ class Transfer():
         else:
             return False
 
+    def get(self, timeout=None):
+        """
+        Receives or queries for new files depending on the connection
+        initialized.
+
+        Args:
+            timout (optional): The time (in ms) to wait for new messages to
+                               come before stop waiting.
+
+        Returns:
+            Either
+            the newest file
+                (if connection type "QUERY_NEXT" or "STREAM" was choosen)
+            the metadata of the newest file
+                (if connection type "QUERY_METADATA" or "STREAM_METADATA" was
+                choosen)
+
+        """
+        run_loop = True
+
+        all_data = []
+        all_metadata = None
+
+        # save all chunks to file
+        while run_loop:
+
+            try:
+                # timeout (in ms) to be able to react on system signals
+                [metadata, payload] = self.get_chunk(timeout=timeout)
+            except KeyboardInterrupt:
+                raise
+            except:
+                if self.stopped_everything:
+                    break
+                else:
+                    self.log.error("Getting data failed.", exc_info=True)
+                    raise
+
+            # the metadata is the same for all chunks (only exception chunk_number)
+            if all_metadata is None:
+                all_metadata = metadata
+
+            all_data.append(copy.deepcopy(payload))
+
+            if self.check_file_closed(payload, metadata):
+                # indicates end of file. Leave loop
+                self.log.info("New file with modification time {} received "
+                              .format(metadata["file_mod_time"]))
+
+                try:
+                    # highlight that the metadata does not correspond to only one
+                    # chunk anymore
+                    all_metadata["chunk_number"] = None
+
+                    # merge the data again
+                    all_data = b"".join(all_data)
+                except:
+                    self.log.error("Something went wrong when merging chunks",
+                                   exc_info=True)
+                    raise
+
+                return all_metadata, all_data
+
     def store_data_chunk(self,
                          descriptors,
                          filepath,
                          payload,
                          base_path,
                          metadata):
-        """
-        Writes the data into a file
+        """Writes the data chunk into a file.
+
+        Args:
+            descriptors: All open file descriptors
+            filepath: The path of the file to which the chunk should be stored.
+            payload: The data to store.
+            base_path: The base path under which the file should be stored
+            metadata: The metadata recceived together with the data.
         """
         # append payload to file
         try:
@@ -1329,7 +1406,7 @@ class Transfer():
 
                         # do not create directories defined as immutable,
                         # e.g.commissioning, current and local
-                        if (self.dirs_not_to_create
+                        if (self.dirs_not_to_create is not None
                                 and rel_path.startswith(self.dirs_not_to_create)):
                             self.log.error("Unable to write file '{}': "
                                            "Directory {} is not available"
@@ -1414,6 +1491,14 @@ class Transfer():
             return True
 
     def store(self, target_base_path, timeout=None):
+        """Writes all data belonging to one file to disc.
+
+        Args:
+            target_base_path: The base path under which the file possible
+                              subdirectories should be created.
+            timout (optional): The time (in ms) to wait for new messages to
+                               come before aborting.
+        """
 
         run_loop = True
 
@@ -1422,7 +1507,7 @@ class Transfer():
 
             try:
                 # timeout (in ms) to be able to react on system signals
-                [payload_metadata, payload] = self.get(timeout)
+                [payload_metadata, payload] = self.get_chunk(timeout)
             except KeyboardInterrupt:
                 raise
             except:

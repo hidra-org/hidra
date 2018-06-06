@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import argparse
 import socket
+import hashlib
 
 import __init__  # noqa E401
 from hidra import Transfer
@@ -34,10 +35,12 @@ if __name__ == "__main__":
 
     query.start()
 
+    timeout = None
+    #timeout = 2000  # in ms
     #while True:
     for i in range(2):
         try:
-            [metadata, data] = query.get(2000)
+            [metadata, data] = query.get(timeout)
         except:
             break
 
@@ -45,6 +48,12 @@ if __name__ == "__main__":
         if metadata and data:
             print("metadata", metadata["filename"])
             print("data", str(data)[:10])
+
+            # generate md5sum
+            m = hashlib.md5()
+            m.update(data)
+            print("md5sum", m.hexdigest())
+
         else:
             print("metadata", metadata)
             print("data", data)
