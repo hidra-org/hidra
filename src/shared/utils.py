@@ -337,15 +337,20 @@ def check_ping(host, log=logging):
 def create_sub_dirs(dir_path, subdirs):
 
     dir_path = os.path.normpath(dir_path)
+    # existance of mount point/monitored dir is essential to start at all
+    check_existance(dir_path)
+
     dirs_to_check = [os.path.join(dir_path, directory)
                      for directory in subdirs]
 
     for d in dirs_to_check:
         try:
+            # do not create parent directories (meaning using mkdirs) because
+            # this would block the fileset creation
             os.mkdir(d)
             logging.debug("Dir '{}' does not exist. Create it.".format(d))
         except OSError:
-            pass
+            logging.error("Dir '{}' could not be created.".format(d))
 
 
 def check_config(required_params, config, log):
