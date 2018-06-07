@@ -28,7 +28,7 @@ class SignalHandler():
         self.log = utils.get_logger("SignalHandler", log_queue)
 
         self.current_pid = os.getpid()
-        self.log.debug("SignalHandler started (PID {0})."
+        self.log.debug("SignalHandler started (PID {})."
                        .format(self.current_pid))
 
         self.params = params
@@ -85,11 +85,11 @@ class SignalHandler():
         try:
             self.control_pub_socket = self.context.socket(zmq.PUB)
             self.control_pub_socket.connect(self.control_pub_con_id)
-            self.log.info("Start control_pub_socket (connect): '{0}'"
+            self.log.info("Start control_pub_socket (connect): '{}'"
                           .format(self.control_pub_con_id))
         except:
             self.log.error("Failed to start control_pub_socket (connect): "
-                           "'{0}'".format(self.control_pub_con_id),
+                           "'{}'".format(self.control_pub_con_id),
                            exc_info=True)
             raise
 
@@ -97,11 +97,11 @@ class SignalHandler():
         try:
             self.control_sub_socket = self.context.socket(zmq.SUB)
             self.control_sub_socket.connect(self.control_sub_con_id)
-            self.log.info("Start control_sub_socket (connect): '{0}'"
+            self.log.info("Start control_sub_socket (connect): '{}'"
                           .format(self.control_sub_con_id))
         except:
             self.log.error("Failed to start control_sub_socket (connect): "
-                           "'{0}'".format(self.control_sub_con_id),
+                           "'{}'".format(self.control_sub_con_id),
                            exc_info=True)
             raise
 
@@ -112,10 +112,10 @@ class SignalHandler():
         try:
             self.request_fw_socket = self.context.socket(zmq.REP)
             self.request_fw_socket.bind(self.request_fw_con_id)
-            self.log.info("Start request_fw_socket (bind): '{0}'"
+            self.log.info("Start request_fw_socket (bind): '{}'"
                           .format(self.request_fw_con_id))
         except:
-            self.log.error("Failed to start request_fw_socket (bind): '{0}'"
+            self.log.error("Failed to start request_fw_socket (bind): '{}'"
                            .format(self.request_fw_con_id), exc_info=True)
             raise
 
@@ -124,10 +124,10 @@ class SignalHandler():
             try:
                 self.com_socket = self.context.socket(zmq.REP)
                 self.com_socket.bind(self.com_con_id)
-                self.log.info("Start com_socket (bind): '{0}'"
+                self.log.info("Start com_socket (bind): '{}'"
                               .format(self.com_con_id))
             except:
-                self.log.error("Failed to start com_socket (bind): '{0}'"
+                self.log.error("Failed to start com_socket (bind): '{}'"
                                .format(self.com_con_id), exc_info=True)
                 raise
 
@@ -135,10 +135,10 @@ class SignalHandler():
             try:
                 self.request_socket = self.context.socket(zmq.PULL)
                 self.request_socket.bind(self.request_con_id)
-                self.log.info("request_socket started (bind) for '{0}'"
+                self.log.info("request_socket started (bind) for '{}'"
                               .format(self.request_con_id))
             except:
-                self.log.error("Failed to start request_socket (bind): '{0}'"
+                self.log.error("Failed to start request_socket (bind): '{}'"
                                .format(self.request_con_id), exc_info=True)
                 raise
         else:
@@ -250,21 +250,21 @@ class SignalHandler():
                         if open_requests:
                             self.request_fw_socket.send_string(
                                 json.dumps(open_requests))
-                            self.log.debug("Answered to request: {0}"
+                            self.log.debug("Answered to request: {}"
                                            .format(open_requests))
-                            self.log.debug("open_requ_vari: {0}"
+                            self.log.debug("open_requ_vari: {}"
                                            .format(self.open_requ_vari))
-                            self.log.debug("allowed_queries: {0}"
+                            self.log.debug("allowed_queries: {}"
                                            .format(self.allowed_queries))
                         else:
                             open_requests = ["None"]
                             self.request_fw_socket.send_string(
                                 json.dumps(open_requests))
-                            self.log.debug("Answered to request: {0}"
+                            self.log.debug("Answered to request: {}"
                                            .format(open_requests))
-                            self.log.debug("open_requ_vari: {0}"
+                            self.log.debug("open_requ_vari: {}"
                                            .format(self.open_requ_vari))
-                            self.log.debug("allowed_queries: {0}"
+                            self.log.debug("allowed_queries: {}"
                                            .format(self.allowed_queries))
 
                 except:
@@ -278,7 +278,7 @@ class SignalHandler():
                     and socks[self.com_socket] == zmq.POLLIN):
 
                 in_message = self.com_socket.recv_multipart()
-                self.log.debug("Received signal: {0}".format(in_message))
+                self.log.debug("Received signal: {}".format(in_message))
 
                 check_failed, signal, target = (
                     self.check_signal_inverted(in_message)
@@ -295,7 +295,7 @@ class SignalHandler():
                     and socks[self.request_socket] == zmq.POLLIN):
 
                 in_message = self.request_socket.recv_multipart()
-                self.log.debug("Received request: {0}".format(in_message))
+                self.log.debug("Received request: {}".format(in_message))
 
                 if in_message[0] == b"NEXT":
                     incoming_socket_id = utils.convert_socket_to_fqdn(
@@ -307,7 +307,7 @@ class SignalHandler():
                                     == self.allowed_queries[index][i][0]):
                                 self.open_requ_vari[index].append(
                                     self.allowed_queries[index][i])
-                                self.log.info("Add to open requests: {0}"
+                                self.log.info("Add to open requests: {}"
                                               .format(self.allowed_queries[
                                                   index][i]))
 
@@ -326,7 +326,7 @@ class SignalHandler():
 
                     self.open_requ_vari = still_requested
 
-                    self.log.info("Remove all occurences from {0} from "
+                    self.log.info("Remove all occurences from {} from "
                                   "variable request list."
                                   .format(incoming_socket_id))
 
@@ -360,7 +360,7 @@ class SignalHandler():
                     self.log.debug("Received wakeup signal. Do nothing.")
                     continue
                 else:
-                    self.log.error("Unhandled control signal received: {0}"
+                    self.log.error("Unhandled control signal received: {}"
                                    .format(message[0]))
 
     def check_signal_inverted(self, in_message):
@@ -368,7 +368,7 @@ class SignalHandler():
         if len(in_message) != 3:
 
             self.log.warning("Received signal is of the wrong format")
-            self.log.debug("Received signal is too short or too long: {0}"
+            self.log.debug("Received signal is too short or too long: {}"
                            .format(in_message))
             return [b"NO_VALID_SIGNAL"], None, None
 
@@ -402,12 +402,12 @@ class SignalHandler():
                                "whitelist...")
                 if utils.check_host(host, self.whitelist, self.log):
                     self.log.info("Hosts are allowed to connect.")
-                    self.log.debug("hosts: {0}".format(host))
+                    self.log.debug("hosts: {}".format(host))
                 else:
                     self.log.warning("One of the hosts is not allowed to "
                                      "connect.")
-                    self.log.debug("hosts: {0}".format(host))
-                    self.log.debug("whitelist: {0}".format(self.whitelist))
+                    self.log.debug("hosts: {}".format(host))
+                    self.log.debug("whitelist: {}".format(self.whitelist))
                     return [b"NO_VALID_HOST"], None, None
 
         return False, signal, target
@@ -416,7 +416,7 @@ class SignalHandler():
         if type(signal) != list:
             signal = [signal]
 
-        self.log.debug("Send response back: {0}".format(signal))
+        self.log.debug("Send response back: {}".format(signal))
         self.com_socket.send_multipart(signal, zmq.NOBLOCK)
 
     def __start_signal(self, signal, send_type, socket_ids, list_to_check,
@@ -428,7 +428,7 @@ class SignalHandler():
         # socket_ids is of the format [[<host>, <prio>, <suffix>], ...]
         for socket_conf in socket_ids:
             # for compatibility with API versions 3.1.2 or older
-            self.log.debug("suffix={0}".format(socket_conf[2]))
+            self.log.debug("suffix={}".format(socket_conf[2]))
             socket_conf[2] = convert_suffix_list_to_regex(socket_conf[2],
                                                           suffix=True,
                                                           compile_regex=False,
@@ -457,15 +457,15 @@ class SignalHandler():
                 self.log.debug("socket_ids is neither a subset nor superset "
                                "of already contained set")
                 self.log.debug("Currently: no idea what to do with this.")
-                self.log.debug("socket_ids={0}".format(socket_ids_flatlist))
-                self.log.debug("flatlist_nested[i]={0}".format(i))
+                self.log.debug("socket_ids={}".format(socket_ids_flatlist))
+                self.log.debug("flatlist_nested[i]={}".format(i))
 
         if overwrite_index is not None:
             # overriding is necessary because the new request may contain
             # different parameters like monitored file suffix, priority or
             # connection type also this means the old socket_id set should be
             # replaced in total and not only partially
-            self.log.debug("overwrite_index={0}".format(overwrite_index))
+            self.log.debug("overwrite_index={}".format(overwrite_index))
 
             list_to_check[overwrite_index] = copy.deepcopy(
                 sorted([i + [send_type] for i in socket_ids]))
@@ -498,7 +498,7 @@ class SignalHandler():
 
                 vari_list.append([])
 
-        self.log.debug("after start handling: list_to_check={0}"
+        self.log.debug("after start handling: list_to_check={}"
                        .format(list_to_check))
 
         # send signal back to receiver
@@ -570,7 +570,7 @@ class SignalHandler():
 
         if connection_not_found:
             self.send_response([b"NO_OPEN_CONNECTION_FOUND"])
-            self.log.info("No connection to close was found for {0}"
+            self.log.info("No connection to close was found for {}"
                           .format(socket_conf))
         else:
             # send signal back to receiver
@@ -583,13 +583,13 @@ class SignalHandler():
                 if vari_list is not None:
                     vari_list = [[b for b in vari_list[a] if socket_id != b[0]]
                                  for a in range(len(vari_list))]
-                    self.log.debug("Remove all occurences from {0} from "
+                    self.log.debug("Remove all occurences from {} from "
                                    "variable request list.".format(socket_id))
 
                 for i in range(len(list_to_check)):
                     if element in list_to_check[i]:
                         list_to_check[i].remove(element)
-                        self.log.debug("Remove {0} from pemanent request "
+                        self.log.debug("Remove {} from pemanent request "
                                        "allowed list.".format(socket_id))
 
                         if not list_to_check[i]:
@@ -620,7 +620,7 @@ class SignalHandler():
         #       START_STREAM      #
         ###########################
         if signal == b"GET_VERSION":
-            self.log.info("Received signal: {0}".format(signal))
+            self.log.info("Received signal: {}".format(signal))
 
             self.send_response([signal, __version__])
             return
@@ -629,7 +629,7 @@ class SignalHandler():
         #       START_STREAM      #
         ###########################
         elif signal == b"START_STREAM":
-            self.log.info("Received signal: {0} for hosts {1}"
+            self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
             self.__start_signal(signal, "data", socket_ids,
@@ -642,7 +642,7 @@ class SignalHandler():
         #  START_STREAM_METADATA  #
         ###########################
         elif signal == b"START_STREAM_METADATA":
-            self.log.info("Received signal: {0} for hosts {1}"
+            self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
             if not self.params["store_data"]:
                 self.log.debug("Send notification that store_data is disabled")
@@ -659,7 +659,7 @@ class SignalHandler():
         #  STOP_STREAM_METADATA   #
         ###########################
         elif signal == b"STOP_STREAM" or signal == b"STOP_STREAM_METADATA":
-            self.log.info("Received signal: {0} for host {1}"
+            self.log.info("Received signal: {} for host {}"
                           .format(signal, socket_ids))
 
             self.open_requ_perm, nonetmp, self.next_requ_node = (
@@ -673,7 +673,7 @@ class SignalHandler():
         #       START_QUERY       #
         ###########################
         elif signal == b"START_QUERY_NEXT":
-            self.log.info("Received signal: {0} for hosts {1}"
+            self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
             self.__start_signal(signal, "data", socket_ids,
@@ -686,7 +686,7 @@ class SignalHandler():
         #  START_QUERY_METADATA   #
         ###########################
         elif signal == b"START_QUERY_METADATA":
-            self.log.info("Received signal: {0} for hosts {1}"
+            self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
             if not self.params["store_data"]:
@@ -704,7 +704,7 @@ class SignalHandler():
         #  STOP_QUERY_METADATA    #
         ###########################
         elif signal == b"STOP_QUERY_NEXT" or signal == b"STOP_QUERY_METADATA":
-            self.log.info("Received signal: {0} for hosts {1}"
+            self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
             self.allowed_queries, self.open_requ_vari, nonetmp = (
@@ -715,7 +715,7 @@ class SignalHandler():
             return
 
         else:
-            self.log.info("Received signal: {0} for hosts {1}"
+            self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
             self.send_response([b"NO_VALID_SIGNAL"])
 
@@ -773,7 +773,7 @@ class RequestPuller():
         self.request_fw_socket = self.context.socket(zmq.REQ)
         self.request_fw_socket.connect(request_fw_con_id)
         self.log.info("[getRequests] request_fw_socket started (connect) for "
-                      "'{0}'".format(request_fw_con_id))
+                      "'{}'".format(request_fw_con_id))
 
         self.run()
 
@@ -786,7 +786,7 @@ class RequestPuller():
                     [b"GET_REQUESTS", json.dumps(filename).encode("utf-8")])
                 self.log.info("[getRequests] send")
                 requests = json.loads(self.request_fw_socket.recv_string())
-                self.log.info("[getRequests] Requests: {0}".format(requests))
+                self.log.info("[getRequests] Requests: {}".format(requests))
                 time.sleep(0.25)
             except Exception as e:
                 self.log.error(str(e), exc_info=True)
@@ -815,16 +815,15 @@ if __name__ == '__main__':
 
     current_pid = os.getpid()
 
-    control_pub_path = "{0}_{1}".format(current_pid, "controlPub")
-    control_pub_con_id = "ipc://{0}".format(control_pub_path)
+    control_pub_path = "{}_{}".format(current_pid, "controlPub")
+    control_pub_con_id = "ipc://{}".format(control_pub_path)
 
-    control_sub_path = "{0}_{1}".format(current_pid, "controlSub")
-    control_sub_con_id = "ipc://{0}".format(control_sub_path)
+    control_sub_path = "{}_{}".format(current_pid, "controlSub")
+    control_sub_con_id = "ipc://{}".format(control_sub_path)
 
-    com_con_id = "tcp://{0}:{1}".format(ext_ip, com_port)
-    request_fw_con_id = ("ipc://{0}_{1}"
-                         .format(current_pid, "requestFw"))
-    request_con_id = "tcp://{0}:{1}".format(ext_ip, request_port)
+    com_con_id = "tcp://{}:{}".format(ext_ip, com_port)
+    request_fw_con_id = ("ipc://{}_{}".format(current_pid, "requestFw"))
+    request_con_id = "tcp://{}:{}".format(ext_ip, request_port)
 
     logfile = os.path.join(BASE_PATH, "logs", "signalhandler.log")
     logsize = 10485760
@@ -832,8 +831,10 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
-                                    onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(logfile,
+                                    logsize,
+                                    verbose=True,
+                                    onscreen_loglevel="debug")
 
     # Start queue listener using the stream handler above
     log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
@@ -858,7 +859,7 @@ if __name__ == '__main__':
     # create control socket
     control_pub_socket = context.socket(zmq.PUB)
     control_pub_socket.connect(control_pub_con_id)
-    logging.info("=== control_pub_socket connect to: '{0}'"
+    logging.info("=== control_pub_socket connect to: '{}'"
                  .format(control_pub_con_id))
 
     signalhandler_pr = threading.Thread(target=SignalHandler,
@@ -878,39 +879,39 @@ if __name__ == '__main__':
     request_puller_pr.start()
 
     def send_signal(socket, signal, ports, prio=None):
-        logging.info("=== send_signal : {0}, {1}".format(signal, ports))
+        logging.info("=== send_signal : {}, {}".format(signal, ports))
         send_message = [__version__, signal]
         targets = []
         if type(ports) == list:
             for port in ports:
-                targets.append(["zitpcx19282:{0}".format(port), prio, [""]])
+                targets.append(["zitpcx19282:{}".format(port), prio, [""]])
         else:
-            targets.append(["zitpcx19282:{0}".format(ports), prio, [""]])
+            targets.append(["zitpcx19282:{}".format(ports), prio, [""]])
         targets = json.dumps(targets).encode("utf-8")
         send_message.append(targets)
         socket.send_multipart(send_message)
         received_message = socket.recv()
-        logging.info("=== Responce : {0}".format(received_message))
+        logging.info("=== Responce : {}".format(received_message))
 
     def send_request(socket, socket_id):
         send_message = [b"NEXT", socket_id.encode('utf-8')]
-        logging.info("=== send_request: {0}".format(send_message))
+        logging.info("=== send_request: {}".format(send_message))
         socket.send_multipart(send_message)
-        logging.info("=== request sent: {0}".format(send_message))
+        logging.info("=== request sent: {}".format(send_message))
 
     def cancel_request(socket, socket_id):
         send_message = [b"CANCEL", socket_id.encode('utf-8')]
-        logging.info("=== send_request: {0}".format(send_message))
+        logging.info("=== send_request: {}".format(send_message))
         socket.send_multipart(send_message)
-        logging.info("=== request sent: {0}".format(send_message))
+        logging.info("=== request sent: {}".format(send_message))
 
     com_socket = context.socket(zmq.REQ)
     com_socket.connect(com_con_id)
-    logging.info("=== com_socket connected to {0}".format(com_con_id))
+    logging.info("=== com_socket connected to {}".format(com_con_id))
 
     request_socket = context.socket(zmq.PUSH)
     request_socket.connect(request_con_id)
-    logging.info("=== request_socket connected to {0}". format(request_con_id))
+    logging.info("=== request_socket connected to {}". format(request_con_id))
 
     time.sleep(1)
 
@@ -952,22 +953,22 @@ if __name__ == '__main__':
 
     try:
         os.remove(control_pub_path)
-        logging.debug("Removed ipc socket: {0}".format(control_pub_path))
+        logging.debug("Removed ipc socket: {}".format(control_pub_path))
     except OSError:
-        logging.warning("Could not remove ipc socket: {0}"
+        logging.warning("Could not remove ipc socket: {}"
                         .format(control_pub_path))
     except:
-        logging.warning("Could not remove ipc socket: {0}"
+        logging.warning("Could not remove ipc socket: {}"
                         .format(control_pub_path), exc_info=True)
 
     try:
         os.remove(control_sub_path)
-        logging.debug("Removed ipc socket: {0}".format(control_sub_path))
+        logging.debug("Removed ipc socket: {}".format(control_sub_path))
     except OSError:
-        logging.warning("Could not remove ipc socket: {0}"
+        logging.warning("Could not remove ipc socket: {}"
                         .format(control_sub_path))
     except:
-        logging.warning("Could not remove ipc socket: {0}"
+        logging.warning("Could not remove ipc socket: {}"
                         .format(control_sub_path), exc_info=True)
 
     log_queue.put_nowait(None)

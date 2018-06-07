@@ -25,13 +25,13 @@ class DataDispatcher():
                  local_target=None, context=None):
 
         self.id = id
-        self.log = utils.get_logger("DataDispatcher-{0}".format(self.id),
+        self.log = utils.get_logger("DataDispatcher-{}".format(self.id),
                                     log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         self.current_pid = os.getpid()
-        self.log.debug("DataDispatcher-{0} started (PID {1})."
+        self.log.debug("DataDispatcher-{} started (PID {})."
                        .format(self.id, self.current_pid))
 
         self.control_con_str = control_con_str
@@ -48,7 +48,7 @@ class DataDispatcher():
         self.local_target = local_target
 
         self.config = config
-        self.log.info("Configuration for data fetcher: {0}"
+        self.log.info("Configuration for data fetcher: {}"
                       .format(self.config))
 
         # dict with information of all open sockets to which a data stream is
@@ -65,7 +65,7 @@ class DataDispatcher():
                     and not self.config["context"]):
                 self.config["context"] = self.context
 
-        self.log.info("Loading data fetcher: {0}"
+        self.log.info("Loading data fetcher: {}"
                       .format(self.config["data_fetcher_type"]))
         self.datafetcher_m = __import__(self.config["data_fetcher_type"])
 
@@ -85,7 +85,7 @@ class DataDispatcher():
         except KeyboardInterrupt:
             pass
         except:
-            self.log.error("Stopping DataDispatcher-{0} due to unknown "
+            self.log.error("Stopping DataDispatcher-{} due to unknown "
                            "error condition.".format(self.id),
                            exc_info=True)
         finally:
@@ -97,10 +97,10 @@ class DataDispatcher():
         try:
             self.control_socket = self.context.socket(zmq.SUB)
             self.control_socket.connect(self.control_con_str)
-            self.log.info("Start control_socket (connect): '{0}'"
+            self.log.info("Start control_socket (connect): '{}'"
                           .format(self.control_con_str))
         except:
-            self.log.error("Failed to start control_socket (connect): '{0}'"
+            self.log.error("Failed to start control_socket (connect): '{}'"
                            .format(self.control_con_str), exc_info=True)
             raise
 
@@ -111,10 +111,10 @@ class DataDispatcher():
         try:
             self.router_socket = self.context.socket(zmq.PULL)
             self.router_socket.connect(self.router_con_str)
-            self.log.info("Start router_socket (connect): '{0}'"
+            self.log.info("Start router_socket (connect): '{}'"
                           .format(self.router_con_str))
         except:
-            self.log.error("Failed to start router_socket (connect): '{0}'"
+            self.log.error("Failed to start router_socket (connect): '{}'"
                            .format(self.router_con_str), exc_info=True)
             raise
 
@@ -127,7 +127,7 @@ class DataDispatcher():
         fixed_stream_id = [self.fixed_stream_id, 0, "data"]
 
         while self.continue_run:
-            self.log.debug("DataDispatcher-{0}: waiting for new job"
+            self.log.debug("DataDispatcher-{}: waiting for new job"
                            .format(self.id))
             socks = dict(self.poller.poll())
 
@@ -139,11 +139,11 @@ class DataDispatcher():
 
                 try:
                     message = self.router_socket.recv_multipart()
-                    self.log.debug("DataDispatcher-{0}: new job received"
+                    self.log.debug("DataDispatcher-{}: new job received"
                                    .format(self.id))
-                    self.log.debug("message = {0}".format(message))
+                    self.log.debug("message = {}".format(message))
                 except:
-                    self.log.error("DataDispatcher-{0}: waiting for new job"
+                    self.log.error("DataDispatcher-{}: waiting for new job"
                                    "...failed".format(self.id), exc_info=True)
                     continue
 
@@ -154,8 +154,8 @@ class DataDispatcher():
 
                     if self.fixed_stream_id:
                         targets.insert(0, fixed_stream_id)
-                        self.log.debug("Added fixed_stream_id {0} to targets "
-                                       "{1}".format(fixed_stream_id, targets))
+                        self.log.debug("Added fixed_stream_id {} to targets "
+                                       "{}".format(fixed_stream_id, targets))
 
                     # sort the target list by the priority
                     targets = sorted(targets, key=lambda target: target[1])
@@ -188,16 +188,16 @@ class DataDispatcher():
                                                     track=True)
                                 )
                                 self.log.info("Sending close file signal to "
-                                              "'{0}' with priority 0"
+                                              "'{}' with priority 0"
                                               .format(self.fixed_stream_id))
                             else:
                                 # open socket
                                 socket = self.context.socket(zmq.PUSH)
-                                connection_str = "tcp://{0}".format(
+                                connection_str = "tcp://{}".format(
                                     self.fixed_stream_id)
 
                                 socket.connect(connection_str)
-                                self.log.info("Start socket (connect): '{0}'"
+                                self.log.info("Start socket (connect): '{}'"
                                               .format(connection_str))
 
                                 # register socket
@@ -213,7 +213,7 @@ class DataDispatcher():
                                                     track=True)
                                 )
                                 self.log.info("Sending close file signal to "
-                                              "'{0}' with priority 0"
+                                              "'{}' with priority 0"
                                               .format(fixed_stream_id))
 
                             # socket not known
@@ -235,7 +235,7 @@ class DataDispatcher():
 
                     elif self.fixed_stream_id:
                         targets = [fixed_stream_id]
-                        self.log.debug("Added fixed_stream_id to targets {0}."
+                        self.log.debug("Added fixed_stream_id to targets {}."
                                        .format(targets))
 
                     else:
@@ -251,7 +251,7 @@ class DataDispatcher():
                     break
                 except:
                     self.log.error("Building of metadata dictionary failed "
-                                   "for metadata: {0}".format(metadata),
+                                   "for metadata: {}".format(metadata),
                                    exc_info=True)
                     # skip all further instructions and
                     # continue with next iteration
@@ -262,7 +262,7 @@ class DataDispatcher():
                     self.datafetcher.send_data(targets, metadata,
                                                self.open_connections)
                 except:
-                    self.log.error("DataDispatcher-{0}: Passing new file to "
+                    self.log.error("DataDispatcher-{}: Passing new file to "
                                    "data stream...failed".format(self.id),
                                    exc_info=True)
 
@@ -277,11 +277,11 @@ class DataDispatcher():
                     and socks[self.control_socket] == zmq.POLLIN):
                 try:
                     message = self.control_socket.recv_multipart()
-                    self.log.debug("DataDispatcher-{0}: control signal "
+                    self.log.debug("DataDispatcher-{}: control signal "
                                    "received".format(self.id))
-                    self.log.debug("message = {0}".format(message))
+                    self.log.debug("message = {}".format(message))
                 except:
-                    self.log.error("DataDispatcher-{0}: reiceiving control "
+                    self.log.error("DataDispatcher-{}: reiceiving control "
                                    "signal...failed".format(self.id),
                                    exc_info=True)
                     continue
@@ -298,7 +298,7 @@ class DataDispatcher():
                     continue
 
                 elif message[0] == b"SLEEP":
-                    self.log.debug("Router requested DataDispatcher-{0} to "
+                    self.log.debug("Router requested DataDispatcher-{} to "
                                    "wait.".format(self.id))
                     break_outer_loop = False
 
@@ -337,12 +337,12 @@ class DataDispatcher():
                                         (self.open_connections[socket_id]
                                             .connect("tcp://" + socket_id))
                                         self.log.info("Restart connection "
-                                                      "(connect): '{0}'"
+                                                      "(connect): '{}'"
                                                       .format(socket_id))
                                     except:
                                         self.log.error("Failed to restart "
                                                        "connection (connect): "
-                                                       "'{0}'"
+                                                       "'{}'"
                                                        .format(socket_id),
                                                        exc_info=True)
 
@@ -360,7 +360,7 @@ class DataDispatcher():
 
                         else:
                             self.log.error("Unhandled control signal received:"
-                                           " {0}".format(message))
+                                           " {}".format(message))
 
                     # the exit signal should become effective
                     if break_outer_loop:
@@ -374,11 +374,11 @@ class DataDispatcher():
                     continue
 
                 else:
-                    self.log.error("Unhandled control signal received: {0}"
+                    self.log.error("Unhandled control signal received: {}"
                                    .format(message))
 
     def react_to_exit_signal(self):
-        self.log.debug("Router requested to shutdown DataDispatcher-{0}."
+        self.log.debug("Router requested to shutdown DataDispatcher-{}."
                        .format(self.id))
 
     def react_to_close_sockets_signal(self, message):
@@ -386,7 +386,7 @@ class DataDispatcher():
         try:
             for socket_id, prio, suffix in targets:
                 if socket_id in self.open_connections:
-                    self.log.info("Closing socket {0}".format(socket_id))
+                    self.log.info("Closing socket {}".format(socket_id))
                     if self.open_connections[socket_id]:
                         self.open_connections[socket_id].close(0)
                     del self.open_connections[socket_id]
@@ -396,12 +396,12 @@ class DataDispatcher():
 
     def stop(self):
         self.continue_run = False
-        self.log.debug("Closing sockets for DataDispatcher-{0}"
+        self.log.debug("Closing sockets for DataDispatcher-{}"
                        .format(self.id))
 
         for connection in self.open_connections:
             if self.open_connections[connection]:
-                self.log.info("Closing socket {0}".format(connection))
+                self.log.info("Closing socket {}".format(connection))
                 self.open_connections[connection].close(0)
                 self.open_connections[connection] = None
 
@@ -448,7 +448,7 @@ if __name__ == '__main__':
     # Get the log Configuration for the lisener
     h1, h2 = utils.get_log_handlers(logfile, logsize,
                                     verbose=True,
-                                    onscreen_log_level="debug")
+                                    onscreen_loglevel="debug")
 
     # Start queue listener using the stream handler above
     log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
@@ -470,8 +470,8 @@ if __name__ == '__main__':
     control_port = "50005"
     router_port = "7000"
 
-    control_con_str = "tcp://{0}:{1}".format(localhost, control_port)
-    router_con_str = "tcp://{0}:{1}".format(localhost, router_port)
+    control_con_str = "tcp://{}:{}".format(localhost, control_port)
+    router_con_str = "tcp://{}:{}".format(localhost, router_port)
 
     receiving_port = "6005"
     receiving_port2 = "6006"
@@ -494,26 +494,32 @@ if __name__ == '__main__':
     context = zmq.Context.instance()
 
     datadispatcher_pr = Process(target=DataDispatcher,
-                                args=(1, control_con_str, router_con_str,
-                                      chunksize, fixed_stream_id, config,
-                                      log_queue, local_target, context))
+                                args=(1,
+                                      control_con_str,
+                                      router_con_str,
+                                      chunksize,
+                                      fixed_stream_id,
+                                      config,
+                                      log_queue,
+                                      local_target,
+                                      context))
     datadispatcher_pr.start()
 
     router_socket = context.socket(zmq.PUSH)
-    connection_str = "tcp://127.0.0.1:{0}".format(router_port)
+    connection_str = "tcp://127.0.0.1:{}".format(router_port)
     router_socket.bind(connection_str)
-    logging.info("=== router_socket connected to {0}".format(connection_str))
+    logging.info("=== router_socket connected to {}".format(connection_str))
 
     receiving_socket = context.socket(zmq.PULL)
-    connection_str = "tcp://0.0.0.0:{0}".format(receiving_port)
+    connection_str = "tcp://0.0.0.0:{}".format(receiving_port)
     receiving_socket.bind(connection_str)
-    logging.info("=== receiving_socket connected to {0}"
+    logging.info("=== receiving_socket connected to {}"
                  .format(connection_str))
 
     receiving_socket2 = context.socket(zmq.PULL)
-    connection_str = "tcp://0.0.0.0:{0}".format(receiving_port2)
+    connection_str = "tcp://0.0.0.0:{}".format(receiving_port2)
     receiving_socket2.bind(connection_str)
-    logging.info("=== receiving_socket2 connected to {0}"
+    logging.info("=== receiving_socket2 connected to {}"
                  .format(connection_str))
 
     metadata = {
@@ -535,10 +541,10 @@ if __name__ == '__main__':
 
     try:
         recv_message = receiving_socket.recv_multipart()
-        logging.info("=== received: {0}"
+        logging.info("=== received: {}"
                      .format(json.loads(recv_message[0].decode("utf-8"))))
         recv_message = receiving_socket2.recv_multipart()
-        logging.info("=== received 2: {0}"
+        logging.info("=== received 2: {}"
                      .format(json.loads(recv_message[0].decode("utf-8"))))
     except KeyboardInterrupt:
         pass

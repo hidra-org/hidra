@@ -22,7 +22,7 @@ class DataFetcher(DataFetcherBase):
         """
 
         DataFetcherBase.__init__(self, config, log_queue, id,
-                                 "datafetcher_template-{0}".format(id),
+                                 "datafetcher_template-{}".format(id),
                                  context)
 
         required_params = []
@@ -33,7 +33,7 @@ class DataFetcher(DataFetcherBase):
                                                           self.log)
 
         if check_passed:
-            self.log.info("Configuration for data fetcher: {0}"
+            self.log.info("Configuration for data fetcher: {}"
                           .format(config_reduced))
         else:
             # self.log.debug("config={0}".format(self.config))
@@ -68,13 +68,13 @@ class DataFetcher(DataFetcherBase):
         if not targets_data:
             return
 
-        self.log.debug("Passing multipart-message for file '{0}'..."
+        self.log.debug("Passing multipart-message for file '{}'..."
                        .format(self.source_file))
 
         for i in range(5):
 
             chunk_number = i
-            file_content = b"test_data_{0}".format(chunk_number)
+            file_content = b"test_data_{}".format(chunk_number)
 
             try:
                 # assemble metadata for zmq-message
@@ -87,7 +87,7 @@ class DataFetcher(DataFetcherBase):
                 chunk_payload.append(file_content)
             except:
                 self.log.error("Unable to pack multipart-message for file "
-                               "'{0}'".format(self.source_file), exc_info=True)
+                               "'{}'".format(self.source_file), exc_info=True)
 
             # send message to data targets
             try:
@@ -95,12 +95,12 @@ class DataFetcher(DataFetcherBase):
                                      chunk_payload, context)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{0}' (chunk {1})"
+                               "'{}' (chunk {})"
                                .format(self.source_file, chunk_number),
                                exc_info=True)
             except:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{0}' (chunk {1})"
+                               "'{}' (chunk {})"
                                .format(self.source_file, chunk_number),
                                exc_info=True)
 
@@ -116,11 +116,11 @@ class DataFetcher(DataFetcherBase):
                                      metadata, None, context,
                                      self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
-                               "{0}...done.".format(self.source_file))
+                               "{}...done.".format(self.source_file))
 
             except:
                 self.log.error("Unable to send metadata multipart-message for "
-                               "file '{0}' to '{1}'"
+                               "file '{}' to '{}'"
                                .format(self.source_file, targets_metadata),
                                exc_info=True)
 
@@ -147,7 +147,7 @@ if __name__ == '__main__':
     h1, h2 = utils.get_log_handlers(log_file,
                                     log_size,
                                     verbose=True,
-                                    onscreen_log_level="debug")
+                                    onscreen_loglevel="debug")
 
     # Start queue listener using the stream handler above
     log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
@@ -166,20 +166,23 @@ if __name__ == '__main__':
     context = zmq.Context.instance()
 
     receiving_socket = context.socket(zmq.PULL)
-    connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port)
+    connection_str = "tcp://{}:{}".format(ext_ip, receiving_port)
     receiving_socket.bind(connection_str)
-    logging.info("=== receiving_socket connected to {0}"
+    logging.info("=== receiving_socket connected to {}"
                  .format(connection_str))
 
     receiving_socket2 = context.socket(zmq.PULL)
-    connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port2)
+    connection_str = "tcp://{}:{}".format(ext_ip, receiving_port2)
     receiving_socket2.bind(connection_str)
-    logging.info("=== receiving_socket2 connected to {0}"
+    logging.info("=== receiving_socket2 connected to {}"
                  .format(connection_str))
 
     prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
-    prework_target_file = os.path.join(
-        BASE_PATH, "data", "source", "local", "100.cbf")
+    prework_target_file = os.path.join(BASE_PATH,
+                                       "data",
+                                       "source",
+                                       "local",
+                                       "100.cbf")
 
     copyfile(prework_source_file, prework_target_file)
     time.sleep(0.5)
@@ -189,8 +192,8 @@ if __name__ == '__main__':
         "relative_path": os.sep + "local",
         "filename": "100.cbf"
     }
-    targets = [['localhost:{0}'.format(receiving_port), 1, "data"],
-               ['localhost:{0}'.format(receiving_port2), 1, "data"]]
+    targets = [['localhost:{}'.format(receiving_port), 1, "data"],
+               ['localhost:{}'.format(receiving_port2), 1, "data"]]
 
     chunksize = 10485760  # = 1024*1024*10 = 10 MiB
     open_connections = dict()
@@ -202,7 +205,7 @@ if __name__ == '__main__':
         "cleaner_job_con_str": None
     }
 
-    logging.debug("open_connections before function call: {0}"
+    logging.debug("open_connections before function call: {}"
                   .format(open_connections))
 
     datafetcher = DataFetcher(config, log_queue, 0, context)
@@ -213,15 +216,15 @@ if __name__ == '__main__':
 
     datafetcher.finish(targets, metadata, open_connections, context)
 
-    logging.debug("open_connections after function call: {0}"
+    logging.debug("open_connections after function call: {}"
                   .format(open_connections))
 
     try:
         recv_message = receiving_socket.recv_multipart()
-        logging.info("=== received: {0}"
+        logging.info("=== received: {}"
                      .format(json.loads(recv_message[0].decode("utf-8"))))
         recv_message = receiving_socket2.recv_multipart()
-        logging.info("=== received 2: {0}"
+        logging.info("=== received 2: {}"
                      .format(json.loads(recv_message[0].decode("utf-8"))))
     except KeyboardInterrupt:
         pass

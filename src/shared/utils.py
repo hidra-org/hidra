@@ -537,75 +537,168 @@ class CustomQueueListener (QueueListener):
             self.handlers.remove(hdlr)
 
 
-# Get the log Configuration for the listener
-def get_log_handlers(logfile, logsize, verbose, onscreen_log_level=False):
-    # Enable more detailed logging if verbose-option has been set
-    loglevel = logging.INFO
-    if verbose:
+def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
+    """Initalizes a stream handler and formats it.
+
+    Args:
+        log_level: Which log level to be used (e.g. debug).
+        datafmt: The data format to be used.
+        fmt: The format of the output messages.
+
+    Returns:
+        A logging StreamHandler instance with configured log level and
+        output format.
+    """
+
+    loglevel = loglevel.lower()
+
+    # check log_level
+    supported_loglevel = ["debug", "info", "warning", "error", "critical"]
+    if loglevel not in supported_loglevel:
+        logging.error("Logging on Screen: Option {} is not supported."
+                      .format(loglevel))
+        sys.exit(1)
+
+    # set format
+    if datafmt is None:
+        datefmt = "%Y-%m-%d %H:%M:%S"
+    if fmt is None:
+        if loglevel == "debug":
+            fmt = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s"
+        else:
+            fmt = "[%(asctime)s] > %(message)s"
+
+    # convert log level corresponding logging equivalent
+    if loglevel == "critical":
+        loglevel = logging.CRITICAL
+    elif loglevel == "error":
+        loglevel = logging.ERROR
+    elif loglevel == "warning":
+        loglevel = logging.WARNING
+    elif loglevel == "info":
+        loglevel = logging.INFO
+    else:
         loglevel = logging.DEBUG
 
-    # Set format
-    datef = "%Y-%m-%d %H:%M:%S"
-    f = ("[%(asctime)s] [%(module)s:%(funcName)s:%(lineno)d] "
-         "[%(name)s] [%(levelname)s] %(message)s")
+    formatter = logging.Formatter(datefmt=datefmt, fmt=fmt)
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    handler.setLevel(loglevel)
+
+    return handler
+
+def get_file_log_handler(logfile,
+                         logsize,
+                         loglevel="debug",
+                         datafmt=None,
+                         fmt=None):
+    """Initalizes a file handler and formats it.
+
+    Args:
+        logfile: The name of the log file.
+        logsize: At which size the log file should be rotated (Linux only).
+        log_level: Which log level to be used (e.g. debug).
+        datafmt: The data format to be used.
+        fmt: The format of the output messages.
+
+    Returns:
+        A logging FileHandler instance with configured log level and
+        output format.
+        Windows: there is no size limitation to the log file
+        Linux: The file is rotated once it exceeds the 'logsize' defined.
+               (total number of backup count is 5).
+    """
+
+    # set format
+    if datafmt is None:
+        datefmt = "%Y-%m-%d %H:%M:%S"
+    if fmt is None:
+        fmt = ("[%(asctime)s] "
+               "[%(module)s:%(funcName)s:%(lineno)d] "
+               "[%(name)s] [%(levelname)s] %(message)s")
+
+    # convert log level corresponding logging equivalent
+    if loglevel == "critical":
+        loglevel = logging.CRITICAL
+    elif loglevel == "error":
+        loglevel = logging.ERROR
+    elif loglevel == "warning":
+        loglevel = logging.WARNING
+    elif loglevel == "info":
+        loglevel = logging.INFO
+    else:
+        loglevel = logging.DEBUG
 
     # Setup file handler to output to file
     # argument for RotatingFileHandler: filename, mode, maxBytes, backupCount)
     # 1048576 = 1MB
     if is_windows():
-        h1 = logging.FileHandler(logfile, 'a')
+        handler = logging.FileHandler(logfile, 'a')
     else:
-        h1 = logging.handlers.RotatingFileHandler(logfile, 'a', logsize, 5)
-    f1 = logging.Formatter(datefmt=datef, fmt=f)
-    h1.setFormatter(f1)
-    h1.setLevel(loglevel)
+        handler = logging.handlers.RotatingFileHandler(logfile,
+                                                       mode='a',
+                                                       maxBytes=logsize,
+                                                       backupCount=5)
+    formatter = logging.Formatter(datefmt=datefmt, fmt=fmt)
+    handler.setFormatter(formatter)
+    handler.setLevel(loglevel)
+
+    return handler
+
+
+def get_log_handlers(logfile, logsize, verbose, onscreen_loglevel=False):
+    """ Get the log Configuration for the listener
+
+    Args:
+        logfile: The name of the log file.
+        logsize: At which size the log file should be rotated (Linux only).
+        log_level: Which log level to be used (e.g. debug).
+        datafmt: The data format to be used.
+        fmt: The format of the output messages.
+
+    Returns:
+        A logging FileHandler instance with configured log level and output
+        format. If onscreen_loglevel is set an additional logging StreamHandler
+        instance is configured.
+        The FileHandler specifics vary for different operating systems.
+            Windows: There is no size limitation to the log file.
+            Linux: The file is rotated once it exceeds the 'logsize' defined.
+                   (total number of backup count is 5).
+    """
+
+    # Enable more detailed logging if verbose-option has been set
+    if verbose:
+        file_loglevel = "debug"
+    else:
+        file_loglevel = "info"
+    screen_loglevel = onscreen_log_level.lower()
+
+    if screen_loglevel == "debug":
+        if not verbose:
+            logging.error("Logging on Screen: Option DEBUG in only "
+                          "active when using verbose option as well "
+                          "(Fallback to INFO).")
+
+    file_handler = get_file_log_handler(logfile=logfile,
+                                        logsize=logsize,
+                                        loglevel=file_loglevel)
 
     # Setup stream handler to output to console
-    if onscreen_log_level:
-        onscreen_log_level_lower = onscreen_log_level.lower()
-        if (onscreen_log_level_lower in ["debug", "info", "warning",
-                                         "error", "critical"]):
-
-            f = "[%(asctime)s] > %(message)s"
-
-            if onscreen_log_level_lower == "debug":
-                screen_log_level = logging.DEBUG
-                f = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s"
-
-                if not verbose:
-                    logging.error("Logging on Screen: Option DEBUG in only "
-                                  "active when using verbose option as well "
-                                  "(Fallback to INFO).")
-            elif onscreen_log_level_lower == "info":
-                screen_log_level = logging.INFO
-            elif onscreen_log_level_lower == "warning":
-                screen_log_level = logging.WARNING
-            elif onscreen_log_level_lower == "error":
-                screen_log_level = logging.ERROR
-            elif onscreen_log_level_lower == "critical":
-                screen_log_level = logging.CRITICAL
-
-            h2 = logging.StreamHandler()
-            f2 = logging.Formatter(datefmt=datef, fmt=f)
-            h2.setFormatter(f2)
-            h2.setLevel(screen_log_level)
-
-            return h1, h2
-        else:
-            logging.error("Logging on Screen: Option {} is not supported."
-                          .format(onscreen_log_level))
-            exit(1)
-
+    if screen_loglevel:
+        screen_handler = get_stream_log_handler(loglevel=screen_loglevel)
+        return file_handler, screen_handler
     else:
-        return h1
+        return file_handler
 
 
-# Send all logs to the main process
-# The worker configuration is done at the start of the worker process run.
-# Note that on Windows you can't rely on fork semantics, so each process
-# will run the logging configuration code when it starts.
 def get_logger(logger_name, queue=False, log_level="debug"):
-    log_level_lower = log_level.lower()
+    """Send all logs to the main process.
+
+    The worker configuration is done at the start of the worker process run.
+    Note that on Windows you can't rely on fork semantics, so each process
+    will run the logging configuration code when it starts.
+    """
+    loglevel = log_level.lower()
 
     if queue:
         # Create log and set handler to queue handle
@@ -614,18 +707,18 @@ def get_logger(logger_name, queue=False, log_level="debug"):
         logger.propagate = False
         logger.addHandler(h)
 
-        if log_level_lower == "debug":
+        if loglevel == "debug":
             logger.setLevel(logging.DEBUG)
-        elif log_level_lower == "info":
+        elif loglevel == "info":
             logger.setLevel(logging.INFO)
-        elif log_level_lower == "warning":
+        elif loglevel == "warning":
             logger.setLevel(logging.WARNING)
-        elif log_level_lower == "error":
+        elif loglevel == "error":
             logger.setLevel(logging.ERROR)
-        elif log_level_lower == "critical":
+        elif loglevel == "critical":
             logger.setLevel(logging.CRITICAL)
     else:
-        logger = LoggingFunction(log_level_lower)
+        logger = LoggingFunction(loglevel)
 
     return logger
 
@@ -634,78 +727,46 @@ def init_logging(filename_full_path, verbose, onscreen_log_level=False):
     # see https://docs.python.org/2/howto/logging-cookbook.html
 
     # more detailed logging if verbose-option has been set
-    logging_level = logging.INFO
+    file_loglevel = logging.INFO
     if verbose:
-        logging_level = logging.DEBUG
+        file_log_level = logging.DEBUG
+    screen_loglevel = onscreen_loglevel.lower()
+
+    # Set format
+    datefmt = "%Y-%m-%d_%H:%M:%S"
+#    filefmt = ("[%(asctime)s] "
+#               "[%(module)s:%(funcName)s:%(lineno)d] "
+#               "[%(name)s] [%(levelname)s] %(message)s")
+    filefmt = ("%(asctime)s "
+               "%(processName)-10s "
+               "%(name)s %(levelname)-8s %(message)s")
+#    filefmt = ("[%(asctime)s] [PID %(process)d] "
+#               "[%(filename)s] "
+#               "[%(module)s:%(funcName)s:%(lineno)d] "
+#               "[%(name)s] [%(levelname)s] %(message)s")
 
     # log everything to file
-#                        format=("[%(asctime)s] [PID %(process)d] "
-#                                "[%(filename)s] "
-#                                "[%(module)s:%(funcName)s:%(lineno)d] "
-#                                "[%(name)s] [%(levelname)s] %(message)s"),
-    logging.basicConfig(level=logging_level,
-                        format=("%(asctime)s %(processName)-10s %(name)s "
-                                "%(levelname)-8s %(message)s"),
-                        datefmt="%Y-%m-%d_%H:%M:%S",
+    logging.basicConfig(level=file_loglevel,
+                        format=filefmt,
+                        datefmt=datafmt,
                         filename=filename_full_path,
                         filemode="a")
 
-#        fileHandler = logging.FileHandler(filename=filename_full_path,
-#                                          mode="a")
-#        fileHandlerFormat = logging.Formatter(
-#            datefmt="%Y-%m-%d_%H:%M:%S,
-#            fmt=("[%(asctime)s] "
-#                 "[PID %(process)d] "
-#                 "[%(filename)s] "
-#                 "[%(module)s:%(funcName)s] "
-#                 "[%(name)s] "
-#                 "[%(levelname)s] "
-#                 "%(message)s"))
-#        fileHandler.setFormatter(fileHandlerFormat)
-#        fileHandler.setLevel(logging_level)
-#        logging.getLogger("").addHandler(fileHandler)
+#        file_handler = logging.FileHandler(filename=filename_full_path,
+#                                           mode="a")
+#        file_handler_format = logging.Formatter(datefmt=dataf,
+#                                                fmt=filefmt)
+#        file_handler.setFormatter(file_handler_format)
+#        file_handler.setLevel(file_log_level)
+#        logging.getLogger("").addHandler(file_andler)
 
     # log info to stdout, display messages with different format than the
     # file output
-    if onscreen_log_level:
-        onscreen_log_level_lower = onscreen_log_level.lower()
-        if (onscreen_log_level_lower in ["debug", "info", "warning",
-                                         "error", "critical"]):
+    if screen_loglevel:
+        if screen_loglevel == "debug" and not verbose:
+            logging.error("Logging on Screen: Option DEBUG in only "
+                          "active when using verbose option as well "
+                          "(Fallback to INFO).")
 
-            console = logging.StreamHandler()
-            screen_handler_format = (
-                logging.Formatter(datefmt="%Y-%m-%d_%H:%M:%S",
-                                  fmt="[%(asctime)s] > %(message)s"))
-
-            if onscreen_log_level_lower == "debug":
-                screen_logging_level = logging.DEBUG
-                console.setLevel(screen_logging_level)
-
-                screen_handler_format = (
-                    logging.Formatter(datefmt="%Y-%m-%d_%H:%M:%S",
-                                      fmt=("[%(asctime)s] > "
-                                           "[%(filename)s:%(lineno)d] "
-                                           "%(message)s")))
-
-                if not verbose:
-                    logging.error("Logging on Screen: Option DEBUG in only "
-                                  "active when using verbose option as well "
-                                  "(Fallback to INFO).")
-            elif onscreen_log_level_lower == "info":
-                screen_logging_level = logging.INFO
-                console.setLevel(screen_logging_level)
-            elif onscreen_log_level_lower == "warning":
-                screen_logging_level = logging.WARNING
-                console.setLevel(screen_logging_level)
-            elif onscreen_log_level_lower == "error":
-                screen_logging_level = logging.ERROR
-                console.setLevel(screen_logging_level)
-            elif onscreen_log_level_lower == "critical":
-                screen_logging_level = logging.CRITICAL
-                console.setLevel(screen_logging_level)
-
-            console.setFormatter(screen_handler_format)
-            logging.getLogger("").addHandler(console)
-        else:
-            logging.error("Logging on Screen: Option {} is not supported."
-                          .format(onscreen_log_level))
+        screen_handler = get_stream_log_handler(loglevel=screen_loglevel)
+        logging.getLogger("").addHandler(screen_handler)

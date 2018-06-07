@@ -36,7 +36,7 @@ class EventDetector(EventDetectorBase):
 
         # Only proceed if the configuration was correct
         if check_passed:
-            self.log.info("Configuration for event detector: {0}"
+            self.log.info("Configuration for event detector: {}"
                           .format(config_reduced))
 
             if utils.is_windows():
@@ -74,10 +74,10 @@ class EventDetector(EventDetectorBase):
         try:
             self.event_socket = self.context.socket(zmq.PULL)
             self.event_socket.bind(self.event_det_con_str)
-            self.log.info("Start event_socket (bind): '{0}'"
+            self.log.info("Start event_socket (bind): '{}'"
                           .format(self.event_det_con_str))
         except:
-            self.log.error("Failed to start event_socket (bind): '{0}'"
+            self.log.error("Failed to start event_socket (bind): '{}'"
                            .format(self.event_det_con_str), exc_info=True)
             raise
 
@@ -91,7 +91,7 @@ class EventDetector(EventDetectorBase):
         else:
             event_message_list = [json.loads(event_message[0].decode("utf-8"))]
 
-        self.log.debug("event_message: {0}".format(event_message_list))
+        self.log.debug("event_message: {}".format(event_message_list))
 
         return event_message_list
 
@@ -127,8 +127,10 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
-                                    onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(logfile,
+                                    logsize,
+                                    verbose=True,
+                                    onscreen_loglevel="debug")
 
     # Start queue listener using the stream handler above
     log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
@@ -164,7 +166,7 @@ if __name__ == '__main__':
     # create zmq socket to send events
     event_socket = context.socket(zmq.PUSH)
     event_socket.connect(event_det_con_str)
-    logging.info("Start event_socket (connect): '{0}'"
+    logging.info("Start event_socket (connect): '{}'"
                  .format(event_det_con_str))
 
     i = 100
@@ -183,14 +185,14 @@ if __name__ == '__main__':
 
             event_list = eventdetector.get_new_event()
             if event_list:
-                logging.debug("event_list: {0}".format(event_list))
+                logging.debug("event_list: {}".format(event_list))
 
             time.sleep(1)
         except KeyboardInterrupt:
             break
 
-    event_socket.send_multipart(
-        [b"CLOSE_FILE", "test_file.cbf".encode("utf8")])
+    event_socket.send_multipart([b"CLOSE_FILE",
+                                 "test_file.cbf".encode("utf8")])
 
     event_list = eventdetector.get_new_event()
     logging.debug("event_list: {}".format(event_list))

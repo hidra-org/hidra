@@ -310,10 +310,10 @@ class Cleaner(CleanerBase):
 
         try:
             responce.raise_for_status()
-            self.log.debug("Deleting file '{0}' succeeded."
+            self.log.debug("Deleting file '{}' succeeded."
                            .format(source_file))
         except:
-            self.log.error("Deleting file '{0}' failed."
+            self.log.error("Deleting file '{}' failed."
                            .format(source_file), exc_info=True)
 
 
@@ -332,8 +332,10 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
-                                    onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(logfile,
+                                    logsize,
+                                    verbose=True,
+                                    onscreen_loglevel="debug")
 
     # Start queue listener using the stream handler above
     log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
@@ -361,20 +363,20 @@ if __name__ == '__main__':
         # the permission have to changed explicitly because
         # on some platform they are ignored when called within mkdir
         os.chmod(ipc_path, 0o777)
-        logging.info("Creating directory for IPC communication: {0}"
+        logging.info("Creating directory for IPC communication: {}"
                      .format(ipc_path))
 
     if utils.is_windows():
-        job_con_str = "tcp://{0}:{1}".format(con_ip, cleaner_port)
-        job_bind_str = "tcp://{0}:{1}".format(ext_ip, cleaner_port)
+        job_con_str = "tcp://{}:{}".format(con_ip, cleaner_port)
+        job_bind_str = "tcp://{}:{}".format(ext_ip, cleaner_port)
     else:
-        job_con_str = ("ipc://{0}/{1}_{2}".format(ipc_path,
-                                                  current_pid,
-                                                  "cleaner"))
+        job_con_str = ("ipc://{}/{}_{}".format(ipc_path,
+                                               current_pid,
+                                               "cleaner"))
         job_bind_str = job_con_str
 
-    conf_con_str = "tcp://{0}:{1}".format(con_ip, confirmation_port)
-    conf_bind_str = "tcp://{0}:{1}".format(ext_ip, confirmation_port)
+    conf_con_str = "tcp://{}:{}".format(con_ip, confirmation_port)
+    conf_bind_str = "tcp://{}:{}".format(ext_ip, confirmation_port)
 
     """ Set up config """
     config = {
@@ -396,15 +398,15 @@ if __name__ == '__main__':
     dataFwPort = "50010"
 
     receiving_socket = context.socket(zmq.PULL)
-    connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port)
+    connection_str = "tcp://{}:{}".format(ext_ip, receiving_port)
     receiving_socket.bind(connection_str)
-    logging.info("=== receiving_socket connected to {0}"
+    logging.info("=== receiving_socket connected to {}"
                  .format(connection_str))
 
     receiving_socket2 = context.socket(zmq.PULL)
-    connection_str = "tcp://{0}:{1}".format(ext_ip, receiving_port2)
+    connection_str = "tcp://{}:{}".format(ext_ip, receiving_port2)
     receiving_socket2.bind(connection_str)
-    logging.info("=== receiving_socket2 connected to {0}"
+    logging.info("=== receiving_socket2 connected to {}"
                  .format(connection_str))
 
     """ Test file fetcher """
@@ -414,7 +416,7 @@ if __name__ == '__main__':
     # read file to send it in data pipe
     logging.debug("=== copy file to asap3-mon")
     # os.system('scp "%s" "%s:%s"' % (localfile, remotehost, remotefile) )
-    subprocess.call("scp {0} root@asap3-mon:/var/www/html/data/{1}"
+    subprocess.call("scp {} root@asap3-mon:/var/www/html/data/{}"
                     .format(prework_source_file, filename), shell=True)
 
     metadata = {
@@ -422,8 +424,8 @@ if __name__ == '__main__':
         "relative_path": "",
         "filename": filename
     }
-    targets = [['{0}:{1}'.format(ext_ip, receiving_port), 1, "data"],
-               ['{0}:{1}'.format(ext_ip, receiving_port2), 1, "data"]]
+    targets = [['{}:{}'.format(ext_ip, receiving_port), 1, "data"],
+               ['{}:{}'.format(ext_ip, receiving_port2), 1, "data"]]
 
     open_connections = dict()
 
@@ -436,22 +438,22 @@ if __name__ == '__main__':
 
     datafetcher.finish(targets, metadata, open_connections)
 
-    logging.debug("open_connections after function call: {0}"
+    logging.debug("open_connections after function call: {}"
                   .format(open_connections))
 
     try:
         recv_message = receiving_socket.recv_multipart()
-        logging.info("=== received: {0}"
+        logging.info("=== received: {}"
                      .format(json.loads(recv_message[0].decode("utf-8"))))
         recv_message = receiving_socket2.recv_multipart()
-        logging.info("=== received 2: {0}\ndata-part: {0}"
+        logging.info("=== received 2: {}\ndata-part: {}"
                      .format(json.loads(recv_message[0].decode("utf-8")),
                              len(recv_message[1])))
     except KeyboardInterrupt:
         pass
     finally:
 
-        subprocess.call('ssh root@asap3-mon rm "/var/www/html/data/{0}"'
+        subprocess.call('ssh root@asap3-mon rm "/var/www/html/data/{}"'
                         .format(filename), shell=True)
 
         receiving_socket.close(0)

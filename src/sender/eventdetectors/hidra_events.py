@@ -88,28 +88,28 @@ class EventDetector(EventDetectorBase):
 
         # Only proceed if the configuration was correct
         if check_passed:
-            self.log.info("Configuration for event detector: {0}"
+            self.log.info("Configuration for event detector: {}"
                           .format(config_reduced))
 
             if utils.is_windows():
-                self.in_con_str = ("tcp://{0}:{1}"
+                self.in_con_str = ("tcp://{}:{}"
                                    .format(config["ext_ip"],
                                            config["ext_data_port"]))
-                self.out_con_str = ("tcp://{0}:{1}"
+                self.out_con_str = ("tcp://{}:{}"
                                     .format(config["ext_ip"],
                                             config["data_fetcher_port"]))
-                self.mon_con_str = ("tcp://{0}:{1}"
+                self.mon_con_str = ("tcp://{}:{}"
                                     .format(config["ext_ip"],
                                             config["event_det_port"]))
             else:
-                self.in_con_str = ("tcp://{0}:{1}"
+                self.in_con_str = ("tcp://{}:{}"
                                    .format(config["ext_ip"],
                                            config["ext_data_port"]))
-                self.out_con_str = ("ipc://{0}/{1}_{2}"
+                self.out_con_str = ("ipc://{}/{}_{}"
                                     .format(config["ipc_path"],
                                             config["main_pid"],
                                             "out"))
-                self.mon_con_str = ("ipc://{0}/{1}_{2}"
+                self.mon_con_str = ("ipc://{}/{}_{}"
                                     .format(config["ipc_path"],
                                             config["main_pid"],
                                             "mon"))
@@ -142,7 +142,7 @@ class EventDetector(EventDetectorBase):
 
         self.monitoringdevice.start()
         self.log.info("Monitoring device has started with (bind)\n"
-                      "in: {0}\nout: {1}\nmon: {2}"
+                      "in: {}\nout: {}\nmon: {}"
                       .format(self.in_con_str,
                               self.out_con_str,
                               self.mon_con_str))
@@ -168,10 +168,10 @@ class EventDetector(EventDetectorBase):
             self.mon_socket.connect(self.mon_con_str)
 #            self.mon_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
-            self.log.info("Start monitoring socket (connect): '{0}'"
+            self.log.info("Start monitoring socket (connect): '{}'"
                           .format(self.mon_con_str))
         except:
-            self.log.error("Failed to start monitoring socket (connect): '{0}'"
+            self.log.error("Failed to start monitoring socket (connect): '{}'"
                            .format(self.mon_con_str), exc_info=True)
             raise
 
@@ -185,12 +185,12 @@ class EventDetector(EventDetectorBase):
         # the metadata were received as string and have to be converted into
         # a dictionary
         metadata = json.loads(metadata)
-        self.log.debug("Monitoring Client: {0}".format(metadata))
+        self.log.debug("Monitoring Client: {}".format(metadata))
 
         # TODO receive more than this one metadata unit
         event_message_list = [metadata]
 
-        self.log.debug("event_message: {0}".format(event_message_list))
+        self.log.debug("event_message: {}".format(event_message_list))
 
         return event_message_list
 
@@ -228,8 +228,10 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
-                                    onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(logfile,
+                                    logsize,
+                                    verbose=True,
+                                    onscreen_loglevel="debug")
 
     # Start queue listener using the stream handler above
     log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
@@ -258,7 +260,7 @@ if __name__ == '__main__':
     if not os.path.exists(ipc_path):
         os.mkdir(ipc_path)
         os.chmod(ipc_path, 0o777)
-        logging.info("Creating directory for IPC communication: {0}"
+        logging.info("Creating directory for IPC communication: {}"
                      .format(ipc_path))
 
     eventdetector = EventDetector(config, log_queue)
@@ -267,9 +269,9 @@ if __name__ == '__main__':
     target_file_base = os.path.join(
         BASE_PATH, "data", "source", "local") + os.sep
 
-    in_con_str = "tcp://{0}:{1}".format(config["ext_ip"],
+    in_con_str = "tcp://{}:{}".format(config["ext_ip"],
                                         config["ext_data_port"])
-    out_con_str = "ipc://{0}/{1}_{2}".format(ipc_path, current_pid, "out")
+    out_con_str = "ipc://{}/{}_{}".format(ipc_path, current_pid, "out")
 
     local_in = True
     local_out = True
@@ -278,20 +280,20 @@ if __name__ == '__main__':
         # create zmq socket to send events
         data_in_socket = context.socket(zmq.PUSH)
         data_in_socket.connect(in_con_str)
-        logging.info("Start data_in_socket (connect): '{0}'"
+        logging.info("Start data_in_socket (connect): '{}'"
                      .format(in_con_str))
 
     if local_out:
         data_out_socket = context.socket(zmq.PULL)
         data_out_socket.connect(out_con_str)
-        logging.info("Start data_out_socket (connect): '{0}'"
+        logging.info("Start data_out_socket (connect): '{}'"
                      .format(out_con_str))
 
     i = 100
     try:
         while i <= 101:
             logging.debug("generate event")
-            target_file = "{0}{1}.cbf".format(target_file_base, i)
+            target_file = "{}{}.cbf".format(target_file_base, i)
             message = {
                 "filename": target_file,
                 "filepart": 0,
@@ -300,16 +302,17 @@ if __name__ == '__main__':
 
             if local_in:
                 data_in_socket.send_multipart(
-                    [json.dumps(message).encode("utf-8"), b"incoming_data"])
+                    [json.dumps(message).encode("utf-8"), b"incoming_data"]
+                )
 
             i += 1
             event_list = eventdetector.get_new_event()
             if event_list:
-                logging.debug("event_list: {0}".format(event_list))
+                logging.debug("event_list: {}".format(event_list))
 
             if local_out:
                 message = data_out_socket.recv_multipart()
-                logging.debug("Received - {0}".format(message))
+                logging.debug("Received - {}".format(message))
     except KeyboardInterrupt:
         pass
     finally:

@@ -222,7 +222,7 @@ if __name__ == '__main__':
     h1, h2 = utils.get_log_handlers(log_file,
                                     log_size,
                                     verbose=True,
-                                    onscreen_log_level="debug")
+                                    onscreen_loglevel="debug")
 
     # Start queue listener using the stream handler above
     log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)

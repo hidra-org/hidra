@@ -22,20 +22,18 @@ constants = {}
 file_event_list = []
 
 for name in dir(binding):
-    if name.startswith('IN_'):
+    if name.startswith("IN_"):
         globals()[name] = constants[name] = getattr(binding, name)
 
 
 # Source: inotifyx library code example
-# Copyright (c) 2005 Manuel Amador
-# Copyright (c) 2009-2011 Forest Bond
 class InotifyEvent (object):
-    '''
+    """
     InotifyEvent(wd, mask, cookie, name)
 
     A representation of the inotify_event structure.  See the inotify
     documentation for a description of these fields.
-    '''
+    """
 
     wd = None
     mask = None
@@ -49,10 +47,10 @@ class InotifyEvent (object):
         self.name = name
 
     def __str__(self):
-        return '%s: %s' % (self.wd, self.get_mask_description())
+        return "%s: %s" % (self.wd, self.get_mask_description())
 
     def __repr__(self):
-        return '%s(%s, %s, %s, %s)' % (
+        return "%s(%s, %s, %s, %s)" % (
             self.__class__.__name__,
             repr(self.wd),
             repr(self.mask),
@@ -61,7 +59,7 @@ class InotifyEvent (object):
         )
 
     def get_mask_description(self):
-        '''
+        """
         Return an ASCII string describing the mask field in terms of
         bitwise-or'd IN_* constants, or 0.  The result is valid Python code
         that could be eval'd to get the value of the mask field.  In other
@@ -69,15 +67,15 @@ class InotifyEvent (object):
 
         >>> from inotifyx import *
         >>> assert (event.mask == eval(event.get_mask_description()))
-        '''
+        """
 
         parts = []
         for name, value in constants.items():
             if self.mask & value:
                 parts.append(name)
         if parts:
-            return '|'.join(parts)
-        return '0'
+            return "|".join(parts)
+        return "0"
 
 
 def get_event_message(path, filename, paths):
@@ -178,36 +176,36 @@ class CleanUp (threading.Thread):
                     continue
 
                 filepath = os.path.join(root, filename)
-                self.log.debug("filepath: {0}".format(filepath))
+                self.log.debug("filepath: {}".format(filepath))
 
                 try:
                     time_last_modified = os.stat(filepath).st_mtime
                 except:
                     self.log.error("Unable to get modification time for file: "
-                                   "{0}".format(filepath), exc_info=True)
+                                   "{}".format(filepath), exc_info=True)
                     continue
 
                 try:
                     # get current time
                     time_current = time.time()
                 except:
-                    self.log.error("Unable to get current time for file: {0}"
+                    self.log.error("Unable to get current time for file: {}"
                                    .format(filepath), exc_info=True)
                     continue
 
                 if time_current - time_last_modified >= self.cleanup_time:
-                    self.log.debug("New closed file detected: {0}"
+                    self.log.debug("New closed file detected: {}"
                                    .format(filepath))
-#                    self.log.debug("modTime: {0}, currentTime: {1}"
+#                    self.log.debug("modTime: {}, currentTime: {}"
 #                                   .format(time_last_modified, time_current))
-#                    self.log.debug("time_current - time_last_modified: {0}, "
-#                                   "cleanup_time: {1}"
+#                    self.log.debug("time_current - time_last_modified: {}, "
+#                                   "cleanup_time: {}"
 #                                   .format(
 #                                       (time_current - time_last_modified),
 #                                       self.cleanup_time))
                     event_message = get_event_message(root, filename,
                                                       self.paths)
-                    self.log.debug("event_message: {0}".format(event_message))
+                    self.log.debug("event_message: {}".format(event_message))
 
                     # add to result list
                     event_list.append(event_message)
@@ -267,7 +265,7 @@ class EventDetector(EventDetectorBase):
 
         # Only proceed if the configuration was correct
         if check_passed:
-            self.log.info("Configuration for event detector: {0}"
+            self.log.info("Configuration for event detector: {}"
                           .format(config_reduced))
 
             # TODO why is this necessary
@@ -275,7 +273,7 @@ class EventDetector(EventDetectorBase):
             self.mon_subdirs = config["fix_subdirs"]
 
             self.mon_regex_per_event = config["monitored_events"]
-            self.log.debug("monitored_events={0}"
+            self.log.debug("monitored_events={}"
                            .format(config["monitored_events"]))
 
             regexes = []
@@ -292,7 +290,7 @@ class EventDetector(EventDetectorBase):
                 self.mon_regex_per_event[key] = (
                     re.compile(self.mon_regex_per_event[key]))
 
-            self.log.debug("regexes={0}".format(regexes))
+            self.log.debug("regexes={}".format(regexes))
             self.mon_regex = convert_suffix_list_to_regex(regexes,
                                                           suffix=False,
                                                           compile_regex=True,
@@ -347,18 +345,18 @@ class EventDetector(EventDetectorBase):
             for path in self.get_directory_structure():
                 wd = binding.add_watch(self.fd, path)
                 self.wd_to_path[wd] = path
-                self.log.debug("Register watch for path: {0}".format(path))
+                self.log.debug("Register watch for path: {}".format(path))
         except:
-            self.log.error("Could not register watch for path: {0}"
+            self.log.error("Could not register watch for path: {}"
                            .format(path), exc_info=True)
 
     def get_directory_structure(self):
         # Add the default subdirs
-        self.log.debug("paths: {0}".format(self.paths))
+        self.log.debug("paths: {}".format(self.paths))
         dirs_to_walk = [os.path.normpath(os.path.join(self.paths[0],
                                                       directory))
                         for directory in self.mon_subdirs]
-        self.log.debug("dirs_to_walk: {0}".format(dirs_to_walk))
+        self.log.debug("dirs_to_walk: {}".format(dirs_to_walk))
         monitored_dirs = []
 
         # Walk the tree
@@ -369,10 +367,10 @@ class EventDetector(EventDetectorBase):
                     # Add the found dirs to the list for the inotify-watch
                     if root not in monitored_dirs:
                         monitored_dirs.append(root)
-                        self.log.info("Add directory to monitor: {0}"
+                        self.log.info("Add directory to monitor: {}"
                                       .format(root))
             else:
-                self.log.info("Dir does not exist: {0}".format(directory))
+                self.log.info("Dir does not exist: {}".format(directory))
 
         return monitored_dirs
 
@@ -448,15 +446,15 @@ class EventDetector(EventDetectorBase):
                 # self.log.debug(event.name)
 
                 dirname = os.path.join(path, event.name)
-                self.log.info("Directory event detected: {0}, {1}"
+                self.log.info("Directory event detected: {}, {}"
                               .format(dirname, parts))
                 if dirname in self.paths:
                     self.log.debug("Directory already contained in path list:"
-                                   " {0}".format(dirname))
+                                   " {}".format(dirname))
                 else:
                     wd = binding.add_watch(self.fd, dirname)
                     self.wd_to_path[wd] = dirname
-                    self.log.info("Added new directory to watch: {0}"
+                    self.log.info("Added new directory to watch: {}"
                                   .format(dirname))
 
                     # because inotify misses subdirectory creations if they
@@ -473,22 +471,22 @@ class EventDetector(EventDetectorBase):
                             wd = binding.add_watch(self.fd, traversed_path)
                             self.wd_to_path[wd] = traversed_path
                             self.log.info("Added new subdirectory to watch: "
-                                          "{0}".format(traversed_path))
-                        self.log.debug("files: {0}".format(files))
+                                          "{}".format(traversed_path))
+                        self.log.debug("files: {}".format(files))
                         for filename in files:
                             # self.log.debug("filename: {0}".format(filename))
                             if self.mon_regex.match(filename) is None:
                                 self.log.debug("File does not match monitored "
-                                               "regex: {0}"
+                                               "regex: {}"
                                                .format(filename))
-                                self.log.debug("detected events were: {0}"
+                                self.log.debug("detected events were: {}"
                                                .format(parts))
                                 continue
 
                             event_message = self.get_event_message(path,
                                                                    filename,
                                                                    self.paths)
-                            self.log.debug("event_message: {0}"
+                            self.log.debug("event_message: {}"
                                            .format(event_message))
                             event_message_list.append(event_message)
 #                            self.log.debug("event_message_list: {0}"
@@ -508,7 +506,7 @@ class EventDetector(EventDetectorBase):
                         found_watch = watch
                         break
                 binding.rm_watch(self.fd, found_watch)
-                self.log.info("Removed directory from watch: {0}"
+                self.log.info("Removed directory from watch: {}"
                               .format(dirname))
                 # the IN_MOVE_FROM event always apears before the IN_MOVE_TO
                 # (+ additional) events and thus has to be stored till loop
@@ -541,7 +539,7 @@ class EventDetector(EventDetectorBase):
                     continue
 
                 event_message = get_event_message(path, event.name, self.paths)
-                self.log.debug("event_message {0}".format(event_message))
+                self.log.debug("event_message {}".format(event_message))
                 event_message_list.append(event_message)
 
                 self.history.append([path, event.name])
@@ -556,7 +554,7 @@ class EventDetector(EventDetectorBase):
                 try:
                     binding.rm_watch(self.fd, wd)
                 except:
-                    self.log.error("Unable to remove watch: {0}".format(wd),
+                    self.log.error("Unable to remove watch: {}".format(wd),
                                    exc_info=True)
         finally:
             os.close(self.fd)
@@ -591,8 +589,10 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
-                                    onscreen_log_level=log_level)
+    h1, h2 = utils.get_log_handlers(logfile,
+                                    logsize,
+                                    verbose=True,
+                                    onscreen_loglevel=log_level)
 
     # Start queue listener using the stream handler above
     log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
@@ -623,8 +623,12 @@ if __name__ == '__main__':
 #    config["action_time"] = 0.5
 
     source_file = os.path.join(BASE_PATH, "test_1024B.file")
-    target_file_base = os.path.join(
-        BASE_PATH, "data", "source", "local", "raw") + os.sep
+    target_file_base = os.path.join(BASE_PATH,
+                                    "data",
+                                    "source",
+                                    "local",
+                                    "raw")
+    target_file_base += os.sep
 
     if not os.path.isdir(target_file_base):
         os.mkdir(target_file_base)
@@ -637,7 +641,7 @@ if __name__ == '__main__':
         steps = 10
 
         memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        print("Memory usage at start: {0} (kb)".format(memory_usage_old))
+        print("Memory usage at start: {} (kb)".format(memory_usage_old))
 
         hp = hpy()
         hp.setrelheap()
@@ -657,7 +661,7 @@ if __name__ == '__main__':
             for i in range(start, stop):
 
                 logging.debug("copy")
-                target_file = "{0}{1}.cbf".format(target_file_base, i)
+                target_file = "{}{}.cbf".format(target_file_base, i)
                 copyfile(source_file, target_file)
                 time.sleep(0.1)
 
@@ -670,7 +674,7 @@ if __name__ == '__main__':
             if determine_mem_usage:
                 memory_usage_new = (
                     resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-                print("Memory usage in iteration {0}: {1} (kb)"
+                print("Memory usage in iteration {}: {} (kb)"
                       .format(s, memory_usage_new))
                 if memory_usage_new > memory_usage_old:
                     memory_usage_old = memory_usage_new
@@ -682,35 +686,35 @@ if __name__ == '__main__':
         if determine_mem_usage and config["use_cleanup"]:
             time.sleep(4)
             event_list = eventdetector.get_new_event()
-            print("len of event_list={0}".format(len(event_list)))
+            print("len of event_list={}".format(len(event_list)))
 
             memory_usage_new = (
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-            print("Memory usage: {0} (kb)".format(memory_usage_new))
+            print("Memory usage: {} (kb)".format(memory_usage_new))
             time.sleep(1)
 
             event_list = eventdetector.get_new_event()
-            print("len of event_list={0}".format(len(event_list)))
+            print("len of event_list={}".format(len(event_list)))
 
             memory_usage_new = (
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-            print("Memory usage: {0} (kb)".format(memory_usage_new))
+            print("Memory usage: {} (kb)".format(memory_usage_new))
 
             event_list = eventdetector.get_new_event()
-            print("len of event_list={0}".format(len(event_list)))
+            print("len of event_list={}".format(len(event_list)))
 
         if determine_mem_usage:
             memory_usage_new = (
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-            print("Memory usage before stop: {0} (kb)"
+            print("Memory usage before stop: {} (kb)"
                   .format(memory_usage_new))
             time.sleep(5)
 
         eventdetector.stop()
         for number in range(min_loop, stop):
             try:
-                target_file = "{0}{1}.cbf".format(target_file_base, number)
-                logging.debug("remove {0}".format(target_file))
+                target_file = "{}{}.cbf".format(target_file_base, number)
+                logging.debug("remove {}".format(target_file))
                 os.remove(target_file)
             except OSError:
                 pass

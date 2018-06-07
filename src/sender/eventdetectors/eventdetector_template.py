@@ -11,7 +11,9 @@ class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
 
-        EventDetectorBase.__init__(self, config, log_queue,
+        EventDetectorBase.__init__(self,
+                                   config,
+                                   log_queue,
                                    "eventdetector_template")
 
         required_params = []
@@ -23,7 +25,7 @@ class EventDetector(EventDetectorBase):
 
         # Only proceed if the configuration was correct
         if check_passed:
-            self.log.info("Configuration for event detector: {0}"
+            self.log.info("Configuration for event detector: {}"
                           .format(config_reduced))
         else:
             # self.log.debug("config={0}".format(config))
@@ -37,7 +39,7 @@ class EventDetector(EventDetectorBase):
             "filename": "my_file.cbf"
         }]
 
-        self.log.debug("event_message: {0}".format(event_message_list))
+        self.log.debug("event_message: {}".format(event_message_list))
 
         return event_message_list
 
@@ -59,8 +61,10 @@ if __name__ == '__main__':
     log_queue = Queue(-1)
 
     # Get the log Configuration for the lisener
-    h1, h2 = utils.get_log_handlers(logfile, logsize, verbose=True,
-                                    onscreen_log_level="debug")
+    h1, h2 = utils.get_log_handlers(logfile,
+                                    logsize,
+                                    verbose=True,
+                                    onscreen_loglevel="debug")
 
     # Start queue listener using the stream handler above
     log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
@@ -84,7 +88,7 @@ if __name__ == '__main__':
             i += 1
             event_list = eventdetector.get_new_event()
             if event_list:
-                logging.debug("event_list: {0}".format(event_list))
+                logging.debug("event_list: {}".format(event_list))
         except KeyboardInterrupt:
             break
 
