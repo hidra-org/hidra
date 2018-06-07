@@ -5,15 +5,19 @@ import logging
 from shutil import copyfile
 
 from __init__ import BASE_DIR
+from test_eventdetector_base import TestEventDetectorBase
 from inotifyx_events import EventDetector
 
 
-class TestInotifyxEvents(unittest.TestCase):
+class TestInotifyxEvents(TestEventDetectorBase):
 
     def setUp(self):
-        # Create log and set handler
-        root = logging.getLogger()
-        root.setLevel(logging.DEBUG)  # Log level = DEBUG
+        super(TestInotifyxEvents, self).setUp()
+
+        # methods inherited from parent class
+        # explicit definition here for better readability
+        self._init_logging = super(TestInotifyxEvents, self)._init_logging
+        self._create_dir = super(TestInotifyxEvents, self)._create_dir
 
         self.config = {
             "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
@@ -35,22 +39,24 @@ class TestInotifyxEvents(unittest.TestCase):
         self.target_base_path = os.path.join(BASE_DIR, "data", "source")
         self.target_relative_path = os.path.join("local", "raw")
 
-        self.target_file_base = (
-            os.path.join(self.target_base_path, self.target_relative_path)
-            + os.sep)
+        self.target_file_base = os.path.join(self.target_base_path,
+                                             self.target_relative_path)
+        # TODO why is this needed?
+        self.target_file_base += os.sep
 
-        if not os.path.isdir(self.target_file_base):
-            os.mkdir(self.target_file_base)
-
-        self.eventdetector = EventDetector(self.config, False)
+    def _start_eventdetector(self):
+        self.eventdetector = EventDetector(self.config, self.log_queue)
 
     def test_eventdetector(self):
+        self._init_logging()
+        self._create_dir(self.target_file_base)
+        self._start_eventdetector()
 
         for i in range(self.start, self.stop):
 
-            print("copy")
             filename = "{}.cbf".format(i)
             target_file = "{}{}".format(self.target_file_base, filename)
+            print("copy {}".format(target_file))
             copyfile(self.source_file, target_file)
             time.sleep(0.1)
 
@@ -67,6 +73,8 @@ class TestInotifyxEvents(unittest.TestCase):
 
     def tearDown(self):
         self.eventdetector.stop()
+
+        # clean up the created files
         for number in range(self.start, self.stop):
             try:
                 target_file = "{}{}.cbf".format(self.target_file_base, number)
@@ -74,6 +82,8 @@ class TestInotifyxEvents(unittest.TestCase):
                 os.remove(target_file)
             except OSError:
                 pass
+
+        super(TestInotifyxEvents, self).tearDown()
 
 
 if __name__ == '__main__':
