@@ -1,8 +1,8 @@
 import unittest
 
-from event_detectors.test_inotityx_events import TestInotifyxEvents
-from event_detectors.test_watchdog_events import TestWatchdogEvents
-from event_detectors.test_http_events import TestHttpEvents
+from event_detectors.test_inotityx_events import TestEventDetector as TestInotifyxEvents
+from event_detectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents
+from event_detectors.test_http_events import TestEventDetector as TestHttpEvents
 
 def suite():
 

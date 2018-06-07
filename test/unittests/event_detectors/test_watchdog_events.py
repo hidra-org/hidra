@@ -9,15 +9,15 @@ from test_eventdetector_base import TestEventDetectorBase
 from watchdog_events import EventDetector
 
 
-class TestWatchdogEvents(TestEventDetectorBase):
+class TestEventDetector(TestEventDetectorBase):
 
     def setUp(self):
-        super(TestWatchdogEvents, self).setUp()
+        super(TestEventDetector, self).setUp()
 
         # methods inherited from parent class
         # explicit definition here for better readability
-        self._init_logging = super(TestWatchdogEvents, self)._init_logging
-        self._create_dir = super(TestWatchdogEvents, self)._create_dir
+        self._init_logging = super(TestEventDetector, self)._init_logging
+        self._create_dir = super(TestEventDetector, self)._create_dir
 
         self.config = {
             # TODO normpath to make insensitive to "/" at the end
@@ -175,7 +175,7 @@ class TestWatchdogEvents(TestEventDetectorBase):
             except OSError:
                 pass
 
-        super(TestWatchdogEvents, self).tearDown()
+        super(TestEventDetector, self).tearDown()
 
 
 if __name__ == '__main__':

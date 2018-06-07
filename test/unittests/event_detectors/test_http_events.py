@@ -7,14 +7,14 @@ from test_eventdetector_base import TestEventDetectorBase
 from http_events import EventDetector
 
 
-class TestHttpEvents(TestEventDetectorBase):
+class TestEventDetector(TestEventDetectorBase):
 
     def setUp(self):
-        super(TestHttpEvents, self).setUp()
+        super(TestEventDetector, self).setUp()
 
         # methods inherited from parent class
         # explicit definition here for better readability
-        self._init_logging = super(TestHttpEvents, self)._init_logging
+        self._init_logging = super(TestEventDetector, self)._init_logging
 
 #        detectorDevice   = "haspp10lab:10000/p10/eigerdectris/lab.01"
 #        detectorDevice   = "haspp06:10000/p06/eigerdectris/exp.01"
@@ -56,7 +56,7 @@ class TestHttpEvents(TestEventDetectorBase):
     def tearDown(self):
         self.eventdetector.stop()
 
-        super(TestHttpEvents, self).tearDown()
+        super(TestEventDetector, self).tearDown()
 
 
 if __name__ == '__main__':

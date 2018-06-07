@@ -9,15 +9,15 @@ from test_eventdetector_base import TestEventDetectorBase
 from inotifyx_events import EventDetector
 
 
-class TestInotifyxEvents(TestEventDetectorBase):
+class TestEventDetector(TestEventDetectorBase):
 
     def setUp(self):
-        super(TestInotifyxEvents, self).setUp()
+        super(TestEventDetector, self).setUp()
 
         # methods inherited from parent class
         # explicit definition here for better readability
-        self._init_logging = super(TestInotifyxEvents, self)._init_logging
-        self._create_dir = super(TestInotifyxEvents, self)._create_dir
+        self._init_logging = super(TestEventDetector, self)._init_logging
+        self._create_dir = super(TestEventDetector, self)._create_dir
 
         self.config = {
             "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
@@ -83,7 +83,7 @@ class TestInotifyxEvents(TestEventDetectorBase):
             except OSError:
                 pass
 
-        super(TestInotifyxEvents, self).tearDown()
+        super(TestEventDetector, self).tearDown()
 
 
 if __name__ == '__main__':
