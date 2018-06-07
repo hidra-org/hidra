@@ -2,11 +2,11 @@ import unittest
 import socket
 import logging
 
-from __init__ import BASE_PATH  # noqa F401
+from __init__ import BASE_DIR  # noqa F401
 from http_events import EventDetector
 
 
-class TestInotifyxEvents(unittest.TestCase):
+class TestHttpEvents(unittest.TestCase):
 
     def setUp(self):
         # Create log and set handler

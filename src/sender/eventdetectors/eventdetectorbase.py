@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import sys
 import abc
-from __init__ import BASE_PATH  # noqa F401
+import __init__  # noqa F401
 import utils
 
 # source:

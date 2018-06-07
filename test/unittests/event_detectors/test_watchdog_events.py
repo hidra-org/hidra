@@ -4,7 +4,7 @@ import time
 import logging
 from shutil import copyfile
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 from watchdog_events import EventDetector
 
 
@@ -16,7 +16,7 @@ class TestWatchdogEvents(unittest.TestCase):
         root.setLevel(logging.DEBUG)  # Log level = DEBUG
 
         self.config = {
-            "monitored_dir": os.path.join(BASE_PATH, "data", "source"),
+            "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
             "monitored_events": {"IN_CLOSE_WRITE": [".tif", ".cbf", ".file"],
                                  "IN_MOVED_TO": [".log"]},
@@ -30,9 +30,9 @@ class TestWatchdogEvents(unittest.TestCase):
         self.start = 100
         self.stop = 110
 
-        self.source_file = os.path.join(BASE_PATH, "test_1024B.file")
+        self.source_file = os.path.join(BASE_DIR, "test_1024B.file")
 
-        self.target_base_path = os.path.join(BASE_PATH, "data", "source")
+        self.target_base_path = os.path.join(BASE_DIR, "data", "source")
         self.target_relative_path = os.path.join("local", "raw")
 
         self.target_file_base = (
