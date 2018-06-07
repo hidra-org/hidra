@@ -3,17 +3,22 @@ import os
 import time
 import logging
 from shutil import copyfile
-from multiprocessing import Queue
-from logutils.queue import QueueHandler
 
 from __init__ import BASE_DIR
+from test_eventdetector_base import TestEventDetectorBase
 from watchdog_events import EventDetector
-import utils
 
 
-class TestWatchdogEvents(unittest.TestCase):
+class TestWatchdogEvents(TestEventDetectorBase):
 
     def setUp(self):
+        super(TestWatchdogEvents, self).setUp()
+
+        # methods inherited from parent class
+        # explicit definition here for better readability
+        self._init_logging = super(TestWatchdogEvents, self)._init_logging
+        self._create_dir = super(TestWatchdogEvents, self)._create_dir
+
         self.config = {
             # TODO normpath to make insensitive to "/" at the end
             "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
@@ -40,40 +45,12 @@ class TestWatchdogEvents(unittest.TestCase):
         # TODO why is this needed?
         self.target_file_base += os.sep
 
-        self.log_queue = False
-        self.listener = None
-
-    # not all tests want to use these thus it is separated from setUp
-    def _init_logging(self, loglevel="debug"):
-        # Create log and set handler
-#        root = logging.getLogger()
-#        root.setLevel(loglevel)
-
-        loglevel = loglevel.lower()
-
-        handler = utils.get_stream_log_handler(loglevel=loglevel)
-
-        # Start queue listener using the stream handler above
-        self.log_queue = Queue(-1)
-        self.listener = utils.CustomQueueListener(self.log_queue, handler)
-        self.listener.start()
-
-        # Create log and set handler to queue handle
-        root = logging.getLogger()
-        qhandler = QueueHandler(self.log_queue)
-        root.addHandler(qhandler)
-
-    def _create_target_dir(self):
-        if not os.path.isdir(self.target_file_base):
-            os.mkdir(self.target_file_base)
-
     def _start_eventdetector(self):
         self.eventdetector = EventDetector(self.config, self.log_queue)
-    # --------------------
 
     def test_single_file(self):
         self._init_logging()
-        self._create_target_dir()
+        self._create_dir(self.target_file_base)
         self._start_eventdetector()
 
         for i in range(self.start, self.stop):
@@ -103,7 +80,7 @@ class TestWatchdogEvents(unittest.TestCase):
 
     def test_multiple_files(self):
         self._init_logging()
-        self._create_target_dir()
+        self._create_dir(self.target_file_base)
         self._start_eventdetector()
 
         expected_result = []
@@ -143,7 +120,7 @@ class TestWatchdogEvents(unittest.TestCase):
 #        from guppy import hpy
 
         self._init_logging(loglevel="info")
-        self._create_target_dir()
+        self._create_dir(self.target_file_base)
         self._start_eventdetector()
 
         self.start = 100
@@ -198,9 +175,7 @@ class TestWatchdogEvents(unittest.TestCase):
             except OSError:
                 pass
 
-        if self.listener is not None:
-            self.log_queue.put_nowait(None)
-            self.listener.stop()
+        super(TestWatchdogEvents, self).tearDown()
 
 
 if __name__ == '__main__':
