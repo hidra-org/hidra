@@ -213,8 +213,8 @@ class CheckModTime (threading.Thread):
         self.time_till_closed = time_till_closed  # s
         self.action_time = action_time
         self.lock = lock
-        self._stopper = threading.Event()
-        self._pool_running = True
+        self.stopper = threading.Event()
+        self.pool_running = True
 
         self.log.debug("threading.Thread init")
         threading.Thread.__init__(self)
@@ -235,7 +235,7 @@ class CheckModTime (threading.Thread):
 #                               .format(event_list_to_observe))
 #                self.log.debug("event_message_list: {}"
 #                               .format(event_message_list))
-                if self._pool_running:
+                if self.pool_running:
                     self.pool.map(self.check_last_modified,
                                   event_list_to_observe_copy)
                 else:
@@ -328,13 +328,13 @@ class CheckModTime (threading.Thread):
 
     def stop(self):
         # close the pool and wait for the work to finish
+        self.pool_running = False
         self.pool.close()
         self.pool.join()
-        self._stopper.set()
-        self._pool_running = False
+        self.stopper.set()
 
     def stopped(self):
-        return self._stopper.is_set()
+        return self.stopper.is_set()
 
     def __exit__(self):
         self.stop()
