@@ -9,7 +9,7 @@ import unittest
 from importlib import import_module
 import pkgutil
 
-import event_detectors
+import eventdetectors
 
 
 def get_eventdetector_suites():
@@ -21,10 +21,10 @@ def get_eventdetector_suites():
 
     all_suites = []
 
-    event_detectors_m = "event_detectors"
+    event_detectors_m = "eventdetectors"
     # find all event detector test modules
     # iter_modules returns: importer, modname, ispkg
-    for _, modname, _ in pkgutil.iter_modules(event_detectors.__path__):
+    for _, modname, _ in pkgutil.iter_modules(eventdetectors.__path__):
         # the base class not a test module
         if modname == "test_eventdetector_base":
             continue
