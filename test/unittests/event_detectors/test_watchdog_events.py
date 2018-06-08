@@ -1,11 +1,15 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+from __future__ import absolute_import
+
 import unittest
 import os
 import time
 import logging
 from shutil import copyfile
 
-from __init__ import BASE_DIR
-from test_eventdetector_base import TestEventDetectorBase
+from .__init__ import BASE_DIR
+from .test_eventdetector_base import TestEventDetectorBase
 from watchdog_events import EventDetector
 
 
@@ -23,8 +27,10 @@ class TestEventDetector(TestEventDetectorBase):
             # TODO normpath to make insensitive to "/" at the end
             "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
-            "monitored_events": {"IN_CLOSE_WRITE": [".tif", ".cbf", ".file"],
-                                 "IN_MOVED_TO": [".log"]},
+            "monitored_events": {
+                "IN_CLOSE_WRITE": [".tif", ".cbf", ".file"],
+                "IN_MOVED_TO": [".log"]
+            },
             # "event_timeout": 0.1,
             "history_size": 0,
             "use_cleanup": False,
@@ -45,6 +51,11 @@ class TestEventDetector(TestEventDetectorBase):
         # TODO why is this needed?
         self.target_file_base += os.sep
 
+        self.eventdetector = None
+
+        self.time_all_events_detected = (self.config["action_time"]
+                                         + self.config["time_till_closed"])
+
     def _start_eventdetector(self):
         self.eventdetector = EventDetector(self.config, self.log_queue)
 
@@ -60,7 +71,7 @@ class TestEventDetector(TestEventDetectorBase):
             target_file = "{}{}".format(self.target_file_base, filename)
             print("copy {}".format(target_file))
             copyfile(self.source_file, target_file)
-            time.sleep(self.config["action_time"] + self.config["time_till_closed"])
+            time.sleep(self.time_all_events_detected)
 
             # get all detected events
             event_list = self.eventdetector.get_new_event()
@@ -106,9 +117,13 @@ class TestEventDetector(TestEventDetectorBase):
         event_list = self.eventdetector.get_new_event()
 
         # check that the generated events (and only these) were detected
-        self.assertEqual(len(event_list), self.stop - self.start)
-        for res_dict in expected_result:
-            self.assertIn(res_dict, event_list)
+        try:
+            self.assertEqual(len(event_list), self.stop - self.start)
+            for res_dict in expected_result:
+                self.assertIn(res_dict, event_list)
+        except AssertionError:
+            #print("event_list", event_list)
+            raise
 
     # this should not be executed automatically only if needed for debugging
     @unittest.skip("Only needed for debugging")
@@ -133,7 +148,7 @@ class TestEventDetector(TestEventDetectorBase):
 #        hp = hpy()
 #        hp.setrelheap()
 
-        step_loop = (sef.stop - self.start) / steps
+        step_loop = (self.stop - self.start) / steps
         print("Used steps:", steps)
 
         for s in range(steps):
@@ -142,36 +157,37 @@ class TestEventDetector(TestEventDetectorBase):
 #            print ("start=", start, "stop=", stop)
             for i in range(start, stop):
 
-                target_file = "{}{}.cbf".format(target_file_base, i)
-                if not determine_mem_usage:
-                    logging.debug("copy to {}".format(target_file))
-                copyfile(source_file, target_file)
+                target_file = "{}{}.cbf".format(self.target_file_base, i)
+                copyfile(self.source_file, target_file)
 
-                if i % 100 == 0 or not determine_mem_usage:
-                    event_list = eventdetector.get_new_event()
-                    if event_list and not determine_mem_usage:
-                        print("event_list:", event_list)
+                if i % 100 == 0:
+                    print("copy index {}".format(i))
+                    event_list = self.eventdetector.get_new_event()
 
 #                time.sleep(0.5)
 
-                memory_usage_new = (
-                    resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-                print("Memory usage in iteration {}: {} (kb)"
-                     .format(s, memory_usage_new))
-                if memory_usage_new > memory_usage_old:
-                    memory_usage_old = memory_usage_new
-#                    print(hp.heap())
+            memory_usage_new = (
+                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+            print("Memory usage in iteration {}: {} (kb)"
+                 .format(s, memory_usage_new))
+            if memory_usage_new > memory_usage_old:
+                memory_usage_old = memory_usage_new
+#                print(hp.heap())
 
     def tearDown(self):
-        time.sleep(2)
-        self.eventdetector.stop()
+        # to give the eventdetector time to get all events
+        # this prevents the other tests to be affected by previour events
+        time.sleep(self.time_all_events_detected)
+        if self.eventdetector is not None:
+            self.eventdetector.stop()
+            self.eventdetector = None
 
         # clean up the created files
         for number in range(self.start, self.stop):
             try:
                 target_file = "{}{}.cbf".format(self.target_file_base, number)
-                print("remove {}".format(target_file))
                 os.remove(target_file)
+                print("remove {}".format(target_file))
             except OSError:
                 pass
 

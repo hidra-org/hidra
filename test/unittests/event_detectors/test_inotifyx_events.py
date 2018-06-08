@@ -75,9 +75,13 @@ class TestEventDetector(TestEventDetectorBase):
                 u'relative_path': self.target_relative_path
             }
 
-            self.assertEqual(len(event_list), 1)
-            self.assertDictEqual(event_list[0],
-                                 expected_result_dict)
+            try:
+                self.assertEqual(len(event_list), 1)
+                self.assertDictEqual(event_list[0],
+                                     expected_result_dict)
+            except AssertionError:
+                print("event_list", event_list)
+                raise
 
     # this should not be executed automatically only if needed for debugging
     @unittest.skip("Only needed for debugging")
@@ -175,8 +179,8 @@ class TestEventDetector(TestEventDetectorBase):
         for number in range(self.start, self.stop):
             try:
                 target_file = "{}{}.cbf".format(self.target_file_base, number)
-                logging.debug("remove {}".format(target_file))
                 os.remove(target_file)
+                logging.debug("remove {}".format(target_file))
             except OSError:
                 pass
 

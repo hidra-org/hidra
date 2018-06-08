@@ -52,3 +52,4 @@ class TestEventDetectorBase(unittest.TestCase):
         if self.listener is not None:
             self.log_queue.put_nowait(None)
             self.listener.stop()
+            self.listener = None
