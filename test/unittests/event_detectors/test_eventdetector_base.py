@@ -1,20 +1,39 @@
-import unittest
-import os
-import time
+"""Providing a base for the event detector test classes.
+"""
+
+from __future__ import print_function
+from __future__ import unicode_literals
+from __future__ import absolute_import
+
 import logging
+import os
+import unittest
 from multiprocessing import Queue
 from logutils.queue import QueueHandler
 
-from __init__ import BASE_DIR
 import utils
 
 
+def create_dir(directory):
+    """Creates the directory if it does not exist.
+
+    Args:
+        directory: The absolute path of the directory to be created.
+    """
+
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+
+
 class TestEventDetectorBase(unittest.TestCase):
+    """The Base class from which all event detectors should inherit from.
+    """
 
     def setUp(self):
         self.config = {}
         self.log_queue = False
         self.listener = None
+        self.log = None
 
     def _init_logging(self, loglevel="debug"):
         """Initialize log listener and log queue.
@@ -40,15 +59,7 @@ class TestEventDetectorBase(unittest.TestCase):
 
         self.log = utils.get_logger("test_eventdetector", self.log_queue)
 
-    def _create_dir(self, directory):
-        """Creates the directory if it does not exist.
 
-        Args:
-            directory: The absolute path of the directory to be created.
-        """
-
-        if not os.path.isdir(directory):
-            os.mkdir(directory)
 
     def tearDown(self):
         if self.listener is not None:

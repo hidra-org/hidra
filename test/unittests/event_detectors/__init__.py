@@ -1,14 +1,10 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
+"""Package providing the event detector test classes.
+"""
 
 import os
 import sys
 
-try:
-    CURRENT_DIR = os.path.realpath(__file__)
-except:
-    CURRENT_DIR = os.path.realpath(sys.argv[0])
+CURRENT_DIR = os.path.realpath(__file__)
 
 BASE_DIR = os.path.dirname(
     os.path.dirname(
@@ -34,8 +30,8 @@ if API_DIR not in sys.path:
 
 try:
     # search in global python modules first
-    from hidra import Transfer  # noqa F401
-except:
+    from hidra import Transfer  # noqa F401 # pylint: disable=import-error
+except ImportError:
     # then search in local modules
     if API_DIR not in sys.path:
         sys.path.insert(0, API_DIR)

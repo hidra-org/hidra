@@ -1,3 +1,6 @@
+"""Unittest suite for HiDRA
+"""
+
 from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
@@ -42,8 +45,8 @@ def get_eventdetector_suites():
     return all_suites
 
 
-def suite():
-    """ Collect all tests to be performed as one suite.
+def get_suite():
+    """Collect all tests to be performed as one suite.
 
     Returns:
         A unittest TestSuite instance containing all unittests to be performed.
@@ -59,6 +62,13 @@ def suite():
     return suite
 
 
-if __name__ == '__main__':
+def main():
+    """Run the test suite.
+    """
+
     runner = unittest.TextTestRunner(verbosity=2)
-    runner.run(suite())
+    runner.run(get_suite())
+
+
+if __name__ == '__main__':
+    main()

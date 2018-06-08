@@ -1,3 +1,6 @@
+"""Testing the inotifyx_events event detector.
+"""
+
 from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
@@ -9,11 +12,16 @@ import logging
 from shutil import copyfile
 
 from .__init__ import BASE_DIR
-from .test_eventdetector_base import TestEventDetectorBase
+from .test_eventdetector_base import TestEventDetectorBase, create_dir
 from inotifyx_events import EventDetector
 
 
 class TestEventDetector(TestEventDetectorBase):
+    """Specification of tests to be performed for the loaded EventDetecor.
+    """
+
+    # pylint: disable=too-many-instance-attributes
+    # Ten is reasonable in this case.
 
     def setUp(self):
         super(TestEventDetector, self).setUp()
@@ -21,7 +29,6 @@ class TestEventDetector(TestEventDetectorBase):
         # methods inherited from parent class
         # explicit definition here for better readability
         self._init_logging = super(TestEventDetector, self)._init_logging
-        self._create_dir = super(TestEventDetector, self)._create_dir
 
         self.config = {
             "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
@@ -53,11 +60,17 @@ class TestEventDetector(TestEventDetectorBase):
         self.eventdetector = None
 
     def _start_eventdetector(self):
+        """Sets up the event detector.
+        """
+
         self.eventdetector = EventDetector(self.config, self.log_queue)
 
     def test_eventdetector(self):
+        """Simulate incoming data and check if received events are correct.
+        """
+
         self._init_logging()
-        self._create_dir(self.target_file_base)
+        create_dir(self.target_file_base)
         self._start_eventdetector()
 
         for i in range(self.start, self.stop):
@@ -86,14 +99,19 @@ class TestEventDetector(TestEventDetectorBase):
     # this should not be executed automatically only if needed for debugging
     @unittest.skip("Only needed for debugging")
     def test_memory_usage(self):
+        """Testing the memory usage of the event detector.
+
+        This should not be tested automatically but only if really needed.
+        """
+
         import resource
         import gc
         # don't care about stuff that would be garbage collected properly
         gc.collect()
-        from guppy import hpy
+#        from guppy import hpy
 
         self._init_logging(loglevel="info")
-        self._create_dir(self.target_file_base)
+        create_dir(self.target_file_base)
         self._start_eventdetector()
 
 #        self.config["use_cleanup"] = True
@@ -110,15 +128,15 @@ class TestEventDetector(TestEventDetectorBase):
         memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         print("Memory usage at start: {} (kb)".format(memory_usage_old))
 
-        hp = hpy()
-        hp.setrelheap()
+#        hp = hpy()
+#        hp.setrelheap()
 
         step_loop = (self.stop - self.start) / steps
         print("Used steps:", steps)
 
         try:
-            for s in range(steps):
-                start = self.start + s * step_loop
+            for step in range(steps):
+                start = self.start + step * step_loop
                 stop = start + step_loop
 #                print ("start=", start, "stop=", stop)
                 for i in range(start, stop):
@@ -136,10 +154,10 @@ class TestEventDetector(TestEventDetectorBase):
                 memory_usage_new = (
                     resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
                 print("Memory usage in iteration {}: {} (kb)"
-                      .format(s, memory_usage_new))
+                      .format(step, memory_usage_new))
                 if memory_usage_new > memory_usage_old:
                     memory_usage_old = memory_usage_new
-                    print(hp.heap())
+#                    print(hp.heap())
 
         except KeyboardInterrupt:
             pass
@@ -185,7 +203,3 @@ class TestEventDetector(TestEventDetectorBase):
                 pass
 
         super(TestEventDetector, self).tearDown()
-
-
-if __name__ == '__main__':
-    unittest.main()

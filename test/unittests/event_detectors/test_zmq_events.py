@@ -1,22 +1,24 @@
+"""Testing the zmq_events event detector.
+"""
+
 from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
 import json
-import logging
 import os
-import socket
 import tempfile
 import time
-import unittest
 import zmq
 
 from .__init__ import BASE_DIR
-from .test_eventdetector_base import TestEventDetectorBase
+from .test_eventdetector_base import TestEventDetectorBase, create_dir
 from zmq_events import EventDetector
 
 
 class TestEventDetector(TestEventDetectorBase):
+    """Specification of tests to be performed for the loaded EventDetecor.
+    """
 
     def setUp(self):
         super(TestEventDetector, self).setUp()
@@ -30,10 +32,12 @@ class TestEventDetector(TestEventDetectorBase):
         main_pid = os.getpid()
 
         ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
-        self._create_dir(ipc_path)
+        create_dir(ipc_path)
 
-        self.event_det_con_str = "ipc://{}/{}_{}".format(ipc_path, main_pid, "eventDet")
-        print("self.event_det_con_str", self.event_det_con_str)
+        self._event_det_con_str = "ipc://{}/{}_{}".format(ipc_path,
+                                                          main_pid,
+                                                          "eventDet")
+        print("self.event_det_con_str", self._event_det_con_str)
 
         self.config = {
             "context": None,
@@ -47,34 +51,38 @@ class TestEventDetector(TestEventDetectorBase):
         self.start = 100
         self.stop = 101
 
-        self.target_base_path = os.path.join(BASE_DIR, "data", "source")
-        self.target_relative_path = os.path.join("local", "raw")
-        #TODO why?
-        self.target_relative_path += os.sep
+        target_base_path = os.path.join(BASE_DIR, "data", "source")
+        target_relative_path = os.path.join("local", "raw")
+        self.target_path = os.path.join(target_base_path,
+                                        target_relative_path)
 
         self.eventdetector = EventDetector(self.config, self.log_queue)
 
     def test_eventdetector(self):
+        """Simulate incoming data and check if received events are correct.
+        """
 
         context = zmq.Context.instance()
 
         # create zmq socket to send events
         event_socket = context.socket(zmq.PUSH)
-        event_socket.connect(self.event_det_con_str)
+        event_socket.connect(self._event_det_con_str)
         self.log.info("Start event_socket (connect): '{}'"
-                      .format(self.event_det_con_str))
+                      .format(self._event_det_con_str))
 
         for i in range(self.start, self.stop):
             try:
                 self.log.debug("generate event")
-                target_file = "{}{}.cbf".format(self.target_relative_path, i)
+                target_file = "{}{}.cbf".format(self.target_path, i)
                 message = {
                     u"filename": target_file,
                     u"filepart": 0,
                     u"chunksize": 10
                 }
 
-                event_socket.send_multipart([json.dumps(message).encode("utf-8")])
+                event_socket.send_multipart(
+                    [json.dumps(message).encode("utf-8")]
+                )
 
                 event_list = self.eventdetector.get_new_event()
                 if event_list:
@@ -100,7 +108,3 @@ class TestEventDetector(TestEventDetectorBase):
         self.eventdetector.stop()
 
         super(TestEventDetector, self).tearDown()
-
-
-if __name__ == "__main__":
-    unittest.main()

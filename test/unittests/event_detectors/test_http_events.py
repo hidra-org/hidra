@@ -1,17 +1,19 @@
+"""Testing the http_events event detector
+"""
+
 from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import unittest
 import socket
-import logging
 
-import __init__  # noqa F401
 from .test_eventdetector_base import TestEventDetectorBase
 from http_events import EventDetector
 
 
 class TestEventDetector(TestEventDetectorBase):
+    """Specification of tests to be performed for the loaded EventDetecor.
+    """
 
     def setUp(self):
         super(TestEventDetector, self).setUp()
@@ -30,7 +32,6 @@ class TestEventDetector(TestEventDetectorBase):
             "det_ip": det_ip,
             "det_api_version": "1.6.0",
             "history_size": 1000,
-#            "fix_subdirs": None
             "fix_subdirs": ["local"]
         }
 
@@ -41,6 +42,8 @@ class TestEventDetector(TestEventDetectorBase):
         self.eventdetector = EventDetector(self.config, self.log_queue)
 
     def test_eventdetector(self):
+        """Simulate incoming data and check if received events are correct.
+        """
 
         source_file = u"test_file_local.cbf"
         relative_path = u"local"
@@ -61,7 +64,3 @@ class TestEventDetector(TestEventDetectorBase):
         self.eventdetector.stop()
 
         super(TestEventDetector, self).tearDown()
-
-
-if __name__ == "__main__":
-    unittest.main()
