@@ -38,6 +38,8 @@ class TestEventDetectorBase(unittest.TestCase):
         qhandler = QueueHandler(self.log_queue)
         root.addHandler(qhandler)
 
+        self.log = utils.get_logger("test_eventdetector", self.log_queue)
+
     def _create_dir(self, directory):
         """Creates the directory if it does not exist.
 
@@ -46,7 +48,7 @@ class TestEventDetectorBase(unittest.TestCase):
         """
 
         if not os.path.isdir(directory):
-            os.mkdir()
+            os.mkdir(directory)
 
     def tearDown(self):
         if self.listener is not None:

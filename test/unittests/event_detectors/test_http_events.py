@@ -1,9 +1,13 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+from __future__ import absolute_import
+
 import unittest
 import socket
 import logging
 
 import __init__  # noqa F401
-from test_eventdetector_base import TestEventDetectorBase
+from .test_eventdetector_base import TestEventDetectorBase
 from http_events import EventDetector
 
 
@@ -30,7 +34,7 @@ class TestEventDetector(TestEventDetectorBase):
             "fix_subdirs": ["local"]
         }
 
-        self.target_base_path = 'http://{}/data'.format(
+        self.target_base_path = "http://{}/data".format(
             socket.gethostbyname(self.config["det_ip"]))
 
         self._init_logging()
@@ -38,15 +42,15 @@ class TestEventDetector(TestEventDetectorBase):
 
     def test_eventdetector(self):
 
-        source_file = u'test_file_local.cbf'
-        relative_path = u'local'
+        source_file = u"test_file_local.cbf"
+        relative_path = u"local"
 
         event_list = self.eventdetector.get_new_event()
 
         expected_result_dict = {
-            u'filename': source_file,
-            u'source_path': self.target_base_path,
-            u'relative_path': relative_path
+            u"filename": source_file,
+            u"source_path": self.target_base_path,
+            u"relative_path": relative_path
         }
 
 #        self.assertEqual(len(event_list), 1)
@@ -59,5 +63,5 @@ class TestEventDetector(TestEventDetectorBase):
         super(TestEventDetector, self).tearDown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

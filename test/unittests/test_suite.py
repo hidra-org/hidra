@@ -3,13 +3,15 @@ import unittest
 from event_detectors.test_inotifyx_events import TestEventDetector as TestInotifyxEvents
 from event_detectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents
 from event_detectors.test_http_events import TestEventDetector as TestHttpEvents
+from event_detectors.test_zmq_events import TestEventDetector as TestZmqEvents
 
 def suite():
 
     all_suites = [
         unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),
         unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),
-        unittest.TestLoader().loadTestsFromTestCase(TestHttpEvents)
+        unittest.TestLoader().loadTestsFromTestCase(TestHttpEvents),
+        unittest.TestLoader().loadTestsFromTestCase(TestZmqEvents),
     ]
     suite = unittest.TestSuite(all_suites)
 
