@@ -385,7 +385,9 @@ class EventDetector(EventDetectorBase):
                 observer = Observer()
                 observer.schedule(
                     WatchdogEventHandler(observer_id, self.config, log_queue),
-                    path, recursive=True)
+                    path,
+                    recursive=True
+                )
                 observer.start()
                 self.log.info("Started observer for directory: {}"
                               .format(path))
@@ -418,6 +420,8 @@ class EventDetector(EventDetectorBase):
         return event_message_list_local
 
     def stop(self):
+        global event_message_list
+
         self.log.info("Stopping observer Threads")
         for observer in self.observer_threads:
             observer.stop()
@@ -426,6 +430,10 @@ class EventDetector(EventDetectorBase):
         # close the pool and wait for the work to finish
         self.checking_thread.stop()
         self.checking_thread.join()
+
+        # resetting event list
+        event_message_list = []
+
 
     def __exit__(self):
         self.stop()
