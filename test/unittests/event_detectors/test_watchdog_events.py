@@ -20,7 +20,7 @@ class TestEventDetector(TestEventDetectorBase):
     """
 
     # pylint: disable=too-many-instance-attributes
-    # Eleven is reasonable in this case.
+    # Is reasonable in this case.
 
     def setUp(self):
         super(TestEventDetector, self).setUp()
