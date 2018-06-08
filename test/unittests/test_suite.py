@@ -1,6 +1,6 @@
 import unittest
 
-from event_detectors.test_inotityx_events import TestEventDetector as TestInotifyxEvents
+from event_detectors.test_inotifyx_events import TestEventDetector as TestInotifyxEvents
 from event_detectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents
 from event_detectors.test_http_events import TestEventDetector as TestHttpEvents
 
