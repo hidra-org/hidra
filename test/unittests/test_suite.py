@@ -10,6 +10,7 @@ from importlib import import_module
 import pkgutil
 
 import eventdetectors
+import datafetchers
 
 
 def get_eventdetector_suites():
@@ -21,7 +22,6 @@ def get_eventdetector_suites():
 
     all_suites = []
 
-    event_detectors_m = "eventdetectors"
     # find all event detector test modules
     # iter_modules returns: importer, modname, ispkg
     for _, modname, _ in pkgutil.iter_modules(eventdetectors.__path__):
@@ -30,14 +30,46 @@ def get_eventdetector_suites():
             continue
 
         # load the test suite
-        module_name = "{}.{}".format(event_detectors_m, modname)
+        module_name = "eventdetectors.{}".format(modname)
         module = import_module(module_name).TestEventDetector
         suite = unittest.TestLoader().loadTestsFromTestCase(module)
         # this is equivalent to loading one module like this
-        # > from event_detectors.test_inotifyx_events \
+        # > from eventdetectors.test_inotifyx_events \
         # >     import TestEventDetector as TestInotifyxEvents
         # > loader = unittest.TestLoader()
         # > suite = loader.loadTestsFromTestCase(TestInotifyxEvents)
+
+        # add the test suite
+        all_suites.append(suite)
+
+    return all_suites
+
+
+def get_datafetcher_suites():
+    """Collects all available datafetcher tests
+
+    Returns:
+        An array containing all available datafetcher test suites.
+    """
+
+    all_suites = []
+
+    # find all event detector test modules
+    # iter_modules returns: importer, modname, ispkg
+    for _, modname, _ in pkgutil.iter_modules(datafetchers.__path__):
+        # the base class not a test module
+        if modname == "test_datafetcher_base":
+            continue
+
+        # load the test suite
+        module_name = "datafetchers.{}".format(modname)
+        module = import_module(module_name).TestDataFetcher
+        suite = unittest.TestLoader().loadTestsFromTestCase(module)
+        # this is equivalent to loading one module like this
+        # > from datafetchers.test_file_fetcher \
+        # >     import TestDataFetcher as TestFileFetcher
+        # > loader = unittest.TestLoader()
+        # > suite = loader.loadTestsFromTestCase(TestFileFetcher)
 
         # add the test suite
         all_suites.append(suite)
@@ -55,6 +87,21 @@ def get_suite():
     # get the subsuites
     all_suites = []
     all_suites += get_eventdetector_suites()
+    all_suites += get_datafetcher_suites()
+
+    # for testing
+#    from eventdetectors.test_inotifyx_events import TestEventDetector
+#    from eventdetectors.test_watchdog_events import TestEventDetector
+#    from eventdetectors.test_http_events import TestEventDetector
+#    from eventdetectors.test_zmq_events import TestEventDetector
+#    from eventdetectors.test_hidra_events import TestEventDetector
+
+#    from datafetchers.test_file_fetcher import TestDataFetcher
+
+#    all_suites = [
+#        unittest.TestLoader().loadTestsFromTestCase(TestEventDetector)
+#        unittest.TestLoader().loadTestsFromTestCase(TestDataFetcher)
+#    ]
 
     # combine all subsuites to one big one
     suite = unittest.TestSuite(all_suites)

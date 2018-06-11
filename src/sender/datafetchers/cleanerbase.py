@@ -1,13 +1,16 @@
+from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
 import zmq
 import threading
-from __init__ import BASE_PATH
 import utils
 import os
 import sys
 import time
 import abc
+
+import __init__
 
 # source:
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
@@ -498,6 +501,8 @@ if __name__ == '__main__':
     from multiprocessing import Queue, Process
     from logutils.queue import QueueHandler
     import socket
+
+    from .__init__ import BASE_PATH
 
     # Implement abstract class cleaner
     class Cleaner(CleanerBase):

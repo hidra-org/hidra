@@ -6,7 +6,7 @@ import os
 import sys
 import zmq
 
-from __init__ import BASE_PATH  # noqa F401
+import __init__  # noqa F401
 import utils
 
 # source:
