@@ -14,15 +14,23 @@ from logutils.queue import QueueHandler
 import utils
 
 
-def create_dir(directory):
+def create_dir(directory, chmod=None, log=logging):
     """Creates the directory if it does not exist.
 
     Args:
         directory: The absolute path of the directory to be created.
+        chmod (optional): Mode bits to change the permissions of the directory
+                          to.
     """
 
     if not os.path.isdir(directory):
         os.mkdir(directory)
+        log.info("Creating directory: {}".format(directory))
+
+    if chmod is not None:
+        # the permission have to changed explicitly because
+        # on some platform they are ignored when called within mkdir
+        os.chmod(directory, 0o777)
 
 
 class TestDataFetcherBase(unittest.TestCase):
@@ -58,7 +66,6 @@ class TestDataFetcherBase(unittest.TestCase):
         root.addHandler(qhandler)
 
         self.log = utils.get_logger("test_datafetcher", self.log_queue)
-
 
 
     def tearDown(self):

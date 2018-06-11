@@ -26,7 +26,13 @@ old_confirmations = []
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class CheckJobs (threading.Thread):
+class CheckJobs(threading.Thread):
+    """
+    An additional thread is needed to handle the case when confirmation
+    is received from the receiver before the trigger from the DataFetcher
+    arrives.
+    """
+
     def __init__(self,
                  job_bind_str,
                  cleaner_trigger_con_str,
@@ -246,6 +252,19 @@ class CleanerBase(ABC):
                  conf_bind_str,
                  control_con_str,
                  context=None):
+        """
+
+        Args:
+             config:
+             log_queue:
+             job_bind_str: communication to DataFetcher
+             cleaner_trigger_con_str: communication to helper thread
+             conf_bind_str: confirmation messages from the receiver
+             control_con_str: control message about process handling
+                              (e.g. shutdown messages)
+             context (optional): zmq context to use
+
+        """
 
         self.log = utils.get_logger("Cleaner", log_queue)
 
@@ -492,136 +511,3 @@ class CleanerBase(ABC):
 
     def __del__(self):
         self.stop()
-
-
-if __name__ == '__main__':
-    import logging
-    import tempfile
-    import shutil
-    from multiprocessing import Queue, Process
-    from logutils.queue import QueueHandler
-    import socket
-
-    from .__init__ import BASE_PATH
-
-    # Implement abstract class cleaner
-    class Cleaner(CleanerBase):
-        def remove_element(self, source_file):
-            # remove file
-            try:
-                os.remove(source_file)
-                self.log.info("Removing file '{}' ...success"
-                              .format(source_file))
-            except:
-                self.log.error("Unable to remove file {}".format(source_file),
-                               exc_info=True)
-
-    # Set up logging
-    logfile = os.path.join(BASE_PATH, "logs", "cleaner.log")
-    logsize = 10485760
-
-    log_queue = Queue(-1)
-
-    # Get the log Configuration for the lisener
-    h1, h2 = utils.get_log_handlers(logfile,
-                                    logsize,
-                                    verbose=True,
-                                    onscreen_loglevel="debug")
-
-    # Start queue listener using the stream handler above
-    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
-    log_queue_listener.start()
-
-    # Create log and set handler to queue handle
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)  # Log level = DEBUG
-    qh = QueueHandler(log_queue)
-    root.addHandler(qh)
-
-    # Set up config
-    config = {
-        "ipc_path": os.path.join(tempfile.gettempdir(), "hidra"),
-        "current_pid": os.getpid(),
-        "cleaner_port": 50051,
-        "confirmation_port": 50052,
-        "control_port": "50005"
-    }
-
-    con_ip = "zitpcx19282"
-    ext_ip = socket.gethostbyaddr(con_ip)[2][0]
-
-    context = zmq.Context.instance()
-
-    # create ipc path
-    if not os.path.exists(config["ipc_path"]):
-        os.mkdir(config["ipc_path"])
-        # the permission have to changed explicitly because
-        # on some platform they are ignored when called within mkdir
-        os.chmod(config["ipc_path"], 0o777)
-        logging.info("Creating directory for IPC communication: {0}"
-                     .format(config["ipc_path"]))
-
-    # determine socket connection strings
-    if utils.is_windows():
-        job_con_str = "tcp://{}:{}".format(con_ip, config["cleaner_port"])
-        job_bind_str = "tcp://{}:{}".format(ext_ip, config["cleaner_port"])
-
-        control_con_str = "tcp://{}:{}".format(ext_ip,
-                                               config["control_port"])
-    else:
-        job_con_str = ("ipc://{}/{}_{}".format(config["ipc_path"],
-                                               config["current_pid"],
-                                               "cleaner"))
-        job_bind_str = job_con_str
-
-        control_con_str = "ipc://{}/{}_{}".format(config["ipc_path"],
-                                                  config["current_pid"],
-                                                  "control")
-
-    conf_con_str = "tcp://{}:{}".format(con_ip, config["confirmation_port"])
-    conf_bind_str = "tcp://{}:{}".format(ext_ip, config["confirmation_port"])
-
-    # Instantiate cleaner as additional process
-    cleaner_pr = Process(target=Cleaner,
-                         args=(config,
-                               log_queue,
-                               job_bind_str,
-                               conf_bind_str,
-                               control_con_str,
-                               context))
-    cleaner_pr.start()
-
-    # Set up datafetcher simulator
-    job_socket = context.socket(zmq.PUSH)
-    job_socket.connect(job_con_str)
-    logging.info("=== Start job_socket (connect): {}".format(job_con_str))
-
-    # Set up receiver simulator
-    confirmation_socket = context.socket(zmq.PUSH)
-    confirmation_socket.connect(conf_con_str)
-    logging.info("=== Start confirmation_socket (connect): {}"
-                 .format(conf_con_str))
-
-    # to give init time to finish
-    time.sleep(0.5)
-
-    # Test cleaner
-    source_file = os.path.join(BASE_PATH, "test_file.cbf")
-    target_path = os.path.join(BASE_PATH, "data", "source", "local")
-
-    try:
-        for i in range(5):
-            target_file = os.path.join(target_path, "{}.cbf".format(i))
-            shutil.copyfile(source_file, target_file)
-
-            logging.debug("=== sending job {}".format(target_file))
-            job_socket.send_string(target_file)
-            logging.debug("=== job sent {}".format(target_file))
-
-            confirmation_socket.send(target_file.encode("utf-8"))
-            logging.debug("=== confirmation sent {}".format(target_file))
-    except KeyboardInterrupt:
-        pass
-    finally:
-        time.sleep(1)
-        cleaner_pr.terminate()
