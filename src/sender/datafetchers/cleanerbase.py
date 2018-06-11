@@ -249,7 +249,7 @@ class CleanerBase(ABC):
                  log_queue,
                  job_bind_str,
                  cleaner_trigger_con_str,
-                 conf_bind_str,
+                 conf_con_str,
                  control_con_str,
                  context=None):
         """
@@ -259,7 +259,7 @@ class CleanerBase(ABC):
              log_queue:
              job_bind_str: communication to DataFetcher
              cleaner_trigger_con_str: communication to helper thread
-             conf_bind_str: confirmation messages from the receiver
+             conf_con_str: confirmation messages from the receiver
              control_con_str: control message about process handling
                               (e.g. shutdown messages)
              context (optional): zmq context to use
@@ -271,7 +271,7 @@ class CleanerBase(ABC):
         self.config = config
         self.job_bind_str = job_bind_str
         self.cleaner_trigger_con_str = cleaner_trigger_con_str
-        self.conf_bind_str = conf_bind_str
+        self.conf_con_str = conf_con_str
         self.control_con_str = control_con_str
 
         self.lock = threading.Lock()
@@ -292,7 +292,7 @@ class CleanerBase(ABC):
                                              log_queue,
                                              context)
 
-#        self.conf_checking_thread = CheckConfirmations(self.conf_bind_str,
+#        self.conf_checking_thread = CheckConfirmations(self.conf_con_str,
 #                                                       self.lock,
 #                                                       log_queue,
 #                                                       context)
@@ -305,29 +305,18 @@ class CleanerBase(ABC):
             pass
 
     def create_sockets(self):
-        # socket to receive confirmation that data can be removed/discarded
-        # try:
-        #    self.confirmation_socket = self.context.socket(zmq.PULL)
-
-        #    self.confirmation_socket.bind(self.conf_bind_str)
-        #    self.log.info("Start confirmation_socket (bind): '{}'"
-        #                  .format(self.conf_bind_str))
-        # except:
-        #    self.log.error("Failed to start confirmation_socket (bind): '{}'"
-        #                   .format(self.conf_bind_str), exc_info=True)
-        #     raise
         try:
             self.confirmation_socket = self.context.socket(zmq.SUB)
 
-            self.confirmation_socket.connect(self.conf_bind_str)
+            self.confirmation_socket.connect(self.conf_con_str)
             topic = utils.generate_sender_id(self.config["main_pid"])
             # topic = b"test"
             self.confirmation_socket.setsockopt(zmq.SUBSCRIBE, topic)
             self.log.info("Start confirmation_socket (connect): '{}'"
-                          .format(self.conf_bind_str))
+                          .format(self.conf_con_str))
         except:
             self.log.error("Failed to start confirmation_socket (connect: '{}'"
-                           .format(self.conf_bind_str), exc_info=True)
+                           .format(self.conf_con_str), exc_info=True)
             raise
 
         # socket to trigger cleaner to remove old confirmations
@@ -511,3 +500,5 @@ class CleanerBase(ABC):
 
     def __del__(self):
         self.stop()
+
+# testing was moved into test/unittests/datafetchers/test_cleanerbase.py

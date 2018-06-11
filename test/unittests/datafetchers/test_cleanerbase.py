@@ -15,7 +15,11 @@ from multiprocessing import Process
 
 
 from .__init__ import BASE_DIR
-from .test_datafetcher_base import TestDataFetcherBase, create_dir
+from .test_datafetcher_base import (
+    TestDataFetcherBase,
+    create_dir,
+    set_con_strs
+)
 from cleanerbase import CleanerBase
 import utils
 
@@ -42,74 +46,72 @@ class TestDataFetcher(TestDataFetcherBase):
 
         self.context = zmq.Context.instance()
 
+        main_pid = os.getpid()
+        con_ip = socket.getfqdn()
+        ext_ip = socket.gethostbyaddr(con_ip)[2][0]
+
+        ports = {
+            "control": 50005,
+            "cleaner": 50051,
+            "cleaner_trigger": 50052,
+            "confirmation_port": 50053,
+        }
+
+        con_strs = set_con_strs(ext_ip=ext_ip,
+                                con_ip=con_ip,
+                                ipc_dir=ipc_dir,
+                                main_pid=main_pid,
+                                ports=ports)
+
         # Set up config
         self.config = {
-            "ipc_dir": ipc_dir,
-            "main_pid": os.getpid(),
-            "cleaner_port": 50051,
-            "confirmation_port": 50052,
-            "control_port": "50005"
+            "main_pid": main_pid,
+            "con_strs": con_strs
+        }
+
+        # Set up config
+
+        self.cleaner_config = {
+            "main_pid": self.config["main_pid"]
         }
 
     def test_cleaner(self):
+        """Simulate a simple cleaner.
+        """
+
         # Implement abstract class cleaner
         class Cleaner(CleanerBase):
-            def remove_element(self, source_file):
+            """A simple cleaner class
+            """
+
+            # pylint: disable=too-few-public-methods
+            # Is reasonable in this case.
+
+            def remove_element(self, base_path, source_file_id):
+                """Removes the source file.
+                """
+
+                # generate file pat
+                source_file = os.path.join(base_path, source_file_id)
+
                 # remove file
                 try:
                     os.remove(source_file)
                     self.log.info("Removing file '{}' ...success"
                                   .format(source_file))
-                except:
+                except Exception:
                     self.log.error("Unable to remove file {}"
                                    .format(source_file), exc_info=True)
 
-        con_ip = socket.getfqdn()
-        ext_ip = socket.gethostbyaddr(con_ip)[2][0]
-
-        # determine socket connection strings
-        if utils.is_windows():
-            job_con_str = "tcp://{}:{}".format(con_ip,
-                                               self.config["cleaner_port"])
-            job_bind_str = "tcp://{}:{}".format(ext_ip,
-                                                self.config["cleaner_port"])
-
-            control_con_str = "tcp://{}:{}".format(ext_ip,
-                                                   self.config["control_port"])
-
-            cleaner_trigger_con_str = (
-                "tcp://{}:{}".format(ext_ip,
-                                     self.config["cleaner_trigger_port"])
-            )
-        else:
-            job_con_str = ("ipc://{}/{}_{}".format(self.config["ipc_dir"],
-                                                   self.config["main_pid"],
-                                                   "cleaner"))
-            job_bind_str = job_con_str
-
-            control_con_str = "ipc://{}/{}_{}".format(self.config["ipc_dir"],
-                                                      self.config["main_pid"],
-                                                      "control")
-
-            cleaner_trigger_con_str = (
-                "ipc://{}/{}_{}".format(self.config["ipc_dir"],
-                                        self.config["main_pid"],
-                                        "cleaner_trigger")
-            )
-
-        conf_con_str = "tcp://{}:{}".format(con_ip,
-                                            self.config["confirmation_port"])
-        conf_bind_str = "tcp://{}:{}".format(ext_ip,
-                                             self.config["confirmation_port"])
-
         # Instantiate cleaner as additional process
+        con_strs = self.config["con_strs"]
         kwargs = dict(
-            config=self.config,
+            config=self.cleaner_config,
             log_queue=self.log_queue,
-            job_bind_str=job_bind_str,
-            cleaner_trigger_con_str=cleaner_trigger_con_str,
-            conf_bind_str=conf_bind_str,
-            control_con_str=control_con_str,
+            job_bind_str=con_strs.cleaner_job_bind,
+            cleaner_trigger_con_str=con_strs.cleaner_trigger_con,
+            conf_con_str=con_strs.confirm_con,
+            control_con_str=con_strs.control_con,
             context=self.context
         )
         cleaner_pr = Process(target=Cleaner, kwargs=kwargs)
@@ -117,14 +119,15 @@ class TestDataFetcher(TestDataFetcherBase):
 
         # Set up datafetcher simulator
         job_socket = self.context.socket(zmq.PUSH)
-        job_socket.connect(job_con_str)
-        self.log.info("Start job_socket (connect): {}".format(job_con_str))
+        job_socket.connect(self.config["con_strs"].cleaner_job_con)
+        self.log.info("Start job_socket (connect): {}"
+                      .format(self.config["con_strs"].cleaner_job_con))
 
         # Set up receiver simulator
         confirmation_socket = self.context.socket(zmq.PUSH)
-        confirmation_socket.connect(conf_con_str)
-        self.log.info("Start confirmation_socket (connect): {}"
-                      .format(conf_con_str))
+        confirmation_socket.bind(self.config["con_strs"].confirm_bind)
+        self.log.info("Start confirmation_socket (bind): {}"
+                      .format(self.config["con_strs"].confirm_bind))
 
         # to give init time to finish
         time.sleep(0.5)

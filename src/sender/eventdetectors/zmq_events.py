@@ -112,4 +112,4 @@ class EventDetector(EventDetectorBase):
             except:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
-# testing was moved into test/unittests/event_detectors/test_zmq_events
+# testing was moved into test/unittests/event_detectors/test_zmq_events.py

@@ -59,8 +59,6 @@ class TestEventDetectorBase(unittest.TestCase):
 
         self.log = utils.get_logger("test_eventdetector", self.log_queue)
 
-
-
     def tearDown(self):
         if self.listener is not None:
             self.log_queue.put_nowait(None)

@@ -123,4 +123,4 @@ class EventDetector(EventDetectorBase):
     def stop(self):
         pass
 
-# testing was moved into test/unittests/event_detectors/test_http_events
+# testing was moved into test/unittests/event_detectors/test_http_events.py

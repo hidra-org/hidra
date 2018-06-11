@@ -48,7 +48,6 @@ class TestEventDetector(TestEventDetectorBase):
 
         self.config = {
             "context": None,
-            #"context": context,
             "ext_ip": "0.0.0.0",
             "ipc_path": self.ipc_path,
             "main_pid": self.main_pid,
@@ -64,11 +63,6 @@ class TestEventDetector(TestEventDetectorBase):
                                         target_relative_path)
 
         self.eventdetector = EventDetector(self.config, self.log_queue)
-
-
-
-
-
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.

@@ -8,6 +8,7 @@ from __future__ import absolute_import
 import logging
 import os
 import unittest
+from collections import namedtuple
 from multiprocessing import Queue
 from logutils.queue import QueueHandler
 
@@ -31,6 +32,85 @@ def create_dir(directory, chmod=None, log=logging):
         # the permission have to changed explicitly because
         # on some platform they are ignored when called within mkdir
         os.chmod(directory, 0o777)
+
+
+ConStr = namedtuple(
+    "con_str", [
+        "control_bind",
+        "control_con",
+        "cleaner_job_bind",
+        "cleaner_job_con",
+        "cleaner_trigger_bind",
+        "cleaner_trigger_con",
+        "confirm_bind",
+        "confirm_con"
+    ]
+)
+
+
+def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
+    """Sets the connection strings.
+
+    Sets the connection strings  for the job, control, trigger and
+    confirmation socket.
+
+    Args:
+        ext_ip: IP to bind TCP connections to
+        con_ip: IP to connect TCP connections to
+        ipc_dir: Directory used for IPC connections
+        main_pid: Process ID of the current process. Used to distinguish
+                  different IPC connection.
+        port: A dictionary giving the ports to open TCP connection on
+              (only used on Windows).
+    Returns:
+        A namedtuple object ConStr with the entries:
+            job_bind
+            job_con
+            control_bind
+            control_con
+            trigger_bind
+            trigger_con
+            confirm_bind
+            confirm_con
+    """
+
+    # determine socket connection strings
+    if utils.is_windows():
+        job_bind_str = "tcp://{}:{}".format(ext_ip, ports["cleaner"])
+        job_con_str = "tcp://{}:{}".format(con_ip, ports["cleaner"])
+
+        control_bind_str = "tcp://{}:{}".format(ext_ip, ports["control"])
+        control_con_str = "tcp://{}:{}".format(con_ip, ports["control"])
+
+        trigger_bind_str = "tcp://{}:".format(ext_ip)
+        trigger_bind_str += str(ports["cleaner_trigger"])
+        trigger_con_str = "tcp://{}:".format(con_ip)
+        trigger_con_str += str(ports["cleaner_trigger"])
+    else:
+        ipc_ip = "{}/{}".format(ipc_dir, main_pid)
+
+        job_bind_str = "ipc://{}_{}".format(ipc_ip, "cleaner")
+        job_con_str = job_bind_str
+
+        control_bind_str = "ipc://{}_{}".format(ipc_ip, "control")
+        control_con_str = control_bind_str
+
+        trigger_bind_str = "ipc://{}_{}".format(ipc_ip, "cleaner_trigger")
+        trigger_con_str = trigger_bind_str
+
+    confirm_con_str = "tcp://{}:{}".format(con_ip, ports["confirmation_port"])
+    confirm_bind_str = "tcp://{}:{}".format(ext_ip, ports["confirmation_port"])
+
+    return ConStr(
+        control_bind=control_bind_str,
+        control_con=control_con_str,
+        cleaner_job_bind=job_bind_str,
+        cleaner_job_con=job_con_str,
+        cleaner_trigger_bind=trigger_bind_str,
+        cleaner_trigger_con=trigger_con_str,
+        confirm_bind=confirm_bind_str,
+        confirm_con=confirm_con_str
+    )
 
 
 class TestDataFetcherBase(unittest.TestCase):
@@ -66,7 +146,6 @@ class TestDataFetcherBase(unittest.TestCase):
         root.addHandler(qhandler)
 
         self.log = utils.get_logger("test_datafetcher", self.log_queue)
-
 
     def tearDown(self):
         if self.listener is not None:
