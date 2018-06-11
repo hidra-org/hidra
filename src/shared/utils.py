@@ -671,7 +671,7 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_loglevel=False):
         file_loglevel = "debug"
     else:
         file_loglevel = "info"
-    screen_loglevel = onscreen_log_level.lower()
+    screen_loglevel = onscreen_loglevel.lower()
 
     if screen_loglevel == "debug":
         if not verbose:
