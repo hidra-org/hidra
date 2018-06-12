@@ -17,6 +17,8 @@ from logutils.queue import QueueHandler
 
 import utils
 
+LOGLEVEL = "error"
+
 
 def create_dir(directory, chmod=None, log=logging):
     """Creates the directory if it does not exist.
@@ -121,12 +123,14 @@ class TestDataFetcherBase(unittest.TestCase):
     """
 
     def setUp(self):
+        global LOGLEVEL
+
         self.config = {}
         self.log_queue = False
         self.listener = None
         self.log = None
 
-        self._init_logging()
+        self._init_logging(loglevel=LOGLEVEL)
 
         main_pid = os.getpid()
         self.con_ip = socket.getfqdn()
