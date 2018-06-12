@@ -15,6 +15,8 @@ from .__init__ import BASE_DIR
 from .test_eventdetector_base import TestEventDetectorBase, create_dir
 from inotifyx_events import EventDetector
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
 
 class TestEventDetector(TestEventDetectorBase):
     """Specification of tests to be performed for the loaded EventDetecor.
@@ -25,10 +27,6 @@ class TestEventDetector(TestEventDetectorBase):
 
     def setUp(self):
         super(TestEventDetector, self).setUp()
-
-        # methods inherited from parent class
-        # explicit definition here for better readability
-        self._init_logging = super(TestEventDetector, self)._init_logging
 
         self.config = {
             "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
@@ -69,7 +67,6 @@ class TestEventDetector(TestEventDetectorBase):
         """Simulate incoming data and check if received events are correct.
         """
 
-        self._init_logging()
         create_dir(self.target_file_base)
         self._start_eventdetector()
 
@@ -77,7 +74,7 @@ class TestEventDetector(TestEventDetectorBase):
 
             filename = "{}.cbf".format(i)
             target_file = "{}{}".format(self.target_file_base, filename)
-            print("copy {}".format(target_file))
+            self.log.debug("copy {}".format(target_file))
             copyfile(self.source_file, target_file)
             time.sleep(0.1)
 
@@ -93,7 +90,7 @@ class TestEventDetector(TestEventDetectorBase):
                 self.assertDictEqual(event_list[0],
                                      expected_result_dict)
             except AssertionError:
-                print("event_list", event_list)
+                self.log.debug("event_list", event_list)
                 raise
 
     # this should not be executed automatically only if needed for debugging
@@ -110,7 +107,7 @@ class TestEventDetector(TestEventDetectorBase):
         gc.collect()
 #        from guppy import hpy
 
-        self._init_logging(loglevel="info")
+#        self._init_logging(loglevel="info")
         create_dir(self.target_file_base)
         self._start_eventdetector()
 
@@ -126,19 +123,19 @@ class TestEventDetector(TestEventDetectorBase):
         steps = 10
 
         memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        print("Memory usage at start: {} (kb)".format(memory_usage_old))
+        self.log.info("Memory usage at start: {} (kb)".format(memory_usage_old))
 
 #        hp = hpy()
 #        hp.setrelheap()
 
         step_loop = (self.stop - self.start) / steps
-        print("Used steps:", steps)
+        self.log.info("Used steps:", steps)
 
         try:
             for step in range(steps):
                 start = self.start + step * step_loop
                 stop = start + step_loop
-#                print ("start=", start, "stop=", stop)
+#                self.log.debug ("start=", start, "stop=", stop)
                 for i in range(start, stop):
 
                     target_file = "{}{}.cbf".format(self.target_file_base, i)
@@ -146,18 +143,18 @@ class TestEventDetector(TestEventDetectorBase):
                     time.sleep(0.1)
 
                     if i % 100 == 0:
-                        print("copy index {}".format(i))
+                        self.log.info("copy index {}".format(i))
                         event_list = self.eventdetector.get_new_event()
 
 #                    time.sleep(0.5)
 
                 memory_usage_new = (
                     resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-                print("Memory usage in iteration {}: {} (kb)"
-                      .format(step, memory_usage_new))
+                self.log.info("Memory usage in iteration {}: {} (kb)"
+                              .format(step, memory_usage_new))
                 if memory_usage_new > memory_usage_old:
                     memory_usage_old = memory_usage_new
-#                    print(hp.heap())
+#                    self.log.debug(hp.heap())
 
         except KeyboardInterrupt:
             pass
@@ -165,27 +162,27 @@ class TestEventDetector(TestEventDetectorBase):
             if self.config["use_cleanup"]:
                 time.sleep(4)
                 event_list = self.eventdetector.get_new_event()
-                print("len of event_list={}".format(len(event_list)))
+                self.log.debug("len of event_list={}".format(len(event_list)))
 
                 memory_usage_new = (
                     resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-                print("Memory usage: {} (kb)".format(memory_usage_new))
+                self.log.info("Memory usage: {} (kb)".format(memory_usage_new))
                 time.sleep(1)
 
                 event_list = self.eventdetector.get_new_event()
-                print("len of event_list={}".format(len(event_list)))
+                self.log.debug("len of event_list={}".format(len(event_list)))
 
                 memory_usage_new = (
                     resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-                print("Memory usage: {} (kb)".format(memory_usage_new))
+                self.log.info("Memory usage: {} (kb)".format(memory_usage_new))
 
                 event_list = self.eventdetector.get_new_event()
-                print("len of event_list={}".format(len(event_list)))
+                self.log.info("len of event_list={}".format(len(event_list)))
 
             memory_usage_new = (
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-            print("Memory usage before stop: {} (kb)"
-                  .format(memory_usage_new))
+            self.log.info("Memory usage before stop: {} (kb)"
+                          .format(memory_usage_new))
             time.sleep(5)
 
     def tearDown(self):

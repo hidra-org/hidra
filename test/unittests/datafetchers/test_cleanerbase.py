@@ -17,6 +17,8 @@ from .test_datafetcher_base import TestDataFetcherBase
 from cleanerbase import CleanerBase
 import utils
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
 
 class TestDataFetcher(TestDataFetcherBase):
     """Specification of tests to be performed for the loaded DataFetcher.

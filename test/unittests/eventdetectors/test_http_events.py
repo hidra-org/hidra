@@ -10,6 +10,8 @@ import socket
 from .test_eventdetector_base import TestEventDetectorBase
 from http_events import EventDetector
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
 
 class TestEventDetector(TestEventDetectorBase):
     """Specification of tests to be performed for the loaded EventDetecor.
@@ -17,10 +19,6 @@ class TestEventDetector(TestEventDetectorBase):
 
     def setUp(self):
         super(TestEventDetector, self).setUp()
-
-        # methods inherited from parent class
-        # explicit definition here for better readability
-        self._init_logging = super(TestEventDetector, self)._init_logging
 
 #        detectorDevice   = "haspp10lab:10000/p10/eigerdectris/lab.01"
 #        detectorDevice   = "haspp06:10000/p06/eigerdectris/exp.01"
@@ -38,7 +36,6 @@ class TestEventDetector(TestEventDetectorBase):
         self.target_base_path = "http://{}/data".format(
             socket.gethostbyname(self.config["det_ip"]))
 
-        self._init_logging()
         self.eventdetector = EventDetector(self.config, self.log_queue)
 
     def test_eventdetector(self):

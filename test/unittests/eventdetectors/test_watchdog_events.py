@@ -14,6 +14,8 @@ from .__init__ import BASE_DIR
 from .test_eventdetector_base import TestEventDetectorBase, create_dir
 from watchdog_events import EventDetector
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
 
 class TestEventDetector(TestEventDetectorBase):
     """Specification of tests to be performed for the loaded EventDetecor.
@@ -24,10 +26,6 @@ class TestEventDetector(TestEventDetectorBase):
 
     def setUp(self):
         super(TestEventDetector, self).setUp()
-
-        # methods inherited from parent class
-        # explicit definition here for better readability
-        self._init_logging = super(TestEventDetector, self)._init_logging
 
         self.config = {
             # TODO normpath to make insensitive to "/" at the end
@@ -74,7 +72,6 @@ class TestEventDetector(TestEventDetectorBase):
         received events are correct.
         """
 
-        self._init_logging()
         create_dir(self.target_file_base)
         self._start_eventdetector()
 
@@ -110,7 +107,6 @@ class TestEventDetector(TestEventDetectorBase):
         events are correct.
         """
 
-        self._init_logging()
         create_dir(self.target_file_base)
         self._start_eventdetector()
 
@@ -159,7 +155,7 @@ class TestEventDetector(TestEventDetectorBase):
         gc.collect()
 #        from guppy import hpy
 
-        self._init_logging(loglevel="info")
+#        self._init_logging(loglevel="info")
         create_dir(self.target_file_base)
         self._start_eventdetector()
 

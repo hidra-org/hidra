@@ -16,8 +16,9 @@ from multiprocessing import Queue
 from logutils.queue import QueueHandler
 
 import utils
+from test_base import TestBase
 
-LOGLEVEL = "error"
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 def create_dir(directory, chmod=None, log=logging):
@@ -118,19 +119,12 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
     )
 
 
-class TestDataFetcherBase(unittest.TestCase):
+class TestDataFetcherBase(TestBase):
     """The Base class from which all data fetchers should inherit from.
     """
 
     def setUp(self):
-        global LOGLEVEL
-
-        self.config = {}
-        self.log_queue = False
-        self.listener = None
-        self.log = None
-
-        self._init_logging(loglevel=LOGLEVEL)
+        super(TestDataFetcherBase, self).setUp()
 
         main_pid = os.getpid()
         self.con_ip = socket.getfqdn()
@@ -161,30 +155,6 @@ class TestDataFetcherBase(unittest.TestCase):
             "con_strs": con_strs
         }
 
-    def _init_logging(self, loglevel="debug"):
-        """Initialize log listener and log queue.
-
-        Args:
-            loglevel: The log level with of StreamHandler to be started.
-        """
-
-        loglevel = loglevel.lower()
-
-        # Create handler
-        handler = utils.get_stream_log_handler(loglevel=loglevel)
-
-        # Start queue listener using the stream handler above
-        self.log_queue = Queue(-1)
-        self.listener = utils.CustomQueueListener(self.log_queue, handler)
-        self.listener.start()
-
-        # Create log and set handler to queue handle
-        root = logging.getLogger()
-        qhandler = QueueHandler(self.log_queue)
-        root.addHandler(qhandler)
-
-        self.log = utils.get_logger("test_datafetcher", self.log_queue)
-
     def _set_up_socket(self, port):
         """Create pull socket and connect to port.
 
@@ -201,7 +171,4 @@ class TestDataFetcherBase(unittest.TestCase):
         return sckt
 
     def tearDown(self):
-        if self.listener is not None:
-            self.log_queue.put_nowait(None)
-            self.listener.stop()
-            self.listener = None
+        super(TestDataFetcherBase, self).tearDown()

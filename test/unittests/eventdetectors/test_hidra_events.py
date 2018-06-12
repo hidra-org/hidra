@@ -14,6 +14,8 @@ from .__init__ import BASE_DIR
 from .test_eventdetector_base import TestEventDetectorBase, create_dir
 from hidra_events import EventDetector
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
 
 class TestEventDetector(TestEventDetectorBase):
     """Specification of tests to be performed for the loaded EventDetecor.
@@ -24,12 +26,6 @@ class TestEventDetector(TestEventDetectorBase):
 
     def setUp(self):
         super(TestEventDetector, self).setUp()
-
-        # methods inherited from parent class
-        # explicit definition here for better readability
-        self._init_logging = super(TestEventDetector, self)._init_logging
-
-        self._init_logging()
 
         self.main_pid = os.getpid()
 
@@ -44,7 +40,7 @@ class TestEventDetector(TestEventDetectorBase):
         self._event_det_con_str = "ipc://{}/{}_{}".format(self.ipc_path,
                                                           self.main_pid,
                                                           "eventDet")
-        print("self.event_det_con_str", self._event_det_con_str)
+        self.log.debug("self.event_det_con_str", self._event_det_con_str)
 
         self.config = {
             "context": None,

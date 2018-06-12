@@ -12,6 +12,8 @@ import pkgutil
 import eventdetectors
 import datafetchers
 
+__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
 
 def get_eventdetector_suites():
     """Collects all available eventdetector tests
