@@ -28,7 +28,7 @@ def get_eventdetector_suites():
     # iter_modules returns: importer, modname, ispkg
     for _, modname, _ in pkgutil.iter_modules(eventdetectors.__path__):
         # the base class not a test module
-        if modname == "test_eventdetector_base":
+        if modname in ["eventdetector_test_base"]:
             continue
 
         # load the test suite
@@ -61,7 +61,7 @@ def get_datafetcher_suites():
     for _, modname, _ in pkgutil.iter_modules(datafetchers.__path__):
         # the base class not a test module
         # TODO exclude test_http_fetcher only temporarily till bug is fixed
-        if modname in ["test_datafetcher_base", "test_http_fetcher"]:
+        if modname in ["datafetcher_test_base", "test_http_fetcher"]:
             continue
 
         # load the test suite

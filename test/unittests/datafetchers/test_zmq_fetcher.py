@@ -11,13 +11,13 @@ import zmq
 
 
 from .__init__ import BASE_DIR
-from .test_datafetcher_base import TestDataFetcherBase
+from .datafetcher_test_base import DataFetcherTestBase
 from zmq_fetcher import DataFetcher
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class TestDataFetcher(TestDataFetcherBase):
+class TestDataFetcher(DataFetcherTestBase):
     """Specification of tests to be performed for the loaded DataFetcher.
     """
 

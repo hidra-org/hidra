@@ -119,12 +119,12 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
     )
 
 
-class TestDataFetcherBase(TestBase):
+class DataFetcherTestBase(TestBase):
     """The Base class from which all data fetchers should inherit from.
     """
 
     def setUp(self):
-        super(TestDataFetcherBase, self).setUp()
+        super(DataFetcherTestBase, self).setUp()
 
         main_pid = os.getpid()
         self.con_ip = socket.getfqdn()
@@ -171,4 +171,5 @@ class TestDataFetcherBase(TestBase):
         return sckt
 
     def tearDown(self):
-        super(TestDataFetcherBase, self).tearDown()
+        super(DataFetcherTestBase, self).tearDown()
+        self.context.destroy()

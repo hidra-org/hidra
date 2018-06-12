@@ -7,13 +7,13 @@ from __future__ import absolute_import
 
 import socket
 
-from .test_eventdetector_base import TestEventDetectorBase
+from .eventdetector_test_base import EventDetectorTestBase
 from http_events import EventDetector
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class TestEventDetector(TestEventDetectorBase):
+class TestEventDetector(EventDetectorTestBase):
     """Specification of tests to be performed for the loaded EventDetecor.
     """
 

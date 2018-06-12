@@ -11,13 +11,13 @@ import tempfile
 import zmq
 
 from .__init__ import BASE_DIR
-from .test_eventdetector_base import TestEventDetectorBase, create_dir
+from .eventdetector_test_base import EventDetectorTestBase, create_dir
 from hidra_events import EventDetector
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class TestEventDetector(TestEventDetectorBase):
+class TestEventDetector(EventDetectorTestBase):
     """Specification of tests to be performed for the loaded EventDetecor.
     """
 

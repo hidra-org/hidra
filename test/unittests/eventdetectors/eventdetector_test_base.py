@@ -17,12 +17,12 @@ from test_base import TestBase, create_dir
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class TestEventDetectorBase(TestBase):
+class EventDetectorTestBase(TestBase):
     """The Base class from which all event detectors should inherit from.
     """
 
     def setUp(self):
-        super(TestEventDetectorBase, self).setUp()
+        super(EventDetectorTestBase, self).setUp()
 
     def tearDown(self):
-        super(TestEventDetectorBase, self).tearDown()
+        super(EventDetectorTestBase, self).tearDown()
