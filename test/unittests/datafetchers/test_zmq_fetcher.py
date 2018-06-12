@@ -8,12 +8,8 @@ from __future__ import absolute_import
 import json
 import os
 import tempfile
-import time
 import socket
-import subprocess
 import zmq
-from shutil import copyfile
-from multiprocessing import Process
 
 
 from .__init__ import BASE_DIR
@@ -22,7 +18,7 @@ from .test_datafetcher_base import (
     create_dir,
     set_con_strs
 )
-from file_fetcher import DataFetcher, Cleaner
+from zmq_fetcher import DataFetcher
 
 
 class TestDataFetcher(TestDataFetcherBase):
@@ -55,6 +51,8 @@ class TestDataFetcher(TestDataFetcherBase):
             "confirmation_port": 50053
         }
 
+        self.context = zmq.Context.instance()
+
         # determine socket connection strings
         con_strs = set_con_strs(ext_ip=self.ext_ip,
                                 con_ip=self.con_ip,
@@ -64,29 +62,28 @@ class TestDataFetcher(TestDataFetcherBase):
 
         # Set up config
         self.config = {
-            "main_pid": main_pid,
             "ipc_dir": ipc_dir,
+            "main_pid": main_pid,
             "con_strs": con_strs
         }
 
+#        local_target = os.path.join(BASE_DIR, "data", "target")
+
         self.data_fetcher_config = {
-            "session": None,
-            "fix_subdirs": ["commissioning", "current", "local"],
-            "store_data": True,
+            "context": self.context,
             "remove_data": False,
             "ipc_path": self.config["ipc_dir"],
             "main_pid": self.config["main_pid"],
+            "ext_ip": self.ext_ip,
             "cleaner_job_con_str": self.config["con_strs"].cleaner_job_con,
             "cleaner_conf_con_str": self.config["con_strs"].confirm_con,
             "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
-            "local_target": os.path.join(BASE_DIR, "data", "target")
+            "local_target": None
         }
 
         self.cleaner_config = {
             "main_pid": self.config["main_pid"]
         }
-
-        self.context = zmq.Context.instance()
 
         self.receiving_ports = ["6005", "6006"]
 
@@ -119,24 +116,29 @@ class TestDataFetcher(TestDataFetcherBase):
         for port in self.receiving_ports:
             receiving_socket.append(self._set_up_socket(port))
 
-        dataFwPort = "50010"
+        data_fetch_con_str = "ipc://{}/{}".format(self.config["ipc_dir"],
+                                                  "dataFetch")
+
+        data_fw_socket = self.context.socket(zmq.PUSH)
+        data_fw_socket.connect(data_fetch_con_str)
+        self.log.info("Start data_fw_socket (connect): '{}'"
+                      .format(data_fetch_con_str))
 
         # Test data fetcher
-        filename = "test01.cbf"
-        source_dir = os.path.join(BASE_DIR, "data", "source")
         prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
 
-
         # read file to send it in data pipe
-        self.log.debug("copy file to asap3-mon")
-        # os.system('scp "%s" "%s:%s"' % (localfile, remotehost, remotefile) )
-        subprocess.call("scp {} root@asap3-mon:/var/www/html/data/{}"
-                        .format(prework_source_file, filename), shell=True)
+        with open(prework_source_file, "rb") as file_descriptor:
+            file_content = file_descriptor.read()
+            self.log.debug("File read")
+
+        data_fw_socket.send(file_content)
+        self.log.debug("File send")
 
         metadata = {
-            "source_path": "http://asap3-mon/data",
-            "relative_path": "",
-            "filename": filename
+            "source_path": os.path.join(BASE_DIR, "data", "source"),
+            "relative_path": os.sep + "local" + os.sep + "raw",
+            "filename": "100.cbf"
         }
 
         targets = [
@@ -167,9 +169,7 @@ class TestDataFetcher(TestDataFetcherBase):
         except KeyboardInterrupt:
             pass
         finally:
-
-            subprocess.call('ssh root@asap3-mon rm "/var/www/html/data/{}"'
-                            .format(filename), shell=True)
+            data_fw_socket.close(0)
 
             for sckt in receiving_socket:
                 sckt.close(0)

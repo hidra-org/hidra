@@ -54,7 +54,7 @@ class DataFetcher(DataFetcherBase):
                                .format(con_str), exc_info=True)
                 raise
         else:
-            # self.log.debug("config={0}".format(self.config))
+            # self.log.debug("config={}".format(self.config))
             raise Exception("Wrong configuration")
 
     def get_metadata(self, targets, metadata):
@@ -71,8 +71,8 @@ class DataFetcher(DataFetcherBase):
             raise
 
         # TODO combine better with source_file... (for efficiency)
-        if config["local_target"]:
-            self.target_file = os.path.join(config["local_target"],
+        if self.config["local_target"]:
+            self.target_file = os.path.join(self.config["local_target"],
                                             self.source_file)
         else:
             self.target_file = None
@@ -152,161 +152,4 @@ class DataFetcher(DataFetcherBase):
             self.socket.close(0)
             self.socket = None
 
-
-if __name__ == '__main__':
-    import tempfile
-    from multiprocessing import Queue
-    from logutils.queue import QueueHandler
-    from __init__ import BASE_PATH
-    import socket
-
-    # Set up logging
-    logfile = os.path.join(BASE_PATH, "logs", "zmq_fetcher.log")
-    logsize = 10485760
-
-    log_queue = Queue(-1)
-
-    # Get the log Configuration for the lisener
-    h1, h2 = utils.get_log_handlers(logfile,
-                                    logsize,
-                                    verbose=True,
-                                    onscreen_loglevel="debug")
-
-    # Start queue listener using the stream handler above
-    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
-    log_queue_listener.start()
-
-    # Create log and set handler to queue handle
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)  # Log level = DEBUG
-    qh = QueueHandler(log_queue)
-    root.addHandler(qh)
-
-    # determine socket connection strings
-    con_ip = socket.getfqdn()
-    ext_ip = socket.gethostbyaddr(con_ip)[2][0]
-    # ext_ip = "0.0.0.0"
-
-    current_pid = os.getpid()
-
-    cleaner_port = 50051
-    confirmation_port = 50052
-
-    ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
-    if not os.path.exists(ipc_path):
-        os.mkdir(ipc_path)
-        # the permission have to changed explicitly because
-        # on some platform they are ignored when called within mkdir
-        os.chmod(ipc_path, 0o777)
-        logging.info("Creating directory for IPC communication: {0}"
-                     .format(ipc_path))
-
-    if utils.is_windows():
-        job_con_str = "tcp://{}:{}".format(con_ip, cleaner_port)
-        job_bind_str = "tcp://{}:{}".format(ext_ip, cleaner_port)
-    else:
-        job_con_str = ("ipc://{}/{}_{}".format(ipc_path,
-                                               current_pid,
-                                               "cleaner"))
-        job_bind_str = job_con_str
-
-    conf_con_str = "tcp://{}:{}".format(con_ip, confirmation_port)
-    conf_bind_str = "tcp://{}:{}".format(ext_ip, confirmation_port)
-
-    # Set up config
-    context = zmq.Context()
-    local_target = os.path.join(BASE_PATH, "data", "target")
-
-    config = {
-        "type": "getFromZmq",
-        "context": context,
-        "ipc_path": ipc_path,
-        "ext_ip": ext_ip,
-        "remove_data": False,
-        "cleaner_job_con_str": job_bind_str,
-        "cleaner_conf_con_str": conf_bind_str,
-        "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
-        "local_target": None
-    }
-
-    # Set up receiver simulator
-    receiving_port = "6005"
-    receiving_port2 = "6006"
-
-    data_fetch_con_str = "ipc://{}/{}".format(ipc_path, "dataFetch")
-
-    data_fw_socket = context.socket(zmq.PUSH)
-    data_fw_socket.connect(data_fetch_con_str)
-    logging.info("=== Start dataFwsocket (connect): '{}'"
-                 .format(data_fetch_con_str))
-
-    receiving_socket = context.socket(zmq.PULL)
-    connection_str = ("tcp://{}:{}"
-                      .format(ext_ip, receiving_port))
-    receiving_socket.bind(connection_str)
-    logging.info("=== receiving_socket connected to {}"
-                 .format(connection_str))
-
-    receiving_socket2 = context.socket(zmq.PULL)
-    connection_str = ("tcp://{}:{}"
-                      .format(ext_ip, receiving_port2))
-    receiving_socket2.bind(connection_str)
-    logging.info("=== receiving_socket2 connected to {}"
-                 .format(connection_str))
-
-    # Test file fetcher
-    prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
-
-    # read file to send it in data pipe
-    file_descriptor = open(prework_source_file, "rb")
-    file_content = file_descriptor.read()
-    logging.debug("=== File read")
-    file_descriptor.close()
-
-    data_fw_socket.send(file_content)
-    logging.debug("=== File send")
-
-    metadata = {
-        "source_path": os.path.join(BASE_PATH, "data", "source"),
-        "relative_path": os.sep + "local" + os.sep + "raw",
-        "filename": "100.cbf"
-    }
-    targets = [['{}:{}'.format(ext_ip, receiving_port), 1, "data"],
-               ['{}:{}'.format(ext_ip, receiving_port2), 1, "data"]]
-
-    open_connections = dict()
-
-    logging.debug("open_connections before function call: {}"
-                  .format(open_connections))
-
-    datafetcher = DataFetcher(config, log_queue, 0, context)
-
-    datafetcher.get_metadata(targets, metadata)
-
-    datafetcher.send_data(targets, metadata, open_connections)
-
-    datafetcher.finish(targets, metadata, open_connections)
-
-    logging.debug("open_connections after function call: {}"
-                  .format(open_connections))
-
-    try:
-        recv_message = receiving_socket.recv_multipart()
-        logging.info("=== received: {}"
-                     .format(json.loads(recv_message[0].decode("utf-8"))))
-        recv_message = receiving_socket2.recv_multipart()
-        logging.info("=== received 2: {}"
-                     .format(json.loads(recv_message[0].decode("utf-8"))))
-    except KeyboardInterrupt:
-        pass
-    finally:
-        data_fw_socket.close(0)
-        receiving_socket.close(0)
-        receiving_socket2.close(0)
-        context.destroy()
-
-        if log_queue_listener:
-            logging.info("Stopping log_queue")
-            log_queue.put_nowait(None)
-            log_queue_listener.stop()
-            log_queue_listener = None
+# testing was moved into test/unittests/datafetchers/test_zmq_fetcher.py

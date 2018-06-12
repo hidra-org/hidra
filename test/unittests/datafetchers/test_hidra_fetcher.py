@@ -117,6 +117,11 @@ class TestDataFetcher(TestDataFetcherBase):
         """Simulate file fetching without taking care of confirmation signals.
         """
 
+        datafetcher = DataFetcher(config=self.data_fetcher_config,
+                                  log_queue=self.log_queue,
+                                  id=0,
+                                  context=self.context)
+
         # Set up receiver simulator
         receiving_socket = []
         for port in self.receiving_ports:
@@ -161,11 +166,6 @@ class TestDataFetcher(TestDataFetcherBase):
 
         self.log.debug("open_connections before function call: {}"
                        .format(open_connections))
-
-        datafetcher = DataFetcher(config=self.data_fetcher_config,
-                                  log_queue=self.log_queue,
-                                  id=0,
-                                  context=self.context)
 
         if data_input:
 
