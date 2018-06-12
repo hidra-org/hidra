@@ -16,7 +16,7 @@ disable = too-many-public-methods, locally-disabled, fixme
 [SIMILARITIES]
 
 # Minimum lines number of a similarity.
-min-similarity-lines = 8
+min-similarity-lines = 25
 
 # Ignore imports when computing similarities.
 ignore-imports = yes

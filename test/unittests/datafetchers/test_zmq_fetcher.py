@@ -7,17 +7,11 @@ from __future__ import absolute_import
 
 import json
 import os
-import tempfile
-import socket
 import zmq
 
 
 from .__init__ import BASE_DIR
-from .test_datafetcher_base import (
-    TestDataFetcherBase,
-    create_dir,
-    set_con_strs
-)
+from .test_datafetcher_base import TestDataFetcherBase
 from zmq_fetcher import DataFetcher
 
 
@@ -31,42 +25,7 @@ class TestDataFetcher(TestDataFetcherBase):
     def setUp(self):
         super(TestDataFetcher, self).setUp()
 
-        # methods inherited from parent class
-        # explicit definition here for better readability
-        self._init_logging = super(TestDataFetcher, self)._init_logging
-
-        self._init_logging()
-
-        main_pid = os.getpid()
-        self.con_ip = socket.getfqdn()
-        self.ext_ip = socket.gethostbyaddr(self.con_ip)[2][0]
-        ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
-
-        create_dir(directory=ipc_dir, chmod=0o777)
-
-        ports = {
-            "control": 50005,
-            "cleaner": 50051,
-            "cleaner_trigger": 50052,
-            "confirmation_port": 50053
-        }
-
-        self.context = zmq.Context.instance()
-
-        # determine socket connection strings
-        con_strs = set_con_strs(ext_ip=self.ext_ip,
-                                con_ip=self.con_ip,
-                                ipc_dir=ipc_dir,
-                                main_pid=main_pid,
-                                ports=ports)
-
         # Set up config
-        self.config = {
-            "ipc_dir": ipc_dir,
-            "main_pid": main_pid,
-            "con_strs": con_strs
-        }
-
 #        local_target = os.path.join(BASE_DIR, "data", "target")
 
         self.data_fetcher_config = {
@@ -86,21 +45,6 @@ class TestDataFetcher(TestDataFetcherBase):
         }
 
         self.receiving_ports = ["6005", "6006"]
-
-    def _set_up_socket(self, port):
-        """Create pull socket and connect to port.
-
-        Args:
-            port: Port to connect to.
-        """
-
-        sckt = self.context.socket(zmq.PULL)
-        connection_str = "tcp://{}:{}".format(self.ext_ip, port)
-        sckt.bind(connection_str)
-        self.log.info("Start receiving socket (bind): {}"
-                      .format(connection_str))
-
-        return sckt
 
     def test_no_confirmation(self):
         """Simulate file fetching without taking care of confirmation signals.
@@ -152,7 +96,6 @@ class TestDataFetcher(TestDataFetcherBase):
                        .format(open_connections))
 
         datafetcher.get_metadata(targets, metadata)
-        # source_file = "http://131.169.55.170/test_httpget/data/test_file.cbf"
 
         datafetcher.send_data(targets, metadata, open_connections)
 

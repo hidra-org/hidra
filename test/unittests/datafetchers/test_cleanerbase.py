@@ -6,20 +6,14 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 
 import os
-import tempfile
 import time
 import shutil
-import socket
 import zmq
 from multiprocessing import Process
 
 
 from .__init__ import BASE_DIR
-from .test_datafetcher_base import (
-    TestDataFetcherBase,
-    create_dir,
-    set_con_strs
-)
+from .test_datafetcher_base import TestDataFetcherBase
 from cleanerbase import CleanerBase
 import utils
 
@@ -34,43 +28,7 @@ class TestDataFetcher(TestDataFetcherBase):
     def setUp(self):
         super(TestDataFetcher, self).setUp()
 
-        # methods inherited from parent class
-        # explicit definition here for better readability
-        self._init_logging = super(TestDataFetcher, self)._init_logging
-
-        self._init_logging()
-
-        ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
-
-        create_dir(directory=ipc_dir, chmod=0o777)
-
-        self.context = zmq.Context.instance()
-
-        main_pid = os.getpid()
-        con_ip = socket.getfqdn()
-        ext_ip = socket.gethostbyaddr(con_ip)[2][0]
-
-        ports = {
-            "control": 50005,
-            "cleaner": 50051,
-            "cleaner_trigger": 50052,
-            "confirmation_port": 50053,
-        }
-
-        con_strs = set_con_strs(ext_ip=ext_ip,
-                                con_ip=con_ip,
-                                ipc_dir=ipc_dir,
-                                main_pid=main_pid,
-                                ports=ports)
-
         # Set up config
-        self.config = {
-            "main_pid": main_pid,
-            "con_strs": con_strs
-        }
-
-        # Set up config
-
         self.cleaner_config = {
             "main_pid": self.config["main_pid"]
         }
@@ -99,7 +57,7 @@ class TestDataFetcher(TestDataFetcherBase):
                     os.remove(source_file)
                     self.log.info("Removing file '{}' ...success"
                                   .format(source_file))
-                except Exception:
+                except Exception:  # pylint: disable=broad-except
                     self.log.error("Unable to remove file {}"
                                    .format(source_file), exc_info=True)
 

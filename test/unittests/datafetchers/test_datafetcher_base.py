@@ -8,6 +8,9 @@ from __future__ import absolute_import
 import logging
 import os
 import unittest
+import socket
+import tempfile
+import zmq
 from collections import namedtuple
 from multiprocessing import Queue
 from logutils.queue import QueueHandler
@@ -123,6 +126,37 @@ class TestDataFetcherBase(unittest.TestCase):
         self.listener = None
         self.log = None
 
+        self._init_logging()
+
+        main_pid = os.getpid()
+        self.con_ip = socket.getfqdn()
+        self.ext_ip = socket.gethostbyaddr(self.con_ip)[2][0]
+        ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
+
+        create_dir(directory=ipc_dir, chmod=0o777)
+
+        self.context = zmq.Context.instance()
+
+        ports = {
+            "control": 50005,
+            "cleaner": 50051,
+            "cleaner_trigger": 50052,
+            "confirmation_port": 50053,
+        }
+
+        con_strs = set_con_strs(ext_ip=self.ext_ip,
+                                con_ip=self.con_ip,
+                                ipc_dir=ipc_dir,
+                                main_pid=main_pid,
+                                ports=ports)
+
+        # Set up config
+        self.config = {
+            "ipc_dir": ipc_dir,
+            "main_pid": main_pid,
+            "con_strs": con_strs
+        }
+
     def _init_logging(self, loglevel="debug"):
         """Initialize log listener and log queue.
 
@@ -146,6 +180,21 @@ class TestDataFetcherBase(unittest.TestCase):
         root.addHandler(qhandler)
 
         self.log = utils.get_logger("test_datafetcher", self.log_queue)
+
+    def _set_up_socket(self, port):
+        """Create pull socket and connect to port.
+
+        Args:
+            port: Port to connect to.
+        """
+
+        sckt = self.context.socket(zmq.PULL)
+        connection_str = "tcp://{}:{}".format(self.ext_ip, port)
+        sckt.bind(connection_str)
+        self.log.info("Start receiving socket (bind): {}"
+                      .format(connection_str))
+
+        return sckt
 
     def tearDown(self):
         if self.listener is not None:
