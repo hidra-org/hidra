@@ -2,16 +2,15 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from six import iteritems
 
-import os
+import bisect
+import copy
 import logging
-
+import os
+import threading
 import time
+from multiprocessing.dummy import Pool as ThreadPool
 from watchdog.observers import Observer
 from watchdog.events import RegexMatchingEventHandler
-import copy
-from multiprocessing.dummy import Pool as ThreadPool
-import threading
-import bisect
 
 from eventdetectorbase import EventDetectorBase
 import utils
@@ -30,9 +29,8 @@ event_message_list = []
 event_list_to_observe = []
 event_list_to_observe_tmp = []
 
-
 # documentation of watchdog: https://pythonhosted.org/watchdog/api.html
-class WatchdogEventHandler (RegexMatchingEventHandler):
+class WatchdogEventHandler(RegexMatchingEventHandler):
     def __init__(self, id, config, log_queue):
         self.id = id
 
@@ -194,7 +192,7 @@ def split_file_path(filepath, paths):
     return event_message
 
 
-class CheckModTime (threading.Thread):
+class CheckModTime(threading.Thread):
     def __init__(self,
                  number_of_threads,
                  time_till_closed,
@@ -202,6 +200,7 @@ class CheckModTime (threading.Thread):
                  action_time,
                  lock,
                  log_queue):
+
         self.log = utils.get_logger("CheckModTime",
                                     log_queue,
                                     log_level="info")
@@ -223,7 +222,7 @@ class CheckModTime (threading.Thread):
         global event_list_to_observe
         global event_list_to_observe_tmp
 
-        while True:
+        while not self.stopper.is_set():
             try:
                 self.lock.acquire()
                 event_list_to_observe_copy = (
@@ -327,14 +326,15 @@ class CheckModTime (threading.Thread):
                                    p=filepath))
 
     def stop(self):
-        # close the pool and wait for the work to finish
-        self.pool_running = False
-        self.pool.close()
-        self.pool.join()
-        self.stopper.set()
-
-    def stopped(self):
-        return self.stopper.is_set()
+        if self.pool_running:
+            self.log.info("Stopping CheckModTime")
+            self.stopper.set()
+            self.pool_running = False
+        if self.pool is not None:
+            # close the pool and wait for the work to finish
+            self.pool.close()
+            self.pool.join()
+            self.pool = None
 
     def __exit__(self):
         self.stop()
@@ -388,19 +388,21 @@ class EventDetector(EventDetectorBase):
                     path,
                     recursive=True
                 )
-                observer.start()
-                self.log.info("Started observer for directory: {}"
-                              .format(path))
 
                 self.observer_threads.append(observer)
                 observer_id += 1
 
+                observer.start()
+                self.log.info("Started observer for directory: {}"
+                              .format(path))
+
+            self.checking_thread = None
             self.checking_thread = CheckModTime(
                 number_of_threads=4,
                 time_till_closed=self.time_till_closed,
                 mon_dir=self.mon_dir,
                 action_time=self.action_time,
-                lock=self.lock,
+               lock=self.lock,
                 log_queue=log_queue
             )
             self.checking_thread.start()
@@ -421,19 +423,29 @@ class EventDetector(EventDetectorBase):
 
     def stop(self):
         global event_message_list
+        global event_list_to_observe
+        global event_list_to_observe_tmp
 
-        self.log.info("Stopping observer Threads")
-        for observer in self.observer_threads:
-            observer.stop()
-            observer.join()
+        if self.observer_threads is not None:
+            self.log.info("Stopping observer threads")
+            for observer in self.observer_threads:
+                observer.stop()
+                observer.join()
+            self.observer_threads = None
 
         # close the pool and wait for the work to finish
-        self.checking_thread.stop()
-        self.checking_thread.join()
+        if self.checking_thread is not None:
+            self.log.info("Stopping checking thread")
+            self.checking_thread.stop()
+            self.checking_thread.join()
+            self.checking_thread = None
 
         # resetting event list
+        self.lock.acquire()
         event_message_list = []
-
+        event_list_to_observe = []
+        event_list_to_observe_tmp = []
+        self.lock.release()
 
     def __exit__(self):
         self.stop()

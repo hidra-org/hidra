@@ -19,10 +19,10 @@ DATAFETCHER_DIR = os.path.join(BASE_DIR, "src", "sender", "datafetchers")
 API_DIR = os.path.join(BASE_DIR, "src", "APIs")
 
 if SHARED_DIR not in sys.path:
-    sys.path.append(SHARED_DIR)
+    sys.path.insert(0, SHARED_DIR)
 
 if DATAFETCHER_DIR not in sys.path:
-    sys.path.append(DATAFETCHER_DIR)
+    sys.path.insert(0, DATAFETCHER_DIR)
 
 try:
     # search in global python modules first

@@ -38,8 +38,8 @@ class TestEventDetector(EventDetectorTestBase):
             # "event_timeout": 0.1,
             "history_size": 0,
             "use_cleanup": False,
-            "time_till_closed": 1,  # in s
-            "action_time": 2  # in s
+            "time_till_closed": 0.5,  # in s
+            "action_time": 1  # in s
         }
 
         self.start = 100
@@ -199,7 +199,7 @@ class TestEventDetector(EventDetectorTestBase):
     def tearDown(self):
         # to give the eventdetector time to get all events
         # this prevents the other tests to be affected by previour events
-        time.sleep(self.time_all_events_detected)
+#        time.sleep(self.time_all_events_detected)
         if self.eventdetector is not None:
             self.eventdetector.stop()
             self.eventdetector = None

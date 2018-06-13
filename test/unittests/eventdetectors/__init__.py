@@ -19,10 +19,10 @@ EVENT_DETECTOR_DIR = os.path.join(BASE_DIR, "src", "sender", "eventdetectors")
 API_DIR = os.path.join(BASE_DIR, "src", "APIs")
 
 if SHARED_DIR not in sys.path:
-    sys.path.append(SHARED_DIR)
+    sys.path.insert(0, SHARED_DIR)
 
 if EVENT_DETECTOR_DIR not in sys.path:
-    sys.path.append(EVENT_DETECTOR_DIR)
+    sys.path.insert(0, EVENT_DETECTOR_DIR)
 
 # TODO hack to work around already installed hidra
 if API_DIR not in sys.path:

@@ -182,6 +182,11 @@ class CheckJobs(threading.Thread):
 
         self.run_loop = False
 
+        self.lock.acquire()
+        new_jobs = []
+        old_confirmations = []
+        self.lock.release()
+
     def __exit__(self):
         self.stop()
 
@@ -278,6 +283,8 @@ class CleanerBase(ABC):
         self.new_jobs = []
         self.new_confirms = []
 
+        self.continue_run = True
+
         if context:
             self.context = context
             self.ext_context = True
@@ -358,7 +365,7 @@ class CleanerBase(ABC):
         self.job_checking_thread.start()
 #        self.conf_checking_thread.start()
 
-        while True:
+        while self.continue_run:
             # intersect
             # removable_elements = new_jobs & new_confirmations
             # self.log.debug("removable_elements={}"
@@ -492,8 +499,14 @@ class CleanerBase(ABC):
             self.context.destroy(0)
             self.context = None
 
+        self.lock.acquire()
+        new_jobs = []
+        old_confirmations = []
+        self.lock.release()
+
 #        self.conf_checking_thread.stop()
 #        self.conf_checking_thread.join()
+
 
     def __exit__(self):
         self.stop()

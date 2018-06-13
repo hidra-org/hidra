@@ -31,19 +31,16 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
         create_dir(self.ipc_path)
-#        if not os.path.exists(self.ipc_path):
-#            os.mkdir(ipc_path)
-#            os.chmod(self.ipc_path, 0o777)
-#            self.log.info("Creating directory for IPC communication: {}"
-#                          .format(self.ipc_path))
 
         self._event_det_con_str = "ipc://{}/{}_{}".format(self.ipc_path,
                                                           self.main_pid,
                                                           "eventDet")
-        self.log.debug("self.event_det_con_str", self._event_det_con_str)
+        self.log.debug("self.event_det_con_str {}".format(self._event_det_con_str))
+
+        self.context = zmq.Context.instance()
 
         self.config = {
-            "context": None,
+            "context": self.context,
             "ext_ip": "0.0.0.0",
             "ipc_path": self.ipc_path,
             "main_pid": self.main_pid,
@@ -64,8 +61,6 @@ class TestEventDetector(EventDetectorTestBase):
         """Simulate incoming data and check if received events are correct.
         """
 
-        context = zmq.Context.instance()
-
         in_con_str = "tcp://{}:{}".format(self.config["ext_ip"],
                                           self.config["ext_data_port"])
         out_con_str = "ipc://{}/{}_{}".format(self.ipc_path,
@@ -77,13 +72,13 @@ class TestEventDetector(EventDetectorTestBase):
 
         if local_in:
             # create zmq socket to send events
-            data_in_socket = context.socket(zmq.PUSH)
+            data_in_socket = self.context.socket(zmq.PUSH)
             data_in_socket.connect(in_con_str)
             self.log.info("Start data_in_socket (connect): '{}'"
                           .format(in_con_str))
 
         if local_out:
-            data_out_socket = context.socket(zmq.PULL)
+            data_out_socket = self.context.socket(zmq.PULL)
             data_out_socket.connect(out_con_str)
             self.log.info("Start data_out_socket (connect): '{}'"
                           .format(out_con_str))
@@ -125,5 +120,6 @@ class TestEventDetector(EventDetectorTestBase):
 
     def tearDown(self):
         self.eventdetector.stop()
+        self.context.destroy(0)
 
         super(TestEventDetector, self).tearDown()

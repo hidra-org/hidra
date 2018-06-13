@@ -87,28 +87,39 @@ def get_suite():
         A unittest TestSuite instance containing all unittests to be performed.
     """
 
-    # get the subsuites
     all_suites = []
-    all_suites += get_eventdetector_suites()
-    all_suites += get_datafetcher_suites()
 
     # for testing
-#    from eventdetectors.test_inotifyx_events import TestEventDetector
-#    from eventdetectors.test_watchdog_events import TestEventDetector
-#    from eventdetectors.test_http_events import TestEventDetector
-#    from eventdetectors.test_zmq_events import TestEventDetector
-#    from eventdetectors.test_hidra_events import TestEventDetector
-
-#    from datafetchers.test_cleanerbase import TestDataFetcher
-#    from datafetchers.test_file_fetcher import TestDataFetcher
-#    from datafetchers.test_http_fetcher import TestDataFetcher
-#    from datafetchers.test_zmq_fetcher import TestDataFetcher
-#    from datafetchers.test_hidra_fetcher import TestDataFetcher
-
-#    all_suites = [
-#        unittest.TestLoader().loadTestsFromTestCase(TestEventDetector)
-#        unittest.TestLoader().loadTestsFromTestCase(TestDataFetcher)
+#    from eventdetectors.test_inotifyx_events import TestEventDetector as TestInotifyxEvents
+#    from eventdetectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents
+#    from eventdetectors.test_http_events import TestEventDetector as TestHttpEvents
+#    from eventdetectors.test_zmq_events import TestEventDetector as TestZmqEvents
+#    from eventdetectors.test_hidra_events import TestEventDetector as TestHidraEvents
+#
+#    from datafetchers.test_cleanerbase import TestDataFetcher as TestCleanerbase
+#    from datafetchers.test_file_fetcher import TestDataFetcher as TestFileFetcher
+#    from datafetchers.test_http_fetcher import TestDataFetcher as TestHttpFetcher
+#    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher
+#    from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher
+#
+#    all_suites += [
+#        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),
+#        unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),
+#        unittest.TestLoader().loadTestsFromTestCase(TestHttpEvents),
+#        unittest.TestLoader().loadTestsFromTestCase(TestZmqEvents),
+#        unittest.TestLoader().loadTestsFromTestCase(TestHidraEvents),
+#
+#        unittest.TestLoader().loadTestsFromTestCase(TestCleanerbase),
+#        unittest.TestLoader().loadTestsFromTestCase(TestFileFetcher),
+#        unittest.TestLoader().loadTestsFromTestCase(TestZmqFetcher),
+#        unittest.TestLoader().loadTestsFromTestCase(TestHidraFetcher),
 #    ]
+
+    # get the subsuites
+    # BUG: if the event detectors are tested before the datafetchers the
+    # program does not stop
+    all_suites += get_datafetcher_suites()
+    all_suites += get_eventdetector_suites()
 
     # combine all subsuites to one big one
     suite = unittest.TestSuite(all_suites)

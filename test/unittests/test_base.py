@@ -56,6 +56,9 @@ class TestBase(unittest.TestCase):
 
         self._init_logging(loglevel=LOGLEVEL)
 
+#        main_pid = os.getpid()
+#        self.log.debug("{} pid {}".format(self.__class__.__name__, main_pid))
+
     def _init_logging(self, loglevel="debug"):
         """Initialize log listener and log queue.
 

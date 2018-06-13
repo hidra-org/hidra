@@ -72,7 +72,7 @@ class TestDataFetcher(DataFetcherTestBase):
             cleaner_trigger_con_str=con_strs.cleaner_trigger_con,
             conf_con_str=con_strs.confirm_con,
             control_con_str=con_strs.control_con,
-            context=self.context
+            context=self.context,
         )
         cleaner_pr = Process(target=Cleaner, kwargs=kwargs)
         cleaner_pr.start()
@@ -117,6 +117,7 @@ class TestDataFetcher(DataFetcherTestBase):
             pass
         finally:
             time.sleep(1)
+
             cleaner_pr.terminate()
 
     def tearDown(self):

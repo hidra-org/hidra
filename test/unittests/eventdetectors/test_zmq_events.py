@@ -35,8 +35,10 @@ class TestEventDetector(EventDetectorTestBase):
                                                           "eventDet")
         self.log.debug("self.event_det_con_str {}".format(self._event_det_con_str))
 
+        self.context = zmq.Context.instance()
+
         self.config = {
-            "context": None,
+            "context": self.context,
             "number_of_streams": 1,
             "ext_ip": "0.0.0.0",
             "event_det_port": 50003,
@@ -58,10 +60,8 @@ class TestEventDetector(EventDetectorTestBase):
         """Simulate incoming data and check if received events are correct.
         """
 
-        context = zmq.Context.instance()
-
         # create zmq socket to send events
-        event_socket = context.socket(zmq.PUSH)
+        event_socket = self.context.socket(zmq.PUSH)
         event_socket.connect(self._event_det_con_str)
         self.log.info("Start event_socket (connect): '{}'"
                       .format(self._event_det_con_str))
@@ -102,5 +102,6 @@ class TestEventDetector(EventDetectorTestBase):
 
     def tearDown(self):
         self.eventdetector.stop()
+        self.context.destroy(0)
 
         super(TestEventDetector, self).tearDown()
