@@ -29,6 +29,7 @@ event_message_list = []
 event_list_to_observe = []
 event_list_to_observe_tmp = []
 
+
 # documentation of watchdog: https://pythonhosted.org/watchdog/api.html
 class WatchdogEventHandler(RegexMatchingEventHandler):
     def __init__(self, id, config, log_queue):
@@ -402,7 +403,7 @@ class EventDetector(EventDetectorBase):
                 time_till_closed=self.time_till_closed,
                 mon_dir=self.mon_dir,
                 action_time=self.action_time,
-               lock=self.lock,
+                lock=self.lock,
                 log_queue=log_queue
             )
             self.checking_thread.start()

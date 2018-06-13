@@ -103,9 +103,10 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
     )
 
 
-# cannot be defined in "if __name__ == '__main__'" because then it is unbound
-# see https://docs.python.org/2/library/multiprocessing.html#windows
-class RequestResponder():
+class RequestResponder(object):
+    """A signal handler simulator to answer requests.
+    """
+
     def __init__(self, config, log_queue, context=None):
         self.config = config
 
@@ -123,6 +124,9 @@ class RequestResponder():
         self.run()
 
     def run(self):
+        """Answer to all incoming requests.
+        """
+
         hostname = socket.getfqdn()
         self.log.info("Start run")
 
@@ -139,9 +143,15 @@ class RequestResponder():
             self.request_fw_socket.send(message)
             self.log.debug("Answer: {}".format(open_requests))
 
-    def __exit__(self):
+    def stop(self):
+        """Clean up.
+        """
+
         self.request_fw_socket.close(0)
         self.context.destroy()
+
+    def __exit__(self):
+        self.stop()
 
 
 class TestTaskProvider(TestBase):
@@ -215,9 +225,9 @@ class TestTaskProvider(TestBase):
         taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
         taskprovider_pr.start()
 
-        requestResponderPr = Process(target=RequestResponder,
-                                     args=(self.config, self.log_queue))
-        requestResponderPr.start()
+        request_responder_pr = Process(target=RequestResponder,
+                                       args=(self.config, self.log_queue))
+        request_responder_pr.start()
 
         context = zmq.Context.instance()
 
@@ -251,12 +261,12 @@ class TestTaskProvider(TestBase):
             pass
         finally:
 
-            requestResponderPr.terminate()
+            request_responder_pr.terminate()
             taskprovider_pr.terminate()
 
             router_socket.close(0)
 
-            for number in range(100, i):
+            for number in range(self.start, self.stop):
                 target_file = os.path.join(target_file_base,
                                            "{}.cbf".format(number))
                 self.log.debug("remove {}".format(target_file))

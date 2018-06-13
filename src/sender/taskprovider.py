@@ -1,15 +1,14 @@
+from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
-import socket
 import zmq
 import os
-import logging
 import json
 import signal
 import errno
 
-from __init__ import BASE_PATH
-from logutils.queue import QueueHandler
+import __init__ as init  # noqa F401
 import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -27,7 +26,6 @@ class TaskProvider():
                  router_bind_str,
                  log_queue,
                  context=None):
-        global BASE_PATH
 
         self.log = utils.get_logger("TaskProvider", log_queue)
 

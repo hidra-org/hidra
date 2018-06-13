@@ -1,9 +1,7 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import zmq
 import os
-import logging
 import json
 import requests
 import time

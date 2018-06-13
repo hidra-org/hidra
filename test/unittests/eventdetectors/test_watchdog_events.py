@@ -197,9 +197,6 @@ class TestEventDetector(EventDetectorTestBase):
 #                print(hp.heap())
 
     def tearDown(self):
-        # to give the eventdetector time to get all events
-        # this prevents the other tests to be affected by previour events
-#        time.sleep(self.time_all_events_detected)
         if self.eventdetector is not None:
             self.eventdetector.stop()
             self.eventdetector = None

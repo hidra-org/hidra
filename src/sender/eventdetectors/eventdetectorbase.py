@@ -1,4 +1,6 @@
+from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
 import sys
 import abc
@@ -17,7 +19,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 class EventDetectorBase():
 
-    def __init__(self, config, log_queue, logger_name):
+    def __init__(self, config, log_queue, logger_name):  # noqa F811
         """Initial setup
 
         Checks if all required parameters are set in the configuration

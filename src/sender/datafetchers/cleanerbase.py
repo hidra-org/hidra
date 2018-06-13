@@ -5,12 +5,11 @@ from __future__ import absolute_import
 import zmq
 import threading
 import utils
-import os
 import sys
 import time
 import abc
 
-import __init__
+import __init__  as init # noqa F401  # rename it to remove F811
 
 # source:
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
@@ -164,6 +163,9 @@ class CheckJobs(threading.Thread):
                                    .format(message))
 
     def stop(self):
+        global new_jobs
+        global old_confirmations
+
         if self.job_socket is not None:
             self.job_socket.close(0)
             self.job_socket = None
@@ -471,6 +473,9 @@ class CleanerBase(ABC):
         pass
 
     def stop(self):
+        global new_jobs
+        global old_confirmations
+
         if self.job_checking_thread is not None:
             # give control signal time to arrive
             time.sleep(0.1)
@@ -499,14 +504,13 @@ class CleanerBase(ABC):
             self.context.destroy(0)
             self.context = None
 
+#        self.conf_checking_thread.stop()
+#        self.conf_checking_thread.join()
+
         self.lock.acquire()
         new_jobs = []
         old_confirmations = []
         self.lock.release()
-
-#        self.conf_checking_thread.stop()
-#        self.conf_checking_thread.join()
-
 
     def __exit__(self):
         self.stop()

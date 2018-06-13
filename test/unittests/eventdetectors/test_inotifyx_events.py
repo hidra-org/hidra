@@ -123,7 +123,8 @@ class TestEventDetector(EventDetectorTestBase):
         steps = 10
 
         memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        self.log.info("Memory usage at start: {} (kb)".format(memory_usage_old))
+        self.log.info("Memory usage at start: {} (kb)"
+                      .format(memory_usage_old))
 
 #        hp = hpy()
 #        hp.setrelheap()

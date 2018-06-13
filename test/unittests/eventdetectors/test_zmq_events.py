@@ -33,7 +33,8 @@ class TestEventDetector(EventDetectorTestBase):
         self._event_det_con_str = "ipc://{}/{}_{}".format(ipc_path,
                                                           main_pid,
                                                           "eventDet")
-        self.log.debug("self.event_det_con_str {}".format(self._event_det_con_str))
+        self.log.debug("self.event_det_con_str {}"
+                       .format(self._event_det_con_str))
 
         self.context = zmq.Context.instance()
 

@@ -185,7 +185,7 @@ def check_dir_empty(dir_path):
     if os.listdir(dir_path):
         msg = "Directory '{}' is not empty.".format(dir_path)
         logging.debug(msg)
-        prompt = msg +  "\nShould its content be removed?"
+        prompt = msg + "\nShould its content be removed?"
         if confirm(prompt=prompt, resp=True):
             for element in os.listdir(dir_path):
                 path = os.path.join(dir_path, element)
@@ -587,6 +587,7 @@ def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
 
     return handler
 
+
 def get_file_log_handler(logfile,
                          logsize,
                          loglevel="debug",
@@ -723,13 +724,13 @@ def get_logger(logger_name, queue=False, log_level="debug"):
     return logger
 
 
-def init_logging(filename_full_path, verbose, onscreen_log_level=False):
+def init_logging(filename_full_path, verbose, onscreen_loglevel=False):
     # see https://docs.python.org/2/howto/logging-cookbook.html
 
     # more detailed logging if verbose-option has been set
     file_loglevel = logging.INFO
     if verbose:
-        file_log_level = logging.DEBUG
+        file_loglevel = logging.DEBUG
     screen_loglevel = onscreen_loglevel.lower()
 
     # Set format
@@ -748,13 +749,13 @@ def init_logging(filename_full_path, verbose, onscreen_log_level=False):
     # log everything to file
     logging.basicConfig(level=file_loglevel,
                         format=filefmt,
-                        datefmt=datafmt,
+                        datefmt=datefmt,
                         filename=filename_full_path,
                         filemode="a")
 
 #        file_handler = logging.FileHandler(filename=filename_full_path,
 #                                           mode="a")
-#        file_handler_format = logging.Formatter(datefmt=dataf,
+#        file_handler_format = logging.Formatter(datefmt=datefmt,
 #                                                fmt=filefmt)
 #        file_handler.setFormatter(file_handler_format)
 #        file_handler.setLevel(file_log_level)

@@ -5,14 +5,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import logging
-import os
-import unittest
-from multiprocessing import Queue
-from logutils.queue import QueueHandler
-
-import utils
-from test_base import TestBase, create_dir
+from test_base import TestBase, create_dir  # noqa F401  # pylint: disable=unused-import
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

@@ -95,7 +95,8 @@ def get_testing_suites():
     from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
     from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
 
-    from core.test_taskprovider import TestTaskProvider
+    from core.test_taskprovider import TestTaskProvider  # noqa F401
+    from core.test_datadispatcher import TestDataDispatcher  # noqa F401
 
     all_suites = [
 #        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
@@ -115,7 +116,8 @@ def get_testing_suites():
 #        unittest.TestLoader().loadTestsFromTestCase(TestZmqEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestHidraEvents),  # noqa E122
 
-        unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
     ]
 
     return all_suites

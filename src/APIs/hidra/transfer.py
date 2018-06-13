@@ -692,7 +692,7 @@ class Transfer():
             # mechanism
             self.request_socket = self.context.socket(zmq.PUSH)
             con_str = "tcp://{}:{}".format(self.signal_host,
-                                             self.request_port)
+                                           self.request_port)
             try:
                 self.request_socket.connect(con_str)
                 self.log.info("Request socket started (connect) for '{}'"

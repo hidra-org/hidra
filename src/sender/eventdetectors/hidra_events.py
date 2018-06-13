@@ -1,9 +1,7 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
 import json
-import tempfile
 import zmq
 # from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
 from zmq.utils.strtypes import asbytes
