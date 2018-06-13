@@ -8,10 +8,6 @@ from __future__ import absolute_import
 import logging
 import os
 import unittest
-import socket
-import tempfile
-import zmq
-from collections import namedtuple
 from multiprocessing import Queue
 from logutils.queue import QueueHandler
 
@@ -19,7 +15,7 @@ import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-#LOGLEVEL = "error"
+# LOGLEVEL = "error"
 LOGLEVEL = "debug"
 
 

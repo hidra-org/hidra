@@ -20,8 +20,13 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 #
 
 class TaskProvider():
-    def __init__(self, config, control_con_id, request_fw_con_id,
-                 router_con_id, log_queue, context=None):
+    def __init__(self,
+                 config,
+                 control_con_str,
+                 request_fw_con_str,
+                 router_bind_str,
+                 log_queue,
+                 context=None):
         global BASE_PATH
 
         self.log = utils.get_logger("TaskProvider", log_queue)
@@ -36,9 +41,9 @@ class TaskProvider():
 
         self.config = config
 
-        self.control_con_id = control_con_id
-        self.request_fw_con_id = request_fw_con_id
-        self.router_con_id = router_con_id
+        self.control_con_str = control_con_str
+        self.request_fw_con_str = request_fw_con_str
+        self.router_bind_str = router_bind_str
 
         self.control_socket = None
         self.request_fw_socket = None
@@ -83,12 +88,12 @@ class TaskProvider():
         # socket to get control signals from
         try:
             self.control_socket = self.context.socket(zmq.SUB)
-            self.control_socket.connect(self.control_con_id)
+            self.control_socket.connect(self.control_con_str)
             self.log.info("Start control_socket (connect): '{}'"
-                          .format(self.control_con_id))
+                          .format(self.control_con_str))
         except:
             self.log.error("Failed to start control_socket (connect): '{}'"
-                           .format(self.control_con_id), exc_info=True)
+                           .format(self.control_con_str), exc_info=True)
             raise
 
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
@@ -96,23 +101,23 @@ class TaskProvider():
         # socket to get requests
         try:
             self.request_fw_socket = self.context.socket(zmq.REQ)
-            self.request_fw_socket.connect(self.request_fw_con_id)
+            self.request_fw_socket.connect(self.request_fw_con_str)
             self.log.info("Start request_fw_socket (connect): '{}'"
-                          .format(self.request_fw_con_id))
+                          .format(self.request_fw_con_str))
         except:
             self.log.error("Failed to start request_fw_socket (connect): '{}'"
-                           .format(self.request_fw_con_id), exc_info=True)
+                           .format(self.request_fw_con_str), exc_info=True)
             raise
 
         # socket to disribute the events to the worker
         try:
             self.router_socket = self.context.socket(zmq.PUSH)
-            self.router_socket.bind(self.router_con_id)
+            self.router_socket.bind(self.router_bind_str)
             self.log.info("Start to router socket (bind): '{}'"
-                          .format(self.router_con_id))
+                          .format(self.router_bind_str))
         except:
             self.log.error("Failed to start router Socket (bind): '{}'"
-                           .format(self.router_con_id), exc_info=True)
+                           .format(self.router_bind_str), exc_info=True)
             raise
 
         self.poller = zmq.Poller()
@@ -284,149 +289,4 @@ class TaskProvider():
     def __del__(self):
         self.stop()
 
-
-# cannot be defined in "if __name__ == '__main__'" because then it is unbound
-# see https://docs.python.org/2/library/multiprocessing.html#windows
-class RequestResponder():
-    def __init__(self, request_fw_port, log_queue, context=None):
-        # Send all logs to the main process
-        self.log = utils.get_logger("RequestResponder", log_queue)
-
-        self.context = context or zmq.Context.instance()
-        self.request_fw_socket = self.context.socket(zmq.REP)
-        connection_str = "tcp://127.0.0.1:{}".format(request_fw_port)
-        self.request_fw_socket.bind(connection_str)
-        self.log.info("[RequestResponder] request_fw_socket started (bind) "
-                      "for '{}'".format(connection_str))
-
-        self.run()
-
-    def run(self):
-        hostname = socket.getfqdn()
-        self.log.info("[RequestResponder] Start run")
-        open_requests = [['{}:6003'.format(hostname), 1, [".cbf"]],
-                         ['{}:6004'.format(hostname), 0, [".cbf"]]]
-        while True:
-            request = self.request_fw_socket.recv_multipart()
-            self.log.debug("[RequestResponder] Received request: {}"
-                           .format(request))
-
-            self.request_fw_socket.send(
-                json.dumps(open_requests).encode("utf-8"))
-            self.log.debug("[RequestResponder] Answer: {}"
-                           .format(open_requests))
-
-    def __exit__(self):
-        self.request_fw_socket.close(0)
-        self.context.destroy()
-
-
-if __name__ == '__main__':
-    from multiprocessing import Process, freeze_support, Queue
-    import time
-    from shutil import copyfile
-    import setproctitle
-
-    # see https://docs.python.org/2/library/multiprocessing.html#windows
-    freeze_support()
-
-    logfile = os.path.join(BASE_PATH, "logs", "taskprovider.log")
-    logsize = 10485760
-
-    config = {
-        "event_detector_type": "inotifyx_events",
-        "monitored_dir": os.path.join(BASE_PATH, "data", "source"),
-        "fix_subdirs": ["commissioning", "current", "local"],
-        "monitored_events": {"IN_CLOSE_WRITE": [".tif", ".cbf"],
-                             "IN_MOVED_TO": [".log"]},
-        "timeout": 0.1,
-        "history_size": 0,
-        "use_cleanup": False,
-        "time_till_closed": 5,
-        "action_time": 120
-    }
-
-    localhost = "127.0.0.1"
-
-    control_port = "50005"
-    request_fw_port = "6001"
-    router_port = "7000"
-
-    control_con_id = "tcp://{}:{}".format(localhost, control_port)
-    request_fw_con_id = "tcp://{}:{}".format(localhost, request_fw_port)
-    router_con_id = "tcp://{}:{}".format(localhost, router_port)
-
-    setproctitle.setproctitle("taskprovider")
-
-    log_queue = Queue(-1)
-
-    # Get the log Configuration for the lisener
-    h1, h2 = utils.get_log_handlers(logfile,
-                                    logsize,
-                                    verbose=True,
-                                    onscreen_loglevel="debug")
-
-    # Start queue listener using the stream handler above
-    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
-    log_queue_listener.start()
-
-    # Create log and set handler to queue handle
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)  # Log level = DEBUG
-    qh = QueueHandler(log_queue)
-    root.addHandler(qh)
-
-    taskprovider_pr = Process(
-        target=TaskProvider,
-        args=(config, control_con_id, request_fw_con_id, router_con_id,
-              log_queue))
-    taskprovider_pr.start()
-
-    requestResponderPr = Process(target=RequestResponder,
-                                 args=(request_fw_port, log_queue))
-    requestResponderPr.start()
-
-    context = zmq.Context.instance()
-
-    router_socket = context.socket(zmq.PULL)
-    connection_str = "tcp://localhost:{}".format(router_port)
-    router_socket.connect(connection_str)
-    logging.info("=== router_socket connected to {}".format(connection_str))
-
-    source_file = os.path.join(BASE_PATH, "test_file.cbf")
-    target_file_base = os.path.join(
-        BASE_PATH, "data", "source", "local", "raw") + os.sep
-    if not os.path.exists(target_file_base):
-        os.makedirs(target_file_base)
-
-#    time.sleep(5)
-    i = 100
-    try:
-        while i <= 105:
-            time.sleep(0.5)
-            target_file = "{}{}.cbf".format(target_file_base, i)
-            logging.debug("copy to {}".format(target_file))
-            copyfile(source_file, target_file)
-#            call(["cp", source_file, target_file])
-            i += 1
-
-            workload = router_socket.recv_multipart()
-            logging.info("=== next workload {}".format(workload))
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
-    finally:
-
-        requestResponderPr.terminate()
-        taskprovider_pr.terminate()
-
-        router_socket.close(0)
-        context.destroy()
-
-        for number in range(100, i):
-            target_file = "{}{}.cbf".format(target_file_base, number)
-            logging.debug("remove {}".format(target_file))
-            os.remove(target_file)
-
-        log_queue.put_nowait(None)
-        log_queue_listener.stop()
+# testing was moved into test/unittests/core/test_taskprovider.py

@@ -80,6 +80,47 @@ def get_datafetcher_suites():
     return all_suites
 
 
+def get_testing_suites():
+
+    # for testing
+    from eventdetectors.test_inotifyx_events import TestEventDetector as TestInotifyxEvents  # noqa F401
+    from eventdetectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents  # noqa F401
+    from eventdetectors.test_http_events import TestEventDetector as TestHttpEvents  # noqa F401
+    from eventdetectors.test_zmq_events import TestEventDetector as TestZmqEvents  # noqa F401
+    from eventdetectors.test_hidra_events import TestEventDetector as TestHidraEvents  # noqa F401
+
+    from datafetchers.test_cleanerbase import TestDataFetcher as TestCleanerbase  # noqa F401
+    from datafetchers.test_file_fetcher import TestDataFetcher as TestFileFetcher  # noqa F401
+    from datafetchers.test_http_fetcher import TestDataFetcher as TestHttpFetcher  # noqa F401
+    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
+    from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
+
+    from core.test_taskprovider import TestTaskProvider
+
+    all_suites = [
+#        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestHttpEvents),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestZmqEvents),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestHidraEvents),  # noqa E122
+
+#        unittest.TestLoader().loadTestsFromTestCase(TestCleanerbase),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestFileFetcher),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestZmqFetcher),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestHidraFetcher),  # noqa E122
+
+#        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestHttpEvents),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestZmqEvents),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestHidraEvents),  # noqa E122
+
+        unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
+    ]
+
+    return all_suites
+
+
 def get_suite():
     """Collect all tests to be performed as one suite.
 
@@ -89,37 +130,13 @@ def get_suite():
 
     all_suites = []
 
-    # for testing
-#    from eventdetectors.test_inotifyx_events import TestEventDetector as TestInotifyxEvents
-#    from eventdetectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents
-#    from eventdetectors.test_http_events import TestEventDetector as TestHttpEvents
-#    from eventdetectors.test_zmq_events import TestEventDetector as TestZmqEvents
-#    from eventdetectors.test_hidra_events import TestEventDetector as TestHidraEvents
-#
-#    from datafetchers.test_cleanerbase import TestDataFetcher as TestCleanerbase
-#    from datafetchers.test_file_fetcher import TestDataFetcher as TestFileFetcher
-#    from datafetchers.test_http_fetcher import TestDataFetcher as TestHttpFetcher
-#    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher
-#    from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher
-#
-#    all_suites += [
-#        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),
-#        unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),
-#        unittest.TestLoader().loadTestsFromTestCase(TestHttpEvents),
-#        unittest.TestLoader().loadTestsFromTestCase(TestZmqEvents),
-#        unittest.TestLoader().loadTestsFromTestCase(TestHidraEvents),
-#
-#        unittest.TestLoader().loadTestsFromTestCase(TestCleanerbase),
-#        unittest.TestLoader().loadTestsFromTestCase(TestFileFetcher),
-#        unittest.TestLoader().loadTestsFromTestCase(TestZmqFetcher),
-#        unittest.TestLoader().loadTestsFromTestCase(TestHidraFetcher),
-#    ]
-
     # get the subsuites
     # BUG: if the event detectors are tested before the datafetchers the
     # program does not stop
     all_suites += get_datafetcher_suites()
     all_suites += get_eventdetector_suites()
+
+#    all_suites += get_testing_suites()
 
     # combine all subsuites to one big one
     suite = unittest.TestSuite(all_suites)
