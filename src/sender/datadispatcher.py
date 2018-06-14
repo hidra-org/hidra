@@ -20,9 +20,16 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 #
 class DataDispatcher():
 
-    def __init__(self, id, control_con_str, router_con_str, chunksize,
-                 fixed_stream_id, config, log_queue,
-                 local_target=None, context=None):
+    def __init__(self,
+                 id,
+                 control_con_str,
+                 router_con_str,
+                 chunksize,
+                 fixed_stream_id,
+                 config,
+                 log_queue,
+                 local_target=None,
+                 context=None):
 
         self.id = id
         self.log = utils.get_logger("DataDispatcher-{}".format(self.id),
@@ -432,129 +439,4 @@ class DataDispatcher():
     def __del__(self):
         self.stop()
 
-
-if __name__ == '__main__':
-    from multiprocessing import freeze_support, Queue
-    from shutil import copyfile
-
-    # see https://docs.python.org/2/library/multiprocessing.html#windows
-    freeze_support()
-
-    logfile = os.path.join(BASE_PATH, "logs", "datadispatcher.log")
-    logsize = 10485760
-
-    log_queue = Queue(-1)
-
-    # Get the log Configuration for the lisener
-    h1, h2 = utils.get_log_handlers(logfile, logsize,
-                                    verbose=True,
-                                    onscreen_loglevel="debug")
-
-    # Start queue listener using the stream handler above
-    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
-    log_queue_listener.start()
-
-    # Create log and set handler to queue handle
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)  # Log level = DEBUG
-    qh = QueueHandler(log_queue)
-    root.addHandler(qh)
-
-    source_file = os.path.join(BASE_PATH, "test_file.cbf")
-    target_file = os.path.join(BASE_PATH, "data", "source", "local", "100.cbf")
-
-    copyfile(source_file, target_file)
-    time.sleep(0.5)
-
-    localhost = "127.0.0.1"
-    control_port = "50005"
-    router_port = "7000"
-
-    control_con_str = "tcp://{}:{}".format(localhost, control_port)
-    router_con_str = "tcp://{}:{}".format(localhost, router_port)
-
-    receiving_port = "6005"
-    receiving_port2 = "6006"
-
-    chunksize = 10485760  # = 1024*1024*10 = 10 MiB
-
-    local_target = os.path.join(BASE_PATH, "data", "target")
-    fixed_stream_id = False
-    fixed_stream_id = "localhost:6006"
-
-    config = {
-        "data_fetcher_type": "file_fetcher",
-        "fix_subdirs": ["commissioning", "current", "local"],
-        "store_data": False,
-        "remove_data": False,
-        "chunksize": chunksize,
-        "local_target": local_target
-    }
-
-    context = zmq.Context.instance()
-
-    datadispatcher_pr = Process(target=DataDispatcher,
-                                args=(1,
-                                      control_con_str,
-                                      router_con_str,
-                                      chunksize,
-                                      fixed_stream_id,
-                                      config,
-                                      log_queue,
-                                      local_target,
-                                      context))
-    datadispatcher_pr.start()
-
-    router_socket = context.socket(zmq.PUSH)
-    connection_str = "tcp://127.0.0.1:{}".format(router_port)
-    router_socket.bind(connection_str)
-    logging.info("=== router_socket connected to {}".format(connection_str))
-
-    receiving_socket = context.socket(zmq.PULL)
-    connection_str = "tcp://0.0.0.0:{}".format(receiving_port)
-    receiving_socket.bind(connection_str)
-    logging.info("=== receiving_socket connected to {}"
-                 .format(connection_str))
-
-    receiving_socket2 = context.socket(zmq.PULL)
-    connection_str = "tcp://0.0.0.0:{}".format(receiving_port2)
-    receiving_socket2.bind(connection_str)
-    logging.info("=== receiving_socket2 connected to {}"
-                 .format(connection_str))
-
-    metadata = {
-        "source_path": os.path.join(BASE_PATH, "data", "source"),
-        "relative_path": "local",
-        "filename": "100.cbf"
-    }
-    targets = [['localhost:6005', 1, [".cbf"], "data"],
-               ['localhost:6006', 0, [".cbf"], "data"]]
-
-    message = [json.dumps(metadata).encode("utf-8"),
-               json.dumps(targets).encode("utf-8")]
-#    message = [json.dumps(metadata).encode("utf-8")]
-
-    time.sleep(1)
-
-    router_socket.send_multipart(message)
-    logging.info("=== send message")
-
-    try:
-        recv_message = receiving_socket.recv_multipart()
-        logging.info("=== received: {}"
-                     .format(json.loads(recv_message[0].decode("utf-8"))))
-        recv_message = receiving_socket2.recv_multipart()
-        logging.info("=== received 2: {}"
-                     .format(json.loads(recv_message[0].decode("utf-8"))))
-    except KeyboardInterrupt:
-        pass
-    finally:
-        datadispatcher_pr.terminate()
-
-        router_socket.close(0)
-        receiving_socket.close(0)
-        receiving_socket2.close(0)
-        context.destroy()
-
-        log_queue.put_nowait(None)
-        log_queue_listener.stop()
+# testing was moved into test/unittests/core/test_datadispatcher.py
