@@ -57,8 +57,11 @@ class DataFetcherBase(ABC):
                                                           self.log)
 
         if check_passed:
+            formated_config = str(json.dumps(config_reduced,
+                                             sort_keys=True,
+                                             indent=4))
             self.log.info("Configuration for data fetcher: {}"
-                          .format(config_reduced))
+                          .format(formated_config))
 
             if self.config["remove_data"] == "with_confirmation":
                 # create socket

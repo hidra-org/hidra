@@ -321,7 +321,7 @@ def argument_parsing():
 
 
 class DataManager():
-    def __init__(self, log_queue=None):
+    def __init__(self, log_queue=None, config=None):
         self.device = None
         self.control_pub_socket = None
         self.test_socket = None
@@ -337,13 +337,16 @@ class DataManager():
         self.reestablish_time = 600  # in sec
 
         try:
-            self.params = argument_parsing()
+            if config is None:
+                self.params = argument_parsing()
+            else:
+                self.params = config
         except:
             self.log = logging
             self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
             raise
 
-        if log_queue:
+        if log_queue is not None:
             self.log_queue = log_queue
             self.ext_log_queue = True
         else:
@@ -1096,171 +1099,14 @@ class DataManager():
         self.stop()
 
 
-# cannot be defined in "if __name__ == '__main__'" because then it is unbound
-# see https://docs.python.org/2/library/multiprocessing.html#windows
-class TestReceiverStream():
-    def __init__(self, com_port, fixed_recv_port, receiving_port,
-                 receiving_port2, log_queue):
-
-        self.log = utils.get_logger("TestReceiverStream", log_queue)
-
-        context = zmq.Context.instance()
-
-        self.com_socket = context.socket(zmq.REQ)
-        connection_str = "tcp://localhost:{}".format(com_port)
-        self.com_socket.connect(connection_str)
-        self.log.info("=== com_socket connected to {}".format(connection_str))
-
-        self.fixedRecvSocket = context.socket(zmq.PULL)
-        connection_str = "tcp://0.0.0.0:{}".format(fixed_recv_port)
-        self.fixedRecvSocket.bind(connection_str)
-        self.log.info("=== fixedRecvSocket connected to {}"
-                      .format(connection_str))
-
-        self.receiving_socket = context.socket(zmq.PULL)
-        connection_str = "tcp://0.0.0.0:{}".format(receiving_port)
-        self.receiving_socket.bind(connection_str)
-        self.log.info("=== receiving_socket connected to {}"
-                      .format(connection_str))
-
-        self.receiving_socket2 = context.socket(zmq.PULL)
-        connection_str = "tcp://0.0.0.0:{}".format(receiving_port2)
-        self.receiving_socket2.bind(connection_str)
-        self.log.info("=== receiving_socket2 connected to {}"
-                      .format(connection_str))
-
-        self.send_signal("START_STREAM", receiving_port, 1)
-        self.send_signal("START_STREAM", receiving_port2, 0)
-
-        self.run()
-
-    def send_signal(self, signal, ports, prio=None):
-        self.log.info("=== send_signal : {}, {}".format(signal, ports))
-        send_message = [__version__, signal]
-        targets = []
-        if type(ports) == list:
-            for port in ports:
-                targets.append(["localhost:{}".format(port), prio])
-        else:
-            targets.append(["localhost:{}".format(ports), prio])
-
-        targets = json.dumps(targets).encode("utf-8")
-        send_message.append(targets)
-        self.com_socket.send_multipart(send_message)
-        received_message = self.com_socket.recv()
-        self.log.info("=== Responce : {}".format(received_message))
-
-    def run(self):
-        try:
-            while True:
-                recv_message = self.fixedRecvSocket.recv_multipart()
-                self.log.info("=== received fixed: {}"
-                              .format(json.loads(recv_message[0])))
-                recv_message = self.receiving_socket.recv_multipart()
-                self.log.info("=== received: {}"
-                              .format(json.loads(recv_message[0])))
-                recv_message = self.receiving_socket2.recv_multipart()
-                self.log.info("=== received 2: {}"
-                              .format(json.loads(recv_message[0])))
-        except KeyboardInterrupt:
-            pass
-
-    def __exit__(self):
-        self.receiving_socket.close(0)
-        self.receiving_socket2.close(0)
-        self.context.destroy()
-
 
 if __name__ == '__main__':
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     freeze_support()
 
-    test = False
-
-    if test:
-        from shutil import copyfile
-
-        logfile = os.path.join(BASE_PATH, "logs", "datamanager_test.log")
-        logsize = 10485760
-
-        log_queue = Queue(-1)
-
-        # Get the log Configuration for the lisener
-        h1, h2 = utils.get_log_handlers(logfile,
-                                        logsize,
-                                        verbose=True,
-                                        onscreen_loglevel="debug")
-
-        # Start queue listener using the stream handler above
-        log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
-        log_queue_listener.start()
-
-        # Create log and set handler to queue handle
-        root = logging.getLogger()
-        root.setLevel(logging.DEBUG)  # Log level = DEBUG
-        qh = QueueHandler(log_queue)
-        root.addHandler(qh)
-
-        com_port = "50000"
-        fixed_recv_port = "50100"
-        receiving_port = "50101"
-        receiving_port2 = "50102"
-
-        testPr = Process(target=TestReceiverStream,
-                         args=(com_port,
-                               fixed_recv_port,
-                               receiving_port,
-                               receiving_port2,
-                               log_queue))
-        testPr.start()
-        logging.debug("test receiver started")
-
-        source_file = os.path.join(BASE_PATH, "test_file.cbf")
-        target_file_base = os.path.join(BASE_PATH,
-                                        "data",
-                                        "source",
-                                        "local",
-                                        "raw") + os.sep
-
-        try:
-            sender = DataManager(log_queue)
-        except:
-            sender = None
-
-        if sender:
-            time.sleep(0.5)
-            i = 100
-            try:
-                while i <= 105:
-                    target_file = "{}{}.cbf".format(target_file_base, i)
-                    logging.debug("copy to {}".format(target_file))
-                    copyfile(source_file, target_file)
-                    i += 1
-
-                    time.sleep(1)
-            except Exception as e:
-                logging.error("Exception detected: {}".format(e),
-                              exc_info=True)
-            finally:
-                time.sleep(3)
-                testPr.terminate()
-
-                for number in range(100, i):
-                    target_file = "{}{}.cbf".format(target_file_base, number)
-                    try:
-                        os.remove(target_file)
-                        logging.debug("remove {}".format(target_file))
-                    except:
-                        pass
-
-                sender.stop()
-                log_queue.put_nowait(None)
-                log_queue_listener.stop()
-
-    else:
-        sender = None
-        try:
-            sender = DataManager()
-        finally:
-            if sender is not None:
-                sender.stop()
+    sender = None
+    try:
+        sender = DataManager()
+    finally:
+        if sender is not None:
+            sender.stop()

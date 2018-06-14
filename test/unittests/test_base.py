@@ -57,7 +57,9 @@ ConStr = namedtuple(
         "cleaner_trigger_bind",
         "cleaner_trigger_con",
         "confirm_bind",
-        "confirm_con"
+        "confirm_con",
+        "com_bind",
+        "com_con",
     ]
 )
 
@@ -92,6 +94,8 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
             cleaner_trigger_con
             confirm_bind
             confirm_con
+            com_bind
+            com_con
     """
 
     # determine socket connection strings
@@ -136,8 +140,11 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
         trigger_bind_str = "ipc://{}_{}".format(ipc_ip, "cleaner_trigger")
         trigger_con_str = trigger_bind_str
 
-    confirm_con_str = "tcp://{}:{}".format(con_ip, ports["confirmation"])
     confirm_bind_str = "tcp://{}:{}".format(ext_ip, ports["confirmation"])
+    confirm_con_str = "tcp://{}:{}".format(con_ip, ports["confirmation"])
+
+    com_bind_str = "tcp://{}:{}".format(ext_ip, ports["com"])
+    com_con_str = "tcp://{}:{}".format(con_ip, ports["com"])
 
     return ConStr(
         control_pub_bind=control_pub_bind_str,
@@ -153,7 +160,9 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
         cleaner_trigger_bind=trigger_bind_str,
         cleaner_trigger_con=trigger_con_str,
         confirm_bind=confirm_bind_str,
-        confirm_con=confirm_con_str
+        confirm_con=confirm_con_str,
+        com_bind=com_bind_str,
+        com_con=com_con_str
     )
 
 
@@ -181,6 +190,7 @@ class TestBase(unittest.TestCase):
             "cleaner": 50051,
             "cleaner_trigger": 50052,
             "confirmation": 50053,
+            "com": 50000,
         }
 
         con_strs = set_con_strs(ext_ip=self.ext_ip,
