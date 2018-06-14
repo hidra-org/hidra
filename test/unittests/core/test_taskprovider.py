@@ -96,7 +96,7 @@ class TestTaskProvider(TestBase):
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
 
-        self.task_provider_config = {
+        self.taskprovider_config = {
             "event_detector_type": "inotifyx_events",
             "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
@@ -120,8 +120,8 @@ class TestTaskProvider(TestBase):
 
         con_strs = self.config["con_strs"]
         kwargs = dict(
-            config=self.task_provider_config,
-            control_con_str=con_strs.control_con,
+            config=self.taskprovider_config,
+            control_con_str=con_strs.control_sub_con,
             request_fw_con_str=con_strs.request_fw_con,
             router_bind_str=con_strs.router_bind,
             log_queue=self.log_queue

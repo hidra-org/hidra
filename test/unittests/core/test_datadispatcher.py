@@ -48,7 +48,7 @@ class TestDataDispatcher(TestBase):
         self.local_target = os.path.join(BASE_DIR, "data", "target")
         self.chunksize = 10485760  # = 1024*1024*10 = 10 MiB
 
-        self.data_dispatcher_config = {
+        self.datadispatcher_config = {
             "data_fetcher_type": "file_fetcher",
             "fix_subdirs": ["commissioning", "current", "local"],
             "store_data": False,
@@ -64,9 +64,6 @@ class TestDataDispatcher(TestBase):
     def test_taskprovider(self):
         """Simulate incoming data and check if received events are correct.
         """
-
-        # see https://docs.python.org/2/library/multiprocessing.html#windows
-        freeze_support()
 
         source_file = os.path.join(BASE_DIR, "test_file.cbf")
         target_file = os.path.join(BASE_DIR,
@@ -84,11 +81,11 @@ class TestDataDispatcher(TestBase):
         con_strs = self.config["con_strs"]
         kwargs = dict(
             id=1,
-            control_con_str=con_strs.control_con,
+            control_con_str=con_strs.control_sub_con,
             router_con_str=con_strs.router_con,
             chunksize=self.chunksize,
             fixed_stream_id=fixed_stream_con_str,
-            config=self.data_dispatcher_config,
+            config=self.datadispatcher_config,
             log_queue=self.log_queue,
             local_target=self.local_target,
             context=self.context

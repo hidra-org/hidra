@@ -44,8 +44,10 @@ def create_dir(directory, chmod=None, log=logging):
 
 ConStr = namedtuple(
     "con_str", [
-        "control_bind",
-        "control_con",
+        "control_pub_bind",
+        "control_pub_con",
+        "control_sub_bind",
+        "control_sub_con",
         "request_fw_bind",
         "request_fw_con",
         "router_bind",
@@ -76,8 +78,10 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
               (only used on Windows).
     Returns:
         A namedtuple object ConStr with the entries:
-            control_bind
-            control_con
+            control_pub_bind
+            control_pub_con
+            control_sub_bind
+            control_sub_con
             request_fw_bind,
             request_fw_con,
             router_bind,
@@ -92,8 +96,11 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
 
     # determine socket connection strings
     if utils.is_windows():
-        control_bind_str = "tcp://{}:{}".format(ext_ip, ports["control"])
-        control_con_str = "tcp://{}:{}".format(con_ip, ports["control"])
+        control_pub_bind_str = "tcp://{}:{}".format(ext_ip, ports["control_pub"])
+        control_pub_con_str = "tcp://{}:{}".format(con_ip, ports["control_pub"])
+
+        control_sub_bind_str = "tcp://{}:{}".format(ext_ip, ports["control_sub"])
+        control_sub_con_str = "tcp://{}:{}".format(con_ip, ports["control_sub"])
 
         request_fw_bind_str = "tcp://{}:{}".format(ext_ip, ports["request_fw"])
         request_fw_con_str = "tcp://{}:{}".format(con_ip, ports["request_fw"])
@@ -111,13 +118,16 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
     else:
         ipc_ip = "{}/{}".format(ipc_dir, main_pid)
 
-        control_bind_str = "ipc://{}_{}".format(ipc_ip, "control")
-        control_con_str = control_bind_str
+        control_pub_bind_str = "ipc://{}_{}".format(ipc_ip, "control_pub")
+        control_pub_con_str = control_pub_bind_str
 
-        request_fw_bind_str = "ipc://{}:{}".format(ipc_ip, "request_fw")
+        control_sub_bind_str = "ipc://{}_{}".format(ipc_ip, "control_sub")
+        control_sub_con_str = control_sub_bind_str
+
+        request_fw_bind_str = "ipc://{}_{}".format(ipc_ip, "request_fw")
         request_fw_con_str = request_fw_bind_str
 
-        router_bind_str = "ipc://{}:{}".format(ipc_ip, "router")
+        router_bind_str = "ipc://{}_{}".format(ipc_ip, "router")
         router_con_str = router_bind_str
 
         job_bind_str = "ipc://{}_{}".format(ipc_ip, "cleaner")
@@ -126,12 +136,14 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
         trigger_bind_str = "ipc://{}_{}".format(ipc_ip, "cleaner_trigger")
         trigger_con_str = trigger_bind_str
 
-    confirm_con_str = "tcp://{}:{}".format(con_ip, ports["confirmation_port"])
-    confirm_bind_str = "tcp://{}:{}".format(ext_ip, ports["confirmation_port"])
+    confirm_con_str = "tcp://{}:{}".format(con_ip, ports["confirmation"])
+    confirm_bind_str = "tcp://{}:{}".format(ext_ip, ports["confirmation"])
 
     return ConStr(
-        control_bind=control_bind_str,
-        control_con=control_con_str,
+        control_pub_bind=control_pub_bind_str,
+        control_pub_con=control_pub_con_str,
+        control_sub_bind=control_sub_bind_str,
+        control_sub_con=control_sub_con_str,
         request_fw_bind=request_fw_bind_str,
         request_fw_con=request_fw_con_str,
         router_bind=router_bind_str,
@@ -162,12 +174,13 @@ class TestBase(unittest.TestCase):
         ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
 
         ports = {
-            "control": "50005",
-            "request_fw": "6001",
-            "router": "7000",
+            "control_pub": 50005,
+            "control_sub": 50006,
+            "request_fw": 6001,
+            "router": 7000,
             "cleaner": 50051,
             "cleaner_trigger": 50052,
-            "confirmation_port": 50053,
+            "confirmation": 50053,
         }
 
         con_strs = set_con_strs(ext_ip=self.ext_ip,

@@ -127,7 +127,7 @@ class TestDataFetcher(DataFetcherTestBase):
             job_bind_str=con_strs.cleaner_job_con,
             cleaner_trigger_con_str=con_strs.cleaner_trigger_con,
             conf_con_str=con_strs.confirm_con,
-            control_con_str=con_strs.control_con,
+            control_con_str=con_strs.control_sub_con,
             context=self.context
         )
         cleaner_pr = Process(target=Cleaner, kwargs=kwargs)
