@@ -11,6 +11,8 @@ import pkgutil
 
 import eventdetectors
 import datafetchers
+from core.test_taskprovider import TestTaskProvider
+from core.test_datadispatcher import TestDataDispatcher
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -80,6 +82,21 @@ def get_datafetcher_suites():
     return all_suites
 
 
+def get_core_suites():
+    """Collects all available hidra core tests
+
+    Returns:
+        An array containing all available core test suites.
+    """
+
+    all_suites = [
+        unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
+        unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
+    ]
+
+    return all_suites
+
+
 def get_testing_suites():
 
     # for testing
@@ -94,9 +111,6 @@ def get_testing_suites():
     from datafetchers.test_http_fetcher import TestDataFetcher as TestHttpFetcher  # noqa F401
     from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
     from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
-
-    from core.test_taskprovider import TestTaskProvider  # noqa F401
-    from core.test_datadispatcher import TestDataDispatcher  # noqa F401
 
     all_suites = [
 #        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
@@ -135,6 +149,7 @@ def get_suite():
     # get the subsuites
     # BUG: if the event detectors are tested before the datafetchers the
     # program does not stop
+    all_suites += get_core_suites()
     all_suites += get_datafetcher_suites()
     all_suites += get_eventdetector_suites()
 
