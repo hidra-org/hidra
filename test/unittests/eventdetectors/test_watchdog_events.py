@@ -27,7 +27,12 @@ class TestEventDetector(EventDetectorTestBase):
     def setUp(self):
         super(TestEventDetector, self).setUp()
 
-        self.config = {
+        # attributes inherited from parent class:
+        # self.config
+        # self.con_ip
+        # self.ext_ip
+
+        self.event_detector_config = {
             # TODO normpath to make insensitive to "/" at the end
             "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
@@ -57,13 +62,13 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.eventdetector = None
 
-        self.time_all_events_detected = (self.config["action_time"]
-                                         + self.config["time_till_closed"])
+        self.time_all_events_detected = (self.event_detector_config["action_time"]
+                                         + self.event_detector_config["time_till_closed"])
 
     def _start_eventdetector(self):
         """Sets up the event detector.
         """
-        self.eventdetector = EventDetector(self.config, self.log_queue)
+        self.eventdetector = EventDetector(self.event_detector_config, self.log_queue)
 
     def test_single_file(self):
         """Simulate single file creation.
@@ -126,8 +131,8 @@ class TestEventDetector(EventDetectorTestBase):
             }
             expected_result.append(expected_result_dict)
 
-        time.sleep(self.config["action_time"]
-                   + self.config["time_till_closed"])
+        time.sleep(self.event_detector_config["action_time"]
+                   + self.event_detector_config["time_till_closed"])
 
         # get all detected events
         event_list = self.eventdetector.get_new_event()

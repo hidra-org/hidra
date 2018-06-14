@@ -27,24 +27,27 @@ class TestEventDetector(EventDetectorTestBase):
     def setUp(self):
         super(TestEventDetector, self).setUp()
 
-        self.main_pid = os.getpid()
+        # attributes inherited from parent class:
+        # self.config
+        # self.con_ip
+        # self.ext_ip
 
-        self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
-        create_dir(self.ipc_path)
+        ipc_dir = self.config["ipc_dir"]
+        create_dir(directory=ipc_dir, chmod=0o777)
 
-        self._event_det_con_str = "ipc://{}/{}_{}".format(self.ipc_path,
-                                                          self.main_pid,
+        self._event_det_con_str = "ipc://{}/{}_{}".format(ipc_dir,
+                                                          self.config["main_pid"],
                                                           "eventDet")
         self.log.debug("self.event_det_con_str {}"
                        .format(self._event_det_con_str))
 
         self.context = zmq.Context.instance()
 
-        self.config = {
+        self.event_detector_config = {
             "context": self.context,
+            "ipc_path": ipc_dir,
+            "main_pid": self.config["main_pid"],
             "ext_ip": "0.0.0.0",
-            "ipc_path": self.ipc_path,
-            "main_pid": self.main_pid,
             "ext_data_port": "50100"
         }
 
@@ -56,16 +59,16 @@ class TestEventDetector(EventDetectorTestBase):
         self.target_path = os.path.join(target_base_path,
                                         target_relative_path)
 
-        self.eventdetector = EventDetector(self.config, self.log_queue)
+        self.eventdetector = EventDetector(self.event_detector_config, self.log_queue)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.
         """
 
-        in_con_str = "tcp://{}:{}".format(self.config["ext_ip"],
-                                          self.config["ext_data_port"])
-        out_con_str = "ipc://{}/{}_{}".format(self.ipc_path,
-                                              self.main_pid,
+        in_con_str = "tcp://{}:{}".format(self.event_detector_config["ext_ip"],
+                                          self.event_detector_config["ext_data_port"])
+        out_con_str = "ipc://{}/{}_{}".format(self.config["ipc_dir"],
+                                              self.config["main_pid"],
                                               "out")
 
         local_in = True

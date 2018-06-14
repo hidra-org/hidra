@@ -28,7 +28,12 @@ class TestEventDetector(EventDetectorTestBase):
     def setUp(self):
         super(TestEventDetector, self).setUp()
 
-        self.config = {
+        # attributes inherited from parent class:
+        # self.config
+        # self.con_ip
+        # self.ext_ip
+
+        self.event_detector_config = {
             "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
             "monitored_events": {
@@ -61,7 +66,7 @@ class TestEventDetector(EventDetectorTestBase):
         """Sets up the event detector.
         """
 
-        self.eventdetector = EventDetector(self.config, self.log_queue)
+        self.eventdetector = EventDetector(self.event_detector_config, self.log_queue)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.
@@ -111,12 +116,12 @@ class TestEventDetector(EventDetectorTestBase):
         create_dir(self.target_file_base)
         self._start_eventdetector()
 
-#        self.config["use_cleanup"] = True
-#        self.config["monitored_events"] = {
+#        self.event_detector_config["use_cleanup"] = True
+#        self.event_detector_config["monitored_events"] = {
 #            "Some_supid_event": [".tif", ".cbf", ".file"]
 #        }
-#        self.config["time_till_closed"] = 0.2
-#        self.config["action_time"] = 0.5
+#        self.event_detector_config["time_till_closed"] = 0.2
+#        self.event_detector_config["action_time"] = 0.5
 
         self.start = 100
         self.stop = 30000
@@ -160,7 +165,7 @@ class TestEventDetector(EventDetectorTestBase):
         except KeyboardInterrupt:
             pass
         finally:
-            if self.config["use_cleanup"]:
+            if self.event_detector_config["use_cleanup"]:
                 time.sleep(4)
                 event_list = self.eventdetector.get_new_event()
                 self.log.debug("len of event_list={}".format(len(event_list)))

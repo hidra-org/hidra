@@ -25,26 +25,29 @@ class TestEventDetector(EventDetectorTestBase):
     def setUp(self):
         super(TestEventDetector, self).setUp()
 
-        main_pid = os.getpid()
+        # attributes inherited from parent class:
+        # self.config
+        # self.con_ip
+        # self.ext_ip
 
-        ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
-        create_dir(ipc_path)
+        ipc_dir = self.config["ipc_dir"]
+        create_dir(directory=ipc_dir, chmod=0o777)
 
-        self._event_det_con_str = "ipc://{}/{}_{}".format(ipc_path,
-                                                          main_pid,
+        self._event_det_con_str = "ipc://{}/{}_{}".format(ipc_dir,
+                                                          self.config["main_pid"],
                                                           "eventDet")
         self.log.debug("self.event_det_con_str {}"
                        .format(self._event_det_con_str))
 
         self.context = zmq.Context.instance()
 
-        self.config = {
+        self.event_detector_config = {
             "context": self.context,
             "number_of_streams": 1,
             "ext_ip": "0.0.0.0",
             "event_det_port": 50003,
-            "ipc_path": ipc_path,
-            "main_pid": main_pid
+            "ipc_path": ipc_dir,
+            "main_pid": self.config["main_pid"]
         }
 
         self.start = 100
@@ -55,7 +58,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.target_path = os.path.join(target_base_path,
                                         target_relative_path)
 
-        self.eventdetector = EventDetector(self.config, self.log_queue)
+        self.eventdetector = EventDetector(self.event_detector_config, self.log_queue)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.

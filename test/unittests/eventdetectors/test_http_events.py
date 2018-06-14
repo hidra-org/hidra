@@ -20,23 +20,28 @@ class TestEventDetector(EventDetectorTestBase):
     def setUp(self):
         super(TestEventDetector, self).setUp()
 
+        # attributes inherited from parent class:
+        # self.config
+        # self.con_ip
+        # self.ext_ip
+
 #        detectorDevice   = "haspp10lab:10000/p10/eigerdectris/lab.01"
 #        detectorDevice   = "haspp06:10000/p06/eigerdectris/exp.01"
 #        filewriterDevice = "haspp10lab:10000/p10/eigerfilewriter/lab.01"
 #        filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
 #        det_ip          = "192.168.138.52"  # haspp11e1m
-        det_ip = "asap3-mon"
-        self.config = {
-            "det_ip": det_ip,
+
+        self.event_detector_config = {
+            "det_ip": "asap3-mon",
             "det_api_version": "1.6.0",
             "history_size": 1000,
-            "fix_subdirs": ["local"]
+            "fix_subdirs": ["local"],
         }
 
         self.target_base_path = "http://{}/data".format(
-            socket.gethostbyname(self.config["det_ip"]))
+            socket.gethostbyname(self.event_detector_config["det_ip"]))
 
-        self.eventdetector = EventDetector(self.config, self.log_queue)
+        self.eventdetector = EventDetector(self.event_detector_config, self.log_queue)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.
