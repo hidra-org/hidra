@@ -13,6 +13,7 @@ import eventdetectors
 import datafetchers
 from core.test_taskprovider import TestTaskProvider
 from core.test_datadispatcher import TestDataDispatcher
+from core.test_signalhandler import TestSignalHandler
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -92,6 +93,7 @@ def get_core_suites():
     all_suites = [
         unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
         unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
+        unittest.TestLoader().loadTestsFromTestCase(TestSignalHandler),  # noqa E122
     ]
 
     return all_suites
@@ -132,6 +134,7 @@ def get_testing_suites():
 
 #        unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestSignalHandler),  # noqa E122
     ]
 
     return all_suites
