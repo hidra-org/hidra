@@ -60,7 +60,7 @@ class TestDataFetcher(DataFetcherTestBase):
         # Set up receiver simulator
         receiving_socket = []
         for port in self.receiving_ports:
-            receiving_socket.append(self._set_up_socket(port))
+            receiving_socket.append(self.set_up_recv_socket(port))
 
         # Test file fetcher
         source_dir = os.path.join(BASE_DIR, "data", "source")
@@ -136,7 +136,7 @@ class TestDataFetcher(DataFetcherTestBase):
         # Set up receiver simulator
         receiving_socket = []
         for port in self.receiving_ports:
-            receiving_socket.append(self._set_up_socket(port))
+            receiving_socket.append(self.set_up_recv_socket(port))
 
         confirmation_socket = self.context.socket(zmq.PUB)
         confirmation_socket.bind(con_strs.confirm_bind)

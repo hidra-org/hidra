@@ -35,20 +35,6 @@ class DataFetcherTestBase(TestBase):
 
         self.context = zmq.Context.instance()
 
-    def _set_up_socket(self, port):
-        """Create pull socket and connect to port.
-
-        Args:
-            port: Port to connect to.
-        """
-
-        sckt = self.context.socket(zmq.PULL)
-        con_str = "tcp://{}:{}".format(self.ext_ip, port)
-        sckt.bind(con_str)
-        self.log.info("Start receiving socket (bind): {}".format(con_str))
-
-        return sckt
-
     def tearDown(self):
         super(DataFetcherTestBase, self).tearDown()
         self.context.destroy(0)

@@ -60,7 +60,7 @@ class TestDataFetcher(DataFetcherTestBase):
         # Set up receiver simulator
         receiving_socket = []
         for port in self.receiving_ports:
-            receiving_socket.append(self._set_up_socket(port))
+            receiving_socket.append(self.set_up_recv_socket(port))
 
         data_fetch_con_str = "ipc://{}/{}".format(self.config["ipc_dir"],
                                                   "dataFetch")

@@ -10,6 +10,7 @@ import os
 import socket
 import tempfile
 import unittest
+import zmq
 from collections import namedtuple
 from multiprocessing import Queue
 from logutils.queue import QueueHandler
@@ -209,6 +210,20 @@ class TestBase(unittest.TestCase):
         root.addHandler(qhandler)
 
         self.log = utils.get_logger("test_datafetcher", self.log_queue)
+
+    def set_up_recv_socket(self, port):
+        """Create pull socket and connect to port.
+
+        Args:
+            port: Port to connect to.
+        """
+
+        sckt = self.context.socket(zmq.PULL)
+        con_str = "tcp://{}:{}".format(self.ext_ip, port)
+        sckt.bind(con_str)
+        self.log.info("Start receiving socket (bind): {}".format(con_str))
+
+        return sckt
 
     def tearDown(self):
         if self.listener is not None:
