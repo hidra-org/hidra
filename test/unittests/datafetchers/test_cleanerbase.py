@@ -84,7 +84,7 @@ class TestDataFetcher(DataFetcherTestBase):
                       .format(self.config["con_strs"].cleaner_job_con))
 
         # Set up receiver simulator
-        confirmation_socket = self.context.socket(zmq.PUSH)
+        confirmation_socket = self.context.socket(zmq.PUB)
         confirmation_socket.bind(self.config["con_strs"].confirm_bind)
         self.log.info("Start confirmation_socket (bind): {}"
                       .format(self.config["con_strs"].confirm_bind))

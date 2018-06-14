@@ -138,7 +138,7 @@ class TestDataFetcher(DataFetcherTestBase):
         for port in self.receiving_ports:
             receiving_socket.append(self._set_up_socket(port))
 
-        confirmation_socket = self.context.socket(zmq.PUSH)
+        confirmation_socket = self.context.socket(zmq.PUB)
         confirmation_socket.bind(con_strs.confirm_bind)
         self.log.info("Start confirmation_socket (bind): {}"
                       .format(con_strs.confirm_bind))
