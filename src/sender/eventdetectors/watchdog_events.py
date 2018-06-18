@@ -225,10 +225,9 @@ class CheckModTime(threading.Thread):
 
         while not self.stopper.is_set():
             try:
-                self.lock.acquire()
-                event_list_to_observe_copy = (
-                    copy.deepcopy(event_list_to_observe))
-                self.lock.release()
+                with self.lock:
+                    event_list_to_observe_copy = (
+                        copy.deepcopy(event_list_to_observe))
 
                 # Open the urls in their own threads
 #                self.log.debug("List to observe: {}"
@@ -247,10 +246,10 @@ class CheckModTime(threading.Thread):
 #                self.log.debug("List to observe tmp: {}"
 #                               .format(event_list_to_observe_tmp))
 
-                self.lock.acquire()
                 for event in event_list_to_observe_tmp:
                     try:
-                        event_list_to_observe.remove(event)
+                        with self.lock:
+                            event_list_to_observe.remove(event)
                         self.log.debug("Removing event: {}".format(event))
                     except:
                         self.log.error("Removing event failed: {}"
@@ -260,7 +259,6 @@ class CheckModTime(threading.Thread):
                         self.log.debug("event_list_to_observe={}"
                                        .format(event_list_to_observe))
                 event_list_to_observe_tmp = []
-                self.lock.release()
 
 #                self.log.debug("List to observe after map-function: {0}"
 #                               .format(event_list_to_observe))
@@ -282,17 +280,15 @@ class CheckModTime(threading.Thread):
 #            self.log.error("Unable to get modification time for file: {}"
 #                           .format(filepath), exc_info=True)
             # remove the file from the observing list
-#            self.lock.acquire()
-#            event_list_to_observe_tmp.append(filepath)
-#            self.lock.release()
+#            with self.lock
+#                event_list_to_observe_tmp.append(filepath)
 #            return
         except:
             self.log.error("Unable to get modification time for file: {}"
                            .format(filepath), exc_info=True)
             # remove the file from the observing list
-            self.lock.acquire()
-            event_list_to_observe_tmp.append(filepath)
-            self.lock.release()
+            with self.lock:
+                event_list_to_observe_tmp.append(filepath)
             return
 
         try:
@@ -310,21 +306,20 @@ class CheckModTime(threading.Thread):
             self.log.debug("event_message: {}".format(event_message))
 
             # add to result list
-            self.lock.acquire()
 #            self.log.debug("check_last_modified-{0} event_message_list {1}"
 #                           .format(thread_name, event_message_list))
-            event_message_list.append(event_message)
-            event_list_to_observe_tmp.append(filepath)
+            with self.lock:
+                event_message_list.append(event_message)
+                event_list_to_observe_tmp.append(filepath)
 #            self.log.debug("check_last_modified-{0} event_message_list {1}"
 #                           .format(thread_name, event_message_list))
 #            self.log.debug("check_last_modified-{0} "
 #                           "event_list_to_observe_tmp "{1}"
 #                           .format(thread_name, event_list_to_observe_tmp))
-            self.lock.release()
         else:
-            self.log.debug("File was last modified {d} sec ago: {p}"
-                           .format(d=(time_current - time_last_modified),
-                                   p=filepath))
+            self.log.debug("File was last modified {} sec ago: {}"
+                           .format(time_current - time_last_modified,
+                                   filepath))
 
     def stop(self):
         if self.pool_running:
@@ -373,7 +368,7 @@ class EventDetector(EventDetectorBase):
             self.paths = [os.path.normpath(os.path.join(self.mon_dir,
                                                         directory))
                           for directory in self.config["fix_subdirs"]]
-            self.log.debug("paths: {0}".format(self.paths))
+            self.log.debug("paths: {}".format(self.paths))
 
             self.time_till_closed = self.config["time_till_closed"]
             self.action_time = self.config["action_time"]
@@ -415,11 +410,11 @@ class EventDetector(EventDetectorBase):
     def get_new_event(self):
         global event_message_list
 
-        self.lock.acquire()
-        event_message_list_local = copy.deepcopy(event_message_list)
-        # reset global list
-        event_message_list = []
-        self.lock.release()
+        with self.lock:
+            event_message_list_local = copy.deepcopy(event_message_list)
+            # reset global list
+            event_message_list = []
+
         return event_message_list_local
 
     def stop(self):
@@ -442,11 +437,10 @@ class EventDetector(EventDetectorBase):
             self.checking_thread = None
 
         # resetting event list
-        self.lock.acquire()
-        event_message_list = []
-        event_list_to_observe = []
-        event_list_to_observe_tmp = []
-        self.lock.release()
+        with self.lock:
+            event_message_list = []
+            event_list_to_observe = []
+            event_list_to_observe_tmp = []
 
     def __exit__(self):
         self.stop()

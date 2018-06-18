@@ -155,9 +155,8 @@ class CleanUp (threading.Thread):
                 for dirname in dirs_to_walk:
                     result += self.traverse_directory(dirname)
 
-                self.lock.acquire()
-                file_event_list += result
-                self.lock.release()
+                with self.lock:
+                    file_event_list += result
 #                self.log.debug("file_event_list: {0}".format(file_event_list))
                 time.sleep(self.action_time)
             except:
@@ -381,13 +380,12 @@ class EventDetector(EventDetectorBase):
         global file_event_list
 
         event_message_list = []
-        try:
-            self.lock.acquire()
+
+        with self.lock:
             # get missed files
             event_message_list = copy.deepcopy(file_event_list)
-            file_event_list = []
-        finally:
-            self.lock.release()
+
+        file_event_list = []
 
 #        if event_message_list:
 #            self.log.info("Added missed files: {0}"

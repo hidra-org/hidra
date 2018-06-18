@@ -161,13 +161,12 @@ class CheckNetgroup (threading.Thread):
             removed_elements = [e for e in whitelist if e not in new_whitelist]
 
             if new_elements or removed_elements:
-                self.lock.acquire()
-                # remember new whitelist
-                whitelist = copy.deepcopy(new_whitelist)
+                with self.lock:
+                    # remember new whitelist
+                    whitelist = copy.deepcopy(new_whitelist)
 
-                # mark that there was a change
-                changed_netgroup = True
-                self.lock.release()
+                    # mark that there was a change
+                    changed_netgroup = True
 
                 self.log.info("Netgroup has changed. New whitelist: {}"
                               .format(whitelist))
@@ -223,14 +222,13 @@ class DataReceiver:
         self.lock = threading.Lock()
 
         if params["whitelist"] is not None:
-            self.lock.acquire()
             self.log.debug("params['whitelist']={}"
                            .format(params["whitelist"]))
-            whitelist = utils.extend_whitelist(params["whitelist"],
-                                               params["ldapuri"],
-                                               self.log)
+            with self.lock:
+                whitelist = utils.extend_whitelist(params["whitelist"],
+                                                   params["ldapuri"],
+                                                   self.log)
             self.log.info("Configured whitelist: {}".format(whitelist))
-            self.lock.release()
 
         self.target_dir = os.path.normpath(params["target_dir"])
         self.data_ip = params["data_stream_ip"]
@@ -292,9 +290,8 @@ class DataReceiver:
                 self.transfer.register(whitelist)
 
                 # reset flag
-                self.lock.acquire()
-                changed_netgroup = False
-                self.lock.release()
+                with self.lock:
+                    changed_netgroup = False
 
             try:
                 self.transfer.store(self.target_dir, self.timeout)

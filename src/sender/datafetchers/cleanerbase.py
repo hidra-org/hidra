@@ -120,10 +120,9 @@ class CheckJobs(threading.Thread):
                 message = self.job_socket.recv_multipart()
                 self.log.debug("New job received: {}".format(message))
 
-                self.lock.acquire()
-                new_jobs.append(message)
-#                new_jobs.add(message)
-                self.lock.release()
+                with self.lock:
+                    new_jobs.append(message)
+    #                new_jobs.add(message)
 
                 if message[1] in old_confirmations:
                     # notify cleaner
@@ -184,10 +183,9 @@ class CheckJobs(threading.Thread):
 
         self.run_loop = False
 
-        self.lock.acquire()
-        new_jobs = []
-        old_confirmations = []
-        self.lock.release()
+        with self.lock:
+            new_jobs = []
+            old_confirmations = []
 
     def __exit__(self):
         self.stop()
@@ -230,9 +228,8 @@ class CheckJobs(threading.Thread):
 #        message = self.confirmation_socket.recv().decode("utf-8")
 #        self.log.debug("New confirmation received: {0}".format(message))
 #
-#        self.lock.acquire()
-#        new_confirmations.add(message)
-#        self.lock.release()
+#        with self.lock:
+#            new_confirmations.add(message)
 #
 #    def stop(self):
 #        if self.confirmation_socket is not None:
@@ -314,6 +311,7 @@ class CleanerBase(ABC):
             pass
 
     def create_sockets(self):
+        # socket to receive confirmation that data can be removed/discarded
         try:
             self.confirmation_socket = self.context.socket(zmq.SUB)
 
@@ -404,16 +402,14 @@ class CleanerBase(ABC):
                     if element == file_id:
                         self.remove_element(base_path, file_id)
 
-                        self.lock.acquire()
-                        new_jobs.remove([base_path, file_id])
-                        self.lock.release()
+                        with self.lock:
+                            new_jobs.remove([base_path, file_id])
 
                         self.log.debug("new_jobs={}".format(new_jobs))
                         continue
 
-                self.lock.acquire()
-                old_confirmations.append(element)
-                self.lock.release()
+                with self.lock:
+                    old_confirmations.append(element)
                 self.log.error("confirmations without job notification "
                                "received: {}".format(element))
 
@@ -429,13 +425,11 @@ class CleanerBase(ABC):
                 self.log.debug("message=[{}, {}]".format(base_path, element))
                 self.remove_element(base_path, element)
 
-                self.lock.acquire()
-                new_jobs.remove([base_path, element])
-                self.lock.release()
+                with self.lock:
+                    new_jobs.remove([base_path, element])
 
-                self.lock.acquire()
-                old_confirmations.remove(element)
-                self.lock.release()
+                with self.lock:
+                    old_confirmations.remove(element)
 
             ######################################
             #         control commands           #
@@ -507,10 +501,9 @@ class CleanerBase(ABC):
 #        self.conf_checking_thread.stop()
 #        self.conf_checking_thread.join()
 
-        self.lock.acquire()
-        new_jobs = []
-        old_confirmations = []
-        self.lock.release()
+        with self.lock:
+            new_jobs = []
+            old_confirmations = []
 
     def __exit__(self):
         self.stop()
