@@ -300,10 +300,15 @@ class TestBase(unittest.TestCase):
             port: Port to connect to.
         """
 
-        sckt = self.context.socket(zmq.PULL)
         con_str = "tcp://{}:{}".format(self.ext_ip, port)
-        sckt.bind(con_str)
-        self.log.info("Start receiving socket (bind): {}".format(con_str))
+        try:
+            sckt = self.context.socket(zmq.PULL)
+            sckt.bind(con_str)
+            self.log.info("Start receiving socket (bind): {}".format(con_str))
+        except:
+            self.log.error("Failed to start receiving socket (bind): {}"
+                           .format(con_str))
+            raise
 
         return sckt
 

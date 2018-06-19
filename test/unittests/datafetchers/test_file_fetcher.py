@@ -202,5 +202,7 @@ class TestDataFetcher(DataFetcherTestBase):
 
             cleaner_pr.terminate()
 
+            datafetcher.stop()
+
     def tearDown(self):
         super(TestDataFetcher, self).tearDown()

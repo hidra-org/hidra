@@ -66,8 +66,15 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Set up receiver simulator
         receiving_socket = []
-        for port in self.receiving_ports:
-            receiving_socket.append(self.set_up_recv_socket(port))
+        try:
+            for port in self.receiving_ports:
+                receiving_socket.append(self.set_up_recv_socket(port))
+        except:
+            for sckt in receiving_socket:
+                sckt.close(0)
+
+            datafetcher.stop()
+
 
         # Set up data forwarding simulator
         fw_con_str = "ipc://{}/{}_{}".format(self.config["ipc_dir"],
@@ -134,12 +141,13 @@ class TestDataFetcher(DataFetcherTestBase):
         except KeyboardInterrupt:
             pass
         finally:
-
             for sckt in receiving_socket:
                 sckt.close(0)
 
             if data_input:
                 data_fw_socket.close(0)
+
+            datafetcher.stop()
 
     def tearDown(self):
         super(TestDataFetcher, self).tearDown()

@@ -139,5 +139,7 @@ class TestDataFetcher(DataFetcherTestBase):
 
             control_pub_socket.close(0)
 
+            cleaner_pr.terminate()
+
     def tearDown(self):
         super(TestDataFetcher, self).tearDown()

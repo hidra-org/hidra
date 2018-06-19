@@ -119,6 +119,8 @@ class TestDataFetcher(DataFetcherTestBase):
             for sckt in receiving_socket:
                 sckt.close(0)
 
+            datafetcher.stop()
+
     def test_with_confirmation(self):
         """Simulate file fetching while taking care of confirmation signals.
         """
