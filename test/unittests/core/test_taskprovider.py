@@ -10,6 +10,7 @@ import os
 import socket
 import tempfile
 import time
+import threading
 import zmq
 from collections import namedtuple
 from shutil import copyfile
@@ -22,25 +23,26 @@ import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-class RequestResponder(object):
+class RequestResponder(threading.Thread):
     """A signal handler simulator to answer requests.
     """
 
-    def __init__(self, config, log_queue, context=None):
+    def __init__(self, config, log_queue):
+        threading.Thread.__init__(self)
+
         self.config = config
+        self.continue_run = True
 
         # Send all logs to the main process
         self.log = utils.get_logger("RequestResponder", log_queue)
 
-        self.context = context or zmq.Context.instance()
+        self.context = zmq.Context()
 
         con_str = self.config["con_strs"].request_fw_con
         self.request_fw_socket = self.context.socket(zmq.REP)
         self.request_fw_socket.bind(con_str)
         self.log.info("request_fw_socket started (bind) for '{}'"
                       .format(con_str))
-
-        self.run()
 
     def run(self):
         """Answer to all incoming requests.
@@ -54,20 +56,27 @@ class RequestResponder(object):
             ['{}:6004'.format(hostname), 0, [".cbf"]]
         ]
 
-        while True:
-            request = self.request_fw_socket.recv_multipart()
-            self.log.debug("Received request: {}".format(request))
+        while self.continue_run:
+            try:
+                request = self.request_fw_socket.recv_multipart()
+                self.log.debug("Received request: {}".format(request))
 
-            message = json.dumps(open_requests).encode("utf-8")
-            self.request_fw_socket.send(message)
-            self.log.debug("Answer: {}".format(open_requests))
+                message = json.dumps(open_requests).encode("utf-8")
+                self.request_fw_socket.send(message)
+                self.log.debug("Answer: {}".format(open_requests))
+            except zmq.ContextTerminated:
+                self.log.debug("ContextTerminated -> break")
+                break
+
 
     def stop(self):
         """Clean up.
         """
+        if self.continue_run:
+            self.continue_run = False
 
-        self.request_fw_socket.close(0)
-        self.context.destroy()
+            self.request_fw_socket.close(0)
+            self.context.term()
 
     def __exit__(self):
         self.stop()
@@ -91,7 +100,7 @@ class TestTaskProvider(TestBase):
         # self.con_ip
         # self.ext_ip
 
-        self.context = zmq.Context.instance()
+        self.context = zmq.Context()
 
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
@@ -129,13 +138,10 @@ class TestTaskProvider(TestBase):
         taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
         taskprovider_pr.start()
 
-        request_responder_pr = Process(target=RequestResponder,
-                                       args=(self.config, self.log_queue))
+        request_responder_pr = RequestResponder(self.config, self.log_queue)
         request_responder_pr.start()
 
-        context = zmq.Context.instance()
-
-        router_socket = context.socket(zmq.PULL)
+        router_socket = self.context.socket(zmq.PULL)
         router_socket.connect(con_strs.router_con)
         self.log.info("router_socket connected to {}"
                       .format(con_strs.router_con))
@@ -165,7 +171,7 @@ class TestTaskProvider(TestBase):
             pass
         finally:
 
-            request_responder_pr.terminate()
+            request_responder_pr.stop()
             taskprovider_pr.terminate()
 
             router_socket.close(0)

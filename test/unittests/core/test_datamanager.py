@@ -44,7 +44,7 @@ class TestDataManager(TestBase):
         # self.ext_ip
 
         # Register context
-        self.context = zmq.Context.instance()
+        self.context = zmq.Context()
 
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
@@ -136,6 +136,13 @@ class TestDataManager(TestBase):
         """Simulate incoming data and check if received events are correct.
         """
 
+        self.fixed_recv_socket = self.set_up_recv_socket(self.config["fixed_recv"])
+
+        con_strs = self.config["con_strs"]
+        self.com_socket = self.context.socket(zmq.REQ)
+        self.com_socket.connect(con_strs.com_con)
+        self.log.info("Start com_socket (connect): {}".format(con_strs.com_con))
+
         try:
             kwargs = dict(
                 log_queue=self.log_queue,
@@ -147,13 +154,6 @@ class TestDataManager(TestBase):
             self.log.error("Exception when initiating DataManager",
                            exc_info=True)
             raise
-
-        self.fixed_recv_socket = self.set_up_recv_socket(self.config["fixed_recv"])
-
-        con_strs = self.config["con_strs"]
-        self.com_socket = self.context.socket(zmq.REQ)
-        self.com_socket.connect(con_strs.com_con)
-        self.log.info("Start com_socket (connect): {}".format(con_strs.com_con))
 
         self.receiving_sockets = []
         for port in self.config["receiving_ports"]:
@@ -174,7 +174,6 @@ class TestDataManager(TestBase):
                                         "source",
                                         "local",
                                         "raw")
-        target_file_base += os.sep
 
         time.sleep(0.5)
         try:
@@ -210,6 +209,7 @@ class TestDataManager(TestBase):
                 sckt.close(0)
 
             sender.terminate()
+            sender.join()
 
             for number in range(self.start, self.stop):
                 target_file = os.path.join(target_file_base, "{}.cbf".format(number))

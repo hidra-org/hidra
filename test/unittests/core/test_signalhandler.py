@@ -24,41 +24,51 @@ from _version import __version__
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class RequestPuller():
-    def __init__(self, request_fw_con_id, log_queue, context=None):
+class RequestPuller(threading.Thread):
+    def __init__(self, con_strs, log_queue):
+        threading.Thread.__init__(self)
 
         self.log = utils.get_logger("RequestPuller", log_queue)
+        self.continue_run = True
 
-        # to give the signal handler to bind to the socket before the connect
-        # is done
-        time.sleep(0.5)
-
-        self.context = context or zmq.Context()
+        self.context = zmq.Context()
         self.request_fw_socket = self.context.socket(zmq.REQ)
-        self.request_fw_socket.connect(request_fw_con_id)
+        self.request_fw_socket.connect(con_strs.request_fw_con)
         self.log.info("request_fw_socket started (connect) for '{}'"
-                      .format(request_fw_con_id))
-
-        self.run()
+                      .format(con_strs.request_fw_con))
 
     def run(self):
         self.log.info("Start run")
         filename = "test_file.cbf"
-        while True:
+        while self.continue_run:
             try:
-                self.request_fw_socket.send_multipart(
-                    [b"GET_REQUESTS", json.dumps(filename).encode("utf-8")])
-                self.log.info("[getRequests] send")
+                msg = json.dumps(filename).encode("utf-8")
+                self.request_fw_socket.send_multipart([b"GET_REQUESTS", msg])
+                self.log.info("send {}".format(msg))
+            except Exception as e:
+                raise
+
+            try:
                 requests = json.loads(self.request_fw_socket.recv_string())
                 self.log.info("Requests: {}".format(requests))
                 time.sleep(0.25)
             except Exception as e:
-                self.log.error(str(e), exc_info=True)
-                break
+                raise
+
+    def stop(self):
+        if self.continue_run:
+            self.log.info("Shutdown RequestPuller")
+            self.continue_run = False
+
+        if self.request_fw_socket is not None:
+            self.log.info("Closing request_fw_socket")
+            self.request_fw_socket.close(0)
+            self.request_fw_socket = None
+
+            self.context.term()
 
     def __exit__(self):
-        self.request_fw_socket.close(0)
-        self.context.destroy()
+        self.stop()
 
 
 
@@ -81,7 +91,7 @@ class TestSignalHandler(TestBase):
         # self.ext_ip
 
         # Register context
-        self.context = zmq.Context.instance()
+        self.context = zmq.Context()
 
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
@@ -171,16 +181,16 @@ class TestSignalHandler(TestBase):
             request_fw_con_id=con_strs.request_fw_bind,
             request_con_id=request_con_str,
             log_queue=self.log_queue,
-            context=self.context
         )
         signalhandler_pr = threading.Thread(target=SignalHandler, kwargs=kwargs)
         signalhandler_pr.start()
 
-        request_puller_pr = Process(target=RequestPuller,
-                                    args=(
-                                        con_strs.request_fw_con,
-                                        self.log_queue)
-                                    )
+        # to give the signal handler to bind to the socket before the connect
+        # is done
+        time.sleep(0.5)
+
+        request_puller_pr = RequestPuller(con_strs,
+                                          self.log_queue)
         request_puller_pr.start()
 
         com_socket = self.context.socket(zmq.REQ)
@@ -221,10 +231,12 @@ class TestSignalHandler(TestBase):
         finally:
 
             control_pub_socket.send_multipart([b"control", b"EXIT"])
-            self.log.debug("EXIT")
+            self.log.debug("Sent control signal EXIT")
 
             signalhandler_pr.join()
-            request_puller_pr.terminate()
+            request_puller_pr.stop()
+            request_puller_pr.join()
+            device.join(1)
 
             control_pub_socket.close(0)
 
@@ -232,6 +244,7 @@ class TestSignalHandler(TestBase):
             request_socket.close(0)
 
     def tearDown(self):
+#        self.context.term()
         self.context.destroy(0)
 
 #        try:

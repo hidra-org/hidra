@@ -33,7 +33,7 @@ class DataFetcherTestBase(TestBase):
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
 
-        self.context = zmq.Context.instance()
+        self.context = zmq.Context()
 
     def tearDown(self):
         super(DataFetcherTestBase, self).tearDown()

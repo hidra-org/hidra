@@ -69,12 +69,12 @@ class DataFetcherBase(ABC):
                     self.cleaner_job_socket = self.context.socket(zmq.PUSH)
                     self.cleaner_job_socket.connect(
                         self.config["cleaner_job_con_str"])
-                    self.log.info("Start cleaner job_socket (connect): {0}"
+                    self.log.info("Start cleaner job_socket (connect): {}"
                                   .format(self.config["cleaner_job_con_str"]))
                 except:
                     self.log.error("Failed to start cleaner job socket "
-                                   "(connect): '{0}'".format(
-                                       self.config["cleaner_job_con_str"]),
+                                   "(connect): '{}'"
+                                   .format(self.config["cleaner_job_con_str"]),
                                    exc_info=True)
                     raise
 
@@ -285,7 +285,9 @@ class DataFetcherBase(ABC):
         pass
 
     def __exit__(self):
+        self.close_socket()
         self.stop()
 
     def __del__(self):
+        self.close_socket()
         self.stop()

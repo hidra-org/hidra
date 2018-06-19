@@ -288,13 +288,8 @@ class DataFetcher(DataFetcherBase):
                                .format(self.source_file), exc_info=True)
 
     def stop(self):
-        pass
-
-    def __exit__(self):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
+        # cloes base class zmq sockets
+        self.close_socket()
 
 
 class Cleaner(CleanerBase):

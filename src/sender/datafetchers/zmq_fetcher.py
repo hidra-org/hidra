@@ -146,6 +146,9 @@ class DataFetcher(DataFetcherBase):
         pass
 
     def stop(self):
+        # cloes base class zmq sockets
+        self.close_socket()
+
         # Close zmq socket
         if self.socket is not None:
             self.socket.close(0)

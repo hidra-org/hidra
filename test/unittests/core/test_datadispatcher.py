@@ -40,7 +40,7 @@ class TestDataDispatcher(TestBase):
         # self.con_ip
         # self.ext_ip
 
-        self.context = zmq.Context.instance()
+        self.context = zmq.Context()
 
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
@@ -79,6 +79,28 @@ class TestDataDispatcher(TestBase):
                                               self.receiving_ports[1])
 
         con_strs = self.config["con_strs"]
+
+        # initiate forwarder for control signals (multiple pub, multiple sub)
+        device = zmq.devices.ThreadDevice(zmq.FORWARDER, zmq.SUB, zmq.PUB)
+        device.bind_in(con_strs.control_pub_bind)
+        device.bind_out(con_strs.control_sub_bind)
+        device.setsockopt_in(zmq.SUBSCRIBE, b"")
+        device.start()
+        self.log.info("Start thead device forwarding messages from "
+                      "'{}' to '{}'".format(con_strs.control_pub_bind,
+                                            con_strs.control_sub_bind))
+
+        # create control socket
+        control_pub_socket = self.context.socket(zmq.PUB)
+        control_pub_socket.connect(con_strs.control_pub_con)
+        self.log.info("Start control_pub_socket (connect): '{}'"
+                      .format(con_strs.control_pub_con))
+
+        router_socket = self.context.socket(zmq.PUSH)
+        router_socket.bind(con_strs.router_bind)
+        self.log.info("Start router_socket (bind): '{}'"
+                      .format(con_strs.router_bind))
+
         kwargs = dict(
             id=1,
             control_con_str=con_strs.control_sub_con,
@@ -88,15 +110,9 @@ class TestDataDispatcher(TestBase):
             config=self.datadispatcher_config,
             log_queue=self.log_queue,
             local_target=self.local_target,
-            context=self.context
         )
         datadispatcher_pr = Process(target=DataDispatcher, kwargs=kwargs)
         datadispatcher_pr.start()
-
-        router_socket = self.context.socket(zmq.PUSH)
-        router_socket.bind(con_strs.router_bind)
-        self.log.info("router_socket connected to {}"
-                      .format(con_strs.router_bind))
 
         # Set up receiver simulator
         receiving_sockets = []
@@ -131,7 +147,11 @@ class TestDataDispatcher(TestBase):
         except KeyboardInterrupt:
             pass
         finally:
-            datadispatcher_pr.terminate()
+            control_pub_socket.send_multipart([b"control", b"EXIT"])
+            self.log.debug("Sent control signal EXIT")
+            device.join(1)
+            datadispatcher_pr.join()
+#            datadispatcher_pr.terminate()
 
             router_socket.close(0)
             for sckt in receiving_sockets:

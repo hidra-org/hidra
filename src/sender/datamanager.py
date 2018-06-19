@@ -336,6 +336,8 @@ class DataManager():
 
         self.reestablish_time = 600  # in sec
 
+        self.continue_run = True
+
         try:
             if config is None:
                 self.params = argument_parsing()
@@ -382,9 +384,6 @@ class DataManager():
 
         self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
         self.log.info("Configured ipc_path: {}".format(self.ipc_path))
-
-        # Make ipc_path accessible for modules
-        self.params["ipc_path"] = self.ipc_path
 
         # set process name
         check_passed, _ = utils.check_config(["procname"],
@@ -546,7 +545,7 @@ class DataManager():
             self.params["local_target"] = None
             self.local_target = None
 
-        self.signalhandler_pr = None
+        self.signalhandler_thr = None
         self.taskprovider_pr = None
         self.cleaner_pr = None
         self.datadispatcher_pr = []
@@ -560,7 +559,6 @@ class DataManager():
 
         # Create zmq context
         # there should be only one context in one process
-#        self.context = zmq.Context.instance()
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
 
@@ -610,7 +608,7 @@ class DataManager():
                           .format(self.control_pub_con_str))
         except:
             self.log.error("Failed to start control_pub_socket (connect): "
-                           "'{0}'".format(self.control_pub_con_str),
+                           "'{}'".format(self.control_pub_con_str),
                            exc_info=True)
             raise
 
@@ -772,10 +770,9 @@ class DataManager():
             if self.test_socket is None:
                 # Establish the test socket as PUSH/PULL sending test signals
                 # to the normal data stream id
+                con_str = "tcp://{}".format(self.fixed_stream_id)
                 try:
                     self.test_socket = self.context.socket(zmq.PUSH)
-                    con_str = "tcp://{}".format(self.fixed_stream_id)
-
                     self.test_socket.connect(con_str)
                     self.log.info("Start test_socket (connect): '{}'"
                                   .format(con_str))
@@ -877,7 +874,7 @@ class DataManager():
 
     def run(self):
         # SignalHandler
-        self.signalhandler_pr = threading.Thread(target=SignalHandler,
+        self.signalhandler_thr = threading.Thread(target=SignalHandler,
                                                  args=(
                                                      self.params,
                                                      self.control_pub_con_str,
@@ -887,16 +884,16 @@ class DataManager():
                                                      self.com_con_str,
                                                      self.request_fw_con_str,
                                                      self.request_con_str,
-                                                     self.log_queue,
-                                                     self.context)
+                                                     self.log_queue
+                                                     )
                                                  )
-        self.signalhandler_pr.start()
+        self.signalhandler_thr.start()
 
         # needed, because otherwise the requests for the first files are not
         # forwarded properly
         time.sleep(0.5)
 
-        if not self.signalhandler_pr.is_alive():
+        if not self.signalhandler_thr.is_alive():
             return
 
         # TaskProvider
@@ -906,7 +903,8 @@ class DataManager():
                                            self.control_sub_con_str,
                                            self.request_fw_con_str,
                                            self.router_con_str,
-                                           self.log_queue)
+                                           self.log_queue
+                                           )
                                        )
         self.taskprovider_pr.start()
 
@@ -950,13 +948,13 @@ class DataManager():
         sleep_was_sent = False
 
         if self.use_cleaner:
-            run_loop = (self.signalhandler_pr.is_alive()
+            run_loop = (self.signalhandler_thr.is_alive()
                         and self.taskprovider_pr.is_alive()
                         and self.cleaner_pr.is_alive()
                         and all(datadispatcher.is_alive()
                                 for datadispatcher in self.datadispatcher_pr))
         else:
-            run_loop = (self.signalhandler_pr.is_alive()
+            run_loop = (self.signalhandler_thr.is_alive()
                         and self.taskprovider_pr.is_alive()
                         and all(datadispatcher.is_alive()
                                 for datadispatcher in self.datadispatcher_pr))
@@ -990,31 +988,37 @@ class DataManager():
             time.sleep(1)
 
             if self.use_cleaner:
-                run_loop = (self.signalhandler_pr.is_alive()
+                run_loop = (self.continue_run
+                            and self.signalhandler_thr.is_alive()
                             and self.taskprovider_pr.is_alive()
                             and self.cleaner_pr.is_alive()
                             and all(datadispatcher.is_alive()
                                     for datadispatcher
                                     in self.datadispatcher_pr))
             else:
-                run_loop = (self.signalhandler_pr.is_alive()
+                run_loop = (self.continue_run
+                            and self.signalhandler_thr.is_alive()
                             and self.taskprovider_pr.is_alive()
                             and all(datadispatcher.is_alive()
                                     for datadispatcher
                                     in self.datadispatcher_pr))
 
         # notify which subprocess terminated
-        if not self.signalhandler_pr.is_alive():
-            self.log.info("SignalHandler terminated.")
-        if not self.taskprovider_pr.is_alive():
-            self.log.info("TaskProvider terminated.")
-        if self.use_cleaner and not self.cleaner_pr.is_alive():
-            self.log.info("Cleaner terminated.")
-        if not any(datadispatcher.is_alive()
-                   for datadispatcher in self.datadispatcher_pr):
-            self.log.info("One DataDispatcher terminated.")
+        if not self.continue_run:
+            self.log.debug("Stopped run loop.")
+        else:
+            if not self.signalhandler_thr.is_alive():
+                self.log.info("SignalHandler terminated.")
+            if not self.taskprovider_pr.is_alive():
+                self.log.info("TaskProvider terminated.")
+            if self.use_cleaner and not self.cleaner_pr.is_alive():
+                self.log.info("Cleaner terminated.")
+            if not any(datadispatcher.is_alive()
+                       for datadispatcher in self.datadispatcher_pr):
+                self.log.info("One DataDispatcher terminated.")
 
     def stop(self):
+        self.continue_run = False
 
         if self.log is None:
             self.log = logging
@@ -1023,8 +1027,10 @@ class DataManager():
             self.log.info("Sending 'Exit' signal")
             self.control_pub_socket.send_multipart([b"control", b"EXIT"])
 
-        # waiting till the other processes are finished
-        time.sleep(0.5)
+        # closing control fowarding
+        if self.device is not None:
+            self.device.join(5)
+            self.device = None
 
         if self.control_pub_socket:
             self.log.info("Closing control_pub_socket")
@@ -1041,35 +1047,24 @@ class DataManager():
             self.context.destroy(0)
             self.context = None
 
-        control_pub_path = ("{}/{}_{}"
-                            .format(self.ipc_path,
-                                    self.current_pid,
-                                    "controlPub"))
-        control_sub_path = ("{}/{}_{}"
-                            .format(self.ipc_path,
-                                    self.current_pid,
-                                    "controlSub"))
+
+        ipc_ip =  "{}/{}".format(self.ipc_path, self.current_pid)
+        ipc_con_paths = {
+                "control_pub": "{}_{}".format(ipc_ip, "controlPub"),
+                "control_sub": "{}_{}".format(ipc_ip, "controlSub"),
+                "request_fw": "{}_{}".format(ipc_ip, "requestFw")
+        }
 
         # Clean up ipc communication files
-        try:
-            os.remove(control_pub_path)
-            self.log.debug("Removed ipc socket: {}".format(control_pub_path))
-        except OSError:
-            self.log.debug("Could not remove ipc socket: {}"
-                           .format(control_pub_path))
-        except:
-            self.log.warning("Could not remove ipc socket: {}"
-                             .format(control_pub_path), exc_info=True)
-
-        try:
-            os.remove(control_sub_path)
-            self.log.debug("Removed ipc socket: {}".format(control_sub_path))
-        except OSError:
-            self.log.debug("Could not remove ipc socket: {}"
-                           .format(control_sub_path))
-        except:
-            self.log.warning("Could not remove ipc socket: {}"
-                             .format(control_sub_path), exc_info=True)
+        for key, path in ipc_con_paths.iteritems():
+            try:
+                os.remove(path)
+                self.log.debug("Removed ipc socket: {}".format(path))
+            except OSError:
+                self.log.debug("Could not remove ipc socket: {}".format(path))
+            except:
+                self.log.warning("Could not remove ipc socket: {}"
+                                 .format(path), exc_info=True)
 
         # Remove temp directory (if empty)
         try:

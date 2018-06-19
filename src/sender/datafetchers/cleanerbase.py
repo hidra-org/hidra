@@ -165,23 +165,27 @@ class CheckJobs(threading.Thread):
         global new_jobs
         global old_confirmations
 
+        self.run_loop = False
+
         if self.job_socket is not None:
+            self.log.debug("Closing job_socket")
             self.job_socket.close(0)
             self.job_socket = None
 
         if self.cleaner_trigger_socket is not None:
+            self.log.debug("Closing cleaner_trigger_socket")
             self.cleaner_trigger_socket.close(0)
             self.cleaner_trigger_socket = None
 
         if self.control_socket is not None:
+            self.log.debug("Closing control_socket")
             self.control_socket.close(0)
             self.control_socket = None
 
         if not self.ext_context and self.context is not None:
-            self.context.destroy(0)
+            self.log.debug("Terminating context")
+            self.context.term()
             self.context = None
-
-        self.run_loop = False
 
         with self.lock:
             new_jobs = []
@@ -295,8 +299,7 @@ class CleanerBase(ABC):
                                              self.cleaner_trigger_con_str,
                                              self.control_con_str,
                                              self.lock,
-                                             log_queue,
-                                             context)
+                                             log_queue)
 
 #        self.conf_checking_thread = CheckConfirmations(self.conf_con_str,
 #                                                       self.lock,

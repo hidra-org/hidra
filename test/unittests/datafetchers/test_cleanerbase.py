@@ -63,6 +63,15 @@ class TestDataFetcher(DataFetcherTestBase):
                     self.log.error("Unable to remove file {}"
                                    .format(source_file), exc_info=True)
 
+        con_strs = self.config["con_strs"]
+
+        # initiate forwarder for control signals (multiple pub, multiple sub)
+        device = zmq.devices.ThreadDevice(zmq.FORWARDER, zmq.SUB, zmq.PUB)
+        device.bind_in(con_strs.control_pub_bind)
+        device.bind_out(con_strs.control_sub_bind)
+        device.setsockopt_in(zmq.SUBSCRIBE, b"")
+        device.start()
+
         # Instantiate cleaner as additional process
         con_strs = self.config["con_strs"]
         kwargs = dict(
@@ -71,23 +80,27 @@ class TestDataFetcher(DataFetcherTestBase):
             job_bind_str=con_strs.cleaner_job_bind,
             cleaner_trigger_con_str=con_strs.cleaner_trigger_con,
             conf_con_str=con_strs.confirm_con,
-            control_con_str=con_strs.control_sub_con,
-            context=self.context,
+            control_con_str=con_strs.control_sub_con
         )
         cleaner_pr = Process(target=Cleaner, kwargs=kwargs)
         cleaner_pr.start()
 
         # Set up datafetcher simulator
         job_socket = self.context.socket(zmq.PUSH)
-        job_socket.connect(self.config["con_strs"].cleaner_job_con)
+        job_socket.connect(con_strs.cleaner_job_con)
         self.log.info("Start job_socket (connect): {}"
-                      .format(self.config["con_strs"].cleaner_job_con))
+                      .format(con_strs.cleaner_job_con))
 
         # Set up receiver simulator
         confirmation_socket = self.context.socket(zmq.PUB)
-        confirmation_socket.bind(self.config["con_strs"].confirm_bind)
+        confirmation_socket.bind(con_strs.confirm_bind)
         self.log.info("Start confirmation_socket (bind): {}"
-                      .format(self.config["con_strs"].confirm_bind))
+                      .format(con_strs.confirm_bind))
+
+        control_pub_socket = self.context.socket(zmq.PUB)
+        control_pub_socket.connect(con_strs.control_pub_con)
+        self.log.info("Start control_socket (connect): {}"
+                      .format(con_strs.control_pub_con))
 
         # to give init time to finish
         time.sleep(0.5)
@@ -116,9 +129,15 @@ class TestDataFetcher(DataFetcherTestBase):
         except KeyboardInterrupt:
             pass
         finally:
-            time.sleep(1)
+            self.log.debug("Sending control signal: EXIT")
+            control_pub_socket.send_multipart([b"control", b"EXIT"])
 
-            cleaner_pr.terminate()
+            self.log.debug("closing sockets")
+            job_socket.close(0)
+            confirmation_socket.close(0)
+            device.join(3)
+
+            control_pub_socket.close(0)
 
     def tearDown(self):
         super(TestDataFetcher, self).tearDown()

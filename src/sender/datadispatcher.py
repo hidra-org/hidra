@@ -301,6 +301,7 @@ class DataDispatcher():
                 del message[0]
 
                 if message[0] == b"EXIT":
+                    self.log.debug("Received EXIT signal")
                     self.react_to_exit_signal()
                     break
 

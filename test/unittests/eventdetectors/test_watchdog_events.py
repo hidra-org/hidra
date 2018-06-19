@@ -57,8 +57,6 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.target_file_base = os.path.join(self.target_base_path,
                                              self.target_relative_path)
-        # TODO why is this needed?
-        self.target_file_base += os.sep
 
         self.eventdetector = None
 
@@ -84,7 +82,8 @@ class TestEventDetector(EventDetectorTestBase):
 
             # generate an event
             filename = "{}.cbf".format(i)
-            target_file = "{}{}".format(self.target_file_base, filename)
+            target_file = os.path.join(self.target_file_base,
+                                       "{}".format(filename))
             self.log.debug("copy {}".format(target_file))
             copyfile(self.source_file, target_file)
             time.sleep(self.time_all_events_detected)
@@ -102,7 +101,7 @@ class TestEventDetector(EventDetectorTestBase):
                 self.assertEqual(len(event_list), 1)
                 self.assertDictEqual(event_list[0], expected_result_dict)
             except AssertionError:
-                self.log.debug("event_list", event_list)
+                self.log.debug("event_list {}".format(event_list))
                 raise
 
     def test_multiple_files(self):
@@ -120,7 +119,8 @@ class TestEventDetector(EventDetectorTestBase):
         for i in range(self.start, self.stop):
 
             filename = "{}.cbf".format(i)
-            target_file = "{}{}".format(self.target_file_base, filename)
+            target_file = os.path.join(self.target_file_base,
+                                       "{}".format(filename))
             self.log.debug("copy {}".format(target_file))
             copyfile(self.source_file, target_file)
 
@@ -143,7 +143,7 @@ class TestEventDetector(EventDetectorTestBase):
             for res_dict in expected_result:
                 self.assertIn(res_dict, event_list)
         except AssertionError:
-            # self.log.debug("event_list", event_list)
+            # self.log.debug("event_list {}".format(event_list))
             raise
 
     # this should not be executed automatically only if needed for debugging
@@ -176,7 +176,7 @@ class TestEventDetector(EventDetectorTestBase):
 #        hp.setrelheap()
 
         step_loop = (self.stop - self.start) / steps
-        self.log.debug("Used steps:", steps)
+        self.log.debug("Used steps: {}".format(steps))
 
         for step in range(steps):
             start = int(self.start + step * step_loop)
@@ -184,7 +184,8 @@ class TestEventDetector(EventDetectorTestBase):
 #            print ("start=", start, "stop=", stop)
             for i in range(start, stop):
 
-                target_file = "{}{}.cbf".format(self.target_file_base, i)
+                target_file = os.path.join(self.target_file_base,
+                                           "{}.cbf".format(i))
                 copyfile(self.source_file, target_file)
 
                 if i % 100 == 0:
@@ -207,9 +208,10 @@ class TestEventDetector(EventDetectorTestBase):
             self.eventdetector = None
 
         # clean up the created files
-        for number in range(self.start, self.stop):
+        for i in range(self.start, self.stop):
             try:
-                target_file = "{}{}.cbf".format(self.target_file_base, number)
+                target_file = os.path.join(self.target_file_base,
+                                           "{}.cbf".format(i))
                 os.remove(target_file)
                 self.log.debug("remove {}".format(target_file))
             except OSError:

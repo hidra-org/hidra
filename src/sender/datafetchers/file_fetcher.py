@@ -360,7 +360,8 @@ class DataFetcher(DataFetcherBase):
                                exc_info=True)
 
     def stop(self):
-        pass
+        # cloes base class zmq sockets
+        self.close_socket()
 
 
 class Cleaner(CleanerBase):

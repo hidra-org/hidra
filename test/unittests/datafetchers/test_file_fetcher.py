@@ -204,5 +204,3 @@ class TestDataFetcher(DataFetcherTestBase):
 
     def tearDown(self):
         super(TestDataFetcher, self).tearDown()
-
-        self.context.destroy()

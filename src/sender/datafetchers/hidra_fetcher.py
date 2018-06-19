@@ -1,7 +1,6 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import zmq
 import json
 import time
 
@@ -43,8 +42,6 @@ class DataFetcher(DataFetcherBase):
         check_passed, config_reduced = utils.check_config(required_params,
                                                           self.config,
                                                           self.log)
-
-        context = zmq.Context()
 
         if check_passed:
             self.log.info("Configuration for data fetcher: {}"
@@ -193,6 +190,8 @@ class DataFetcher(DataFetcherBase):
                                exc_info=True)
 
     def stop(self):
+        # cloes base class zmq sockets
+        self.close_socket()
 
         # Close open file handler to prevent file corruption
         for target_file in list(self.f_descriptors.keys()):

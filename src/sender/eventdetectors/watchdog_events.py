@@ -326,6 +326,7 @@ class CheckModTime(threading.Thread):
             self.log.info("Stopping CheckModTime")
             self.stopper.set()
             self.pool_running = False
+
         if self.pool is not None:
             # close the pool and wait for the work to finish
             self.pool.close()
@@ -427,6 +428,7 @@ class EventDetector(EventDetectorBase):
             for observer in self.observer_threads:
                 observer.stop()
                 observer.join()
+
             self.observer_threads = None
 
         # close the pool and wait for the work to finish
@@ -434,6 +436,7 @@ class EventDetector(EventDetectorBase):
             self.log.info("Stopping checking thread")
             self.checking_thread.stop()
             self.checking_thread.join()
+
             self.checking_thread = None
 
         # resetting event list

@@ -42,6 +42,58 @@ def create_dir(directory, chmod=None, log=logging):
         os.chmod(directory, 0o777)
 
 
+IpcEndpoints = namedtuple(
+    "ipc_endpoints", [
+        "control_pub",
+        "control_sub",
+        "request_fw",
+        "router",
+        "cleaner_job",
+        "cleaner_trigger",
+    ]
+)
+
+
+def set_ipc_endpoints(ipc_dir, main_pid):
+    """Sets the ipc connection paths.
+
+    Sets the connection strings  for the job, control, trigger and
+    confirmation socket.
+
+    Args:
+        ipc_dir: Directory used for IPC connections
+        main_pid: Process ID of the current process. Used to distinguish
+                  different IPC connection.
+    Returns:
+        A namedtuple object ConStr with the entries:
+            control_pub_path,
+            control_sub_path,
+            request_fw_path,
+            router_path,
+            cleaner_job_path,
+            cleaner_trigger_path
+    """
+
+    # determine socket connection strings
+    ipc_ip = "{}/{}".format(ipc_dir, main_pid)
+
+    control_pub_path = "{}_{}".format(ipc_ip, "control_pub")
+    control_sub_path = "{}_{}".format(ipc_ip, "control_sub")
+    request_fw_path = "{}_{}".format(ipc_ip, "request_fw")
+    router_path = "{}_{}".format(ipc_ip, "router")
+    job_path = "{}_{}".format(ipc_ip, "cleaner")
+    trigger_path = "{}_{}".format(ipc_ip, "cleaner_trigger")
+
+    return IpcEndpoints(
+        control_pub=control_pub_path,
+        control_sub=control_sub_path,
+        request_fw=request_fw_path,
+        router=router_path,
+        cleaner_job=job_path,
+        cleaner_trigger=trigger_path,
+    )
+
+
 ConStr = namedtuple(
     "con_str", [
         "control_pub_bind",
@@ -64,7 +116,7 @@ ConStr = namedtuple(
 )
 
 
-def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
+def set_con_strs(ext_ip, con_ip, ipc_endpoints, ports):
     """Sets the connection strings.
 
     Sets the connection strings  for the job, control, trigger and
@@ -73,9 +125,7 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
     Args:
         ext_ip: IP to bind TCP connections to
         con_ip: IP to connect TCP connections to
-        ipc_dir: Directory used for IPC connections
-        main_pid: Process ID of the current process. Used to distinguish
-                  different IPC connection.
+        ipc_endpoints: Endpoints to use for the IPC connections.
         port: A dictionary giving the ports to open TCP connection on
               (only used on Windows).
     Returns:
@@ -120,24 +170,22 @@ def set_con_strs(ext_ip, con_ip, ipc_dir, main_pid, ports):
         trigger_con_str = "tcp://{}:{}".format(con_ip,
                                                ports["cleaner_trigger"])
     else:
-        ipc_ip = "{}/{}".format(ipc_dir, main_pid)
-
-        control_pub_bind_str = "ipc://{}_{}".format(ipc_ip, "control_pub")
+        control_pub_bind_str = "ipc://{}".format(ipc_endpoints.control_pub)
         control_pub_con_str = control_pub_bind_str
 
-        control_sub_bind_str = "ipc://{}_{}".format(ipc_ip, "control_sub")
+        control_sub_bind_str = "ipc://{}".format(ipc_endpoints.control_sub)
         control_sub_con_str = control_sub_bind_str
 
-        request_fw_bind_str = "ipc://{}_{}".format(ipc_ip, "request_fw")
+        request_fw_bind_str = "ipc://{}".format(ipc_endpoints.request_fw)
         request_fw_con_str = request_fw_bind_str
 
-        router_bind_str = "ipc://{}_{}".format(ipc_ip, "router")
+        router_bind_str = "ipc://{}".format(ipc_endpoints.router)
         router_con_str = router_bind_str
 
-        job_bind_str = "ipc://{}_{}".format(ipc_ip, "cleaner")
+        job_bind_str = "ipc://{}".format(ipc_endpoints.cleaner_job)
         job_con_str = job_bind_str
 
-        trigger_bind_str = "ipc://{}_{}".format(ipc_ip, "cleaner_trigger")
+        trigger_bind_str = "ipc://{}".format(ipc_endpoints.cleaner_trigger)
         trigger_con_str = trigger_bind_str
 
     confirm_bind_str = "tcp://{}:{}".format(ext_ip, ports["confirmation"])
@@ -183,20 +231,22 @@ class TestBase(unittest.TestCase):
         ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
 
         ports = {
+            "com": 50000,
+            "request_fw": 50002,
             "control_pub": 50005,
             "control_sub": 50006,
-            "request_fw": 6001,
-            "router": 7000,
+            "router": 50004,
             "cleaner": 50051,
             "cleaner_trigger": 50052,
             "confirmation": 50053,
-            "com": 50000,
         }
+
+        self.ipc_endpoints = set_ipc_endpoints(ipc_dir=ipc_dir,
+                                               main_pid=main_pid)
 
         con_strs = set_con_strs(ext_ip=self.ext_ip,
                                 con_ip=self.con_ip,
-                                ipc_dir=ipc_dir,
-                                main_pid=main_pid,
+                                ipc_endpoints=self.ipc_endpoints,
                                 ports=ports)
 
         self.config = {
@@ -209,6 +259,10 @@ class TestBase(unittest.TestCase):
         self._init_logging(loglevel=LOGLEVEL)
 
 #        self.log.debug("{} pid {}".format(self.__class__.__name__, main_pid))
+
+    def __iter__(self):
+        for attr, value in self.__dict__.iteritems():
+            yield attr, value
 
     def _init_logging(self, loglevel="debug"):
         """Initialize log listener and log queue.
@@ -249,6 +303,16 @@ class TestBase(unittest.TestCase):
         return sckt
 
     def tearDown(self):
+        for key, endpoint in vars(self.ipc_endpoints).iteritems():
+            try:
+                os.remove(endpoint)
+                self.log.debug("Removed ipc socket: {}".format(endpoint))
+            except OSError:
+                self.log.debug("Could not remove ipc socket: {}".format(endpoint))
+            except:
+                self.log.warning("Could not remove ipc socket: {}"
+                                 .format(endpoint), exc_info=True)
+
         if self.listener is not None:
             self.log_queue.put_nowait(None)
             self.listener.stop()

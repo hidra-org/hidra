@@ -39,7 +39,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.log.debug("self.event_det_con_str {}"
                        .format(self._event_det_con_str))
 
-        self.context = zmq.Context.instance()
+        self.context = zmq.Context()
 
         self.event_detector_config = {
             "context": self.context,
