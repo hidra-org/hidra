@@ -1,17 +1,16 @@
+from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
-import time
 import zmq
 import zmq.devices
-import logging
 import os
 import copy
 import json
 import re
 
-from __init__ import BASE_PATH
+from __init__ import BASE_PATH  # noqa F401
 from _version import __version__
-from logutils.queue import QueueHandler
 import utils
 from hidra import convert_suffix_list_to_regex
 
@@ -756,7 +755,8 @@ class SignalHandler():
 
         if not self.ext_context and self.context:
             self.log.info("Destroying context")
-            self.context.destroy(0)
+            self.context.term()
+#            self.context.destroy(0)
             self.context = None
 
     def __exit__(self):

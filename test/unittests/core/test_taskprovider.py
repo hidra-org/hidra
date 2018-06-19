@@ -7,12 +7,10 @@ from __future__ import absolute_import
 
 import json
 import os
-import socket
-import tempfile
 import time
 import threading
+import socket
 import zmq
-from collections import namedtuple
 from shutil import copyfile
 from multiprocessing import Process, freeze_support
 
@@ -22,6 +20,7 @@ from taskprovider import TaskProvider
 import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
 
 class RequestResponder(threading.Thread):
     """A signal handler simulator to answer requests.
@@ -67,7 +66,6 @@ class RequestResponder(threading.Thread):
             except zmq.ContextTerminated:
                 self.log.debug("ContextTerminated -> break")
                 break
-
 
     def stop(self):
         """Clean up.

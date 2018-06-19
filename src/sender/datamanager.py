@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
 import argparse
 import zmq
@@ -8,7 +10,6 @@ import zmq.devices
 import os
 import sys
 import logging
-import json
 import time
 from multiprocessing import Process, freeze_support, Queue
 import threading
@@ -22,7 +23,6 @@ from taskprovider import TaskProvider
 from datadispatcher import DataDispatcher
 
 from __init__ import BASE_PATH
-from logutils.queue import QueueHandler
 import utils
 from _version import __version__
 
@@ -557,13 +557,13 @@ class DataManager():
                                                 self.ldapuri,
                                                 self.log)
 
+        self.zmq_again_occured = 0
+        self.socket_reconnected = False
+
         # Create zmq context
         # there should be only one context in one process
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
-
-        self.zmq_again_occured = 0
-        self.socket_reconnected = False
 
         try:
             if self.check_target_host(enable_logging=True):
@@ -579,7 +579,6 @@ class DataManager():
             self.stop()
 
     def create_sockets(self):
-
         # initiate forwarder for control signals (multiple pub, multiple sub)
         try:
             self.device = zmq.devices.ThreadDevice(zmq.FORWARDER,
@@ -875,18 +874,18 @@ class DataManager():
     def run(self):
         # SignalHandler
         self.signalhandler_thr = threading.Thread(target=SignalHandler,
-                                                 args=(
-                                                     self.params,
-                                                     self.control_pub_con_str,
-                                                     self.control_sub_con_str,
-                                                     self.whitelist,
-                                                     self.ldapuri,
-                                                     self.com_con_str,
-                                                     self.request_fw_con_str,
-                                                     self.request_con_str,
-                                                     self.log_queue
-                                                     )
-                                                 )
+                                                  args=(
+                                                      self.params,
+                                                      self.control_pub_con_str,
+                                                      self.control_sub_con_str,
+                                                      self.whitelist,
+                                                      self.ldapuri,
+                                                      self.com_con_str,
+                                                      self.request_fw_con_str,
+                                                      self.request_con_str,
+                                                      self.log_queue
+                                                      )
+                                                  )
         self.signalhandler_thr.start()
 
         # needed, because otherwise the requests for the first files are not
@@ -1023,16 +1022,18 @@ class DataManager():
         if self.log is None:
             self.log = logging
 
-        if self.control_pub_socket:
+        if self.control_pub_socket is not None:
             self.log.info("Sending 'Exit' signal")
             self.control_pub_socket.send_multipart([b"control", b"EXIT"])
 
         # closing control fowarding
         if self.device is not None:
-            self.device.join(5)
+            self.log.info("Stopping forwarder device")
+#            self.device.context_factory().term()
+            self.device.join(0.5)
             self.device = None
 
-        if self.control_pub_socket:
+        if self.control_pub_socket is not None:
             self.log.info("Closing control_pub_socket")
             self.control_pub_socket.close(0)
             self.control_pub_socket = None
@@ -1047,12 +1048,11 @@ class DataManager():
             self.context.destroy(0)
             self.context = None
 
-
-        ipc_ip =  "{}/{}".format(self.ipc_path, self.current_pid)
+        ipc_ip = "{}/{}".format(self.ipc_path, self.current_pid)
         ipc_con_paths = {
-                "control_pub": "{}_{}".format(ipc_ip, "controlPub"),
-                "control_sub": "{}_{}".format(ipc_ip, "controlSub"),
-                "request_fw": "{}_{}".format(ipc_ip, "requestFw")
+            "control_pub": "{}_{}".format(ipc_ip, "controlPub"),
+            "control_sub": "{}_{}".format(ipc_ip, "controlSub"),
+            "request_fw": "{}_{}".format(ipc_ip, "requestFw")
         }
 
         # Clean up ipc communication files
@@ -1071,8 +1071,9 @@ class DataManager():
             os.rmdir(self.ipc_path)
             self.log.debug("Removed IPC direcory: {}".format(self.ipc_path))
         except OSError:
-            self.log.debug("Could not remove IPC directory: {}"
-                           .format(self.ipc_path))
+            pass
+#            self.log.debug("Could not remove IPC directory: {}"
+#                           .format(self.ipc_path))
         except:
             self.log.warning("Could not remove IPC directory: {}"
                              .format(self.ipc_path), exc_info=True)
@@ -1092,7 +1093,6 @@ class DataManager():
 
     def __del__(self):
         self.stop()
-
 
 
 if __name__ == '__main__':

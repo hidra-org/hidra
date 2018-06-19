@@ -20,6 +20,7 @@ import utils
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 # LOGLEVEL = "error"
+# LOGLEVEL = "info"
 LOGLEVEL = "debug"
 
 
@@ -150,25 +151,29 @@ def set_con_strs(ext_ip, con_ip, ipc_endpoints, ports):
 
     # determine socket connection strings
     if utils.is_windows():
-        control_pub_bind_str = "tcp://{}:{}".format(ext_ip, ports["control_pub"])
-        control_pub_con_str = "tcp://{}:{}".format(con_ip, ports["control_pub"])
+        port = ports["control_pub"]
+        control_pub_bind_str = "tcp://{}:{}".format(ext_ip, port)
+        control_pub_con_str = "tcp://{}:{}".format(con_ip, port)
 
-        control_sub_bind_str = "tcp://{}:{}".format(ext_ip, ports["control_sub"])
-        control_sub_con_str = "tcp://{}:{}".format(con_ip, ports["control_sub"])
+        port = ports["control_sub"]
+        control_sub_bind_str = "tcp://{}:{}".format(ext_ip, port)
+        control_sub_con_str = "tcp://{}:{}".format(con_ip, port)
 
-        request_fw_bind_str = "tcp://{}:{}".format(ext_ip, ports["request_fw"])
-        request_fw_con_str = "tcp://{}:{}".format(con_ip, ports["request_fw"])
+        port = ports["request_fw"]
+        request_fw_bind_str = "tcp://{}:{}".format(ext_ip, port)
+        request_fw_con_str = "tcp://{}:{}".format(con_ip, port)
 
-        router_bind_str = "tcp://{}:{}".format(ext_ip, ports["router"])
-        router_con_str = "tcp://{}:{}".format(con_ip, ports["router"])
+        port = ports["router"]
+        router_bind_str = "tcp://{}:{}".format(ext_ip, port)
+        router_con_str = "tcp://{}:{}".format(con_ip, port)
 
-        job_bind_str = "tcp://{}:{}".format(ext_ip, ports["cleaner"])
-        job_con_str = "tcp://{}:{}".format(con_ip, ports["cleaner"])
+        port = ports["cleaner"]
+        job_bind_str = "tcp://{}:{}".format(ext_ip, port)
+        job_con_str = "tcp://{}:{}".format(con_ip, port)
 
-        trigger_bind_str = "tcp://{}:{}".format(ext_ip,
-                                                ports["cleaner_trigger"])
-        trigger_con_str = "tcp://{}:{}".format(con_ip,
-                                               ports["cleaner_trigger"])
+        port = ports["cleaner_trigger"]
+        trigger_bind_str = "tcp://{}:{}".format(ext_ip, port)
+        trigger_con_str = "tcp://{}:{}".format(con_ip, port)
     else:
         control_pub_bind_str = "ipc://{}".format(ipc_endpoints.control_pub)
         control_pub_con_str = control_pub_bind_str
@@ -308,7 +313,8 @@ class TestBase(unittest.TestCase):
                 os.remove(endpoint)
                 self.log.debug("Removed ipc socket: {}".format(endpoint))
             except OSError:
-                self.log.debug("Could not remove ipc socket: {}".format(endpoint))
+                self.log.debug("Could not remove ipc socket: {}"
+                               .format(endpoint))
             except:
                 self.log.warning("Could not remove ipc socket: {}"
                                  .format(endpoint), exc_info=True)

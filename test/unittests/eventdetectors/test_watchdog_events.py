@@ -60,13 +60,16 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.eventdetector = None
 
-        self.time_all_events_detected = (self.event_detector_config["action_time"]
-                                         + self.event_detector_config["time_till_closed"])
+        self.time_all_events_detected = (
+            self.event_detector_config["action_time"]
+            + self.event_detector_config["time_till_closed"]
+        )
 
     def _start_eventdetector(self):
         """Sets up the event detector.
         """
-        self.eventdetector = EventDetector(self.event_detector_config, self.log_queue)
+        self.eventdetector = EventDetector(self.event_detector_config,
+                                           self.log_queue)
 
     def test_single_file(self):
         """Simulate single file creation.

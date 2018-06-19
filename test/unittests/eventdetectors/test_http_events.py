@@ -41,7 +41,8 @@ class TestEventDetector(EventDetectorTestBase):
         self.target_base_path = "http://{}/data".format(
             socket.gethostbyname(self.event_detector_config["det_ip"]))
 
-        self.eventdetector = EventDetector(self.event_detector_config, self.log_queue)
+        self.eventdetector = EventDetector(self.event_detector_config,
+                                           self.log_queue)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.

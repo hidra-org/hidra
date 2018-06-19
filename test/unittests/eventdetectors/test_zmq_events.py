@@ -7,7 +7,6 @@ from __future__ import absolute_import
 
 import json
 import os
-import tempfile
 import time
 import zmq
 
@@ -33,9 +32,11 @@ class TestEventDetector(EventDetectorTestBase):
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
 
-        self._event_det_con_str = "ipc://{}/{}_{}".format(ipc_dir,
-                                                          self.config["main_pid"],
-                                                          "eventDet")
+        self._event_det_con_str = (
+            "ipc://{}/{}_{}".format(ipc_dir,
+                                    self.config["main_pid"],
+                                    "eventDet")
+        )
         self.log.debug("self.event_det_con_str {}"
                        .format(self._event_det_con_str))
 
@@ -58,7 +59,8 @@ class TestEventDetector(EventDetectorTestBase):
         self.target_path = os.path.join(target_base_path,
                                         target_relative_path)
 
-        self.eventdetector = EventDetector(self.event_detector_config, self.log_queue)
+        self.eventdetector = EventDetector(self.event_detector_config,
+                                           self.log_queue)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.

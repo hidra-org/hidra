@@ -7,13 +7,10 @@ from __future__ import absolute_import
 
 import json
 import os
-import socket
-import tempfile
 import threading
 import time
 import zmq
-from multiprocessing import Process, freeze_support
-from shutil import copyfile
+from multiprocessing import freeze_support
 
 import utils
 from .__init__ import BASE_DIR
@@ -69,7 +66,6 @@ class RequestPuller(threading.Thread):
 
     def __exit__(self):
         self.stop()
-
 
 
 class TestSignalHandler(TestBase):
@@ -158,18 +154,13 @@ class TestSignalHandler(TestBase):
         for port in self.receiving_ports:
             receiving_con_strs.append("{}:{}".format(self.con_ip, port))
 
-        # initiate forwarder for control signals (multiple pub, multiple sub)
-        device = zmq.devices.ThreadDevice(zmq.FORWARDER, zmq.SUB, zmq.PUB)
-        device.bind_in(con_strs.control_pub_bind)
-        device.bind_out(con_strs.control_sub_bind)
-        device.setsockopt_in(zmq.SUBSCRIBE, b"")
-        device.start()
-
         # create control socket
+        # control messages are not send over an forwarder, thus the
+        # control_sub endpoint is used directly
         control_pub_socket = self.context.socket(zmq.PUB)
-        control_pub_socket.connect(con_strs.control_pub_con)
+        control_pub_socket.bind(con_strs.control_sub_bind)
         self.log.info("control_pub_socket connect to: '{}'"
-                      .format(con_strs.control_pub_con))
+                      .format(con_strs.control_sub_bind))
 
         kwargs = dict(
             params=self.signalhandler_config,
@@ -182,16 +173,17 @@ class TestSignalHandler(TestBase):
             request_con_id=request_con_str,
             log_queue=self.log_queue,
         )
-        signalhandler_pr = threading.Thread(target=SignalHandler, kwargs=kwargs)
-        signalhandler_pr.start()
+        signalhandler_thr = threading.Thread(target=SignalHandler,
+                                             kwargs=kwargs)
+        signalhandler_thr.start()
 
         # to give the signal handler to bind to the socket before the connect
         # is done
         time.sleep(0.5)
 
-        request_puller_pr = RequestPuller(con_strs,
-                                          self.log_queue)
-        request_puller_pr.start()
+        request_puller_thr = RequestPuller(con_strs,
+                                           self.log_queue)
+        request_puller_thr.start()
 
         com_socket = self.context.socket(zmq.REQ)
         com_socket.connect(com_con_str)
@@ -199,31 +191,51 @@ class TestSignalHandler(TestBase):
 
         request_socket = self.context.socket(zmq.PUSH)
         request_socket.connect(request_con_str)
-        self.log.info("request_socket connected to {}". format(request_con_str))
+        self.log.info("request_socket connected to {}".format(request_con_str))
 
         time.sleep(1)
 
         try:
-            self.send_signal(com_socket, b"START_STREAM", 6003, 1)
+            self.send_signal(socket=com_socket,
+                             signal=b"START_STREAM",
+                             ports=6003,
+                             prio=1)
 
-            self.send_signal(com_socket, b"START_STREAM", 6004, 0)
+            self.send_signal(socket=com_socket,
+                             signal=b"START_STREAM",
+                             ports=6004,
+                             prio=0)
 
-            self.send_signal(com_socket, b"STOP_STREAM", 6003)
+            self.send_signal(socket=com_socket,
+                             signal=b"STOP_STREAM",
+                             ports=6003)
 
-            self.send_request(request_socket, receiving_con_strs[1])
+            self.send_request(socket=request_socket,
+                              socket_id=receiving_con_strs[1])
 
-            self.send_signal(com_socket, b"START_QUERY_NEXT", self.receiving_ports, 2)
+            self.send_signal(socket=com_socket,
+                             signal=b"START_QUERY_NEXT",
+                             ports=self.receiving_ports,
+                             prio=2)
 
-            self.send_request(request_socket, receiving_con_strs[1].encode())
-            self.send_request(request_socket, receiving_con_strs[1].encode())
-            self.send_request(request_socket, receiving_con_strs[0].encode())
+            self.send_request(socket=request_socket,
+                              socket_id=receiving_con_strs[1].encode())
+            self.send_request(socket=request_socket,
+                              socket_id=receiving_con_strs[1].encode())
+            self.send_request(socket=request_socket,
+                              socket_id=receiving_con_strs[0].encode())
 
-            self.cancel_request(request_socket, receiving_con_strs[1].encode())
+            self.cancel_request(socket=request_socket,
+                                socket_id=receiving_con_strs[1].encode())
 
             time.sleep(0.5)
 
-            self.send_request(request_socket, receiving_con_strs[0])
-            self.send_signal(com_socket, b"STOP_QUERY_NEXT", self.receiving_ports[0], 2)
+            self.send_request(socket=request_socket,
+                              socket_id=receiving_con_strs[0])
+            self.send_signal(socket=com_socket,
+                             signal=b"STOP_QUERY_NEXT",
+                             ports=self.receiving_ports[0],
+                             prio=2)
 
             time.sleep(1)
         except KeyboardInterrupt:
@@ -233,10 +245,10 @@ class TestSignalHandler(TestBase):
             control_pub_socket.send_multipart([b"control", b"EXIT"])
             self.log.debug("Sent control signal EXIT")
 
-            signalhandler_pr.join()
-            request_puller_pr.stop()
-            request_puller_pr.join()
-            device.join(1)
+#            signalhandler_thr.stop()
+            signalhandler_thr.join()
+            request_puller_thr.stop()
+            request_puller_thr.join()
 
             control_pub_socket.close(0)
 
@@ -244,28 +256,6 @@ class TestSignalHandler(TestBase):
             request_socket.close(0)
 
     def tearDown(self):
-#        self.context.term()
         self.context.destroy(0)
-
-#        try:
-#            os.remove(control_pub_path)
-#            self.log.debug("Removed ipc socket: {}".format(control_pub_path))
-#        except OSError:
-#            self.log.warning("Could not remove ipc socket: {}"
-#                            .format(control_pub_path))
-#        except:
-#            self.log.warning("Could not remove ipc socket: {}"
-#                            .format(control_pub_path), exc_info=True)
-#
-#        try:
-#            os.remove(control_sub_path)
-#            self.log.debug("Removed ipc socket: {}".format(control_sub_path))
-#        except OSError:
-#            self.log.warning("Could not remove ipc socket: {}"
-#                             .format(control_sub_path))
-#        except:
-#            self.log.warning("Could not remove ipc socket: {}"
-#                             .format(control_sub_path), exc_info=True)
-
 
         super(TestSignalHandler, self).tearDown()

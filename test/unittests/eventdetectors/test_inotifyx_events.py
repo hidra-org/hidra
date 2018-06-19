@@ -66,7 +66,8 @@ class TestEventDetector(EventDetectorTestBase):
         """Sets up the event detector.
         """
 
-        self.eventdetector = EventDetector(self.event_detector_config, self.log_queue)
+        self.eventdetector = EventDetector(self.event_detector_config,
+                                           self.log_queue)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.

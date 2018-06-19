@@ -1,15 +1,14 @@
+from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
 import zmq
 import os
 import time
-import logging
 import json
 import signal
-from multiprocessing import Process
 
-from logutils.queue import QueueHandler
-from __init__ import BASE_PATH
+from __init__ import BASE_PATH  # noqa F401
 import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

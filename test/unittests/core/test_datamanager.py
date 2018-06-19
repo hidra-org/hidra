@@ -7,17 +7,12 @@ from __future__ import absolute_import
 
 import json
 import os
-import socket
-import tempfile
-import threading
 import time
 import zmq
-from multiprocessing import Process, freeze_support, Queue
+from multiprocessing import Process, freeze_support
 from shutil import copyfile
 
-import utils
 from .__init__ import BASE_DIR
-from logutils.queue import QueueHandler
 from test_base import TestBase, create_dir
 from datamanager import DataManager
 from _version import __version__
@@ -131,17 +126,25 @@ class TestDataManager(TestBase):
         received_message = self.com_socket.recv()
         self.log.info("Responce : {}".format(received_message))
 
-
     def test_datamanager(self):
         """Simulate incoming data and check if received events are correct.
         """
 
-        self.fixed_recv_socket = self.set_up_recv_socket(self.config["fixed_recv"])
+        self.fixed_recv_socket = self.set_up_recv_socket(
+            self.config["fixed_recv"]
+        )
 
         con_strs = self.config["con_strs"]
-        self.com_socket = self.context.socket(zmq.REQ)
-        self.com_socket.connect(con_strs.com_con)
-        self.log.info("Start com_socket (connect): {}".format(con_strs.com_con))
+
+        try:
+            self.com_socket = self.context.socket(zmq.REQ)
+            self.com_socket.connect(con_strs.com_con)
+            self.log.info("Start com_socket (connect): {}"
+                          .format(con_strs.com_con))
+        except:
+            self.log.error("Failed to start com_socket (connect): {}"
+                           .format(con_strs.com_con))
+            raise
 
         try:
             kwargs = dict(
@@ -178,13 +181,13 @@ class TestDataManager(TestBase):
         time.sleep(0.5)
         try:
             for i in range(self.start, self.stop):
-                target_file = os.path.join(target_file_base, "{}.cbf".format(i))
+                target_file = os.path.join(target_file_base,
+                                           "{}.cbf".format(i))
                 self.log.debug("copy to {}".format(target_file))
                 copyfile(source_file, target_file)
 
                 time.sleep(1)
 
-                self.log.debug("i={}, n_iter={}".format(i, self.stop))
                 recv_message = self.fixed_recv_socket.recv_multipart()
 
                 if recv_message == ["ALIVE_TEST"]:
@@ -209,16 +212,16 @@ class TestDataManager(TestBase):
                 sckt.close(0)
 
             sender.terminate()
-            sender.join()
+#            sender.join()
 
-            for number in range(self.start, self.stop):
-                target_file = os.path.join(target_file_base, "{}.cbf".format(number))
+            for i in range(self.start, self.stop):
+                target_file = os.path.join(target_file_base,
+                                           "{}.cbf".format(i))
                 try:
                     os.remove(target_file)
                     self.log.debug("remove {}".format(target_file))
                 except:
                     pass
-
 
     def tearDown(self):
         self.context.destroy(0)

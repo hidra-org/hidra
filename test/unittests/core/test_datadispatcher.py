@@ -7,8 +7,6 @@ from __future__ import absolute_import
 
 import json
 import os
-import socket
-import tempfile
 import time
 import zmq
 from multiprocessing import Process, freeze_support
@@ -80,22 +78,6 @@ class TestDataDispatcher(TestBase):
 
         con_strs = self.config["con_strs"]
 
-        # initiate forwarder for control signals (multiple pub, multiple sub)
-        device = zmq.devices.ThreadDevice(zmq.FORWARDER, zmq.SUB, zmq.PUB)
-        device.bind_in(con_strs.control_pub_bind)
-        device.bind_out(con_strs.control_sub_bind)
-        device.setsockopt_in(zmq.SUBSCRIBE, b"")
-        device.start()
-        self.log.info("Start thead device forwarding messages from "
-                      "'{}' to '{}'".format(con_strs.control_pub_bind,
-                                            con_strs.control_sub_bind))
-
-        # create control socket
-        control_pub_socket = self.context.socket(zmq.PUB)
-        control_pub_socket.connect(con_strs.control_pub_con)
-        self.log.info("Start control_pub_socket (connect): '{}'"
-                      .format(con_strs.control_pub_con))
-
         router_socket = self.context.socket(zmq.PUSH)
         router_socket.bind(con_strs.router_bind)
         self.log.info("Start router_socket (bind): '{}'"
@@ -125,9 +107,10 @@ class TestDataDispatcher(TestBase):
             "filename": "100.cbf"
         }
 
+        recv_ports = self.receiving_ports
         targets = [
-            ["{}:{}".format(self.con_ip, self.receiving_ports[0]), [".cbf"], "data"],
-            ["{}:{}".format(self.con_ip, self.receiving_ports[1]), [".cbf"], "data"]
+            ["{}:{}".format(self.con_ip, recv_ports[0]), [".cbf"], "data"],
+            ["{}:{}".format(self.con_ip, recv_ports[1]), [".cbf"], "data"]
         ]
 
         message = [json.dumps(metadata).encode("utf-8"),
@@ -147,11 +130,7 @@ class TestDataDispatcher(TestBase):
         except KeyboardInterrupt:
             pass
         finally:
-            control_pub_socket.send_multipart([b"control", b"EXIT"])
-            self.log.debug("Sent control signal EXIT")
-            device.join(1)
-            datadispatcher_pr.join()
-#            datadispatcher_pr.terminate()
+            datadispatcher_pr.terminate()
 
             router_socket.close(0)
             for sckt in receiving_sockets:
