@@ -1,5 +1,6 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
 import os
 import time
@@ -8,7 +9,6 @@ import collections
 import socket
 
 from eventdetectorbase import EventDetectorBase
-import utils
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan.garrevoet@desy.de>')
@@ -18,49 +18,54 @@ class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
 
-        EventDetectorBase.__init__(self, config, log_queue,
+        EventDetectorBase.__init__(self,
+                                   config,
+                                   log_queue,
                                    "http_events")
 
-        required_params = ["det_ip",
-                           "det_api_version",
-                           "history_size",
-                           "fix_subdirs"]
+        self.config = config
+        self.log.queue = log_queue
 
-        # Check format of config
-        check_passed, config_reduced = utils.check_config(required_params,
-                                                          config,
-                                                          self.log)
+        self.session = None
+        self.det_ip = None
+        self.det_api_version = None
+        self.det_url = None
 
-        # Only proceed if the configuration was correct
-        if check_passed:
-            self.log.info("Configuration for event detector: {}"
-                          .format(config_reduced))
+        # time to sleep after detector returned emtpy file list
+        self.sleep_time = 0.5
+        self.files_downloaded = None
 
-            self.session = requests.session()
+        self.required_params = ["det_ip",
+                                "det_api_version",
+                                "history_size",
+                                "fix_subdirs"]
 
-            # Enable specification via IP and DNS name
-            self.det_ip = socket.gethostbyaddr(config["det_ip"])[2][0]
-            self.det_api_version = config["det_api_version"]
-            self.det_url = ("http://{}/filewriter/api/{}/files"
-                            .format(self.det_ip,
-                                    self.det_api_version))
-            self.log.debug("Getting files from: {}".format(self.det_url))
+        self.check_config()
+        self.setup()
+
+    def setup(self):
+        """
+        Sets static configuration parameters and sets up ring buffer.
+        """
+
+        self.session = requests.session()
+
+        # Enable specification via IP and DNS name
+        self.det_ip = socket.gethostbyaddr(self.config["det_ip"])[2][0]
+        self.det_api_version = self.config["det_api_version"]
+        self.det_url = ("http://{}/filewriter/api/{}/files"
+                        .format(self.det_ip, self.det_api_version))
+        self.log.debug("Getting files from: {}".format(self.det_url))
 #            http://192.168.138.37/filewriter/api/1.6.0/files
 
-            self.fix_subdirs = config["fix_subdirs"]
-
-            # time to sleep after detector returned emtpy file list
-            self.sleep_time = 0.5
-
-            # history to prevend double events
-            self.files_downloaded = collections.deque(
-                maxlen=config["history_size"])
-
-        else:
-            # self.log.debug("config={0}".format(config))
-            raise Exception("Wrong configuration")
+        # history to prevend double events
+        self.files_downloaded = collections.deque(
+            maxlen=self.config["history_size"]
+        )
 
     def get_new_event(self):
+        """Implementation of the abstract method get_new_event.
+        """
 
         event_message_list = []
 
@@ -72,9 +77,10 @@ class EventDetector(EventDetectorBase):
 #            #  'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5',
 #            #  'testp06/36_data_000001.h5', 'testp06/36_master.h5')
 #            files_stored = self.detdevice.read_attribute(
-#                "FilesInBuffer", timeout=3).value
+#                "FilesInBuffer", timeout=3
+#            ).value
 #        except Exception as e:
-#            self.log.error("Getting 'FilesInBuffer'...failed. {0}".format(e))
+#            self.log.error("Getting 'FilesInBuffer'...failed. {}".format(e))
 #            time.sleep(0.2)
 #            return event_message_list
 
@@ -106,7 +112,7 @@ class EventDetector(EventDetectorBase):
             time.sleep(self.sleep_time)
 
         for f in files_stored:
-            if (f.startswith(tuple(self.fix_subdirs))
+            if (f.startswith(tuple(self.config["fix_subdirs"]))
                     and f not in self.files_downloaded):
                 (relative_path, filename) = os.path.split(f)
                 event_message = {
@@ -121,6 +127,6 @@ class EventDetector(EventDetectorBase):
         return event_message_list
 
     def stop(self):
+        """Implementation of the abstract method stop.
+        """
         pass
-
-# testing was moved into test/unittests/event_detectors/test_http_events.py

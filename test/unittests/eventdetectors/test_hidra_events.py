@@ -11,7 +11,9 @@ import zmq
 
 from .__init__ import BASE_DIR
 from .eventdetector_test_base import EventDetectorTestBase, create_dir
-from hidra_events import EventDetector
+from hidra_events import (EventDetector,
+                          get_ipc_endpoints,
+                          get_addrs)
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -34,21 +36,14 @@ class TestEventDetector(EventDetectorTestBase):
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
 
-        self._event_det_con_str = (
-            "ipc://{}/{}_{}".format(ipc_dir,
-                                    self.config["main_pid"],
-                                    "eventDet")
-        )
-        self.log.debug("self.event_det_con_str {}"
-                       .format(self._event_det_con_str))
-
         self.context = zmq.Context()
 
-        self.event_detector_config = {
+        self.eventdetector_config = {
             "context": self.context,
-            "ipc_path": ipc_dir,
+            "ipc_dir": ipc_dir,
+            "ext_ip": self.ext_ip,
+            "con_ip": self.con_ip,
             "main_pid": self.config["main_pid"],
-            "ext_ip": "0.0.0.0",
             "ext_data_port": "50100"
         }
 
@@ -60,36 +55,42 @@ class TestEventDetector(EventDetectorTestBase):
         self.target_path = os.path.join(target_base_path,
                                         target_relative_path)
 
-        self.eventdetector = EventDetector(self.event_detector_config,
+        self.eventdetector = EventDetector(self.eventdetector_config,
                                            self.log_queue)
+
+        self.ipc_endpoints = get_ipc_endpoints(
+            config=self.eventdetector_config
+        )
+        self.addrs = get_addrs(config=self.eventdetector_config,
+                               ipc_endpoints=self.ipc_endpoints)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.
         """
-
-        in_con_str = (
-            "tcp://{}:{}".format(self.event_detector_config["ext_ip"],
-                                 self.event_detector_config["ext_data_port"])
-        )
-        out_con_str = "ipc://{}/{}_{}".format(self.config["ipc_dir"],
-                                              self.config["main_pid"],
-                                              "out")
 
         local_in = True
         local_out = True
 
         if local_in:
             # create zmq socket to send events
-            data_in_socket = self.context.socket(zmq.PUSH)
-            data_in_socket.connect(in_con_str)
-            self.log.info("Start data_in_socket (connect): '{}'"
-                          .format(in_con_str))
+            try:
+                data_in_socket = self.context.socket(zmq.PUSH)
+                data_in_socket.connect(self.addrs.in_con)
+                self.log.info("Start data_in_socket (connect): '{}'"
+                              .format(self.addrs.in_con))
+            except:
+                self.log.error("Failed to start data_in_socket (connect): '{}'"
+                               .format(self.addrs.in_con))
 
         if local_out:
-            data_out_socket = self.context.socket(zmq.PULL)
-            data_out_socket.connect(out_con_str)
-            self.log.info("Start data_out_socket (connect): '{}'"
-                          .format(out_con_str))
+            try:
+                data_out_socket = self.context.socket(zmq.PULL)
+                data_out_socket.connect(self.addrs.out_con)
+                self.log.info("Start data_out_socket (connect): '{}'"
+                              .format(self.addrs.out_con))
+            except:
+                self.log.error("Failed to start data_out_socket (connect): "
+                               "'{}'".format(self.addrs.out_con))
 
         try:
             for i in range(self.start, self.stop):

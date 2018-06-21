@@ -24,10 +24,6 @@ if SHARED_DIR not in sys.path:
 if EVENT_DETECTOR_DIR not in sys.path:
     sys.path.insert(0, EVENT_DETECTOR_DIR)
 
-# TODO hack to work around already installed hidra
-if API_DIR not in sys.path:
-    sys.path.insert(0, API_DIR)
-
 try:
     # search in global python modules first
     from hidra import Transfer  # noqa F401 # pylint: disable=import-error

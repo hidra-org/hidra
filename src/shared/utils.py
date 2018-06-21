@@ -51,6 +51,8 @@ def is_linux():
     else:
         return False
 
+class WrongConfiguration(Exception):
+    pass
 
 # This function is needed because configParser always needs a section name
 # the used config file consists of key-value pairs only
@@ -403,7 +405,7 @@ def check_config(required_params, config, log):
                 check_passed = False
         # checks if the parameter is contained in the config dict
         elif param not in config:
-            log.error("Configuration of wrong format. Missing parameter: '{0}'"
+            log.error("Configuration of wrong format. Missing parameter: '{}'"
                       .format(param))
             check_passed = False
         else:

@@ -12,7 +12,10 @@ import zmq
 
 from .__init__ import BASE_DIR
 from .eventdetector_test_base import EventDetectorTestBase, create_dir
-from zmq_events import EventDetector
+from zmq_events import (EventDetector,
+                        get_ipc_endpoints,
+                        get_tcp_endpoints,
+                        get_addrs)
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -32,22 +35,15 @@ class TestEventDetector(EventDetectorTestBase):
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
 
-        self._event_det_con_str = (
-            "ipc://{}/{}_{}".format(ipc_dir,
-                                    self.config["main_pid"],
-                                    "eventDet")
-        )
-        self.log.debug("self.event_det_con_str {}"
-                       .format(self._event_det_con_str))
-
         self.context = zmq.Context()
 
-        self.event_detector_config = {
+        self.eventdetector_config = {
             "context": self.context,
+            "ipc_dir": ipc_dir,
+            "con_ip": self.con_ip,
             "number_of_streams": 1,
-            "ext_ip": "0.0.0.0",
+            "ext_ip": self.ext_ip,
             "event_det_port": 50003,
-            "ipc_path": ipc_dir,
             "main_pid": self.config["main_pid"]
         }
 
@@ -59,18 +55,34 @@ class TestEventDetector(EventDetectorTestBase):
         self.target_path = os.path.join(target_base_path,
                                         target_relative_path)
 
-        self.eventdetector = EventDetector(self.event_detector_config,
+        self.eventdetector = EventDetector(self.eventdetector_config,
                                            self.log_queue)
+
+        self.ipc_endpoints = get_ipc_endpoints(
+            config=self.eventdetector_config
+        )
+        self.tcp_endpoints = get_tcp_endpoints(
+            config=self.eventdetector_config
+        )
+        self.addrs = get_addrs(ipc_endpoints=self.ipc_endpoints,
+                               tcp_endpoints=self.tcp_endpoints)
+
+        self.event_socket = None
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.
         """
 
         # create zmq socket to send events
-        event_socket = self.context.socket(zmq.PUSH)
-        event_socket.connect(self._event_det_con_str)
-        self.log.info("Start event_socket (connect): '{}'"
-                      .format(self._event_det_con_str))
+        try:
+            self.event_socket = self.context.socket(zmq.PUSH)
+            self.event_socket.connect(self.addrs.eventdet_con)
+            self.log.info("Start event_socket (connect): '{}'"
+                          .format(self.addrs.eventdet_con))
+        except:
+            self.log.error("Failed to start event_socket (connect): '{}'"
+                           .format(self.addrs.eventdet_con))
+            raise
 
         for i in range(self.start, self.stop):
             try:
@@ -82,7 +94,7 @@ class TestEventDetector(EventDetectorTestBase):
                     u"chunksize": 10
                 }
 
-                event_socket.send_multipart(
+                self.event_socket.send_multipart(
                     [json.dumps(message).encode("utf-8")]
                 )
 
@@ -99,7 +111,7 @@ class TestEventDetector(EventDetectorTestBase):
                 break
 
         message = [b"CLOSE_FILE", "test_file.cbf".encode("utf8")]
-        event_socket.send_multipart(message)
+        self.event_socket.send_multipart(message)
 
         event_list = self.eventdetector.get_new_event()
         self.log.debug("event_list: {}".format(event_list))
@@ -107,6 +119,8 @@ class TestEventDetector(EventDetectorTestBase):
         self.assertIn(message, event_list)
 
     def tearDown(self):
+        self.event_socket.close(0)
+
         self.eventdetector.stop()
         self.context.destroy(0)
 

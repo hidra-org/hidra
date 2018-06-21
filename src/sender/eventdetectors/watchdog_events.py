@@ -1,5 +1,7 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
+
 from six import iteritems
 
 import bisect
@@ -33,15 +35,17 @@ event_list_to_observe_tmp = []
 
 # documentation of watchdog: https://pythonhosted.org/watchdog/api.html
 class WatchdogEventHandler(RegexMatchingEventHandler):
-    def __init__(self, id, config, log_queue):
-        self.id = id
+    def __init__(self, handler_id, config, log_queue):
+        self.handler_id = handler_id
 
         # Suppress logging messages of watchdog observer
         logging.getLogger("watchdog.observers.inotify_buffer").setLevel(
             logging.WARNING)
 
-        self.log = utils.get_logger("WatchdogEventHandler-{}"
-                                    .format(self.id), log_queue)
+        self.log = utils.get_logger(
+            "WatchdogEventHandler-{}".format(self.handler_id),
+            log_queue
+        )
         self.log.debug("init")
 
         self.paths = [os.path.normpath(config["monitored_dir"])]
@@ -334,7 +338,7 @@ class CheckModTime(threading.Thread):
             self.pool.join()
             self.pool = None
 
-    def __exit__(self):
+    def __exit__(self, type, value, traceback):
         self.stop()
 
     def __del__(self):
@@ -344,72 +348,73 @@ class CheckModTime(threading.Thread):
 class EventDetector(EventDetectorBase):
     def __init__(self, config, log_queue):
 
-        EventDetectorBase.__init__(self, config, log_queue,
+        EventDetectorBase.__init__(self,
+                                   config,
+                                   log_queue,
                                    "watchdog_events")
 
-        required_params = ["monitored_dir",
-                           "fix_subdirs",
-                           ["monitored_events", dict],
-                           "time_till_closed",
-                           "action_time"]
+        self.config = config
+        self.log_queue = log_queue
 
-        # Check format of config
-        check_passed, config_reduced = utils.check_config(required_params,
-                                                          config,
-                                                          self.log)
+        self.mon_dir = None
+        self.mon_subdirs = None
+        self.paths = None
+        self.lock = None
 
-        # Only proceed if the configuration was correct
-        if check_passed:
-            self.log.info("Configuration for event detector: {}"
-                          .format(config_reduced))
+        self.required_params = ["monitored_dir",
+                                "fix_subdirs",
+                                ["monitored_events", dict],
+                                "time_till_closed",
+                                "action_time"]
+        self.check_config()
+        self.setup()
 
-            self.config = config
-            self.mon_dir = os.path.normpath(self.config["monitored_dir"])
-            self.mon_subdirs = self.config["fix_subdirs"]
+    def setup(self):
+        """
+        Sets static configuration paramters and starts the observer and
+        checking_thread.
+        """
 
-            self.paths = [os.path.normpath(os.path.join(self.mon_dir,
-                                                        directory))
-                          for directory in self.config["fix_subdirs"]]
-            self.log.debug("paths: {}".format(self.paths))
+        self.mon_dir = os.path.normpath(self.config["monitored_dir"])
+        self.mon_subdirs = self.config["fix_subdirs"]
 
-            self.time_till_closed = self.config["time_till_closed"]
-            self.action_time = self.config["action_time"]
+        self.paths = [os.path.normpath(os.path.join(self.mon_dir,
+                                                    directory))
+                      for directory in self.config["fix_subdirs"]]
+        self.log.debug("paths: {}".format(self.paths))
 
-            self.observer_threads = []
-            self.lock = threading.Lock()
+        self.lock = threading.Lock()
 
-            observer_id = 0
-            for path in self.paths:
-                observer = Observer()
-                observer.schedule(
-                    WatchdogEventHandler(observer_id, self.config, log_queue),
-                    path,
-                    recursive=True
-                )
-
-                self.observer_threads.append(observer)
-                observer_id += 1
-
-                observer.start()
-                self.log.info("Started observer for directory: {}"
-                              .format(path))
-
-            self.checking_thread = None
-            self.checking_thread = CheckModTime(
-                number_of_threads=4,
-                time_till_closed=self.time_till_closed,
-                mon_dir=self.mon_dir,
-                action_time=self.action_time,
-                lock=self.lock,
-                log_queue=log_queue
+        self.observer_threads = []
+        for observer_id, path in enumerate(self.paths):
+            observer = Observer()
+            observer.schedule(
+                WatchdogEventHandler(observer_id, self.config, self.log_queue),
+                path,
+                recursive=True
             )
-            self.checking_thread.start()
 
-        else:
-            # self.log.debug("config={0}".format(config))
-            raise Exception("Wrong configuration")
+            self.observer_threads.append(observer)
+
+            observer.start()
+            self.log.info("Started observer for directory: {}"
+                          .format(path))
+
+        self.checking_thread = None
+        self.checking_thread = CheckModTime(
+            number_of_threads=4,
+            time_till_closed=self.config["time_till_closed"],
+            mon_dir=self.mon_dir,
+            action_time=self.config["action_time"],
+            lock=self.lock,
+            log_queue=self.log_queue
+        )
+        self.checking_thread.start()
 
     def get_new_event(self):
+        """Implementation of the abstract method get_new_event.
+        """
+
         global event_message_list
 
         with self.lock:
@@ -420,6 +425,9 @@ class EventDetector(EventDetectorBase):
         return event_message_list_local
 
     def stop(self):
+        """Implementation of the abstract method stop.
+        """
+
         global event_message_list
         global event_list_to_observe
         global event_list_to_observe_tmp
@@ -446,10 +454,4 @@ class EventDetector(EventDetectorBase):
             event_list_to_observe = []
             event_list_to_observe_tmp = []
 
-    def __exit__(self):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
-# testing was moved into test/unittests/event_detectors/test_watchdog_events.py
+#        pprint.pprint(threading._active)

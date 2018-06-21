@@ -1,8 +1,10 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
-import zmq
 import json
+import zmq
+from collections import namedtuple
 
 from eventdetectorbase import EventDetectorBase
 import utils
@@ -10,83 +12,214 @@ import utils
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
+IpcEndpoints = namedtuple("ipc_endpoints", ["eventdet"])
+TcpEndpoints = namedtuple("tcp_endpoints", ["eventdet_bind", "eventdet_con"])
+Addresses = namedtuple("addresses", ["eventdet_bind", "eventdet_con"])
+
+
+def get_tcp_endpoints(config):
+    """Build the endpoints used for TCP communcation.
+
+    The endpoints are only set if called on Windows. For Linux they are set
+    to None.
+
+    Args:
+        config (dict): A dictionary containing the IPs to bind and to connect
+                       to as well as the ports. Usually con_ip is teh DNS name.
+    Returns:
+        A TcpEndpoints object.
+    """
+
+    if utils.is_windows():
+        ext_ip = config["ext_ip"]
+        con_ip = config["con_ip"]
+
+        port = config["event_det_port"]
+        eventdet_bind = "{}:{}".format(ext_ip, port)
+        eventdet_con = "{}:{}".format(con_ip, port)
+
+        endpoints = TcpEndpoints(
+            eventdet_bind=eventdet_bind,
+            eventdet_con=eventdet_con
+        )
+    else:
+        endpoints = None
+
+    return endpoints
+
+
+def get_ipc_endpoints(config):
+    """Build the endpoints used for IPC.
+
+    The endpoints are only set if called on Linux. On windows they are set
+    to None.
+
+    Args:
+        config (dict): A dictionary conaining the ipc base directory and the
+                       main PID.
+    Returns:
+        An IpcEndpoints object.
+    """
+    if utils.is_windows():
+        endpoints = None
+    else:
+        ipc_ip = "{}/{}".format(config["ipc_dir"],
+                                config["main_pid"])
+
+        eventdet = "{}_{}".format(ipc_ip, "eventDet")
+
+        endpoints = IpcEndpoints(eventdett=evetndet)
+
+    return endpoints
+
+
+def get_addrs(ipc_endpoints, tcp_endpoints):
+    """Configures the ZMQ address depending on the protocol.
+
+    Args:
+        ipc_endpoints: The endpoints used for the interprocess communication
+                       (ipc) protocol.
+        tcp_endpoints: The endpoints used for communication over TCP.
+    Returns:
+        An Addresses object containing the bind and connection addresses.
+    """
+
+    if ipc_endpoints is not None:
+        eventdet_bind = "ipc://{}".format(ipc_endpoints.eventdet)
+        eventdet_con = eventdet_bind
+
+    elif tcp_endpoints is not None:
+        eventdet_bind = "tcp://{}".format(tcp_endpoints.eventdet_bind)
+        eventdet_con = "tcp://{}".format(tcp_endpoints.eventdet_con)
+    else:
+        msg = "Neither ipc not tcp endpoints are defined"
+        raise Exception(msg)
+
+    return Addresses(
+        eventdet_bind=eventdet_bind,
+        eventdet_con=eventdet_con
+    )
+
+
+# generalization not used because removing the ipc_endpoints later is more
+# difficult
+# Endpoints = namedtuple("endpoints", ["eventdet_bind", "eventdet_con"])
+# def get_endpoints(config):
+#    if not utils.is_windows():
+#        eventdet_bind = "{}:{}".format(config["ext_ip"],
+#                                       config["event_det_port"]),
+#        eventdet_con = "{}:{}".formau(config["con_ip"],
+#                                      config["event_det_port"]),
+#    else:
+#        ipc_ip = "{}/{}".format(config["ipc_dir"],
+#                                config["main_pid"])
+#
+#        eventdet_bind = "{}_{}".format(ipc_ip, "eventDet"),
+#        eventdet_con = eventdet_bind
+#
+#    endpoints = Endpoints(
+#        eventdet_bind=eventdet_bind,
+#        eventdet_con=eventdet_con
+#    )
+#
+#    return endpoints
+#
+#
+# def get_addrs(config, endpoints):
+#
+#    if utils.is_windows():
+#        protocol = "tcp"
+#    else:
+#        protocol = "ipc"
+#
+#    eventdet_bind = "{}://{}".format(protocol, endpoints.eventdet_bind)
+#    eventdet_con = "{}://{}".format(protocol, endpoints.eventdet_con)
+#
+#    addrs = Addresses(
+#        eventdet_bind=eventdet_bind,
+#        eventdet_con=eventdet_con
+#    )
+#
+#    return addrs
+
+
 class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
 
-        EventDetectorBase.__init__(self, config, log_queue,
+        EventDetectorBase.__init__(self,
+                                   config,
+                                   log_queue,
                                    "zmq_events")
 
+        self.config = config
+        self.log_queue = log_queue
+
+        self.ext_context = None
+        self.context = None
+        self.event_socket = None
+
+        self.ipc_endpoints = None
+        self.tcp_endpoints = None
+        self.addrs = None
+
+        self.set_required_params()
+
+        self.check_config()
+        self.setup()
+
+    def set_required_params(self):
+        """
+        Defines the parameters to be in configuration to run this datafetcher.
+        Depending if on Linux or Windows other parameters are required.
+        """
+
+        self.required_params = ["context", "number_of_streams"]
         if utils.is_windows():
-            required_params = ["context",
-                               "number_of_streams",
-                               "ext_ip",
-                               "event_det_port"]
+            self.required_params += ["ext_ip", "event_det_port"]
         else:
-            required_params = ["context",
-                               "number_of_streams",
-                               "ipc_path",
-                               "main_pid"]
+            self.required_params += ["ipc_dir", "main_pid"]
 
-        # Check format of config
-        check_passed, config_reduced = utils.check_config(required_params,
-                                                          config,
-                                                          self.log)
+    def setup(self):
+        """
+        Sets ZMQ endpoints and addresses and creates the ZMQ socket.
+        """
 
-        # Only proceed if the configuration was correct
-        if check_passed:
-            self.log.info("Configuration for event detector: {}"
-                          .format(config_reduced))
+        self.ipc_endpoints = get_ipc_endpoints(config=self.config)
+        self.tcp_endpoints = get_tcp_endpoints(config=self.config)
+        self.addrs = get_addrs(ipc_endpoints=self.ipc_endpoints,
+                               tcp_endpoints=self.tcp_endpoints)
 
-            if utils.is_windows():
-                self.event_det_con_str = ("tcp://{}:{}"
-                                          .format(config["ext_ip"],
-                                                  config["event_det_port"]))
-            else:
-                self.event_det_con_str = ("ipc://{}/{}_{}"
-                                          .format(config["ipc_path"],
-                                                  config["main_pid"],
-                                                  "eventDet"))
-
-            self.event_socket = None
-
-            self.number_of_streams = config["number_of_streams"]
-
-            # remember if the context was created outside this class or not
-            if config["context"]:
-                self.context = config["context"]
-                self.ext_context = True
-            else:
-                self.log.info("Registering ZMQ context")
-                self.context = zmq.Context()
-                self.ext_context = False
-
-            self.create_sockets()
-
+        # remember if the context was created outside this class or not
+        if self.config["context"]:
+            self.context = self.config["context"]
+            self.ext_context = True
         else:
-            # self.log.debug("config={0}".format(config))
-            raise Exception("Wrong configuration")
-
-    def create_sockets(self):
+            self.log.info("Registering ZMQ context")
+            self.context = zmq.Context()
+            self.ext_context = False
 
         # Create zmq socket to get events
         try:
             self.event_socket = self.context.socket(zmq.PULL)
-            self.event_socket.bind(self.event_det_con_str)
+            self.event_socket.bind(self.addrs.eventdet_bind)
             self.log.info("Start event_socket (bind): '{}'"
-                          .format(self.event_det_con_str))
+                          .format(self.addrs.eventdet_bind))
         except:
             self.log.error("Failed to start event_socket (bind): '{}'"
-                           .format(self.event_det_con_str), exc_info=True)
+                           .format(self.addrs.eventdet_bind), exc_info=True)
             raise
 
     def get_new_event(self):
+        """Implementation of the abstract method get_new_event.
+        """
 
         event_message = self.event_socket.recv_multipart()
 
         if event_message[0] == b"CLOSE_FILE":
-            event_message_list = [event_message
-                                  for i in range(self.number_of_streams)]
+            event_message_list = [
+                event_message for i in range(self.config["number_of_streams"])
+            ]
         else:
             event_message_list = [json.loads(event_message[0].decode("utf-8"))]
 
@@ -95,6 +228,8 @@ class EventDetector(EventDetectorBase):
         return event_message_list
 
     def stop(self):
+        """Implementation of the abstract method stop.
+        """
         # close ZMQ
         if self.event_socket:
             self.event_socket.close(0)
@@ -110,5 +245,3 @@ class EventDetector(EventDetectorBase):
                 self.log.info("Closing ZMQ context...done.")
             except:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
-
-# testing was moved into test/unittests/event_detectors/test_zmq_events.py

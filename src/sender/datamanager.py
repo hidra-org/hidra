@@ -413,11 +413,13 @@ class DataManager():
             self.ext_ip = self.params["ext_ip"]
         else:
             self.ext_ip = socket.gethostbyaddr(self.params["ext_ip"])[2][0]
+        self.con_ip = socket.getfqdn()
 
         self.use_cleaner = (self.params["remove_data"] == "with_confirmation")
 
         # Make ipc_path accessible for modules
         self.params["ext_ip"] = self.ext_ip
+        self.params["con_ip"] = self.con_ip
         self.params["ipc_path"] = self.ipc_path
         self.params["main_pid"] = self.current_pid
         # TODO: this should not be set here (it belong to the moduls)
@@ -1037,6 +1039,17 @@ class DataManager():
             self.log.info("Closing control_pub_socket")
             self.control_pub_socket.close(0)
             self.control_pub_socket = None
+
+        # cleanup hanging processes
+#        if self.signalhandler_thr.is_alive():
+#            self.log.info("SignalHandler hangs. Terminated.")
+#        if self.taskprovider_pr.is_alive():
+#            self.log.info("TaskProvider hangs. Terminated.")
+#        if self.use_cleaner and self.cleaner_pr.is_alive():
+#            self.log.info("Cleaner hangs. Terminated.")
+#        for datadispatcher in self.datadispatcher_pr:
+#            if datadispatcher.is_alive():
+#                self.log.info("DataDispatcher hangs. Terminated.")
 
         if self.test_socket:
             self.log.debug("Stopping test_socket")
