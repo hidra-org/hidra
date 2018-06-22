@@ -48,19 +48,23 @@ class TestDataFetcher(DataFetcherTestBase):
 
         self.receiving_ports = ["6005", "6006"]
 
+        self.datafetcher = None
+        self.receiving_sockets = None
+        self.control_pub_socket = None
+
     def test_no_confirmation(self):
         """Simulate file fetching without taking care of confirmation signals.
         """
 
-        datafetcher = DataFetcher(config=self.data_fetcher_config,
-                                  log_queue=self.log_queue,
-                                  id=0,
-                                  context=self.context)
+        self.datafetcher = DataFetcher(config=self.data_fetcher_config,
+                                       log_queue=self.log_queue,
+                                       fetcher_id=0,
+                                       context=self.context)
 
         # Set up receiver simulator
-        receiving_socket = []
+        self.receiving_sockets = []
         for port in self.receiving_ports:
-            receiving_socket.append(self.set_up_recv_socket(port))
+            self.receiving_sockets.append(self.set_up_recv_socket(port))
 
         # Test file fetcher
         source_dir = os.path.join(BASE_DIR, "data", "source")
@@ -86,36 +90,31 @@ class TestDataFetcher(DataFetcherTestBase):
         self.log.debug("open_connections before function call: {}"
                        .format(open_connections))
 
-        datafetcher.get_metadata(targets, metadata)
+        self.datafetcher.get_metadata(targets, metadata)
 
-        datafetcher.send_data(targets, metadata, open_connections)
+        self.datafetcher.send_data(targets, metadata, open_connections)
 
-        datafetcher.finish(targets, metadata, open_connections)
+        self.datafetcher.finish(targets, metadata, open_connections)
 
         self.log.debug("open_connections after function call: {}"
                        .format(open_connections))
 
         try:
-            for sckt in receiving_socket:
+            for sckt in self.receiving_sockets:
                 recv_message = sckt.recv_multipart()
                 recv_message = json.loads(recv_message[0].decode("utf-8"))
                 self.log.info("received: {}".format(recv_message))
         except KeyboardInterrupt:
             pass
-        finally:
-            time.sleep(0.1)
-
-            for sckt in receiving_socket:
-                sckt.close(0)
 
     def test_with_confirmation(self):
         """Simulate file fetching while taking care of confirmation signals.
         """
 
-        datafetcher = DataFetcher(config=self.data_fetcher_config,
-                                  log_queue=self.log_queue,
-                                  id=0,
-                                  context=self.context)
+        self.datafetcher = DataFetcher(config=self.data_fetcher_config,
+                                       log_queue=self.log_queue,
+                                       fetcher_id=0,
+                                       context=self.context)
 
         self.config["remove_data"] = "with_confirmation"
         con_strs = self.config["con_strs"]
@@ -134,14 +133,22 @@ class TestDataFetcher(DataFetcherTestBase):
         cleaner_pr.start()
 
         # Set up receiver simulator
-        receiving_socket = []
+        self.receiving_sockets = []
         for port in self.receiving_ports:
-            receiving_socket.append(self.set_up_recv_socket(port))
+            self.receiving_sockets.append(self.set_up_recv_socket(port))
 
         confirmation_socket = self.context.socket(zmq.PUB)
         confirmation_socket.bind(con_strs.confirm_bind)
         self.log.info("Start confirmation_socket (bind): {}"
                       .format(con_strs.confirm_bind))
+
+        # create control socket
+        # control messages are not send over an forwarder, thus the
+        # control_sub endpoint is used directly
+        self.control_pub_socket = self.context.socket(zmq.PUB)
+        self.control_pub_socket.bind(con_strs.control_sub_con)
+        self.log.info("Start control_socket (bind): {}"
+                      .format(con_strs.control_sub_con))
 
         # Test file fetcher
         source_dir = os.path.join(BASE_DIR, "data", "source")
@@ -167,11 +174,11 @@ class TestDataFetcher(DataFetcherTestBase):
         self.log.debug("open_connections before function call: {}"
                        .format(open_connections))
 
-        datafetcher.get_metadata(targets, metadata)
+        self.datafetcher.get_metadata(targets, metadata)
 
-        datafetcher.send_data(targets, metadata, open_connections)
+        self.datafetcher.send_data(targets, metadata, open_connections)
 
-        datafetcher.finish(targets, metadata, open_connections)
+        self.datafetcher.finish(targets, metadata, open_connections)
 
         # generate file identifier
         if metadata["relative_path"].startswith("/"):
@@ -188,21 +195,32 @@ class TestDataFetcher(DataFetcherTestBase):
                        .format(open_connections))
 
         try:
-            for sckt in receiving_socket:
+            for sckt in self.receiving_sockets:
                 recv_message = sckt.recv_multipart()
                 recv_message = json.loads(recv_message[0].decode("utf-8"))
                 self.log.info("received: {}".format(recv_message))
         except KeyboardInterrupt:
             pass
-        finally:
-            time.sleep(0.5)
-
-            for sckt in receiving_socket:
-                sckt.close(0)
-
-            cleaner_pr.terminate()
-
-            datafetcher.stop()
 
     def tearDown(self):
+        if self.control_pub_socket is not None:
+            self.log.debug("Sending control signal: EXIT")
+            self.control_pub_socket.send_multipart([b"control", b"EXIT"])
+
+        if self.receiving_sockets is not None:
+            self.log.debug("Closing receiving_sockets")
+            for sckt in self.receiving_sockets:
+                sckt.close(0)
+            self.receiving_sockets = None
+
+        if self.datafetcher is not None:
+            self.log.debug("Stopping datafetcher")
+            self.datafetcher.stop()
+            self.datafetcher = None
+
+        if self.control_pub_socket is not None:
+            self.log.debug("Closing control_pub_socket")
+            self.control_pub_socket.close(0)
+            self.control_pub_socket = None
+
         super(TestDataFetcher, self).tearDown()

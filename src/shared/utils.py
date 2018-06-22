@@ -10,8 +10,11 @@ import shutil
 import subprocess
 import socket
 import re
-from _version import __version__
+from collections import namedtuple
+
 from cfel_optarg import parse_parameters
+
+from _version import __version__
 from hidra import LoggingFunction
 
 try:
@@ -51,8 +54,10 @@ def is_linux():
     else:
         return False
 
+
 class WrongConfiguration(Exception):
     pass
+
 
 # This function is needed because configParser always needs a section name
 # the used config file consists of key-value pairs only
@@ -336,6 +341,25 @@ def check_ping(host, log=logging):
         sys.exit(1)
 
 
+def create_dir(directory, chmod=None, log=logging):
+    """Creates the directory if it does not exist.
+
+    Args:
+        directory: The absolute path of the directory to be created.
+        chmod (optional): Mode bits to change the permissions of the directory
+                          to.
+    """
+
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+        log.info("Creating directory: {}".format(directory))
+
+    if chmod is not None:
+        # the permission have to changed explicitly because
+        # on some platform they are ignored when called within mkdir
+        os.chmod(directory, 0o777)
+
+
 def create_sub_dirs(dir_path, subdirs):
 
     dir_path = os.path.normpath(dir_path)
@@ -379,6 +403,7 @@ def check_config(required_params, config, log):
 
     check_passed = True
     config_reduced = "{"
+
 
     for param in required_params:
         # multiple checks have to be done
@@ -495,6 +520,200 @@ def generate_sender_id(main_pid):
 
     return b"{}_{}".format(socket.getfqdn(), main_pid)
 
+
+# ------------------------------ #
+#  Connection paths and strings  #
+# ------------------------------ #
+
+IpcEndpoints = namedtuple(
+    "ipc_endpoints", [
+        "control_pub",
+        "control_sub",
+        "request_fw",
+        "router",
+        "cleaner_job",
+        "cleaner_trigger",
+    ]
+)
+
+
+def set_ipc_endpoints(ipc_dir, main_pid):
+    """Sets the ipc connection paths.
+
+    Sets the connection strings  for the job, control, trigger and
+    confirmation socket.
+
+    Args:
+        ipc_dir: Directory used for IPC connections
+        main_pid: Process ID of the current process. Used to distinguish
+                  different IPC connection.
+    Returns:
+        A namedtuple object IpcEndpoints with the entries:
+            control_pub,
+            control_sub,
+            request_fw,
+            router,
+            cleaner_job,
+            cleaner_trigger
+    """
+
+    # determine socket connection strings
+    ipc_ip = "{}/{}".format(ipc_dir, main_pid)
+
+    control_pub = "{}_{}".format(ipc_ip, "control_pub")
+    control_sub = "{}_{}".format(ipc_ip, "control_sub")
+    request_fw = "{}_{}".format(ipc_ip, "request_fw")
+    router = "{}_{}".format(ipc_ip, "router")
+    job = "{}_{}".format(ipc_ip, "cleaner")
+    trigger = "{}_{}".format(ipc_ip, "cleaner_trigger")
+
+    return IpcEndpoints(
+        control_pub=control_pub,
+        control_sub=control_sub,
+        request_fw=request_fw,
+        router=router,
+        cleaner_job=job,
+        cleaner_trigger=trigger,
+    )
+
+
+ConStrs = namedtuple(
+    "con_str", [
+        "control_pub_bind",
+        "control_pub_con",
+        "control_sub_bind",
+        "control_sub_con",
+        "request_bind",
+        "request_con",
+        "request_fw_bind",
+        "request_fw_con",
+        "router_bind",
+        "router_con",
+        "cleaner_job_bind",
+        "cleaner_job_con",
+        "cleaner_trigger_bind",
+        "cleaner_trigger_con",
+        "confirm_bind",
+        "confirm_con",
+        "com_bind",
+        "com_con",
+    ]
+)
+
+
+def set_con_strs(ext_ip, con_ip, ports, ipc_endpoints):
+    """Sets the connection strings.
+
+    Sets the connection strings  for the job, control, trigger and
+    confirmation socket.
+
+    Args:
+        ext_ip: IP to bind TCP connections to
+        con_ip: IP to connect TCP connections to
+        ipc_endpoints: Endpoints to use for the IPC connections.
+        port: A dictionary giving the ports to open TCP connection on
+              (only used on Windows).
+    Returns:
+        A namedtuple object ConStrs with the entries:
+            control_pub_bind
+            control_pub_con
+            control_sub_bind
+            control_sub_con
+            request_bind,
+            request_con,
+            request_fw_bind,
+            request_fw_con,
+            router_bind,
+            router_con,
+            cleaner_job_bind
+            cleaner_job_con
+            cleaner_trigger_bind
+            cleaner_trigger_con
+            confirm_bind
+            confirm_con
+            com_bind
+            com_con
+    """
+
+    # determine socket connection strings
+    if is_windows():
+        port = ports["control_pub"]
+        control_pub_bind = "tcp://{}:{}".format(ext_ip, port)
+        control_pub_con = "tcp://{}:{}".format(con_ip, port)
+
+        port = ports["control_sub"]
+        control_sub_bind = "tcp://{}:{}".format(ext_ip, port)
+        control_sub_con = "tcp://{}:{}".format(con_ip, port)
+
+        port = ports["request_fw"]
+        request_fw_bind = "tcp://{}:{}".format(ext_ip, port)
+        request_fw_con = "tcp://{}:{}".format(con_ip, port)
+
+        port = ports["router"]
+        router_bind = "tcp://{}:{}".format(ext_ip, port)
+        router_con = "tcp://{}:{}".format(con_ip, port)
+
+        port = ports["cleaner"]
+        job_bind = "tcp://{}:{}".format(ext_ip, port)
+        job_con = "tcp://{}:{}".format(con_ip, port)
+
+        port = ports["cleaner_trigger"]
+        trigger_bind = "tcp://{}:{}".format(ext_ip, port)
+        trigger_con = "tcp://{}:{}".format(con_ip, port)
+
+    else:
+        control_pub_bind = "ipc://{}".format(ipc_endpoints.control_pub)
+        control_pub_con = control_pub_bind
+
+        control_sub_bind = "ipc://{}".format(ipc_endpoints.control_sub)
+        control_sub_con = control_sub_bind
+
+        request_fw_bind = "ipc://{}".format(ipc_endpoints.request_fw)
+        request_fw_con = request_fw_bind
+
+        router_bind = "ipc://{}".format(ipc_endpoints.router)
+        router_con = router_bind
+
+        job_bind = "ipc://{}".format(ipc_endpoints.cleaner_job)
+        job_con = job_bind
+
+        trigger_bind = "ipc://{}".format(ipc_endpoints.cleaner_trigger)
+        trigger_con = trigger_bind
+
+    request_bind = "tcp://{}:{}".format(ext_ip, ports["request"])
+    request_con = "tcp://{}:{}".format(con_ip, ports["request"])
+
+    confirm_bind = "tcp://{}:{}".format(ext_ip, ports["confirmation"])
+    confirm_con = "tcp://{}:{}".format(con_ip, ports["confirmation"])
+
+    com_bind = "tcp://{}:{}".format(ext_ip, ports["com"])
+    com_con = "tcp://{}:{}".format(con_ip, ports["com"])
+
+    return ConStrs(
+        control_pub_bind=control_pub_bind,
+        control_pub_con=control_pub_con,
+        control_sub_bind=control_sub_bind,
+        control_sub_con=control_sub_con,
+        request_bind=request_bind,
+        request_con=request_con,
+        request_fw_bind=request_fw_bind,
+        request_fw_con=request_fw_con,
+        router_bind=router_bind,
+        router_con=router_con,
+        cleaner_job_bind=job_bind,
+        cleaner_job_con=job_con,
+        cleaner_trigger_bind=trigger_bind,
+        cleaner_trigger_con=trigger_con,
+        confirm_bind=confirm_bind,
+        confirm_con=confirm_con,
+        com_bind=com_bind,
+        com_con=com_con,
+    )
+
+
+# ------------------------------ #
+#            Logging             #
+# ------------------------------ #
 
 # http://stackoverflow.com/questions/25585518/
 #        python-logging-logutils-with-queuehandler-and-queuelistener#25594270

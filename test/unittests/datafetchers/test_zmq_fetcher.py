@@ -12,7 +12,10 @@ import zmq
 
 from .__init__ import BASE_DIR
 from .datafetcher_test_base import DataFetcherTestBase
-from zmq_fetcher import DataFetcher
+from zmq_fetcher import (DataFetcher,
+                         get_ipc_endpoints,
+                         get_tcp_endpoints,
+                         get_addrs)
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -30,12 +33,13 @@ class TestDataFetcher(DataFetcherTestBase):
         # Set up config
 #        local_target = os.path.join(BASE_DIR, "data", "target")
 
-        self.data_fetcher_config = {
+        self.datafetcher_config = {
             "context": self.context,
             "remove_data": False,
             "ipc_dir": self.config["ipc_dir"],
             "main_pid": self.config["main_pid"],
             "ext_ip": self.ext_ip,
+            "con_ip": self.con_ip,
             "cleaner_job_con_str": self.config["con_strs"].cleaner_job_con,
             "cleaner_conf_con_str": self.config["con_strs"].confirm_con,
             "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
@@ -48,27 +52,38 @@ class TestDataFetcher(DataFetcherTestBase):
 
         self.receiving_ports = ["6005", "6006"]
 
+        self.datafetcher = None
+        self.receiving_sockets = None
+        self.data_fw_socket = None
+
     def test_no_confirmation(self):
         """Simulate file fetching without taking care of confirmation signals.
         """
 
-        datafetcher = DataFetcher(config=self.data_fetcher_config,
-                                  log_queue=self.log_queue,
-                                  id=0,
-                                  context=self.context)
+        self.datafetcher = DataFetcher(config=self.datafetcher_config,
+                                       log_queue=self.log_queue,
+                                       fetcher_id=0,
+                                       context=self.context)
+
+        ipc_endpoints = get_ipc_endpoints(config=self.datafetcher_config)
+        tcp_endpoints = get_tcp_endpoints(config=self.datafetcher_config)
+        addrs = get_addrs(ipc_endpoints=ipc_endpoints,
+                          tcp_endpoints=tcp_endpoints)
 
         # Set up receiver simulator
-        receiving_socket = []
+        self.receiving_sockets = []
         for port in self.receiving_ports:
-            receiving_socket.append(self.set_up_recv_socket(port))
+            self.receiving_sockets.append(self.set_up_recv_socket(port))
 
-        data_fetch_con_str = "ipc://{}/{}".format(self.config["ipc_dir"],
-                                                  "dataFetch")
-
-        data_fw_socket = self.context.socket(zmq.PUSH)
-        data_fw_socket.connect(data_fetch_con_str)
-        self.log.info("Start data_fw_socket (connect): '{}'"
-                      .format(data_fetch_con_str))
+        try:
+            self.data_fw_socket = self.context.socket(zmq.PUSH)
+            self.data_fw_socket.connect(addrs.datafetch_con)
+            self.log.info("Start data_fw_socket (connect): '{}'"
+                          .format(addrs.datafetch_con))
+        except:
+            self.log.error("Failed to start data_fw_socket (connect): '{}'"
+                           .format(addrs.datafetch_con))
+            raise
 
         # Test data fetcher
         prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
@@ -78,7 +93,7 @@ class TestDataFetcher(DataFetcherTestBase):
             file_content = file_descriptor.read()
             self.log.debug("File read")
 
-        data_fw_socket.send(file_content)
+        self.data_fw_socket.send(file_content)
         self.log.debug("File send")
 
         metadata = {
@@ -97,29 +112,22 @@ class TestDataFetcher(DataFetcherTestBase):
         self.log.debug("open_connections before function call: {}"
                        .format(open_connections))
 
-        datafetcher.get_metadata(targets, metadata)
+        self.datafetcher.get_metadata(targets, metadata)
 
-        datafetcher.send_data(targets, metadata, open_connections)
+        self.datafetcher.send_data(targets, metadata, open_connections)
 
-        datafetcher.finish(targets, metadata, open_connections)
+        self.datafetcher.finish(targets, metadata, open_connections)
 
         self.log.debug("open_connections after function call: {}"
                        .format(open_connections))
 
         try:
-            for sckt in receiving_socket:
+            for sckt in self.receiving_sockets:
                 recv_message = sckt.recv_multipart()
                 recv_message = json.loads(recv_message[0].decode("utf-8"))
                 self.log.info("received: {}".format(recv_message))
         except KeyboardInterrupt:
             pass
-        finally:
-            data_fw_socket.close(0)
-
-            for sckt in receiving_socket:
-                sckt.close(0)
-
-            datafetcher.stop()
 
     def test_with_confirmation(self):
         """Simulate file fetching while taking care of confirmation signals.
@@ -127,4 +135,20 @@ class TestDataFetcher(DataFetcherTestBase):
         pass
 
     def tearDown(self):
+        if self.data_fw_socket is not None:
+            self.log.debug("Closing data_fw_socket")
+            self.data_fw_socket.close(0)
+            self.data_fw_socket = None
+
+        if self.receiving_sockets is not None:
+            self.log.debug("Closing receiving_sockets")
+            for sckt in self.receiving_sockets:
+                sckt.close(0)
+            self.receiving_sockets = None
+
+        if self.datafetcher is not None:
+            self.log.debug("Stopping datafetcher")
+            self.datafetcher.stop()
+            self.datafetcher = None
+
         super(TestDataFetcher, self).tearDown()

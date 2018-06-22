@@ -1,4 +1,6 @@
+from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
 import abc
 import json
@@ -8,6 +10,7 @@ import zmq
 
 import __init__ as init  # noqa F401
 import utils
+from utils import WrongConfiguration
 
 # source:
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
@@ -25,22 +28,35 @@ class DataHandlingError(Exception):
 
 class DataFetcherBase(ABC):
 
-    def __init__(self, config, log_queue, id, logger_name, context):
+    def __init__(self, config, log_queue, fetcher_id, logger_name, context):
         """Initial setup
 
-        Checks if all required parameters are set in the configuration
+        Checks if the required parameters are set in the configuration for
+        the base setup.
+
+        Args:
+            config (dict): A dictionary containing the configuration
+                           parameters.
+            log_queue: The multiprocessing queue which is used for logging.
+            fetcher_id (int): The ID of this datafetcher instance.
+            logger_name (str): The name to be used for the logger.
+            context: The ZMQ context to be used.
+
         """
 
-        self.id = id
+        self.fetcher_id = fetcher_id
         self.config = config
         self.context = context
+        self.cleaner_job_socket = None
 
         self.log = utils.get_logger(logger_name, log_queue)
 
         self.source_file = None
         self.target_file = None
 
-        required_params = [
+        self.required_params = []
+
+        self.required_base_params = [
             "chunksize",
             "local_target",
             ["remove_data", [True,
@@ -51,45 +67,98 @@ class DataFetcherBase(ABC):
             "main_pid"
         ]
 
+        self.check_config(print_log=False)
+        self.base_setup()
+
+    def check_config(self, print_log=True):
+        """Check that the configuration containes the nessessary parameters.
+
+        Args:
+            print_log (boolean): If a summary of the configured parameters
+                                 should be logged.
+        Raises:
+            WrongConfiguration: The configuration has missing or
+                                wrong parameteres.
+        """
+
+        # combine paramerters which aare needed for all datafetchers with the
+        # specific ones for this fetcher
+        required_params = self.required_base_params + self.required_params
+
         # Check format of config
-        check_passed, config_reduced = utils.check_config(required_params,
-                                                          self.config,
-                                                          self.log)
+        check_passed, config_reduced = utils.check_config(
+            required_params,
+            self.config,
+            self.log
+        )
 
         if check_passed:
-            formated_config = str(json.dumps(config_reduced,
-                                             sort_keys=True,
-                                             indent=4))
-            self.log.info("Configuration for data fetcher: {}"
-                          .format(formated_config))
-
-            if self.config["remove_data"] == "with_confirmation":
-                # create socket
-                try:
-                    self.cleaner_job_socket = self.context.socket(zmq.PUSH)
-                    self.cleaner_job_socket.connect(
-                        self.config["cleaner_job_con_str"])
-                    self.log.info("Start cleaner job_socket (connect): {}"
-                                  .format(self.config["cleaner_job_con_str"]))
-                except:
-                    self.log.error("Failed to start cleaner job socket "
-                                   "(connect): '{}'"
-                                   .format(self.config["cleaner_job_con_str"]),
-                                   exc_info=True)
-                    raise
-
-                self.confirmation_topic = (
-                    utils.generate_sender_id(self.config["main_pid"])
+            if print_log:
+                formated_config = str(
+                    json.dumps(config_reduced, sort_keys=True, indent=4)
                 )
-            else:
-                self.cleaner_job_socket = None
+                self.log.info("Configuration for data fetcher: {}"
+                              .format(formated_config))
 
         else:
-            # self.log.debug("config={0}".format(self.config))
-            raise Exception("Wrong configuration")
+            # self.log.debug("config={}".format(self.config))
+            msg = "The configuration has missing or wrong parameteres."
+            raise WrongConfiguration(msg)
 
-    def send_to_targets(self, targets, open_connections, metadata, payload,
+    def base_setup(self):
+        """Sets up the shared components needed by all datafetchers.
+
+        Created a socket to communicate with the cleaner and sets the topic.
+        """
+
+        if self.config["remove_data"] == "with_confirmation":
+            # create socket
+            try:
+                self.cleaner_job_socket = self.context.socket(zmq.PUSH)
+                self.cleaner_job_socket.connect(
+                    self.config["cleaner_job_con_str"]
+                )
+                self.log.info("Start cleaner job_socket (connect): {}"
+                              .format(self.config["cleaner_job_con_str"]))
+            except:
+                self.log.error("Failed to start cleaner job socket "
+                               "(connect): '{}'"
+                               .format(self.config["cleaner_job_con_str"]),
+                               exc_info=True)
+                raise
+
+            self.confirmation_topic = (
+                utils.generate_sender_id(self.config["main_pid"])
+            )
+
+    def send_to_targets(self,
+                        targets,
+                        open_connections,
+                        metadata,
+                        payload,
                         timeout=-1):
+        """Send the data to targets.
+
+        Args:
+            targets: A list of targets where to send the data to.
+                     Each taget has is of the form:
+                        - target: A ZMQ endpoint to send the data to.
+                        - prio (int): With which priority this data should be
+                                      sent:
+                                      - 0 is highes priority with blocking
+                                      - all other prioirities are nonblocking
+                                        but sorted numerically.
+                        - send_type: If the data (means payload and metadata)
+                                     or only the metadata should be sent.
+
+            open_connections (dict): Containing all open sockets. If data was
+                                     send to a target already the socket is
+                                     kept open till the target disconnects.
+            metadata: The metadata of this data block.
+            payload: The data block to be sent.
+            timeout (optional): How long to wait for the message to be received
+                                (default: -1, means wait forever)
+        """
 
         for target, prio, send_type in targets:
 
@@ -109,15 +178,20 @@ class DataFetcherBase(ABC):
                         # register socket
                         open_connections[target] = socket
                     except:
-                        raise DataHandlingError("Failed to start socket "
-                                                "(connect): '{}'"
-                                                .format(connection_str))
+                        self.log.debug("Raising DataHandling error",
+                                       exc_info=True)
+                        msg = ("Failed to start socket (connect): '{}'"
+                               .format(connection_str))
+                        raise DataHandlingError(msg)
 
                 # send data
                 try:
                     if send_type == "data":
                         tracker = open_connections[target].send_multipart(
-                            payload, copy=False, track=True)
+                            payload,
+                            copy=False,
+                            track=True
+                        )
                         self.log.info("Sending message part from file '{}' "
                                       "to '{}' with priority {}"
                                       .format(self.source_file, target, prio))
@@ -127,7 +201,9 @@ class DataFetcherBase(ABC):
                         tracker = open_connections[target].send_multipart(
                             [json.dumps(metadata).encode("utf-8"),
                              json.dumps(None).encode("utf-8")],
-                            copy=False, track=True)
+                            copy=False,
+                            track=True
+                        )
                         self.log.info("Sending metadata of message part from "
                                       "file '{}' to '{}' with priority {}"
                                       .format(self.source_file, target, prio))
@@ -143,11 +219,11 @@ class DataFetcherBase(ABC):
                                        .format(self.source_file))
 
                 except:
-                    raise DataHandlingError("Sending (metadata of) message "
-                                            "part from file '{}' to '{}' "
-                                            "with priority {} failed."
-                                            .format(self.source_file, target,
-                                                    prio))
+                    self.log.debug("Raising DataHandling error", exc_info=True)
+                    msg = ("Sending (metadata of) message part from file '{}' "
+                           "to '{}' with priority {} failed."
+                           .format(self.source_file, target, prio))
+                    raise DataHandlingError(msg)
 
             else:
                 # socket not known
@@ -175,7 +251,8 @@ class DataFetcherBase(ABC):
                     open_connections[target].send_multipart(
                         [json.dumps(metadata).encode("utf-8"),
                          json.dumps(None).encode("utf-8")],
-                        zmq.NOBLOCK)
+                        zmq.NOBLOCK
+                    )
                     self.log.info("Sending metadata of message part from file "
                                   "'{}' to '{}' with priority {}"
                                   .format(self.source_file, target, prio))
@@ -282,9 +359,11 @@ class DataFetcherBase(ABC):
 
     @abc.abstractmethod
     def stop(self):
+        """Stop and clean up.
+        """
         pass
 
-    def __exit__(self):
+    def __exit__(self, type, value, traceback):
         self.close_socket()
         self.stop()
 

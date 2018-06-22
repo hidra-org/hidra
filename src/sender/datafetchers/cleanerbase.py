@@ -295,11 +295,13 @@ class CleanerBase(ABC):
             self.context = zmq.Context()
             self.ext_context = False
 
-        self.job_checking_thread = CheckJobs(self.job_bind_str,
-                                             self.cleaner_trigger_con_str,
-                                             self.control_con_str,
-                                             self.lock,
-                                             log_queue)
+        self.job_checking_thread = CheckJobs(
+            job_bind_str=self.job_bind_str,
+            cleaner_trigger_con_str=self.cleaner_trigger_con_str,
+            control_con_str=self.control_con_str,
+            lock=self.lock,
+            log_queue=log_queue
+        )
 
 #        self.conf_checking_thread = CheckConfirmations(self.conf_con_str,
 #                                                       self.lock,

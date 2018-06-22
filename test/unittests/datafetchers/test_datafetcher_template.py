@@ -7,11 +7,12 @@ from __future__ import absolute_import
 
 import json
 import os
-import subprocess
+# import time
+# from shutil import copyfile
 
 from .__init__ import BASE_DIR
 from .datafetcher_test_base import DataFetcherTestBase
-from file_fetcher import DataFetcher
+from datafetcher_template import DataFetcher
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -27,17 +28,14 @@ class TestDataFetcher(DataFetcherTestBase):
         super(TestDataFetcher, self).setUp()
 
         # Set up config
-        self.data_fetcher_config = {
-            "session": None,
-            "fix_subdirs": ["commissioning", "current", "local"],
-            "store_data": True,
-            "remove_data": False,
-            "ipc_dir": self.config["ipc_dir"],
-            "main_pid": self.config["main_pid"],
-            "cleaner_job_con_str": self.config["con_strs"].cleaner_job_con,
-            "cleaner_conf_con_str": self.config["con_strs"].confirm_con,
+#        local_target = os.path.join(BASE_DIR, "data", "target")
+
+        self.datafetcher_config = {
             "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
-            "local_target": os.path.join(BASE_DIR, "data", "target")
+            "local_target": None,
+            "remove_data": False,
+            "cleaner_job_con_str": None,
+            "main_pid": self.config["main_pid"]
         }
 
         self.cleaner_config = {
@@ -46,35 +44,36 @@ class TestDataFetcher(DataFetcherTestBase):
 
         self.receiving_ports = ["6005", "6006"]
 
+        self.receiving_sockets = None
+
     def test_no_confirmation(self):
         """Simulate file fetching without taking care of confirmation signals.
         """
 
-        datafetcher = DataFetcher(config=self.data_fetcher_config,
-                                  log_queue=self.log_queue,
-                                  fetcher_id=0,
-                                  context=self.context)
+        self.datafetcher = DataFetcher(config=self.datafetcher_config,
+                                       log_queue=self.log_queue,
+                                       fetcher_id=0,
+                                       context=self.context)
 
         # Set up receiver simulator
-        receiving_socket = []
+        self.receiving_sockets = []
         for port in self.receiving_ports:
-            receiving_socket.append(self.set_up_recv_socket(port))
+            self.receiving_sockets.append(self.set_up_recv_socket(port))
 
         # Test data fetcher
-        filename = "test01.cbf"
-        prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
-
-        # read file to send it in data pipe
-        self.log.debug("copy file to asap3-mon")
-        # os.system('scp "%s" "%s:%s"' % (localfile, remotehost, remotefile) )
-        subprocess.call("scp {} root@asap3-mon:/var/www/html/data/{}"
-                        .format(prework_source_file, filename), shell=True)
-
         metadata = {
-            "source_path": "http://asap3-mon/data",
-            "relative_path": "",
-            "filename": filename
+            "source_path": os.path.join(BASE_DIR, "data", "source"),
+            "relative_path": os.sep + "local",
+            "filename": "100.cbf"
         }
+
+#        prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
+#        prework_target_file = os.path.join(metadata["source_path"],
+#                                           metadata["relative_path"],
+#                                           metadata["filename"])
+
+#        copyfile(prework_source_file, prework_target_file)
+#        time.sleep(0.5)
 
         targets = [
             ["{}:{}".format(self.con_ip, self.receiving_ports[0]), 1, "data"],
@@ -86,32 +85,22 @@ class TestDataFetcher(DataFetcherTestBase):
         self.log.debug("open_connections before function call: {}"
                        .format(open_connections))
 
-        datafetcher.get_metadata(targets, metadata)
-        # source_file = "http://131.169.55.170/test_httpget/data/test_file.cbf"
+        self.datafetcher.get_metadata(targets, metadata)
 
-        datafetcher.send_data(targets, metadata, open_connections)
+        self.datafetcher.send_data(targets, metadata, open_connections)
 
-        datafetcher.finish(targets, metadata, open_connections)
+        self.datafetcher.finish(targets, metadata, open_connections)
 
         self.log.debug("open_connections after function call: {}"
                        .format(open_connections))
 
         try:
-            for sckt in receiving_socket:
+            for sckt in self.receiving_sockets:
                 recv_message = sckt.recv_multipart()
                 recv_message = json.loads(recv_message[0].decode("utf-8"))
                 self.log.info("received: {}".format(recv_message))
         except KeyboardInterrupt:
             pass
-        finally:
-
-            subprocess.call('ssh root@asap3-mon rm "/var/www/html/data/{}"'
-                            .format(filename), shell=True)
-
-            for sckt in receiving_socket:
-                sckt.close(0)
-
-            datafetcher.stop()
 
     def test_with_confirmation(self):
         """Simulate file fetching while taking care of confirmation signals.
@@ -119,4 +108,10 @@ class TestDataFetcher(DataFetcherTestBase):
         pass
 
     def tearDown(self):
+        if self.receiving_sockets is not None:
+            self.log.debug("Closing receiving_sockets")
+            for sckt in self.receiving_sockets:
+                sckt.close(0)
+            self.receiving_sockets = None
+
         super(TestDataFetcher, self).tearDown()

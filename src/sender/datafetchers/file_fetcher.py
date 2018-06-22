@@ -16,39 +16,46 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 class DataFetcher(DataFetcherBase):
 
-    def __init__(self, config, log_queue, id, context):
+    def __init__(self, config, log_queue, fetcher_id, context):
 
-        DataFetcherBase.__init__(self, config, log_queue, id,
-                                 "file_fetcher-{}".format(id),
+        DataFetcherBase.__init__(self,
+                                 config,
+                                 log_queue,
+                                 fetcher_id,
+                                 "file_fetcher-{}".format(fetcher_id),
                                  context)
 
-        required_params = ["fix_subdirs",
-                           "store_data"]
+        self.config = config
+        self.log_queue = log_queue
 
-        # Check format of config
-        check_passed, config_reduced = utils.check_config(required_params,
-                                                          self.config,
-                                                          self.log)
+        self.source_file = None
+        self.target_file = None
+        self.is_windows = None
+        self.finish = None
 
-        if check_passed:
-            self.log.info("Configuration for data fetcher: {}"
-                          .format(config_reduced))
+        self.required_params = ["fix_subdirs", "store_data"]
 
-            self.config["send_timeout"] = -1  # 10
-            self.config["remove_flag"] = False
+        self.check_config()
+        self.setup()
 
-            self.is_windows = utils.is_windows()
+    def setup(self):
+        """
+        Sets static configuration parameters and which finish method to use.
+        """
 
-            if self.config["remove_data"] == "with_confirmation":
-                self.finish = self.finish_with_cleaner
-            else:
-                self.finish = self.finish_without_cleaner
+        self.config["send_timeout"] = -1  # 10
+        self.config["remove_flag"] = False
 
+        self.is_windows = utils.is_windows()
+
+        if self.config["remove_data"] == "with_confirmation":
+            self.finish = self.finish_with_cleaner
         else:
-            # self.log.debug("config={}".format(config))
-            raise Exception("Wrong configuration")
+            self.finish = self.finish_without_cleaner
 
     def get_metadata(self, targets, metadata):
+        """Implementation of the abstract method get_metadata.
+        """
 
         # Build source file
         self.source_file = generate_filepath(metadata["source_path"],
@@ -109,6 +116,8 @@ class DataFetcher(DataFetcherBase):
                 raise
 
     def send_data(self, targets, metadata, open_connections):
+        """Implementation of the abstract method send_data.
+        """
 
         # no targets to send data to -> data can be removed
         # (after possible local storing)
@@ -167,8 +176,10 @@ class DataFetcher(DataFetcherBase):
 
             # send message to data targets
             try:
-                self.send_to_targets(targets_data, open_connections, None,
-                                     chunk_payload)
+                self.send_to_targets(targets=targets_data,
+                                     open_connections=open_connections,
+                                     metadata=None,
+                                     payload=chunk_payload)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
                                "'{}' (chunk {})".format(self.source_file,
@@ -256,19 +267,23 @@ class DataFetcher(DataFetcherBase):
             raise
 
     def finish(self, targets, metadata, open_connections):
-        # is overwritten when class is instantiated depending if a cleaner
-        # class is used or not
+        """Implementation of the abstract method finish.
+
+        Is overwritten when class is instantiated depending if a cleaner class
+        is used or not
+        """
         pass
 
     def finish_with_cleaner(self, targets, metadata, open_connections):
+        """Finish method to be used if use of cleaner was configured.
+        """
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
         targets_metadata = [i for i in targets if i[2] == "metadata"]
 
+        # copy file
+        # (does not preserve file owner, group or ACLs)
         if self.config["store_data"]:
-
-            # copy file
-            # (does not preserve file owner, group or ACLs)
             try:
                 self._datahandling(shutil.copy, metadata)
                 self.log.info("Copying file '{}' ...success."
@@ -276,6 +291,7 @@ class DataFetcher(DataFetcherBase):
             except:
                 return
 
+        # remove file
         elif self.config["remove_data"]:
 
             file_id = self.generate_file_id(metadata)
@@ -289,9 +305,11 @@ class DataFetcher(DataFetcherBase):
         # send message to metadata targets
         if targets_metadata:
             try:
-                self.send_to_targets(targets_metadata, open_connections,
-                                     metadata, None,
-                                     self.config["send_timeout"])
+                self.send_to_targets(targets=targets_metadata,
+                                     open_connections=open_connections,
+                                     metadata=metadata,
+                                     payload=None,
+                                     timeout=self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
                                "{}...done.".format(self.source_file))
 
@@ -302,15 +320,17 @@ class DataFetcher(DataFetcherBase):
                                exc_info=True)
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
+        """Finish method to use when use of cleaner not configured.
+        """
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
         targets_metadata = [i for i in targets if i[2] == "metadata"]
 
+        # move file
         if (self.config["store_data"]
                 and self.config["remove_data"]
                 and self.config["remove_flag"]):
 
-            # move file
             try:
                 self._datahandling(shutil.move, metadata)
                 self.log.info("Moving file '{}' to '{}'...success."
@@ -321,10 +341,9 @@ class DataFetcher(DataFetcherBase):
                                exc_info=True)
                 return
 
+        # copy file
+        # (does not preserve file owner, group or ACLs)
         elif self.config["store_data"]:
-
-            # copy file
-            # (does not preserve file owner, group or ACLs)
             try:
                 self._datahandling(shutil.copy, metadata)
                 self.log.info("Copying file '{}' ...success."
@@ -332,8 +351,8 @@ class DataFetcher(DataFetcherBase):
             except:
                 return
 
+        # remove file
         elif self.config["remove_data"] and self.config["remove_flag"]:
-            # remove file
             try:
                 os.remove(self.source_file)
                 self.log.info("Removing file '{}' ...success."
@@ -347,9 +366,11 @@ class DataFetcher(DataFetcherBase):
         # send message to metadata targets
         if targets_metadata:
             try:
-                self.send_to_targets(targets_metadata, open_connections,
-                                     metadata, None,
-                                     self.config["send_timeout"])
+                self.send_to_targets(targets=targets_metadata,
+                                     open_connections=open_connections,
+                                     metadata=metadata,
+                                     payload=None,
+                                     timeout=self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
                                "{}...done.".format(self.source_file))
 
@@ -360,6 +381,8 @@ class DataFetcher(DataFetcherBase):
                                exc_info=True)
 
     def stop(self):
+        """Implementation of the abstract method stop.
+        """
         # cloes base class zmq sockets
         self.close_socket()
 
@@ -377,5 +400,3 @@ class Cleaner(CleanerBase):
         except:
             self.log.error("Unable to remove file {}".format(source_file),
                            exc_info=True)
-
-# testing was moved into test/unittests/datafetchers/test_file_fetcher.py

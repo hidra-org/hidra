@@ -55,38 +55,34 @@ class TestDataFetcher(DataFetcherTestBase):
 
         self.receiving_ports = ["6005", "6006"]
 
+        self.datafetcher = None
+        self.receiving_sockets = None
+        self.data_fw_socket = None
+        self.data_input = True
+
     def test_no_confirmation(self):
         """Simulate file fetching without taking care of confirmation signals.
         """
 
-        datafetcher = DataFetcher(config=self.data_fetcher_config,
-                                  log_queue=self.log_queue,
-                                  id=0,
-                                  context=self.context)
+        self.datafetcher = DataFetcher(config=self.data_fetcher_config,
+                                       log_queue=self.log_queue,
+                                       fetcher_id=0,
+                                       context=self.context)
 
         # Set up receiver simulator
-        receiving_socket = []
-        try:
-            for port in self.receiving_ports:
-                receiving_socket.append(self.set_up_recv_socket(port))
-        except:
-            for sckt in receiving_socket:
-                sckt.close(0)
-
-            datafetcher.stop()
-
+        self.receiving_sockets = []
+        for port in self.receiving_ports:
+            self.receiving_sockets.append(self.set_up_recv_socket(port))
 
         # Set up data forwarding simulator
         fw_con_str = "ipc://{}/{}_{}".format(self.config["ipc_dir"],
                                              self.config["main_pid"],
                                              "out")
 
-        data_input = True
-
-        if data_input:
+        if self.data_input:
             # create zmq socket to send events
-            data_fw_socket = self.context.socket(zmq.PUSH)
-            data_fw_socket.bind(fw_con_str)
+            self.data_fw_socket = self.context.socket(zmq.PUSH)
+            self.data_fw_socket.bind(fw_con_str)
             self.log.info("Start data_fw_socket (bind): '{}'"
                           .format(fw_con_str))
 
@@ -114,40 +110,50 @@ class TestDataFetcher(DataFetcherTestBase):
         self.log.debug("open_connections before function call: {}"
                        .format(open_connections))
 
-        if data_input:
+        if self.data_input:
 
             # simulatate data input sent by an other HiDRA instance
             chunksize = self.data_fetcher_config["chunksize"]
             with open(prework_source_file, 'rb') as file_descriptor:
                 file_content = file_descriptor.read(chunksize)
 
-            data_fw_socket.send_multipart([json.dumps(metadata), file_content])
+            self.data_fw_socket.send_multipart(
+                [json.dumps(metadata), file_content]
+            )
             self.log.debug("Incoming data sent")
 
-        datafetcher.get_metadata(targets, metadata)
+        self.datafetcher.get_metadata(targets, metadata)
 
-        datafetcher.send_data(targets, metadata, open_connections)
+        self.datafetcher.send_data(targets, metadata, open_connections)
 
-        datafetcher.finish(targets, metadata, open_connections)
+        self.datafetcher.finish(targets, metadata, open_connections)
 
         self.log.debug("open_connections after function call: {}"
                        .format(open_connections))
 
         try:
-            for sckt in receiving_socket:
+            for sckt in self.receiving_sockets:
                 recv_message = sckt.recv_multipart()
                 recv_message = json.loads(recv_message[0].decode("utf-8"))
                 self.log.info("received: {}".format(recv_message))
         except KeyboardInterrupt:
             pass
-        finally:
-            for sckt in receiving_socket:
-                sckt.close(0)
-
-            if data_input:
-                data_fw_socket.close(0)
-
-            datafetcher.stop()
 
     def tearDown(self):
+        if self.data_fw_socket is not None and self.data_input:
+            self.log.debug("Closing data_fw_socket")
+            self.data_fw_socket.close(0)
+            self.data_fw_socket = None
+
+        if self.receiving_sockets is not None:
+            self.log.debug("Closing receiving_sockets")
+            for sckt in self.receiving_sockets:
+                sckt.close(0)
+            self.receiving_sockets = None
+
+        if self.datafetcher is not None:
+            self.log.debug("Stopping datafetcher")
+            self.datafetcher.stop()
+            self.datafetcher = None
+
         super(TestDataFetcher, self).tearDown()

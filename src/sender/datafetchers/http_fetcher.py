@@ -10,7 +10,6 @@ import errno
 from datafetcherbase import DataFetcherBase
 from cleanerbase import CleanerBase
 from hidra import generate_filepath
-import utils
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan.garrevoet@desy.de>')
@@ -18,38 +17,39 @@ __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
 
 class DataFetcher(DataFetcherBase):
 
-    def __init__(self, config, log_queue, id, context):
+    def __init__(self, config, log_queue, fetcher_id, context):
 
-        DataFetcherBase.__init__(self, config, log_queue, id,
-                                 "http_fetcher-{}".format(id),
+        DataFetcherBase.__init__(self,
+                                 config,
+                                 log_queue,
+                                 fetcher_id,
+                                 "http_fetcher-{}".format(fetcher_id),
                                  context)
 
-        required_params = ["session",
-                           "store_data",
-                           "remove_data",
-                           "fix_subdirs"]
+        self.required_params = ["session",
+                                "store_data",
+                                "remove_data",
+                                "fix_subdirs"]
 
-        # Check format of config
-        check_passed, config_reduced = utils.check_config(required_params,
-                                                          self.config,
-                                                          self.log)
+        self.check_config
+        self.setup()
 
-        if check_passed:
-            self.log.info("Configuration for data fetcher: {0}"
-                          .format(config_reduced))
+    def setup(self):
+        """
+        Sets static configuration parameters and which finish method to use.
+        """
 
-            self.config["session"] = requests.session()
-            self.config["remove_flag"] = False
+        self.config["session"] = requests.session()
+        self.config["remove_flag"] = False
 
-            if self.config["remove_data"] == "with_confirmation":
-                self.finish = self.finish_with_cleaner
-            else:
-                self.finish = self.finish_without_cleaner
+        if self.config["remove_data"] == "with_confirmation":
+            self.finish = self.finish_with_cleaner
         else:
-            # self.log.debug("config={0}".format(self.config))
-            raise Exception("Wrong configuration")
+            self.finish = self.finish_without_cleaner
 
     def get_metadata(self, targets, metadata):
+        """Implementation of the abstract method get_metadata.
+        """
 
         # no normpath used because that would transform http://...
         # into http:/...
@@ -79,7 +79,8 @@ class DataFetcher(DataFetcherBase):
                 metadata["file_mod_time"] = time.time()
                 metadata["file_create_time"] = time.time()
                 metadata["confirmation_required"] = (
-                    self.config["remove_data"] == "with_confirmation")
+                    self.config["remove_data"] == "with_confirmation"
+                )
 
                 self.log.debug("metadata = {}".format(metadata))
             except:
@@ -87,7 +88,56 @@ class DataFetcher(DataFetcherBase):
                                exc_info=True)
                 raise
 
+    def create_directory(self, metadata):
+        """
+        Args:
+            metadata (dict): The file metadata for the directory to be created.
+
+        Returns:
+
+        """
+        subdir, tmp = os.path.split(metadata["relative_path"])
+
+        # the directories current, commissioning and local should
+        # not be created
+        if metadata["relative_path"] in self.config["fix_subdirs"]:
+            self.log.error(
+                "Unable to move file '{}' to '{}': Directory {} is not "
+                "available.".format(self.source_file,
+                                    self.target_file,
+                                    metadata["relative_path"]),
+                exc_info=True
+            )
+            raise
+
+        elif subdir in self.config["fix_subdirs"]:
+            self.log.error(
+                "Unable to move file '{}' to '{}': Directory {} is not "
+                "available.".format(self.source_file,
+                                    self.target_file,
+                                    subdir),
+                exc_info=True
+            )
+            raise
+
+        else:
+            try:
+                target_path, filename = os.path.split(self.target_file)
+                os.makedirs(target_path)
+                self.log.info("New target directory created: {}"
+                              .format(target_path))
+            except OSError as e:
+                self.log.info("Target directory creation failed, was already "
+                              "created in the meantime: {}"
+                              .format(target_path))
+            except:
+                self.log.error("Unable to create target directory '{}'."
+                               .format(target_path), exc_info=True)
+                raise
+
     def send_data(self, targets, metadata, open_connections):
+        """Implementation of the abstract method send_data.
+        """
 
         response = self.config["session"].get(self.source_file)
         try:
@@ -115,59 +165,24 @@ class DataFetcher(DataFetcherBase):
                 file_descriptor = open(self.target_file, "wb")
                 file_opened = True
             except IOError as e:
+                err_msg = ("Unable to open target file '{}'."
+                           .format(self.target_file))
+
                 # errno.ENOENT == "No such file or directory"
                 if e.errno == errno.ENOENT:
+                    self.create_directory(metadata)
 
-                    # the directories current, commissioning and local should
-                    # not be created
-                    subdir, tmp = os.path.split(metadata["relative_path"])
-
-                    if metadata["relative_path"] in self.config["fix_subdirs"]:
-                        self.log.error("Unable to move file '{}' to '{}': "
-                                       "Directory {} is not available."
-                                       .format(self.source_file,
-                                               self.target_file,
-                                               metadata["relative_path"]),
-                                       exc_info=True)
+                    try:
+                        file_descriptor = open(self.target_file, "wb")
+                        file_opened = True
+                    except:
+                        self.log.error(err_msg, exc_info=True)
                         raise
-
-                    elif subdir in self.config["fix_subdirs"]:
-                        self.log.error("Unable to move file '{}' to '{}': "
-                                       "Directory {} is not available."
-                                       .format(self.source_file,
-                                               self.target_file,
-                                               subdir),
-                                       exc_info=True)
-                        raise
-                    else:
-                        try:
-                            target_path, filename = (
-                                os.path.split(self.target_file))
-                            os.makedirs(target_path)
-                            file_descriptor = open(self.target_file, "wb")
-                            self.log.info("New target directory created: {}"
-                                          .format(target_path))
-                            file_opened = True
-                        except OSError as e:
-                            self.log.info("Target directory creation failed, "
-                                          "was already created in the "
-                                          "meantime: {}".format(target_path))
-                            file_descriptor = open(self.target_file, "wb")
-                            file_opened = True
-                        except:
-                            self.log.error("Unable to open target file '{}'."
-                                           .format(self.target_file),
-                                           exc_info=True)
-                            self.log.debug("target_path: {}"
-                                           .format(target_path))
-                            raise
                 else:
-                    self.log.error("Unable to open target file '{}'."
-                                   .format(self.target_file), exc_info=True)
+                    self.log.error(err_msg, exc_info=True)
                     raise
             except:
-                self.log.error("Unable to open target file '{}'."
-                               .format(self.target_file), exc_info=True)
+                self.log.error(err_msg, exc_info=True)
                 raise
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
@@ -243,8 +258,10 @@ class DataFetcher(DataFetcherBase):
             if targets_metadata != []:
                 # send message to metadata targets
                 try:
-                    self.send_to_targets(targets_metadata, open_connections,
-                                         metadata_extended, payload)
+                    self.send_to_targets(targets_metadata,
+                                         open_connections,
+                                         metadata_extended,
+                                         payload)
                     self.log.debug("Passing metadata multipart-message for "
                                    "file '{}'...done."
                                    .format(self.source_file))
@@ -261,11 +278,16 @@ class DataFetcher(DataFetcherBase):
             self.config["remove_flag"] = file_send
 
     def finish(self, targets, metadata, open_connections):
-        # is overwritten when class is instantiated depending if a cleaner
-        # class is used or not
+        """Implementation of the abstract method finish.
+
+        Is overwritten when class is instantiated depending if a cleaner class
+        is used or not
+        """
         pass
 
     def finish_with_cleaner(self, targets, metadata, open_connections):
+        """Finish method to be used if use of cleaner was configured.
+        """
 
         file_id = self.generate_file_id(metadata)
 
@@ -275,6 +297,8 @@ class DataFetcher(DataFetcherBase):
         self.log.debug("Forwarded to cleaner {}".format(file_id))
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
+        """Finish method to use when use of cleaner not configured.
+        """
 
         if self.config["remove_data"] and self.config["remove_flag"]:
             responce = requests.delete(self.source_file)
@@ -288,6 +312,9 @@ class DataFetcher(DataFetcherBase):
                                .format(self.source_file), exc_info=True)
 
     def stop(self):
+        """Implementation of the abstract method stop.
+        """
+
         # cloes base class zmq sockets
         self.close_socket()
 
@@ -308,5 +335,3 @@ class Cleaner(CleanerBase):
         except:
             self.log.error("Deleting file '{}' failed."
                            .format(source_file), exc_info=True)
-
-# testing was moved into test/unittests/datafetchers/test_http_fetcher.py

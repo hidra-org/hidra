@@ -109,12 +109,15 @@ def get_testing_suites():
     from eventdetectors.test_http_events import TestEventDetector as TestHttpEvents  # noqa F401
     from eventdetectors.test_zmq_events import TestEventDetector as TestZmqEvents  # noqa F401
     from eventdetectors.test_hidra_events import TestEventDetector as TestHidraEvents  # noqa F401
+    from eventdetectors.test_eventdetector_template import TestEventDetector as TestEventDetectorTemplate  # noqa F401
 
     from datafetchers.test_cleanerbase import TestDataFetcher as TestCleanerbase  # noqa F401
     from datafetchers.test_file_fetcher import TestDataFetcher as TestFileFetcher  # noqa F401
     from datafetchers.test_http_fetcher import TestDataFetcher as TestHttpFetcher  # noqa F401
     from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
+    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
     from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
+    from datafetchers.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
 
     all_suites = [
 #        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
@@ -122,11 +125,14 @@ def get_testing_suites():
 #        unittest.TestLoader().loadTestsFromTestCase(TestHttpEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestZmqEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestHidraEvents),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestEventDetectorTemplate),  # noqa E122
 
 #        unittest.TestLoader().loadTestsFromTestCase(TestCleanerbase),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestFileFetcher),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestHttpFetcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestZmqFetcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestHidraFetcher),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestDataFetcherTemplate),  # noqa E122
 
 #        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),  # noqa E122

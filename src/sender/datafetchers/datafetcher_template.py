@@ -1,9 +1,6 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import zmq
-import os
-import logging
 import json
 # import errno
 
@@ -15,31 +12,22 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 class DataFetcher(DataFetcherBase):
 
-    def __init__(self, config, log_queue, id, context):
-        """Initial setup for this module
+    def __init__(self, config, log_queue, fetcher_id, context):
 
-        Checks if all required parameters are set in the configuration
-        """
-
-        DataFetcherBase.__init__(self, config, log_queue, id,
-                                 "datafetcher_template-{}".format(id),
+        DataFetcherBase.__init__(self,
+                                 config,
+                                 log_queue,
+                                 fetcher_id,
+                                 "datafetcher_template-{}".format(fetcher_id),
                                  context)
 
-        required_params = []
+        self.required_params = []
 
-        # Check format of config
-        check_passed, config_reduced = utils.check_config(required_params,
-                                                          self.config,
-                                                          self.log)
-
-        if check_passed:
-            self.log.info("Configuration for data fetcher: {}"
-                          .format(config_reduced))
-        else:
-            # self.log.debug("config={0}".format(self.config))
-            raise Exception("Wrong configuration")
+        self.check_config()
 
     def get_metadata(self, targets, metadata):
+        """Implementation of the abstract method get_metadata.
+        """
 
         # Build source file
         self.source_file = generate_filepath(metadata["source_path"],
@@ -57,7 +45,9 @@ class DataFetcher(DataFetcherBase):
             metadata["file_create_time"] = 1481734310.6207028
             metadata["chunksize"] = self.config["chunksize"]
 
-    def send_data(self, targets, metadata, open_connections, context):
+    def send_data(self, targets, metadata, open_connections):
+        """Implementation of the abstract method send_data.
+        """
 
         if not targets:
             return
@@ -91,8 +81,10 @@ class DataFetcher(DataFetcherBase):
 
             # send message to data targets
             try:
-                self.send_to_targets(targets_data, open_connections, None,
-                                     chunk_payload, context)
+                self.send_to_targets(targets=targets_data,
+                                     open_connections=open_connections,
+                                     metadata=None,
+                                     payload=chunk_payload)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
                                "'{}' (chunk {})"
@@ -104,7 +96,9 @@ class DataFetcher(DataFetcherBase):
                                .format(self.source_file, chunk_number),
                                exc_info=True)
 
-    def finish(self, targets, metadata, open_connections, context):
+    def finish(self, targets, metadata, open_connections):
+        """Implementation of the abstract method finish.
+        """
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
         targets_metadata = [i for i in targets if i[2] == "metadata"]
@@ -112,9 +106,10 @@ class DataFetcher(DataFetcherBase):
         # send message to metadata targets
         if targets_metadata:
             try:
-                self.send_to_targets(targets_metadata, open_connections,
-                                     metadata, None, context,
-                                     self.config["send_timeout"])
+                self.send_to_targets(targets=targets_metadata,
+                                     open_connections=open_connections,
+                                     metadata=metadata,
+                                     payload=None)
                 self.log.debug("Passing metadata multipart-message for file "
                                "{}...done.".format(self.source_file))
 
@@ -125,116 +120,6 @@ class DataFetcher(DataFetcherBase):
                                exc_info=True)
 
     def stop(self):
+        """Implementation of the abstract method stop.
+        """
         pass
-
-
-if __name__ == '__main__':
-    import time
-    from shutil import copyfile
-
-    from __init__ import BASE_PATH
-    import utils
-
-    from multiprocessing import Queue
-    from logutils.queue import QueueHandler
-
-    log_file = os.path.join(BASE_PATH, "logs", "datafetcher_template.log")
-    log_size = 10485760
-
-    log_queue = Queue(-1)
-
-    # Get the log Configuration for the lisener
-    h1, h2 = utils.get_log_handlers(log_file,
-                                    log_size,
-                                    verbose=True,
-                                    onscreen_loglevel="debug")
-
-    # Start queue listener using the stream handler above
-    log_queue_listener = utils.CustomQueueListener(log_queue, h1, h2)
-    log_queue_listener.start()
-
-    # Create log and set handler to queue handle
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)  # Log level = DEBUG
-    qh = QueueHandler(log_queue)
-    root.addHandler(qh)
-
-    receiving_port = "6005"
-    receiving_port2 = "6006"
-    ext_ip = "0.0.0.0"
-
-    context = zmq.Context.instance()
-
-    receiving_socket = context.socket(zmq.PULL)
-    connection_str = "tcp://{}:{}".format(ext_ip, receiving_port)
-    receiving_socket.bind(connection_str)
-    logging.info("=== receiving_socket connected to {}"
-                 .format(connection_str))
-
-    receiving_socket2 = context.socket(zmq.PULL)
-    connection_str = "tcp://{}:{}".format(ext_ip, receiving_port2)
-    receiving_socket2.bind(connection_str)
-    logging.info("=== receiving_socket2 connected to {}"
-                 .format(connection_str))
-
-    prework_source_file = os.path.join(BASE_PATH, "test_file.cbf")
-    prework_target_file = os.path.join(BASE_PATH,
-                                       "data",
-                                       "source",
-                                       "local",
-                                       "100.cbf")
-
-    copyfile(prework_source_file, prework_target_file)
-    time.sleep(0.5)
-
-    metadata = {
-        "source_path": os.path.join(BASE_PATH, "data", "source"),
-        "relative_path": os.sep + "local",
-        "filename": "100.cbf"
-    }
-    targets = [['localhost:{}'.format(receiving_port), 1, "data"],
-               ['localhost:{}'.format(receiving_port2), 1, "data"]]
-
-    chunksize = 10485760  # = 1024*1024*10 = 10 MiB
-    open_connections = dict()
-
-    config = {
-        "chunksize": chunksize,
-        "local_target": None,
-        "remove_data": False,
-        "cleaner_job_con_str": None
-    }
-
-    logging.debug("open_connections before function call: {}"
-                  .format(open_connections))
-
-    datafetcher = DataFetcher(config, log_queue, 0, context)
-
-    datafetcher.get_metadata(targets, metadata)
-
-    datafetcher.send_data(targets, metadata, open_connections, context)
-
-    datafetcher.finish(targets, metadata, open_connections, context)
-
-    logging.debug("open_connections after function call: {}"
-                  .format(open_connections))
-
-    try:
-        recv_message = receiving_socket.recv_multipart()
-        logging.info("=== received: {}"
-                     .format(json.loads(recv_message[0].decode("utf-8"))))
-        recv_message = receiving_socket2.recv_multipart()
-        logging.info("=== received 2: {}"
-                     .format(json.loads(recv_message[0].decode("utf-8"))))
-    except KeyboardInterrupt:
-        pass
-    finally:
-        receiving_socket.close(0)
-        receiving_socket2.close(0)
-        context.destroy()
-
-        if log_queue_listener:
-            logging.info("Stopping log_queue")
-            log_queue.put_nowait(None)
-            log_queue_listener.stop()
-            log_queue_listener = None

@@ -68,7 +68,7 @@ def get_ipc_endpoints(config):
 
         eventdet = "{}_{}".format(ipc_ip, "eventDet")
 
-        endpoints = IpcEndpoints(eventdett=evetndet)
+        endpoints = IpcEndpoints(eventdet=eventdet)
 
     return endpoints
 

@@ -11,7 +11,6 @@ import socket
 import tempfile
 import unittest
 import zmq
-from collections import namedtuple
 from multiprocessing import Queue
 from logutils.queue import QueueHandler
 
@@ -43,182 +42,6 @@ def create_dir(directory, chmod=None, log=logging):
         os.chmod(directory, 0o777)
 
 
-IpcEndpoints = namedtuple(
-    "ipc_endpoints", [
-        "control_pub",
-        "control_sub",
-        "request_fw",
-        "router",
-        "cleaner_job",
-        "cleaner_trigger",
-    ]
-)
-
-
-def set_ipc_endpoints(ipc_dir, main_pid):
-    """Sets the ipc connection paths.
-
-    Sets the connection strings  for the job, control, trigger and
-    confirmation socket.
-
-    Args:
-        ipc_dir: Directory used for IPC connections
-        main_pid: Process ID of the current process. Used to distinguish
-                  different IPC connection.
-    Returns:
-        A namedtuple object ConStr with the entries:
-            control_pub_path,
-            control_sub_path,
-            request_fw_path,
-            router_path,
-            cleaner_job_path,
-            cleaner_trigger_path
-    """
-
-    # determine socket connection strings
-    ipc_ip = "{}/{}".format(ipc_dir, main_pid)
-
-    control_pub_path = "{}_{}".format(ipc_ip, "control_pub")
-    control_sub_path = "{}_{}".format(ipc_ip, "control_sub")
-    request_fw_path = "{}_{}".format(ipc_ip, "request_fw")
-    router_path = "{}_{}".format(ipc_ip, "router")
-    job_path = "{}_{}".format(ipc_ip, "cleaner")
-    trigger_path = "{}_{}".format(ipc_ip, "cleaner_trigger")
-
-    return IpcEndpoints(
-        control_pub=control_pub_path,
-        control_sub=control_sub_path,
-        request_fw=request_fw_path,
-        router=router_path,
-        cleaner_job=job_path,
-        cleaner_trigger=trigger_path,
-    )
-
-
-ConStr = namedtuple(
-    "con_str", [
-        "control_pub_bind",
-        "control_pub_con",
-        "control_sub_bind",
-        "control_sub_con",
-        "request_fw_bind",
-        "request_fw_con",
-        "router_bind",
-        "router_con",
-        "cleaner_job_bind",
-        "cleaner_job_con",
-        "cleaner_trigger_bind",
-        "cleaner_trigger_con",
-        "confirm_bind",
-        "confirm_con",
-        "com_bind",
-        "com_con",
-    ]
-)
-
-
-def set_con_strs(ext_ip, con_ip, ipc_endpoints, ports):
-    """Sets the connection strings.
-
-    Sets the connection strings  for the job, control, trigger and
-    confirmation socket.
-
-    Args:
-        ext_ip: IP to bind TCP connections to
-        con_ip: IP to connect TCP connections to
-        ipc_endpoints: Endpoints to use for the IPC connections.
-        port: A dictionary giving the ports to open TCP connection on
-              (only used on Windows).
-    Returns:
-        A namedtuple object ConStr with the entries:
-            control_pub_bind
-            control_pub_con
-            control_sub_bind
-            control_sub_con
-            request_fw_bind,
-            request_fw_con,
-            router_bind,
-            router_con,
-            cleaner_job_bind
-            cleaner_job_con
-            cleaner_trigger_bind
-            cleaner_trigger_con
-            confirm_bind
-            confirm_con
-            com_bind
-            com_con
-    """
-
-    # determine socket connection strings
-    if utils.is_windows():
-        port = ports["control_pub"]
-        control_pub_bind_str = "tcp://{}:{}".format(ext_ip, port)
-        control_pub_con_str = "tcp://{}:{}".format(con_ip, port)
-
-        port = ports["control_sub"]
-        control_sub_bind_str = "tcp://{}:{}".format(ext_ip, port)
-        control_sub_con_str = "tcp://{}:{}".format(con_ip, port)
-
-        port = ports["request_fw"]
-        request_fw_bind_str = "tcp://{}:{}".format(ext_ip, port)
-        request_fw_con_str = "tcp://{}:{}".format(con_ip, port)
-
-        port = ports["router"]
-        router_bind_str = "tcp://{}:{}".format(ext_ip, port)
-        router_con_str = "tcp://{}:{}".format(con_ip, port)
-
-        port = ports["cleaner"]
-        job_bind_str = "tcp://{}:{}".format(ext_ip, port)
-        job_con_str = "tcp://{}:{}".format(con_ip, port)
-
-        port = ports["cleaner_trigger"]
-        trigger_bind_str = "tcp://{}:{}".format(ext_ip, port)
-        trigger_con_str = "tcp://{}:{}".format(con_ip, port)
-    else:
-        control_pub_bind_str = "ipc://{}".format(ipc_endpoints.control_pub)
-        control_pub_con_str = control_pub_bind_str
-
-        control_sub_bind_str = "ipc://{}".format(ipc_endpoints.control_sub)
-        control_sub_con_str = control_sub_bind_str
-
-        request_fw_bind_str = "ipc://{}".format(ipc_endpoints.request_fw)
-        request_fw_con_str = request_fw_bind_str
-
-        router_bind_str = "ipc://{}".format(ipc_endpoints.router)
-        router_con_str = router_bind_str
-
-        job_bind_str = "ipc://{}".format(ipc_endpoints.cleaner_job)
-        job_con_str = job_bind_str
-
-        trigger_bind_str = "ipc://{}".format(ipc_endpoints.cleaner_trigger)
-        trigger_con_str = trigger_bind_str
-
-    confirm_bind_str = "tcp://{}:{}".format(ext_ip, ports["confirmation"])
-    confirm_con_str = "tcp://{}:{}".format(con_ip, ports["confirmation"])
-
-    com_bind_str = "tcp://{}:{}".format(ext_ip, ports["com"])
-    com_con_str = "tcp://{}:{}".format(con_ip, ports["com"])
-
-    return ConStr(
-        control_pub_bind=control_pub_bind_str,
-        control_pub_con=control_pub_con_str,
-        control_sub_bind=control_sub_bind_str,
-        control_sub_con=control_sub_con_str,
-        request_fw_bind=request_fw_bind_str,
-        request_fw_con=request_fw_con_str,
-        router_bind=router_bind_str,
-        router_con=router_con_str,
-        cleaner_job_bind=job_bind_str,
-        cleaner_job_con=job_con_str,
-        cleaner_trigger_bind=trigger_bind_str,
-        cleaner_trigger_con=trigger_con_str,
-        confirm_bind=confirm_bind_str,
-        confirm_con=confirm_con_str,
-        com_bind=com_bind_str,
-        com_con=com_con_str
-    )
-
-
 class TestBase(unittest.TestCase):
     """The Base class from which all data fetchers should inherit from.
     """
@@ -237,22 +60,25 @@ class TestBase(unittest.TestCase):
 
         ports = {
             "com": 50000,
+            "request": 50001,
             "request_fw": 50002,
+            "router": 50004,
+            "eventdet_port": 50003,
             "control_pub": 50005,
             "control_sub": 50006,
-            "router": 50004,
             "cleaner": 50051,
             "cleaner_trigger": 50052,
             "confirmation": 50053,
+            "eventdetector": 50003
         }
 
-        self.ipc_endpoints = set_ipc_endpoints(ipc_dir=ipc_dir,
-                                               main_pid=main_pid)
+        self.ipc_endpoints = utils.set_ipc_endpoints(ipc_dir=ipc_dir,
+                                                     main_pid=main_pid)
 
-        con_strs = set_con_strs(ext_ip=self.ext_ip,
-                                con_ip=self.con_ip,
-                                ipc_endpoints=self.ipc_endpoints,
-                                ports=ports)
+        con_strs = utils.set_con_strs(ext_ip=self.ext_ip,
+                                      con_ip=self.con_ip,
+                                      ports=ports,
+                                      ipc_endpoints=self.ipc_endpoints)
 
         self.config = {
             "ports": ports,

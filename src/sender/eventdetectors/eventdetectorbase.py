@@ -24,7 +24,8 @@ class EventDetectorBase(object):
         """Initial setup
 
         Args:
-            config (dict): A dictionary containing the configuration parameters.
+            config (dict): A dictionary containing the configuration
+                           parameters.
             log_queue: The multiprocessing queue which is used for logging.
             logger_name (str): The name to be used for the logger.
         """
