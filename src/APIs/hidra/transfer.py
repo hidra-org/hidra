@@ -54,11 +54,16 @@ class DataSavingError(Exception):
     pass
 
 
-# Send all logs to the main process
-# The worker configuration is done at the start of the worker process run.
-# Note that on Windows you can't rely on fork semantics, so each process
-# will run the logging configuration code when it starts.
-def get_logger(logger_name, queue=False, log_level="debug"):
+def get_logger(logger_name,
+               queue=False,
+               log_level="debug"):
+    """Send all logs to the main process.
+
+    The worker configuration is done at the start of the worker process run.
+    Note that on Windows you can't rely on fork semantics, so each process
+    will run the logging configuration code when it starts.
+    """
+
     log_level_lower = log_level.lower()
 
     if queue:
@@ -137,7 +142,9 @@ def generate_file_identifier(config_dict):
     return file_id
 
 
-def convert_suffix_list_to_regex(pattern, suffix=True, compile_regex=False,
+def convert_suffix_list_to_regex(pattern,
+                                 suffix=True,
+                                 compile_regex=False,
                                  log=None):
     """
     Takes a list of suffixes and converts it into a corresponding regex
@@ -188,8 +195,12 @@ def convert_suffix_list_to_regex(pattern, suffix=True, compile_regex=False,
 
 
 class Transfer():
-    def __init__(self, connection_type, signal_host=None, use_log=False,
-                 context=None, dirs_not_to_create=None):
+    def __init__(self,
+                 connection_type,
+                 signal_host=None,
+                 use_log=False,
+                 context=None,
+                 dirs_not_to_create=None):
 
         # print messages of certain level to screen
         if use_log in ["debug", "info", "warning", "error", "critical"]:
@@ -228,7 +239,7 @@ class Transfer():
         self.file_op_port = "50050"
         self.status_check_port = "50050"
         self.confirmation_port = "50053"
-        self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
+        self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
 
         self.is_ipv6 = False
 
@@ -595,7 +606,10 @@ class Transfer():
         else:
             return "{}:{}".format(ip, port)
 
-    def start(self, data_socket_id=False, whitelist=None, protocol="tcp",
+    def start(self,
+              data_socket_id=False,
+              whitelist=None,
+              protocol="tcp",
               data_con_style="bind"):
 
         if protocol in ["tcp", "ipc"]:
@@ -718,14 +732,15 @@ class Transfer():
 
             ######### control socket ###########
             # Socket to retrieve control signals from control API
-            if not os.path.exists(self.ipc_path):
-                os.makedirs(self.ipc_path)
+            if not os.path.exists(self.ipc_dir):
+                os.makedirs(self.ipc_dir)
 
             self.control_socket = self.context.socket(zmq.PULL)
-            control_con_str = ("ipc://{}/{}_{}"
-                               .format(self.ipc_path,
-                                       self.current_pid,
-                                       "control_API"))
+            control_con_str = (
+                "ipc://{}/{}_{}".format(self.ipc_dir,
+                                        self.current_pid,
+                                        "control_API")
+            )
             try:
                 self.control_socket.bind(control_con_str)
                 self.log.info("Internal controlling socket started (bind) for"
@@ -787,8 +802,9 @@ class Transfer():
                         self.status_check_port = value[2]
                     else:
                         self.log.debug("value={}".format(value))
-                        raise FormatError("Socket information have to be of "
-                                          "the form [<host>, <port>].")
+                        msg = ("Socket information have to be of the form"
+                               "[<host>, <port>].")
+                        raise FormatError(msg)
                 else:
                     self.status_check_port = value
 
@@ -836,8 +852,9 @@ class Transfer():
                         self.file_op_port = value[2]
                     else:
                         self.log.debug("value={}".format(value))
-                        raise FormatError("Socket information have to be of "
-                                          "the form [<host>, <port>].")
+                        msg = ("Socket information have to be of the form"
+                               "[<host>, <port>].")
+                        raise FormatError(msg)
                 else:
                     self.file_op_port = value
 
@@ -867,8 +884,10 @@ class Transfer():
 
         elif option == "confirmation":
             if self.confirmation_socket is not None:
-                self.log.error("Confirmation is already enabled (used port: "
-                               "{})".format(self.confirmation_port))
+                self.log.error(
+                    "Confirmation is already enabled (used port: {})"
+                    .format(self.confirmation_port)
+                )
                 return
 
             self.confirmation_protocol = "tcp"
@@ -885,8 +904,9 @@ class Transfer():
                         self.confirmation_port = value[2]
                     else:
                         self.log.debug("value={}".format(value))
-                        raise FormatError("Socket information have to be of "
-                                          "the form [<host>, <port>].")
+                        msg = ("Socket information have to be of the form"
+                               "[<host>, <port>].")
+                        raise FormatError(msg)
                 else:
                     self.confirmation_port = value
 
@@ -905,8 +925,11 @@ class Transfer():
                 self.log.info("Start confirmation_socket (bind) for '{}'"
                               .format(con_str))
             except:
-                self.log.error("Failed to start confirmation socket (bind) "
-                               "for '{}'".format(con_str), exc_info=True)
+                self.log.error(
+                    "Failed to start confirmation socket (bind) for '{}'"
+                    .format(con_str),
+                    exc_info=True
+                )
             #####################################
         else:
             raise NotSupported("Option {} is not supported".format(option))
@@ -940,8 +963,8 @@ class Transfer():
                                .format(host))
             except:
                 self.log.error("Error was: ", exc_info=True)
-                raise AuthenticationFailed(
-                    "Could not get IP of host {}".format(host))
+                msg = "Could not get IP of host {}".format(host)
+                raise AuthenticationFailed(msg)
 
         # Recreate the socket (not with the new whitelist enables)
         self.log.debug("Starting down data_socket")
@@ -956,14 +979,16 @@ class Transfer():
 
         try:
             self.data_socket.bind(self.data_socket_con_str)
-            self.log.info("Data socket of type {} started (bind) for '{}'"
-                          .format(self.connection_type,
-                                  self.data_socket_con_str))
+            self.log.info(
+                "Data socket of type {} started (bind) for '{}'"
+                .format(self.connection_type, self.data_socket_con_str)
+            )
         except:
-            self.log.error("Failed to start Socket of type {} (bind): '{}'"
-                           .format(self.connection_type,
-                                   self.data_socket_con_str),
-                           exc_info=True)
+            self.log.error(
+                "Failed to start Socket of type {} (bind): '{}'"
+                .format(self.connection_type, self.data_socket_con_str),
+                exc_info=True
+            )
             raise
 
         self.poller.register(self.data_socket, zmq.POLLIN)
@@ -974,8 +999,9 @@ class Transfer():
 
         if (not self.connection_type == "NEXUS"
                 or "NEXUS" not in self.started_connections):
-            raise UsageError("Wrong connection type (current: {}) or session"
-                             " not started.".format(self.connection_type))
+            msg = ("Wrong connection type (current: {}) or session"
+                   " not started.".format(self.connection_type))
+            raise UsageError(msg)
 
         self.callback_params = callback_params
         self.open_callback = open_callback
@@ -1635,7 +1661,7 @@ class Transfer():
                 self.control_socket = None
 
                 control_con_str = ("{}/{}_{}"
-                                   .format(self.ipc_path,
+                                   .format(self.ipc_dir,
                                            self.current_pid,
                                            "control_API"))
                 try:

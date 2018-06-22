@@ -345,7 +345,7 @@ class DataManager():
                 self.params = config
         except:
             self.log = logging
-            self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
+            self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
             raise
 
         if log_queue is not None:
@@ -382,8 +382,8 @@ class DataManager():
         # Create log and set handler to queue handle
         self.log = utils.get_logger("DataManager", self.log_queue)
 
-        self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
-        self.log.info("Configured ipc_path: {}".format(self.ipc_path))
+        self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
+        self.log.info("Configured ipc_dir: {}".format(self.ipc_dir))
 
         # set process name
         check_passed, _ = utils.check_config(["procname"],
@@ -399,13 +399,13 @@ class DataManager():
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
-        if not os.path.exists(self.ipc_path):
-            os.mkdir(self.ipc_path)
+        if not os.path.exists(self.ipc_dir):
+            os.mkdir(self.ipc_dir)
             # the permission have to changed explicitly because
             # on some platform they are ignored when called within mkdir
-            os.chmod(self.ipc_path, 0o777)
+            os.chmod(self.ipc_dir, 0o777)
             self.log.info("Creating directory for IPC communication: {}"
-                          .format(self.ipc_path))
+                          .format(self.ipc_dir))
 
         # Enable specification via IP and DNS name
         # TODO make this IPv6 compatible
@@ -417,10 +417,10 @@ class DataManager():
 
         self.use_cleaner = (self.params["remove_data"] == "with_confirmation")
 
-        # Make ipc_path accessible for modules
+        # Make ipc_dir accessible for modules
         self.params["ext_ip"] = self.ext_ip
         self.params["con_ip"] = self.con_ip
-        self.params["ipc_path"] = self.ipc_path
+        self.params["ipc_dir"] = self.ipc_dir
         self.params["main_pid"] = self.current_pid
         # TODO: this should not be set here (it belong to the moduls)
         self.params["context"] = None
@@ -471,28 +471,28 @@ class DataManager():
         else:
             self.log.info("Using ipc for internal communication.")
             self.control_pub_con_str = ("ipc://{}/{}_{}"
-                                        .format(self.ipc_path,
+                                        .format(self.ipc_dir,
                                                 self.current_pid,
                                                 "controlPub"))
             self.control_sub_con_str = ("ipc://{}/{}_{}"
-                                        .format(self.ipc_path,
+                                        .format(self.ipc_dir,
                                                 self.current_pid,
                                                 "controlSub"))
             self.request_fw_con_str = ("ipc://{}/{}_{}"
-                                       .format(self.ipc_path,
+                                       .format(self.ipc_dir,
                                                self.current_pid,
                                                "requestFw"))
             self.router_con_str = ("ipc://{}/{}_{}"
-                                   .format(self.ipc_path,
+                                   .format(self.ipc_dir,
                                            self.current_pid,
                                            "router"))
             if self.use_cleaner:
                 self.params["cleaner_job_con_str"] = (
-                    "ipc://{}/{}_{}".format(self.ipc_path,
+                    "ipc://{}/{}_{}".format(self.ipc_dir,
                                             self.current_pid,
                                             "cleaner"))
                 self.params["cleaner_trigger_con_str"] = (
-                    "ipc://{}/{}_{}".format(self.ipc_path,
+                    "ipc://{}/{}_{}".format(self.ipc_dir,
                                             self.current_pid,
                                             "cleaner_trigger"))
             else:
@@ -1061,7 +1061,7 @@ class DataManager():
             self.context.destroy(0)
             self.context = None
 
-        ipc_ip = "{}/{}".format(self.ipc_path, self.current_pid)
+        ipc_ip = "{}/{}".format(self.ipc_dir, self.current_pid)
         ipc_con_paths = {
             "control_pub": "{}_{}".format(ipc_ip, "controlPub"),
             "control_sub": "{}_{}".format(ipc_ip, "controlSub"),
@@ -1081,15 +1081,15 @@ class DataManager():
 
         # Remove temp directory (if empty)
         try:
-            os.rmdir(self.ipc_path)
-            self.log.debug("Removed IPC direcory: {}".format(self.ipc_path))
+            os.rmdir(self.ipc_dir)
+            self.log.debug("Removed IPC direcory: {}".format(self.ipc_dir))
         except OSError:
             pass
 #            self.log.debug("Could not remove IPC directory: {}"
-#                           .format(self.ipc_path))
+#                           .format(self.ipc_dir))
         except:
             self.log.warning("Could not remove IPC directory: {}"
-                             .format(self.ipc_path), exc_info=True)
+                             .format(self.ipc_dir), exc_info=True)
 
         if not self.ext_log_queue and self.log_queue_listener:
             self.log.info("Stopping log_queue")

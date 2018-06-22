@@ -77,20 +77,20 @@ def client(out_con_str, mon_con_str, client_id):
 
 
 if __name__ == "__main__":
-    ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
+    ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
     current_pid = os.getpid()
     frontend_port = 5559
 
-    if not os.path.exists(ipc_path):
-        os.mkdir(ipc_path)
-        os.chmod(ipc_path, 0o777)
+    if not os.path.exists(ipc_dir):
+        os.mkdir(ipc_dir)
+        os.chmod(ipc_dir, 0o777)
         tmp_created = True
     else:
         tmp_created = False
 
     in_con_str = "tcp://127.0.0.1:{0}".format(frontend_port)
-    out_con_str = "ipc://{0}/{1}_{2}".format(ipc_path, current_pid, "out")
-    mon_con_str = "ipc://{0}/{1}_{2}".format(ipc_path, current_pid, "mon")
+    out_con_str = "ipc://{0}/{1}_{2}".format(ipc_dir, current_pid, "out")
+    mon_con_str = "ipc://{0}/{1}_{2}".format(ipc_dir, current_pid, "mon")
 
     print "in_con_str", in_con_str
     print "out_con_str", out_con_str
@@ -129,4 +129,4 @@ if __name__ == "__main__":
         monitoring_p.terminate()
 
     if tmp_created:
-        os.rmdir(ipc_path)
+        os.rmdir(ipc_dir)

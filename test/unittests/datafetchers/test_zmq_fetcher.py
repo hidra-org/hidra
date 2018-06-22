@@ -33,7 +33,7 @@ class TestDataFetcher(DataFetcherTestBase):
         self.data_fetcher_config = {
             "context": self.context,
             "remove_data": False,
-            "ipc_path": self.config["ipc_dir"],
+            "ipc_dir": self.config["ipc_dir"],
             "main_pid": self.config["main_pid"],
             "ext_ip": self.ext_ip,
             "cleaner_job_con_str": self.config["con_strs"].cleaner_job_con,

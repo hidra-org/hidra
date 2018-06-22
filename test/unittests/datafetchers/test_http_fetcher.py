@@ -32,7 +32,7 @@ class TestDataFetcher(DataFetcherTestBase):
             "fix_subdirs": ["commissioning", "current", "local"],
             "store_data": True,
             "remove_data": False,
-            "ipc_path": self.config["ipc_dir"],
+            "ipc_dir": self.config["ipc_dir"],
             "main_pid": self.config["main_pid"],
             "cleaner_job_con_str": self.config["con_strs"].cleaner_job_con,
             "cleaner_conf_con_str": self.config["con_strs"].confirm_con,

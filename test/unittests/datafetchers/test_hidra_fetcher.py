@@ -38,7 +38,7 @@ class TestDataFetcher(DataFetcherTestBase):
             # "local_target": None,
             "local_target": os.path.join(BASE_DIR, "data", "zmq_target"),
             # "local_target": os.path.join(BASE_DIR, "data", "target"),
-            "ipc_path": self.config["ipc_dir"],
+            "ipc_dir": self.config["ipc_dir"],
             "main_pid": self.config["main_pid"],
             "cleaner_job_con_str": self.config["con_strs"].cleaner_job_con,
             "ext_ip": self.ext_ip,
