@@ -14,10 +14,6 @@ import utils
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-#
-#  --------------------------  class: TaskProvider  ---------------------------
-#
-
 class TaskProvider():
     def __init__(self,
                  config,
@@ -27,27 +23,49 @@ class TaskProvider():
                  log_queue,
                  context=None):
 
-        self.log = utils.get_logger("TaskProvider", log_queue)
-
-        signal.signal(signal.SIGTERM, self.signal_term_handler)
-
-        self.current_pid = os.getpid()
-        self.log.debug("TaskProvider started (PID {})."
-                       .format(self.current_pid))
-
-        self.eventdetector = None
-
         self.config = config
-
         self.control_con_str = control_con_str
         self.request_fw_con_str = request_fw_con_str
         self.router_bind_str = router_bind_str
+        self.log_queue = log_queue
+
+        self.log = None
+        self.current_pid = None
+        self.eventdetector = None
 
         self.control_socket = None
         self.request_fw_socket = None
         self.router_socket = None
 
         self.poller = None
+
+        self.context = None
+        self.ext_context = None
+        self.eventdetector = None
+        self.continue_run = None
+
+        self.setup(context)
+
+        try:
+            self.run()
+        except zmq.ZMQError:
+            pass
+        except KeyboardInterrupt:
+            pass
+        except:
+            self.log.error("Stopping TaskProvider due to unknown error "
+                           "condition.", exc_info=True)
+        finally:
+            self.stop()
+
+    def setup(self, context):
+        self.log = utils.get_logger("TaskProvider", self.log_queue)
+
+        signal.signal(signal.SIGTERM, self.signal_term_handler)
+
+        self.current_pid = os.getpid()
+        self.log.debug("TaskProvider started (PID {})."
+                       .format(self.current_pid))
 
         # remember if the context was created outside this class or not
         if context:
@@ -60,25 +78,17 @@ class TaskProvider():
 
         self.log.info("Loading event detector: {}"
                       .format(self.config["event_detector_type"]))
-        self.eventdetector_m = __import__(self.config["event_detector_type"])
+        eventdetector_m = __import__(self.config["event_detector_type"])
 
-        self.eventdetector = self.eventdetector_m.EventDetector(self.config,
-                                                                log_queue)
+        self.eventdetector = eventdetector_m.EventDetector(self.config,
+                                                           self.log_queue)
 
         self.continue_run = True
 
         try:
             self.create_sockets()
-
-            self.run()
-        except zmq.ZMQError:
-            pass
-        except KeyboardInterrupt:
-            pass
         except:
-            self.log.error("Stopping TaskProvider due to unknown error "
-                           "condition.", exc_info=True)
-        finally:
+            self.log.error("Cannot create sockets", exc_info=True)
             self.stop()
 
     def create_sockets(self):

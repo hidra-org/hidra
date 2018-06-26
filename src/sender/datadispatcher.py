@@ -14,9 +14,6 @@ import utils
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-#
-# --------------------------  class: DataDispatcher  --------------------------
-#
 class DataDispatcher():
 
     def __init__(self,
@@ -31,64 +28,28 @@ class DataDispatcher():
                  context=None):
 
         self.id = id
-        self.log = utils.get_logger("DataDispatcher-{}".format(self.id),
-                                    log_queue)
-
-        signal.signal(signal.SIGTERM, self.signal_term_handler)
-
-        self.current_pid = os.getpid()
-        self.log.debug("DataDispatcher-{} started (PID {})."
-                       .format(self.id, self.current_pid))
-
         self.control_con_str = control_con_str
         self.router_con_str = router_con_str
-
-        self.control_socket = None
-        self.router_socket = None
-
-        self.poller = None
-
         self.chunksize = chunksize
-
         self.fixed_stream_id = fixed_stream_id
+        self.config = config
+        self.log_queue = log_queue
         self.local_target = local_target
 
-        self.config = config
+        self.current_pid = None
 
-        formated_config = str(json.dumps(self.config,
-                                         sort_keys=True,
-                                         indent=4))
-        self.log.info("Configuration for data fetcher: {}"
-                      .format(formated_config))
+        self.poller = None
+        self.control_socket = None
+        self.router_socket = None
+        self.context = None
+        self.ext_context = None
+        self.open_connections = None
+        self.datafetcher = None
+        self.continue_run = None
 
-        # dict with information of all open sockets to which a data stream is
-        # opened (host, port,...)
-        self.open_connections = dict()
-
-        if context:
-            self.context = context
-            self.ext_context = True
-        else:
-            self.context = zmq.Context()
-            self.ext_context = False
-            if ("context" in self.config
-                    and not self.config["context"]):
-                self.config["context"] = self.context
-
-        self.log.info("Loading data fetcher: {}"
-                      .format(self.config["data_fetcher_type"]))
-        self.datafetcher_m = __import__(self.config["data_fetcher_type"])
-
-        self.datafetcher = self.datafetcher_m.DataFetcher(self.config,
-                                                          log_queue,
-                                                          self.id,
-                                                          self.context)
-
-        self.continue_run = True
+        self.setup(context)
 
         try:
-            self.__create_sockets()
-
             self.run()
         except zmq.ZMQError:
             pass
@@ -101,7 +62,55 @@ class DataDispatcher():
         finally:
             self.stop()
 
-    def __create_sockets(self):
+    def setup(self, context):
+        self.log = utils.get_logger("DataDispatcher-{}".format(self.id),
+                                    self.log_queue)
+
+        signal.signal(signal.SIGTERM, self.signal_term_handler)
+
+        self.current_pid = os.getpid()
+        self.log.debug("DataDispatcher-{} started (PID {})."
+                       .format(self.id, self.current_pid))
+
+        formated_config = str(json.dumps(self.config,
+                                         sort_keys=True,
+                                         indent=4))
+        self.log.info("Configuration for data fetcher: {}"
+                      .format(formated_config))
+
+        # dict with information of all open sockets to which a data stream is
+        # opened (host, port,...)
+        self.open_connections = dict()
+
+        if context is not None:
+            self.context = context
+            self.ext_context = True
+        else:
+            self.context = zmq.Context()
+            self.ext_context = False
+            if ("context" in self.config
+                    and not self.config["context"]):
+                self.config["context"] = self.context
+
+        self.log.info("Loading data fetcher: {}"
+                      .format(self.config["data_fetcher_type"]))
+        datafetcher_m = __import__(self.config["data_fetcher_type"])
+
+        self.datafetcher = datafetcher_m.DataFetcher(self.config,
+                                                     self.log_queue,
+                                                     self.id,
+                                                     self.context)
+
+        self.continue_run = True
+
+        try:
+            self._create_sockets()
+        except:
+            self.log.error("Cannot create sockets", ext_info=True)
+            self.stop()
+
+
+    def _create_sockets(self):
 
         # socket for control signals
         try:
@@ -407,8 +416,11 @@ class DataDispatcher():
 
     def stop(self):
         self.continue_run = False
-        self.log.debug("Closing sockets for DataDispatcher-{}"
-                       .format(self.id))
+
+        # to prevent the message two be logged multiple times
+        if self.continue_run:
+            self.log.debug("Closing sockets for DataDispatcher-{}"
+                           .format(self.id))
 
         for connection in self.open_connections:
             if self.open_connections[connection]:
@@ -426,7 +438,9 @@ class DataDispatcher():
             self.router_socket.close(0)
             self.router_socket = None
 
-        self.datafetcher.stop()
+        if self.datafetcher is not None:
+            self.datafetcher.stop()
+            self.datafetcher = None
 
         if not self.ext_context and self.context is not None:
             self.log.info("Destroying context")

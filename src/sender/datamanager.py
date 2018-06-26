@@ -326,10 +326,73 @@ class DataManager():
         self.control_pub_socket = None
         self.test_socket = None
         self.context = None
-        self.ext_log_queue = True
+
         self.log = None
+        self.log_queue = None
+        self.ext_log_queue = None
         self.log_queue_listener = None
 
+        self.localhost = None
+        self.ext_ip = None
+        self.con_ip = None
+        self.ipc_dir = None
+        self.current_pid = None
+
+        self.reestablish_time = None
+        self.continue_run = None
+        self.params = None
+        self.use_cleaner = None
+
+        self.com_port = None
+        self.request_port = None
+
+        self.com_con_str = None
+        self.request_con_str = None
+
+        self.control_pub_con_str = None
+        self.control_sub_con_str = None
+        self.request_fw_con_str = None
+        self.router_con_str = None
+
+        self.whitelist = None
+        self.ldapuri = None
+
+        self.use_data_stream = None
+        self.fixed_stream_id = None
+        self.status_check_id = None
+        self.check_target_host = None
+
+        self.number_of_streams = None
+        self.chunksize = None
+
+        self.local_target = None
+
+        self.signalhandler_thr = None
+        self.taskprovider_pr = None
+        self.cleaner_pr = None
+        self.datadispatcher_pr = []
+
+        self.zmq_again_occured = None
+        self.socket_reconnected = None
+
+        self.context = None
+
+        self.setup(config, log_queue)
+
+        try:
+            if self.check_target_host(enable_logging=True):
+                self.create_sockets()
+
+                self.run()
+        except KeyboardInterrupt:
+            pass
+        except:
+            self.log.error("Stopping due to unknown error condition",
+                           exc_info=True)
+        finally:
+            self.stop()
+
+    def setup(self, config, log_queue):
         self.localhost = "127.0.0.1"
 
         self.current_pid = os.getpid()
@@ -566,19 +629,6 @@ class DataManager():
         # there should be only one context in one process
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
-
-        try:
-            if self.check_target_host(enable_logging=True):
-                self.create_sockets()
-
-                self.run()
-        except KeyboardInterrupt:
-            pass
-        except:
-            self.log.error("Stopping due to unknown error condition",
-                           exc_info=True)
-        finally:
-            self.stop()
 
     def create_sockets(self):
         # initiate forwarder for control signals (multiple pub, multiple sub)

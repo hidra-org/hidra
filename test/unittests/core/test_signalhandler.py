@@ -163,7 +163,7 @@ class TestSignalHandler(TestBase):
                       .format(con_strs.control_sub_bind))
 
         kwargs = dict(
-            params=self.signalhandler_config,
+            config=self.signalhandler_config,
             control_pub_con_id=con_strs.control_pub_con,
             control_sub_con_id=con_strs.control_sub_con,
             whitelist=whitelist,

@@ -20,7 +20,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 class SignalHandler():
 
     def __init__(self,
-                 params,
+                 config,
                  control_pub_con_id,
                  control_sub_con_id,
                  whitelist,
@@ -31,21 +31,15 @@ class SignalHandler():
                  log_queue,
                  context=None):
 
-        # Send all logs to the main process
-        self.log = utils.get_logger("SignalHandler", log_queue)
-
-        self.current_pid = os.getpid()
-        self.log.debug("SignalHandler started (PID {})."
-                       .format(self.current_pid))
-
-        self.params = params
+        self.config = config
         self.control_pub_con_id = control_pub_con_id
         self.control_sub_con_id = control_sub_con_id
         self.com_con_id = com_con_id
         self.request_fw_con_id = request_fw_con_id
         self.request_con_id = request_con_id
 
-        self.open_connections = []
+        self.log = None
+        self.current_pid = None
 
         self.open_requ_vari = []
         self.open_requ_perm = []
@@ -53,14 +47,42 @@ class SignalHandler():
         # to rotate through the open permanent requests
         self.next_requ_node = []
 
-        self.whitelist = utils.extend_whitelist(whitelist, ldapuri, self.log)
+        self.whitelist = None
+        self.open_connections = []
 
-        # sockets
+        self.context = None
+        self.ext_context = None
         self.control_pub_socket = None
         self.control_sub_socket = None
         self.com_socket = None
         self.request_fw_socket = None
         self.request_socket = None
+        self.poller = None
+
+        self.setup(log_queue, context, whitelist, ldapuri)
+
+        try:
+            self.run()
+        except zmq.ZMQError:
+            self.log.error("Stopping signalHandler due to ZMQError.",
+                           exc_info=True)
+        except KeyboardInterrupt:
+            pass
+        except:
+            self.log.error("Stopping SignalHandler due to unknown error "
+                           "condition.", exc_info=True)
+        finally:
+            self.stop()
+
+    def setup(self, log_queue, context, whitelist, ldapuri):
+                # Send all logs to the main process
+        self.log = utils.get_logger("SignalHandler", log_queue)
+
+        self.current_pid = os.getpid()
+        self.log.debug("SignalHandler started (PID {})."
+                       .format(self.current_pid))
+
+        self.whitelist = utils.extend_whitelist(whitelist, ldapuri, self.log)
 
         # remember if the context was created outside this class or not
         if context:
@@ -73,17 +95,8 @@ class SignalHandler():
 
         try:
             self.create_sockets()
-
-            self.run()
-        except zmq.ZMQError:
-            self.log.error("Stopping signalHandler due to ZMQError.",
-                           exc_info=True)
-        except KeyboardInterrupt:
-            pass
         except:
-            self.log.error("Stopping SignalHandler due to unknown error "
-                           "condition.", exc_info=True)
-        finally:
+            self.log.error("Cannot create sockets", exc_info=True)
             self.stop()
 
     def create_sockets(self):
@@ -651,7 +664,7 @@ class SignalHandler():
         elif signal == b"START_STREAM_METADATA":
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
-            if not self.params["store_data"]:
+            if not self.config["store_data"]:
                 self.log.debug("Send notification that store_data is disabled")
                 self.send_response([b"STORING_DISABLED", __version__])
             else:
@@ -696,7 +709,7 @@ class SignalHandler():
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
-            if not self.params["store_data"]:
+            if not self.config["store_data"]:
                 self.log.debug("Send notification that store_data is disabled")
                 self.send_response([b"STORING_DISABLED", __version__])
             else:
