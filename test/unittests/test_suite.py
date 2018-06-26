@@ -108,7 +108,6 @@ def get_testing_suites():
     from eventdetectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents  # noqa F401
     from eventdetectors.test_http_events import TestEventDetector as TestHttpEvents  # noqa F401
     from eventdetectors.test_zmq_events import TestEventDetector as TestZmqEvents  # noqa F401
-    from eventdetectors.test_zmq_events_with_mock import TestEventDetector as TestZmqEventsWithMock  # noqa F401
     from eventdetectors.test_hidra_events import TestEventDetector as TestHidraEvents  # noqa F401
     from eventdetectors.test_eventdetector_template import TestEventDetector as TestEventDetectorTemplate  # noqa F401
 
@@ -139,7 +138,7 @@ def get_testing_suites():
 #        unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataManager),  # noqa E122
-
+    ]
 
     return all_suites
 

@@ -5,19 +5,61 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
+import copy
 import json
+import mock
 import os
 import time
 import zmq
 
 from .__init__ import BASE_DIR
-from .eventdetector_test_base import EventDetectorTestBase, create_dir
-from zmq_events import (EventDetector,
-                        get_ipc_endpoints,
-                        get_tcp_endpoints,
-                        get_addrs)
+from .eventdetector_test_base import EventDetectorTestBase
+from test_base import create_dir, MockLogging, mock_get_logger
+import zmq_events
+import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
+
+class MockZmqSocket(mock.MagicMock):
+
+    def __init__(self, **kwds):
+        super(MockZmqSocket, self).__init__(**kwds)
+        self._connected = False
+
+    def bind(self, endpoint):
+        assert not self._connected
+        assert endpoint != ""
+        self._connected = True
+
+    def connect(self, endpoint):
+        assert not self._connected
+        assert endpoint != ""
+        self._connected = True
+
+    def close(self, linger):
+        assert self._connected
+        self._connected = False
+
+
+class MockZmqContext(mock.MagicMock):
+
+    def __init__(self, **kwargs):
+        super(MockZmqContext, self).__init__(**kwargs)
+        self._destroyed = False
+        self.IPV6 = None
+        self.RCVTIMEO = None
+
+    def socket(self, sock_type):
+        assert not self._destroyed
+#        assert self.IPV6 == 1
+#        assert self.RCVTIMEO is not None
+#        assert sock_type == zmq.REQ
+        return MockZmqSocket()
+
+    def destroy(self, linger):
+        assert not self._destroyed
+        self._destroyed = True
 
 
 class TestEventDetector(EventDetectorTestBase):
@@ -55,23 +97,209 @@ class TestEventDetector(EventDetectorTestBase):
         self.target_path = os.path.join(target_base_path,
                                         target_relative_path)
 
-        self.eventdetector = EventDetector(self.eventdetector_config,
-                                           self.log_queue)
-
-        self.ipc_endpoints = get_ipc_endpoints(
+        self.ipc_endpoints = zmq_events.get_ipc_endpoints(
             config=self.eventdetector_config
         )
-        self.tcp_endpoints = get_tcp_endpoints(
+        self.tcp_endpoints = zmq_events.get_tcp_endpoints(
             config=self.eventdetector_config
         )
-        self.addrs = get_addrs(ipc_endpoints=self.ipc_endpoints,
+        self.addrs = zmq_events.get_addrs(ipc_endpoints=self.ipc_endpoints,
                                tcp_endpoints=self.tcp_endpoints)
 
+        self.eventdetector = None
         self.event_socket = None
+
+    ######################################
+    #             Test config            #
+    ######################################
+
+    @mock.patch("zmq_events.EventDetector.setup")
+    def test_config_check(self, mock_setup):
+
+        def check_params(eventdetector, ref_config):
+            params_to_check = ref_config.keys()
+            eventdetector.log.error = mock.Mock()
+
+            for param in params_to_check:
+                try:
+                    eventdetector.config = copy.deepcopy(ref_config)
+                    del eventdetector.config[param]
+
+                    self.assertRaises(utils.WrongConfiguration,
+                                      eventdetector.check_config)
+
+                    # check that this is the only missing parameter
+                    msg = ("Configuration of wrong format. Missing parameter: "
+                           "'{}'".format(param))
+                    eventdetector.log.error.assert_called_with(msg)
+                    eventdetector.log.error.reset_mock()
+                except AssertionError:
+                    self.log.debug("checking param {}".format(param))
+                    raise
+
+        # test Linux
+        with mock.patch.object(utils, "is_windows") as mock_is_windows:
+            mock_is_windows.return_value = False
+
+            with mock.patch("zmq_events.EventDetector.check_config"):
+                eventdetector = zmq_events.EventDetector({}, self.log_queue)
+
+            ref_config = {
+                "context": None,
+                "ipc_dir": None,
+                "main_pid": None,
+                "number_of_streams": None,
+            }
+
+            check_params(eventdetector, ref_config)
+
+        # test Windows
+        with mock.patch.object(utils, "is_windows") as mock_is_windows:
+            mock_is_windows.return_value = True
+
+            with mock.patch("zmq_events.EventDetector.check_config"):
+                eventdetector = zmq_events.EventDetector({}, self.log_queue)
+
+            ref_config = {
+                "context": None,
+                "number_of_streams": None,
+                "ext_ip": None,
+                # "con_ip": None,
+                "event_det_port": None,
+            }
+
+            check_params(eventdetector, ref_config)
+
+    ######################################
+    #            Test helpers            #
+    ######################################
+
+    def test_get_tcp_endpoints(self):
+        config = {
+            "con_ip": self.con_ip,
+            "ext_ip": self.ext_ip,
+            "event_det_port": 50003,
+        }
+
+        # Linux
+        with mock.patch.object(utils, "is_windows") as mock_is_windows:
+            mock_is_windows.return_value = False
+
+            endpoints = zmq_events.get_tcp_endpoints(config)
+            self.assertIsNone(endpoints)
+
+        # Windows
+        with mock.patch.object(utils, "is_windows") as mock_is_windows:
+            mock_is_windows.return_value = True
+
+            endpoints = zmq_events.get_tcp_endpoints(config)
+            port = config["event_det_port"]
+
+            self.assertIsInstance(endpoints, zmq_events.TcpEndpoints)
+            self.assertEqual(endpoints.eventdet_bind,
+                             "{}:{}".format(self.ext_ip, port))
+            self.assertEqual(endpoints.eventdet_con,
+                             "{}:{}".format(self.con_ip, port))
+
+    def test_get_ipc_endpoints(self):
+        config = {
+            "ipc_dir": self.config["ipc_dir"],
+            "main_pid": self.config["main_pid"],
+        }
+
+        # Linux
+        with mock.patch.object(utils, "is_windows") as mock_is_windows:
+            mock_is_windows.return_value = False
+
+            endpoints = zmq_events.get_ipc_endpoints(config)
+            main_pid = config["main_pid"]
+
+            self.assertIsInstance(endpoints, zmq_events.IpcEndpoints)
+            self.assertEqual(endpoints.eventdet,
+                             "/tmp/hidra/{}_eventDet".format(main_pid))
+
+        # Windows
+        with mock.patch.object(utils, "is_windows") as mock_is_windows:
+            mock_is_windows.return_value = True
+
+            endpoints = zmq_events.get_ipc_endpoints(config)
+            self.assertIsNone(endpoints)
+
+    def test_get_addrs(self):
+        tcp_endpoints = zmq_events.TcpEndpoints(
+            eventdet_bind="my_eventdet_bind",
+            eventdet_con="my_eventdet_con",
+        )
+        ipc_endpoints = zmq_events.IpcEndpoints(eventdet="my_eventdet")
+
+        # Linux
+        addrs = zmq_events.get_addrs(ipc_endpoints=ipc_endpoints,
+                                     tcp_endpoints=None)
+
+        self.assertIsInstance(addrs, zmq_events.Addresses)
+        self.assertEqual(addrs.eventdet_bind,
+                         "ipc://{}".format("my_eventdet"))
+        self.assertEqual(addrs.eventdet_con,
+                         "ipc://{}".format("my_eventdet"))
+
+        # Windows
+        addrs = zmq_events.get_addrs(ipc_endpoints=None,
+                                     tcp_endpoints=tcp_endpoints)
+
+        self.assertIsInstance(addrs, zmq_events.Addresses)
+        self.assertEqual(addrs.eventdet_bind,
+                         "tcp://{}".format("my_eventdet_bind"))
+        self.assertEqual(addrs.eventdet_con,
+                         "tcp://{}".format("my_eventdet_con"))
+
+    ######################################
+    #             Test setup             #
+    ######################################
+
+    def todo_test_setup(self):
+
+        with mock.patch("zmq_events.EventDetector.check_config"):
+            with mock.patch("zmq_events.EventDetector.setup"):
+                evtdet = EventDetector({}, self.log_queue)
+
+        evtdet.config = {
+            "context": MockZmqContext(),
+            "ipc_dir": self.config["ipc_dir"],
+            "con_ip": self.con_ip,
+            "ext_ip": self.ext_ip,
+            "event_det_port": 50003,
+            "main_pid": self.config["main_pid"]
+        }
+
+        # platform independent
+#        @mock.patch.object(utils, "get_logger", mock_get_logger)
+        with mock.patch("zmq.Context"):
+            evtdet.setup()
+
+#        self.assertTrue(evtdet.ext_context)
+
+        evtdet.stop()
+
+    ######################################
+    #              Test run              #
+    ######################################
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.
         """
+
+#        with mock.patch.object(Parent, 'test_method') as mock_method:
+#        with mock.patch("utils.get_logger"):
+#        with mock.patch.object(utils, "get_logger", mock_get_logger):
+#            with mock.patch("zmq_events.EventDetector.setup"):
+#                self.eventdetector = EventDetector(self.eventdetector_config,
+#                                                   self.log_queue)
+#
+#        with mock.patch.object(zmq, "Context", MockZmqContext):
+#            self.eventdetector.setup()
+
+        self.eventdetector = zmq_events.EventDetector(self.eventdetector_config,
+                                                      self.log_queue)
 
         # create zmq socket to send events
         try:
@@ -119,9 +347,13 @@ class TestEventDetector(EventDetectorTestBase):
         self.assertIn(message, event_list)
 
     def tearDown(self):
-        self.event_socket.close(0)
+        if self.event_socket is not None:
+            self.event_socket.close(0)
+            self.event_socket = None
 
-        self.eventdetector.stop()
+        if self.eventdetector is not None:
+            self.eventdetector.stop()
+            self.eventdetector = None
         self.context.destroy(0)
 
         super(TestEventDetector, self).tearDown()

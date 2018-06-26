@@ -404,7 +404,6 @@ def check_config(required_params, config, log):
     check_passed = True
     config_reduced = "{"
 
-
     for param in required_params:
         # multiple checks have to be done
         if type(param) == list:
