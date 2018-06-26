@@ -231,13 +231,13 @@ class EventDetector(EventDetectorBase):
         """Implementation of the abstract method stop.
         """
         # close ZMQ
-        if self.event_socket:
+        if self.event_socket is not None:
             self.event_socket.close(0)
             self.event_socket = None
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class
-        if not self.ext_context and self.context:
+        if not self.ext_context and self.context is not None:
             try:
                 self.log.info("Closing ZMQ context...")
                 self.context.destroy(0)

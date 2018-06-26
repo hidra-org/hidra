@@ -5,13 +5,14 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import unittest
 import os
 import time
+import unittest
 from shutil import copyfile
 
 from .__init__ import BASE_DIR
-from .eventdetector_test_base import EventDetectorTestBase, create_dir
+from test_base import create_dir
+from .eventdetector_test_base import EventDetectorTestBase
 from watchdog_events import EventDetector
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

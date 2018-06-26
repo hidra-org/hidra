@@ -108,6 +108,7 @@ def get_testing_suites():
     from eventdetectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents  # noqa F401
     from eventdetectors.test_http_events import TestEventDetector as TestHttpEvents  # noqa F401
     from eventdetectors.test_zmq_events import TestEventDetector as TestZmqEvents  # noqa F401
+    from eventdetectors.test_zmq_events_with_mock import TestEventDetector as TestZmqEventsWithMock  # noqa F401
     from eventdetectors.test_hidra_events import TestEventDetector as TestHidraEvents  # noqa F401
     from eventdetectors.test_eventdetector_template import TestEventDetector as TestEventDetectorTemplate  # noqa F401
 
@@ -134,17 +135,11 @@ def get_testing_suites():
 #        unittest.TestLoader().loadTestsFromTestCase(TestHidraFetcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataFetcherTemplate),  # noqa E122
 
-#        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestHttpEvents),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestZmqEvents),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestHidraEvents),  # noqa E122
-
+#        unittest.TestLoader().loadTestsFromTestCase(TestSignalHandler),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataManager),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestSignalHandler),  # noqa E122
-    ]
+
 
     return all_suites
 
@@ -161,9 +156,9 @@ def get_suite():
     # get the subsuites
     # BUG: if the event detectors are tested before the datafetchers the
     # program does not stop
-    all_suites += get_core_suites()
-    all_suites += get_datafetcher_suites()
     all_suites += get_eventdetector_suites()
+    all_suites += get_datafetcher_suites()
+    all_suites += get_core_suites()
 
 #    all_suites += get_testing_suites()
 

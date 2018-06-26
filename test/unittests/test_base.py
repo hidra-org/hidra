@@ -5,10 +5,13 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
+import inspect
 import logging
+import mock
 import os
 import socket
 import tempfile
+import traceback
 import unittest
 import zmq
 from multiprocessing import Queue
@@ -40,6 +43,36 @@ def create_dir(directory, chmod=None, log=logging):
         # the permission have to changed explicitly because
         # on some platform they are ignored when called within mkdir
         os.chmod(directory, 0o777)
+
+
+class MockLogging(mock.MagicMock, utils.LoggingFunction):
+    """ Mock the logging module.
+    """
+
+    def __init__(self, **kwargs):
+        mock.MagicMock.__init__(self, **kwargs)
+        utils.LoggingFunction.__init__(self, level="debug")
+
+    def out(self, message, exc_info=False):
+        """Forward the output to stdout.
+
+        Args:
+            message: the messages to be logged.
+            exc_info (optional): Append a traceback.
+        """
+        caller = inspect.getframeinfo(inspect.stack()[1][0])
+        fname = os.path.split(caller.filename)[1]
+        msg = "[{}:{}] > {}".format(fname, caller.lineno, message)
+        if exc_info:
+            print(msg, traceback.format_exc())
+        else:
+            print(msg)
+
+
+def mock_get_logger(logger_name, queue=False, log_level="debug"):
+    """Wrapper for the get_logger function
+    """
+    return MockLogging()
 
 
 class TestBase(unittest.TestCase):
@@ -117,7 +150,8 @@ class TestBase(unittest.TestCase):
         qhandler = QueueHandler(self.log_queue)
         root.addHandler(qhandler)
 
-        self.log = utils.get_logger("test_datafetcher", self.log_queue)
+#        self.log = utils.get_logger("test_datafetcher", self.log_queue)
+        self.log = MockLogging()
 
     def set_up_recv_socket(self, port):
         """Create pull socket and connect to port.
