@@ -711,6 +711,54 @@ def set_endpoints(ext_ip, con_ip, ports, ipc_addresses):
 
 
 # ------------------------------ #
+#         ZMQ functions          #
+# ------------------------------ #
+
+def start_socket(name, sock_type, sock_con, endpoint, context, log):
+    """Creates a zmq socket.
+
+    Args:
+        name: The name of the socket (used in log messages).
+        sock_type: ZMQ socket type (e.g. zmq.PULL).
+        sock_con: ZMQ binding type (connect or bind).
+        endpoint: ZMQ endpoint to connect to.
+        context: ZMQ context to create the socket on.
+        log: Logger used for log messages.
+
+    """
+
+    try:
+        socket = context.socket(sock_type)
+        if sock_con == "connect":
+            socket.connect(endpoint)
+        elif sock_con == "bind":
+            socket.bind(endpoint)
+        log.info("Start {} ({}): '{}'".format(name, sock_con, endpoint))
+    except:
+        log.error("Failed to start {} ({}): '{}'"
+                  .format(name, sock_con, endpoint), exc_info=True)
+        raise
+
+    return socket
+
+
+def stop_socket(name, socket, log):
+    """Closes a zmq socket.
+
+    Args:
+        name: The name of the socket (used in log messages).
+        socket: The ZMQ socket to be closed.
+        log: Logger used for log messages.
+
+    """
+
+    if socket is not None:
+        log.info("Closing {}".format(name))
+        socket.close(0)
+        socket = None
+
+
+# ------------------------------ #
 #            Logging             #
 # ------------------------------ #
 

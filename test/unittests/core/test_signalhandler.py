@@ -29,10 +29,15 @@ class RequestPuller(threading.Thread):
         self.continue_run = True
 
         self.context = zmq.Context()
-        self.request_fw_socket = self.context.socket(zmq.REQ)
-        self.request_fw_socket.connect(endpoints.request_fw_con)
-        self.log.info("request_fw_socket started (connect) for '{}'"
-                      .format(endpoints.request_fw_con))
+
+        self.request_fw_socket = utils.start_socket(
+            name="request_fw_socket",
+            sock_type=zmq.REQ,
+            sock_con="connect",
+            endpoint=endpoints.request_fw_con,
+            context=self.context,
+            log=self.log
+        )
 
     def run(self):
         self.log.info("Start run")
@@ -134,6 +139,19 @@ class TestSignalHandler(TestBase):
         socket.send_multipart(send_message)
         self.log.info("request sent: {}".format(send_message))
 
+    def start_socket(self, name, sock_type, sock_con, endpoint):
+        """Wrapper of utils.start_socket
+        """
+
+        return utils.start_socket(
+            name=name,
+            sock_type=sock_type,
+            sock_con=sock_con,
+            endpoint=endpoint,
+            context=self.context,
+            log=self.log
+        )
+
     def test_signalhandler(self):
         """Simulate incoming data and check if received events are correct.
         """
@@ -149,20 +167,18 @@ class TestSignalHandler(TestBase):
         # create control socket
         # control messages are not send over an forwarder, thus the
         # control_sub endpoint is used directly
-        control_pub_socket = self.context.socket(zmq.PUB)
-        control_pub_socket.bind(endpoints.control_sub_bind)
-        self.log.info("control_pub_socket connect to: '{}'"
-                      .format(endpoints.control_sub_bind))
+        control_pub_socket = self.start_socket(
+            name="control_pub_socket",
+            sock_type=zmq.PUB,
+            sock_con="bind",
+            endpoint=endpoints.control_sub_bind
+        )
 
         kwargs = dict(
             config=self.signalhandler_config,
-            control_pub_con_id=endpoints.control_pub_con,
-            control_sub_con_id=endpoints.control_sub_con,
+            endpoints=self.config["endpoints"],
             whitelist=whitelist,
             ldapuri=self.signalhandler_config["ldapuri"],
-            com_con_id=endpoints.com_bind,
-            request_fw_con_id=endpoints.request_fw_bind,
-            request_con_id=endpoints.request_bind,
             log_queue=self.log_queue,
         )
         signalhandler_thr = threading.Thread(target=SignalHandler,
@@ -177,14 +193,19 @@ class TestSignalHandler(TestBase):
                                            self.log_queue)
         request_puller_thr.start()
 
-        com_socket = self.context.socket(zmq.REQ)
-        com_socket.connect(endpoints.com_con)
-        self.log.info("com_socket connected to {}".format(endpoints.com_con))
+        com_socket = self.start_socket(
+            name="com_socket",
+            sock_type=zmq.REQ,
+            sock_con="connect",
+            endpoint=endpoints.com_con
+        )
 
-        request_socket = self.context.socket(zmq.PUSH)
-        request_socket.connect(endpoints.request_con)
-        self.log.info("request_socket connected to {}"
-                      .format(endpoints.request_con))
+        request_socket = self.start_socket(
+            name="request_socket",
+            sock_type=zmq.PUSH,
+            sock_con="connect",
+            endpoint=endpoints.request_con
+        )
 
         time.sleep(1)
 

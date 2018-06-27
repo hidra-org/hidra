@@ -489,6 +489,26 @@ class DataManager():
         self.params["context"] = None
         self.params["session"] = None
 
+        ports = {
+            "com": self.params["com_port"],
+            "request": self.params["request_port"],
+            "request_fw": self.params["request_fw_port"],
+            "router": self.params["router_port"],
+            "control_pub": self.params["control_pub_port"],
+            "control_sub": self.params["control_sub_port"],
+            "cleaner": self.params["cleaner_port"],
+            "cleaner_trigger": self.params["cleaner_trigger_port"],
+            "confirmation": self.params["confirmation_port"],
+        }
+
+        self.ipc_addresses = utils.set_ipc_addresses(ipc_dir=self.ipc_dir,
+                                                     main_pid=self.current_pid)
+
+        self.endpoints = utils.set_endpoints(ext_ip=self.ext_ip,
+                                             con_ip=self.con_ip,
+                                             ports=ports,
+                                             ipc_addresses=self.ipc_addresses)
+
         if self.use_cleaner:
             self.params["cleaner_conf_con_str"] = (
                 "tcp://{}:{}".format(self.params["data_stream_targets"][0][0],
@@ -924,17 +944,14 @@ class DataManager():
         return True
 
     def run(self):
+
         # SignalHandler
         self.signalhandler_thr = threading.Thread(target=SignalHandler,
                                                   args=(
                                                       self.params,
-                                                      self.control_pub_con_str,
-                                                      self.control_sub_con_str,
+                                                      self.endpoints,
                                                       self.whitelist,
                                                       self.ldapuri,
-                                                      self.com_con_str,
-                                                      self.request_fw_con_str,
-                                                      self.request_con_str,
                                                       self.log_queue
                                                       )
                                                   )

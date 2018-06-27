@@ -21,25 +21,16 @@ class SignalHandler():
 
     def __init__(self,
                  config,
-                 control_pub_con_id,
-                 control_sub_con_id,
+                 endpoints,
                  whitelist,
                  ldapuri,
-                 com_con_id,
-                 request_fw_con_id,
-                 request_con_id,
                  log_queue,
                  context=None):
 
         self.config = config
-        self.control_pub_con_id = control_pub_con_id
-        self.control_sub_con_id = control_sub_con_id
-        self.com_con_id = com_con_id
-        self.request_fw_con_id = request_fw_con_id
-        self.request_con_id = request_con_id
+        self.endpoints = endpoints
 
         self.log = None
-        self.current_pid = None
 
         self.open_requ_vari = []
         self.open_requ_perm = []
@@ -52,12 +43,14 @@ class SignalHandler():
 
         self.context = None
         self.ext_context = None
+        self.socket = None
+        self.poller = None
+
         self.control_pub_socket = None
         self.control_sub_socket = None
         self.com_socket = None
         self.request_fw_socket = None
         self.request_socket = None
-        self.poller = None
 
         self.setup(log_queue, context, whitelist, ldapuri)
 
@@ -75,12 +68,9 @@ class SignalHandler():
             self.stop()
 
     def setup(self, log_queue, context, whitelist, ldapuri):
-                # Send all logs to the main process
+        # Send all logs to the main process
         self.log = utils.get_logger("SignalHandler", log_queue)
-
-        self.current_pid = os.getpid()
-        self.log.debug("SignalHandler started (PID {})."
-                       .format(self.current_pid))
+        self.log.debug("SignalHandler started (PID {}).".format(os.getpid()))
 
         self.whitelist = utils.extend_whitelist(whitelist, ldapuri, self.log)
 
@@ -99,70 +89,64 @@ class SignalHandler():
             self.log.error("Cannot create sockets", exc_info=True)
             self.stop()
 
+    def start_socket(self, name, sock_type, sock_con, endpoint):
+        """Wrapper of utils.start_socket
+        """
+
+        return utils.start_socket(
+            name=name,
+            sock_type=sock_type,
+            sock_con=sock_con,
+            endpoint=endpoint,
+            context=self.context,
+            log=self.log
+        )
+
     def create_sockets(self):
 
         # socket to send control signals to
-        try:
-            self.control_pub_socket = self.context.socket(zmq.PUB)
-            self.control_pub_socket.connect(self.control_pub_con_id)
-            self.log.info("Start control_pub_socket (connect): '{}'"
-                          .format(self.control_pub_con_id))
-        except:
-            self.log.error("Failed to start control_pub_socket (connect): "
-                           "'{}'".format(self.control_pub_con_id),
-                           exc_info=True)
-            raise
+        self.control_pub_socket = self.start_socket(
+            name="control_pub_socket",
+            sock_type=zmq.PUB,
+            sock_con="connect",
+            endpoint=self.endpoints.control_pub_con
+        )
 
         # socket to get control signals from
-        try:
-            self.control_sub_socket = self.context.socket(zmq.SUB)
-            self.control_sub_socket.connect(self.control_sub_con_id)
-            self.log.info("Start control_sub_socket (connect): '{}'"
-                          .format(self.control_sub_con_id))
-        except:
-            self.log.error("Failed to start control_sub_socket (connect): "
-                           "'{}'".format(self.control_sub_con_id),
-                           exc_info=True)
-            raise
+        self.control_sub_socket = self.start_socket(
+            name="control_sub_socket",
+            sock_type=zmq.SUB,
+            sock_con="connect",
+            endpoint=self.endpoints.control_sub_con
+        )
 
         self.control_sub_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
 
-        # setting up router for load-balancing worker-processes.
-        # each worker-process will handle a file event
-        try:
-            self.request_fw_socket = self.context.socket(zmq.REP)
-            self.request_fw_socket.bind(self.request_fw_con_id)
-            self.log.info("Start request_fw_socket (bind): '{}'"
-                          .format(self.request_fw_con_id))
-        except:
-            self.log.error("Failed to start request_fw_socket (bind): '{}'"
-                           .format(self.request_fw_con_id), exc_info=True)
-            raise
+        # socket to get control signals from
+        self.request_fw_socket = self.start_socket(
+            name="request_fw_socket",
+            sock_type=zmq.REP,
+            sock_con="bind",
+            endpoint=self.endpoints.request_fw_bind
+        )
 
         if self.whitelist != []:
             # create zmq socket for signal communication with receiver
-            try:
-                self.com_socket = self.context.socket(zmq.REP)
-                self.com_socket.bind(self.com_con_id)
-                self.log.info("Start com_socket (bind): '{}'"
-                              .format(self.com_con_id))
-            except:
-                self.log.error("Failed to start com_socket (bind): '{}'"
-                               .format(self.com_con_id), exc_info=True)
-                raise
+            self.com_socket = self.start_socket(
+                name="com_socket",
+                sock_type=zmq.REP,
+                sock_con="bind",
+                endpoint=self.endpoints.com_bind
+            )
 
             # create socket to receive requests
-            try:
-                self.request_socket = self.context.socket(zmq.PULL)
-                self.request_socket.bind(self.request_con_id)
-                self.log.info("request_socket started (bind) for '{}'"
-                              .format(self.request_con_id))
-            except:
-                self.log.error("Failed to start request_socket (bind): '{}'"
-                               .format(self.request_con_id), exc_info=True)
-                raise
+            self.request_socket = self.start_socket(
+                name="request_socket",
+                sock_type=zmq.PULL,
+                sock_con="bind",
+                endpoint=self.endpoints.request_bind
+            )
         else:
-            self.com_socket = None
             self.log.info("Socket com_socket and request_socket not started "
                           "since there is no host allowed to connect")
 
@@ -739,32 +723,19 @@ class SignalHandler():
                           .format(signal, socket_ids))
             self.send_response([b"NO_VALID_SIGNAL"])
 
+    def stop_socket(self, name):
+        """Wrapper for utils.stop_socket.
+        """
+        utils.stop_socket(name=name, socket=getattr(self, name), log=self.log)
+
     def stop(self):
         self.log.debug("Closing sockets for SignalHandler")
-        if self.com_socket:
-            self.log.info("Closing com_socket")
-            self.com_socket.close(0)
-            self.com_socket = None
 
-        if self.request_fw_socket:
-            self.log.info("Closing request_fw_socket")
-            self.request_fw_socket.close(0)
-            self.request_fw_socket = None
-
-        if self.request_socket:
-            self.log.info("Closing request_socket")
-            self.request_socket.close(0)
-            self.request_socket = None
-
-        if self.control_pub_socket:
-            self.log.info("Closing control_pub_socket")
-            self.control_pub_socket.close(0)
-            self.control_pub_socket = None
-
-        if self.control_sub_socket:
-            self.log.info("Closing control_sub_socket")
-            self.control_sub_socket.close(0)
-            self.control_sub_socket = None
+        self.stop_socket(name="com_socket")
+        self.stop_socket(name="request_socket")
+        self.stop_socket(name="request_fw_socket")
+        self.stop_socket(name="control_pub_socket")
+        self.stop_socket(name="control_sub_socket")
 
         if not self.ext_context and self.context:
             self.log.info("Destroying context")
