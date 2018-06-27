@@ -972,9 +972,7 @@ class DataManager():
         self.taskprovider_pr = Process(target=TaskProvider,
                                        args=(
                                            self.params,
-                                           self.control_sub_con_str,
-                                           self.request_fw_con_str,
-                                           self.router_con_str,
+                                           self.endpoints,
                                            self.log_queue
                                            )
                                        )

@@ -126,11 +126,10 @@ class TestTaskProvider(TestBase):
         """
 
         endpoints = self.config["endpoints"]
+
         kwargs = dict(
             config=self.taskprovider_config,
-            control_con_str=endpoints.control_sub_con,
-            request_fw_con_str=endpoints.request_fw_con,
-            router_bind_str=endpoints.router_bind,
+            endpoints=endpoints,
             log_queue=self.log_queue
         )
         taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)

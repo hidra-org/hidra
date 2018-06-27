@@ -17,18 +17,14 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 class TaskProvider():
     def __init__(self,
                  config,
-                 control_con_str,
-                 request_fw_con_str,
-                 router_bind_str,
+                 endpoints,
                  log_queue,
                  context=None):
 
         self.config = config
-        self.control_con_str = control_con_str
-        self.request_fw_con_str = request_fw_con_str
-        self.router_bind_str = router_bind_str
-        self.log_queue = log_queue
+        self.endpoints = endpoints
 
+        self.log_queue = log_queue
         self.log = None
         self.current_pid = None
         self.eventdetector = None
@@ -96,12 +92,12 @@ class TaskProvider():
         # socket to get control signals from
         try:
             self.control_socket = self.context.socket(zmq.SUB)
-            self.control_socket.connect(self.control_con_str)
+            self.control_socket.connect(self.endpoints.control_sub_con)
             self.log.info("Start control_socket (connect): '{}'"
-                          .format(self.control_con_str))
+                          .format(self.endpoints.control_sub_con))
         except:
             self.log.error("Failed to start control_socket (connect): '{}'"
-                           .format(self.control_con_str), exc_info=True)
+                           .format(self.endpoints.control_sub_con), exc_info=True)
             raise
 
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
@@ -109,23 +105,23 @@ class TaskProvider():
         # socket to get requests
         try:
             self.request_fw_socket = self.context.socket(zmq.REQ)
-            self.request_fw_socket.connect(self.request_fw_con_str)
+            self.request_fw_socket.connect(self.endpoints.request_fw_con)
             self.log.info("Start request_fw_socket (connect): '{}'"
-                          .format(self.request_fw_con_str))
+                          .format(self.endpoints.request_fw_con))
         except:
             self.log.error("Failed to start request_fw_socket (connect): '{}'"
-                           .format(self.request_fw_con_str), exc_info=True)
+                           .format(self.endpoints.request_fw_con), exc_info=True)
             raise
 
         # socket to disribute the events to the worker
         try:
             self.router_socket = self.context.socket(zmq.PUSH)
-            self.router_socket.bind(self.router_bind_str)
+            self.router_socket.bind(self.endpoints.router_bind)
             self.log.info("Start to router socket (bind): '{}'"
-                          .format(self.router_bind_str))
+                          .format(self.endpoints.router_bind))
         except:
             self.log.error("Failed to start router Socket (bind): '{}'"
-                           .format(self.router_bind_str), exc_info=True)
+                           .format(self.endpoints.router_bind), exc_info=True)
             raise
 
         self.poller = zmq.Poller()
