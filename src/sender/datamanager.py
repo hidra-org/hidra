@@ -344,17 +344,6 @@ class DataManager(object):
         self.params = None
         self.use_cleaner = None
 
-        self.com_port = None
-        self.request_port = None
-
-        self.com_con_str = None
-        self.request_con_str = None
-
-        self.control_pub_con_str = None
-        self.control_sub_con_str = None
-        self.request_fw_con_str = None
-        self.router_con_str = None
-
         self.whitelist = None
         self.ldapuri = None
 
@@ -518,29 +507,20 @@ class DataManager(object):
         else:
             self.params["cleaner_conf_con_str"] = None
 
-        self.com_port = self.params["com_port"]
-        self.request_port = self.params["request_port"]
-
-        self.com_con_str = ("tcp://{}:{}"
-                            .format(self.ext_ip, self.params["com_port"]))
-        self.request_con_str = ("tcp://{}:{}"
-                                .format(self.ext_ip,
-                                        self.params["request_port"]))
-
         if utils.is_windows():
             self.log.info("Using tcp for internal communication.")
-            self.control_pub_con_str = (
-                "tcp://{}:{}".format(self.localhost,
-                                     self.params["control_pub_port"]))
-            self.control_sub_con_str = (
-                "tcp://{}:{}".format(self.localhost,
-                                     self.params["control_sub_port"]))
-            self.request_fw_con_str = (
-                "tcp://{}:{}".format(self.localhost,
-                                     self.params["request_fw_port"]))
-            self.router_con_str = (
-                "tcp://{}:{}".format(self.localhost,
-                                     self.params["router_port"]))
+#            self.control_pub_con_str = (
+#                "tcp://{}:{}".format(self.localhost,
+#                                     self.params["control_pub_port"]))
+#            self.control_sub_con_str = (
+#                "tcp://{}:{}".format(self.localhost,
+#                                     self.params["control_sub_port"]))
+#            self.request_fw_con_str = (
+#                "tcp://{}:{}".format(self.localhost,
+#                                     self.params["request_fw_port"]))
+#            self.router_con_str = (
+#                "tcp://{}:{}".format(self.localhost,
+#                                     self.params["router_port"]))
             if self.use_cleaner:
                 self.params["cleaner_job_con_str"] = (
                     "tcp://{}:{}".format(self.localhost,
@@ -554,22 +534,7 @@ class DataManager(object):
 
         else:
             self.log.info("Using ipc for internal communication.")
-            self.control_pub_con_str = ("ipc://{}/{}_{}"
-                                        .format(self.ipc_dir,
-                                                self.current_pid,
-                                                "controlPub"))
-            self.control_sub_con_str = ("ipc://{}/{}_{}"
-                                        .format(self.ipc_dir,
-                                                self.current_pid,
-                                                "controlSub"))
-            self.request_fw_con_str = ("ipc://{}/{}_{}"
-                                       .format(self.ipc_dir,
-                                               self.current_pid,
-                                               "requestFw"))
-            self.router_con_str = ("ipc://{}/{}_{}"
-                                   .format(self.ipc_dir,
-                                           self.current_pid,
-                                           "router"))
+
             if self.use_cleaner:
                 self.params["cleaner_job_con_str"] = (
                     "ipc://{}/{}_{}".format(self.ipc_dir,
@@ -671,19 +636,19 @@ class DataManager(object):
             self.device = zmq.devices.ThreadDevice(zmq.FORWARDER,
                                                    zmq.SUB,
                                                    zmq.PUB)
-            self.device.bind_in(self.control_pub_con_str)
-            self.device.bind_out(self.control_sub_con_str)
+            self.device.bind_in(self.endpoints.control_pub_con)
+            self.device.bind_out(self.endpoints.control_sub_con)
             self.device.setsockopt_in(zmq.SUBSCRIBE, b"")
             self.device.start()
             self.log.info("Start thead device forwarding messages "
                           "from '{}' to '{}'"
-                          .format(self.control_pub_con_str,
-                                  self.control_sub_con_str))
+                          .format(self.endpoints.control_pub_con,
+                                  self.endpoints.control_sub_con))
         except:
             self.log.error("Failed to start thead device forwarding messages "
                            "from '{}' to '{}'"
-                           .format(self.control_pub_con_str,
-                                   self.control_sub_con_str), exc_info=True)
+                           .format(self.endpoints.control_pub_con,
+                                   self.endpoints.control_sub_con), exc_info=True)
             raise
 
         # socket for control signals
@@ -1000,7 +965,7 @@ class DataManager(object):
                       self.params["cleaner_job_con_str"],
                       self.params["cleaner_trigger_con_str"],
                       self.params["cleaner_conf_con_str"],
-                      self.control_sub_con_str))
+                      self.endpoints.control_sub_con))
             self.cleaner_pr.start()
 
         self.log.info("Configured Type of data fetcher: {}"
