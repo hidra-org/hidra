@@ -34,8 +34,8 @@ class TestDataFetcher(DataFetcherTestBase):
             "remove_data": False,
             "ipc_dir": self.config["ipc_dir"],
             "main_pid": self.config["main_pid"],
-            "cleaner_job_con_str": self.config["con_strs"].cleaner_job_con,
-            "cleaner_conf_con_str": self.config["con_strs"].confirm_con,
+            "cleaner_job_con_str": self.config["endpoints"].cleaner_job_con,
+            "cleaner_conf_con_str": self.config["endpoints"].confirm_con,
             "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
             "local_target": os.path.join(BASE_DIR, "data", "target")
         }

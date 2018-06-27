@@ -14,7 +14,7 @@ import zmq
 
 from .__init__ import BASE_DIR
 from .eventdetector_test_base import EventDetectorTestBase
-from test_base import create_dir, MockLogging, mock_get_logger
+from test_base import create_dir  # , MockLogging, mock_get_logger
 import zmq_events
 import utils
 
@@ -92,19 +92,21 @@ class TestEventDetector(EventDetectorTestBase):
         self.start = 100
         self.stop = 101
 
-        target_base_path = os.path.join(BASE_DIR, "data", "source")
-        target_relative_path = os.path.join("local", "raw")
-        self.target_path = os.path.join(target_base_path,
-                                        target_relative_path)
+        target_base_dir = os.path.join(BASE_DIR, "data", "source")
+        target_relative_dir = os.path.join("local", "raw")
+        self.target_dir = os.path.join(target_base_dir,
+                                       target_relative_dir)
 
-        self.ipc_endpoints = zmq_events.get_ipc_endpoints(
+        self.ipc_addresses = zmq_events.get_ipc_addresses(
             config=self.eventdetector_config
         )
-        self.tcp_endpoints = zmq_events.get_tcp_endpoints(
+        self.tcp_addresses = zmq_events.get_tcp_addresses(
             config=self.eventdetector_config
         )
-        self.addrs = zmq_events.get_addrs(ipc_endpoints=self.ipc_endpoints,
-                               tcp_endpoints=self.tcp_endpoints)
+        self.endpoints = zmq_events.get_endpoints(
+            ipc_addresses=self.ipc_addresses,
+            tcp_addresses=self.tcp_addresses
+        )
 
         self.eventdetector = None
         self.event_socket = None
@@ -174,7 +176,7 @@ class TestEventDetector(EventDetectorTestBase):
     #            Test helpers            #
     ######################################
 
-    def test_get_tcp_endpoints(self):
+    def test_get_tcp_addresses(self):
         config = {
             "con_ip": self.con_ip,
             "ext_ip": self.ext_ip,
@@ -185,23 +187,23 @@ class TestEventDetector(EventDetectorTestBase):
         with mock.patch.object(utils, "is_windows") as mock_is_windows:
             mock_is_windows.return_value = False
 
-            endpoints = zmq_events.get_tcp_endpoints(config)
-            self.assertIsNone(endpoints)
+            addrs = zmq_events.get_tcp_addresses(config)
+            self.assertIsNone(addrs)
 
         # Windows
         with mock.patch.object(utils, "is_windows") as mock_is_windows:
             mock_is_windows.return_value = True
 
-            endpoints = zmq_events.get_tcp_endpoints(config)
+            addrs = zmq_events.get_tcp_addresses(config)
             port = config["event_det_port"]
 
-            self.assertIsInstance(endpoints, zmq_events.TcpEndpoints)
-            self.assertEqual(endpoints.eventdet_bind,
+            self.assertIsInstance(addrs, zmq_events.TcpAddresses)
+            self.assertEqual(addrs.eventdet_bind,
                              "{}:{}".format(self.ext_ip, port))
-            self.assertEqual(endpoints.eventdet_con,
+            self.assertEqual(addrs.eventdet_con,
                              "{}:{}".format(self.con_ip, port))
 
-    def test_get_ipc_endpoints(self):
+    def test_get_ipc_addresses(self):
         config = {
             "ipc_dir": self.config["ipc_dir"],
             "main_pid": self.config["main_pid"],
@@ -211,42 +213,42 @@ class TestEventDetector(EventDetectorTestBase):
         with mock.patch.object(utils, "is_windows") as mock_is_windows:
             mock_is_windows.return_value = False
 
-            endpoints = zmq_events.get_ipc_endpoints(config)
+            addrs = zmq_events.get_ipc_addresses(config)
             main_pid = config["main_pid"]
 
-            self.assertIsInstance(endpoints, zmq_events.IpcEndpoints)
-            self.assertEqual(endpoints.eventdet,
+            self.assertIsInstance(addrs, zmq_events.IpcAddresses)
+            self.assertEqual(addrs.eventdet,
                              "/tmp/hidra/{}_eventDet".format(main_pid))
 
         # Windows
         with mock.patch.object(utils, "is_windows") as mock_is_windows:
             mock_is_windows.return_value = True
 
-            endpoints = zmq_events.get_ipc_endpoints(config)
-            self.assertIsNone(endpoints)
+            addrs = zmq_events.get_ipc_addresses(config)
+            self.assertIsNone(addrs)
 
-    def test_get_addrs(self):
-        tcp_endpoints = zmq_events.TcpEndpoints(
+    def test_get_endpoints(self):
+        tcp_addresses = zmq_events.TcpAddresses(
             eventdet_bind="my_eventdet_bind",
             eventdet_con="my_eventdet_con",
         )
-        ipc_endpoints = zmq_events.IpcEndpoints(eventdet="my_eventdet")
+        ipc_addresses = zmq_events.IpcAddresses(eventdet="my_eventdet")
 
         # Linux
-        addrs = zmq_events.get_addrs(ipc_endpoints=ipc_endpoints,
-                                     tcp_endpoints=None)
+        addrs = zmq_events.get_endpoints(ipc_addresses=ipc_addresses,
+                                         tcp_addresses=None)
 
-        self.assertIsInstance(addrs, zmq_events.Addresses)
+        self.assertIsInstance(addrs, zmq_events.Endpoints)
         self.assertEqual(addrs.eventdet_bind,
                          "ipc://{}".format("my_eventdet"))
         self.assertEqual(addrs.eventdet_con,
                          "ipc://{}".format("my_eventdet"))
 
         # Windows
-        addrs = zmq_events.get_addrs(ipc_endpoints=None,
-                                     tcp_endpoints=tcp_endpoints)
+        addrs = zmq_events.get_endpoints(ipc_addresses=None,
+                                         tcp_addresses=tcp_addresses)
 
-        self.assertIsInstance(addrs, zmq_events.Addresses)
+        self.assertIsInstance(addrs, zmq_events.Endpoints)
         self.assertEqual(addrs.eventdet_bind,
                          "tcp://{}".format("my_eventdet_bind"))
         self.assertEqual(addrs.eventdet_con,
@@ -260,7 +262,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         with mock.patch("zmq_events.EventDetector.check_config"):
             with mock.patch("zmq_events.EventDetector.setup"):
-                evtdet = EventDetector({}, self.log_queue)
+                evtdet = zmq_events.EventDetector({}, self.log_queue)
 
         evtdet.config = {
             "context": MockZmqContext(),
@@ -298,24 +300,27 @@ class TestEventDetector(EventDetectorTestBase):
 #        with mock.patch.object(zmq, "Context", MockZmqContext):
 #            self.eventdetector.setup()
 
-        self.eventdetector = zmq_events.EventDetector(self.eventdetector_config,
-                                                      self.log_queue)
+        self.eventdetector = zmq_events.EventDetector(
+            self.eventdetector_config,
+            self.log_queue
+        )
 
         # create zmq socket to send events
         try:
             self.event_socket = self.context.socket(zmq.PUSH)
-            self.event_socket.connect(self.addrs.eventdet_con)
+            self.event_socket.connect(self.endpoints.eventdet_con)
             self.log.info("Start event_socket (connect): '{}'"
-                          .format(self.addrs.eventdet_con))
+                          .format(self.endpoints.eventdet_con))
         except:
             self.log.error("Failed to start event_socket (connect): '{}'"
-                           .format(self.addrs.eventdet_con))
+                           .format(self.endpoints.eventdet_con))
             raise
 
         for i in range(self.start, self.stop):
             try:
                 self.log.debug("generate event")
-                target_file = "{}{}.cbf".format(self.target_path, i)
+                target_file = os.path.join(self.target_dir,
+                                           "{}.cbf".format(i))
                 message = {
                     u"filename": target_file,
                     u"filepart": 0,

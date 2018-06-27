@@ -12,22 +12,22 @@ import utils
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-IpcEndpoints = namedtuple("ipc_endpoints", ["eventdet"])
-TcpEndpoints = namedtuple("tcp_endpoints", ["eventdet_bind", "eventdet_con"])
-Addresses = namedtuple("addresses", ["eventdet_bind", "eventdet_con"])
+IpcAddresses = namedtuple("ipc_addresses", ["eventdet"])
+TcpAddresses = namedtuple("tcp_addresses", ["eventdet_bind", "eventdet_con"])
+Endpoints = namedtuple("endpoints", ["eventdet_bind", "eventdet_con"])
 
 
-def get_tcp_endpoints(config):
-    """Build the endpoints used for TCP communcation.
+def get_tcp_addresses(config):
+    """Build the addresses used for TCP communcation.
 
-    The endpoints are only set if called on Windows. For Linux they are set
+    The addresses are only set if called on Windows. For Linux they are set
     to None.
 
     Args:
         config (dict): A dictionary containing the IPs to bind and to connect
-                       to as well as the ports. Usually con_ip is teh DNS name.
+                       to as well as the ports. Usually con_ip is the DNS name.
     Returns:
-        A TcpEndpoints object.
+        A TcpAddresses object.
     """
 
     if utils.is_windows():
@@ -38,73 +38,73 @@ def get_tcp_endpoints(config):
         eventdet_bind = "{}:{}".format(ext_ip, port)
         eventdet_con = "{}:{}".format(con_ip, port)
 
-        endpoints = TcpEndpoints(
+        addrs = TcpAddresses(
             eventdet_bind=eventdet_bind,
             eventdet_con=eventdet_con
         )
     else:
-        endpoints = None
+        addrs = None
 
-    return endpoints
+    return addrs
 
 
-def get_ipc_endpoints(config):
-    """Build the endpoints used for IPC.
+def get_ipc_addresses(config):
+    """Build the addresses used for IPC.
 
-    The endpoints are only set if called on Linux. On windows they are set
+    The addresses are only set if called on Linux. On windows they are set
     to None.
 
     Args:
         config (dict): A dictionary conaining the ipc base directory and the
                        main PID.
     Returns:
-        An IpcEndpoints object.
+        An IpcAddresses object.
     """
     if utils.is_windows():
-        endpoints = None
+        addrs = None
     else:
         ipc_ip = "{}/{}".format(config["ipc_dir"],
                                 config["main_pid"])
 
         eventdet = "{}_{}".format(ipc_ip, "eventDet")
 
-        endpoints = IpcEndpoints(eventdet=eventdet)
+        addrs = IpcAddresses(eventdet=eventdet)
 
-    return endpoints
+    return addrs
 
 
-def get_addrs(ipc_endpoints, tcp_endpoints):
-    """Configures the ZMQ address depending on the protocol.
+def get_endpoints(ipc_addresses, tcp_addresses):
+    """Configures the ZMQ endpoints depending on the protocol.
 
     Args:
-        ipc_endpoints: The endpoints used for the interprocess communication
+        ipc_addresses: The endpoints used for the interprocess communication
                        (ipc) protocol.
-        tcp_endpoints: The endpoints used for communication over TCP.
+        tcp_addresses: The endpoints used for communication over TCP.
     Returns:
-        An Addresses object containing the bind and connection addresses.
+        An Endpoints object containing the bind and connection endpoints.
     """
 
-    if ipc_endpoints is not None:
-        eventdet_bind = "ipc://{}".format(ipc_endpoints.eventdet)
+    if ipc_addresses is not None:
+        eventdet_bind = "ipc://{}".format(ipc_addresses.eventdet)
         eventdet_con = eventdet_bind
 
-    elif tcp_endpoints is not None:
-        eventdet_bind = "tcp://{}".format(tcp_endpoints.eventdet_bind)
-        eventdet_con = "tcp://{}".format(tcp_endpoints.eventdet_con)
+    elif tcp_addresses is not None:
+        eventdet_bind = "tcp://{}".format(tcp_addresses.eventdet_bind)
+        eventdet_con = "tcp://{}".format(tcp_addresses.eventdet_con)
     else:
         msg = "Neither ipc not tcp endpoints are defined"
         raise Exception(msg)
 
-    return Addresses(
+    return Endpoints(
         eventdet_bind=eventdet_bind,
         eventdet_con=eventdet_con
     )
 
 
-# generalization not used because removing the ipc_endpoints later is more
+# generalization not used because removing the ipc_addresses later is more
 # difficult
-# Endpoints = namedtuple("endpoints", ["eventdet_bind", "eventdet_con"])
-# def get_endpoints(config):
+# Addresses = namedtuple("addresses", ["eventdet_bind", "eventdet_con"])
+# def get_addresses(config):
 #    if not utils.is_windows():
 #        eventdet_bind = "{}:{}".format(config["ext_ip"],
 #                                       config["event_det_port"]),
@@ -117,30 +117,30 @@ def get_addrs(ipc_endpoints, tcp_endpoints):
 #        eventdet_bind = "{}_{}".format(ipc_ip, "eventDet"),
 #        eventdet_con = eventdet_bind
 #
-#    endpoints = Endpoints(
-#        eventdet_bind=eventdet_bind,
-#        eventdet_con=eventdet_con
-#    )
-#
-#    return endpoints
-#
-#
-# def get_addrs(config, endpoints):
-#
-#    if utils.is_windows():
-#        protocol = "tcp"
-#    else:
-#        protocol = "ipc"
-#
-#    eventdet_bind = "{}://{}".format(protocol, endpoints.eventdet_bind)
-#    eventdet_con = "{}://{}".format(protocol, endpoints.eventdet_con)
-#
 #    addrs = Addresses(
 #        eventdet_bind=eventdet_bind,
 #        eventdet_con=eventdet_con
 #    )
 #
 #    return addrs
+#
+#
+# def get_endpoints(config, addrs):
+#
+#    if utils.is_windows():
+#        protocol = "tcp"
+#    else:
+#        protocol = "ipc"
+#
+#    eventdet_bind = "{}://{}".format(protocol, addrs.eventdet_bind)
+#    eventdet_con = "{}://{}".format(protocol, addrs.eventdet_con)
+#
+#    endpoints = Endpoints(
+#        eventdet_bind=eventdet_bind,
+#        eventdet_con=eventdet_con
+#    )
+#
+#    return endpoints
 
 
 class EventDetector(EventDetectorBase):
@@ -159,9 +159,9 @@ class EventDetector(EventDetectorBase):
         self.context = None
         self.event_socket = None
 
-        self.ipc_endpoints = None
-        self.tcp_endpoints = None
-        self.addrs = None
+        self.ipc_addresses = None
+        self.tcp_addresses = None
+        self.endpoints = None
 
         self.set_required_params()
 
@@ -185,10 +185,10 @@ class EventDetector(EventDetectorBase):
         Sets ZMQ endpoints and addresses and creates the ZMQ socket.
         """
 
-        self.ipc_endpoints = get_ipc_endpoints(config=self.config)
-        self.tcp_endpoints = get_tcp_endpoints(config=self.config)
-        self.addrs = get_addrs(ipc_endpoints=self.ipc_endpoints,
-                               tcp_endpoints=self.tcp_endpoints)
+        self.ipc_addresses = get_ipc_addresses(config=self.config)
+        self.tcp_addresses = get_tcp_addresses(config=self.config)
+        self.endpoints = get_endpoints(ipc_addresses=self.ipc_addresses,
+                                       tcp_addresses=self.tcp_addresses)
 
         # remember if the context was created outside this class or not
         if self.config["context"]:
@@ -202,12 +202,13 @@ class EventDetector(EventDetectorBase):
         # Create zmq socket to get events
         try:
             self.event_socket = self.context.socket(zmq.PULL)
-            self.event_socket.bind(self.addrs.eventdet_bind)
+            self.event_socket.bind(self.endpoints.eventdet_bind)
             self.log.info("Start event_socket (bind): '{}'"
-                          .format(self.addrs.eventdet_bind))
+                          .format(self.endpoints.eventdet_bind))
         except:
             self.log.error("Failed to start event_socket (bind): '{}'"
-                           .format(self.addrs.eventdet_bind), exc_info=True)
+                           .format(self.endpoints.eventdet_bind),
+                           exc_info=True)
             raise
 
     def get_new_event(self):

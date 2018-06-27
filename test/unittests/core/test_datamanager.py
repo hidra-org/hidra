@@ -134,16 +134,16 @@ class TestDataManager(TestBase):
             self.config["fixed_recv"]
         )
 
-        con_strs = self.config["con_strs"]
+        endpoints = self.config["endpoints"]
 
         try:
             self.com_socket = self.context.socket(zmq.REQ)
-            self.com_socket.connect(con_strs.com_con)
+            self.com_socket.connect(endpoints.com_con)
             self.log.info("Start com_socket (connect): {}"
-                          .format(con_strs.com_con))
+                          .format(endpoints.com_con))
         except:
             self.log.error("Failed to start com_socket (connect): {}"
-                           .format(con_strs.com_con))
+                           .format(endpoints.com_con))
             raise
 
         try:

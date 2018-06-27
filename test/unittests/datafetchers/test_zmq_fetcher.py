@@ -13,9 +13,9 @@ import zmq
 from .__init__ import BASE_DIR
 from .datafetcher_test_base import DataFetcherTestBase
 from zmq_fetcher import (DataFetcher,
-                         get_ipc_endpoints,
-                         get_tcp_endpoints,
-                         get_addrs)
+                         get_ipc_addresses,
+                         get_tcp_addresses,
+                         get_endpoints)
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -40,8 +40,8 @@ class TestDataFetcher(DataFetcherTestBase):
             "main_pid": self.config["main_pid"],
             "ext_ip": self.ext_ip,
             "con_ip": self.con_ip,
-            "cleaner_job_con_str": self.config["con_strs"].cleaner_job_con,
-            "cleaner_conf_con_str": self.config["con_strs"].confirm_con,
+            "cleaner_job_con_str": self.config["endpoints"].cleaner_job_con,
+            "cleaner_conf_con_str": self.config["endpoints"].confirm_con,
             "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
             "local_target": None
         }
@@ -65,10 +65,10 @@ class TestDataFetcher(DataFetcherTestBase):
                                        fetcher_id=0,
                                        context=self.context)
 
-        ipc_endpoints = get_ipc_endpoints(config=self.datafetcher_config)
-        tcp_endpoints = get_tcp_endpoints(config=self.datafetcher_config)
-        addrs = get_addrs(ipc_endpoints=ipc_endpoints,
-                          tcp_endpoints=tcp_endpoints)
+        ipc_addresses = get_ipc_addresses(config=self.datafetcher_config)
+        tcp_addresses = get_tcp_addresses(config=self.datafetcher_config)
+        endpoints = get_endpoints(ipc_addresses=ipc_addresses,
+                                  tcp_addresses=tcp_addresses)
 
         # Set up receiver simulator
         self.receiving_sockets = []
@@ -77,12 +77,12 @@ class TestDataFetcher(DataFetcherTestBase):
 
         try:
             self.data_fw_socket = self.context.socket(zmq.PUSH)
-            self.data_fw_socket.connect(addrs.datafetch_con)
+            self.data_fw_socket.connect(endpoints.datafetch_con)
             self.log.info("Start data_fw_socket (connect): '{}'"
-                          .format(addrs.datafetch_con))
+                          .format(endpoints.datafetch_con))
         except:
             self.log.error("Failed to start data_fw_socket (connect): '{}'"
-                           .format(addrs.datafetch_con))
+                           .format(endpoints.datafetch_con))
             raise
 
         # Test data fetcher

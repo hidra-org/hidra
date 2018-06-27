@@ -40,7 +40,7 @@ class TestDataFetcher(DataFetcherTestBase):
             # "local_target": os.path.join(BASE_DIR, "data", "target"),
             "ipc_dir": self.config["ipc_dir"],
             "main_pid": self.config["main_pid"],
-            "cleaner_job_con_str": self.config["con_strs"].cleaner_job_con,
+            "cleaner_job_con_str": self.config["endpoints"].cleaner_job_con,
             "ext_ip": self.ext_ip,
             "status_check_resp_port": "50011",
             "confirmation_resp_port": "50012",

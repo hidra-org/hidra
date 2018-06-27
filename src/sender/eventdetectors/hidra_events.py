@@ -15,27 +15,27 @@ import utils
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-IpcEndpoints = namedtuple("ipc_endpoints", ["out", "mon"])
-Addresses = namedtuple("addresses", ["in_bind", "in_con",
+IpcAddresses = namedtuple("ipc_addresses", ["out", "mon"])
+Endpoints = namedtuple("addresses", ["in_bind", "in_con",
                                      "out_bind", "out_con",
                                      "mon_bind", "mon_con"])
 
 
-def get_ipc_endpoints(config):
-    """Build the endpoints used for IPC.
+def get_ipc_addresses(config):
+    """Build the addresses used for IPC.
 
-    The endpoints are only set if called on Linux. On windows they are set
+    The addresses are only set if called on Linux. On windows they are set
     to None.
 
     Args:
         config (dict): A dictionary conaining the ipc base directory and the
                        main PID.
     Returns:
-        An IpcEndpoints object.
+        An IpcAddresses object.
     """
 
     if utils.is_windows():
-        endpoints = None
+        addrs = None
     else:
         ipc_ip = "{}/{}".format(config["ipc_dir"],
                                 config["main_pid"])
@@ -43,21 +43,21 @@ def get_ipc_endpoints(config):
         out = "{}_{}".format(ipc_ip, "out")
         mon = "{}_{}".format(ipc_ip, "mon")
 
-        endpoints = IpcEndpoints(out=out, mon=mon)
+        addrs = IpcAddresses(out=out, mon=mon)
 
-    return endpoints
+    return addrs
 
 
-def get_addrs(config, ipc_endpoints):
-    """Configures the ZMQ address depending on the protocol.
+def get_endpoints(config, ipc_addresses):
+    """Configures the ZMQ endpoints depending on the protocol.
 
     Args:
         config (dict): A dictionary containing the IPs to bind and to connect
                        to as well as the ports. Usually con_ip is teh DNS name.
-        ipc_endpoints: The endpoints used for the interprocess communication
+        ipc_addresses: The addresses used for the interprocess communication
                        (ipc) protocol.
     Returns:
-        An Addresses object containing the bind and connection addresses.
+        An Endpoints object containing the bind and connection endpoints.
     """
 
     ext_ip = config["ext_ip"]
@@ -76,13 +76,13 @@ def get_addrs(config, ipc_endpoints):
         mon_bind = "tcp://{}:{}".format(ext_ip, port)
         mon_con = "tcp://{}:{}".format(con_ip, port)
     else:
-        out_bind = "ipc://{}".format(ipc_endpoints.out)
+        out_bind = "ipc://{}".format(ipc_addresses.out)
         out_con = out_bind
 
-        mon_bind = "ipc://{}".format(ipc_endpoints.mon)
+        mon_bind = "ipc://{}".format(ipc_addresses.mon)
         mon_con = mon_bind
 
-    return Addresses(
+    return Endpoints(
         in_bind=in_bind, in_con=in_con,
         out_bind=out_bind, out_con=out_con,
         mon_bind=mon_bind, mon_con=mon_con
@@ -146,8 +146,8 @@ class EventDetector(EventDetectorBase):
         self.config = config
         self.log_queue = log_queue
 
-        self.ipc_endpoints = None
-        self.addrs = None
+        self.ipc_addresses = None
+        self.endpoints = None
 
         self.context = None
         self.ext_context = None
@@ -175,18 +175,18 @@ class EventDetector(EventDetectorBase):
         """Configures ZMQ sockets and starts monitoring device.
         """
 
-        self.ipc_endpoints = get_ipc_endpoints(config=self.config)
-        self.addrs = get_addrs(config=self.config,
-                               ipc_endpoints=self.ipc_endpoints)
+        self.ipc_addresses = get_ipc_addresses(config=self.config)
+        self.endpoints = get_endpoints(config=self.config,
+                                       ipc_addresses=self.ipc_addresses)
 
         # Set up monitored queue to get notification when new data is sent to
         # the zmq queue
 
         self.monitoringdevice = multiprocessing.Process(
             target=MonitorDevice,
-            args=(self.addrs.in_bind,
-                  self.addrs.out_bind,
-                  self.addrs.mon_bind)
+            args=(self.endpoints.in_bind,
+                  self.endpoints.out_bind,
+                  self.endpoints.mon_bind)
         )
 
         # original monitored queue from pyzmq is not working
@@ -197,16 +197,16 @@ class EventDetector(EventDetectorBase):
         # >   #   in       out      mon
         # >   zmq.PULL, zmq.PUSH, zmq.PUB, in_prefix, out_prefix)
         #
-        # > self.monitoringdevice.bind_in(self.addrs.in_bind)
-        # > self.monitoringdevice.bind_out(self.addrs.out_bind)
-        # > self.monitoringdevice.bind_mon(self.addrs.mon_bind)
+        # > self.monitoringdevice.bind_in(self.endpoints.in_bind)
+        # > self.monitoringdevice.bind_out(self.endpoints.out_bind)
+        # > self.monitoringdevice.bind_mon(self.endpoints.mon_bind)
 
         self.monitoringdevice.start()
         self.log.info("Monitoring device has started with (bind)\n"
                       "in: {}\nout: {}\nmon: {}"
-                      .format(self.addrs.in_bind,
-                              self.addrs.out_bind,
-                              self.addrs.mon_bind))
+                      .format(self.endpoints.in_bind,
+                              self.endpoints.out_bind,
+                              self.endpoints.mon_bind))
 
         # set up monitoring socket where the events are sent to
         if self.config["context"] is not None:
@@ -220,14 +220,14 @@ class EventDetector(EventDetectorBase):
         # Create zmq socket to get events
         try:
             self.mon_socket = self.context.socket(zmq.PULL)
-            self.mon_socket.connect(self.addrs.mon_con)
+            self.mon_socket.connect(self.endpoints.mon_con)
 #            self.mon_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
             self.log.info("Start monitoring socket (connect): '{}'"
-                          .format(self.addrs.mon_con))
+                          .format(self.endpoints.mon_con))
         except:
             self.log.error("Failed to start monitoring socket (connect): '{}'"
-                           .format(self.addrs.mon_con), exc_info=True)
+                           .format(self.endpoints.mon_con), exc_info=True)
             raise
 
     def get_new_event(self):

@@ -109,7 +109,6 @@ class DataDispatcher():
             self.log.error("Cannot create sockets", ext_info=True)
             self.stop()
 
-
     def _create_sockets(self):
 
         # socket for control signals

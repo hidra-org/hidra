@@ -14,22 +14,22 @@ import utils
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-IpcEndpoints = namedtuple("ipc_endpoints", ["datafetch"])
-TcpEndpoints = namedtuple("tcp_endpoints", ["datafetch_bind", "datafetch_con"])
-Addresses = namedtuple("addresses", ["datafetch_bind", "datafetch_con"])
+IpcAddresses = namedtuple("ipc_addresses", ["datafetch"])
+TcpAddresses = namedtuple("tcp_addresses", ["datafetch_bind", "datafetch_con"])
+Endpoints = namedtuple("endpoints", ["datafetch_bind", "datafetch_con"])
 
 
-def get_tcp_endpoints(config):
-    """Build the endpoints used for TCP communcation.
+def get_tcp_addresses(config):
+    """Build the addresses used for TCP communcation.
 
-    The endpoints are only set if called on Windows. For Linux they are set
+    The addresses are only set if called on Windows. For Linux they are set
     to None.
 
     Args:
         config (dict): A dictionary containing the IPs to bind and to connect
                        to as well as the ports. Usually con_ip is teh DNS name.
     Returns:
-        A TcpEndpoints object.
+        A TcpAddresses object.
     """
 
     if utils.is_windows():
@@ -40,64 +40,64 @@ def get_tcp_endpoints(config):
         datafetch_bind = "{}:{}".format(ext_ip, port)
         datafetch_con = "{}:{}".format(con_ip, port)
 
-        endpoints = TcpEndpoints(
+        addrs = TcpAddresses(
             datafetch_bind=datafetch_bind,
             datafetch_con=datafetch_con
         )
     else:
-        endpoints = None
+        addrs = None
 
-    return endpoints
+    return addrs
 
 
-def get_ipc_endpoints(config):
-    """Build the endpoints used for IPC.
+def get_ipc_addresses(config):
+    """Build the addresses used for IPC.
 
-    The endpoints are only set if called on Linux. On windows they are set
+    The addresses are only set if called on Linux. On windows they are set
     to None.
 
     Args:
         config (dict): A dictionary conaining the ipc base directory and the
                        main PID.
     Returns:
-        An IpcEndpoints object.
+        An IpcAddresses object.
     """
 
     if utils.is_windows():
-        endpoints = None
+        addrs = None
     else:
         ipc_ip = "{}/{}".format(config["ipc_dir"], config["main_pid"])
 
         datafetch = "{}_{}".format(ipc_ip, "dataFetch")
 
-        endpoints = IpcEndpoints(datafetch=datafetch)
+        addrs = IpcAddresses(datafetch=datafetch)
 
-    return endpoints
+    return addrs
 
 
-def get_addrs(ipc_endpoints, tcp_endpoints):
-    """Configures the ZMQ address depending on the protocol.
+def get_endpoints(ipc_addresses, tcp_addresses):
+    """Configures the ZMQ endpoints depending on the protocol.
 
     Args:
-        ipc_endpoints: The endpoints used for the interprocess communication
+        ipc_addresses: The addresses used for the interprocess communication
                        (ipc) protocol.
-        tcp_endpoints: The endpoints used for communication over TCP.
+        tcp_addresses: The addresses used for communication over TCP.
     Returns:
-        An Addresses object containing the bind and connection addresses.
+        An Endpoints object containing the bind and connection endpoints.
     """
 
-    if ipc_endpoints is not None:
-        datafetch_bind = "ipc://{}".format(ipc_endpoints.datafetch)
+    if ipc_addresses is not None:
+        datafetch_bind = "ipc://{}".format(ipc_addresses.datafetch)
         datafetch_con = datafetch_bind
 
-    elif tcp_endpoints is not None:
-        datafetch_bind = "tcp://{}".format(tcp_endpoints.datafetch_bind)
-        datafetch_con = "tcp://{}".format(tcp_endpoints.datafetch_con)
+    elif tcp_addresses is not None:
+        datafetch_bind = "tcp://{}".format(tcp_addresses.datafetch_bind)
+        datafetch_con = "tcp://{}".format(tcp_addresses.datafetch_con)
     else:
         msg = "Neither ipc not tcp endpoints are defined"
         raise Exception(msg)
 
-    return Addresses(
+    return Endpoints(
         datafetch_bind=datafetch_bind,
         datafetch_con=datafetch_con
     )
@@ -118,8 +118,8 @@ class DataFetcher(DataFetcherBase):
         self.log_queue = log_queue
         self.context = context
 
-        self.ipc_endpoints = None
-        self.addrs = None
+        self.ipc_addresses = None
+        self.endpoints = None
 
         if utils.is_windows():
             self.required_params = ["ext_ip", "data_fetcher_port"]
@@ -134,20 +134,20 @@ class DataFetcher(DataFetcherBase):
         Sets ZMQ endpoints and addresses and creates the ZMQ socket.
         """
 
-        self.ipc_endpoints = get_ipc_endpoints(config=self.config)
-        self.tcp_endpoints = get_tcp_endpoints(config=self.config)
-        self.addrs = get_addrs(ipc_endpoints=self.ipc_endpoints,
-                               tcp_endpoints=self.tcp_endpoints)
+        self.ipc_addresses = get_ipc_addresses(config=self.config)
+        self.tcp_addresses = get_tcp_addresses(config=self.config)
+        self.endpoints = get_endpoints(ipc_addresses=self.ipc_addresses,
+                                       tcp_addresses=self.tcp_addresses)
 
         # Create zmq socket
         try:
             self.socket = self.context.socket(zmq.PULL)
-            self.socket.bind(self.addrs.datafetch_bind)
+            self.socket.bind(self.endpoints.datafetch_bind)
             self.log.info("Start socket (bind): '{}'"
-                          .format(self.addrs.datafetch_bind))
+                          .format(self.endpoints.datafetch_bind))
         except:
             self.log.error("Failed to start socket (bind): '{}'"
-                           .format(self.addrs.datafetch_bind),
+                           .format(self.endpoints.datafetch_bind),
                            exc_info=True)
             raise
 

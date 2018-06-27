@@ -37,11 +37,11 @@ class RequestResponder(threading.Thread):
 
         self.context = zmq.Context()
 
-        con_str = self.config["con_strs"].request_fw_con
+        endpoint = self.config["endpoints"].request_fw_con
         self.request_fw_socket = self.context.socket(zmq.REP)
-        self.request_fw_socket.bind(con_str)
+        self.request_fw_socket.bind(endpoint)
         self.log.info("request_fw_socket started (bind) for '{}'"
-                      .format(con_str))
+                      .format(endpoint))
 
     def run(self):
         """Answer to all incoming requests.
@@ -125,12 +125,12 @@ class TestTaskProvider(TestBase):
         """Simulate incoming data and check if received events are correct.
         """
 
-        con_strs = self.config["con_strs"]
+        endpoints = self.config["endpoints"]
         kwargs = dict(
             config=self.taskprovider_config,
-            control_con_str=con_strs.control_sub_con,
-            request_fw_con_str=con_strs.request_fw_con,
-            router_bind_str=con_strs.router_bind,
+            control_con_str=endpoints.control_sub_con,
+            request_fw_con_str=endpoints.request_fw_con,
+            router_bind_str=endpoints.router_bind,
             log_queue=self.log_queue
         )
         taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
@@ -140,9 +140,9 @@ class TestTaskProvider(TestBase):
         request_responder_pr.start()
 
         router_socket = self.context.socket(zmq.PULL)
-        router_socket.connect(con_strs.router_con)
+        router_socket.connect(endpoints.router_con)
         self.log.info("router_socket connected to {}"
-                      .format(con_strs.router_con))
+                      .format(endpoints.router_con))
 
         source_file = os.path.join(BASE_DIR, "test_file.cbf")
         target_file_base = os.path.join(BASE_DIR,

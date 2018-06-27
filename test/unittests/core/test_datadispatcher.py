@@ -53,7 +53,7 @@ class TestDataDispatcher(TestBase):
             "remove_data": False,
             "chunksize": self.chunksize,
             "local_target": self.local_target,
-            "cleaner_job_con_str": self.config["con_strs"].cleaner_job_con,
+            "cleaner_job_con_str": self.config["endpoints"].cleaner_job_con,
             "main_pid": self.config["main_pid"],
         }
 
@@ -76,17 +76,17 @@ class TestDataDispatcher(TestBase):
         fixed_stream_con_str = "{}:{}".format(self.con_ip,
                                               self.receiving_ports[1])
 
-        con_strs = self.config["con_strs"]
+        endpoints = self.config["endpoints"]
 
         router_socket = self.context.socket(zmq.PUSH)
-        router_socket.bind(con_strs.router_bind)
+        router_socket.bind(endpoints.router_bind)
         self.log.info("Start router_socket (bind): '{}'"
-                      .format(con_strs.router_bind))
+                      .format(endpoints.router_bind))
 
         kwargs = dict(
             id=1,
-            control_con_str=con_strs.control_sub_con,
-            router_con_str=con_strs.router_con,
+            control_con_str=endpoints.control_sub_con,
+            router_con_str=endpoints.router_con,
             chunksize=self.chunksize,
             fixed_stream_id=fixed_stream_con_str,
             config=self.datadispatcher_config,

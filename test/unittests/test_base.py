@@ -102,22 +102,21 @@ class TestBase(unittest.TestCase):
             "cleaner": 50051,
             "cleaner_trigger": 50052,
             "confirmation": 50053,
-            "eventdetector": 50003
         }
 
-        self.ipc_endpoints = utils.set_ipc_endpoints(ipc_dir=ipc_dir,
+        self.ipc_addresses = utils.set_ipc_addresses(ipc_dir=ipc_dir,
                                                      main_pid=main_pid)
 
-        con_strs = utils.set_con_strs(ext_ip=self.ext_ip,
-                                      con_ip=self.con_ip,
-                                      ports=ports,
-                                      ipc_endpoints=self.ipc_endpoints)
+        endpoints = utils.set_endpoints(ext_ip=self.ext_ip,
+                                        con_ip=self.con_ip,
+                                        ports=ports,
+                                        ipc_addresses=self.ipc_addresses)
 
         self.config = {
             "ports": ports,
             "ipc_dir": ipc_dir,
             "main_pid": main_pid,
-            "con_strs": con_strs,
+            "endpoints": endpoints,
         }
 
         self._init_logging(loglevel=LOGLEVEL)
@@ -173,7 +172,7 @@ class TestBase(unittest.TestCase):
         return sckt
 
     def tearDown(self):
-        for key, endpoint in vars(self.ipc_endpoints).iteritems():
+        for key, endpoint in vars(self.ipc_addresses).iteritems():
             try:
                 os.remove(endpoint)
                 self.log.debug("Removed ipc socket: {}".format(endpoint))

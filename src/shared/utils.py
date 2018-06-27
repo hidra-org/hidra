@@ -524,8 +524,8 @@ def generate_sender_id(main_pid):
 #  Connection paths and strings  #
 # ------------------------------ #
 
-IpcEndpoints = namedtuple(
-    "ipc_endpoints", [
+IpcAddresses = namedtuple(
+    "ipc_addresses", [
         "control_pub",
         "control_sub",
         "request_fw",
@@ -536,7 +536,7 @@ IpcEndpoints = namedtuple(
 )
 
 
-def set_ipc_endpoints(ipc_dir, main_pid):
+def set_ipc_addresses(ipc_dir, main_pid):
     """Sets the ipc connection paths.
 
     Sets the connection strings  for the job, control, trigger and
@@ -547,7 +547,7 @@ def set_ipc_endpoints(ipc_dir, main_pid):
         main_pid: Process ID of the current process. Used to distinguish
                   different IPC connection.
     Returns:
-        A namedtuple object IpcEndpoints with the entries:
+        A namedtuple object IpcAddresses with the entries:
             control_pub,
             control_sub,
             request_fw,
@@ -566,7 +566,7 @@ def set_ipc_endpoints(ipc_dir, main_pid):
     job = "{}_{}".format(ipc_ip, "cleaner")
     trigger = "{}_{}".format(ipc_ip, "cleaner_trigger")
 
-    return IpcEndpoints(
+    return IpcAddresses(
         control_pub=control_pub,
         control_sub=control_sub,
         request_fw=request_fw,
@@ -576,8 +576,8 @@ def set_ipc_endpoints(ipc_dir, main_pid):
     )
 
 
-ConStrs = namedtuple(
-    "con_str", [
+Endpoints = namedtuple(
+    "endpoints", [
         "control_pub_bind",
         "control_pub_con",
         "control_sub_bind",
@@ -600,8 +600,8 @@ ConStrs = namedtuple(
 )
 
 
-def set_con_strs(ext_ip, con_ip, ports, ipc_endpoints):
-    """Sets the connection strings.
+def set_endpoints(ext_ip, con_ip, ports, ipc_addresses):
+    """Configures the ZMQ address depending on the protocol.
 
     Sets the connection strings  for the job, control, trigger and
     confirmation socket.
@@ -609,11 +609,11 @@ def set_con_strs(ext_ip, con_ip, ports, ipc_endpoints):
     Args:
         ext_ip: IP to bind TCP connections to
         con_ip: IP to connect TCP connections to
-        ipc_endpoints: Endpoints to use for the IPC connections.
+        ipc_addresses: Addresses to use for the IPC connections.
         port: A dictionary giving the ports to open TCP connection on
               (only used on Windows).
     Returns:
-        A namedtuple object ConStrs with the entries:
+        A namedtuple object Endpoints with the entries:
             control_pub_bind
             control_pub_con
             control_sub_bind
@@ -661,22 +661,22 @@ def set_con_strs(ext_ip, con_ip, ports, ipc_endpoints):
         trigger_con = "tcp://{}:{}".format(con_ip, port)
 
     else:
-        control_pub_bind = "ipc://{}".format(ipc_endpoints.control_pub)
+        control_pub_bind = "ipc://{}".format(ipc_addresses.control_pub)
         control_pub_con = control_pub_bind
 
-        control_sub_bind = "ipc://{}".format(ipc_endpoints.control_sub)
+        control_sub_bind = "ipc://{}".format(ipc_addresses.control_sub)
         control_sub_con = control_sub_bind
 
-        request_fw_bind = "ipc://{}".format(ipc_endpoints.request_fw)
+        request_fw_bind = "ipc://{}".format(ipc_addresses.request_fw)
         request_fw_con = request_fw_bind
 
-        router_bind = "ipc://{}".format(ipc_endpoints.router)
+        router_bind = "ipc://{}".format(ipc_addresses.router)
         router_con = router_bind
 
-        job_bind = "ipc://{}".format(ipc_endpoints.cleaner_job)
+        job_bind = "ipc://{}".format(ipc_addresses.cleaner_job)
         job_con = job_bind
 
-        trigger_bind = "ipc://{}".format(ipc_endpoints.cleaner_trigger)
+        trigger_bind = "ipc://{}".format(ipc_addresses.cleaner_trigger)
         trigger_con = trigger_bind
 
     request_bind = "tcp://{}:{}".format(ext_ip, ports["request"])
@@ -688,7 +688,7 @@ def set_con_strs(ext_ip, con_ip, ports, ipc_endpoints):
     com_bind = "tcp://{}:{}".format(ext_ip, ports["com"])
     com_con = "tcp://{}:{}".format(con_ip, ports["com"])
 
-    return ConStrs(
+    return Endpoints(
         control_pub_bind=control_pub_bind,
         control_pub_con=control_pub_con,
         control_sub_bind=control_sub_bind,

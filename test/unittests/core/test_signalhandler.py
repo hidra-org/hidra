@@ -22,7 +22,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class RequestPuller(threading.Thread):
-    def __init__(self, con_strs, log_queue):
+    def __init__(self, endpoints, log_queue):
         threading.Thread.__init__(self)
 
         self.log = utils.get_logger("RequestPuller", log_queue)
@@ -30,9 +30,9 @@ class RequestPuller(threading.Thread):
 
         self.context = zmq.Context()
         self.request_fw_socket = self.context.socket(zmq.REQ)
-        self.request_fw_socket.connect(con_strs.request_fw_con)
+        self.request_fw_socket.connect(endpoints.request_fw_con)
         self.log.info("request_fw_socket started (connect) for '{}'"
-                      .format(con_strs.request_fw_con))
+                      .format(endpoints.request_fw_con))
 
     def run(self):
         self.log.info("Start run")
@@ -140,37 +140,29 @@ class TestSignalHandler(TestBase):
 
         whitelist = ["localhost", self.con_ip]
 
-        ports = {
-            "com": 6000,
-            "request": 6002
-        }
+        endpoints = self.config["endpoints"]
 
-        con_strs = self.config["con_strs"]
-
-        com_con_str = "tcp://{}:{}".format(self.ext_ip, ports["com"])
-        request_con_str = "tcp://{}:{}".format(self.ext_ip, ports["request"])
-
-        receiving_con_strs = []
+        receiving_endpoints = []
         for port in self.receiving_ports:
-            receiving_con_strs.append("{}:{}".format(self.con_ip, port))
+            receiving_endpoints.append("{}:{}".format(self.con_ip, port))
 
         # create control socket
         # control messages are not send over an forwarder, thus the
         # control_sub endpoint is used directly
         control_pub_socket = self.context.socket(zmq.PUB)
-        control_pub_socket.bind(con_strs.control_sub_bind)
+        control_pub_socket.bind(endpoints.control_sub_bind)
         self.log.info("control_pub_socket connect to: '{}'"
-                      .format(con_strs.control_sub_bind))
+                      .format(endpoints.control_sub_bind))
 
         kwargs = dict(
             config=self.signalhandler_config,
-            control_pub_con_id=con_strs.control_pub_con,
-            control_sub_con_id=con_strs.control_sub_con,
+            control_pub_con_id=endpoints.control_pub_con,
+            control_sub_con_id=endpoints.control_sub_con,
             whitelist=whitelist,
             ldapuri=self.signalhandler_config["ldapuri"],
-            com_con_id=com_con_str,
-            request_fw_con_id=con_strs.request_fw_bind,
-            request_con_id=request_con_str,
+            com_con_id=endpoints.com_bind,
+            request_fw_con_id=endpoints.request_fw_bind,
+            request_con_id=endpoints.request_bind,
             log_queue=self.log_queue,
         )
         signalhandler_thr = threading.Thread(target=SignalHandler,
@@ -181,17 +173,18 @@ class TestSignalHandler(TestBase):
         # is done
         time.sleep(0.5)
 
-        request_puller_thr = RequestPuller(con_strs,
+        request_puller_thr = RequestPuller(endpoints,
                                            self.log_queue)
         request_puller_thr.start()
 
         com_socket = self.context.socket(zmq.REQ)
-        com_socket.connect(com_con_str)
-        self.log.info("com_socket connected to {}".format(com_con_str))
+        com_socket.connect(endpoints.com_con)
+        self.log.info("com_socket connected to {}".format(endpoints.com_con))
 
         request_socket = self.context.socket(zmq.PUSH)
-        request_socket.connect(request_con_str)
-        self.log.info("request_socket connected to {}".format(request_con_str))
+        request_socket.connect(endpoints.request_con)
+        self.log.info("request_socket connected to {}"
+                      .format(endpoints.request_con))
 
         time.sleep(1)
 
@@ -211,7 +204,7 @@ class TestSignalHandler(TestBase):
                              ports=6003)
 
             self.send_request(socket=request_socket,
-                              socket_id=receiving_con_strs[1])
+                              socket_id=receiving_endpoints[1])
 
             self.send_signal(socket=com_socket,
                              signal=b"START_QUERY_NEXT",
@@ -219,19 +212,19 @@ class TestSignalHandler(TestBase):
                              prio=2)
 
             self.send_request(socket=request_socket,
-                              socket_id=receiving_con_strs[1].encode())
+                              socket_id=receiving_endpoints[1].encode())
             self.send_request(socket=request_socket,
-                              socket_id=receiving_con_strs[1].encode())
+                              socket_id=receiving_endpoints[1].encode())
             self.send_request(socket=request_socket,
-                              socket_id=receiving_con_strs[0].encode())
+                              socket_id=receiving_endpoints[0].encode())
 
             self.cancel_request(socket=request_socket,
-                                socket_id=receiving_con_strs[1].encode())
+                                socket_id=receiving_endpoints[1].encode())
 
             time.sleep(0.5)
 
             self.send_request(socket=request_socket,
-                              socket_id=receiving_con_strs[0])
+                              socket_id=receiving_endpoints[0])
             self.send_signal(socket=com_socket,
                              signal=b"STOP_QUERY_NEXT",
                              ports=self.receiving_ports[0],

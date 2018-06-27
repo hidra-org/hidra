@@ -12,8 +12,8 @@ import zmq
 from .__init__ import BASE_DIR
 from .eventdetector_test_base import EventDetectorTestBase, create_dir
 from hidra_events import (EventDetector,
-                          get_ipc_endpoints,
-                          get_addrs)
+                          get_ipc_addresses,
+                          get_endpoints)
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -58,11 +58,11 @@ class TestEventDetector(EventDetectorTestBase):
         self.eventdetector = EventDetector(self.eventdetector_config,
                                            self.log_queue)
 
-        self.ipc_endpoints = get_ipc_endpoints(
+        self.ipc_addresses = get_ipc_addresses(
             config=self.eventdetector_config
         )
-        self.addrs = get_addrs(config=self.eventdetector_config,
-                               ipc_endpoints=self.ipc_endpoints)
+        self.endpoints = get_endpoints(config=self.eventdetector_config,
+                                       ipc_addresses=self.ipc_addresses)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.
@@ -75,22 +75,22 @@ class TestEventDetector(EventDetectorTestBase):
             # create zmq socket to send events
             try:
                 data_in_socket = self.context.socket(zmq.PUSH)
-                data_in_socket.connect(self.addrs.in_con)
+                data_in_socket.connect(self.endpoints.in_con)
                 self.log.info("Start data_in_socket (connect): '{}'"
-                              .format(self.addrs.in_con))
+                              .format(self.endpoints.in_con))
             except:
                 self.log.error("Failed to start data_in_socket (connect): '{}'"
-                               .format(self.addrs.in_con))
+                               .format(self.endpoints.in_con))
 
         if local_out:
             try:
                 data_out_socket = self.context.socket(zmq.PULL)
-                data_out_socket.connect(self.addrs.out_con)
+                data_out_socket.connect(self.endpoints.out_con)
                 self.log.info("Start data_out_socket (connect): '{}'"
-                              .format(self.addrs.out_con))
+                              .format(self.endpoints.out_con))
             except:
                 self.log.error("Failed to start data_out_socket (connect): "
-                               "'{}'".format(self.addrs.out_con))
+                               "'{}'".format(self.endpoints.out_con))
 
         try:
             for i in range(self.start, self.stop):

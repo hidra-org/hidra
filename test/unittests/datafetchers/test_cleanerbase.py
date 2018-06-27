@@ -63,40 +63,39 @@ class TestDataFetcher(DataFetcherTestBase):
                     self.log.error("Unable to remove file {}"
                                    .format(source_file), exc_info=True)
 
-        con_strs = self.config["con_strs"]
+        endpoints = self.config["endpoints"]
 
         # Instantiate cleaner as additional process
-        con_strs = self.config["con_strs"]
         kwargs = dict(
             config=self.cleaner_config,
             log_queue=self.log_queue,
-            job_bind_str=con_strs.cleaner_job_bind,
-            cleaner_trigger_con_str=con_strs.cleaner_trigger_con,
-            conf_con_str=con_strs.confirm_con,
-            control_con_str=con_strs.control_sub_con
+            job_bind_str=endpoints.cleaner_job_bind,
+            cleaner_trigger_con_str=endpoints.cleaner_trigger_con,
+            conf_con_str=endpoints.confirm_con,
+            control_con_str=endpoints.control_sub_con
         )
         cleaner_pr = Process(target=Cleaner, kwargs=kwargs)
         cleaner_pr.start()
 
         # Set up datafetcher simulator
         job_socket = self.context.socket(zmq.PUSH)
-        job_socket.connect(con_strs.cleaner_job_con)
+        job_socket.connect(endpoints.cleaner_job_con)
         self.log.info("Start job_socket (connect): {}"
-                      .format(con_strs.cleaner_job_con))
+                      .format(endpoints.cleaner_job_con))
 
         # Set up receiver simulator
         confirmation_socket = self.context.socket(zmq.PUB)
-        confirmation_socket.bind(con_strs.confirm_bind)
+        confirmation_socket.bind(endpoints.confirm_bind)
         self.log.info("Start confirmation_socket (bind): {}"
-                      .format(con_strs.confirm_bind))
+                      .format(endpoints.confirm_bind))
 
         # create control socket
         # control messages are not send over an forwarder, thus the
         # control_sub endpoint is used directly
         control_pub_socket = self.context.socket(zmq.PUB)
-        control_pub_socket.bind(con_strs.control_sub_con)
+        control_pub_socket.bind(endpoints.control_sub_con)
         self.log.info("Start control_socket (bind): {}"
-                      .format(con_strs.control_sub_con))
+                      .format(endpoints.control_sub_con))
 
         # to give init time to finish
         time.sleep(0.5)

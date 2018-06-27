@@ -39,7 +39,7 @@ class TestDataFetcher(DataFetcherTestBase):
             "local_target": None,
             # "local_target": os.path.join(BASE_DIR, "data", "target"),
             "main_pid": self.config["main_pid"],
-            "cleaner_job_con_str": self.config["con_strs"].cleaner_job_con
+            "cleaner_job_con_str": self.config["endpoints"].cleaner_job_con
         }
 
         self.cleaner_config = {
@@ -117,16 +117,16 @@ class TestDataFetcher(DataFetcherTestBase):
                                        context=self.context)
 
         self.config["remove_data"] = "with_confirmation"
-        con_strs = self.config["con_strs"]
+        endpoints = self.config["endpoints"]
 
         # Set up cleaner
         kwargs = dict(
             config=self.cleaner_config,
             log_queue=self.log_queue,
-            job_bind_str=con_strs.cleaner_job_con,
-            cleaner_trigger_con_str=con_strs.cleaner_trigger_con,
-            conf_con_str=con_strs.confirm_con,
-            control_con_str=con_strs.control_sub_con,
+            job_bind_str=endpoints.cleaner_job_con,
+            cleaner_trigger_con_str=endpoints.cleaner_trigger_con,
+            conf_con_str=endpoints.confirm_con,
+            control_con_str=endpoints.control_sub_con,
             context=self.context
         )
         cleaner_pr = Process(target=Cleaner, kwargs=kwargs)
@@ -138,17 +138,17 @@ class TestDataFetcher(DataFetcherTestBase):
             self.receiving_sockets.append(self.set_up_recv_socket(port))
 
         confirmation_socket = self.context.socket(zmq.PUB)
-        confirmation_socket.bind(con_strs.confirm_bind)
+        confirmation_socket.bind(endpoints.confirm_bind)
         self.log.info("Start confirmation_socket (bind): {}"
-                      .format(con_strs.confirm_bind))
+                      .format(endpoints.confirm_bind))
 
         # create control socket
         # control messages are not send over an forwarder, thus the
         # control_sub endpoint is used directly
         self.control_pub_socket = self.context.socket(zmq.PUB)
-        self.control_pub_socket.bind(con_strs.control_sub_con)
+        self.control_pub_socket.bind(endpoints.control_sub_con)
         self.log.info("Start control_socket (bind): {}"
-                      .format(con_strs.control_sub_con))
+                      .format(endpoints.control_sub_con))
 
         # Test file fetcher
         source_dir = os.path.join(BASE_DIR, "data", "source")
