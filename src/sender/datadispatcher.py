@@ -14,7 +14,7 @@ import utils
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class DataDispatcher():
+class DataDispatcher(object):
 
     def __init__(self,
                  dispatcher_id,
@@ -33,8 +33,6 @@ class DataDispatcher():
         self.config = config
         self.log_queue = log_queue
         self.local_target = local_target
-
-        self.current_pid = None
 
         self.poller = None
         self.control_socket = None
@@ -66,9 +64,8 @@ class DataDispatcher():
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
-        self.current_pid = os.getpid()
         self.log.debug("DataDispatcher-{} started (PID {})."
-                       .format(self.dispatcher_id, self.current_pid))
+                       .format(self.dispatcher_id, os.getpid()))
 
         formated_config = str(json.dumps(self.config,
                                          sort_keys=True,
@@ -107,33 +104,39 @@ class DataDispatcher():
             self.log.error("Cannot create sockets", ext_info=True)
             self.stop()
 
+    def start_socket(self, name, sock_type, sock_con, endpoint):
+        """Wrapper of utils.start_socket
+        """
+
+        return utils.start_socket(
+            name=name,
+            sock_type=sock_type,
+            sock_con=sock_con,
+            endpoint=endpoint,
+            context=self.context,
+            log=self.log
+        )
+
     def create_sockets(self):
 
         # socket for control signals
-        try:
-            self.control_socket = self.context.socket(zmq.SUB)
-            self.control_socket.connect(self.endpoints.control_sub_con)
-            self.log.info("Start control_socket (connect): '{}'"
-                          .format(self.endpoints.control_sub_con))
-        except:
-            self.log.error("Failed to start control_socket (connect): '{}'"
-                           .format(self.endpoints.control_sub_con),
-                           exc_info=True)
-            raise
+        self.control_socket = self.start_socket(
+            name="control_socket",
+            sock_type=zmq.SUB,
+            sock_con="connect",
+            endpoint=self.endpoints.control_sub_con
+        )
 
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "signal")
 
         # socket to get new workloads from
-        try:
-            self.router_socket = self.context.socket(zmq.PULL)
-            self.router_socket.connect(self.endpoints.router_con)
-            self.log.info("Start router_socket (connect): '{}'"
-                          .format(self.endpoints.router_con))
-        except:
-            self.log.error("Failed to start router_socket (connect): '{}'"
-                           .format(self.endpoints.router_con), exc_info=True)
-            raise
+        self.router_socket = self.start_socket(
+            name="router_socket",
+            sock_type=zmq.PULL,
+            sock_con="connect",
+            endpoint=self.endpoints.router_con
+        )
 
         self.poller = zmq.Poller()
         self.poller.register(self.control_socket, zmq.POLLIN)
@@ -413,6 +416,15 @@ class DataDispatcher():
             self.log.error("Request for closing sockets of wrong format",
                            exc_info=True)
 
+    def stop_socket(self, name, socket=None):
+        """Wrapper for utils.stop_socket.
+        """
+
+        if socket is None:
+            socket = getattr(self, name)
+
+        utils.stop_socket(name=name, socket=socket, log=self.log)
+
     def stop(self):
         self.continue_run = False
 
@@ -422,20 +434,11 @@ class DataDispatcher():
                            .format(self.dispatcher_id))
 
         for connection in self.open_connections:
-            if self.open_connections[connection]:
-                self.log.info("Closing socket {}".format(connection))
-                self.open_connections[connection].close(0)
-                self.open_connections[connection] = None
+            self.stop_socket(name=connection,
+                             socket=self.open_connections[connection])
 
-        if self.control_socket is not None:
-            self.log.info("Closing control_socket")
-            self.control_socket.close(0)
-            self.control_socket = None
-
-        if self.router_socket is not None:
-            self.log.info("Closing router_socket")
-            self.router_socket.close(0)
-            self.router_socket = None
+        self.stop_socket(name="control_socket")
+        self.stop_socket(name="router_socket")
 
         if self.datafetcher is not None:
             self.datafetcher.stop()

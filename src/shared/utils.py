@@ -714,7 +714,13 @@ def set_endpoints(ext_ip, con_ip, ports, ipc_addresses):
 #         ZMQ functions          #
 # ------------------------------ #
 
-def start_socket(name, sock_type, sock_con, endpoint, context, log):
+def start_socket(name,
+                 sock_type,
+                 sock_con,
+                 endpoint,
+                 context,
+                 log,
+                 message=None):
     """Creates a zmq socket.
 
     Args:
@@ -724,8 +730,12 @@ def start_socket(name, sock_type, sock_con, endpoint, context, log):
         endpoint: ZMQ endpoint to connect to.
         context: ZMQ context to create the socket on.
         log: Logger used for log messages.
-
+        message (optional): wording to be used in the message
+                            (default: Start).
     """
+
+    if message is None:
+        message="Start"
 
     try:
         socket = context.socket(sock_type)
@@ -733,10 +743,11 @@ def start_socket(name, sock_type, sock_con, endpoint, context, log):
             socket.connect(endpoint)
         elif sock_con == "bind":
             socket.bind(endpoint)
-        log.info("Start {} ({}): '{}'".format(name, sock_con, endpoint))
+        log.info("{} {} ({}): '{}'".format(message, name, sock_con, endpoint))
     except:
-        log.error("Failed to start {} ({}): '{}'"
-                  .format(name, sock_con, endpoint), exc_info=True)
+        log.error("Failed to {} {} ({}): '{}'"
+                  .format(name, message.lower(), sock_con, endpoint),
+                  exc_info=True)
         raise
 
     return socket

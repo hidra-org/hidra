@@ -17,7 +17,7 @@ from hidra import convert_suffix_list_to_regex
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class SignalHandler():
+class SignalHandler(object):
 
     def __init__(self,
                  config,
@@ -122,7 +122,7 @@ class SignalHandler():
 
         self.control_sub_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
 
-        # socket to get control signals from
+        # socket to forward requests
         self.request_fw_socket = self.start_socket(
             name="request_fw_socket",
             sock_type=zmq.REP,
@@ -723,10 +723,14 @@ class SignalHandler():
                           .format(signal, socket_ids))
             self.send_response([b"NO_VALID_SIGNAL"])
 
-    def stop_socket(self, name):
+    def stop_socket(self, name, socket=None):
         """Wrapper for utils.stop_socket.
         """
-        utils.stop_socket(name=name, socket=getattr(self, name), log=self.log)
+
+        if socket is None:
+            socket = getattr(self, name)
+
+        utils.stop_socket(name=name, socket=socket, log=self.log)
 
     def stop(self):
         self.log.debug("Closing sockets for SignalHandler")
@@ -748,5 +752,3 @@ class SignalHandler():
 
     def __del__(self):
         self.stop()
-
-# testing was moved into test/unittests/core/test_signalhandler.py

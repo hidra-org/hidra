@@ -136,15 +136,21 @@ class TestDataManager(TestBase):
 
         endpoints = self.config["endpoints"]
 
-        try:
-            self.com_socket = self.context.socket(zmq.REQ)
-            self.com_socket.connect(endpoints.com_con)
-            self.log.info("Start com_socket (connect): {}"
-                          .format(endpoints.com_con))
-        except:
-            self.log.error("Failed to start com_socket (connect): {}"
-                           .format(endpoints.com_con))
-            raise
+#        try:
+#            self.com_socket = self.context.socket(zmq.REQ)
+#            self.com_socket.connect(endpoints.com_con)
+#            self.log.info("Start com_socket (connect): {}"
+#                          .format(endpoints.com_con))
+#        except:
+#            self.log.error("Failed to start com_socket (connect): {}"
+#                           .format(endpoints.com_con))
+#            raise
+        self.com_socket = self.start_socket(
+            name="com_socket",
+            sock_type=zmq.REQ,
+            sock_con="connect",
+            endpoint=endpoints.com_con
+        )
 
         try:
             kwargs = dict(
@@ -205,11 +211,13 @@ class TestDataManager(TestBase):
             self.log.error("Exception detected: {}".format(e),
                            exc_info=True)
         finally:
-            self.com_socket.close(0)
-            self.fixed_recv_socket.close(0)
+            self.stop_socket(name="com_socket")
+            self.stop_socket(name="fixed_recv_socket")
 
-            for sckt in self.receiving_sockets:
-                sckt.close(0)
+
+            for i, sckt in enumerate(self.receiving_sockets):
+                self.stop_socket(name="receiving_socket{}".format(i),
+                                 socket=sckt)
 
             sender.terminate()
 #            sender.join()

@@ -171,6 +171,28 @@ class TestBase(unittest.TestCase):
 
         return sckt
 
+    def start_socket(self, name, sock_type, sock_con, endpoint):
+        """Wrapper of utils.start_socket
+        """
+
+        return utils.start_socket(
+            name=name,
+            sock_type=sock_type,
+            sock_con=sock_con,
+            endpoint=endpoint,
+            context=self.context,
+            log=self.log
+        )
+
+    def stop_socket(self, name, socket=None):
+        """Wrapper for utils.stop_socket.
+        """
+
+        if socket is None:
+            socket = getattr(self, name)
+
+        utils.stop_socket(name=name, socket=socket, log=self.log)
+
     def tearDown(self):
         for key, endpoint in vars(self.ipc_addresses).iteritems():
             try:

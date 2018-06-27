@@ -320,7 +320,8 @@ def argument_parsing():
     return params
 
 
-class DataManager():
+class DataManager(object):
+
     def __init__(self, log_queue=None, config=None):
         self.device = None
         self.control_pub_socket = None
@@ -650,6 +651,20 @@ class DataManager():
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
 
+    def start_socket(self, name, sock_type, sock_con, endpoint, message=None):
+        """Wrapper of utils.start_socket
+        """
+
+        return utils.start_socket(
+            name=name,
+            sock_type=sock_type,
+            sock_con=sock_con,
+            endpoint=endpoint,
+            context=self.context,
+            log=self.log,
+            message=message,
+        )
+
     def create_sockets(self):
         # initiate forwarder for control signals (multiple pub, multiple sub)
         try:
@@ -672,16 +687,12 @@ class DataManager():
             raise
 
         # socket for control signals
-        try:
-            self.control_pub_socket = self.context.socket(zmq.PUB)
-            self.control_pub_socket.connect(self.control_pub_con_str)
-            self.log.info("Start control_pub_socket (connect): '{}'"
-                          .format(self.control_pub_con_str))
-        except:
-            self.log.error("Failed to start control_pub_socket (connect): "
-                           "'{}'".format(self.control_pub_con_str),
-                           exc_info=True)
-            raise
+        self.control_pub_socket = self.start_socket(
+            name="control_pub_socket",
+            sock_type=zmq.PUB,
+            sock_con="connect",
+            endpoint=self.endpoints.control_pub_con
+        )
 
     def check_status_receiver(self, enable_logging=False):
 
@@ -695,17 +706,15 @@ class DataManager():
         if self.test_socket is None:
             # Establish the test socket as REQ/REP to an extra signal
             # socket
+            endpoints = "tcp://{}".format(self.status_check_id)
             try:
-                self.test_socket = self.context.socket(zmq.REQ)
-                con_str = "tcp://{}".format(self.status_check_id)
-
-                self.test_socket.connect(con_str)
-                self.log.info("Start test_socket (connect): '{}'"
-                              .format(con_str))
+                self.test_socket = self.start_socket(
+                    name="test_socket",
+                    sock_type=zmq.REQ,
+                    sock_con="connect",
+                    endpoint=endpoint
+                )
             except:
-                self.log.error("Failed to start test_socket "
-                               "(connect): '{}'".format(con_str),
-                               exc_info=True)
                 return False
 
         try:
@@ -741,17 +750,17 @@ class DataManager():
                     self.test_socket.close()
                     # reopen it
                     try:
-                        self.test_socket = self.context.socket(zmq.REQ)
-                        con_str = "tcp://{}".format(self.status_check_id)
-
-                        self.test_socket.connect(con_str)
-                        self.log.info("Restart test_socket (connect): "
-                                      "'{}'".format(con_str))
-                        self.socket_reconnected = True
+                        endpoint = "tcp://{}".format(self.status_check_id)
+                        self.test_socket = self.start_socket(
+                            name="test_socket",
+                            sock_type=zmq.REQ,
+                            sock_con="connect",
+                            endpoint=endpoint,
+                            message="Restart"
+                        )
                     except:
-                        self.log.error("Failed to restart test_socket "
-                                       "(connect): '{}'".format(con_str),
-                                       exc_info=True)
+                        # TODO is this right here?
+                        pass
 
                     self.zmq_again_occured = 0
 
@@ -845,16 +854,16 @@ class DataManager():
             if self.test_socket is None:
                 # Establish the test socket as PUSH/PULL sending test signals
                 # to the normal data stream id
-                con_str = "tcp://{}".format(self.fixed_stream_addr)
+                endpoint = "tcp://{}".format(self.fixed_stream_addr)
+
                 try:
-                    self.test_socket = self.context.socket(zmq.PUSH)
-                    self.test_socket.connect(con_str)
-                    self.log.info("Start test_socket (connect): '{}'"
-                                  .format(con_str))
+                    self.test_socket = self.start_socket(
+                        name="test_socket",
+                        sock_type=zmq.PUSH,
+                        sock_con="connect",
+                        endpoint=endpoint
+                    )
                 except:
-                    self.log.error("Failed to start test_socket "
-                                   "(connect): '{}'".format(con_str),
-                                   exc_info=True)
                     return False
 
             try:
@@ -885,17 +894,17 @@ class DataManager():
                         self.test_socket.close()
                         # reopen it
                         try:
-                            self.test_socket = self.context.socket(zmq.PUSH)
-                            con_str = "tcp://{}".format(self.fixed_stream_addr)
-
-                            self.test_socket.connect(con_str)
-                            self.log.info("Restart test_socket (connect): "
-                                          "'{}'".format(con_str))
-                            self.socket_reconnected = True
+                            endpoint = "tcp://{}".format(self.fixed_stream_addr)
+                            self.test_socket = self.start_socket(
+                                name="test_socket",
+                                sock_type=zmq.PUSH,
+                                sock_con="connect",
+                                endpoint=endpoint,
+                                message="Restart"
+                            )
                         except:
-                            self.log.error("Failed to restart test_socket "
-                                           "(connect): '{}'".format(con_str),
-                                           exc_info=True)
+                            # TODO is this right here?
+                            pass
 
                         self.zmq_again_occured = 0
 
@@ -1086,6 +1095,15 @@ class DataManager():
                        for datadispatcher in self.datadispatcher_pr):
                 self.log.info("One DataDispatcher terminated.")
 
+    def stop_socket(self, name, socket=None):
+        """Wrapper for utils.stop_socket.
+        """
+
+        if socket is None:
+            socket = getattr(self, name)
+
+        utils.stop_socket(name=name, socket=socket, log=self.log)
+
     def stop(self):
         self.continue_run = False
 
@@ -1103,10 +1121,8 @@ class DataManager():
             self.device.join(0.5)
             self.device = None
 
-        if self.control_pub_socket is not None:
-            self.log.info("Closing control_pub_socket")
-            self.control_pub_socket.close(0)
-            self.control_pub_socket = None
+        self.stop_socket(name="control_pub_socket")
+        self.stop_socket(name="test_socket")
 
         # cleanup hanging processes
 #        if self.signalhandler_thr.is_alive():
@@ -1118,11 +1134,6 @@ class DataManager():
 #        for datadispatcher in self.datadispatcher_pr:
 #            if datadispatcher.is_alive():
 #                self.log.info("DataDispatcher hangs. Terminated.")
-
-        if self.test_socket:
-            self.log.debug("Stopping test_socket")
-            self.test_socket.close(0)
-            self.test_socket = None
 
         if self.context:
             self.log.info("Destroying context")

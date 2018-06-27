@@ -14,7 +14,8 @@ import utils
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class TaskProvider():
+class TaskProvider(object):
+
     def __init__(self,
                  config,
                  endpoints,
@@ -26,7 +27,6 @@ class TaskProvider():
 
         self.log_queue = log_queue
         self.log = None
-        self.current_pid = None
         self.eventdetector = None
 
         self.control_socket = None
@@ -56,12 +56,9 @@ class TaskProvider():
 
     def setup(self, context):
         self.log = utils.get_logger("TaskProvider", self.log_queue)
+        self.log.debug("TaskProvider started (PID {}).".format(os.getpid()))
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
-
-        self.current_pid = os.getpid()
-        self.log.debug("TaskProvider started (PID {})."
-                       .format(self.current_pid))
 
         # remember if the context was created outside this class or not
         if context:
@@ -87,42 +84,46 @@ class TaskProvider():
             self.log.error("Cannot create sockets", exc_info=True)
             self.stop()
 
+    def start_socket(self, name, sock_type, sock_con, endpoint):
+        """Wrapper of utils.start_socket
+        """
+
+        return utils.start_socket(
+            name=name,
+            sock_type=sock_type,
+            sock_con=sock_con,
+            endpoint=endpoint,
+            context=self.context,
+            log=self.log
+        )
+
     def create_sockets(self):
 
         # socket to get control signals from
-        try:
-            self.control_socket = self.context.socket(zmq.SUB)
-            self.control_socket.connect(self.endpoints.control_sub_con)
-            self.log.info("Start control_socket (connect): '{}'"
-                          .format(self.endpoints.control_sub_con))
-        except:
-            self.log.error("Failed to start control_socket (connect): '{}'"
-                           .format(self.endpoints.control_sub_con), exc_info=True)
-            raise
+        self.control_socket = self.start_socket(
+            name="control_socket",
+            sock_type=zmq.SUB,
+            sock_con="connect",
+            endpoint=self.endpoints.control_sub_con
+        )
 
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
 
-        # socket to get requests
-        try:
-            self.request_fw_socket = self.context.socket(zmq.REQ)
-            self.request_fw_socket.connect(self.endpoints.request_fw_con)
-            self.log.info("Start request_fw_socket (connect): '{}'"
-                          .format(self.endpoints.request_fw_con))
-        except:
-            self.log.error("Failed to start request_fw_socket (connect): '{}'"
-                           .format(self.endpoints.request_fw_con), exc_info=True)
-            raise
+        # socket to get forwarded requests
+        self.request_fw_socket = self.start_socket(
+            name="request_fw_socket",
+            sock_type=zmq.REQ,
+            sock_con="connect",
+            endpoint=self.endpoints.request_fw_con
+        )
 
         # socket to disribute the events to the worker
-        try:
-            self.router_socket = self.context.socket(zmq.PUSH)
-            self.router_socket.bind(self.endpoints.router_bind)
-            self.log.info("Start to router socket (bind): '{}'"
-                          .format(self.endpoints.router_bind))
-        except:
-            self.log.error("Failed to start router Socket (bind): '{}'"
-                           .format(self.endpoints.router_bind), exc_info=True)
-            raise
+        self.router_socket = self.start_socket(
+            name="router_socket",
+            sock_type=zmq.PUSH,
+            sock_con="bind",
+            endpoint=self.endpoints.router_bind
+        )
 
         self.poller = zmq.Poller()
         self.poller.register(self.control_socket, zmq.POLLIN)
@@ -259,24 +260,23 @@ class TaskProvider():
                     self.log.error("Unhandled control signal received: {}"
                                    .format(message))
 
+    def stop_socket(self, name, socket=None):
+        """Wrapper for utils.stop_socket.
+        """
+
+        if socket is None:
+            socket = getattr(self, name)
+
+        utils.stop_socket(name=name, socket=socket, log=self.log)
+
     def stop(self):
         self.continue_run = False
 
         self.log.debug("Closing sockets for TaskProvider")
-        if self.router_socket:
-            self.log.info("Closing router_socket")
-            self.router_socket.close(0)
-            self.router_socket = None
 
-        if self.request_fw_socket:
-            self.log.info("Closing request_fw_socket")
-            self.request_fw_socket.close(0)
-            self.request_fw_socket = None
-
-        if self.control_socket:
-            self.log.info("Closing control_socket")
-            self.control_socket.close(0)
-            self.control_socket = None
+        self.stop_socket(name="router_socket")
+        self.stop_socket(name="request_fw_socket")
+        self.stop_socket(name="control_socket")
 
         if not self.ext_context and self.context:
             self.log.info("Destroying context")
@@ -292,5 +292,3 @@ class TaskProvider():
 
     def __del__(self):
         self.stop()
-
-# testing was moved into test/unittests/core/test_taskprovider.py

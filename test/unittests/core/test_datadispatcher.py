@@ -78,10 +78,12 @@ class TestDataDispatcher(TestBase):
 
         endpoints = self.config["endpoints"]
 
-        router_socket = self.context.socket(zmq.PUSH)
-        router_socket.bind(endpoints.router_bind)
-        self.log.info("Start router_socket (bind): '{}'"
-                      .format(endpoints.router_bind))
+        router_socket = self.start_socket(
+            name="router_socket",
+            sock_type=zmq.PUSH,
+            sock_con="bind",
+            endpoint=endpoints.router_bind
+        )
 
         kwargs = dict(
             dispatcher_id=1,
@@ -131,9 +133,11 @@ class TestDataDispatcher(TestBase):
         finally:
             datadispatcher_pr.terminate()
 
-            router_socket.close(0)
-            for sckt in receiving_sockets:
-                sckt.close(0)
+            self.stop_socket(name="router_socket", socket=router_socket)
+
+            for i, sckt in enumerate(receiving_sockets):
+                self.stop_socket(name="receiving_socket{}".format(i),
+                                 socket=sckt)
 
     def tearDown(self):
         self.context.destroy(0)

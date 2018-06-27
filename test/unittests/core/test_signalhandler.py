@@ -139,19 +139,6 @@ class TestSignalHandler(TestBase):
         socket.send_multipart(send_message)
         self.log.info("request sent: {}".format(send_message))
 
-    def start_socket(self, name, sock_type, sock_con, endpoint):
-        """Wrapper of utils.start_socket
-        """
-
-        return utils.start_socket(
-            name=name,
-            sock_type=sock_type,
-            sock_con=sock_con,
-            endpoint=endpoint,
-            context=self.context,
-            log=self.log
-        )
-
     def test_signalhandler(self):
         """Simulate incoming data and check if received events are correct.
         """
@@ -264,10 +251,10 @@ class TestSignalHandler(TestBase):
             request_puller_thr.stop()
             request_puller_thr.join()
 
-            control_pub_socket.close(0)
-
-            com_socket.close(0)
-            request_socket.close(0)
+            self.stop_socket(name="com_socket", socket=com_socket)
+            self.stop_socket(name="request_socket", socket=request_socket)
+            self.stop_socket(name="control_pub_socket",
+                             socket=control_pub_socket)
 
     def tearDown(self):
         self.context.destroy(0)

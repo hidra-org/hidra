@@ -138,10 +138,12 @@ class TestTaskProvider(TestBase):
         request_responder_pr = RequestResponder(self.config, self.log_queue)
         request_responder_pr.start()
 
-        router_socket = self.context.socket(zmq.PULL)
-        router_socket.connect(endpoints.router_con)
-        self.log.info("router_socket connected to {}"
-                      .format(endpoints.router_con))
+        router_socket = self.start_socket(
+            name="router_socket",
+            sock_type=zmq.PULL,
+            sock_con="connect",
+            endpoint=endpoints.router_con
+        )
 
         source_file = os.path.join(BASE_DIR, "test_file.cbf")
         target_file_base = os.path.join(BASE_DIR,
@@ -171,7 +173,7 @@ class TestTaskProvider(TestBase):
             request_responder_pr.stop()
             taskprovider_pr.terminate()
 
-            router_socket.close(0)
+            self.stop_socket(name="router_socket", socket=router_socket)
 
             for number in range(self.start, self.stop):
                 target_file = os.path.join(target_file_base,
