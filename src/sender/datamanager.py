@@ -685,152 +685,156 @@ class DataManager():
 
     def check_status_receiver(self, enable_logging=False):
 
-        if self.use_data_stream:
+        # no data stream used means that no receiver is used
+        # -> status always is fine
+        if not self.use_data_stream:
+            return True
 
-            test_signal = b"STATUS_CHECK"
+        test_signal = b"STATUS_CHECK"
 
-            if self.test_socket is None:
-                # Establish the test socket as REQ/REP to an extra signal
-                # socket
+        if self.test_socket is None:
+            # Establish the test socket as REQ/REP to an extra signal
+            # socket
+            try:
+                self.test_socket = self.context.socket(zmq.REQ)
+                con_str = "tcp://{}".format(self.status_check_id)
+
+                self.test_socket.connect(con_str)
+                self.log.info("Start test_socket (connect): '{}'"
+                              .format(con_str))
+            except:
+                self.log.error("Failed to start test_socket "
+                               "(connect): '{}'".format(con_str),
+                               exc_info=True)
+                return False
+
+        try:
+            if enable_logging:
+                self.log.debug("ZMQ version used: {}"
+                               .format(zmq.__version__))
+
+            # With older ZMQ versions the tracker results in an ZMQError in
+            # the DataDispatchers when an event is processed
+            # (ZMQError: Address already in use)
+            if zmq.__version__ <= "14.5.0":
+
+                self.test_socket.send_multipart([test_signal])
+                if enable_logging:
+                    self.log.info("Sending status check to fixed streaming"
+                                  " host {} ... success"
+                                  .format(self.status_check_id))
+
+                status = self.test_socket.recv_multipart()
+                if enable_logging:
+                    self.log.info("Received responce for status check of "
+                                  "fixed streaming host {}"
+                                  .format(self.status_check_id))
+            else:
+                self.socket_reconnected = False
+
+                # after unsuccessfully sending a test messages try to
+                # reestablish the connection (this should not be done in
+                # every test iteration because of overhead but only once in
+                # a while)
+                if self.zmq_again_occured >= self.reestablish_time:
+                    # close the socket
+                    self.test_socket.close()
+                    # reopen it
+                    try:
+                        self.test_socket = self.context.socket(zmq.REQ)
+                        con_str = "tcp://{}".format(self.status_check_id)
+
+                        self.test_socket.connect(con_str)
+                        self.log.info("Restart test_socket (connect): "
+                                      "'{}'".format(con_str))
+                        self.socket_reconnected = True
+                    except:
+                        self.log.error("Failed to restart test_socket "
+                                       "(connect): '{}'".format(con_str),
+                                       exc_info=True)
+
+                    self.zmq_again_occured = 0
+
+                # send test message
                 try:
-                    self.test_socket = self.context.socket(zmq.REQ)
-                    con_str = "tcp://{}".format(self.status_check_id)
+                    tracker = self.test_socket.send_multipart(
+                        [test_signal],
+                        zmq.NOBLOCK,
+                        copy=False,
+                        track=True
+                    )
 
-                    self.test_socket.connect(con_str)
-                    self.log.info("Start test_socket (connect): '{}'"
-                                  .format(con_str))
-                except:
-                    self.log.error("Failed to start test_socket "
-                                   "(connect): '{}'".format(con_str),
+                    if enable_logging:
+                        self.log.info("Sent status check to fixed "
+                                      "streaming host {}"
+                                      .format(self.status_check_id))
+
+                # The receiver may have dropped authentication or
+                # previous status check was not answered
+                # (req send after req, without rep inbetween)
+                except (zmq.Again, zmq.error.ZMQError):
+                    # returns a tuple (type, value, traceback)
+                    exc_type, exc_value, _ = sys.exc_info()
+
+                    if self.zmq_again_occured == 0:
+                        self.log.error("Failed to send test message to "
+                                       "fixed streaming host {}"
+                                       .format(self.status_check_id))
+                        self.log.debug("Error was: {}: {}"
+                                       .format(exc_type, exc_value))
+
+                    self.zmq_again_occured += 1
+                    self.socket_reconnected = False
+
+                    return False
+
+                # test if someone picks up the test message in the next
+                # 2 sec
+                if not tracker.done:
+                    tracker.wait(2)
+
+                # no one picked up the test message
+                if not tracker.done:
+                    self.log.error("Failed check status of fixed"
+                                   "streaming host {}"
+                                   .format(self.status_check_id),
                                    exc_info=True)
                     return False
 
-            try:
+                # test message was successfully sent
                 if enable_logging:
-                    self.log.debug("ZMQ version used: {}"
-                                   .format(zmq.__version__))
+                    self.log.info("Sending status test to fixed "
+                                  "streaming host {} ... success"
+                                  .format(self.status_check_id))
+                    self.zmq_again_occured = 0
 
-                # With older ZMQ versions the tracker results in an ZMQError in
-                # the DataDispatchers when an event is processed
-                # (ZMQError: Address already in use)
-                if zmq.__version__ <= "14.5.0":
+                    self.log.debug("Receiving responce...")
 
-                    self.test_socket.send_multipart([test_signal])
-                    if enable_logging:
-                        self.log.info("Sending status check to fixed streaming"
-                                      " host {} ... success"
-                                      .format(self.status_check_id))
+                status = self.test_socket.recv_multipart()
 
-                    status = self.test_socket.recv_multipart()
-                    if enable_logging:
-                        self.log.info("Received responce for status check of "
-                                      "fixed streaming host {}"
-                                      .format(self.status_check_id))
-                else:
-                    self.socket_reconnected = False
+                if enable_logging:
+                    self.log.debug("Received responce: {}".format(status))
 
-                    # after unsuccessfully sending a test messages try to
-                    # reestablish the connection (this should not be done in
-                    # every test iteration because of overhead but only once in
-                    # a while)
-                    if self.zmq_again_occured >= self.reestablish_time:
-                        # close the socket
-                        self.test_socket.close()
-                        # reopen it
-                        try:
-                            self.test_socket = self.context.socket(zmq.REQ)
-                            con_str = "tcp://{}".format(self.status_check_id)
+                # responce to test message was successfully received
+                # TODO check status + react
+                if status[0] == b"ERROR":
+                    self.log.error("Fixed streaming host is in error "
+                                   "status: {}"
+                                   .format(status[1].decode("utf-8")))
+                    return False
+                elif enable_logging:
+                    self.log.info("Responce for status check of fixed "
+                                  "streaming host {}: {}"
+                                  .format(self.status_check_id, status))
 
-                            self.test_socket.connect(con_str)
-                            self.log.info("Restart test_socket (connect): "
-                                          "'{}'".format(con_str))
-                            self.socket_reconnected = True
-                        except:
-                            self.log.error("Failed to restart test_socket "
-                                           "(connect): '{}'".format(con_str),
-                                           exc_info=True)
+        except KeyboardInterrupt:
+            raise
+        except:
+            self.log.error("Failed to check status of fixed "
+                           "streaming host {}"
+                           .format(self.status_check_id), exc_info=True)
+            return False
 
-                        self.zmq_again_occured = 0
-
-                    # send test message
-                    try:
-                        tracker = self.test_socket.send_multipart(
-                            [test_signal],
-                            zmq.NOBLOCK,
-                            copy=False,
-                            track=True
-                        )
-
-                        if enable_logging:
-                            self.log.info("Sent status check to fixed "
-                                          "streaming host {}"
-                                          .format(self.status_check_id))
-
-                    # The receiver may have dropped authentication or
-                    # previous status check was not answered
-                    # (req send after req, without rep inbetween)
-                    except (zmq.Again, zmq.error.ZMQError):
-                        # returns a tuple (type, value, traceback)
-                        exc_type, exc_value, _ = sys.exc_info()
-
-                        if self.zmq_again_occured == 0:
-                            self.log.error("Failed to send test message to "
-                                           "fixed streaming host {}"
-                                           .format(self.status_check_id))
-                            self.log.debug("Error was: {}: {}"
-                                           .format(exc_type, exc_value))
-
-                        self.zmq_again_occured += 1
-                        self.socket_reconnected = False
-
-                        return False
-
-                    # test if someone picks up the test message in the next
-                    # 2 sec
-                    if not tracker.done:
-                        tracker.wait(2)
-
-                    # no one picked up the test message
-                    if not tracker.done:
-                        self.log.error("Failed check status of fixed"
-                                       "streaming host {}"
-                                       .format(self.status_check_id),
-                                       exc_info=True)
-                        return False
-
-                    # test message was successfully sent
-                    if enable_logging:
-                        self.log.info("Sending status test to fixed "
-                                      "streaming host {} ... success"
-                                      .format(self.status_check_id))
-                        self.zmq_again_occured = 0
-
-                        self.log.debug("Receiving responce...")
-
-                    status = self.test_socket.recv_multipart()
-
-                    if enable_logging:
-                        self.log.debug("Received responce: {}".format(status))
-
-                    # responce to test message was successfully received
-                    # TODO check status + react
-                    if status[0] == b"ERROR":
-                        self.log.error("Fixed streaming host is in error "
-                                       "status: {}"
-                                       .format(status[1].decode("utf-8")))
-                        return False
-                    elif enable_logging:
-                        self.log.info("Responce for status check of fixed "
-                                      "streaming host {}: {}"
-                                      .format(self.status_check_id, status))
-
-            except KeyboardInterrupt:
-                raise
-            except:
-                self.log.error("Failed to check status of fixed "
-                               "streaming host {}"
-                               .format(self.status_check_id), exc_info=True)
-                return False
         return True
 
     def test_fixed_streaming_host(self, enable_logging=False):
