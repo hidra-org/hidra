@@ -17,21 +17,19 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 class DataDispatcher():
 
     def __init__(self,
-                 id,
-                 control_con_str,
-                 router_con_str,
+                 dispatcher_id,
+                 endpoints,
                  chunksize,
-                 fixed_stream_id,
+                 fixed_stream_addr,
                  config,
                  log_queue,
                  local_target=None,
                  context=None):
 
-        self.id = id
-        self.control_con_str = control_con_str
-        self.router_con_str = router_con_str
+        self.dispatcher_id = dispatcher_id
+        self.endpoints = endpoints
         self.chunksize = chunksize
-        self.fixed_stream_id = fixed_stream_id
+        self.fixed_stream_addr = fixed_stream_addr
         self.config = config
         self.log_queue = log_queue
         self.local_target = local_target
@@ -57,20 +55,20 @@ class DataDispatcher():
             pass
         except:
             self.log.error("Stopping DataDispatcher-{} due to unknown "
-                           "error condition.".format(self.id),
+                           "error condition.".format(self.dispatcher_id),
                            exc_info=True)
         finally:
             self.stop()
 
     def setup(self, context):
-        self.log = utils.get_logger("DataDispatcher-{}".format(self.id),
+        self.log = utils.get_logger("DataDispatcher-{}".format(self.dispatcher_id),
                                     self.log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         self.current_pid = os.getpid()
         self.log.debug("DataDispatcher-{} started (PID {})."
-                       .format(self.id, self.current_pid))
+                       .format(self.dispatcher_id, self.current_pid))
 
         formated_config = str(json.dumps(self.config,
                                          sort_keys=True,
@@ -98,28 +96,29 @@ class DataDispatcher():
 
         self.datafetcher = datafetcher_m.DataFetcher(self.config,
                                                      self.log_queue,
-                                                     self.id,
+                                                     self.dispatcher_id,
                                                      self.context)
 
         self.continue_run = True
 
         try:
-            self._create_sockets()
+            self.create_sockets()
         except:
             self.log.error("Cannot create sockets", ext_info=True)
             self.stop()
 
-    def _create_sockets(self):
+    def create_sockets(self):
 
         # socket for control signals
         try:
             self.control_socket = self.context.socket(zmq.SUB)
-            self.control_socket.connect(self.control_con_str)
+            self.control_socket.connect(self.endpoints.control_sub_con)
             self.log.info("Start control_socket (connect): '{}'"
-                          .format(self.control_con_str))
+                          .format(self.endpoints.control_sub_con))
         except:
             self.log.error("Failed to start control_socket (connect): '{}'"
-                           .format(self.control_con_str), exc_info=True)
+                           .format(self.endpoints.control_sub_con),
+                           exc_info=True)
             raise
 
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
@@ -128,12 +127,12 @@ class DataDispatcher():
         # socket to get new workloads from
         try:
             self.router_socket = self.context.socket(zmq.PULL)
-            self.router_socket.connect(self.router_con_str)
+            self.router_socket.connect(self.endpoints.router_con)
             self.log.info("Start router_socket (connect): '{}'"
-                          .format(self.router_con_str))
+                          .format(self.endpoints.router_con))
         except:
             self.log.error("Failed to start router_socket (connect): '{}'"
-                           .format(self.router_con_str), exc_info=True)
+                           .format(self.endpoints.router_con), exc_info=True)
             raise
 
         self.poller = zmq.Poller()
@@ -142,11 +141,11 @@ class DataDispatcher():
 
     def run(self):
 
-        fixed_stream_id = [self.fixed_stream_id, 0, "data"]
+        fixed_stream_addr = [self.fixed_stream_addr, 0, "data"]
 
         while self.continue_run:
             self.log.debug("DataDispatcher-{}: waiting for new job"
-                           .format(self.id))
+                           .format(self.dispatcher_id))
             socks = dict(self.poller.poll())
 
             ######################################
@@ -158,11 +157,12 @@ class DataDispatcher():
                 try:
                     message = self.router_socket.recv_multipart()
                     self.log.debug("DataDispatcher-{}: new job received"
-                                   .format(self.id))
+                                   .format(self.dispatcher_id))
                     self.log.debug("message = {}".format(message))
                 except:
                     self.log.error("DataDispatcher-{}: waiting for new job"
-                                   "...failed".format(self.id), exc_info=True)
+                                   "...failed".format(self.dispatcher_id),
+                                   exc_info=True)
                     continue
 
                 if len(message) >= 2:
@@ -170,10 +170,10 @@ class DataDispatcher():
                     metadata = json.loads(message[0].decode("utf-8"))
                     targets = json.loads(message[1].decode("utf-8"))
 
-                    if self.fixed_stream_id:
-                        targets.insert(0, fixed_stream_id)
-                        self.log.debug("Added fixed_stream_id {} to targets "
-                                       "{}".format(fixed_stream_id, targets))
+                    if self.fixed_stream_addr:
+                        targets.insert(0, fixed_stream_addr)
+                        self.log.debug("Added fixed_stream_addr {} to targets "
+                                       "{}".format(fixed_stream_addr, targets))
 
                     # sort the target list by the priority
                     targets = sorted(targets, key=lambda target: target[1])
@@ -192,47 +192,47 @@ class DataDispatcher():
                                            .encode("utf-8")
                                            )
 
-                        if self.fixed_stream_id:
+                        if self.fixed_stream_addr:
                             self.log.debug("Router requested to send signal "
                                            "that file was closed.")
-                            metadata.append(self.id)
+                            metadata.append(self.dispatcher_id)
 
                             # socket already known
-                            if self.fixed_stream_id in self.open_connections:
+                            if self.fixed_stream_addr in self.open_connections:
                                 tracker = (
-                                    self.open_connections[self.fixed_stream_id]
+                                    self.open_connections[self.fixed_stream_addr]
                                     .send_multipart(metadata,
                                                     copy=False,
                                                     track=True)
                                 )
                                 self.log.info("Sending close file signal to "
                                               "'{}' with priority 0"
-                                              .format(self.fixed_stream_id))
+                                              .format(self.fixed_stream_addr))
                             else:
                                 # open socket
                                 socket = self.context.socket(zmq.PUSH)
                                 connection_str = "tcp://{}".format(
-                                    self.fixed_stream_id)
+                                    self.fixed_stream_addr)
 
                                 socket.connect(connection_str)
                                 self.log.info("Start socket (connect): '{}'"
                                               .format(connection_str))
 
                                 # register socket
-                                self.open_connections[self.fixed_stream_id] = (
+                                self.open_connections[self.fixed_stream_addr] = (
                                     socket
                                 )
 
                                 # send data
                                 tracker = (
-                                    self.open_connections[self.fixed_stream_id]
+                                    self.open_connections[self.fixed_stream_addr]
                                     .send_multipart(metadata,
                                                     copy=False,
                                                     track=True)
                                 )
                                 self.log.info("Sending close file signal to "
                                               "'{}' with priority 0"
-                                              .format(fixed_stream_id))
+                                              .format(fixed_stream_addr))
 
                             # socket not known
                             if not tracker.done:
@@ -251,9 +251,9 @@ class DataDispatcher():
                                              "target specified")
                             continue
 
-                    elif self.fixed_stream_id:
-                        targets = [fixed_stream_id]
-                        self.log.debug("Added fixed_stream_id to targets {}."
+                    elif self.fixed_stream_addr:
+                        targets = [fixed_stream_addr]
+                        self.log.debug("Added fixed_stream_addr to targets {}."
                                        .format(targets))
 
                     else:
@@ -281,7 +281,7 @@ class DataDispatcher():
                                                self.open_connections)
                 except:
                     self.log.error("DataDispatcher-{}: Passing new file to "
-                                   "data stream...failed".format(self.id),
+                                   "data stream...failed".format(self.dispatcher_id),
                                    exc_info=True)
 
                 # finish data handling
@@ -296,11 +296,11 @@ class DataDispatcher():
                 try:
                     message = self.control_socket.recv_multipart()
                     self.log.debug("DataDispatcher-{}: control signal "
-                                   "received".format(self.id))
+                                   "received".format(self.dispatcher_id))
                     self.log.debug("message = {}".format(message))
                 except:
                     self.log.error("DataDispatcher-{}: reiceiving control "
-                                   "signal...failed".format(self.id),
+                                   "signal...failed".format(self.dispatcher_id),
                                    exc_info=True)
                     continue
 
@@ -318,7 +318,7 @@ class DataDispatcher():
 
                 elif message[0] == b"SLEEP":
                     self.log.debug("Router requested DataDispatcher-{} to "
-                                   "wait.".format(self.id))
+                                   "wait.".format(self.dispatcher_id))
                     break_outer_loop = False
 
                     # if there are problems on the receiving side no data
@@ -398,7 +398,7 @@ class DataDispatcher():
 
     def react_to_exit_signal(self):
         self.log.debug("Router requested to shutdown DataDispatcher-{}."
-                       .format(self.id))
+                       .format(self.dispatcher_id))
 
     def react_to_close_sockets_signal(self, message):
         targets = json.loads(message[1].decode("utf-8"))
@@ -419,7 +419,7 @@ class DataDispatcher():
         # to prevent the message two be logged multiple times
         if self.continue_run:
             self.log.debug("Closing sockets for DataDispatcher-{}"
-                           .format(self.id))
+                           .format(self.dispatcher_id))
 
         for connection in self.open_connections:
             if self.open_connections[connection]:

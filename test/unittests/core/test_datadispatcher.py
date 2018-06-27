@@ -73,8 +73,8 @@ class TestDataDispatcher(TestBase):
         copyfile(source_file, target_file)
         time.sleep(0.5)
 
-        fixed_stream_con_str = "{}:{}".format(self.con_ip,
-                                              self.receiving_ports[1])
+        fixed_stream_addr = "{}:{}".format(self.con_ip,
+                                           self.receiving_ports[1])
 
         endpoints = self.config["endpoints"]
 
@@ -84,11 +84,10 @@ class TestDataDispatcher(TestBase):
                       .format(endpoints.router_bind))
 
         kwargs = dict(
-            id=1,
-            control_con_str=endpoints.control_sub_con,
-            router_con_str=endpoints.router_con,
+            dispatcher_id=1,
+            endpoints=endpoints,
             chunksize=self.chunksize,
-            fixed_stream_id=fixed_stream_con_str,
+            fixed_stream_addr=fixed_stream_addr,
             config=self.datadispatcher_config,
             log_queue=self.log_queue,
             local_target=self.local_target,

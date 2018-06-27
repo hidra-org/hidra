@@ -358,7 +358,7 @@ class DataManager():
         self.ldapuri = None
 
         self.use_data_stream = None
-        self.fixed_stream_id = None
+        self.fixed_stream_addr = None
         self.status_check_id = None
         self.check_target_host = None
 
@@ -597,7 +597,7 @@ class DataManager():
                                .format(self.params["data_stream_targets"]))
                 sys.exit(1)
 
-            self.fixed_stream_id = (
+            self.fixed_stream_addr = (
                 "{}:{}".format(self.params["data_stream_targets"][0][0],
                                self.params["data_stream_targets"][0][1]))
 
@@ -616,7 +616,7 @@ class DataManager():
 
         else:
             self.check_target_host = lambda enable_logging=False: True
-            self.fixed_stream_id = None
+            self.fixed_stream_addr = None
             self.status_check_id = None
 
         self.number_of_streams = self.params["number_of_streams"]
@@ -845,7 +845,7 @@ class DataManager():
             if self.test_socket is None:
                 # Establish the test socket as PUSH/PULL sending test signals
                 # to the normal data stream id
-                con_str = "tcp://{}".format(self.fixed_stream_id)
+                con_str = "tcp://{}".format(self.fixed_stream_addr)
                 try:
                     self.test_socket = self.context.socket(zmq.PUSH)
                     self.test_socket.connect(con_str)
@@ -871,7 +871,7 @@ class DataManager():
                     if enable_logging:
                         self.log.info("Sending test message to fixed streaming"
                                       " host {} ... success"
-                                      .format(self.fixed_stream_id))
+                                      .format(self.fixed_stream_addr))
 
                 else:
                     self.socket_reconnected = False
@@ -886,7 +886,7 @@ class DataManager():
                         # reopen it
                         try:
                             self.test_socket = self.context.socket(zmq.PUSH)
-                            con_str = "tcp://{}".format(self.fixed_stream_id)
+                            con_str = "tcp://{}".format(self.fixed_stream_addr)
 
                             self.test_socket.connect(con_str)
                             self.log.info("Restart test_socket (connect): "
@@ -911,7 +911,7 @@ class DataManager():
                         if self.zmq_again_occured == 0:
                             self.log.error("Failed to send test message to "
                                            "fixed streaming host {}"
-                                           .format(self.fixed_stream_id))
+                                           .format(self.fixed_stream_addr))
                             self.log.debug("Error was: zmq.Again: {}"
                                            .format(exc_value))
                         self.zmq_again_occured += 1
@@ -927,7 +927,7 @@ class DataManager():
                     if not tracker.done:
                         self.log.error("Failed to send test message to fixed "
                                        "streaming host {}"
-                                       .format(self.fixed_stream_id),
+                                       .format(self.fixed_stream_addr),
                                        exc_info=True)
                         return False
 
@@ -935,7 +935,7 @@ class DataManager():
                     elif enable_logging:
                         self.log.info("Sending test message to fixed "
                                       "streaming host {} ... success"
-                                      .format(self.fixed_stream_id))
+                                      .format(self.fixed_stream_addr))
                         self.zmq_again_occured = 0
 
             except KeyboardInterrupt:
@@ -943,7 +943,7 @@ class DataManager():
             except:
                 self.log.error("Failed to send test message to fixed "
                                "streaming host {}"
-                               .format(self.fixed_stream_id), exc_info=True)
+                               .format(self.fixed_stream_addr), exc_info=True)
                 return False
         return True
 
@@ -999,14 +999,13 @@ class DataManager():
 
         # DataDispatcher
         for i in range(self.number_of_streams):
-            id = b"{}/{}".format(i, self.number_of_streams)
+            dispatcher_id = b"{}/{}".format(i, self.number_of_streams)
             pr = Process(target=DataDispatcher,
                          args=(
-                             id,
-                             self.control_sub_con_str,
-                             self.router_con_str,
+                             dispatcher_id,
+                             self.endpoints,
                              self.chunksize,
-                             self.fixed_stream_id,
+                             self.fixed_stream_addr,
                              self.params,
                              self.log_queue,
                              self.local_target)
