@@ -60,8 +60,8 @@ class DataDispatcher(Base):
             self.stop()
 
     def setup(self, context):
-        self.log = utils.get_logger("DataDispatcher-{}".format(self.dispatcher_id),
-                                    self.log_queue)
+        log_name = "DataDispatcher-{}".format(self.dispatcher_id)
+        self.log = utils.get_logger(log_name, self.log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -179,68 +179,53 @@ class DataDispatcher(Base):
                         # the buffer interface."
                         metadata[0] = b"CLOSE_FILE"
                         for i in range(1, len(metadata)):
-                            metadata[i] = (json.dumps(metadata[i])
-                                           .encode("utf-8")
-                                           )
+                            metadata[i] = (
+                                json.dumps(metadata[i]).encode("utf-8")
+                            )
 
-                        if self.fixed_stream_addr:
-                            self.log.debug("Router requested to send signal "
-                                           "that file was closed.")
-                            metadata.append(self.dispatcher_id)
-
-                            # socket already known
-                            if self.fixed_stream_addr in self.open_connections:
-                                tracker = (
-                                    self.open_connections[self.fixed_stream_addr]
-                                    .send_multipart(metadata,
-                                                    copy=False,
-                                                    track=True)
-                                )
-                                self.log.info("Sending close file signal to "
-                                              "'{}' with priority 0"
-                                              .format(self.fixed_stream_addr))
-                            else:
-                                # open socket
-                                socket = self.context.socket(zmq.PUSH)
-                                connection_str = "tcp://{}".format(
-                                    self.fixed_stream_addr)
-
-                                socket.connect(connection_str)
-                                self.log.info("Start socket (connect): '{}'"
-                                              .format(connection_str))
-
-                                # register socket
-                                self.open_connections[self.fixed_stream_addr] = (
-                                    socket
-                                )
-
-                                # send data
-                                tracker = (
-                                    self.open_connections[self.fixed_stream_addr]
-                                    .send_multipart(metadata,
-                                                    copy=False,
-                                                    track=True)
-                                )
-                                self.log.info("Sending close file signal to "
-                                              "'{}' with priority 0"
-                                              .format(fixed_stream_addr))
-
-                            # socket not known
-                            if not tracker.done:
-                                self.log.info("Close file signal has not "
-                                              "been sent yet, waiting...")
-                                tracker.wait()
-                                self.log.info("Close file signal has not "
-                                              "been sent yet, waiting...done")
-
-                            time.sleep(2)
-                            self.log.debug("Continue after sleeping")
-                            continue
-                        else:
+                        if not self.fixed_stream_addr:
                             self.log.warning("Router requested to send signal"
                                              "that file was closed, but no "
                                              "target specified")
                             continue
+
+                        self.log.debug("Router requested to send signal that "
+                                       "file was closed.")
+                        metadata.append(self.dispatcher_id)
+
+                        # socket not known
+                        if self.fixed_stream_addr not in self.open_connections:
+                            endpt = "tcp://{}".format(self.fixed_stream_addr)
+
+                            # open and register socket
+                            self.open_connections[self.fixed_stream_addr] = (
+                                self.start_socket(
+                                    name="socket",
+                                    sock_type=zmq.PUSH,
+                                    sock_con="connect",
+                                    endpoint=endpt
+                                )
+                            )
+
+                        # send data
+                        sckt = self.open_connections[self.fixed_stream_addr]
+                        tracker = sckt.send_multipart(metadata,
+                                                      copy=False,
+                                                      track=True)
+                        self.log.info("Sending close file signal to '{}' with "
+                                      "priority 0".format(fixed_stream_addr))
+
+                        # socket not known
+                        if not tracker.done:
+                            self.log.info("Close file signal has not "
+                                          "been sent yet, waiting...")
+                            tracker.wait()
+                            self.log.info("Close file signal has not "
+                                          "been sent yet, waiting...done")
+
+                        time.sleep(2)
+                        self.log.debug("Continue after sleeping")
+                        continue
 
                     elif self.fixed_stream_addr:
                         targets = [fixed_stream_addr]
@@ -272,7 +257,8 @@ class DataDispatcher(Base):
                                                self.open_connections)
                 except:
                     self.log.error("DataDispatcher-{}: Passing new file to "
-                                   "data stream...failed".format(self.dispatcher_id),
+                                   "data stream...failed"
+                                   .format(self.dispatcher_id),
                                    exc_info=True)
 
                 # finish data handling
@@ -284,6 +270,7 @@ class DataDispatcher(Base):
             ######################################
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
+
                 try:
                     message = self.control_socket.recv_multipart()
                     self.log.debug("DataDispatcher-{}: control signal "
@@ -291,7 +278,8 @@ class DataDispatcher(Base):
                     self.log.debug("message = {}".format(message))
                 except:
                     self.log.error("DataDispatcher-{}: reiceiving control "
-                                   "signal...failed".format(self.dispatcher_id),
+                                   "signal...failed"
+                                   .format(self.dispatcher_id),
                                    exc_info=True)
                     continue
 
@@ -338,23 +326,19 @@ class DataDispatcher(Base):
                             if len(message) == 2 and message[1] == "RECONNECT":
                                 # Reestablish all open data connections
                                 for socket_id in self.open_connections:
+                                    sckt = self.open_connections[socket_id]
                                     # close the connection
-                                    self.open_connections[socket_id].close(0)
+                                    self.close_socket(name="connection",
+                                                      socket=sckt)
                                     # reopen it
-                                    try:
-                                        self.open_connections[socket_id] = (
-                                            self.context.socket(zmq.PUSH))
-                                        (self.open_connections[socket_id]
-                                            .connect("tcp://" + socket_id))
-                                        self.log.info("Restart connection "
-                                                      "(connect): '{}'"
-                                                      .format(socket_id))
-                                    except:
-                                        self.log.error("Failed to restart "
-                                                       "connection (connect): "
-                                                       "'{}'"
-                                                       .format(socket_id),
-                                                       exc_info=True)
+                                    endpoint = "tcp://" + socket_id
+                                    sckt = self.start_socket(
+                                        name="connection",
+                                        sock_type=zmq.PUSH,
+                                        sock_con="connect",
+                                        endpoint=endpoint,
+                                        message="Restart"
+                                    )
 
                             # Wake up from sleeping
                             break
@@ -396,9 +380,8 @@ class DataDispatcher(Base):
         try:
             for socket_id, prio, suffix in targets:
                 if socket_id in self.open_connections:
-                    self.log.info("Closing socket {}".format(socket_id))
-                    if self.open_connections[socket_id]:
-                        self.open_connections[socket_id].close(0)
+                    self.stop_socket(name="socket{}".format(socket_id),
+                                     socket=self.open_connections[socket_id])
                     del self.open_connections[socket_id]
         except:
             self.log.error("Request for closing sockets of wrong format",
@@ -439,5 +422,3 @@ class DataDispatcher(Base):
 
     def __del__(self):
         self.stop()
-
-# testing was moved into test/unittests/core/test_datadispatcher.py

@@ -1,5 +1,6 @@
 import utils
 
+
 # ------------------------------ #
 #  Base class for ZMQ handling   #
 # ------------------------------ #
@@ -22,7 +23,6 @@ class Base(object):
             log=self.log,
             message=message,
         )
-
 
     def stop_socket(self, name, socket=None):
         """Wrapper for stop_socket.

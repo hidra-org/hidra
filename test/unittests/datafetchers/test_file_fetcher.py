@@ -39,7 +39,7 @@ class TestDataFetcher(DataFetcherTestBase):
             "local_target": None,
             # "local_target": os.path.join(BASE_DIR, "data", "target"),
             "main_pid": self.config["main_pid"],
-            "cleaner_job_con_str": self.config["endpoints"].cleaner_job_con
+            "endpoints": self.config["endpoints"]
         }
 
         self.cleaner_config = {
@@ -202,7 +202,6 @@ class TestDataFetcher(DataFetcherTestBase):
                 self.log.info("received: {}".format(recv_message))
         except KeyboardInterrupt:
             pass
-
 
         self.stop_socket(name="confirmation_socket",
                          socket=confirmation_socket)

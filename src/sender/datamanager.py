@@ -460,15 +460,6 @@ class DataManager(Base):
 
         self.use_cleaner = (self.params["remove_data"] == "with_confirmation")
 
-        # Make ipc_dir accessible for modules
-        self.params["ext_ip"] = self.ext_ip
-        self.params["con_ip"] = self.con_ip
-        self.params["ipc_dir"] = self.ipc_dir
-        self.params["main_pid"] = self.current_pid
-        # TODO: this should not be set here (it belong to the moduls)
-        self.params["context"] = None
-        self.params["session"] = None
-
         ports = {
             "com": self.params["com_port"],
             "request": self.params["request_port"],
@@ -481,9 +472,11 @@ class DataManager(Base):
             "confirmation": self.params["confirmation_port"],
         }
 
-        self.ipc_addresses = utils.set_ipc_addresses(ipc_dir=self.ipc_dir,
-                                                     main_pid=self.current_pid,
-                                                     use_cleaner=self.use_cleaner)
+        self.ipc_addresses = utils.set_ipc_addresses(
+            ipc_dir=self.ipc_dir,
+            main_pid=self.current_pid,
+            use_cleaner=self.use_cleaner
+        )
 
         self.endpoints = utils.set_endpoints(ext_ip=self.ext_ip,
                                              con_ip=self.con_ip,
@@ -514,9 +507,11 @@ class DataManager(Base):
 #                "tcp://{}:{}".format(self.localhost,
 #                                     self.params["router_port"]))
 #            if self.use_cleaner:
-#                self.params["cleaner_job_con_str"] = self.endpoints.cleaner_job_(
-#                    "tcp://{}:{}".format(self.localhost,
-#                                         self.params["cleaner_port"]))
+#                self.params["cleaner_job_con_str"] = (
+#                    self.endpoints.cleaner_job_(
+#                        "tcp://{}:{}".format(self.localhost,
+#                                             self.params["cleaner_port"])
+#                    )
 #                self.params["cleaner_tigger_con_str"] = (
 #                    "tcp://{}:{}".format(self.localhost,
 #                                         self.params["cleaner_trigger_port"]))
@@ -524,10 +519,15 @@ class DataManager(Base):
         else:
             self.log.info("Using ipc for internal communication.")
 
-        self.params["cleaner_job_con_str"] = self.endpoints.cleaner_job_con
-        self.params["cleaner_tigger_con_str"] = self.endpoints.cleaner_trigger_con
-        self.params["cleaner_conf_con_str"] = self.endpoints.confirm_con
+        # Make ipc_dir accessible for modules
+        self.params["ext_ip"] = self.ext_ip
+        self.params["con_ip"] = self.con_ip
+        self.params["ipc_dir"] = self.ipc_dir
+        self.params["main_pid"] = self.current_pid
         self.params["endpoints"] = self.endpoints
+        # TODO: this should not be set here (it belong to the moduls)
+        self.params["context"] = None
+        self.params["session"] = None
 
         self.whitelist = self.params["whitelist"]
         self.ldapuri = self.params["ldapuri"]
@@ -615,7 +615,8 @@ class DataManager(Base):
             self.log.error("Failed to start thead device forwarding messages "
                            "from '{}' to '{}'"
                            .format(self.endpoints.control_pub_con,
-                                   self.endpoints.control_sub_con), exc_info=True)
+                                   self.endpoints.control_sub_con),
+                           exc_info=True)
             raise
 
         # socket for control signals
@@ -638,7 +639,7 @@ class DataManager(Base):
         if self.test_socket is None:
             # Establish the test socket as REQ/REP to an extra signal
             # socket
-            endpoints = "tcp://{}".format(self.status_check_id)
+            endpoint = "tcp://{}".format(self.status_check_id)
             try:
                 self.test_socket = self.start_socket(
                     name="test_socket",
@@ -826,12 +827,12 @@ class DataManager(Base):
                         self.test_socket.close()
                         # reopen it
                         try:
-                            endpoint = "tcp://{}".format(self.fixed_stream_addr)
+                            endpt = "tcp://{}".format(self.fixed_stream_addr)
                             self.test_socket = self.start_socket(
                                 name="test_socket",
                                 sock_type=zmq.PUSH,
                                 sock_con="connect",
-                                endpoint=endpoint,
+                                endpoint=endpt,
                                 message="Restart"
                             )
                         except:

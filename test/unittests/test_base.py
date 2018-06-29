@@ -191,7 +191,9 @@ class TestBase(unittest.TestCase):
         else:
             use_class_attribute = False
 
-        return_socket = utils.stop_socket(name=name, socket=socket, log=self.log)
+        return_socket = utils.stop_socket(name=name,
+                                          socket=socket,
+                                          log=self.log)
 
         # class attributes are set directly
         if use_class_attribute:

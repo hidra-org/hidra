@@ -64,7 +64,7 @@ class DataFetcherBase(Base, ABC):
                              False,
                              "stop_on_error",
                              "with_confirmation"]],
-            "cleaner_job_con_str",
+            "endpoints",
             "main_pid"
         ]
 
@@ -118,7 +118,7 @@ class DataFetcherBase(Base, ABC):
                 name="cleaner_job_socket",
                 sock_type=zmq.PUSH,
                 sock_con="connect",
-                endpoint=self.config["cleaner_job_con_str"]
+                endpoint=self.config["endpoints"].cleaner_job_con
             )
 
             self.confirmation_topic = (

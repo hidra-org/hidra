@@ -40,8 +40,7 @@ class TestDataFetcher(DataFetcherTestBase):
             "main_pid": self.config["main_pid"],
             "ext_ip": self.ext_ip,
             "con_ip": self.con_ip,
-            "cleaner_job_con_str": self.config["endpoints"].cleaner_job_con,
-            "cleaner_conf_con_str": self.config["endpoints"].confirm_con,
+            "endpoints": self.config["endpoints"],
             "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
             "local_target": None
         }

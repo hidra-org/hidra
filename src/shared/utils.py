@@ -697,7 +697,8 @@ def set_endpoints(ext_ip, con_ip, ports, ipc_addresses, use_cleaner=True):
             trigger_bind = "ipc://{}".format(ipc_addresses.cleaner_trigger)
             trigger_con = trigger_bind
 
-        # use self.params["data_stream_targets"][0][0] instead of ext_ip, con_ip
+        # use self.params["data_stream_targets"][0][0] instead of
+        # ext_ip, con_ip
         confirm_bind = "tcp://{}:{}".format(ext_ip, ports["confirmation"])
         confirm_con = "tcp://{}:{}".format(con_ip, ports["confirmation"])
     else:
@@ -755,7 +756,7 @@ def start_socket(name,
     """
 
     if message is None:
-        message="Start"
+        message = "Start"
 
     try:
         socket = context.socket(sock_type)
@@ -865,7 +866,8 @@ def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
         datefmt = "%Y-%m-%d %H:%M:%S"
     if fmt is None:
         if loglevel == "debug":
-            fmt = "[%(asctime)s] > [%(name)s] > [%(filename)s:%(lineno)d] %(message)s"
+            fmt = ("[%(asctime)s] > [%(name)s] > "
+                   "[%(filename)s:%(lineno)d] %(message)s")
         else:
             fmt = "[%(asctime)s] > %(message)s"
 

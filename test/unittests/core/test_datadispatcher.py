@@ -53,7 +53,7 @@ class TestDataDispatcher(TestBase):
             "remove_data": False,
             "chunksize": self.chunksize,
             "local_target": self.local_target,
-            "cleaner_job_con_str": self.config["endpoints"].cleaner_job_con,
+            "endpoints": self.config["endpoints"],
             "main_pid": self.config["main_pid"],
         }
 

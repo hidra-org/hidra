@@ -164,7 +164,6 @@ class TestDataManager(TestBase):
                 config=self.datamanager_config
             )
             sender = Process(target=Sender, kwargs=kwargs)
-            #sender = Process(target=DataManager, kwargs=kwargs)
             sender.start()
         except:
             self.log.error("Exception when initiating DataManager",
@@ -220,7 +219,6 @@ class TestDataManager(TestBase):
         finally:
             self.stop_socket(name="com_socket")
             self.stop_socket(name="fixed_recv_socket")
-
 
             for i, sckt in enumerate(self.receiving_sockets):
                 self.stop_socket(name="receiving_socket{}".format(i),
