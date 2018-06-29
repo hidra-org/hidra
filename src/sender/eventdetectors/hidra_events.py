@@ -218,17 +218,13 @@ class EventDetector(EventDetectorBase):
             self.ext_context = False
 
         # Create zmq socket to get events
-        try:
-            self.mon_socket = self.context.socket(zmq.PULL)
-            self.mon_socket.connect(self.endpoints.mon_con)
-#            self.mon_socket.setsockopt_string(zmq.SUBSCRIBE, "")
-
-            self.log.info("Start monitoring socket (connect): '{}'"
-                          .format(self.endpoints.mon_con))
-        except:
-            self.log.error("Failed to start monitoring socket (connect): '{}'"
-                           .format(self.endpoints.mon_con), exc_info=True)
-            raise
+        self.mon_socket = self.start_socket(
+            name="mon_socket",
+            sock_type=zmq.PULL,
+            sock_con="connect",
+            endpoint=self.endpoints.mon_con
+        )
+#        self.mon_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
     def get_new_event(self):
         """Implementation of the abstract method get_new_event.
@@ -260,10 +256,7 @@ class EventDetector(EventDetectorBase):
             self.monitoringdevice = None
 
         # close ZMQ
-        if self.mon_socket is not None:
-            self.log.info("Closing mon_socket")
-            self.mon_socket.close(0)
-            self.mon_socket = None
+        self.stop_socket(name="mon_socket")
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class

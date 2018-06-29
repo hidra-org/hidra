@@ -73,24 +73,20 @@ class TestEventDetector(EventDetectorTestBase):
 
         if local_in:
             # create zmq socket to send events
-            try:
-                data_in_socket = self.context.socket(zmq.PUSH)
-                data_in_socket.connect(self.endpoints.in_con)
-                self.log.info("Start data_in_socket (connect): '{}'"
-                              .format(self.endpoints.in_con))
-            except:
-                self.log.error("Failed to start data_in_socket (connect): '{}'"
-                               .format(self.endpoints.in_con))
+            data_in_socket = self.start_socket(
+                name="data_in_socket",
+                sock_type=zmq.PUSH,
+                sock_con="connect",
+                endpoint=self.endpoints.in_con
+            )
 
         if local_out:
-            try:
-                data_out_socket = self.context.socket(zmq.PULL)
-                data_out_socket.connect(self.endpoints.out_con)
-                self.log.info("Start data_out_socket (connect): '{}'"
-                              .format(self.endpoints.out_con))
-            except:
-                self.log.error("Failed to start data_out_socket (connect): "
-                               "'{}'".format(self.endpoints.out_con))
+            data_out_socket = self.start_socket(
+                name="data_out_socket",
+                sock_type=zmq.PULL,
+                sock_con="connect",
+                endpoint=self.endpoints.out_con
+            )
 
         try:
             for i in range(self.start, self.stop):
@@ -123,9 +119,9 @@ class TestEventDetector(EventDetectorTestBase):
             pass
         finally:
             if local_in:
-                data_in_socket.close()
+                self.stop_socket("data_in_socket", socket=data_in_socket)
             if local_out:
-                data_out_socket.close()
+                self.stop_socket("data_out_socket", socket=data_out_socket)
 
     def tearDown(self):
         self.eventdetector.stop()

@@ -306,15 +306,12 @@ class TestEventDetector(EventDetectorTestBase):
         )
 
         # create zmq socket to send events
-        try:
-            self.event_socket = self.context.socket(zmq.PUSH)
-            self.event_socket.connect(self.endpoints.eventdet_con)
-            self.log.info("Start event_socket (connect): '{}'"
-                          .format(self.endpoints.eventdet_con))
-        except:
-            self.log.error("Failed to start event_socket (connect): '{}'"
-                           .format(self.endpoints.eventdet_con))
-            raise
+        self.event_socket = self.start_socket(
+            name="event_socket",
+            sock_type=zmq.PUSH,
+            sock_con="connect",
+            endpoint=self.endpoints.eventdet_con
+        )
 
         for i in range(self.start, self.stop):
             try:
@@ -352,9 +349,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.assertIn(message, event_list)
 
     def tearDown(self):
-        if self.event_socket is not None:
-            self.event_socket.close(0)
-            self.event_socket = None
+        self.stop_socket(name="event_socket")
 
         if self.eventdetector is not None:
             self.eventdetector.stop()

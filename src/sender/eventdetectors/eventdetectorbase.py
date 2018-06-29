@@ -7,6 +7,7 @@ import abc
 import __init__  # noqa F401
 import utils
 from utils import WrongConfiguration
+from base_class import Base
 
 # source:
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
@@ -18,7 +19,7 @@ else:
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class EventDetectorBase(object):
+class EventDetectorBase(Base):
 
     def __init__(self, config, log_queue, logger_name):  # noqa F811
         """Initial setup

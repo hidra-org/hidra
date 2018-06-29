@@ -200,16 +200,12 @@ class EventDetector(EventDetectorBase):
             self.ext_context = False
 
         # Create zmq socket to get events
-        try:
-            self.event_socket = self.context.socket(zmq.PULL)
-            self.event_socket.bind(self.endpoints.eventdet_bind)
-            self.log.info("Start event_socket (bind): '{}'"
-                          .format(self.endpoints.eventdet_bind))
-        except:
-            self.log.error("Failed to start event_socket (bind): '{}'"
-                           .format(self.endpoints.eventdet_bind),
-                           exc_info=True)
-            raise
+        self.event_socket = self.start_socket(
+            name="event_socket",
+            sock_type=zmq.PULL,
+            sock_con="bind",
+            endpoint=self.endpoints.eventdet_bind
+        )
 
     def get_new_event(self):
         """Implementation of the abstract method get_new_event.
@@ -232,9 +228,7 @@ class EventDetector(EventDetectorBase):
         """Implementation of the abstract method stop.
         """
         # close ZMQ
-        if self.event_socket is not None:
-            self.event_socket.close(0)
-            self.event_socket = None
+        self.stop_socket(name="event_socket")
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class
