@@ -536,7 +536,7 @@ IpcAddresses = namedtuple(
 )
 
 
-def set_ipc_addresses(ipc_dir, main_pid):
+def set_ipc_addresses(ipc_dir, main_pid, use_cleaner=True):
     """Sets the ipc connection paths.
 
     Sets the connection strings  for the job, control, trigger and
@@ -559,12 +559,20 @@ def set_ipc_addresses(ipc_dir, main_pid):
     # determine socket connection strings
     ipc_ip = "{}/{}".format(ipc_dir, main_pid)
 
-    control_pub = "{}_{}".format(ipc_ip, "control_pub")
-    control_sub = "{}_{}".format(ipc_ip, "control_sub")
-    request_fw = "{}_{}".format(ipc_ip, "request_fw")
+    control_pub = "{}_{}".format(ipc_ip, "controlPub")
+    control_sub = "{}_{}".format(ipc_ip, "controlSub")
+#    control_pub = "{}_{}".format(ipc_ip, "control_pub")
+#    control_sub = "{}_{}".format(ipc_ip, "control_sub")
+    request_fw = "{}_{}".format(ipc_ip, "requestFw")
+#    request_fw = "{}_{}".format(ipc_ip, "request_fw")
     router = "{}_{}".format(ipc_ip, "router")
-    job = "{}_{}".format(ipc_ip, "cleaner")
-    trigger = "{}_{}".format(ipc_ip, "cleaner_trigger")
+
+    if use_cleaner:
+        job = "{}_{}".format(ipc_ip, "cleaner")
+        trigger = "{}_{}".format(ipc_ip, "cleaner_trigger")
+    else:
+        job = None
+        trigger = None
 
     return IpcAddresses(
         control_pub=control_pub,
@@ -588,19 +596,19 @@ Endpoints = namedtuple(
         "request_fw_con",
         "router_bind",
         "router_con",
+        "com_bind",
+        "com_con",
         "cleaner_job_bind",
         "cleaner_job_con",
         "cleaner_trigger_bind",
         "cleaner_trigger_con",
         "confirm_bind",
         "confirm_con",
-        "com_bind",
-        "com_con",
     ]
 )
 
 
-def set_endpoints(ext_ip, con_ip, ports, ipc_addresses):
+def set_endpoints(ext_ip, con_ip, ports, ipc_addresses, use_cleaner=True):
     """Configures the ZMQ address depending on the protocol.
 
     Sets the connection strings  for the job, control, trigger and
@@ -624,14 +632,14 @@ def set_endpoints(ext_ip, con_ip, ports, ipc_addresses):
             request_fw_con,
             router_bind,
             router_con,
+            com_bind
+            com_con
             cleaner_job_bind
             cleaner_job_con
             cleaner_trigger_bind
             cleaner_trigger_con
             confirm_bind
             confirm_con
-            com_bind
-            com_con
     """
 
     # determine socket connection strings
@@ -652,14 +660,6 @@ def set_endpoints(ext_ip, con_ip, ports, ipc_addresses):
         router_bind = "tcp://{}:{}".format(ext_ip, port)
         router_con = "tcp://{}:{}".format(con_ip, port)
 
-        port = ports["cleaner"]
-        job_bind = "tcp://{}:{}".format(ext_ip, port)
-        job_con = "tcp://{}:{}".format(con_ip, port)
-
-        port = ports["cleaner_trigger"]
-        trigger_bind = "tcp://{}:{}".format(ext_ip, port)
-        trigger_con = "tcp://{}:{}".format(con_ip, port)
-
     else:
         control_pub_bind = "ipc://{}".format(ipc_addresses.control_pub)
         control_pub_con = control_pub_bind
@@ -673,20 +673,40 @@ def set_endpoints(ext_ip, con_ip, ports, ipc_addresses):
         router_bind = "ipc://{}".format(ipc_addresses.router)
         router_con = router_bind
 
-        job_bind = "ipc://{}".format(ipc_addresses.cleaner_job)
-        job_con = job_bind
-
-        trigger_bind = "ipc://{}".format(ipc_addresses.cleaner_trigger)
-        trigger_con = trigger_bind
-
     request_bind = "tcp://{}:{}".format(ext_ip, ports["request"])
     request_con = "tcp://{}:{}".format(con_ip, ports["request"])
 
-    confirm_bind = "tcp://{}:{}".format(ext_ip, ports["confirmation"])
-    confirm_con = "tcp://{}:{}".format(con_ip, ports["confirmation"])
-
     com_bind = "tcp://{}:{}".format(ext_ip, ports["com"])
     com_con = "tcp://{}:{}".format(con_ip, ports["com"])
+
+    # endpoints needed if cleaner is activated
+    if use_cleaner:
+        if is_windows():
+            port = ports["cleaner"]
+            job_bind = "tcp://{}:{}".format(ext_ip, port)
+            job_con = "tcp://{}:{}".format(con_ip, port)
+
+            port = ports["cleaner_trigger"]
+            trigger_bind = "tcp://{}:{}".format(ext_ip, port)
+            trigger_con = "tcp://{}:{}".format(con_ip, port)
+
+        else:
+            job_bind = "ipc://{}".format(ipc_addresses.cleaner_job)
+            job_con = job_bind
+
+            trigger_bind = "ipc://{}".format(ipc_addresses.cleaner_trigger)
+            trigger_con = trigger_bind
+
+        # use self.params["data_stream_targets"][0][0] instead of ext_ip, con_ip
+        confirm_bind = "tcp://{}:{}".format(ext_ip, ports["confirmation"])
+        confirm_con = "tcp://{}:{}".format(con_ip, ports["confirmation"])
+    else:
+        job_bind = None
+        job_con = None
+        trigger_bind = None
+        trigger_con = None
+        confirm_bind = None
+        confirm_con = None
 
     return Endpoints(
         control_pub_bind=control_pub_bind,
@@ -699,14 +719,14 @@ def set_endpoints(ext_ip, con_ip, ports, ipc_addresses):
         request_fw_con=request_fw_con,
         router_bind=router_bind,
         router_con=router_con,
+        com_bind=com_bind,
+        com_con=com_con,
         cleaner_job_bind=job_bind,
         cleaner_job_con=job_con,
         cleaner_trigger_bind=trigger_bind,
         cleaner_trigger_con=trigger_con,
         confirm_bind=confirm_bind,
         confirm_con=confirm_con,
-        com_bind=com_bind,
-        com_con=com_con,
     )
 
 

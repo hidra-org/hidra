@@ -33,9 +33,7 @@ class CheckJobs(threading.Thread):
     """
 
     def __init__(self,
-                 job_bind_str,
-                 cleaner_trigger_con_str,
-                 control_con_str,
+                 endpoints,
                  lock,
                  log_queue,
                  context=None):
@@ -45,9 +43,7 @@ class CheckJobs(threading.Thread):
         self.log = utils.get_logger("CheckJobs", log_queue)
 
         self.lock = lock
-        self.job_bind_str = job_bind_str
-        self.cleaner_trigger_con_str = cleaner_trigger_con_str
-        self.control_con_str = control_con_str
+        self.endpoints = endpoints
 
         self.run_loop = True
 
@@ -65,33 +61,33 @@ class CheckJobs(threading.Thread):
         # confirmation is received
         try:
             self.job_socket = self.context.socket(zmq.PULL)
-            self.job_socket.bind(self.job_bind_str)
+            self.job_socket.bind(self.endpoints.cleaner_job_bind)
             self.log.info("Start job_socket (bind): '{}'"
-                          .format(self.job_bind_str))
+                          .format(self.endpoints.cleaner_job_bind))
         except:
             self.log.error("Failed to start job_socket (bind): '{}'"
-                           .format(self.job_bind_str), exc_info=True)
+                           .format(self.endpoints.cleaner_job_bind), exc_info=True)
 
         # socket to trigger cleaner to remove old confirmations
         try:
             self.cleaner_trigger_socket = self.context.socket(zmq.PUSH)
-            self.cleaner_trigger_socket.connect(self.cleaner_trigger_con_str)
+            self.cleaner_trigger_socket.connect(self.endpoints.cleaner_trigger_con)
             self.log.info("Start trigger_cleaner_socket (connect): '{}'"
-                          .format(self.cleaner_trigger_con_str))
+                          .format(self.endpoints.cleaner_trigger_con))
         except:
             msg = ("Failed to start trigger_cleaner_socket (connect): '{}'"
-                   .format(self.cleaner_trigger_con_str))
+                   .format(self.endpoints.cleaner_trigger_con))
             self.log.error(msg, exc_info=True)
 
         # socket for control signals
         try:
             self.control_socket = self.context.socket(zmq.SUB)
-            self.control_socket.connect(self.control_con_str)
+            self.control_socket.connect(self.endpoints.control_sub_con)
             self.log.info("Start control_socket (connect): '{}'"
-                          .format(self.control_con_str))
+                          .format(self.endpoints.control_sub_con))
         except:
             self.log.error("Failed to start control_socket (connect): '{}'"
-                           .format(self.control_con_str), exc_info=True)
+                           .format(self.endpoints.control_sub_con), exc_info=True)
             raise
 
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
@@ -255,32 +251,22 @@ class CleanerBase(ABC):
     def __init__(self,
                  config,
                  log_queue,
-                 job_bind_str,
-                 cleaner_trigger_con_str,
-                 conf_con_str,
-                 control_con_str,
+                 endpoints,
                  context=None):
         """
 
         Args:
              config:
              log_queue:
-             job_bind_str: communication to DataFetcher
-             cleaner_trigger_con_str: communication to helper thread
-             conf_con_str: confirmation messages from the receiver
-             control_con_str: control message about process handling
-                              (e.g. shutdown messages)
-             context (optional): zmq context to use
+             endpoints: ZMQ endpoints to use
+             context (optional): ZMQ context to use
 
         """
 
         self.log = utils.get_logger("Cleaner", log_queue)
 
         self.config = config
-        self.job_bind_str = job_bind_str
-        self.cleaner_trigger_con_str = cleaner_trigger_con_str
-        self.conf_con_str = conf_con_str
-        self.control_con_str = control_con_str
+        self.endpoints = endpoints
 
         self.lock = threading.Lock()
         self.new_jobs = []
@@ -296,17 +282,17 @@ class CleanerBase(ABC):
             self.ext_context = False
 
         self.job_checking_thread = CheckJobs(
-            job_bind_str=self.job_bind_str,
-            cleaner_trigger_con_str=self.cleaner_trigger_con_str,
-            control_con_str=self.control_con_str,
+            endpoints=endpoints,
             lock=self.lock,
             log_queue=log_queue
         )
 
-#        self.conf_checking_thread = CheckConfirmations(self.conf_con_str,
-#                                                       self.lock,
-#                                                       log_queue,
-#                                                       context)
+#        self.conf_checking_thread = CheckConfirmations(
+#            self.endpoints.confirm_con,
+#            self.lock,
+#            log_queue,
+#            context
+#        )
 
         self.create_sockets()
 
@@ -320,37 +306,38 @@ class CleanerBase(ABC):
         try:
             self.confirmation_socket = self.context.socket(zmq.SUB)
 
-            self.confirmation_socket.connect(self.conf_con_str)
+            self.confirmation_socket.connect(self.endpoints.confirm_con)
             topic = utils.generate_sender_id(self.config["main_pid"])
             # topic = b"test"
             self.confirmation_socket.setsockopt(zmq.SUBSCRIBE, topic)
             self.log.info("Start confirmation_socket (connect): '{}'"
-                          .format(self.conf_con_str))
+                          .format(self.endpoints.confirm_con))
         except:
             self.log.error("Failed to start confirmation_socket (connect: '{}'"
-                           .format(self.conf_con_str), exc_info=True)
+                           .format(self.endpoints.confirm_con), exc_info=True)
             raise
 
         # socket to trigger cleaner to remove old confirmations
         try:
             self.cleaner_trigger_socket = self.context.socket(zmq.PULL)
-            self.cleaner_trigger_socket.bind(self.cleaner_trigger_con_str)
+            self.cleaner_trigger_socket.bind(self.endpoints.cleaner_trigger_bind)
             self.log.info("Start trigger_cleaner_socket (bind): '{}'"
-                          .format(self.cleaner_trigger_con_str))
+                          .format(self.endpoints.cleaner_trigger_bind))
         except:
             msg = ("Failed to start trigger_cleaner_socket (bind): '{}'"
-                   .format(self.cleaner_trigger_con_str))
+                   .format(self.endpoints.cleaner_trigger_bind))
             self.log.error(msg, exc_info=True)
 
         # socket for control signals
         try:
             self.control_socket = self.context.socket(zmq.SUB)
-            self.control_socket.connect(self.control_con_str)
+            self.control_socket.connect(self.endpoints.control_sub_con)
             self.log.info("Start control_socket (connect): '{}'"
-                          .format(self.control_con_str))
+                          .format(self.endpoints.control_sub_con))
         except:
             self.log.error("Failed to start control_socket (connect): '{}'"
-                           .format(self.control_con_str), exc_info=True)
+                           .format(self.endpoints.control_sub_con),
+                           exc_info=True)
             raise
 
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")

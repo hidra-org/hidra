@@ -482,21 +482,23 @@ class DataManager(Base):
         }
 
         self.ipc_addresses = utils.set_ipc_addresses(ipc_dir=self.ipc_dir,
-                                                     main_pid=self.current_pid)
+                                                     main_pid=self.current_pid,
+                                                     use_cleaner=self.use_cleaner)
 
         self.endpoints = utils.set_endpoints(ext_ip=self.ext_ip,
                                              con_ip=self.con_ip,
                                              ports=ports,
-                                             ipc_addresses=self.ipc_addresses)
+                                             ipc_addresses=self.ipc_addresses,
+                                             use_cleaner=self.use_cleaner)
 
-        if self.use_cleaner:
-            self.params["cleaner_conf_con_str"] = (
-                "tcp://{}:{}".format(self.params["data_stream_targets"][0][0],
-                                     self.params["confirmation_port"])
-            )
-        else:
-            self.params["cleaner_conf_con_str"] = None
-
+#        if self.use_cleaner:
+#            self.params["cleaner_conf_con_str"] = (
+#                "tcp://{}:{}".format(self.params["data_stream_targets"][0][0],
+#                                     self.params["confirmation_port"])
+#            )
+#        else:
+#            self.params["cleaner_conf_con_str"] = None
+#
         if utils.is_windows():
             self.log.info("Using tcp for internal communication.")
 #            self.control_pub_con_str = (
@@ -511,32 +513,21 @@ class DataManager(Base):
 #            self.router_con_str = (
 #                "tcp://{}:{}".format(self.localhost,
 #                                     self.params["router_port"]))
-            if self.use_cleaner:
-                self.params["cleaner_job_con_str"] = (
-                    "tcp://{}:{}".format(self.localhost,
-                                         self.params["cleaner_port"]))
-                self.params["cleaner_tigger_con_str"] = (
-                    "tcp://{}:{}".format(self.localhost,
-                                         self.params["cleaner_trigger_port"]))
-            else:
-                self.params["cleaner_job_con_str"] = None
-                self.params["cleaner_trigger_con_str"] = None
+#            if self.use_cleaner:
+#                self.params["cleaner_job_con_str"] = self.endpoints.cleaner_job_(
+#                    "tcp://{}:{}".format(self.localhost,
+#                                         self.params["cleaner_port"]))
+#                self.params["cleaner_tigger_con_str"] = (
+#                    "tcp://{}:{}".format(self.localhost,
+#                                         self.params["cleaner_trigger_port"]))
 
         else:
             self.log.info("Using ipc for internal communication.")
 
-            if self.use_cleaner:
-                self.params["cleaner_job_con_str"] = (
-                    "ipc://{}/{}_{}".format(self.ipc_dir,
-                                            self.current_pid,
-                                            "cleaner"))
-                self.params["cleaner_trigger_con_str"] = (
-                    "ipc://{}/{}_{}".format(self.ipc_dir,
-                                            self.current_pid,
-                                            "cleaner_trigger"))
-            else:
-                self.params["cleaner_job_con_str"] = None
-                self.params["cleaner_trigger_con_str"] = None
+        self.params["cleaner_job_con_str"] = self.endpoints.cleaner_job_con
+        self.params["cleaner_tigger_con_str"] = self.endpoints.cleaner_trigger_con
+        self.params["cleaner_conf_con_str"] = self.endpoints.confirm_con
+        self.params["endpoints"] = self.endpoints
 
         self.whitelist = self.params["whitelist"]
         self.ldapuri = self.params["ldapuri"]
@@ -952,10 +943,7 @@ class DataManager(Base):
                 target=self.cleaner_m.Cleaner,
                 args=(self.params,
                       self.log_queue,
-                      self.params["cleaner_job_con_str"],
-                      self.params["cleaner_trigger_con_str"],
-                      self.params["cleaner_conf_con_str"],
-                      self.endpoints.control_sub_con))
+                      self.endpoints))
             self.cleaner_pr.start()
 
         self.log.info("Configured Type of data fetcher: {}"

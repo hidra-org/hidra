@@ -69,10 +69,7 @@ class TestDataFetcher(DataFetcherTestBase):
         kwargs = dict(
             config=self.cleaner_config,
             log_queue=self.log_queue,
-            job_bind_str=endpoints.cleaner_job_bind,
-            cleaner_trigger_con_str=endpoints.cleaner_trigger_con,
-            conf_con_str=endpoints.confirm_con,
-            control_con_str=endpoints.control_sub_con
+            endpoints=endpoints
         )
         cleaner_pr = Process(target=Cleaner, kwargs=kwargs)
         cleaner_pr.start()
