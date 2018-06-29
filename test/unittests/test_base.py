@@ -187,11 +187,20 @@ class TestBase(unittest.TestCase):
     def stop_socket(self, name, socket=None):
         """Wrapper for utils.stop_socket.
         """
-
+        # use the class attribute
         if socket is None:
             socket = getattr(self, name)
+            use_class_attribute = True
+        else:
+            use_class_attribute = False
 
-        utils.stop_socket(name=name, socket=socket, log=self.log)
+        return_socket = utils.stop_socket(name=name, socket=socket, log=self.log)
+
+        # class attributes are set directly
+        if use_class_attribute:
+            setattr(self, name, return_socket)
+        else:
+            return return_socket
 
     def tearDown(self):
         for key, endpoint in vars(self.ipc_addresses).iteritems():

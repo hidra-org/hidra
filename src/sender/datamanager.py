@@ -18,6 +18,7 @@ import setproctitle
 import tempfile
 import socket
 
+from base_class import Base
 from signalhandler import SignalHandler
 from taskprovider import TaskProvider
 from datadispatcher import DataDispatcher
@@ -320,7 +321,7 @@ def argument_parsing():
     return params
 
 
-class DataManager(object):
+class DataManager(Base):
 
     def __init__(self, log_queue=None, config=None):
         self.device = None
@@ -369,18 +370,7 @@ class DataManager(object):
 
         self.setup(config, log_queue)
 
-        try:
-            if self.check_target_host(enable_logging=True):
-                self.create_sockets()
-
-                self.run()
-        except KeyboardInterrupt:
-            pass
-        except:
-            self.log.error("Stopping due to unknown error condition",
-                           exc_info=True)
-        finally:
-            self.stop()
+#        self.run()
 
     def setup(self, config, log_queue):
         self.localhost = "127.0.0.1"
@@ -615,20 +605,6 @@ class DataManager(object):
         # there should be only one context in one process
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
-
-    def start_socket(self, name, sock_type, sock_con, endpoint, message=None):
-        """Wrapper of utils.start_socket
-        """
-
-        return utils.start_socket(
-            name=name,
-            sock_type=sock_type,
-            sock_con=sock_con,
-            endpoint=endpoint,
-            context=self.context,
-            log=self.log,
-            message=message,
-        )
 
     def create_sockets(self):
         # initiate forwarder for control signals (multiple pub, multiple sub)
@@ -922,6 +898,20 @@ class DataManager(object):
         return True
 
     def run(self):
+        try:
+            if self.check_target_host(enable_logging=True):
+                self.create_sockets()
+
+                self.exec_run()
+        except KeyboardInterrupt:
+            pass
+        except:
+            self.log.error("Stopping due to unknown error condition",
+                           exc_info=True)
+        finally:
+            self.stop()
+
+    def exec_run(self):
 
         # SignalHandler
         self.signalhandler_thr = threading.Thread(target=SignalHandler,
@@ -1060,15 +1050,6 @@ class DataManager(object):
                        for datadispatcher in self.datadispatcher_pr):
                 self.log.info("One DataDispatcher terminated.")
 
-    def stop_socket(self, name, socket=None):
-        """Wrapper for utils.stop_socket.
-        """
-
-        if socket is None:
-            socket = getattr(self, name)
-
-        utils.stop_socket(name=name, socket=socket, log=self.log)
-
     def stop(self):
         self.continue_run = False
 
@@ -1100,7 +1081,7 @@ class DataManager(object):
 #            if datadispatcher.is_alive():
 #                self.log.info("DataDispatcher hangs. Terminated.")
 
-        if self.context:
+        if self.context is not None:
             self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None
@@ -1159,6 +1140,7 @@ if __name__ == '__main__':
     sender = None
     try:
         sender = DataManager()
+        sender.run()
     finally:
         if sender is not None:
             sender.stop()

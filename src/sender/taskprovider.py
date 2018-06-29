@@ -8,13 +8,14 @@ import json
 import signal
 import errno
 
+from base_class import Base
 import __init__ as init  # noqa F401
 import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class TaskProvider(object):
+class TaskProvider(Base):
 
     def __init__(self,
                  config,
@@ -83,19 +84,6 @@ class TaskProvider(object):
         except:
             self.log.error("Cannot create sockets", exc_info=True)
             self.stop()
-
-    def start_socket(self, name, sock_type, sock_con, endpoint):
-        """Wrapper of utils.start_socket
-        """
-
-        return utils.start_socket(
-            name=name,
-            sock_type=sock_type,
-            sock_con=sock_con,
-            endpoint=endpoint,
-            context=self.context,
-            log=self.log
-        )
 
     def create_sockets(self):
 
@@ -259,15 +247,6 @@ class TaskProvider(object):
                 else:
                     self.log.error("Unhandled control signal received: {}"
                                    .format(message))
-
-    def stop_socket(self, name, socket=None):
-        """Wrapper for utils.stop_socket.
-        """
-
-        if socket is None:
-            socket = getattr(self, name)
-
-        utils.stop_socket(name=name, socket=socket, log=self.log)
 
     def stop(self):
         self.continue_run = False

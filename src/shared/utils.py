@@ -768,6 +768,8 @@ def stop_socket(name, socket, log):
         socket.close(0)
         socket = None
 
+    return socket
+
 
 # ------------------------------ #
 #            Logging             #
@@ -843,7 +845,7 @@ def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
         datefmt = "%Y-%m-%d %H:%M:%S"
     if fmt is None:
         if loglevel == "debug":
-            fmt = "[%(asctime)s] > [%(filename)s:%(lineno)d] %(message)s"
+            fmt = "[%(asctime)s] > [%(name)s] > [%(filename)s:%(lineno)d] %(message)s"
         else:
             fmt = "[%(asctime)s] > %(message)s"
 

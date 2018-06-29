@@ -8,13 +8,14 @@ import time
 import json
 import signal
 
+from base_class import Base
 from __init__ import BASE_PATH  # noqa F401
 import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class DataDispatcher(object):
+class DataDispatcher(Base):
 
     def __init__(self,
                  dispatcher_id,
@@ -103,19 +104,6 @@ class DataDispatcher(object):
         except:
             self.log.error("Cannot create sockets", ext_info=True)
             self.stop()
-
-    def start_socket(self, name, sock_type, sock_con, endpoint):
-        """Wrapper of utils.start_socket
-        """
-
-        return utils.start_socket(
-            name=name,
-            sock_type=sock_type,
-            sock_con=sock_con,
-            endpoint=endpoint,
-            context=self.context,
-            log=self.log
-        )
 
     def create_sockets(self):
 
@@ -416,15 +404,6 @@ class DataDispatcher(object):
             self.log.error("Request for closing sockets of wrong format",
                            exc_info=True)
 
-    def stop_socket(self, name, socket=None):
-        """Wrapper for utils.stop_socket.
-        """
-
-        if socket is None:
-            socket = getattr(self, name)
-
-        utils.stop_socket(name=name, socket=socket, log=self.log)
-
     def stop(self):
         self.continue_run = False
 
@@ -434,8 +413,10 @@ class DataDispatcher(object):
                            .format(self.dispatcher_id))
 
         for connection in self.open_connections:
-            self.stop_socket(name=connection,
-                             socket=self.open_connections[connection])
+            self.open_connections[connection] = self.stop_socket(
+                name=connection,
+                socket=self.open_connections[connection]
+            )
 
         self.stop_socket(name="control_socket")
         self.stop_socket(name="router_socket")

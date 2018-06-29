@@ -152,12 +152,19 @@ class TestDataManager(TestBase):
             endpoint=endpoints.com_con
         )
 
+        class Sender(DataManager):
+            def __init__(self, **kwargs):
+                DataManager.__init__(self, **kwargs)
+
+                self.run()
+
         try:
             kwargs = dict(
                 log_queue=self.log_queue,
                 config=self.datamanager_config
             )
-            sender = Process(target=DataManager, kwargs=kwargs)
+            sender = Process(target=Sender, kwargs=kwargs)
+            #sender = Process(target=DataManager, kwargs=kwargs)
             sender.start()
         except:
             self.log.error("Exception when initiating DataManager",
@@ -220,7 +227,7 @@ class TestDataManager(TestBase):
                                  socket=sckt)
 
             sender.terminate()
-#            sender.join()
+            sender.join()
 
             for i in range(self.start, self.stop):
                 target_file = os.path.join(target_file_base,

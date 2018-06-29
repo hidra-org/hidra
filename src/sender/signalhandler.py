@@ -9,6 +9,8 @@ import copy
 import json
 import re
 
+from base_class import Base
+
 from __init__ import BASE_PATH  # noqa F401
 from _version import __version__
 import utils
@@ -17,7 +19,7 @@ from hidra import convert_suffix_list_to_regex
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class SignalHandler(object):
+class SignalHandler(Base):
 
     def __init__(self,
                  config,
@@ -88,19 +90,6 @@ class SignalHandler(object):
         except:
             self.log.error("Cannot create sockets", exc_info=True)
             self.stop()
-
-    def start_socket(self, name, sock_type, sock_con, endpoint):
-        """Wrapper of utils.start_socket
-        """
-
-        return utils.start_socket(
-            name=name,
-            sock_type=sock_type,
-            sock_con=sock_con,
-            endpoint=endpoint,
-            context=self.context,
-            log=self.log
-        )
 
     def create_sockets(self):
 
@@ -722,15 +711,6 @@ class SignalHandler(object):
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
             self.send_response([b"NO_VALID_SIGNAL"])
-
-    def stop_socket(self, name, socket=None):
-        """Wrapper for utils.stop_socket.
-        """
-
-        if socket is None:
-            socket = getattr(self, name)
-
-        utils.stop_socket(name=name, socket=socket, log=self.log)
 
     def stop(self):
         self.log.debug("Closing sockets for SignalHandler")
