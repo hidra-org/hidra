@@ -9,6 +9,7 @@ import sys
 import zmq
 
 import __init__ as init  # noqa F401
+from base_class import Base
 import utils
 from utils import WrongConfiguration
 
@@ -26,7 +27,7 @@ class DataHandlingError(Exception):
     pass
 
 
-class DataFetcherBase(ABC):
+class DataFetcherBase(Base, ABC):
 
     def __init__(self, config, log_queue, fetcher_id, logger_name, context):
         """Initial setup
@@ -113,19 +114,12 @@ class DataFetcherBase(ABC):
 
         if self.config["remove_data"] == "with_confirmation":
             # create socket
-            try:
-                self.cleaner_job_socket = self.context.socket(zmq.PUSH)
-                self.cleaner_job_socket.connect(
-                    self.config["cleaner_job_con_str"]
-                )
-                self.log.info("Start cleaner job_socket (connect): {}"
-                              .format(self.config["cleaner_job_con_str"]))
-            except:
-                self.log.error("Failed to start cleaner job socket "
-                               "(connect): '{}'"
-                               .format(self.config["cleaner_job_con_str"]),
-                               exc_info=True)
-                raise
+            self.cleaner_job_socket = self.start_socket(
+                name="cleaner_job_socket",
+                sock_type=zmq.PUSH,
+                sock_con="connect",
+                endpoint=self.config["cleaner_job_con_str"]
+            )
 
             self.confirmation_topic = (
                 utils.generate_sender_id(self.config["main_pid"])
@@ -166,17 +160,16 @@ class DataFetcherBase(ABC):
             if prio == 0:
                 # socket not known
                 if target not in open_connections:
+                    connection_str = "tcp://{}".format(target)
                     # open socket
                     try:
-                        socket = self.context.socket(zmq.PUSH)
-                        connection_str = "tcp://{}".format(target)
-
-                        socket.connect(connection_str)
-                        self.log.info("Start socket (connect): '{}'"
-                                      .format(connection_str))
-
-                        # register socket
-                        open_connections[target] = socket
+                        # start and register socket
+                        open_connections[target] = self.start_socket(
+                            name="socket",
+                            sock_type=zmq.PUSH,
+                            sock_con="connect",
+                            endpoint=connection_str
+                        )
                     except:
                         self.log.debug("Raising DataHandling error",
                                        exc_info=True)
@@ -228,17 +221,14 @@ class DataFetcherBase(ABC):
             else:
                 # socket not known
                 if target not in open_connections:
-                    # open socket
-                    socket = self.context.socket(zmq.PUSH)
+                    # start and register socket
                     connection_str = "tcp://{}".format(target)
-
-                    socket.connect(connection_str)
-                    self.log.info("Start socket (connect): '{}'"
-                                  .format(connection_str))
-
-                    # register socket
-                    open_connections[target] = socket
-
+                    open_connections[target] = self.start_socket(
+                        name="socket",
+                        sock_type=zmq.PUSH,
+                        sock_con="connect",
+                        endpoint=connection_str
+                    )
                 # send data
                 if send_type == "data":
                     open_connections[target].send_multipart(payload,
@@ -353,9 +343,7 @@ class DataFetcherBase(ABC):
         pass
 
     def close_socket(self):
-        if self.cleaner_job_socket is not None:
-            self.cleaner_job_socket.close(0)
-            self.cleaner_job_socket = None
+        self.stop_socket("cleaner_job_socket")
 
     @abc.abstractmethod
     def stop(self):

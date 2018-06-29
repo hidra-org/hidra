@@ -81,10 +81,12 @@ class TestDataFetcher(DataFetcherTestBase):
 
         if self.data_input:
             # create zmq socket to send events
-            self.data_fw_socket = self.context.socket(zmq.PUSH)
-            self.data_fw_socket.bind(fw_con_str)
-            self.log.info("Start data_fw_socket (bind): '{}'"
-                          .format(fw_con_str))
+            self.data_fw_socket = self.start_socket(
+                name="data_fw_socket",
+                sock_type=zmq.PUSH,
+                sock_con="bind",
+                endpoint=fw_con_str
+            )
 
         # Test file fetcher
         prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
@@ -140,15 +142,13 @@ class TestDataFetcher(DataFetcherTestBase):
             pass
 
     def tearDown(self):
-        if self.data_fw_socket is not None and self.data_input:
-            self.log.debug("Closing data_fw_socket")
-            self.data_fw_socket.close(0)
-            self.data_fw_socket = None
+        if self.data_input:
+            self.stop_socket(name="data_fw_socket")
 
         if self.receiving_sockets is not None:
-            self.log.debug("Closing receiving_sockets")
-            for sckt in self.receiving_sockets:
-                sckt.close(0)
+            for i, sckt in enumerate(self.receiving_sockets):
+                self.stop_socket(name="receiving_socket{}".format(i),
+                                 socket=sckt)
             self.receiving_sockets = None
 
         if self.datafetcher is not None:

@@ -75,15 +75,12 @@ class TestDataFetcher(DataFetcherTestBase):
         for port in self.receiving_ports:
             self.receiving_sockets.append(self.set_up_recv_socket(port))
 
-        try:
-            self.data_fw_socket = self.context.socket(zmq.PUSH)
-            self.data_fw_socket.connect(endpoints.datafetch_con)
-            self.log.info("Start data_fw_socket (connect): '{}'"
-                          .format(endpoints.datafetch_con))
-        except:
-            self.log.error("Failed to start data_fw_socket (connect): '{}'"
-                           .format(endpoints.datafetch_con))
-            raise
+        self.data_fw_socket = self.start_socket(
+            name="data_fw_socket",
+            sock_type=zmq.PUSH,
+            sock_con="connect",
+            endpoint=endpoints.datafetch_con
+        )
 
         # Test data fetcher
         prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
@@ -135,15 +132,12 @@ class TestDataFetcher(DataFetcherTestBase):
         pass
 
     def tearDown(self):
-        if self.data_fw_socket is not None:
-            self.log.debug("Closing data_fw_socket")
-            self.data_fw_socket.close(0)
-            self.data_fw_socket = None
+        self.stop_socket(name="data_fw_socket")
 
         if self.receiving_sockets is not None:
-            self.log.debug("Closing receiving_sockets")
-            for sckt in self.receiving_sockets:
-                sckt.close(0)
+            for i, sckt in enumerate(self.receiving_sockets):
+                self.stop_socket(name="receiving_socket{}".format(i),
+                                 socket=sckt)
             self.receiving_sockets = None
 
         if self.datafetcher is not None:

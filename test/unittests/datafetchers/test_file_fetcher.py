@@ -134,18 +134,22 @@ class TestDataFetcher(DataFetcherTestBase):
         for port in self.receiving_ports:
             self.receiving_sockets.append(self.set_up_recv_socket(port))
 
-        confirmation_socket = self.context.socket(zmq.PUB)
-        confirmation_socket.bind(endpoints.confirm_bind)
-        self.log.info("Start confirmation_socket (bind): {}"
-                      .format(endpoints.confirm_bind))
+        confirmation_socket = self.start_socket(
+            name="confirmation_socket",
+            sock_type=zmq.PUB,
+            sock_con="bind",
+            endpoint=endpoints.confirm_bind
+        )
 
         # create control socket
         # control messages are not send over an forwarder, thus the
         # control_sub endpoint is used directly
-        self.control_pub_socket = self.context.socket(zmq.PUB)
-        self.control_pub_socket.bind(endpoints.control_sub_con)
-        self.log.info("Start control_socket (bind): {}"
-                      .format(endpoints.control_sub_con))
+        self.control_pub_socket = self.start_socket(
+            name="control_pub_socket",
+            sock_type=zmq.PUB,
+            sock_con="bind",
+            endpoint=endpoints.control_sub_bind
+        )
 
         # Test file fetcher
         source_dir = os.path.join(BASE_DIR, "data", "source")
@@ -199,15 +203,22 @@ class TestDataFetcher(DataFetcherTestBase):
         except KeyboardInterrupt:
             pass
 
+
+        self.stop_socket(name="confirmation_socket",
+                         socket=confirmation_socket)
+
     def tearDown(self):
         if self.control_pub_socket is not None:
             self.log.debug("Sending control signal: EXIT")
             self.control_pub_socket.send_multipart([b"control", b"EXIT"])
 
+            # give signal time to arrive
+            time.sleep(1)
+
         if self.receiving_sockets is not None:
-            self.log.debug("Closing receiving_sockets")
-            for sckt in self.receiving_sockets:
-                sckt.close(0)
+            for i, sckt in enumerate(self.receiving_sockets):
+                self.stop_socket(name="receiving_socket{}".format(i),
+                                 socket=sckt)
             self.receiving_sockets = None
 
         if self.datafetcher is not None:
@@ -215,9 +226,6 @@ class TestDataFetcher(DataFetcherTestBase):
             self.datafetcher.stop()
             self.datafetcher = None
 
-        if self.control_pub_socket is not None:
-            self.log.debug("Closing control_pub_socket")
-            self.control_pub_socket.close(0)
-            self.control_pub_socket = None
+        self.stop_socket(name="control_pub_socket")
 
         super(TestDataFetcher, self).tearDown()

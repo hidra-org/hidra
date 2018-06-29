@@ -140,16 +140,12 @@ class DataFetcher(DataFetcherBase):
                                        tcp_addresses=self.tcp_addresses)
 
         # Create zmq socket
-        try:
-            self.socket = self.context.socket(zmq.PULL)
-            self.socket.bind(self.endpoints.datafetch_bind)
-            self.log.info("Start socket (bind): '{}'"
-                          .format(self.endpoints.datafetch_bind))
-        except:
-            self.log.error("Failed to start socket (bind): '{}'"
-                           .format(self.endpoints.datafetch_bind),
-                           exc_info=True)
-            raise
+        self.socket = self.start_socket(
+            name="socket",
+            sock_type=zmq.PULL,
+            sock_con="bind",
+            endpoint=self.endpoints.datafetch_bind
+        )
 
     def get_metadata(self, targets, metadata):
         """Implementation of the abstract method get_metadata.
@@ -250,10 +246,8 @@ class DataFetcher(DataFetcherBase):
         """Implementation of the abstract method stop.
         """
 
-        # cloes base class zmq sockets
+        # close base class zmq sockets
         self.close_socket()
 
         # Close zmq socket
-        if self.socket is not None:
-            self.socket.close(0)
-            self.socket = None
+        self.stop_socket(name="socket")

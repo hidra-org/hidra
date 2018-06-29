@@ -75,24 +75,30 @@ class TestDataFetcher(DataFetcherTestBase):
         cleaner_pr.start()
 
         # Set up datafetcher simulator
-        job_socket = self.context.socket(zmq.PUSH)
-        job_socket.connect(endpoints.cleaner_job_con)
-        self.log.info("Start job_socket (connect): {}"
-                      .format(endpoints.cleaner_job_con))
+        job_socket = self.start_socket(
+            name="job_socket",
+            sock_type=zmq.PUSH,
+            sock_con="connect",
+            endpoint=endpoints.cleaner_job_con
+        )
 
         # Set up receiver simulator
-        confirmation_socket = self.context.socket(zmq.PUB)
-        confirmation_socket.bind(endpoints.confirm_bind)
-        self.log.info("Start confirmation_socket (bind): {}"
-                      .format(endpoints.confirm_bind))
+        confirmation_socket = self.start_socket(
+            name="confirmation_socket",
+            sock_type=zmq.PUB,
+            sock_con="bind",
+            endpoint=endpoints.confirm_bind
+        )
 
         # create control socket
         # control messages are not send over an forwarder, thus the
         # control_sub endpoint is used directly
-        control_pub_socket = self.context.socket(zmq.PUB)
-        control_pub_socket.bind(endpoints.control_sub_con)
-        self.log.info("Start control_socket (bind): {}"
-                      .format(endpoints.control_sub_con))
+        control_pub_socket = self.start_socket(
+            name="control_pub_socket",
+            sock_type=zmq.PUB,
+            sock_con="bind",
+            endpoint=endpoints.control_sub_bind
+        )
 
         # to give init time to finish
         time.sleep(0.5)
@@ -127,11 +133,11 @@ class TestDataFetcher(DataFetcherTestBase):
             # give control signal time to be received
             time.sleep(1)
 
-            self.log.debug("closing sockets")
-            job_socket.close(0)
-            confirmation_socket.close(0)
-
-            control_pub_socket.close(0)
+            job_socket = self.stop_socket(name="job_socket", socket=job_socket)
+            confirmation_socket = self.stop_socket(name="confirmation_socket",
+                                                   socket=confirmation_socket)
+            control_pub_socket = self.stop_socket(name="control_pub_socket",
+                                                  socket=control_pub_socket)
 
     def tearDown(self):
         super(TestDataFetcher, self).tearDown()

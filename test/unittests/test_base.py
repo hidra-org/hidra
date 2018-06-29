@@ -160,16 +160,13 @@ class TestBase(unittest.TestCase):
         """
 
         con_str = "tcp://{}:{}".format(self.ext_ip, port)
-        try:
-            sckt = self.context.socket(zmq.PULL)
-            sckt.bind(con_str)
-            self.log.info("Start receiving socket (bind): {}".format(con_str))
-        except:
-            self.log.error("Failed to start receiving socket (bind): {}"
-                           .format(con_str))
-            raise
 
-        return sckt
+        return self.start_socket(
+            name="receiving_socket",
+            sock_type=zmq.PULL,
+            sock_con="bind",
+            endpoint=con_str
+        )
 
     def start_socket(self, name, sock_type, sock_con, endpoint):
         """Wrapper of utils.start_socket

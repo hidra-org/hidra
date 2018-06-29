@@ -109,9 +109,9 @@ class TestDataFetcher(DataFetcherTestBase):
 
     def tearDown(self):
         if self.receiving_sockets is not None:
-            self.log.debug("Closing receiving_sockets")
-            for sckt in self.receiving_sockets:
-                sckt.close(0)
+            for i, sckt in enumerate(self.receiving_sockets):
+                self.stop_socket(name="receiving_socket{}".format(i),
+                                 socket=sckt)
             self.receiving_sockets = None
 
         super(TestDataFetcher, self).tearDown()
