@@ -15,7 +15,7 @@ import zmq
 
 # from ._version import __version__
 from ._constants import connection_list
-from ._shared_utils import LoggingFunction
+from ._shared_utils import LoggingFunction, Base, start_socket, stop_socket
 
 
 class NotSupported(Exception):
@@ -90,7 +90,7 @@ def check_netgroup(hostname, beamline, ldapuri, netgroup_template, log=None):
         sys.exit(1)
 
 
-class Control():
+class Control(Base):
     def __init__(self,
                  beamline,
                  detector,
@@ -98,6 +98,20 @@ class Control():
                  netgroup_template,
                  use_log=False):
 
+        self.beamline = beamline
+        self.detector = detector
+        self.ldapuri = ldapuri
+        self.netgroup_template = netgroup_template
+
+        self.log = None
+        self.current_pid = None
+        self.host = None
+        self.context = None
+        self.socket = None
+
+        self._setup()
+
+    def _setup(self):
         # print messages of certain level to screen
         if use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(use_log)
@@ -112,21 +126,15 @@ class Control():
             self.log = LoggingFunction("debug")
 
         self.current_pid = os.getpid()
-
-        self.beamline = beamline
-        self.detector = detector
-        self.socket = None
-
-        self.ldapuri = ldapuri
-        self.netgroup_template = netgroup_template
-
         self.host = socket.getfqdn()
 
+        # check host running control script
         check_netgroup(self.host,
                        self.beamline,
                        self.ldapuri,
                        self.netgroup_template,
                        self.log)
+        # check detector
         check_netgroup(self.detector,
                        self.beamline,
                        self.ldapuri,
@@ -134,39 +142,38 @@ class Control():
                        self.log)
 
         try:
-            self.con_id = "tcp://{}:{}".format(
+            endpoint = "tcp://{}:{}".format(
                 connection_list[self.beamline]["host"],
-                connection_list[self.beamline]["port"])
-            self.log.info("Starting connection to {}".format(self.con_id))
-        except:
+                connection_list[self.beamline]["port"]
+            )
+            self.log.info("Starting connection to {}".format(endpoint))
+        except KeyError:
             self.log.error("Beamline {} not supported".format(self.beamline))
             sys.exit(1)
-
-        self.__create_sockets()
-
-        self.__check_responding()
-
-    def __create_sockets(self):
 
         # Create ZeroMQ context
         self.log.info("Registering ZMQ context")
         self.context = zmq.Context()
 
         # socket to get requests
-        try:
-            self.socket = self.context.socket(zmq.REQ)
-            self.socket.connect(self.con_id)
-            self.log.info("Start socket (connect): '{}'"
-                          .format(self.con_id))
-        except:
-            self.log.error("Failed to start socket (connect): '{}'"
-                           .format(self.con_id), exc_info=True)
-            raise
+        self._start_socket(
+            name="socket",
+            sock_type=zmq.REQ,
+            sock_con="connect",
+            endpoint=endpoint
+        )
 
-    def __check_responding(self):
+        self._check_responding()
+
+    def _check_responding(self):
+        """ Check if the control server is responding.
+        """
+
         test_signal = b"IS_ALIVE"
-        tracker = self.socket.send_multipart([test_signal], zmq.NOBLOCK,
-                                             copy=False, track=True)
+        tracker = self.socket.send_multipart([test_signal],
+                                             zmq.NOBLOCK,
+                                             copy=False,
+                                             track=True)
 
         # test if someone picks up the test message in the next 2 sec
         if not tracker.done:
@@ -191,6 +198,16 @@ class Control():
             sys.exit(1)
 
     def get(self, attribute, timeout=None):
+        """Get the value of an attribute.
+
+        Args:
+            attribute: The attribute of which the value should be requested.
+            timeout (optional): How long to wait for an answer.
+
+        Return:
+            Value of the attribute.
+        """
+
         msg = [b"get", self.host, self.detector, attribute]
 
         self.socket.send_multipart(msg)
@@ -202,6 +219,16 @@ class Control():
         return json.loads(reply)
 
     def set(self, attribute, *value):
+        """Set the value of an attribute.
+
+        Args:
+            attribute: The attribute to set the value of.
+            value: The value the attribute should be set to.
+
+        Return:
+            Received "DONE" if setting was successful and "ERROR" if not.
+        """
+
         value = list(value)
 
         # flatten list if entry was a list (result: list of lists)
@@ -231,6 +258,20 @@ class Control():
         return reply
 
     def do(self, command, timeout=None):
+        """Request the server to execute a command.
+
+        Args:
+            command: Command to execute (e.g. start, stop, status,...).
+            timeout (optional): How long to wait for an answer.
+
+        Return:
+            Received "DONE" if execution was successful and "ERROR" if not.
+            Some command can have additional return values:
+            - start: "ALREADY_RUNNING"
+            - stop: "ARLEADY_STOPPED"
+            - status: "RUNNING", "NOT RUNNING"
+        """
+
         msg = [b"do", self.host, self.detector, command]
 
         self.socket.send_multipart(msg)
@@ -242,6 +283,13 @@ class Control():
         return reply
 
     def stop(self, unregister=True):
+        """Unregisters from server and cleans up sockets.
+
+        Args:
+            unregister (optional): If this client should be unregistered
+                                   from the server.
+        """
+
         if self.socket is not None:
             if unregister:
                 self.log.info("Sending close signal")
@@ -254,9 +302,7 @@ class Control():
                 self.log.debug("recv: {} ".format(reply))
 
             try:
-                self.log.info("closing socket...")
-                self.socket.close(0)
-                self.socket = None
+                self._stop_socket(name="socket")
             except:
                 self.log.error("closing sockets...failed.", exc_info=True)
 
@@ -268,23 +314,35 @@ class Control():
 
 
 def reset_receiver_status(host, port):
+    """Reset the status flag of the receiver.
+
+    After an error occured during data receiving the receiver flags it. Reset
+    is only done by external trigger.
+
+    Args:
+        host: Host the receiver is running on.
+        port: Port the receiver is listening to.
+    """
+
     context = zmq.Context()
 
-    try:
-        reset_socket = context.socket(zmq.REQ)
-        endpoint = "tcp://{}:{}".format(host, port)
+    # use no logging but print
+    log = LoggingFunction(None)
 
-        reset_socket.connect(endpoint)
-        print("Start reset_socket (connect): '{}'".format(endpoint))
-    except:
-        print("Failed to start reset_socket (connect): '{}'".format(endpoint),
-              exc_info=True)
+    start_socket(
+        name="reset_socket",
+        sock_type=zmq.REQ,
+        sock_con="connect",
+        endpoint="tcp://{}:{}".format(host, port),
+        context=context,
+        log=log
+    )
 
     reset_socket.send_multipart([b"RESET_STATUS"])
-    print("Reset request sent")
+    log.debug("Reset request sent")
 
     responce = reset_socket.recv_multipart()
-    print("Response: {}".format(responce))
+    log.debug("Response: {}".format(responce))
 
-    reset_socket.close()
+    stop_socket(name="reset_socket", socket=reset_socket, log=log)
     context.destroy()

@@ -13,7 +13,7 @@ import tempfile
 import socket
 
 # from ._version import __version__
-from ._shared_utils import LoggingFunction
+from ._shared_utils import LoggingFunction, Base
 
 
 def is_windows():
@@ -23,9 +23,45 @@ def is_windows():
         return False
 
 
-class Ingest():
+class Ingest(Base):
     # return error code
     def __init__(self, use_log=False, context=None):
+
+        self.log = None
+        self.context = None
+        self.ext_context = None
+
+        self.current_pid = None
+
+        self.localhost = None
+        self.localhost_is_ipv6 = None
+
+        self.ext_ip = None
+        self.ipc_dir = None
+
+        self.signal_host = None
+        self.signal_port = None
+        self.event_det_port = None
+        self.data_fetch_port = None
+
+        self.signal_endpoint = None
+        self.eventdet_endpoint = None
+        self.datafetch_endpoint = None
+
+        self.file_op_socket = None
+        self.eventdet_socket = None
+        self.datafetch_socket = None
+
+        self.poller = None
+
+        self.filename = False
+        self.filepart = None
+
+        self.response_timeout = None
+
+        self._setup(use_log, context)
+
+    def _setup(self, use_log, context):
 
         # print messages of certain level to screen
         if use_log in ["debug", "info", "warning", "error", "critical"]:
@@ -77,93 +113,72 @@ class Ingest():
         # as ...
         self.data_fetch_port = "50010"
 
-        self.signal_con_id = "tcp://{}:{}".format(self.signal_host,
+        self.signal_endpoint = "tcp://{}:{}".format(self.signal_host,
                                                   self.signal_port)
 
         if is_windows():
             self.log.info("Using tcp for internal communication.")
-            self.eventdet_con_id = "tcp://{}:{}".format(self.localhost,
+            self.eventdet_endpoint = "tcp://{}:{}".format(self.localhost,
                                                         self.event_det_port)
-            self.datafetch_con_id = ("tcp://{}:{}"
-                                     .format(self.localhost,
-                                             self.data_fetch_port))
+            self.datafetch_endpoint = ("tcp://{}:{}"
+                                       .format(self.localhost,
+                                               self.data_fetch_port))
         else:
             self.log.info("Using ipc for internal communication.")
-            self.eventdet_con_id = "ipc://{}/{}".format(self.ipc_dir,
-                                                        "eventDet")
-            self.datafetch_con_id = "ipc://{}/{}".format(self.ipc_dir,
-                                                         "dataFetch")
-#            self.eventdet_con_id = ("ipc://{}/{}_{}"
-#                                    .format(self.ipc_dir,
-#                                            self.current_pid,
-#                                            "eventDet"))
-#            self.datafetch_con_id = ("ipc://{}/{}_{}"
-#                                     .format(self.ipc_dir,
-#                                             self.current_pid,
-#                                             "dataFetch"))
-
-        self.file_op_socket = None
-        self.eventdet_socket = None
-        self.datafetch_socket = None
+            self.eventdet_endpoint = "ipc://{}/{}".format(self.ipc_dir,
+                                                          "eventDet")
+            self.datafetch_endpoint = "ipc://{}/{}".format(self.ipc_dir,
+                                                           "dataFetch")
+#            self.eventdet_endpoint = ("ipc://{}/{}_{}"
+#                                      .format(self.ipc_dir,
+#                                              self.current_pid,
+#                                              "eventDet"))
+#            self.datafetch_endpoint = ("ipc://{}/{}_{}"
+#                                       .format(self.ipc_dir,
+#                                               self.current_pid,
+#                                               "dataFetch"))
 
         self.poller = zmq.Poller()
-
-        self.filename = False
-        self.filepart = None
-
         self.response_timeout = 1000
 
-        self.__create_socket()
+        self._create_socket()
 
-    def __create_socket(self):
+    def _create_socket(self):
 
         # To send file open and file close notification, a communication
         # socket is needed
-        self.file_op_socket = self.context.socket(zmq.REQ)
 
-        # time to wait for the sender to give a confirmation of the signal
-#        self.file_op_socket.RCVTIMEO = self.response_timeout
-        try:
-            self.file_op_socket.connect(self.signal_con_id)
-            self.log.info("file_op_socket started (connect) for '{}'"
-                          .format(self.signal_con_id))
-        except Exception:
-            self.log.error("Failed to start file_op_socket (connect): '{}'"
-                           .format(self.signal_con_id), exc_info=True)
-            raise
+        self.file_op_socket = self._start_socket(
+            name="file_op_socket",
+            sock_type=zmq.REQ,
+            sock_con="connect",
+            endpoint=self.signal_endpoint
+        )
 
         # using a Poller to implement the file_op_socket timeout
         # (in older ZMQ version there is no option RCVTIMEO)
-#        self.poller = zmq.Poller()
         self.poller.register(self.file_op_socket, zmq.POLLIN)
 
-        self.eventdet_socket = self.context.socket(zmq.PUSH)
-        self.datafetch_socket = self.context.socket(zmq.PUSH)
+        if is_windows():
+            is_ipv6=self.localhost_is_ipv6
+        else:
+            is_ipv6 = False
 
-        if is_windows() and self.localhost_is_ipv6:
-            self.eventdet_socket.ipv6 = True
-            self.log.debug("Enabling IPv6 socket eventdet_socket")
+        self.file_op_socket = self._start_socket(
+            name="eventdet_socket",
+            sock_type=zmq.PUSH,
+            sock_con="connect",
+            endpoint=self.eventdet_endpoint,
+            is_ipv6=is_ipv6
+        )
 
-            self.datafetch_socket.ipv6 = True
-            self.log.debug("Enabling IPv6 socket datafetch_socket")
-
-        try:
-            self.eventdet_socket.connect(self.eventdet_con_id)
-            self.log.info("eventdet_socket started (connect) for '{}'"
-                          .format(self.eventdet_con_id))
-        except:
-            self.log.error("Failed to start eventdet_socket (connect): '{}'"
-                           .format(self.eventdet_con_id), exc_info=True)
-            raise
-
-        try:
-            self.datafetch_socket.connect(self.datafetch_con_id)
-            self.log.info("datafetch_socket started (connect) for '{}'"
-                          .format(self.datafetch_con_id))
-        except:
-            self.log.error("Failed to start datafetch_socket (connect): '{}'"
-                           .format(self.datafetch_con_id), exc_info=True)
-            raise
+        self.datafetch_socket = self._start_socket(
+            name="datafetch_socket",
+            sock_type=zmq.PUSH,
+            sock_con="connect",
+            endpoint=self.datafetch_endpoint,
+            is_ipv6=is_ipv6
+        )
 
     # return error code
     def create_file(self, filename):
@@ -259,18 +274,9 @@ class Ingest():
 
         """
         try:
-            if self.file_op_socket:
-                self.log.info("closing file_op_socket...")
-                self.file_op_socket.close(linger=0)
-                self.file_op_socket = None
-            if self.eventdet_socket:
-                self.log.info("closing eventdet_socket...")
-                self.eventdet_socket.close(linger=0)
-                self.eventdet_socket = None
-            if self.datafetch_socket:
-                self.log.info("closing datafetch_socket...")
-                self.datafetch_socket.close(linger=0)
-                self.datafetch_socket = None
+            self._stop_socket(name="file_op_socket")
+            self._stop_socket(name="eventdet_socket")
+            self._stop_socket(name="datafetch_socket")
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 

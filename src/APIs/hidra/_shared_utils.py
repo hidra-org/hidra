@@ -14,51 +14,19 @@ class Base(object):
                       is_ipv6=False,
                       zap_domain=None,
                       message=None):
-        """Creates a zmq socket.
-
-        Args:
-            name: The name of the socket (used in log messages).
-            sock_type: ZMQ socket type (e.g. zmq.PULL).
-            sock_con: ZMQ binding type (connect or bind).
-            endpoint: ZMQ endpoint to connect to.
-            is_ipv6: Enable IPv6 on socket.
-            zap_domain: The RFC 27 authentication domain used for ZMQ
-                        communication.
-            message (optional): wording to be used in the message
-                                (default: Start).
+        """Wrapper of start_socket.
         """
-
-        if message is None:
-            message = "Start"
-
-        try:
-            # create socket
-            socket = self.context.socket(sock_type)
-
-            # register the authentication domain
-            if zap_domain:
-                socket.zap_domain = zap_domain
-
-            # enable IPv6 on socket
-            if is_ipv6:
-                socket.ipv6 = True
-                self.log.debug("Enabling IPv6 socket for {}".format(name))
-
-            # connect/bind the socket
-            if sock_con == "connect":
-                socket.connect(endpoint)
-            elif sock_con == "bind":
-                socket.bind(endpoint)
-
-            self.log.info("{} {} ({}): '{}'"
-                          .format(message, name, sock_con, endpoint))
-        except:
-            self.log.error("Failed to {} {} ({}): '{}'"
-                           .format(name, message.lower(), sock_con, endpoint),
-                           exc_info=True)
-            raise
-
-        return socket
+        return start_socket(
+            name=name,
+            sock_type=sock_type,
+            sock_con=sock_con,
+            endpoint=endpoint,
+            context=self.context,
+            log=self.log,
+            is_ipv6=is_ipv6,
+            zap_domain=zap_domain,
+            message=message
+        )
 
     def _stop_socket(self, name, socket=None):
         """Closes a zmq socket.
@@ -76,16 +44,93 @@ class Base(object):
             use_class_attribute = False
 
         # close socket
-        if socket is not None:
-            self.log.info("Closing {}".format(name))
-            socket.close(linger=0)
-            socket = None
+        socket = stop_socket(name=name, socket=socket, log=self.log)
 
         # class attributes are set directly
         if use_class_attribute:
             setattr(self, name, socket)
         else:
             return socket
+
+
+# ------------------------------ #
+#         ZMQ functions          #
+# ------------------------------ #
+
+def start_socket(name,
+                 sock_type,
+                 sock_con,
+                 endpoint,
+                 context,
+                 log,
+                 is_ipv6=False,
+                 zap_domain=None,
+                 message=None):
+    """Creates a zmq socket.
+
+    Args:
+        name: The name of the socket (used in log messages).
+        sock_type: ZMQ socket type (e.g. zmq.PULL).
+        sock_con: ZMQ binding type (connect or bind).
+        endpoint: ZMQ endpoint to connect to.
+        context: ZMQ context to create the socket on.
+        log: Logger used for log messages.
+        is_ipv6: Enable IPv6 on socket.
+        zap_domain: The RFC 27 authentication domain used for ZMQ
+                    communication.
+        message (optional): wording to be used in the message
+                            (default: Start).
+    """
+
+    if message is None:
+        message = "Start"
+
+    try:
+        # create socket
+        socket = self.context.socket(sock_type)
+
+        # register the authentication domain
+        if zap_domain:
+            socket.zap_domain = zap_domain
+
+        # enable IPv6 on socket
+        if is_ipv6:
+            socket.ipv6 = True
+            self.log.debug("Enabling IPv6 socket for {}".format(name))
+
+        # connect/bind the socket
+        if sock_con == "connect":
+            socket.connect(endpoint)
+        elif sock_con == "bind":
+            socket.bind(endpoint)
+
+        self.log.info("{} {} ({}): '{}'"
+                      .format(message, name, sock_con, endpoint))
+    except:
+        self.log.error("Failed to {} {} ({}): '{}'"
+                       .format(name, message.lower(), sock_con, endpoint),
+                       exc_info=True)
+        raise
+
+    return socket
+
+
+def stop_socket(name, socket, log):
+    """Closes a zmq socket.
+
+    Args:
+        name: The name of the socket (used in log messages).
+        socket: The ZMQ socket to be closed.
+        log: Logger used for log messages.
+    """
+
+    # close socket
+    if socket is not None:
+        log.info("Closing {}".format(name))
+        socket.close(linger=0)
+        socket = None
+
+    return socket
 
 
 # ------------------------------ #
