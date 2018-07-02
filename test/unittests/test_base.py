@@ -159,13 +159,13 @@ class TestBase(unittest.TestCase):
             port: Port to connect to.
         """
 
-        con_str = "tcp://{}:{}".format(self.ext_ip, port)
+        endpoint = "tcp://{}:{}".format(self.ext_ip, port)
 
         return self.start_socket(
             name="receiving_socket",
             sock_type=zmq.PULL,
             sock_con="bind",
-            endpoint=con_str
+            endpoint=endpoint
         )
 
     def start_socket(self, name, sock_type, sock_con, endpoint):

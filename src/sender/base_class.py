@@ -1,3 +1,4 @@
+import __init__ as init  # noqa F401
 import utils
 
 

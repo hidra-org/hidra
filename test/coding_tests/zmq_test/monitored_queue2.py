@@ -1,3 +1,7 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+from __future__ import absolute_import
+
 import time
 import zmq
 from zmq.devices.monitoredqueuedevice import MonitoredQueue
@@ -7,7 +11,7 @@ import os
 import tempfile
 
 class MonitorDevice():
-    def __init__ (self, in_con_str, out_con_str, mon_con_str):
+    def __init__ (self, in_endpoint, out_endpoint, mon_endpoint):
 
         self.in_prefix = asbytes('in')
         self.out_prefix = asbytes('out')
@@ -15,65 +19,65 @@ class MonitorDevice():
         self.context = zmq.Context()
 
         self.in_socket = self.context.socket(zmq.PULL)
-        self.in_socket.bind(in_con_str)
+        self.in_socket.bind(in_endpoint)
 
         self.out_socket = self.context.socket(zmq.PUSH)
-        self.out_socket.bind(out_con_str)
+        self.out_socket.bind(out_endpoint)
 
         self.mon_socket = self.context.socket(zmq.PUSH)
-        self.mon_socket.bind(mon_con_str)
+        self.mon_socket.bind(mon_endpoint)
 
         self.run()
 
     def run (self):
         while True:
             msg = self.in_socket.recv_multipart()
-            print "[MonitoringDevice] In: Received message {0}".format(msg)
+            print("[MonitoringDevice] In: Received message {}".format(msg))
 
             mon_msg = [self.in_prefix] + msg
             self.mon_socket.send_multipart(mon_msg)
-            print "[MonitoringDevice] Mon: Send message {0}".format(mon_msg)
+            print("[MonitoringDevice] Mon: Send message {}".format(mon_msg))
 
             self.out_socket.send_multipart(msg)
-            print "[MonitoringDevice] Out: Send message {0}".format(msg)
+            print("[MonitoringDevice] Out: Send message {}".format(msg))
 
             mon_msg = [self.out_prefix] + msg
             self.mon_socket.send_multipart(mon_msg)
-            print "[MonitoringDevice] Mon: Send message {0}".format(mon_msg)
+            print("[MonitoringDevice] Mon: Send message {}".format(mon_msg))
 
 
-def server(in_con_str):
+def server(in_endpoint):
     print "[Server] connecting to device"
     context = zmq.Context()
     socket = context.socket(zmq.PUSH)
-    socket.connect(in_con_str)
+    socket.connect(in_endpoint)
     for request_num in range(2):
-        socket.send ("Request #{0} from server".format(request_num))
+        socket.send("Request #{} from server".format(request_num))
 
 
-def client(out_con_str, mon_con_str, client_id):
-    print "[Client #{0}] Worker #%s connecting to device".format(client_id)
+def client(out_endpoint, mon_endpoint, client_id):
+    print("[Client #{}] Worker #%s connecting to device".format(client_id))
     context = zmq.Context()
     data_socket = context.socket(zmq.PULL)
-    data_socket.connect(out_con_str)
+    data_socket.connect(out_endpoint)
 
-    print "[Client #{0}] Starting monitoring process".format(client_id)
+    print("[Client #{}] Starting monitoring process".format(client_id))
     mon_socket = context.socket(zmq.PULL)
-    print "[Client #{0}] Collecting updates from server...".format(client_id)
-    mon_socket.connect (mon_con_str)
+    print("[Client #{}] Collecting updates from server...".format(client_id))
+    mon_socket.connect (mon_endpoint)
 #    mon_socket.setsockopt(zmq.SUBSCRIBE, "")
 
-    mon_socket.connect (mon_con_str)
+    mon_socket.connect (mon_endpoint)
 
     while True:
-        print "[Client #{0}] Monitoring waiting".format(client_id)
+        print("[Client #{}] Monitoring waiting".format(client_id))
         string = mon_socket.recv_multipart()
-        print "[Client #{0}] Monitoring received: {1}".format(client_id, string)
+        print("[Client #{}] Monitoring received: {}".format(client_id, string))
         string = mon_socket.recv_multipart()
-        print "[Client #{0}] Monitoring received: {1}".format(client_id, string)
+        print("[Client #{}] Monitoring received: {}".format(client_id, string))
 #        time.sleep(2)
         message = data_socket.recv()
-        print "[Client #{0}] Received - {1}".format(client_id, message)
+        print("[Client #{}] Received - {}".format(client_id, message))
 
 
 if __name__ == "__main__":
@@ -88,13 +92,13 @@ if __name__ == "__main__":
     else:
         tmp_created = False
 
-    in_con_str = "tcp://127.0.0.1:{0}".format(frontend_port)
-    out_con_str = "ipc://{0}/{1}_{2}".format(ipc_dir, current_pid, "out")
-    mon_con_str = "ipc://{0}/{1}_{2}".format(ipc_dir, current_pid, "mon")
+    in_endpoint = "tcp://127.0.0.1:{}".format(frontend_port)
+    out_endpoint = "ipc://{}/{}_{}".format(ipc_dir, current_pid, "out")
+    mon_endpoint = "ipc://{}/{}_{}".format(ipc_dir, current_pid, "mon")
 
-    print "in_con_str", in_con_str
-    print "out_con_str", out_con_str
-    print "mon_con_str", mon_con_str
+    print("in_endpoint", in_endpoint)
+    print("out_endpoint", out_endpoint)
+    print("mon_endpoint", mon_endpoint)
 
     number_of_workers = 2
 
@@ -105,18 +109,20 @@ if __name__ == "__main__":
     monitoring_p = MonitorDevice2(zmq.PULL, zmq.PUSH, zmq.PUB,
                                   in_prefix, out_prefix)
 
-    monitoring_p.bind_in(in_con_str)
-    monitoring_p.bind_out(out_con_str)
-    monitoring_p.bind_mon(mon_con_str)
+    monitoring_p.bind_in(in_endpoint)
+    monitoring_p.bind_out(out_endpoint)
+    monitoring_p.bind_mon(mon_endpoint)
     """
-    monitoring_p = Process(target=MonitorDevice, args=(in_con_str, out_con_str, mon_con_str))
+    monitoring_p = Process(target=MonitorDevice,
+                           args=(in_endpoint, out_endpoint, mon_endpoint))
     monitoring_p.start()
-    server_p = Process(target=server, args=(in_con_str,))
+    server_p = Process(target=server, args=(in_endpoint,))
     server_p.start()
 
     client_p = []
     for client_id in range(number_of_workers):
-        p = Process(target=client, args=(out_con_str, mon_con_str, client_id,))
+        p = Process(target=client,
+                    args=(out_endpoint, mon_endpoint, client_id,))
         p.start()
         client_p.append(p)
 

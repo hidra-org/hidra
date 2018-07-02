@@ -72,9 +72,9 @@ class TestDataFetcher(DataFetcherTestBase):
             self.receiving_sockets.append(self.set_up_recv_socket(port))
 
         # Set up data forwarding simulator
-        fw_con_str = "ipc://{}/{}_{}".format(self.config["ipc_dir"],
-                                             self.config["main_pid"],
-                                             "out")
+        fw_endpoint = "ipc://{}/{}_{}".format(self.config["ipc_dir"],
+                                              self.config["main_pid"],
+                                              "out")
 
         if self.data_input:
             # create zmq socket to send events
@@ -82,7 +82,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 name="data_fw_socket",
                 sock_type=zmq.PUSH,
                 sock_con="bind",
-                endpoint=fw_con_str
+                endpoint=fw_endpoint
             )
 
         # Test file fetcher

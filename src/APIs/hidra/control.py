@@ -272,12 +272,12 @@ def reset_receiver_status(host, port):
 
     try:
         reset_socket = context.socket(zmq.REQ)
-        con_str = "tcp://{}:{}".format(host, port)
+        endpoint = "tcp://{}:{}".format(host, port)
 
-        reset_socket.connect(con_str)
-        print("Start reset_socket (connect): '{}'".format(con_str))
+        reset_socket.connect(endpoint)
+        print("Start reset_socket (connect): '{}'".format(endpoint))
     except:
-        print("Failed to start reset_socket (connect): '{}'".format(con_str),
+        print("Failed to start reset_socket (connect): '{}'".format(endpoint),
               exc_info=True)
 
     reset_socket.send_multipart([b"RESET_STATUS"])

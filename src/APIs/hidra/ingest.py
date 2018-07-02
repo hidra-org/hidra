@@ -90,9 +90,9 @@ class Ingest():
         else:
             self.log.info("Using ipc for internal communication.")
             self.eventdet_con_id = "ipc://{}/{}".format(self.ipc_dir,
-                                                          "eventDet")
+                                                        "eventDet")
             self.datafetch_con_id = "ipc://{}/{}".format(self.ipc_dir,
-                                                           "dataFetch")
+                                                         "dataFetch")
 #            self.eventdet_con_id = ("ipc://{}/{}_{}"
 #                                    .format(self.ipc_dir,
 #                                            self.current_pid,

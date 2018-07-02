@@ -90,7 +90,7 @@ def get_endpoints(config, ipc_addresses):
 
 
 class MonitorDevice(object):
-    def __init__(self, in_con_str, out_con_str, mon_con_str):
+    def __init__(self, in_endpoint, out_endpoint, mon_endpoint):
 
         self.in_prefix = asbytes('in')
         self.out_prefix = asbytes('out')
@@ -98,13 +98,13 @@ class MonitorDevice(object):
         self.context = zmq.Context()
 
         self.in_socket = self.context.socket(zmq.PULL)
-        self.in_socket.bind(in_con_str)
+        self.in_socket.bind(in_endpoint)
 
         self.out_socket = self.context.socket(zmq.PUSH)
-        self.out_socket.bind(out_con_str)
+        self.out_socket.bind(out_endpoint)
 
         self.mon_socket = self.context.socket(zmq.PUSH)
-        self.mon_socket.bind(mon_con_str)
+        self.mon_socket.bind(mon_endpoint)
 
         self.run()
 

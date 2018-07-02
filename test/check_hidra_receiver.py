@@ -14,11 +14,11 @@ class LoggingFunction:
             print(x)
 
     def __init__(self):
-        self.debug = lambda x, exc_info=None: self.out(x, exc_info)
-        self.info = lambda x, exc_info=None: self.out(x, exc_info)
-        self.warning = lambda x, exc_info=None: self.out(x, exc_info)
-        self.error = lambda x, exc_info=None: self.out(x, exc_info)
-        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+        self.debug = self.out
+        self.info = self.out
+        self.warning = self.out
+        self.error = self.out
+        self.critical = self.out
 
 
 class NoLoggingFunction:
@@ -26,11 +26,11 @@ class NoLoggingFunction:
         pass
 
     def __init__(self):
-        self.debug = lambda x, exc_info=None: self.out(x, exc_info)
-        self.info = lambda x, exc_info=None: self.out(x, exc_info)
-        self.warning = lambda x, exc_info=None: self.out(x, exc_info)
-        self.error = lambda x, exc_info=None: self.out(x, exc_info)
-        self.critical = lambda x, exc_info=None: self.out(x, exc_info)
+        self.debug = self.out
+        self.info = self.out
+        self.warning = self.out
+        self.error = self.out
+        self.critical = self.out
 
 
 class AliveTest():
@@ -48,18 +48,18 @@ class AliveTest():
             self.log.debug("Registering ZMQ context")
 
             self.socket = self.context.socket(zmq.PUSH)
-            con_str = "tcp://{0}".format(self.socket_id)
+            endpoint = "tcp://{}".format(self.socket_id)
 
-            self.socket.connect(con_str)
-            self.log.info("Start socket (connect): '{0}'".format(con_str))
+            self.socket.connect(endpoint)
+            self.log.info("Start socket (connect): '{}'".format(endpoint))
         except:
-            self.log.error("Failed to start socket (connect):'{0}'"
-                           .format(con_str), exc_info=True)
+            self.log.error("Failed to start socket (connect):'{}'"
+                           .format(enpoint), exc_info=True)
 
     def run(self, enable_logging=False):
         try:
             if enable_logging:
-                self.log.debug("ZMQ version used: {0}".format(zmq.__version__))
+                self.log.debug("ZMQ version used: {}".format(zmq.__version__))
 
             # With older ZMQ versions the tracker results in an ZMQError in
             # the DataDispatchers when an event is processed
@@ -68,7 +68,7 @@ class AliveTest():
 
                 self.socket.send_multipart([b"ALIVE_TEST"])
                 if enable_logging:
-                    self.log.info("Sending test message to host {0}...success"
+                    self.log.info("Sending test message to host {}...success"
                                   .format(self.socket_id))
 
             else:
@@ -78,15 +78,15 @@ class AliveTest():
                 if not tracker.done:
                     tracker.wait(2)
                 if not tracker.done:
-                    self.log.error("Failed to send test message to host {0}"
+                    self.log.error("Failed to send test message to host {}"
                                    .format(self.socket_id), exc_info=True)
                     return False
                 elif enable_logging:
-                    self.log.info("Sending test message to host {0}...success"
+                    self.log.info("Sending test message to host {}...success"
                                   .format(self.socket_id))
             return True
         except:
-            self.log.error("Failed to send test message to host {0}"
+            self.log.error("Failed to send test message to host {}"
                            .format(self.socket_id), exc_info=True)
             return False
 

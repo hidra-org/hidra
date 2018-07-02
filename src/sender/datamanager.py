@@ -484,38 +484,8 @@ class DataManager(Base):
                                              ipc_addresses=self.ipc_addresses,
                                              use_cleaner=self.use_cleaner)
 
-#        if self.use_cleaner:
-#            self.params["cleaner_conf_con_str"] = (
-#                "tcp://{}:{}".format(self.params["data_stream_targets"][0][0],
-#                                     self.params["confirmation_port"])
-#            )
-#        else:
-#            self.params["cleaner_conf_con_str"] = None
-#
         if utils.is_windows():
             self.log.info("Using tcp for internal communication.")
-#            self.control_pub_con_str = (
-#                "tcp://{}:{}".format(self.localhost,
-#                                     self.params["control_pub_port"]))
-#            self.control_sub_con_str = (
-#                "tcp://{}:{}".format(self.localhost,
-#                                     self.params["control_sub_port"]))
-#            self.request_fw_con_str = (
-#                "tcp://{}:{}".format(self.localhost,
-#                                     self.params["request_fw_port"]))
-#            self.router_con_str = (
-#                "tcp://{}:{}".format(self.localhost,
-#                                     self.params["router_port"]))
-#            if self.use_cleaner:
-#                self.params["cleaner_job_con_str"] = (
-#                    self.endpoints.cleaner_job_(
-#                        "tcp://{}:{}".format(self.localhost,
-#                                             self.params["cleaner_port"])
-#                    )
-#                self.params["cleaner_tigger_con_str"] = (
-#                    "tcp://{}:{}".format(self.localhost,
-#                                         self.params["cleaner_trigger_port"]))
-
         else:
             self.log.info("Using ipc for internal communication.")
 

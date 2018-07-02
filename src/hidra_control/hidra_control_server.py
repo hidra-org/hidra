@@ -375,7 +375,6 @@ class HidraController():
 
                 for key in current_config:
                     f.write(key + " = {}\n".format(current_config[key]))
-                f.write('cleaner_job_con_str  = ""')
 
                 self.log.info("Started with ext_ip: {}, event detector: {},"
                               " data fetcher: {}".format(external_ip,

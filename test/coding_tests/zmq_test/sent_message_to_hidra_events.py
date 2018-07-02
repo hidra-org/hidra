@@ -1,16 +1,20 @@
-import zmq
+from __future__ import print_function
+from __future__ import unicode_literals
+from __future__ import absolute_import
+
 import json
 import os
 import time
+import zmq
 
 BASE_PATH = "/opt/hidra"
 
-con_str = "tcp://131.169.185.121:50100"
+endpoint = "tcp://131.169.185.121:50100"
 
 context = zmq.Context()
 socket = context.socket(zmq.PUSH)
-socket.connect(con_str)
-print "Socket connecting to {0}".format(con_str)
+socket.connect(endpoint)
+print("Socket connecting to {}".format(endpoint))
 
 metadata = {
     "source_path": os.path.join(BASE_PATH, "data", "source"),

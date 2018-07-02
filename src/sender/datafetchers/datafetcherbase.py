@@ -160,7 +160,7 @@ class DataFetcherBase(Base, ABC):
             if prio == 0:
                 # socket not known
                 if target not in open_connections:
-                    connection_str = "tcp://{}".format(target)
+                    endpoint = "tcp://{}".format(target)
                     # open socket
                     try:
                         # start and register socket
@@ -168,13 +168,13 @@ class DataFetcherBase(Base, ABC):
                             name="socket",
                             sock_type=zmq.PUSH,
                             sock_con="connect",
-                            endpoint=connection_str
+                            endpoint=endpoint
                         )
                     except:
                         self.log.debug("Raising DataHandling error",
                                        exc_info=True)
                         msg = ("Failed to start socket (connect): '{}'"
-                               .format(connection_str))
+                               .format(endpoint))
                         raise DataHandlingError(msg)
 
                 # send data
@@ -222,12 +222,11 @@ class DataFetcherBase(Base, ABC):
                 # socket not known
                 if target not in open_connections:
                     # start and register socket
-                    connection_str = "tcp://{}".format(target)
                     open_connections[target] = self.start_socket(
                         name="socket",
                         sock_type=zmq.PUSH,
                         sock_con="connect",
-                        endpoint=connection_str
+                        endpoint="tcp://{}".format(target)
                     )
                 # send data
                 if send_type == "data":
