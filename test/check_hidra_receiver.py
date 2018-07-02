@@ -1,10 +1,10 @@
-#!python
+#!/usr/bin/env python
 
-import zmq
-import traceback
 import argparse
-# import nagiosplugin
-
+#import nagiosplugin
+import sys
+import traceback
+import zmq
 
 class LoggingFunction:
     def out(self, x, exc_info=None):
@@ -101,7 +101,7 @@ class AliveTest():
             self.context.destroy(0)
             self.context = None
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, traceback):
         self.stop()
 
     def __del__(self):
@@ -119,15 +119,24 @@ if __name__ == '__main__':
                         type=int,
                         help="Port the HiDRA receiver is bound to",
                         default=50100)
+    parser.add_argument("-v", "--verbose",
+                        help="Logs details about the test",
+                        action="store_true")
+
 
     args = parser.parse_args()
 
     socket_id = "{0}:{1}".format(args.host, args.port)
 
-#    test = AliveTest(socket_id)
-    test = AliveTest(socket_id, NoLoggingFunction())
+    test = None
+    if args.verbose:
+        test = AliveTest(socket_id, LoggingFunction())
+    else:
+        test = AliveTest(socket_id, NoLoggingFunction())
 
-    if test.run():
+    if test.run(args.verbose):
         print("Test successfull")
+        sys.exit(0)
     else:
         print("Test failed")
+        sys.exit(1)
