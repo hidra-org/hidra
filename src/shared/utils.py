@@ -1,15 +1,16 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
-import os
-import sys
-import platform
+import json
 import logging
 import logging.handlers
+import os
+import platform
+import re
 import shutil
 import subprocess
 import socket
-import re
+import sys
 from collections import namedtuple
 
 from cfel_optarg import parse_parameters
@@ -397,12 +398,12 @@ def check_config(required_params, config, log):
     Returns:
 
         check_passed: if all checks were successfull
-        config_reduced (string): string to print all required parameters with
-            their values
+        config_reduced (str): serialized dict containing the values of the
+                              required parameters only
     """
 
     check_passed = True
-    config_reduced = "{"
+    config_reduced = {}
 
     for param in required_params:
         # multiple checks have to be done
@@ -433,15 +434,38 @@ def check_config(required_params, config, log):
                       .format(param))
             check_passed = False
         else:
-            config_reduced += "{}: {}, ".format(param, config[param])
+            config_reduced[param] = config[param]
 
-    if config_reduced == "{":
-        config_reduced = config_reduced + "}"
-    else:
-        # Remove redundant divider
-        config_reduced = config_reduced[:-2] + "}"
+    try:
+        dict_to_str = str(
+            json.dumps(config_reduced, sort_keys=True, indent=4)
+        )
+    except TypeError:
+        # objects like e.g. zm.context are not JSON serializable
+        # convert manually
+        sorted_keys = sorted(config_reduced.keys())
+        indent = 4
 
-    return check_passed, config_reduced
+        # putting it into a list first and the join it if more efficient
+        # than string concatenation
+        dict_to_list = []
+        for key in sorted_keys:
+            value = config_reduced[key]
+            if type(value) == Endpoints:
+                new_value = json.dumps(value._asdict(), sort_keys=True, indent=2*4)
+                as_str = "{}{}: {}".format(" " * indent, key, new_value)
+                # fix indentation
+                as_str = as_str[:-1] + " " * indent + "}"
+            else:
+                as_str = "{}{}: {}".format(" " * indent, key, value)
+
+            dict_to_list.append(as_str)
+
+        dict_to_str = "{\n"
+        dict_to_str += ",\n".join(dict_to_list)
+        dict_to_str += "\n}"
+
+    return check_passed, dict_to_str
 
 
 def extend_whitelist(whitelist, ldapuri, log):

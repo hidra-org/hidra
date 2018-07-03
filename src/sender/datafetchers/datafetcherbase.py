@@ -71,7 +71,7 @@ class DataFetcherBase(Base, ABC):
         self.check_config(print_log=False)
         self.base_setup()
 
-    def check_config(self, print_log=True):
+    def check_config(self, print_log=False):
         """Check that the configuration containes the nessessary parameters.
 
         Args:
@@ -95,11 +95,8 @@ class DataFetcherBase(Base, ABC):
 
         if check_passed:
             if print_log:
-                formated_config = str(
-                    json.dumps(config_reduced, sort_keys=True, indent=4)
-                )
                 self.log.info("Configuration for data fetcher: {}"
-                              .format(formated_config))
+                              .format(config_reduced))
 
         else:
             # self.log.debug("config={}".format(self.config))

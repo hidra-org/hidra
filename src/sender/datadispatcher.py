@@ -71,7 +71,7 @@ class DataDispatcher(Base):
         formated_config = str(json.dumps(self.config,
                                          sort_keys=True,
                                          indent=4))
-        self.log.info("Configuration for data fetcher: {}"
+        self.log.info("Configuration for data dispatcher: {}"
                       .format(formated_config))
 
         # dict with information of all open sockets to which a data stream is
