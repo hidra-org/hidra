@@ -15,7 +15,7 @@ import sys
 import tempfile
 import time
 import zmq
-from multiprocessing import Queue
+import multiprocessing
 from zmq.auth.thread import ThreadAuthenticator
 
 from ._version import __version__
@@ -278,7 +278,7 @@ class Transfer(Base):
         if use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(use_log)
         # use logutils queue
-        elif type(use_log) == Queue:
+        elif type(use_log) == multiprocessing.queues.Queue:
             self.log = get_logger("Transfer", use_log)
         # use logging
         elif use_log:
@@ -969,7 +969,7 @@ class Transfer(Base):
         self.data_socket = self._start_socket(
             name="data socket of type {}".format(self.connection_type),
             sock_type=zmq.PULL,
-            sock_con="bind",
+            sock_con=self.data_con_style,
             endpoint=self.data_socket_endpoint,
             zap_domain=b"global",
             is_ipv6=self.is_ipv6,

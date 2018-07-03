@@ -7,6 +7,7 @@ from __future__ import absolute_import
 
 import json
 import os
+import mock
 import time
 import zmq
 
@@ -60,11 +61,16 @@ class TestDataFetcher(DataFetcherTestBase):
     def test_no_confirmation(self):
         """Simulate file fetching without taking care of confirmation signals.
         """
+        # mock check_config to be able to enable print_log
+        with mock.patch("hidra_fetcher.DataFetcher.check_config"):
+            with mock.patch("hidra_fetcher.DataFetcher.setup"):
+                self.datafetcher = DataFetcher(config=self.data_fetcher_config,
+                                               log_queue=self.log_queue,
+                                               fetcher_id=0,
+                                               context=self.context)
 
-        self.datafetcher = DataFetcher(config=self.data_fetcher_config,
-                                       log_queue=self.log_queue,
-                                       fetcher_id=0,
-                                       context=self.context)
+        self.datafetcher.check_config(print_log=True)
+        self.datafetcher.setup()
 
         # Set up receiver simulator
         self.receiving_sockets = []
