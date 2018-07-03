@@ -5,16 +5,20 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
+import copy
 import json
+import logging
+import mock
 import os
 import threading
 import time
 import zmq
 from multiprocessing import freeze_support
+from six import iteritems
 
 import utils
 from .__init__ import BASE_DIR
-from test_base import TestBase, create_dir
+from test_base import TestBase, create_dir, MockLogging, mock_get_logger
 from signalhandler import SignalHandler
 from _version import __version__
 
@@ -100,12 +104,20 @@ class TestSignalHandler(TestBase):
         self.local_target = os.path.join(BASE_DIR, "data", "target")
         self.chunksize = 10485760  # = 1024*1024*10 = 10 MiB
 
-        self.signalhandler_config = {
-            "ldapuri": "it-ldap-slave.desy.de:1389",
+        general_config = {
             "store_data": False
         }
 
         self.receiving_ports = [6005, 6006]
+
+        self.signalhandler_config = {
+            "config": general_config,
+            "endpoints": self.config["endpoints"],
+            "whitelist": None,
+            "ldapuri": "it-ldap-slave.desy.de:1389",
+            "log_queue": self.log_queue,
+            "context": self.context
+        }
 
     def send_signal(self, socket, signal, ports, prio=None):
         self.log.info("send_signal : {}, {}".format(signal, ports))
@@ -139,6 +151,7 @@ class TestSignalHandler(TestBase):
         socket.send_multipart(send_message)
         self.log.info("request sent: {}".format(send_message))
 
+    @mock.patch.object(utils, "get_logger", mock_get_logger)
     def test_signalhandler(self):
         """Simulate incoming data and check if received events are correct.
         """
@@ -161,15 +174,9 @@ class TestSignalHandler(TestBase):
             endpoint=endpoints.control_sub_bind
         )
 
-        kwargs = dict(
-            config=self.signalhandler_config,
-            endpoints=self.config["endpoints"],
-            whitelist=whitelist,
-            ldapuri=self.signalhandler_config["ldapuri"],
-            log_queue=self.log_queue,
-        )
+        self.signalhandler_config["context"] = None
         signalhandler_thr = threading.Thread(target=SignalHandler,
-                                             kwargs=kwargs)
+                                             kwargs=self.signalhandler_config)
         signalhandler_thr.start()
 
         # to give the signal handler to bind to the socket before the connect
@@ -255,6 +262,184 @@ class TestSignalHandler(TestBase):
             self.stop_socket(name="request_socket", socket=request_socket)
             self.stop_socket(name="control_pub_socket",
                              socket=control_pub_socket)
+
+    # mocking of stop has to be done for the whole function because otherwise
+    # it is called in __del__
+    @mock.patch("signalhandler.SignalHandler.stop")
+    def test_setup(self, mock_stop):
+        with mock.patch("signalhandler.SignalHandler.setup"):
+            with mock.patch("signalhandler.SignalHandler.exec_run"):
+                sighandler = SignalHandler(**self.signalhandler_config)
+
+        conf = self.signalhandler_config
+
+        setup_conf = dict(
+            log_queue=conf["log_queue"],
+            context=conf["context"],
+            whitelist=conf["whitelist"],
+            ldapuri=conf["ldapuri"]
+        )
+
+        # external context
+        with mock.patch("signalhandler.SignalHandler.create_sockets"):
+            sighandler.setup(**setup_conf)
+
+        self.assertIsInstance(sighandler.log, logging.Logger)
+        self.assertEqual(sighandler.whitelist, conf["whitelist"])
+        self.assertEqual(sighandler.context, conf["context"])
+        self.assertTrue(sighandler.ext_context)
+
+        # resetting QueueHandlers
+        sighandler.log.handlers = []
+
+        # no external context
+        setup_conf["context"] = None
+        with mock.patch("signalhandler.SignalHandler.create_sockets"):
+            sighandler.setup(**setup_conf)
+
+        self.assertIsInstance(sighandler.log, logging.Logger)
+        self.assertEqual(sighandler.whitelist, conf["whitelist"])
+        self.assertIsInstance(sighandler.context, zmq.Context)
+        self.assertFalse(sighandler.ext_context)
+
+    @mock.patch("signalhandler.SignalHandler.stop")
+    def test_create_sockets(self, mock_stop):
+
+        class MockZmqPoller(mock.MagicMock):
+
+            def __init__(self, **kwds):
+                super(MockZmqPoller, self).__init__(**kwds)
+                self.registered_sockets = []
+
+            def register(self, socket, event):
+                assert isinstance(socket, zmq.sugar.socket.Socket)
+                assert event in [zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]
+                self.registered_sockets.append([socket, event])
+
+        def init(config):
+            with mock.patch("signalhandler.SignalHandler.create_sockets"):
+                with mock.patch("signalhandler.SignalHandler.exec_run"):
+                    sighandler = SignalHandler(**sh_config)
+
+            with mock.patch.object(zmq, "Poller", MockZmqPoller):
+                sighandler.create_sockets()
+
+            return sighandler
+
+        def check_registered(sockets, testunit):
+            registered_sockets = sighandler.poller.registered_sockets
+            all_socket_confs = []
+
+            # check that sockets are registered
+            for socket in sockets:
+                socket_conf = [socket, zmq.POLLIN]
+                testunit.assertIn(socket_conf, registered_sockets)
+                all_socket_confs.append(socket_conf)
+
+            # check that they are the only ones registered
+            testunit.assertEqual(all_socket_confs, registered_sockets)
+
+        # to not overwrite the original config
+        # copy does not work because log_queue and context should be the same
+        # instances
+        sh_config = {}
+        for key, value in iteritems(self.signalhandler_config):
+            sh_config[key] = value
+
+        zmq_socket = zmq.sugar.socket.Socket
+
+        # with no nodes allowed to connect
+        sh_config["whitelist"] = []
+        sighandler = init(sh_config)
+
+        self.assertIsInstance(sighandler.control_pub_socket, zmq_socket)
+        self.assertIsInstance(sighandler.control_sub_socket, zmq_socket)
+        self.assertEqual(sighandler.com_socket, None)
+        self.assertEqual(sighandler.request_socket, None)
+
+        sockets_to_test = [
+            sighandler.control_sub_socket,
+            sighandler.request_fw_socket
+        ]
+        check_registered(sockets_to_test, self)
+
+        # resetting QueueHandlers
+        sighandler.log.handlers = []
+
+        # with nodes allowed to connect
+        sh_config["whitelist"] = None
+        sighandler = init(sh_config)
+
+        self.assertIsInstance(sighandler.control_pub_socket, zmq_socket)
+        self.assertIsInstance(sighandler.control_sub_socket, zmq_socket)
+        self.assertIsInstance(sighandler.request_fw_socket, zmq_socket)
+        self.assertIsInstance(sighandler.com_socket, zmq_socket)
+        self.assertIsInstance(sighandler.request_socket, zmq_socket)
+
+        sockets_to_test = [
+            sighandler.control_sub_socket,
+            sighandler.request_fw_socket,
+            sighandler.com_socket,
+            sighandler.request_socket
+        ]
+        check_registered(sockets_to_test, self)
+
+    def todo_test_run(self):
+        pass
+
+    def test_check_signal_inverted(self):
+        with mock.patch("signalhandler.SignalHandler.setup"):
+            with mock.patch("signalhandler.SignalHandler.exec_run"):
+                sighandler = SignalHandler(**self.signalhandler_config)
+
+        sighandler.log = MockLogging()
+
+        # no valid message
+        in_message = []
+        check_failed, signal, target = sighandler.check_signal_inverted(in_message)
+        self.assertEqual(check_failed, [b"NO_VALID_SIGNAL"])
+        self.assertIsNone(signal)
+        self.assertIsNone(target)
+
+        # TODO trigger NO_VALID_SIGNAL in tarets split (after convert fqdn)
+
+        host = self.con_ip
+        port = 1234
+        in_targets_list = [["{}:{}".format(host, port), 0, [""]]]
+        in_targets = json.dumps(in_targets_list).encode("utf-8")
+
+        # valid message but version conflict
+        version = "0.0.0"
+        #             version, signal, targets
+        in_message = [version, "START_STREAM", in_targets]
+        check_failed, signal, target = sighandler.check_signal_inverted(in_message)
+        self.assertEqual(check_failed, ["VERSION_CONFLICT", __version__])
+        self.assertIsNone(signal)
+        self.assertIsNone(target)
+
+        # valid message, valid version
+        #             version, signal, targets
+        in_message = [__version__, "START_STREAM", in_targets]
+        check_failed, signal, target = sighandler.check_signal_inverted(in_message)
+        self.assertFalse(check_failed)
+        self.assertEqual(signal, "START_STREAM")
+        self.assertEqual(target, in_targets_list)
+
+
+    def todo_test_send_response(self):
+        pass
+
+    def todo_test__start_signal(self):
+        pass
+
+    def todo_test__stop_signal(self):
+        pass
+
+    def todo_test_react_to_signal(self):
+        pass
+
+    def todo_test_stop(self):
+        pass
 
     def tearDown(self):
         self.context.destroy(0)

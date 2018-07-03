@@ -56,20 +56,10 @@ class SignalHandler(Base):
 
         self.setup(log_queue, context, whitelist, ldapuri)
 
-        try:
-            self.run()
-        except zmq.ZMQError:
-            self.log.error("Stopping signalHandler due to ZMQError.",
-                           exc_info=True)
-        except KeyboardInterrupt:
-            pass
-        except:
-            self.log.error("Stopping SignalHandler due to unknown error "
-                           "condition.", exc_info=True)
-        finally:
-            self.stop()
+        self.exec_run()
 
     def setup(self, log_queue, context, whitelist, ldapuri):
+
         # Send all logs to the main process
         self.log = utils.get_logger("SignalHandler", log_queue)
         self.log.debug("SignalHandler started (PID {}).".format(os.getpid()))
@@ -147,6 +137,20 @@ class SignalHandler(Base):
         if self.whitelist != []:
             self.poller.register(self.com_socket, zmq.POLLIN)
             self.poller.register(self.request_socket, zmq.POLLIN)
+
+    def exec_run(self):
+        try:
+            self.run()
+        except zmq.ZMQError:
+            self.log.error("Stopping signalHandler due to ZMQError.",
+                           exc_info=True)
+        except KeyboardInterrupt:
+            pass
+        except:
+            self.log.error("Stopping SignalHandler due to unknown error "
+                           "condition.", exc_info=True)
+        finally:
+            self.stop()
 
     def run(self):
         """
@@ -252,7 +256,8 @@ class SignalHandler(Base):
                         else:
                             open_requests = ["None"]
                             self.request_fw_socket.send_string(
-                                json.dumps(open_requests))
+                                json.dumps(open_requests)
+                            )
                             self.log.debug("Answered to request: {}"
                                            .format(open_requests))
                             self.log.debug("open_requ_vari: {}"
@@ -306,7 +311,8 @@ class SignalHandler(Base):
 
                 elif in_message[0] == b"CANCEL":
                     incoming_socket_id = utils.convert_socket_to_fqdn(
-                        in_message[1].decode("utf-8"), self.log)
+                        in_message[1].decode("utf-8"), self.log
+                    )
 
                     still_requested = []
                     for a in range(len(self.open_requ_vari)):
@@ -365,45 +371,41 @@ class SignalHandler(Base):
                            .format(in_message))
             return [b"NO_VALID_SIGNAL"], None, None
 
-        else:
+        version, signal, targets = (
+            in_message[0].decode("utf-8"),
+            in_message[1],
+            in_message[2].decode("utf-8")
+        )
+        targets = json.loads(targets)
 
-            version, signal, target = (
-                in_message[0].decode("utf-8"),
-                in_message[1],
-                in_message[2].decode("utf-8")
-            )
-            target = json.loads(target)
+        targets = utils.convert_socket_to_fqdn(targets, self.log)
 
-            target = utils.convert_socket_to_fqdn(target, self.log)
+        try:
+            host = [t[0].split(":")[0] for t in targets]
+        except:
+            return [b"NO_VALID_SIGNAL"], None, None
 
-            try:
-                host = [t[0].split(":")[0] for t in target]
-            except:
-                return [b"NO_VALID_SIGNAL"], None, None
+        if version:
+            if utils.check_version(version, self.log):
+                self.log.info("Versions are compatible")
+            else:
+                self.log.warning("Versions are not compatible")
+                return [b"VERSION_CONFLICT", __version__], None, None
 
-            if version:
-                if utils.check_version(version, self.log):
-                    self.log.info("Versions are compatible")
-                else:
-                    self.log.warning("Version are not compatible")
-                    return [b"VERSION_CONFLICT", __version__], None, None
+        if signal and host:
 
-            if signal and host:
+            # Checking signal sending host
+            self.log.debug("Check if host to send data to are in whitelist...")
+            if utils.check_host(host, self.whitelist, self.log):
+                self.log.info("Hosts are allowed to connect.")
+                self.log.debug("hosts: {}".format(host))
+            else:
+                self.log.warning("One of the hosts is not allowed to connect.")
+                self.log.debug("hosts: {}".format(host))
+                self.log.debug("whitelist: {}".format(self.whitelist))
+                return [b"NO_VALID_HOST"], None, None
 
-                # Checking signal sending host
-                self.log.debug("Check if host to send data to are in "
-                               "whitelist...")
-                if utils.check_host(host, self.whitelist, self.log):
-                    self.log.info("Hosts are allowed to connect.")
-                    self.log.debug("hosts: {}".format(host))
-                else:
-                    self.log.warning("One of the hosts is not allowed to "
-                                     "connect.")
-                    self.log.debug("hosts: {}".format(host))
-                    self.log.debug("whitelist: {}".format(self.whitelist))
-                    return [b"NO_VALID_HOST"], None, None
-
-        return False, signal, target
+        return False, signal, targets
 
     def send_response(self, signal):
         if type(signal) != list:
@@ -412,8 +414,13 @@ class SignalHandler(Base):
         self.log.debug("Send response back: {}".format(signal))
         self.com_socket.send_multipart(signal, zmq.NOBLOCK)
 
-    def __start_signal(self, signal, send_type, socket_ids, list_to_check,
-                       vari_list, corresp_list):
+    def _start_signal(self,
+                      signal,
+                      send_type,
+                      socket_ids,
+                      list_to_check,
+                      vari_list,
+                      corresp_list):
 
         socket_ids = utils.convert_socket_to_fqdn(socket_ids,
                                                   self.log)
@@ -538,8 +545,12 @@ class SignalHandler(Base):
 #            # "reopen" the connection and confirm to receiver
 #            self.send_response([signal])
 
-    def __stop_signal(self, signal, socket_ids, list_to_check, vari_list,
-                      corresp_list):
+    def _stop_signal(self,
+                     signal,
+                     socket_ids,
+                     list_to_check,
+                     vari_list,
+                     corresp_list):
 
         connection_not_found = False
         tmp_remove_index = []
@@ -625,9 +636,14 @@ class SignalHandler(Base):
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
-            self.__start_signal(signal, "data", socket_ids,
-                                self.open_requ_perm, None,
-                                self.next_requ_node)
+            self._start_signal(
+                signal=signal,
+                send_type="data",
+                socket_ids=socket_ids,
+                list_to_check=self.open_requ_perm,
+                vari_list=None,
+                corresp_list=self.next_requ_node
+            )
 
             return
 
@@ -641,9 +657,14 @@ class SignalHandler(Base):
                 self.log.debug("Send notification that store_data is disabled")
                 self.send_response([b"STORING_DISABLED", __version__])
             else:
-                self.__start_signal(signal, "metadata", socket_ids,
-                                    self.open_requ_perm, None,
-                                    self.next_requ_node)
+                self._start_signal(
+                    signal=signal,
+                    send_type="metadata",
+                    socket_ids=socket_ids,
+                    list_to_check=self.open_requ_perm,
+                    vari_list=None,
+                    corresp_list=self.next_req_node
+                )
 
             return
 
@@ -656,8 +677,13 @@ class SignalHandler(Base):
                           .format(signal, socket_ids))
 
             self.open_requ_perm, nonetmp, self.next_requ_node = (
-                self.__stop_signal(signal, socket_ids, self.open_requ_perm,
-                                   None, self.next_requ_node)
+                self._stop_signal(
+                    signal=signal,
+                    socket_ids=socket_ids,
+                    list_to_check=self.open_requ_perm,
+                    vari_list=None,
+                    corresp_list=self.next_requ_node
+                )
             )
 
             return
@@ -669,9 +695,14 @@ class SignalHandler(Base):
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
-            self.__start_signal(signal, "data", socket_ids,
-                                self.allowed_queries, self.open_requ_vari,
-                                None)
+            self._start_signal(
+                signal=signal,
+                send_type="data",
+                socket_ids=socket_ids,
+                list_to_check=self.allowed_queries,
+                vari_list=self.open_requ_vari,
+                corresp_list=None
+            )
 
             return
 
@@ -686,9 +717,14 @@ class SignalHandler(Base):
                 self.log.debug("Send notification that store_data is disabled")
                 self.send_response([b"STORING_DISABLED", __version__])
             else:
-                self.__start_signal(signal, "metadata", socket_ids,
-                                    self.allowed_queries,
-                                    self.open_requ_vari, None)
+                self._start_signal(
+                    signal=signal,
+                    send_type="metadata",
+                    socket_ids=socket_ids,
+                    list_to_check=self.allowed_queries,
+                    vari_list=self.open_requ_vari,
+                    corresp_list=None
+                )
 
             return
 
@@ -701,8 +737,13 @@ class SignalHandler(Base):
                           .format(signal, socket_ids))
 
             self.allowed_queries, self.open_requ_vari, nonetmp = (
-                self.__stop_signal(signal, socket_ids, self.allowed_queries,
-                                   self.open_requ_vari, None)
+                self._stop_signal(
+                    signal=signal,
+                    socket_ids=socket_ids,
+                    list_to_check=self.allowed_queries,
+                    vari_list=self.open_requ_vari,
+                    corresp_list=None
+                )
             )
 
             return

@@ -207,8 +207,9 @@ class TestBase(unittest.TestCase):
                 os.remove(endpoint)
                 self.log.debug("Removed ipc socket: {}".format(endpoint))
             except OSError:
-                self.log.debug("Could not remove ipc socket: {}"
-                               .format(endpoint))
+                pass
+#                selfi.log.debug("Could not remove ipc socket: {}"
+#                               .format(endpoint))
             except:
                 self.log.warning("Could not remove ipc socket: {}"
                                  .format(endpoint), exc_info=True)
