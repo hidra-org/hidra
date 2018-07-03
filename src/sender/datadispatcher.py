@@ -396,10 +396,11 @@ class DataDispatcher(Base):
                            .format(self.dispatcher_id))
 
         for connection in self.open_connections:
-            self.open_connections[connection] = self.stop_socket(
+            self.stop_socket(
                 name=connection,
                 socket=self.open_connections[connection]
             )
+        self.open_connections = {}
 
         self.stop_socket(name="control_socket")
         self.stop_socket(name="router_socket")
