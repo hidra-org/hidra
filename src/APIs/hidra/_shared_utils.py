@@ -87,7 +87,7 @@ def start_socket(name,
 
     try:
         # create socket
-        socket = self.context.socket(sock_type)
+        socket = context.socket(sock_type)
 
         # register the authentication domain
         if zap_domain:
@@ -96,7 +96,7 @@ def start_socket(name,
         # enable IPv6 on socket
         if is_ipv6:
             socket.ipv6 = True
-            self.log.debug("Enabling IPv6 socket for {}".format(name))
+            log.debug("Enabling IPv6 socket for {}".format(name))
 
         # connect/bind the socket
         if sock_con == "connect":
@@ -104,12 +104,11 @@ def start_socket(name,
         elif sock_con == "bind":
             socket.bind(endpoint)
 
-        self.log.info("{} {} ({}): '{}'"
-                      .format(message, name, sock_con, endpoint))
+        log.info("{} {} ({}): '{}'".format(message, name, sock_con, endpoint))
     except:
-        self.log.error("Failed to {} {} ({}): '{}'"
-                       .format(name, message.lower(), sock_con, endpoint),
-                       exc_info=True)
+        log.error("Failed to {} {} ({}): '{}'"
+                  .format(name, message.lower(), sock_con, endpoint),
+                  exc_info=True)
         raise
 
     return socket
