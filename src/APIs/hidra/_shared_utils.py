@@ -57,6 +57,21 @@ class Base(object):
 #         ZMQ functions          #
 # ------------------------------ #
 
+MAPPING_ZMQ_CONSTANTS_TO_STR = [
+    "PAIR",  # zmq.PAIR = 0
+    "PUB",  # zmq.PUB = 1
+    "SUB",  # zmq.SUB = 2
+    "REQ", # zmq.REQ = 3
+    "REP", # zmq.REP = 4
+    "DEALER/XREQ",  # zmq.DEALER/zmq.XREQ = 5
+    "ROUTER/XREP",  # zmq.ROUTER/zmq.XREP = 6
+    "PULL",  # zmq.PULL = 7
+    "PUSH",  # zmq.PUSH = 8
+    "XPUB",  # zmq.XPUB = 9
+    "XSUB",  # zmq.XSUB = 10
+]
+
+
 def start_socket(name,
                  sock_type,
                  sock_con,
@@ -85,6 +100,8 @@ def start_socket(name,
     if message is None:
         message = "Start"
 
+    sock_type_as_str = MAPPING_ZMQ_CONSTANTS_TO_STR[sock_type]
+
     try:
         # create socket
         socket = context.socket(sock_type)
@@ -104,10 +121,17 @@ def start_socket(name,
         elif sock_con == "bind":
             socket.bind(endpoint)
 
-        log.info("{} {} ({}): '{}'".format(message, name, sock_con, endpoint))
+        log.info("{} {} ({}, {}): '{}'".format(message,
+                                               name,
+                                               sock_con,
+                                               sock_type_as_str,
+                                               endpoint))
     except:
-        log.error("Failed to {} {} ({}): '{}'"
-                  .format(name, message.lower(), sock_con, endpoint),
+        log.error("Failed to {} {} ({}, {}): '{}'".format(name,
+                                                          message.lower(),
+                                                          sock_con,
+                                                          sock_type_as_str,
+                                                          endpoint),
                   exc_info=True)
         raise
 

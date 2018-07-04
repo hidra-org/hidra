@@ -278,7 +278,8 @@ class Transfer(Base):
         if use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(use_log)
         # use logutils queue
-        elif type(use_log) == multiprocessing.queues.Queue:
+        #elif type(use_log) == multiprocessing.queues.Queue:
+        elif type(use_log) == multiprocessing.Queue:
             self.log = get_logger("Transfer", use_log)
         # use logging
         elif use_log:
@@ -453,8 +454,8 @@ class Transfer(Base):
 
         self.signal_socket = self._start_socket(
             name="signal_socket",
-            sock_type=zmq.PULL,
-            sock_con="connet",
+            sock_type=zmq.REQ,
+            sock_con="connect",
             endpoint=self._get_endpoint(**self.signal_conf)
         )
 
