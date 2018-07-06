@@ -203,6 +203,7 @@ class SignalHandler(Base):
             if (self.request_fw_socket in socks
                     and socks[self.request_fw_socket] == zmq.POLLIN):
 
+                in_message = None
                 try:
                     in_message = self.request_fw_socket.recv_multipart()
                     if in_message[0] == b"GET_REQUESTS":
@@ -266,7 +267,13 @@ class SignalHandler(Base):
                             self.log.debug("allowed_queries: {}"
                                            .format(self.allowed_queries))
 
+                    else:
+                        self.log.debug("in_message={}".format(in_message))
+                        self.log.error("Failed to receive/answer new signal "
+                                "requests: incoming message not supported")
+
                 except:
+                    self.log.debug("in_message={}".format(in_message))
                     self.log.error("Failed to receive/answer new signal "
                                    "requests", exc_info=True)
 
@@ -279,13 +286,13 @@ class SignalHandler(Base):
                 in_message = self.com_socket.recv_multipart()
                 self.log.debug("Received signal: {}".format(in_message))
 
-                check_failed, signal, target = (
+                check_failed, signal, targets = (
                     self.check_signal_inverted(in_message)
                 )
-                if not check_failed:
-                    self.react_to_signal(signal, target)
-                else:
+                if check_failed:
                     self.send_response(check_failed)
+                else:
+                    self.react_to_signal(signal, targets)
 
             #---------------------------------------------------------------------
             # request from external
@@ -300,31 +307,24 @@ class SignalHandler(Base):
                     incoming_socket_id = utils.convert_socket_to_fqdn(
                         in_message[1].decode("utf-8"), self.log)
 
-                    for index in range(len(self.allowed_queries)):
-                        for i in range(len(self.allowed_queries[index])):
-                            if (incoming_socket_id
-                                    == self.allowed_queries[index][i][0]):
-                                self.open_requ_vari[index].append(
-                                    self.allowed_queries[index][i])
+                    for index, query_set in enumerate(self.allowed_queries):
+                        for query in query_set:
+                            if incoming_socket_id == query[0]:
+                                self.open_requ_vari[index].append(query)
                                 self.log.info("Add to open requests: {}"
-                                              .format(self.allowed_queries[
-                                                  index][i]))
+                                              .format(query))
 
                 elif in_message[0] == b"CANCEL":
                     incoming_socket_id = utils.convert_socket_to_fqdn(
                         in_message[1].decode("utf-8"), self.log
                     )
 
-                    still_requested = []
-                    for a in range(len(self.open_requ_vari)):
-                        vari_per_group = []
-                        for b in self.open_requ_vari[a]:
-                            if incoming_socket_id != b[0]:
-                                vari_per_group.append(b)
-
-                        still_requested.append(vari_per_group)
-
-                    self.open_requ_vari = still_requested
+                    self.open_requ_vari = [
+                        [socket_conf
+                        for socket_conf in request_set
+                         if incoming_socket_id != socket_conf[0]]
+                        for request_set in self.open_requ_vari
+                    ]
 
                     self.log.info("Remove all occurences from {} from "
                                   "variable request list."
@@ -365,6 +365,20 @@ class SignalHandler(Base):
 
     def check_signal_inverted(self, in_message):
         """Unpack and check incoming message.
+
+        Args:
+            in_message: Message to unpack.
+
+        Return:
+            A tuple containing:
+                - Entry if the check failed:
+                    - False if the everything was OK.
+                    - A response message if the test failed. Options:
+                        - VERSION_CONFLICT
+                        - NO_VALID_SIGNAL
+                        - NO_VALID_HOST
+                - The signal contained in the message.
+                - The targets extracted from the message.
         """
 
         if len(in_message) != 3:
@@ -386,6 +400,7 @@ class SignalHandler(Base):
             host = [t[0].split(":")[0] for t in targets]
             self.log.debug("host {}".format(host))
         except:
+            self.log.debug("no valid signal received", exc_info=True)
             return [b"NO_VALID_SIGNAL"], None, None
 
         if version:

@@ -400,8 +400,484 @@ class TestSignalHandler(TestBase):
         ]
         check_registered(sockets_to_test, self)
 
-    def todo_test_run(self):
-        pass
+    def test_run(self):
+        current_func_name = inspect.currentframe().f_code.co_name
+
+        # with all nodes allowed to connect
+        with mock.patch("signalhandler.SignalHandler.create_sockets"):
+            with mock.patch("signalhandler.SignalHandler.exec_run"):
+                sighandler = SignalHandler(**self.signalhandler_config)
+
+        sighandler.com_socket = mock.MagicMock()
+        sighandler.request_socket = mock.MagicMock()
+        sighandler.request_fw_socket = mock.MagicMock()
+        sighandler.control_sub_socket = mock.MagicMock()
+        sighandler.control_sub_socket.recv_multipart = mock.MagicMock()
+        sighandler.poller = mock.MagicMock(spec_set=zmq.Poller)
+        sighandler.poller.poll = mock.MagicMock()
+
+        def init_sighandler(sighandler, socket, signal):
+
+            sighandler.poller.poll.side_effect = [
+                {socket: zmq.POLLIN},
+                # for stopping the run loop
+                {sighandler.control_sub_socket: zmq.POLLIN}
+            ]
+            socket.recv_multipart.side_effect = [signal]
+            # either use side_effect or recreate mock object and use return_value
+            sighandler.control_sub_socket.recv_multipart.side_effect = [
+                ["", "EXIT"]
+            ]
+
+        def reset(sighandler):
+            sighandler.com_socket.reset_mock()
+            sighandler.request_socket.reset_mock()
+            sighandler.request_fw_socket.reset_mock()
+            sighandler.control_sub_socket.reset_mock()
+            sighandler.control_sub_socket.recv_multipart.reset_mock()
+            sighandler.poller.poll.reset_mock()
+
+        host = self.con_ip
+        port = 1234
+        send_type = "data"
+
+        #---------------------------------------------------------------------
+        # control_sub_socket: exit
+        #---------------------------------------------------------------------
+        self.log.info("{}: CONTROL_SUB_SOCKET: EXIT"
+                      .format(current_func_name))
+
+        sighandler.log = mock.MagicMock()
+
+        sighandler.poller.poll.side_effect = [
+            {sighandler.control_sub_socket: zmq.POLLIN}
+        ]
+        sighandler.control_sub_socket.recv_multipart.return_value = ["", "EXIT"]
+
+        sighandler.run()
+
+        calls = sighandler.log.method_calls
+        expected = mock.call.info("Requested to shutdown.")
+        self.assertIn(expected, calls)
+
+        # reset
+        sighandler.log = MockLogging()
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # control_sub_socket: SLEEP/WAKEUP or unhandled
+        #---------------------------------------------------------------------
+        self.log.info("{}: CONTROL_SUB_SOCKET: SLEEP/WAKEUP"
+                      .format(current_func_name))
+
+        sighandler.poller.poll.side_effect = [
+            {sighandler.control_sub_socket: zmq.POLLIN},
+            # for stopping the run loop
+            {sighandler.control_sub_socket: zmq.POLLIN}
+        ]
+        sighandler.control_sub_socket.recv_multipart.side_effect = [
+            ["", "SLEEP"],
+            # for stopping the run loop
+            ["", "EXIT"],
+        ]
+
+        sighandler.run()
+
+        # if the code run till here without throwing an exception if passed
+        # if StopIteration is thrown by mock that means that poll was called
+        # more often than 2 times
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_fw_socket: failed receive
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_FW_SOCKET: FAILED RECEIVE"
+                      .format(current_func_name))
+
+        signal = [Exception()]
+        init_sighandler(sighandler, sighandler.request_fw_socket, signal)
+        sighandler.log.error = mock.MagicMock()
+
+        sighandler.run()
+
+        call = sighandler.log.error.call_args[0][0]
+        self.log.debug("call args {}".format(call))
+        expected = "Failed to receive/answer"
+        self.assertIn(expected, call)
+
+        # reset
+        sighandler.log = MockLogging()
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_fw_socket: incoming message not supported
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_FW_SOCKET: INCOMING MESSAGE NOT SUPPORTED"
+                      .format(current_func_name))
+
+        signal = ["NOT_SUPPORTED"]
+        init_sighandler(sighandler, sighandler.request_fw_socket, signal)
+        sighandler.log.error = mock.MagicMock()
+
+        sighandler.run()
+
+        call = sighandler.log.error.call_args[0][0]
+        self.log.debug("call args {}".format(call))
+        expected = "Failed to receive/answer"
+        self.assertIn(expected, call)
+
+        # reset
+        sighandler.log = MockLogging()
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_fw_socket: no open requests
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_FW_SOCKET: NO OPEN REQUESTS"
+                      .format(current_func_name))
+
+        signal = [b"GET_REQUESTS",
+                  json.dumps({"filename": "my_filename"}).encode("utf-8")]
+        init_sighandler(sighandler, sighandler.request_fw_socket, signal)
+        sighandler.request_fw_socket.send_string = mock.MagicMock()
+
+        sighandler.open_requ_perm = []
+        sighandler.open_requ_vari = []
+        sighandler.next_requ_node = []
+
+        sighandler.run()
+
+        expected = json.dumps(["None"])
+        (sighandler.request_fw_socket
+         .send_string
+         .assert_called_once_with(expected))
+
+        self.assertEqual(sighandler.open_requ_perm, [])
+        self.assertEqual(sighandler.open_requ_vari, [])
+        self.assertEqual(sighandler.next_requ_node, [])
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_fw_socket: open perm requests (match)
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_FW_SOCKET: OPEN PERM REQUESTS (MATCH)"
+                      .format(current_func_name))
+        signal = [b"GET_REQUESTS",
+                  json.dumps("my_filename").encode("utf-8")]
+        init_sighandler(sighandler, sighandler.request_fw_socket, signal)
+        sighandler.request_fw_socket.send_string = mock.MagicMock()
+
+        sighandler.open_requ_perm = [
+            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        ]
+        sighandler.open_requ_vari = []
+        sighandler.next_requ_node = [0]
+
+        sighandler.run()
+
+        expected = json.dumps([["{}:{}".format(host, port), 0, send_type]])
+        (sighandler.request_fw_socket
+         .send_string
+         .assert_called_once_with(expected))
+
+        expected_perm_request = [
+            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        ]
+        self.assertEqual(sighandler.open_requ_perm, expected_perm_request)
+        self.assertEqual(sighandler.open_requ_vari, [])
+        self.assertEqual(sighandler.next_requ_node, [0])
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_fw_socket: open perm requests (no match)
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_FW_SOCKET: OPEN PERM REQUESTS (NO MATCH)"
+                      .format(current_func_name))
+
+        signal = [b"GET_REQUESTS",
+                  json.dumps("my_filename").encode("utf-8")]
+        init_sighandler(sighandler, sighandler.request_fw_socket, signal)
+        sighandler.request_fw_socket.send_string = mock.MagicMock()
+
+        sighandler.open_requ_perm = [
+            [["{}:{}".format(host, port), 0, re.compile(".py"), send_type]]
+        ]
+        sighandler.open_requ_vari = []
+        sighandler.next_requ_node = [0]
+
+        sighandler.run()
+
+        expected = json.dumps(["None"])
+        (sighandler.request_fw_socket
+         .send_string
+         .assert_called_once_with(expected))
+
+        expected_perm_request = [
+            [["{}:{}".format(host, port), 0, re.compile(".py"), send_type]]
+        ]
+        self.assertEqual(sighandler.open_requ_perm, expected_perm_request)
+        self.assertEqual(sighandler.open_requ_vari, [])
+        self.assertEqual(sighandler.next_requ_node, [0])
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_fw_socket: open vari requests (match)
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_FW_SOCKET: OPEN VARI REQUESTS (MATCH)"
+                      .format(current_func_name))
+
+        signal = [b"GET_REQUESTS",
+                  json.dumps("my_filename").encode("utf-8")]
+        init_sighandler(sighandler, sighandler.request_fw_socket, signal)
+        sighandler.request_fw_socket.send_string = mock.MagicMock()
+
+        sighandler.open_requ_perm = []
+        sighandler.open_requ_vari = [
+            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        ]
+        sighandler.next_requ_node = []
+
+        sighandler.run()
+
+        expected = json.dumps([["{}:{}".format(host, port), 0, send_type]])
+        (sighandler.request_fw_socket
+         .send_string
+         .assert_called_once_with(expected))
+
+        self.assertEqual(sighandler.open_requ_perm, [])
+        self.assertEqual(sighandler.open_requ_vari, [[]])
+        self.assertEqual(sighandler.next_requ_node, [])
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_fw_socket: open vari requests (no match)
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_FW_SOCKET: OPEN VARI REQUESTS (NO MATCH)"
+                      .format(current_func_name))
+
+        signal = [b"GET_REQUESTS",
+                  json.dumps("my_filename").encode("utf-8")]
+        init_sighandler(sighandler, sighandler.request_fw_socket, signal)
+        sighandler.request_fw_socket.send_string = mock.MagicMock()
+
+        sighandler.open_requ_perm = []
+        sighandler.open_requ_vari = [
+            [["{}:{}".format(host, port), 0, re.compile(".py"), send_type]]
+        ]
+        sighandler.next_requ_node = []
+
+        sighandler.run()
+
+        expected = json.dumps(["None"])
+        (sighandler.request_fw_socket
+         .send_string
+         .assert_called_once_with(expected))
+
+        expected_vari_request = [
+            [["{}:{}".format(host, port), 0, re.compile(".py"), send_type]]
+        ]
+        self.assertEqual(sighandler.open_requ_perm, [])
+        self.assertEqual(sighandler.open_requ_vari, expected_vari_request)
+        self.assertEqual(sighandler.next_requ_node, [])
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # com_socket: signal ok
+        #---------------------------------------------------------------------
+        self.log.info("{}: COM_SOCKET: SIGNAL OK".format(current_func_name))
+
+        signal = []
+        init_sighandler(sighandler, sighandler.com_socket, signal)
+        sighandler.com_socket.recv_multipart = mock.MagicMock()
+        sighandler.react_to_signal = mock.MagicMock()
+        sighandler.send_response = mock.MagicMock()
+        sighandler.check_signal_inverted = mock.MagicMock()
+        sighandler.check_signal_inverted.return_value = (False, None, None)
+
+        sighandler.run()
+
+        self.assertTrue(sighandler.react_to_signal.called)
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # com_socket: signal not ok
+        #---------------------------------------------------------------------
+        self.log.info("{}: COM_SOCKET: SIGNAL NOT OK"
+                      .format(current_func_name))
+
+        signal = []
+        init_sighandler(sighandler, sighandler.com_socket, signal)
+        sighandler.com_socket.recv_multipart = mock.MagicMock()
+        sighandler.react_to_signal = mock.MagicMock()
+        sighandler.send_response = mock.MagicMock()
+        sighandler.check_signal_inverted = mock.MagicMock()
+        sighandler.check_signal_inverted.return_value = (True, None, None)
+
+        sighandler.run()
+
+        self.assertTrue(sighandler.send_response.called)
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_socket: not supported
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_SOCKET: NOT SUPPORTED"
+                      .format(current_func_name))
+
+        signal = [""]
+        init_sighandler(sighandler, sighandler.request_socket, signal)
+        sighandler.log = mock.MagicMock()
+
+        sighandler.run()
+
+        calls = sighandler.log.method_calls
+        expected = mock.call.info("Request not supported.")
+        self.assertIn(expected, calls)
+
+        # reset
+        sighandler.log = MockLogging()
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_socket: next (allowed)
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_SOCKET: NEXT (ALLOWED)"
+                      .format(current_func_name))
+
+        socket_id = "{}:{}".format(host, port)
+        signal = ["NEXT", socket_id]
+        init_sighandler(sighandler, sighandler.request_socket, signal)
+
+        sighandler.allowed_queries = [
+            [[socket_id, 0, re.compile(".*"), send_type]]
+        ]
+        sighandler.open_requ_vari = [[]]
+
+        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+            mock_utils.return_value = socket_id
+            sighandler.run()
+
+        expected = [
+            [[socket_id, 0, re.compile(".*"), send_type]]
+        ]
+        self.assertEqual(sighandler.open_requ_vari, expected)
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_socket: next (not allowed)
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_SOCKET: NEXT (NOT ALLOWED)"
+                      .format(current_func_name))
+
+        socket_id = "{}:{}".format(host, port)
+        signal = ["NEXT", socket_id]
+        init_sighandler(sighandler, sighandler.request_socket, signal)
+
+        sighandler.allowed_queries = []
+        sighandler.open_requ_vari = []
+
+        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+            mock_utils.return_value = socket_id
+            sighandler.run()
+
+        self.assertEqual(sighandler.open_requ_vari, [])
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_socket: cancel (no requests)
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_SOCKET: CANCEL (NO REQUESTS)"
+                      .format(current_func_name))
+
+        socket_id = "{}:{}".format(host, port)
+        signal = ["CANCEL", socket_id]
+        init_sighandler(sighandler, sighandler.request_socket, signal)
+
+        sighandler.allowed_queries = []
+        sighandler.open_requ_vari = []
+
+        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+            mock_utils.return_value = socket_id
+            sighandler.run()
+
+        self.assertEqual(sighandler.open_requ_vari, [])
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_socket: cancel (requests)
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_SOCKET: CANCEL (NO REQUESTS)"
+                      .format(current_func_name))
+
+        socket_id = "{}:{}".format(host, port)
+        signal = ["CANCEL", socket_id]
+        init_sighandler(sighandler, sighandler.request_socket, signal)
+
+        sighandler.allowed_queries = []
+        sighandler.open_requ_vari = [
+            [[socket_id, 0, re.compile(".*"), send_type]]
+        ]
+
+        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+            mock_utils.return_value = socket_id
+            sighandler.run()
+
+        self.assertEqual(sighandler.open_requ_vari, [[]])
+
+        # reset
+        reset(sighandler)
+
+        #---------------------------------------------------------------------
+        # request_socket: cancel (multiple requests)
+        #---------------------------------------------------------------------
+        self.log.info("{}: REQUEST_SOCKET: CANCEL (NO REQUESTS)"
+                      .format(current_func_name))
+
+        socket_id = "{}:{}".format(host, port)
+        signal = ["CANCEL", socket_id]
+        init_sighandler(sighandler, sighandler.request_socket, signal)
+
+        port2 = 9876
+
+        sighandler.allowed_queries = []
+        sighandler.open_requ_vari = [
+            [[socket_id, 0, re.compile(".*"), send_type],
+             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]]
+        ]
+
+        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+            mock_utils.return_value = socket_id
+            sighandler.run()
+
+        expected = [
+            [["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]]
+        ]
+        self.assertEqual(sighandler.open_requ_vari, expected)
+
+        # reset
+        reset(sighandler)
 
     def test_check_signal_inverted(self):
         current_func_name = inspect.currentframe().f_code.co_name
