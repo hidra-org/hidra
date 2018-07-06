@@ -581,15 +581,24 @@ class SignalHandler(Base):
                      registered_ids,
                      vari_requests,
                      perm_requests):
+        """Unregister socket ids and updated related lists accordingly.
 
-        connection_not_found = False
-        tmp_remove_index = []
-        to_remove = []
-        found = False
+        Updated registered_ids, vari_requests and perm_requests in place and send
+        confirmation back.
+
+        Args:
+            signal: Signal to send after finishing
+            socket_ids: Socket ids to be deregistered.
+            registered_ids: Currently registered socket ids.
+            vari_requests: List of open requests (query mode).
+            perm_requests: List of next node number to serve (stream mode).
+        """
 
         socket_ids = utils.convert_socket_to_fqdn(socket_ids,
                                                   self.log)
 
+#        connection_not_found = False
+#        found = False
 #        for socket_conf in socket_ids:
 #            socket_id = socket_conf[0]
 #
@@ -601,6 +610,11 @@ class SignalHandler(Base):
 #            if not found:
 #                connection_not_found = True
 
+        # list of socket configurations to remove (in format how they are
+        # registered:
+        # [[[<host>:<port>, <prio>, <regex>, <end_type>],...],...]
+        # this is needed because socket_ids only contain partial information:
+        # [[<host>:<port>, <prio>, <regex uncompiled>]]
         to_remove = [reg_id
                      for socket_conf in socket_ids
                      for sublist in registered_ids
@@ -632,7 +646,7 @@ class SignalHandler(Base):
                 self.log.debug("element {}".format(element))
                 self.log.debug("perm_requests {}".format(perm_requests))
 
-                tmp_remove_index = []
+                index_to_remove = []
                 # registered_ids is of the form
                 # [[[<host>:<port>, <prio>, <regex>, <end_type>],...],...]
                 for i, node_set in enumerate(registered_ids):
@@ -643,7 +657,7 @@ class SignalHandler(Base):
 #                                       "allowed list.".format(socket_id))
 
                         if not node_set:
-                            tmp_remove_index.append(i)
+                            index_to_remove.append(i)
                             # remove open requests (querys)
                             if vari_requests is not None:
                                 del vari_requests[i]
@@ -662,13 +676,15 @@ class SignalHandler(Base):
                                 )
 
                 # remove left over empty list
-                for index in tmp_remove_index:
+                for index in index_to_remove:
                     del registered_ids[index]
 
             # send signal to TaskManager
             self.control_pub_socket.send_multipart(
-                [b"signal", b"CLOSE_SOCKETS",
-                    json.dumps(socket_ids).encode("utf-8")])
+                [b"signal",
+                 b"CLOSE_SOCKETS",
+                 json.dumps(socket_ids).encode("utf-8")]
+            )
 
         return registered_ids, vari_requests, perm_requests
 
@@ -717,7 +733,7 @@ class SignalHandler(Base):
                     socket_ids=socket_ids,
                     registered_ids=self.open_requ_perm,
                     vari_requests=None,
-                    perm_requests=self.next_req_node
+                    perm_requests=self.next_requ_node
                 )
 
             return
@@ -730,20 +746,20 @@ class SignalHandler(Base):
             self.log.info("Received signal: {} for host {}"
                           .format(signal, socket_ids))
 
-            self.open_requ_perm, nonetmp, self.next_requ_node = (
-                self._stop_signal(
-                    signal=signal,
-                    socket_ids=socket_ids,
-                    registered_ids=self.open_requ_perm,
-                    vari_requests=None,
-                    perm_requests=self.next_requ_node
-                )
+            ret_val = self._stop_signal(
+                signal=signal,
+                socket_ids=socket_ids,
+                registered_ids=self.open_requ_perm,
+                vari_requests=None,
+                perm_requests=self.next_requ_node
             )
+
+            self.open_requ_perm, _, self.next_requ_node = ret_val
 
             return
 
         #---------------------------------------------------------------------
-        # START_QUERY
+        # START_QUERY_NEXT
         #---------------------------------------------------------------------
         elif signal == b"START_QUERY_NEXT":
             self.log.info("Received signal: {} for hosts {}"
@@ -783,22 +799,22 @@ class SignalHandler(Base):
             return
 
         #---------------------------------------------------------------------
-        #  STOP_QUERY
+        #  STOP_QUERY_NEXT
         #  STOP_QUERY_METADATA
         #---------------------------------------------------------------------
         elif signal == b"STOP_QUERY_NEXT" or signal == b"STOP_QUERY_METADATA":
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
-            self.allowed_queries, self.open_requ_vari, nonetmp = (
-                self._stop_signal(
-                    signal=signal,
-                    socket_ids=socket_ids,
-                    registered_ids=self.allowed_queries,
-                    vari_requests=self.open_requ_vari,
-                    perm_requests=None
-                )
+            ret_val = self._stop_signal(
+                signal=signal,
+                socket_ids=socket_ids,
+                registered_ids=self.allowed_queries,
+                vari_requests=self.open_requ_vari,
+                perm_requests=None
             )
+
+            self.allowed_queries, self.open_requ_vari, _ = ret_val
 
             return
 
