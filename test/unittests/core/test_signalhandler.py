@@ -539,7 +539,6 @@ class TestSignalHandler(TestBase):
         signal = "test"
         sighandler.send_response(signal)
 
-        mocked_func.assert_called()
         # assert_called_once only works version >3.6
         self.assertTrue(mocked_func.call_count == 1)
 
@@ -557,7 +556,6 @@ class TestSignalHandler(TestBase):
         signal = ["test"]
         sighandler.send_response(signal)
 
-        mocked_func.assert_called()
         # assert_called_once only works version >3.6
         self.assertTrue(mocked_func.call_count == 1)
 
@@ -847,13 +845,9 @@ class TestSignalHandler(TestBase):
             perm_requests=perm_requests
         )
         new_registered_ids, new_vari_requests, new_perm_requests = ret_val
-        mocked_func.assert_called_once()
 
         expected_args = [b"NO_OPEN_CONNECTION_FOUND"]
-        args, kwargs = mocked_func.call_args
-        # mock returns a tuple with the args
-        self.assertTrue(args == (expected_args,))
-        #mocked_func.call_args[0] == [b"NO_OPEN_CONNECTION_FOUND"]
+        mocked_func.assert_called_once_with(expected_args)
 
         self.assertListEqual(new_registered_ids, [])
         self.assertListEqual(new_vari_requests, [])
@@ -1062,18 +1056,11 @@ class TestSignalHandler(TestBase):
         self.assertIsNone(new_vari_requests)
         self.assertIsNone(new_perm_requests)
 
-        expected_answer = [b"signal",
-                           b"CLOSE_SOCKETS",
-                           json.dumps(socket_ids).encode("utf-8")]
+        expected_args = [b"signal",
+                         b"CLOSE_SOCKETS",
+                         json.dumps(socket_ids).encode("utf-8")]
 
-        # assert_called_once only works version >3.6
-        self.assertTrue(mocked_socket.call_count == 1)
-
-#        mocked_socket.assert_called_once_with(expected_answer)
-
-#        args, kwargs = mocked_socket.call_args
-        # mock returns a tuple with the args
-#        self.assertTrue(args == (expected_answer,))
+        mocked_socket.assert_called_once_with(expected_args)
 
     def test_react_to_signal(self):
         current_func_name = inspect.currentframe().f_code.co_name
@@ -1098,12 +1085,8 @@ class TestSignalHandler(TestBase):
             socket_ids=None
         )
 
-        sighandler.send_response.assert_called_once()
-
         expected_args = [signal, __version__]
-        args, kwargs = sighandler.send_response.call_args
-        # mock returns a tuple with the args
-        self.assertEqual(args, (expected_args,))
+        sighandler.send_response.assert_called_once_with(expected_args)
 
         sighandler.send_response.reset_mock()
         sighandler._start_signal.reset_mock()
@@ -1120,15 +1103,17 @@ class TestSignalHandler(TestBase):
             signal=signal,
             socket_ids=None
         )
-        sighandler._start_signal.assert_called_once()
 
-        args, kwargs = sighandler._start_signal.call_args
-        self.assertEqual(kwargs["signal"], signal)
-        self.assertEqual(kwargs["send_type"], "data")
-        self.assertIsNone(kwargs["socket_ids"])
-        self.assertEqual(kwargs["registered_ids"], [])
-        self.assertIsNone(kwargs["vari_requests"])
-        self.assertEqual(kwargs["perm_requests"], [])
+        expected_kwargs = {
+            "signal": signal,
+            "send_type": "data",
+            "socket_ids": None,
+            "registered_ids": [],
+            "vari_requests": None,
+            "perm_requests": []
+        }
+
+        sighandler._start_signal.assert_called_once_with(**expected_kwargs)
 
         sighandler.send_response.reset_mock()
         sighandler._start_signal.reset_mock()
@@ -1165,12 +1150,9 @@ class TestSignalHandler(TestBase):
             signal=signal,
             socket_ids=None
         )
-        sighandler.send_response.assert_called_once()
 
         expected_args = [b"STORING_DISABLED", __version__]
-        args, kwargs = sighandler.send_response.call_args
-        # mock returns a tuple with the args
-        self.assertEqual(args, (expected_args,))
+        sighandler.send_response.assert_called_once_with(expected_args)
 
         sighandler.send_response.reset_mock()
         sighandler._start_signal.reset_mock()
@@ -1207,15 +1189,17 @@ class TestSignalHandler(TestBase):
             signal=signal,
             socket_ids=None
         )
-        sighandler._start_signal.assert_called_once()
 
-        args, kwargs = sighandler._start_signal.call_args
-        self.assertEqual(kwargs["signal"], signal)
-        self.assertEqual(kwargs["send_type"], "metadata")
-        self.assertIsNone(kwargs["socket_ids"])
-        self.assertEqual(kwargs["registered_ids"], [])
-        self.assertIsNone(kwargs["vari_requests"])
-        self.assertEqual(kwargs["perm_requests"], [])
+        expected_kwargs = {
+            "signal": signal,
+            "send_type": "metadata",
+            "socket_ids": None,
+            "registered_ids": [],
+            "vari_requests": None,
+            "perm_requests": []
+        }
+
+        sighandler._start_signal.assert_called_once_with(**expected_kwargs)
 
         sighandler.send_response.reset_mock()
         sighandler._start_signal.reset_mock()
@@ -1234,14 +1218,16 @@ class TestSignalHandler(TestBase):
             signal=signal,
             socket_ids=None
         )
-        sighandler._stop_signal.assert_called_once()
 
-        args, kwargs = sighandler._stop_signal.call_args
-        self.assertEqual(kwargs["signal"], signal)
-        self.assertIsNone(kwargs["socket_ids"])
-        self.assertEqual(kwargs["registered_ids"], [])
-        self.assertIsNone(kwargs["vari_requests"])
-        self.assertEqual(kwargs["perm_requests"], [])
+        expected_kwargs = {
+            "signal": signal,
+            "socket_ids": None,
+            "registered_ids": [],
+            "vari_requests": None,
+            "perm_requests": []
+        }
+
+        sighandler._stop_signal.assert_called_once_with(**expected_kwargs)
 
         sighandler.send_response.reset_mock()
         sighandler._start_signal.reset_mock()
@@ -1258,15 +1244,17 @@ class TestSignalHandler(TestBase):
             signal=signal,
             socket_ids=None
         )
-        sighandler._start_signal.assert_called_once()
 
-        args, kwargs = sighandler._start_signal.call_args
-        self.assertEqual(kwargs["signal"], signal)
-        self.assertEqual(kwargs["send_type"], "data")
-        self.assertIsNone(kwargs["socket_ids"])
-        self.assertEqual(kwargs["registered_ids"], [])
-        self.assertEqual(kwargs["vari_requests"], [])
-        self.assertIsNone(kwargs["perm_requests"])
+        expected_kwargs = {
+            "signal": signal,
+            "send_type": "data",
+            "socket_ids": None,
+            "registered_ids": [],
+            "vari_requests": [],
+            "perm_requests": None
+        }
+
+        sighandler._start_signal.assert_called_once_with(**expected_kwargs)
 
         sighandler.send_response.reset_mock()
         sighandler._start_signal.reset_mock()
@@ -1303,12 +1291,9 @@ class TestSignalHandler(TestBase):
             signal=signal,
             socket_ids=None
         )
-        sighandler.send_response.assert_called_once()
 
-        expected_answer = [b"STORING_DISABLED", __version__]
-        args, kwargs = sighandler.send_response.call_args
-        # mock returns a tuple with the args
-        self.assertEqual(args, (expected_answer,))
+        expected_args = [b"STORING_DISABLED", __version__]
+        sighandler.send_response.assert_called_once_with(expected_args)
 
         sighandler.send_response.reset_mock()
         sighandler._start_signal.reset_mock()
@@ -1345,15 +1330,17 @@ class TestSignalHandler(TestBase):
             signal=signal,
             socket_ids=None
         )
-        sighandler._start_signal.assert_called_once()
 
-        args, kwargs = sighandler._start_signal.call_args
-        self.assertEqual(kwargs["signal"], signal)
-        self.assertEqual(kwargs["send_type"], "metadata")
-        self.assertIsNone(kwargs["socket_ids"])
-        self.assertEqual(kwargs["registered_ids"], [])
-        self.assertEqual(kwargs["vari_requests"], [])
-        self.assertIsNone(kwargs["perm_requests"])
+        expected_kwargs = {
+            "signal": signal,
+            "send_type": "metadata",
+            "socket_ids": None,
+            "registered_ids": [],
+            "vari_requests": [],
+            "perm_requests": None
+        }
+
+        sighandler._start_signal.assert_called_once_with(**expected_kwargs)
 
         sighandler.send_response.reset_mock()
         sighandler._start_signal.reset_mock()
@@ -1372,14 +1359,16 @@ class TestSignalHandler(TestBase):
             signal=signal,
             socket_ids=None
         )
-        sighandler._stop_signal.assert_called_once()
 
-        args, kwargs = sighandler._stop_signal.call_args
-        self.assertEqual(kwargs["signal"], signal)
-        self.assertIsNone(kwargs["socket_ids"])
-        self.assertEqual(kwargs["registered_ids"], [])
-        self.assertIsNone(kwargs["perm_requests"])
-        self.assertEqual(kwargs["vari_requests"], [])
+        expected_kwargs = {
+            "signal": signal,
+            "socket_ids": None,
+            "registered_ids": [],
+            "vari_requests": [],
+            "perm_requests": None
+        }
+
+        sighandler._stop_signal.assert_called_once_with(**expected_kwargs)
 
         sighandler.send_response.reset_mock()
         sighandler._start_signal.reset_mock()
@@ -1396,12 +1385,9 @@ class TestSignalHandler(TestBase):
             signal=signal,
             socket_ids=None
         )
-        sighandler.send_response.assert_called_once()
 
-        expected_answer = [b"NO_VALID_SIGNAL"]
-        args, kwargs = sighandler.send_response.call_args
-        # mock returns a tuple with the args
-        self.assertEqual(args, (expected_answer,))
+        expected_args = [b"NO_VALID_SIGNAL"]
+        sighandler.send_response.assert_called_once_with(expected_args)
 
     def test_stop(self):
         current_func_name = inspect.currentframe().f_code.co_name
@@ -1420,20 +1406,14 @@ class TestSignalHandler(TestBase):
 
         sighandler.stop()
 
-        sighandler.stop_socket.assert_called()
-
-        ret_val = sighandler.stop_socket.call_args_list
-        expected = [
-            ({"name": "com_socket"},),
-            ({"name": "request_socket"},),
-            ({"name": "request_fw_socket"},),
-            ({"name": "control_pub_socket"},),
-            ({"name": "control_sub_socket"},)
+        calls = [
+            mock.call(name="com_socket"),
+            mock.call(name="request_socket"),
+            mock.call(name="request_fw_socket"),
+            mock.call(name="control_pub_socket"),
+            mock.call(name="control_sub_socket")
         ]
-        # check for equality of whole array would fail if sockets are closed
-        # in a different order
-        for val in expected:
-            self.assertTrue(val in ret_val)
+        sighandler.stop_socket.assert_has_calls(calls, any_order=True)
 
         self.assertIsNotNone(sighandler.context)
 
@@ -1453,20 +1433,14 @@ class TestSignalHandler(TestBase):
 
         sighandler.stop()
 
-        sighandler.stop_socket.assert_called()
-
-        ret_val = sighandler.stop_socket.call_args_list
-        expected = [
-            ({"name": "com_socket"},),
-            ({"name": "request_socket"},),
-            ({"name": "request_fw_socket"},),
-            ({"name": "control_pub_socket"},),
-            ({"name": "control_sub_socket"},)
+        calls = [
+            mock.call(name="com_socket"),
+            mock.call(name="request_socket"),
+            mock.call(name="request_fw_socket"),
+            mock.call(name="control_pub_socket"),
+            mock.call(name="control_sub_socket")
         ]
-        # check for equality of whole array would fail if sockets are closed
-        # in a different order
-        for val in expected:
-            self.assertTrue(val in ret_val)
+        sighandler.stop_socket.assert_has_calls(calls, any_order=True)
 
         self.assertIsNone(sighandler.context)
 
