@@ -1331,6 +1331,48 @@ class TestSignalHandler(TestBase):
         self.assertListEqual(vari_requests, [[]])
         self.assertIsNone(perm_requests)
 
+        #---------------------------------------------------------------------
+        # same socke_id but different appid
+        #---------------------------------------------------------------------
+        self.log.info("{}: CHECK THAT SAME SOCKET_ID IS NOT ADDED TWICE"
+                      .format(current_func_name))
+
+        appid2 = 9876543210
+
+        #            [[<host>, <prio>, <suffix>], ...]
+        socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
+
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
+        ]
+        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        # there have to be entries in these two lists as well because len of
+        # registered_ids, vari_requests and perm_requests should be the same
+        vari_requests = [[]]
+        perm_requests = [0]
+
+        sighandler._start_signal(
+            signal=signal,
+            send_type=send_type,
+            appid=appid2,
+            socket_ids=socket_ids,
+            registered_ids=registered_ids,
+            vari_requests=vari_requests,
+            perm_requests=perm_requests
+        )
+
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
+        ]
+        expected_result = [
+            TargetProperties(targets=targets, appid=appid),
+            TargetProperties(targets=targets, appid=appid2)
+        ]
+
+        self.assertListEqual(registered_ids, expected_result)
+        self.assertListEqual(vari_requests, [[], []])
+        self.assertListEqual(perm_requests, [0, 0])
+
     def test__stop_signal(self):
         current_func_name = inspect.currentframe().f_code.co_name
 

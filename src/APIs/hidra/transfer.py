@@ -308,7 +308,7 @@ class Transfer(Base):
 
         # Add application id to prevent other application closing remote
         # connections from this application
-        self.appid = self.current_pid
+        self.appid = str(self.current_pid)
 
         if signal_host is not None:
             self.signal_host = socket.getfqdn(signal_host)
@@ -529,7 +529,7 @@ class Transfer(Base):
         # established
         self.log.info("Sending Signal")
 
-        send_message = [__version__, self.appid, signal]
+        send_message = [__version__, self.appid.encode('utf-8'), signal]
 
         trg = json.dumps(self.targets).encode('utf-8')
         send_message.append(trg)

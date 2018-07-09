@@ -326,7 +326,8 @@ class SignalHandler(Base):
                     incoming_socket_id = utils.convert_socket_to_fqdn(
                         in_message[1].decode("utf-8"), self.log)
 
-                    for index, query_set in enumerate(self.allowed_queries):
+                    for index, target_properties in enumerate(self.allowed_queries):
+                        query_set = target_properties.targets
                         for query in query_set:
                             if incoming_socket_id == query[0]:
                                 self.open_requ_vari[index].append(query)
@@ -415,7 +416,7 @@ class SignalHandler(Base):
         try:
             version, appid, signal, targets = (
                 in_message[0].decode("utf-8"),
-                in_message[1],
+                in_message[1].decode("utf-8"),
                 in_message[2],
                 in_message[3].decode("utf-8")
             )
@@ -519,46 +520,6 @@ class SignalHandler(Base):
                                                           compile_regex=False,
                                                           log=self.log)
 
-        overwrite_index = None
-
-        # the registerd disjoint socket ids for each node set
-        # [set(<host>:<port>, <host>:<port>, ...), set(...), ...]
-        registered_socketids_flatlist = [set([j[0] for j in sublist.targets])
-                                         for sublist in registered_ids]
-
-        # the disjoint socket_ids to be register
-        # "set" is used to eliminated duplications
-        # set(<host>:<port>, <host>:<port>, ...) created from target list (=socket_ids)
-        socket_ids_flatlist = set([socket_conf[0]
-                                   for socket_conf in socket_ids])
-
-        # If the socket_ids of the node set to be register are either a subset
-        # or a superset of an already registered node set overwrite the old one
-        # with it
-        # new registration         | registered                | what to done
-        # (host:port, host:port2)  |  (host:port)              |  overwrite: (host:port, host:port2)
-        # (host:port               |  (host:port, host:port2)  |  overwrite: (host:port)
-        # (host:port, host:port2)  |  (host:port, host:port3)  |  ?
-        for i in registered_socketids_flatlist:
-            # Check if socket_ids is sublist of one entry of registered_ids
-            # -> overwrite existing entry
-            if socket_ids_flatlist.issubset(i):
-                self.log.debug("socket_ids already contained, override")
-                overwrite_index = registered_socketids_flatlist.index(i)
-            # Check if one entry of registered_ids is sublist in socket_ids
-            # -> overwrite existing entry
-            elif i.issubset(socket_ids_flatlist):
-                self.log.debug("socket_ids is superset of already contained "
-                               "set, override")
-                overwrite_index = registered_socketids_flatlist.index(i)
-            # TODO Mixture ?
-            elif not socket_ids_flatlist.isdisjoint(i):
-                self.log.error("socket_ids is neither a subset nor superset "
-                               "of already contained set")
-                self.log.debug("Currently: no idea what to do with this.")
-                self.log.debug("socket_ids={}".format(socket_ids_flatlist))
-                self.log.debug("registered_socketids={}".format(i))
-
         targets =  copy.deepcopy(
             sorted([i + [send_type] for i in socket_ids])
         )
@@ -570,7 +531,61 @@ class SignalHandler(Base):
 
         targetset = TargetProperties(targets=targets, appid=appid)
 
-        if overwrite_index is not None:
+        overwrite_index = None
+        for i, target_properties in enumerate(registered_ids):
+            if target_properties.appid != appid:
+                continue
+
+            # the registerd disjoint socket ids for each node set
+            # set(<host>:<port>, <host>:<port>, ...)
+            targets_flatlist = set(
+                [j[0] for j in target_properties.targets]
+            )
+
+            # the disjoint socket_ids to be register
+            # "set" is used to eliminated duplications
+            # set(<host>:<port>, <host>:<port>, ...) created from target list (=socket_ids)
+            socket_ids_flatlist = set([socket_conf[0]
+                                       for socket_conf in socket_ids])
+
+            # If the socket_ids of the node set to be register are either a
+            # subset or a superset of an already registered node set
+            # overwrite the old one with it
+            # new registration         | registered                | what to done
+            # (host:port, host:port2)  |  (host:port)              |  overwrite: (host:port, host:port2)
+            # (host:port               |  (host:port, host:port2)  |  overwrite: (host:port)
+            # (host:port, host:port2)  |  (host:port, host:port3)  |  ?
+
+            # Check if socket_ids is sublist of one entry of registered_ids
+            # -> overwrite existing entry
+            if socket_ids_flatlist.issubset(targets_flatlist):
+                self.log.debug("socket_ids already contained, override")
+                overwrite_index = i
+            # Check if one entry of registered_ids is sublist in socket_ids
+            # -> overwrite existing entry
+            elif targets_flatlist.issubset(socket_ids_flatlist):
+                self.log.debug("socket_ids is superset of already "
+                               "contained set, override")
+                overwrite_index = i
+            # TODO Mixture ?
+            elif not socket_ids_flatlist.isdisjoint(targets_flatlist):
+                self.log.error("socket_ids is neither a subset nor "
+                               "superset of already contained set")
+                self.log.debug("Currently: no idea what to do with this.")
+                self.log.debug("socket_ids={}".format(socket_ids_flatlist))
+                self.log.debug("registered_socketids={}"
+                               .format(targets_flatlist))
+
+        if overwrite_index is None:
+            registered_ids.append(targetset)
+
+            if perm_requests is not None:
+                perm_requests.append(0)
+
+            if vari_requests is not None:
+                vari_requests.append([])
+
+        else:
             # overriding is necessary because the new request may contain
             # different parameters like monitored file suffix, priority or
             # connection type also this means the old socket_id set should be
@@ -578,22 +593,13 @@ class SignalHandler(Base):
             self.log.debug("overwrite_index={}".format(overwrite_index))
 
             registered_ids[overwrite_index] = targetset
-            #registered_ids[overwrite_index] = targets
 
             if perm_requests is not None:
                 perm_requests[overwrite_index] = 0
 
             if vari_requests is not None:
                 vari_requests[overwrite_index] = []
-        else:
-            registered_ids.append(targetset)
-            #registered_ids.append(targets)
 
-            if perm_requests is not None:
-                perm_requests.append(0)
-
-            if vari_requests is not None:
-                vari_requests.append([])
 
         self.log.debug("after start handling: registered_ids={}"
                        .format(registered_ids))
@@ -665,16 +671,21 @@ class SignalHandler(Base):
         socket_ids = utils.convert_socket_to_fqdn(socket_ids,
                                                   self.log)
 
+        reg_to_check = [(i, target_properties)
+                        for i, target_properties in enumerate(registered_ids)
+                        if target_properties.appid == appid]
+
         # list of socket configurations to remove (in format how they are
         # registered:
-        # [[[<host>:<port>, <prio>, <regex>, <end_type>],...],...]
+        # [[<host>:<port>, <prio>, <regex>, <end_type>],...],
         # this is needed because socket_ids only contain partial information:
         # [[<host>:<port>, <prio>, <regex uncompiled>]]
         to_remove = [reg_id
                      for socket_conf in socket_ids
-                     for sublist in registered_ids
-                     for reg_id in sublist.targets
+                     for sublist in reg_to_check
+                     for reg_id in sublist[1].targets
                      if socket_conf[0] == reg_id[0]]
+        self.log.debug("to_remove {}".format(to_remove))
 
         if not to_remove:
             self.send_response([b"NO_OPEN_CONNECTION_FOUND"])
@@ -684,59 +695,52 @@ class SignalHandler(Base):
             # send signal back to receiver
             self.send_response([signal])
 
-            for element in to_remove:
-                socket_id = element[0]
+            self.log.debug("registered_ids {}".format(registered_ids))
+            self.log.debug("vari_requests {}".format(vari_requests))
+            self.log.debug("perm_requests {}".format(perm_requests))
+            for i, target_properties in reg_to_check:
+                self.log.debug("target_properties {}"
+                               .format(target_properties))
 
-                if vari_requests is not None:
-                    # vari requests is of the form
-                    # [[[<host>:<port>, <prio>, <regex>, <end_type>],...],...]
-                    vari_requests = [[socket_conf
-                                      for socket_conf in open_requests
-                                      if socket_id != socket_conf[0]]
-                                     for open_requests in vari_requests]
-                    self.log.debug("Remove all occurences from {} from "
-                                   "variable request list.".format(socket_id))
-
-                self.log.debug("registered_ids {}".format(registered_ids))
-                self.log.debug("element {}".format(element))
-                self.log.debug("perm_requests {}".format(perm_requests))
+                targets = target_properties.targets
 
                 index_to_remove = []
-                # registered_ids is of the form
-                # [TargetProperties, TargetProperties,...]
-                # where targets if of the form
-                # [[<host>:<port>, <prio>, <regex>, <end_type>],...]
-                for i, target_properties in enumerate(registered_ids):
-                    node_set = target_properties.targets
+                for reg_id in to_remove:
+                    socket_id = reg_id[0]
 
-                    if element in node_set:
-                        node_set.remove(element)
-                        self.log.debug("Deregister {}".format(socket_id))
-#                        self.log.debug("Remove {} from permanent request "
-#                                       "allowed list.".format(socket_id))
+                    targets.remove(reg_id)
+                    self.log.debug("Deregister {}".format(socket_id))
 
-                        if not node_set:
-                            index_to_remove.append(i)
-                            # remove open requests (querys)
-                            if vari_requests is not None:
-                                del vari_requests[i]
-                            # remove open requests (streams)
-                            if perm_requests is not None:
-                                perm_requests.pop(i)
-                        else:
-                            # perm_requests is a list of node numbers to feed
-                            # next i.e. index of the node inside of the node
-                            # set whose request will be served next
-                            # -> has to be updated because number of
-                            # registered nodes changed
-                            if perm_requests is not None:
-                                perm_requests[i] = (
-                                    perm_requests[i] % len(registered_ids[i].targets)
-                                )
+                    if not targets:
+                        del registered_ids[i]
 
-                # remove left over empty list
-                for index in index_to_remove:
-                    del registered_ids[index]
+                        # remove open requests (queries)
+                        if vari_requests is not None:
+                            del vari_requests[i]
+                        # remove open requests (streams)
+                        if perm_requests is not None:
+                            perm_requests.pop(i)
+                    else:
+
+                        if vari_requests is not None:
+                            # vari requests is of the form
+                            # [[[<host>:<port>, <prio>, <regex>, <end_type>],...],...]
+                            vari_requests[i] = [socket_conf
+                                                for socket_conf in vari_requests[i]
+                                                if socket_id != socket_conf[0]]
+
+                            self.log.debug("Remove all occurences from {} from "
+                                           "variable request list.".format(socket_id))
+
+                        # perm_requests is a list of node numbers to feed
+                        # next i.e. index of the node inside of the node
+                        # set whose request will be served next
+                        # -> has to be updated because number of
+                        # registered nodes changed
+                        if perm_requests is not None:
+                            perm_requests[i] = (
+                                perm_requests[i] % len(registered_ids[i].targets)
+                            )
 
             # send signal to TaskManager
             self.control_pub_socket.send_multipart(
