@@ -8,6 +8,7 @@ import os
 import copy
 import json
 import re
+from collections import namedtuple
 
 from base_class import Base
 
@@ -17,6 +18,25 @@ import utils
 from hidra import convert_suffix_list_to_regex
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
+
+UnpackedMessage = namedtuple(
+    "unpacked_message", [
+        "check_successful",
+        "response",
+        "appid",
+        "signal",
+        "targets"
+    ]
+)
+
+
+TargetProperties = namedtuple(
+    "target_properties", [
+        "targets",
+        "appid"
+    ]
+)
 
 
 class SignalHandler(Base):
@@ -286,13 +306,12 @@ class SignalHandler(Base):
                 in_message = self.com_socket.recv_multipart()
                 self.log.debug("Received signal: {}".format(in_message))
 
-                check_failed, signal, targets = (
-                    self.check_signal_inverted(in_message)
-                )
-                if check_failed:
-                    self.send_response(check_failed)
+                unpacked_message = self.check_signal(in_message)
+
+                if unpacked_message.check_successful:
+                    self.react_to_signal(unpacked_message)
                 else:
-                    self.react_to_signal(signal, targets)
+                    self.send_response(unpacked_message.response)
 
             #---------------------------------------------------------------------
             # request from external
@@ -363,7 +382,7 @@ class SignalHandler(Base):
                     self.log.error("Unhandled control signal received: {}"
                                    .format(message[0]))
 
-    def check_signal_inverted(self, in_message):
+    def check_signal(self, in_message):
         """Unpack and check incoming message.
 
         Args:
@@ -381,17 +400,24 @@ class SignalHandler(Base):
                 - The targets extracted from the message.
         """
 
-        if len(in_message) != 3:
+        if len(in_message) != 4:
             self.log.warning("Received signal is of the wrong format")
             self.log.debug("Received signal is too short or too long: {}"
                            .format(in_message))
-            return [b"NO_VALID_SIGNAL"], None, None
+            return UnpackedMessage(
+                check_successful=False,
+                response=[b"NO_VALID_SIGNAL"],
+                appid=None,
+                signal=None,
+                targets=None
+            )
 
         try:
-            version, signal, targets = (
+            version, appid, signal, targets = (
                 in_message[0].decode("utf-8"),
                 in_message[1],
-                in_message[2].decode("utf-8")
+                in_message[2],
+                in_message[3].decode("utf-8")
             )
             targets = json.loads(targets)
 
@@ -401,14 +427,26 @@ class SignalHandler(Base):
             self.log.debug("host {}".format(host))
         except:
             self.log.debug("no valid signal received", exc_info=True)
-            return [b"NO_VALID_SIGNAL"], None, None
+            return UnpackedMessage(
+                check_successful=False,
+                response=[b"NO_VALID_SIGNAL"],
+                appid=None,
+                signal=None,
+                targets=None
+            )
 
         if version:
             if utils.check_version(version, self.log):
                 self.log.info("Versions are compatible")
             else:
                 self.log.warning("Versions are not compatible")
-                return [b"VERSION_CONFLICT", __version__], None, None
+                return UnpackedMessage(
+                    check_successful=False,
+                    response=[b"VERSION_CONFLICT", __version__],
+                    appid=None,
+                    signal=None,
+                    targets=None
+                )
 
         if signal and host:
             # Checking signal sending host
@@ -420,9 +458,21 @@ class SignalHandler(Base):
                 self.log.warning("One of the hosts is not allowed to connect.")
                 self.log.debug("hosts: {}".format(host))
                 self.log.debug("whitelist: {}".format(self.whitelist))
-                return [b"NO_VALID_HOST"], None, None
+                return UnpackedMessage(
+                    check_successful=False,
+                    response=[b"NO_VALID_HOST"],
+                    appid=None,
+                    signal=None,
+                    targets=None
+                )
 
-        return False, signal, targets
+        return UnpackedMessage(
+            check_successful=True,
+            response=None,
+            appid=appid,
+            signal=signal,
+            targets=targets
+        )
 
     def send_response(self, signal):
         """Send response back.
@@ -437,6 +487,7 @@ class SignalHandler(Base):
     def _start_signal(self,
                       signal,
                       send_type,
+                      appid,
                       socket_ids,
                       registered_ids,
                       vari_requests,
@@ -472,7 +523,7 @@ class SignalHandler(Base):
 
         # the registerd disjoint socket ids for each node set
         # [set(<host>:<port>, <host>:<port>, ...), set(...), ...]
-        registered_socketids_flatlist = [set([j[0] for j in sublist])
+        registered_socketids_flatlist = [set([j[0] for j in sublist.targets])
                                          for sublist in registered_ids]
 
         # the disjoint socket_ids to be register
@@ -484,6 +535,10 @@ class SignalHandler(Base):
         # If the socket_ids of the node set to be register are either a subset
         # or a superset of an already registered node set overwrite the old one
         # with it
+        # new registration         | registered                | what to done
+        # (host:port, host:port2)  |  (host:port)              |  overwrite: (host:port, host:port2)
+        # (host:port               |  (host:port, host:port2)  |  overwrite: (host:port)
+        # (host:port, host:port2)  |  (host:port, host:port3)  |  ?
         for i in registered_socketids_flatlist:
             # Check if socket_ids is sublist of one entry of registered_ids
             # -> overwrite existing entry
@@ -504,6 +559,17 @@ class SignalHandler(Base):
                 self.log.debug("socket_ids={}".format(socket_ids_flatlist))
                 self.log.debug("registered_socketids={}".format(i))
 
+        targets =  copy.deepcopy(
+            sorted([i + [send_type] for i in socket_ids])
+        )
+        # compile regex
+        # This cannot be done before because deepcopy does not support it
+        # for python versions < 3.7, see http://bugs.python.org/issue10076
+        for socket_conf in targets:
+            socket_conf[2] = re.compile(socket_conf[2])
+
+        targetset = TargetProperties(targets=targets, appid=appid)
+
         if overwrite_index is not None:
             # overriding is necessary because the new request may contain
             # different parameters like monitored file suffix, priority or
@@ -511,15 +577,8 @@ class SignalHandler(Base):
             # replaced in total and not only partially
             self.log.debug("overwrite_index={}".format(overwrite_index))
 
-            registered_ids[overwrite_index] = copy.deepcopy(
-                sorted([i + [send_type] for i in socket_ids])
-            )
-
-            # compile regex
-            # This cannot be done before because deepcopy does not support it
-            # for python versions < 3.7, see http://bugs.python.org/issue10076
-            for socket_conf in registered_ids[overwrite_index]:
-                socket_conf[2] = re.compile(socket_conf[2])
+            registered_ids[overwrite_index] = targetset
+            #registered_ids[overwrite_index] = targets
 
             if perm_requests is not None:
                 perm_requests[overwrite_index] = 0
@@ -527,15 +586,8 @@ class SignalHandler(Base):
             if vari_requests is not None:
                 vari_requests[overwrite_index] = []
         else:
-            registered_ids.append(copy.deepcopy(
-                sorted([i + [send_type] for i in socket_ids]))
-            )
-
-            # compile regex
-            # This cannot be done before because deepcopy does not support it
-            # for python versions < 3.7, see http://bugs.python.org/issue10076
-            for socket_conf in registered_ids[-1]:
-                socket_conf[2] = re.compile(socket_conf[2])
+            registered_ids.append(targetset)
+            #registered_ids.append(targets)
 
             if perm_requests is not None:
                 perm_requests.append(0)
@@ -592,6 +644,7 @@ class SignalHandler(Base):
 
     def _stop_signal(self,
                      signal,
+                     appid,
                      socket_ids,
                      registered_ids,
                      vari_requests,
@@ -612,19 +665,6 @@ class SignalHandler(Base):
         socket_ids = utils.convert_socket_to_fqdn(socket_ids,
                                                   self.log)
 
-#        connection_not_found = False
-#        found = False
-#        for socket_conf in socket_ids:
-#            socket_id = socket_conf[0]
-#
-#            for sublist in registered_ids:
-#                for element in sublist:
-#                    if socket_id == element[0]:
-#                        to_remove.append(element)
-#                        found = True
-#            if not found:
-#                connection_not_found = True
-
         # list of socket configurations to remove (in format how they are
         # registered:
         # [[[<host>:<port>, <prio>, <regex>, <end_type>],...],...]
@@ -633,7 +673,7 @@ class SignalHandler(Base):
         to_remove = [reg_id
                      for socket_conf in socket_ids
                      for sublist in registered_ids
-                     for reg_id in sublist
+                     for reg_id in sublist.targets
                      if socket_conf[0] == reg_id[0]]
 
         if not to_remove:
@@ -663,8 +703,12 @@ class SignalHandler(Base):
 
                 index_to_remove = []
                 # registered_ids is of the form
-                # [[[<host>:<port>, <prio>, <regex>, <end_type>],...],...]
-                for i, node_set in enumerate(registered_ids):
+                # [TargetProperties, TargetProperties,...]
+                # where targets if of the form
+                # [[<host>:<port>, <prio>, <regex>, <end_type>],...]
+                for i, target_properties in enumerate(registered_ids):
+                    node_set = target_properties.targets
+
                     if element in node_set:
                         node_set.remove(element)
                         self.log.debug("Deregister {}".format(socket_id))
@@ -687,7 +731,7 @@ class SignalHandler(Base):
                             # registered nodes changed
                             if perm_requests is not None:
                                 perm_requests[i] = (
-                                    perm_requests[i] % len(registered_ids[i])
+                                    perm_requests[i] % len(registered_ids[i].targets)
                                 )
 
                 # remove left over empty list
@@ -703,7 +747,11 @@ class SignalHandler(Base):
 
         return registered_ids, vari_requests, perm_requests
 
-    def react_to_signal(self, signal, socket_ids):
+    def react_to_signal(self, unpacked_message):
+
+        signal = unpacked_message.signal
+        appid = unpacked_message.appid
+        socket_ids = unpacked_message.targets
 
         #---------------------------------------------------------------------
         # START_STREAM
@@ -724,6 +772,7 @@ class SignalHandler(Base):
             self._start_signal(
                 signal=signal,
                 send_type="data",
+                appid=appid,
                 socket_ids=socket_ids,
                 registered_ids=self.open_requ_perm,
                 vari_requests=None,
@@ -745,6 +794,7 @@ class SignalHandler(Base):
                 self._start_signal(
                     signal=signal,
                     send_type="metadata",
+                    appid=appid,
                     socket_ids=socket_ids,
                     registered_ids=self.open_requ_perm,
                     vari_requests=None,
@@ -763,6 +813,7 @@ class SignalHandler(Base):
 
             ret_val = self._stop_signal(
                 signal=signal,
+                appid=appid,
                 socket_ids=socket_ids,
                 registered_ids=self.open_requ_perm,
                 vari_requests=None,
@@ -783,6 +834,7 @@ class SignalHandler(Base):
             self._start_signal(
                 signal=signal,
                 send_type="data",
+                appid=appid,
                 socket_ids=socket_ids,
                 registered_ids=self.allowed_queries,
                 vari_requests=self.open_requ_vari,
@@ -805,6 +857,7 @@ class SignalHandler(Base):
                 self._start_signal(
                     signal=signal,
                     send_type="metadata",
+                    appid=appid,
                     socket_ids=socket_ids,
                     registered_ids=self.allowed_queries,
                     vari_requests=self.open_requ_vari,
@@ -823,6 +876,7 @@ class SignalHandler(Base):
 
             ret_val = self._stop_signal(
                 signal=signal,
+                appid=appid,
                 socket_ids=socket_ids,
                 registered_ids=self.allowed_queries,
                 vari_requests=self.open_requ_vari,

@@ -21,7 +21,7 @@ from six import iteritems
 import utils
 from .__init__ import BASE_DIR
 from test_base import TestBase, create_dir, MockLogging, mock_get_logger
-from signalhandler import SignalHandler
+from signalhandler import SignalHandler, UnpackedMessage, TargetProperties
 from _version import __version__
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -124,7 +124,9 @@ class TestSignalHandler(TestBase):
     def send_signal(self, socket, signal, ports, prio=None):
         self.log.info("send_signal : {}, {}".format(signal, ports))
 
-        send_message = [__version__, signal]
+        app_id = self.config["main_pid"]
+
+        send_message = [__version__, app_id, signal]
 
         targets = []
         if type(ports) == list:
@@ -703,8 +705,14 @@ class TestSignalHandler(TestBase):
         sighandler.com_socket.recv_multipart = mock.MagicMock()
         sighandler.react_to_signal = mock.MagicMock()
         sighandler.send_response = mock.MagicMock()
-        sighandler.check_signal_inverted = mock.MagicMock()
-        sighandler.check_signal_inverted.return_value = (False, None, None)
+        sighandler.check_signal = mock.MagicMock()
+        sighandler.check_signal.return_value = UnpackedMessage(
+            check_successful=True,
+            response=None,
+            appid=None,
+            signal=None,
+            targets=None
+        )
 
         sighandler.run()
 
@@ -724,8 +732,14 @@ class TestSignalHandler(TestBase):
         sighandler.com_socket.recv_multipart = mock.MagicMock()
         sighandler.react_to_signal = mock.MagicMock()
         sighandler.send_response = mock.MagicMock()
-        sighandler.check_signal_inverted = mock.MagicMock()
-        sighandler.check_signal_inverted.return_value = (True, None, None)
+        sighandler.check_signal = mock.MagicMock()
+        sighandler.check_signal.return_value = UnpackedMessage(
+            check_successful=False,
+            response=None,
+            appid=None,
+            signal=None,
+            targets=None
+        )
 
         sighandler.run()
 
@@ -892,6 +906,7 @@ class TestSignalHandler(TestBase):
 
         host = self.con_ip
         port = 1234
+        appid = 1234567890
         in_targets_list = [["{}:{}".format(host, port), 0, [""]]]
         in_targets = json.dumps(in_targets_list).encode("utf-8")
 
@@ -901,10 +916,12 @@ class TestSignalHandler(TestBase):
         self.log.info("{}: NO VALID MESSAGE".format(current_func_name))
 
         in_message = []
-        check_failed, signal, target = sighandler.check_signal_inverted(in_message)
-        self.assertEqual(check_failed, [b"NO_VALID_SIGNAL"])
-        self.assertIsNone(signal)
-        self.assertIsNone(target)
+        unpacked_message = sighandler.check_signal(in_message)
+        self.assertFalse(unpacked_message.check_successful)
+        self.assertEqual(unpacked_message.response, [b"NO_VALID_SIGNAL"])
+        self.assertIsNone(unpacked_message.appid)
+        self.assertIsNone(unpacked_message.signal)
+        self.assertIsNone(unpacked_message.targets)
 
         #---------------------------------------------------------------------
         # no valid message due to missing port
@@ -915,22 +932,26 @@ class TestSignalHandler(TestBase):
         fake_in_targets = [["{}".format(host), 0, [""]]]
         fake_in_targets = json.dumps(fake_in_targets).encode("utf-8")
 
-        in_message = [__version__, "START_STREAM", fake_in_targets]
-        check_failed, signal, target = sighandler.check_signal_inverted(in_message)
-        self.assertEqual(check_failed, [b"NO_VALID_SIGNAL"])
-        self.assertIsNone(signal)
-        self.assertIsNone(target)
+        in_message = [__version__, appid, "START_STREAM", fake_in_targets]
+        unpacked_message = sighandler.check_signal(in_message)
+        self.assertFalse(unpacked_message.check_successful)
+        self.assertEqual(unpacked_message.response, [b"NO_VALID_SIGNAL"])
+        self.assertIsNone(unpacked_message.appid)
+        self.assertIsNone(unpacked_message.signal)
+        self.assertIsNone(unpacked_message.targets)
 
         #---------------------------------------------------------------------
         # no version set
         #---------------------------------------------------------------------
         self.log.info("{}: NO VERSION SET".format(current_func_name))
 
-        in_message = [None, "START_STREAM", in_targets]
-        check_failed, signal, target = sighandler.check_signal_inverted(in_message)
-        self.assertEqual(check_failed, [b"NO_VALID_SIGNAL"])
-        self.assertIsNone(signal)
-        self.assertIsNone(target)
+        in_message = [None, appid, "START_STREAM", in_targets]
+        unpacked_message = sighandler.check_signal(in_message)
+        self.assertFalse(unpacked_message.check_successful)
+        self.assertEqual(unpacked_message.response, [b"NO_VALID_SIGNAL"])
+        self.assertIsNone(unpacked_message.appid)
+        self.assertIsNone(unpacked_message.signal)
+        self.assertIsNone(unpacked_message.targets)
 
         #---------------------------------------------------------------------
         # valid message but version conflict
@@ -939,12 +960,15 @@ class TestSignalHandler(TestBase):
                       .format(current_func_name))
 
         version = "0.0.0"
-        #             version, signal, targets
-        in_message = [version, "START_STREAM", in_targets]
-        check_failed, signal, target = sighandler.check_signal_inverted(in_message)
-        self.assertEqual(check_failed, ["VERSION_CONFLICT", __version__])
-        self.assertIsNone(signal)
-        self.assertIsNone(target)
+        #             version, application id, signal, targets
+        in_message = [version, appid, "START_STREAM", in_targets]
+        unpacked_message = sighandler.check_signal(in_message)
+        self.assertFalse(unpacked_message.check_successful)
+        self.assertEqual(unpacked_message.response,
+                         ["VERSION_CONFLICT", __version__])
+        self.assertIsNone(unpacked_message.appid)
+        self.assertIsNone(unpacked_message.signal)
+        self.assertIsNone(unpacked_message.targets)
 
         #---------------------------------------------------------------------
         # no version set (empty string)
@@ -952,12 +976,13 @@ class TestSignalHandler(TestBase):
         self.log.info("{}: NO VERSION SET (EMPTY STRING)"
                       .format(current_func_name))
 
-        in_message = ["", "START_STREAM", in_targets]
-        check_failed, signal, target = sighandler.check_signal_inverted(in_message)
-        self.log.debug("check_failed {}".format(check_failed))
-        self.assertFalse(check_failed)
-        self.assertEqual(signal, "START_STREAM")
-        self.assertEqual(target, in_targets_list)
+        in_message = ["", appid, "START_STREAM", in_targets]
+        unpacked_message = sighandler.check_signal(in_message)
+        self.assertTrue(unpacked_message.check_successful)
+        self.assertIsNone(unpacked_message.response)
+        self.assertEqual(unpacked_message.appid, appid)
+        self.assertEqual(unpacked_message.signal, "START_STREAM")
+        self.assertEqual(unpacked_message.targets, in_targets_list)
 
         #---------------------------------------------------------------------
         # valid message, valid version
@@ -965,12 +990,14 @@ class TestSignalHandler(TestBase):
         self.log.info("{}: VALID MESSAGE, VALID VERSION"
                       .format(current_func_name))
 
-        #             version, signal, targets
-        in_message = [__version__, "START_STREAM", in_targets]
-        check_failed, signal, target = sighandler.check_signal_inverted(in_message)
-        self.assertFalse(check_failed)
-        self.assertEqual(signal, "START_STREAM")
-        self.assertEqual(target, in_targets_list)
+        #             version, application id, signal, targets
+        in_message = [__version__, appid, "START_STREAM", in_targets]
+        unpacked_message = sighandler.check_signal(in_message)
+        self.assertTrue(unpacked_message.check_successful)
+        self.assertIsNone(unpacked_message.response)
+        self.assertEqual(unpacked_message.appid, appid)
+        self.assertEqual(unpacked_message.signal, "START_STREAM")
+        self.assertEqual(unpacked_message.targets, in_targets_list)
 
         # resetting QueueHandlers
         sighandler.log.handlers = []
@@ -989,12 +1016,14 @@ class TestSignalHandler(TestBase):
         self.log.info("{}: VALID MESSAGE, VALID VERSION, BUT HOST IS NOT "
                       "ALLOWED TO CONNTECT".format(current_func_name))
 
-        #             version, signal, targets
-        in_message = [__version__, "START_STREAM", in_targets]
-        check_failed, signal, target = sighandler.check_signal_inverted(in_message)
-        self.assertEqual(check_failed, [b"NO_VALID_HOST"])
-        self.assertIsNone(signal)
-        self.assertIsNone(target)
+        #             version, application id, signal, targets
+        in_message = [__version__, appid, "START_STREAM", in_targets]
+        unpacked_message = sighandler.check_signal(in_message)
+        self.assertFalse(unpacked_message.check_successful)
+        self.assertEqual(unpacked_message.response, [b"NO_VALID_HOST"])
+        self.assertIsNone(unpacked_message.appid)
+        self.assertIsNone(unpacked_message.signal)
+        self.assertIsNone(unpacked_message.targets)
 
     def test_send_response(self):
         current_func_name = inspect.currentframe().f_code.co_name
@@ -1008,7 +1037,7 @@ class TestSignalHandler(TestBase):
         mocked_func = sighandler.com_socket.send_multipart
 
         #---------------------------------------------------------------------
-        # signal is sring
+        # signal is string
         #---------------------------------------------------------------------
         self.log.info("{}: SIGNAL IS STRING".format(current_func_name))
 
@@ -1052,6 +1081,7 @@ class TestSignalHandler(TestBase):
         send_type = "metadata"
         host = self.con_ip
         port = 1234
+        appid = 1234567890
 
         #---------------------------------------------------------------------
         # check that socket_id is added
@@ -1069,15 +1099,17 @@ class TestSignalHandler(TestBase):
         sighandler._start_signal(
             signal=signal,
             send_type=send_type,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
             perm_requests=perm_requests
         )
 
-        expected_result = [
-            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
+        expected_result = [TargetProperties(targets=targets, appid=appid)]
 
         self.assertListEqual(registered_ids, expected_result)
         self.assertListEqual(vari_requests, [[]])
@@ -1092,9 +1124,10 @@ class TestSignalHandler(TestBase):
         #            [[<host>, <prio>, <suffix>], ...]
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
 
-        registered_ids = [
-            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
+        registered_ids = [TargetProperties(targets=targets, appid=appid)]
         # there have to be entries in these two lists as well because len of
         # registered_ids, vari_requests and perm_requests should be the same
         vari_requests = [[]]
@@ -1103,15 +1136,17 @@ class TestSignalHandler(TestBase):
         sighandler._start_signal(
             signal=signal,
             send_type=send_type,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
             perm_requests=perm_requests
         )
 
-        expected_result = [
-            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
+        expected_result = [TargetProperties(targets=targets, appid=appid)]
 
         self.assertListEqual(registered_ids, expected_result)
         self.assertListEqual(vari_requests, [[]])
@@ -1128,27 +1163,33 @@ class TestSignalHandler(TestBase):
         socket_ids = [["{}:{}".format(host, port), 0, ".*"],
                       ["{}:{}".format(host, port2), 0, ".*"]]
 
-        registered_ids = [
-            [["{}:{}".format(host2, port), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host2, port), 0, re.compile(".*"), send_type]
         ]
+        registered_ids = [TargetProperties(targets=targets, appid=appid)]
         vari_requests = [[]]
         perm_requests = [0]
 
         sighandler._start_signal(
             signal=signal,
             send_type=send_type,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
             perm_requests=perm_requests
         )
 
+        targets = [
+            ["{}:{}".format(host2, port), 0, re.compile(".*"), send_type]
+        ]
+        targets2 = sorted([
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
+            ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
+        ])
         expected_result = [
-            [["{}:{}".format(host2, port), 0, re.compile(".*"), send_type]],
-            sorted([
-                ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
-                ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
-            ])
+            TargetProperties(targets=targets, appid=appid),
+            TargetProperties(targets=targets2, appid=appid)
         ]
 
         self.assertListEqual(registered_ids, expected_result)
@@ -1164,27 +1205,28 @@ class TestSignalHandler(TestBase):
         socket_ids = [["{}:{}".format(host, port), 0, ".*"],
                       ["{}:{}".format(host, port2), 0, ".*"]]
 
-        registered_ids = [
-            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
+        registered_ids = [TargetProperties(targets=targets, appid=appid)]
         vari_requests = [[]]
         perm_requests = [0]
 
         sighandler._start_signal(
             signal=signal,
             send_type=send_type,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
             perm_requests=perm_requests
         )
 
-        expected_result = [
-            sorted([
-                ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
-                ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
-            ])
-        ]
+        targets = sorted([
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
+            ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
+        ])
+        expected_result = [TargetProperties(targets=targets, appid=appid)]
 
         self.assertListEqual(registered_ids, expected_result)
         self.assertListEqual(vari_requests, [[]])
@@ -1198,27 +1240,28 @@ class TestSignalHandler(TestBase):
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
 
-        registered_ids = [
-            sorted([
-                ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
-                ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
-            ])
-        ]
+        targets = sorted([
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
+            ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
+        ])
+        registered_ids = [TargetProperties(targets=targets, appid=appid)]
         vari_requests = [[]]
         perm_requests = [0]
 
         sighandler._start_signal(
             signal=signal,
             send_type=send_type,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
             perm_requests=perm_requests
         )
 
-        expected_result = [
-            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
+        expected_result = [TargetProperties(targets=targets, appid=appid)]
 
         self.assertListEqual(registered_ids, expected_result)
         self.assertListEqual(vari_requests, [[]])
@@ -1240,15 +1283,17 @@ class TestSignalHandler(TestBase):
         sighandler._start_signal(
             signal=signal,
             send_type=send_type,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
             perm_requests=perm_requests
         )
 
-        expected_result = [
-            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
+        expected_result = [TargetProperties(targets=targets, appid=appid)]
 
         self.assertListEqual(registered_ids, expected_result)
         self.assertIsNone(vari_requests)
@@ -1270,15 +1315,17 @@ class TestSignalHandler(TestBase):
         sighandler._start_signal(
             signal=signal,
             send_type=send_type,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
             perm_requests=perm_requests
         )
 
-        expected_result = [
-            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
+        expected_result = [TargetProperties(targets=targets, appid=appid)]
 
         self.assertListEqual(registered_ids, expected_result)
         self.assertListEqual(vari_requests, [[]])
@@ -1298,6 +1345,7 @@ class TestSignalHandler(TestBase):
         host = self.con_ip
         port = 1234
         send_type = "metadata"
+        appid = 1234567890
 
         mocked_func = sighandler.send_response
         mocked_socket = sighandler.control_pub_socket.send_multipart
@@ -1315,6 +1363,7 @@ class TestSignalHandler(TestBase):
 
         ret_val = sighandler._stop_signal(
             signal=signal,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
@@ -1339,9 +1388,10 @@ class TestSignalHandler(TestBase):
                       .format(current_func_name))
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
-        registered_ids = [
-            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
+        registered_ids = [TargetProperties(targets=targets, appid=appid)]
         vari_requests = [
             [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
         ]
@@ -1349,6 +1399,7 @@ class TestSignalHandler(TestBase):
 
         ret_val = sighandler._stop_signal(
             signal=signal,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
@@ -1370,14 +1421,16 @@ class TestSignalHandler(TestBase):
                       .format(current_func_name))
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
-        registered_ids = [
-            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
+        registered_ids = [TargetProperties(targets=targets, appid=appid)]
         vari_requests = None
         perm_requests = [0]
 
         ret_val = sighandler._stop_signal(
             signal=signal,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
@@ -1401,12 +1454,11 @@ class TestSignalHandler(TestBase):
         port2 = 9876
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
-        registered_ids = [
-            [
-                ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
-                ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
-            ]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
+            ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
+        registered_ids = [TargetProperties(targets=targets, appid=appid)]
         vari_requests = [
             [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
         ]
@@ -1414,6 +1466,7 @@ class TestSignalHandler(TestBase):
 
         ret_val = sighandler._stop_signal(
             signal=signal,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
@@ -1421,9 +1474,10 @@ class TestSignalHandler(TestBase):
         )
         new_registered_ids, new_vari_requests, new_perm_requests = ret_val
 
-        expected_result = [
-            [["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
+        expected_result = [TargetProperties(targets=targets, appid=appid)]
         self.assertListEqual(new_registered_ids, expected_result)
         self.assertListEqual(new_vari_requests, [[]])
         self.assertIsNone(new_perm_requests)
@@ -1440,12 +1494,11 @@ class TestSignalHandler(TestBase):
         port2 = 9876
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
-        registered_ids = [
-            [
-                ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
-                ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
-            ]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
+            ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
+        registered_ids = [TargetProperties(targets=targets, appid=appid)]
         vari_requests = [
             [["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]]
         ]
@@ -1453,6 +1506,7 @@ class TestSignalHandler(TestBase):
 
         ret_val = sighandler._stop_signal(
             signal=signal,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
@@ -1460,11 +1514,12 @@ class TestSignalHandler(TestBase):
         )
         new_registered_ids, new_vari_requests, new_perm_requests = ret_val
 
-        expected_result = [
-            [["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
+        expected_result = [TargetProperties(targets=targets, appid=appid)]
         self.assertListEqual(new_registered_ids, expected_result)
-        self.assertListEqual(new_vari_requests, expected_result)
+        self.assertListEqual(new_vari_requests, [targets])
         self.assertIsNone(new_perm_requests)
 
         mocked_func.reset_mock()
@@ -1479,17 +1534,17 @@ class TestSignalHandler(TestBase):
         port2 = 9876
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
-        registered_ids = [
-            [
-                ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
-                ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
-            ]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
+            ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
+        registered_ids = [TargetProperties(targets=targets, appid=appid)]
         vari_requests = None
         perm_requests = [1]
 
         ret_val = sighandler._stop_signal(
             signal=signal,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
@@ -1497,9 +1552,10 @@ class TestSignalHandler(TestBase):
         )
         new_registered_ids, new_vari_requests, new_perm_requests = ret_val
 
-        expected_result = [
-            [["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
+        expected_result = [TargetProperties(targets=targets, appid=appid)]
         self.assertListEqual(new_registered_ids, expected_result)
         self.assertIsNone(new_vari_requests)
         self.assertListEqual(new_perm_requests, [0])
@@ -1513,14 +1569,16 @@ class TestSignalHandler(TestBase):
         self.log.info("{}: CHECK SIGNAL ANSWERING".format(current_func_name))
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
-        registered_ids = [
-            [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
+        targets = [
+            ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
+        registered_ids = [TargetProperties(targets=targets, appid=appid)]
         vari_requests = None
         perm_requests = None
 
         ret_val = sighandler._stop_signal(
             signal=signal,
+            appid=appid,
             socket_ids=socket_ids,
             registered_ids=registered_ids,
             vari_requests=vari_requests,
@@ -1549,17 +1607,24 @@ class TestSignalHandler(TestBase):
         sighandler._start_signal = mock.MagicMock()
         sighandler._stop_signal = mock.MagicMock()
 
+        unpacked_message_dict = dict(
+            check_successful=True,
+            response=None,
+            appid=None,
+            signal=None,
+            targets=None
+        )
+
         #---------------------------------------------------------------------
         # check GET_VERSION
         #---------------------------------------------------------------------
         self.log.info("{}: CHECK GET_VERSION".format(current_func_name))
 
         signal = b"GET_VERSION"
+        unpacked_message_dict["signal"] = signal
+        unpacked_message = UnpackedMessage(**unpacked_message_dict)
 
-        sighandler.react_to_signal(
-            signal=signal,
-            socket_ids=None
-        )
+        sighandler.react_to_signal(unpacked_message)
 
         expected_args = [signal, __version__]
         sighandler.send_response.assert_called_once_with(expected_args)
@@ -1574,15 +1639,15 @@ class TestSignalHandler(TestBase):
         self.log.info("{}: CHECK START_STREAM".format(current_func_name))
 
         signal = b"START_STREAM"
+        unpacked_message_dict["signal"] = signal
+        unpacked_message = UnpackedMessage(**unpacked_message_dict)
 
-        sighandler.react_to_signal(
-            signal=signal,
-            socket_ids=None
-        )
+        sighandler.react_to_signal(unpacked_message)
 
         expected_kwargs = {
             "signal": signal,
             "send_type": "data",
+            "appid": None,
             "socket_ids": None,
             "registered_ids": [],
             "vari_requests": None,
@@ -1602,6 +1667,8 @@ class TestSignalHandler(TestBase):
                       .format(current_func_name))
 
         signal = b"START_STREAM_METADATA"
+        unpacked_message_dict["signal"] = signal
+        unpacked_message = UnpackedMessage(**unpacked_message_dict)
 
         # copying the dictionary does not work because log_queue and context
         # should be unique
@@ -1622,10 +1689,7 @@ class TestSignalHandler(TestBase):
         sighandler._start_signal = mock.MagicMock()
         sighandler._stop_signal = mock.MagicMock()
 
-        sighandler.react_to_signal(
-            signal=signal,
-            socket_ids=None
-        )
+        sighandler.react_to_signal(unpacked_message)
 
         expected_args = [b"STORING_DISABLED", __version__]
         sighandler.send_response.assert_called_once_with(expected_args)
@@ -1641,6 +1705,8 @@ class TestSignalHandler(TestBase):
                       .format(current_func_name))
 
         signal = b"START_STREAM_METADATA"
+        unpacked_message_dict["signal"] = signal
+        unpacked_message = UnpackedMessage(**unpacked_message_dict)
 
         # copying the dictionary does not work because log_queue and context
         # should be unique
@@ -1661,14 +1727,12 @@ class TestSignalHandler(TestBase):
         sighandler._start_signal = mock.MagicMock()
         sighandler._stop_signal = mock.MagicMock()
 
-        sighandler.react_to_signal(
-            signal=signal,
-            socket_ids=None
-        )
+        sighandler.react_to_signal(unpacked_message)
 
         expected_kwargs = {
             "signal": signal,
             "send_type": "metadata",
+            "appid": None,
             "socket_ids": None,
             "registered_ids": [],
             "vari_requests": None,
@@ -1688,15 +1752,15 @@ class TestSignalHandler(TestBase):
                       .format(current_func_name))
 
         signal = b"STOP_STREAM"
+        unpacked_message_dict["signal"] = signal
+        unpacked_message = UnpackedMessage(**unpacked_message_dict)
         sighandler._stop_signal.return_value = ([], [], [])
 
-        sighandler.react_to_signal(
-            signal=signal,
-            socket_ids=None
-        )
+        sighandler.react_to_signal(unpacked_message)
 
         expected_kwargs = {
             "signal": signal,
+            "appid": None,
             "socket_ids": None,
             "registered_ids": [],
             "vari_requests": None,
@@ -1715,15 +1779,15 @@ class TestSignalHandler(TestBase):
         self.log.info("{}: CHECK START_QUERY".format(current_func_name))
 
         signal = b"START_QUERY_NEXT"
+        unpacked_message_dict["signal"] = signal
+        unpacked_message = UnpackedMessage(**unpacked_message_dict)
 
-        sighandler.react_to_signal(
-            signal=signal,
-            socket_ids=None
-        )
+        sighandler.react_to_signal(unpacked_message)
 
         expected_kwargs = {
             "signal": signal,
             "send_type": "data",
+            "appid": None,
             "socket_ids": None,
             "registered_ids": [],
             "vari_requests": [],
@@ -1743,6 +1807,8 @@ class TestSignalHandler(TestBase):
                       .format(current_func_name))
 
         signal = b"START_QUERY_METADATA"
+        unpacked_message_dict["signal"] = signal
+        unpacked_message = UnpackedMessage(**unpacked_message_dict)
 
         # copying the dictionary does not work because log_queue and context
         # should be unique
@@ -1763,10 +1829,7 @@ class TestSignalHandler(TestBase):
         sighandler._start_signal = mock.MagicMock()
         sighandler._stop_signal = mock.MagicMock()
 
-        sighandler.react_to_signal(
-            signal=signal,
-            socket_ids=None
-        )
+        sighandler.react_to_signal(unpacked_message)
 
         expected_args = [b"STORING_DISABLED", __version__]
         sighandler.send_response.assert_called_once_with(expected_args)
@@ -1782,6 +1845,8 @@ class TestSignalHandler(TestBase):
                       .format(current_func_name))
 
         signal = b"START_QUERY_METADATA"
+        unpacked_message_dict["signal"] = signal
+        unpacked_message = UnpackedMessage(**unpacked_message_dict)
 
         # copying the dictionary does not work because log_queue and context
         # should be unique
@@ -1802,14 +1867,12 @@ class TestSignalHandler(TestBase):
         sighandler._start_signal = mock.MagicMock()
         sighandler._stop_signal = mock.MagicMock()
 
-        sighandler.react_to_signal(
-            signal=signal,
-            socket_ids=None
-        )
+        sighandler.react_to_signal(unpacked_message)
 
         expected_kwargs = {
             "signal": signal,
             "send_type": "metadata",
+            "appid": None,
             "socket_ids": None,
             "registered_ids": [],
             "vari_requests": [],
@@ -1829,15 +1892,15 @@ class TestSignalHandler(TestBase):
                       .format(current_func_name))
 
         signal = b"STOP_QUERY_NEXT"
+        unpacked_message_dict["signal"] = signal
+        unpacked_message = UnpackedMessage(**unpacked_message_dict)
         sighandler._stop_signal.return_value = ([], [], [])
 
-        sighandler.react_to_signal(
-            signal=signal,
-            socket_ids=None
-        )
+        sighandler.react_to_signal(unpacked_message)
 
         expected_kwargs = {
             "signal": signal,
+            "appid": None,
             "socket_ids": None,
             "registered_ids": [],
             "vari_requests": [],
@@ -1853,14 +1916,13 @@ class TestSignalHandler(TestBase):
         #---------------------------------------------------------------------
         # check NO_VALID_SIGNAL
         #---------------------------------------------------------------------
-        self.log.info("{}: CHECK NOVALID_SIGNAL".format(current_func_name))
+        self.log.info("{}: CHECK NO_VALID_SIGNAL".format(current_func_name))
 
         signal = b"SOME_WEIRD_SIGNAL"
+        unpacked_message_dict["signal"] = signal
+        unpacked_message = UnpackedMessage(**unpacked_message_dict)
 
-        sighandler.react_to_signal(
-            signal=signal,
-            socket_ids=None
-        )
+        sighandler.react_to_signal(unpacked_message)
 
         expected_args = [b"NO_VALID_SIGNAL"]
         sighandler.send_response.assert_called_once_with(expected_args)
