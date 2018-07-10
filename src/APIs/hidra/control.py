@@ -102,6 +102,7 @@ class Control(Base):
         self.detector = detector
         self.ldapuri = ldapuri
         self.netgroup_template = netgroup_template
+        self.use_log = use_log
 
         self.log = None
         self.current_pid = None
@@ -113,13 +114,13 @@ class Control(Base):
 
     def _setup(self):
         # print messages of certain level to screen
-        if use_log in ["debug", "info", "warning", "error", "critical"]:
-            self.log = LoggingFunction(use_log)
+        if self.use_log in ["debug", "info", "warning", "error", "critical"]:
+            self.log = LoggingFunction(self.use_log)
         # use logging
-        elif use_log:
+        elif self.use_log:
             self.log = logging.getLogger("Control")
         # use no logging at all
-        elif use_log is None:
+        elif self.use_log is None:
             self.log = LoggingFunction(None)
         # print everything to screen
         else:
@@ -329,7 +330,7 @@ def reset_receiver_status(host, port):
     # use no logging but print
     log = LoggingFunction(None)
 
-    start_socket(
+    reset_socket = start_socket(
         name="reset_socket",
         sock_type=zmq.REQ,
         sock_con="connect",

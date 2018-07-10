@@ -114,12 +114,12 @@ class Ingest(Base):
         self.data_fetch_port = "50010"
 
         self.signal_endpoint = "tcp://{}:{}".format(self.signal_host,
-                                                  self.signal_port)
+                                                    self.signal_port)
 
         if is_windows():
             self.log.info("Using tcp for internal communication.")
             self.eventdet_endpoint = "tcp://{}:{}".format(self.localhost,
-                                                        self.event_det_port)
+                                                          self.event_det_port)
             self.datafetch_endpoint = ("tcp://{}:{}"
                                        .format(self.localhost,
                                                self.data_fetch_port))
@@ -160,7 +160,7 @@ class Ingest(Base):
         self.poller.register(self.file_op_socket, zmq.POLLIN)
 
         if is_windows():
-            is_ipv6=self.localhost_is_ipv6
+            is_ipv6 = self.localhost_is_ipv6
         else:
             is_ipv6 = False
 
