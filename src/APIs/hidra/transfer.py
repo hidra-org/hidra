@@ -397,6 +397,24 @@ class Transfer(Base):
             self.log.debug("message={}".format(message))
             return None
 
+    def set_appid(self, appid):
+        """Sets the application id to custom value.
+
+        Args:
+            appid: The value to which the appid should be set.
+        """
+
+        self.appid = str(appid)
+
+    def get_appid(self):
+        """Get the application id.
+
+        Return:
+            The value to which the application id is set to (as str).
+        """
+
+        return self.appid
+
     # targets: [host, port, prio] or [[host, port, prio], ...]
     def initiate(self, targets):
         if self.connection_type == "NEXUS":
