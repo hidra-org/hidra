@@ -885,6 +885,7 @@ class DataManager(Base):
                                                       self.log_queue
                                                       )
                                                   )
+
         self.signalhandler_thr.start()
 
         # needed, because otherwise the requests for the first files are not
@@ -892,6 +893,7 @@ class DataManager(Base):
         time.sleep(0.5)
 
         if not self.signalhandler_thr.is_alive():
+            self.log.error("Signalhandler did not start.")
             return
 
         # TaskProvider

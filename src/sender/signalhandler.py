@@ -100,6 +100,7 @@ class SignalHandler(Base):
         except:
             self.log.error("Cannot create sockets", exc_info=True)
             self.stop()
+            raise
 
     def create_sockets(self):
 
@@ -927,8 +928,8 @@ class SignalHandler(Base):
 
         if not self.ext_context and self.context:
             self.log.info("Destroying context")
-            self.context.term()
-#            self.context.destroy(0)
+            # don't use term her because it hangs
+            self.context.destroy(0)
             self.context = None
 
     def __exit__(self):
