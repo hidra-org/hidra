@@ -41,22 +41,13 @@ if __name__ == "__main__":
 
     query.start()
 
-    while True:
-        try:
-            result = query.get()
-        except KeyboardInterrupt:
-            break
-        except Exception as e:
-            print("Getting data failed.")
-            print("Error was:", e)
-            break
-
-        try:
-            query.store("/opt/hidra/data/target/testStore", result)
-        except Exception as e:
-            print("Storing data failed.")
-            print("Error was:", e)
-            break
+    target_dir = os.path.join(BASE_PATH, "data", "zmq_target")
+    target_file = os.path.join(target_dir, "test_store")
+    try:
+        query.store(target_file)
+    except Exception as e:
+        print("Storing data failed.")
+        print("Error was:", e)
 
     query.stop()
 
