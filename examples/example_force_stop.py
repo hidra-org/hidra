@@ -39,7 +39,7 @@ if __name__ == "__main__":
     transfer_type = "QUERY_NEXT"
 #    transfer_type = "STREAM"
 #    transfer_type = "STREAM_METADATA"
-#    transfer_type = "QUERY_METADATA"
+#    transfer_type = "QUERY_NEXT_METADATA"
 
     query = Transfer(transfer_type, arguments.signal_host, use_log=True)
     query.force_stop(targets)

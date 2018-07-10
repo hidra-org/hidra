@@ -359,7 +359,7 @@ class Transfer(Base):
         self.poller = zmq.Poller()
 
         self.supported_connections = ["STREAM", "STREAM_METADATA",
-                                      "QUERY_NEXT", "QUERY_METADATA",
+                                      "QUERY_NEXT", "QUERY_NEXT_METADATA",
                                       "NEXUS"]
 
         if dirs_not_to_create is None:
@@ -441,8 +441,8 @@ class Transfer(Base):
             signal = b"START_STREAM_METADATA"
         elif self.connection_type == "QUERY_NEXT":
             signal = b"START_QUERY_NEXT"
-        elif self.connection_type == "QUERY_METADATA":
-            signal = b"START_QUERY_METADATA"
+        elif self.connection_type == "QUERY_NEXT_METADATA":
+            signal = b"START_QUERY_NEXT_METADATA"
 
         self.log.debug("Create socket for signal exchange...")
 
@@ -765,7 +765,7 @@ class Transfer(Base):
         self.register(whitelist)
         # ----------------------------------- #
 
-        if self.connection_type in ["QUERY_NEXT", "QUERY_METADATA"]:
+        if self.connection_type in ["QUERY_NEXT", "QUERY_NEXT_METADATA"]:
 
             # --------- request socket ---------- #
             # An additional socket is needed to establish the data retriving
@@ -1201,7 +1201,7 @@ class Transfer(Base):
             the newest data chunk
                 (if connection type "QUERY_NEXT" or "STREAM" was choosen)
             the metadata of the newest data chunk
-                (if connection type "QUERY_METADATA" or "STREAM_METADATA" was
+                (if connection type "QUERY_NEXT_METADATA" or "STREAM_METADATA" was
                 choosen)
 
         """
@@ -1358,7 +1358,7 @@ class Transfer(Base):
             the newest file
                 (if connection type "QUERY_NEXT" or "STREAM" was choosen)
             the metadata of the newest file
-                (if connection type "QUERY_METADATA" or "STREAM_METADATA" was
+                (if connection type "QUERY_NEXT_METADATA" or "STREAM_METADATA" was
                 choosen)
 
         """
@@ -1719,8 +1719,8 @@ class Transfer(Base):
             signal = b"STOP_STREAM_METADATA"
         elif self.connection_type == "QUERY_NEXT":
             signal = b"STOP_QUERY_NEXT"
-        elif self.connection_type == "QUERY_METADATA":
-            signal = b"STOP_QUERY_METADATA"
+        elif self.connection_type == "QUERY_NEXT_METADATA":
+            signal = b"STOP_QUERY_NEXT_METADATA"
 
         self.log.debug("Create socket for signal exchange...")
 

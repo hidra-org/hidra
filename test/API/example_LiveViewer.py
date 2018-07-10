@@ -49,7 +49,7 @@ class LiveView(QThread):
 
 #        suffix = [".cbf", ".tif", ".hdf5"]
 
-        self.query = Transfer("QUERY_METADATA", self.transfer_type)
+        self.query = Transfer("QUERY_NEXT_METADATA", self.transfer_type)
         self.query.initiate([socket.getfqdn(), self.data_port, "1"])
         self.query.start(self.data_port)
 #        self.query.initiate(["zitpcx22614w", self.data_port, "1"])

@@ -1860,12 +1860,12 @@ class TestSignalHandler(TestBase):
         sighandler._stop_signal.reset_mock()
 
         # --------------------------------------------------------------------
-        # check START_QUERY_METADATA (storing disabled)
+        # check START_QUERY_NEXT_METADATA (storing disabled)
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK START_QUERY_METADATA (STORING DISABLED)"
+        self.log.info("{}: CHECK START_QUERY_NEXT_METADATA (STORING DISABLED)"
                       .format(current_func_name))
 
-        signal = b"START_QUERY_METADATA"
+        signal = b"START_QUERY_NEXT_METADATA"
         unpacked_message_dict["signal"] = signal
         unpacked_message = UnpackedMessage(**unpacked_message_dict)
 
@@ -1898,12 +1898,12 @@ class TestSignalHandler(TestBase):
         sighandler._stop_signal.reset_mock()
 
         # --------------------------------------------------------------------
-        # check START_QUERY_METADATA (storing enabled)
+        # check START_QUERY_NEXT_METADATA (storing enabled)
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK START_QUERY_METADATA (STORING ENABLED)"
+        self.log.info("{}: CHECK START_QUERY_NEXT_METADATA (STORING ENABLED)"
                       .format(current_func_name))
 
-        signal = b"START_QUERY_METADATA"
+        signal = b"START_QUERY_NEXT_METADATA"
         unpacked_message_dict["signal"] = signal
         unpacked_message = UnpackedMessage(**unpacked_message_dict)
 
@@ -1945,9 +1945,9 @@ class TestSignalHandler(TestBase):
         sighandler._stop_signal.reset_mock()
 
         # --------------------------------------------------------------------
-        # check STOP_QUERY/STOP_QUERY_METADATA
+        # check STOP_QUERY_NEXT/STOP_QUERY_NEXT_METADATA
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK STOP_QUERY/STOP_QUERY_METADATA"
+        self.log.info("{}: CHECK STOP_QUERY_NEXT/STOP_QUERY_NEXT_METADATA"
                       .format(current_func_name))
 
         signal = b"STOP_QUERY_NEXT"

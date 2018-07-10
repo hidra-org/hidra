@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     print("\n==== TEST: Query for the newest filename ====\n")
 
-    query = Transfer("QUERY_METADATA", arguments.signal_host)
+    query = Transfer("QUERY_NEXT_METADATA", arguments.signal_host)
 
     query.initiate(targets)
 

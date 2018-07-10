@@ -28,13 +28,13 @@ class Worker(multiprocessing.Process):
         self.id = id
         self.port = port
 
-        self.log = logging.getLogger("Worker-{0}".format(self.id))
+        self.log = logging.getLogger("Worker-{}".format(self.id))
 
         self.query = Transfer(transfer_type, signal_host, use_log=True)
 
         self.basepath = basepath
 
-        self.log.debug("start Transfer on port {0}".format(port))
+        self.log.debug("start Transfer on port {}".format(port))
         # targets are locally
         self.query.start([target_host, port])
 #        self.query.start(port)
@@ -50,16 +50,16 @@ class Worker(multiprocessing.Process):
             except:
                 break
 
-            if transfer_type in ["QUERY_METADATA", "STREAM_METADATA"]:
-                self.log.debug("Worker-{0}: metadata {1}"
+            if transfer_type in ["QUERY_NEXT_METADATA", "STREAM_METADATA"]:
+                self.log.debug("Worker-{}: metadata {}"
                                .format(self.id, metadata["filename"]))
                 filepath = generate_filepath(self.basepath, metadata)
-                self.log.debug("Worker-{0}: filepath {1}"
+                self.log.debug("Worker-{}: filepath {}"
                                .format(self.id, filepath))
 
                 with open(filepath, "r") as file_descriptor:
                     file_descriptor.read()
-                    self.log.debug("Worker-{0}: file {1} read"
+                    self.log.debug("Worker-{}: file {} read"
                                    .format(self.id, filepath))
             else:
                 print("filepath", generate_filepath(self.basepath, metadata))
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     transfer_type = "QUERY_NEXT"
 #    transfer_type = "STREAM"
 #    transfer_type = "STREAM_METADATA"
-#    transfer_type = "QUERY_METADATA"
+#    transfer_type = "QUERY_NEXT_METADATA"
 
     basepath = os.path.join(BASE_PATH, "data", "target")
 

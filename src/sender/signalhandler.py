@@ -188,10 +188,10 @@ class SignalHandler(Base):
                                   incoming data packets
             START_QUERY_NEXT: Enable requests for individual data packets
             STOP_QUERY_NEXT: Disable requests for individual data packets
-            START_QUERY_METADATA: Enable requests for metadata of individual
-                                  data packets
-            STOP_QUERY_METADATA: Disable requests for metadata of individual
-                                 data packets
+            START_QUERY_NEXT_METADATA: Enable requests for metadata of
+                                       individual data packets
+            STOP_QUERY_NEXT_METADATA: Disable requests for metadata of
+                                      individual data packets
 
         request_socket
             (requests from external)
@@ -858,9 +858,9 @@ class SignalHandler(Base):
             return
 
         # --------------------------------------------------------------------
-        # START_QUERY_METADATA
+        # START_QUERY_NEXT_METADATA
         # --------------------------------------------------------------------
-        elif signal == b"START_QUERY_METADATA":
+        elif signal == b"START_QUERY_NEXT_METADATA":
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
@@ -882,9 +882,10 @@ class SignalHandler(Base):
 
         # --------------------------------------------------------------------
         #  STOP_QUERY_NEXT
-        #  STOP_QUERY_METADATA
+        #  STOP_QUERY_NEXT_METADATA
         # --------------------------------------------------------------------
-        elif signal == b"STOP_QUERY_NEXT" or signal == b"STOP_QUERY_METADATA":
+        elif (signal == b"STOP_QUERY_NEXT"
+                or signal == b"STOP_QUERY_NEXT_METADATA"):
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
