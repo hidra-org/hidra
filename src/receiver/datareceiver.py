@@ -29,9 +29,9 @@ def argument_parsing():
     base_config_file = os.path.join(CONFIG_PATH, "base_receiver.conf")
     default_config_file = os.path.join(CONFIG_PATH, "datareceiver.conf")
 
-    ##################################
-    #   Get command line arguments   #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Get command line arguments
+    # ------------------------------------------------------------------------
 
     parser = argparse.ArgumentParser()
 
@@ -86,17 +86,17 @@ def argument_parsing():
     # check if config_file exist
     utils.check_existance(arguments.config_file)
 
-    ##################################
-    # Get arguments from config file #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Get arguments from config file
+    # ------------------------------------------------------------------------
 
     params = utils.set_parameters(base_config_file=base_config_file,
                                   config_file=arguments.config_file,
                                   arguments=arguments)
 
-    ##################################
-    #     Check given arguments      #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Check given arguments
+    # ------------------------------------------------------------------------
 
     # check target directory for existance
     utils.check_existance(params["target_dir"])

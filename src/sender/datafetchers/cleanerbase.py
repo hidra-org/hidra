@@ -99,9 +99,9 @@ class CheckJobs(Base, threading.Thread):
 
             socks = dict(self.poller.poll())
 
-            ######################################
-            #     messages from DataFetcher      #
-            ######################################
+            # ----------------------------------------------------------------
+            # messages from DataFetcher
+            # ----------------------------------------------------------------
             if (self.job_socket in socks
                     and socks[self.job_socket] == zmq.POLLIN):
 
@@ -119,9 +119,9 @@ class CheckJobs(Base, threading.Thread):
                                    .format(message))
                     self.cleaner_trigger_socket.send_multipart(message)
 
-            ######################################
-            #         control commands           #
-            ######################################
+            # ----------------------------------------------------------------
+            # control commands
+            # ----------------------------------------------------------------
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
                 try:
@@ -347,9 +347,9 @@ class CleanerBase(Base, ABC):
 
             socks = dict(self.poller.poll())
 
-            ######################################
-            #       messages from receiver       #
-            ######################################
+            # ----------------------------------------------------------------
+            # messages from receiver
+            # ----------------------------------------------------------------
             if (self.confirmation_socket in socks
                     and socks[self.confirmation_socket] == zmq.POLLIN):
 
@@ -377,9 +377,9 @@ class CleanerBase(Base, ABC):
                 self.log.error("confirmations without job notification "
                                "received: {}".format(element))
 
-            ######################################
-            #       messages from checkJobs      #
-            ######################################
+            # ----------------------------------------------------------------
+            # messages from checkJobs
+            # ----------------------------------------------------------------
             if (self.cleaner_trigger_socket in socks
                     and socks[self.cleaner_trigger_socket] == zmq.POLLIN):
 
@@ -395,9 +395,9 @@ class CleanerBase(Base, ABC):
                 with self.lock:
                     old_confirmations.remove(element)
 
-            ######################################
-            #         control commands           #
-            ######################################
+            # ----------------------------------------------------------------
+            # control commands
+            # ----------------------------------------------------------------
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
                 try:

@@ -47,9 +47,9 @@ def argument_parsing():
                           "http_fetcher",
                           "hidra_fetcher"]
 
-    ##################################
-    #   Get command line arguments   #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Get command line arguments
+    # ------------------------------------------------------------------------
 
     parser = argparse.ArgumentParser()
 
@@ -238,17 +238,17 @@ def argument_parsing():
     utils.check_existance(base_config_file)
     utils.check_existance(arguments.config_file)
 
-    ##################################################
-    # Get arguments from config file and comand line #
-    ##################################################
+    # ------------------------------------------------------------------------
+    # Get arguments from config file and comand line
+    # ------------------------------------------------------------------------
 
     params = utils.set_parameters(base_config_file=base_config_file,
                                   config_file=arguments.config_file,
                                   arguments=arguments)
 
-    ##################################
-    #     Check given arguments      #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Check given arguments
+    # ------------------------------------------------------------------------
 
     required_params = ["log_path",
                        "log_name",

@@ -19,9 +19,9 @@ CONFIG_PATH = os.path.join(BASE_PATH, "conf")
 def argument_parsing():
     default_config = os.path.join(CONFIG_PATH, "nexusReceiver.conf")
 
-    ##################################
-    #   Get command line arguments   #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Get command line arguments
+    # ------------------------------------------------------------------------
 
     parser = argparse.ArgumentParser()
 
@@ -69,9 +69,9 @@ def argument_parsing():
     # check if config_file exist
     utils.check_existance(arguments.config_file)
 
-    ##################################
-    # Get arguments from config file #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Get arguments from config file
+    # ------------------------------------------------------------------------
 
     params = utils.set_parameters(base_config_file=arguments.config_file,
                                   config_file=None,
@@ -81,9 +81,9 @@ def argument_parsing():
         params["whitelist"] = utils.excecute_ldapsearch(params["whitelist"],
                                                         params["ldapuri"])
 
-    ##################################
-    #     Check given arguments      #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Check given arguments
+    # ------------------------------------------------------------------------
 
     logfile = os.path.join(params["log_path"], params["log_name"])
 

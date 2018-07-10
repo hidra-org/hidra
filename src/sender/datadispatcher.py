@@ -139,9 +139,9 @@ class DataDispatcher(Base):
                            .format(self.dispatcher_id))
             socks = dict(self.poller.poll())
 
-            ######################################
-            #     messages from TaskProvider     #
-            ######################################
+            # ----------------------------------------------------------------
+            # messages from TaskProvider
+            # ----------------------------------------------------------------
             if (self.router_socket in socks
                     and socks[self.router_socket] == zmq.POLLIN):
 
@@ -265,9 +265,9 @@ class DataDispatcher(Base):
                 self.datafetcher.finish(targets, metadata,
                                         self.open_connections)
 
-            ######################################
-            #         control commands           #
-            ######################################
+            # ----------------------------------------------------------------
+            # control commands
+            # ----------------------------------------------------------------
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
 

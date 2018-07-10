@@ -111,9 +111,9 @@ class TestEventDetector(EventDetectorTestBase):
         self.eventdetector = None
         self.event_socket = None
 
-    ######################################
-    #             Test config            #
-    ######################################
+    # ------------------------------------------------------------------------
+    # Test config
+    # ------------------------------------------------------------------------
 
     @mock.patch("zmq_events.EventDetector.setup")
     def test_config_check(self, mock_setup):
@@ -172,9 +172,9 @@ class TestEventDetector(EventDetectorTestBase):
 
             check_params(eventdetector, ref_config)
 
-    ######################################
-    #            Test helpers            #
-    ######################################
+    # ------------------------------------------------------------------------
+    # Test helpers
+    # ------------------------------------------------------------------------
 
     def test_get_tcp_addresses(self):
         config = {
@@ -254,9 +254,9 @@ class TestEventDetector(EventDetectorTestBase):
         self.assertEqual(addrs.eventdet_con,
                          "tcp://{}".format("my_eventdet_con"))
 
-    ######################################
-    #             Test setup             #
-    ######################################
+    # ------------------------------------------------------------------------
+    # Test setup
+    # ------------------------------------------------------------------------
 
     def todo_test_setup(self):
 
@@ -282,9 +282,9 @@ class TestEventDetector(EventDetectorTestBase):
 
         evtdet.stop()
 
-    ######################################
-    #              Test run              #
-    ######################################
+    # ------------------------------------------------------------------------
+    # Test run
+    # ------------------------------------------------------------------------
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.
