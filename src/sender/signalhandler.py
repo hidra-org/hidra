@@ -608,47 +608,6 @@ class SignalHandler(Base):
         # send signal back to receiver
         self.send_response([signal])
 
-#        connection_found = False
-#        tmp_allowed = []
-#        flatlist = [i[0] for i in
-#                    [j for sublist in registered_ids for j in sublist]]
-#        self.log.debug("flatlist: {0}".format(flatlist))
-
-#        for socket_conf in socket_ids:
-#
-#            socket_conf[0] = socket.getfqdn(socket_conf[0])
-#
-#            socket_id = socket_conf[0]
-#            self.log.debug("socket_id: {0}".format(socket_id))
-#
-#            if socket_id in flatlist:
-#                connection_found = True
-#                self.log.info("Connection to {0} is already open"
-#                              .format(socket_id))
-#            elif socket_id not in [ i[0] for i in tmp_allowed]:
-#                tmp_socket_conf = socket_conf + [send_type]
-#                tmp_allowed.append(tmp_socket_conf)
-#            else:
-#                # TODO send notification back?
-#                # (double entries in START_QUERY_NEXT)
-#                pass
-
-#        if not connection_found:
-#            # send signal back to receiver
-#            self.send_response([signal])
-#            registered_ids.append(copy.deepcopy(sorted(tmp_allowed)))
-#            if perm_requests != None:
-#                perm_requests.append(0)
-#            del tmp_allowed
-#
-#            if vari_requests != None:
-#                vari_requests.append([])
-#        else:
-#            # send error back to receiver
-# #           self.send_response(["CONNECTION_ALREADY_OPEN"])
-#            # "reopen" the connection and confirm to receiver
-#            self.send_response([signal])
-
     def _stop_signal(self,
                      signal,
                      appid,
@@ -673,9 +632,14 @@ class SignalHandler(Base):
         socket_ids = utils.convert_socket_to_fqdn(socket_ids,
                                                   self.log)
 
-        reg_to_check = [(i, target_properties)
-                        for i, target_properties in enumerate(registered_ids)
-                        if target_properties.appid == appid]
+        if appid is None:
+            # check all registered ids and ignore appid
+            reg_to_check = [(i, target_properties)
+                            for i, target_properties in enumerate(registered_ids)]
+        else:
+            reg_to_check = [(i, target_properties)
+                            for i, target_properties in enumerate(registered_ids)
+                            if target_properties.appid == appid]
 
         # list of socket configurations to remove (in format how they are
         # registered:
@@ -892,6 +856,51 @@ class SignalHandler(Base):
             ret_val = self._stop_signal(
                 signal=signal,
                 appid=appid,
+                socket_ids=socket_ids,
+                registered_ids=self.registered_queries,
+                vari_requests=self.vari_requests,
+                perm_requests=None
+            )
+
+            self.registered_queries, self.vari_requests, _ = ret_val
+
+            return
+
+        # --------------------------------------------------------------------
+        # FORCE_STOP_STREAM
+        # FORCE_STOP_STREAM_METADATA
+        # --------------------------------------------------------------------
+        elif (signal == b"FORCE_STOP_STREAM"
+                or signal == b"FORCE_STOP_STREAM_METADATA"):
+            self.log.info("Received signal: {} for host {}"
+                          .format(signal, socket_ids))
+
+            ret_val = self._stop_signal(
+                signal=signal,
+                appid=None,
+                socket_ids=socket_ids,
+                registered_ids=self.registered_streams,
+                vari_requests=None,
+                perm_requests=self.perm_requests
+            )
+
+            self.registered_streams, _, self.perm_requests = ret_val
+
+            return
+
+        # --------------------------------------------------------------------
+        #  FORCE_STOP_QUERY_NEXT
+        #  FORCE_STOP_QUERY_NEXT_METADATA
+        # --------------------------------------------------------------------
+        elif (signal == b"FORCE_STOP_QUERY_NEXT"
+                or signal == b"FORCE_STOP_QUERY_NEXT_METADATA"):
+
+            self.log.info("Received signal: {} for hosts {}"
+                          .format(signal, socket_ids))
+
+            ret_val = self._stop_signal(
+                signal=signal,
+                appid=None,
                 socket_ids=socket_ids,
                 registered_ids=self.registered_queries,
                 vari_requests=self.vari_requests,

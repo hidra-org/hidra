@@ -1714,13 +1714,13 @@ class Transfer(Base):
         signal = None
         # Signal exchange
         if self.connection_type == "STREAM":
-            signal = b"STOP_STREAM"
+            signal = b"FORCE_STOP_STREAM"
         elif self.connection_type == "STREAM_METADATA":
-            signal = b"STOP_STREAM_METADATA"
+            signal = b"FORCE_STOP_STREAM_METADATA"
         elif self.connection_type == "QUERY_NEXT":
-            signal = b"STOP_QUERY_NEXT"
+            signal = b"FORCE_STOP_QUERY_NEXT"
         elif self.connection_type == "QUERY_NEXT_METADATA":
-            signal = b"STOP_QUERY_NEXT_METADATA"
+            signal = b"FORCE_STOP_QUERY_NEXT_METADATA"
 
         self.log.debug("Create socket for signal exchange...")
 
