@@ -280,7 +280,6 @@ class Transfer(Base):
         if use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(use_log)
         # use logutils queue
-        #elif type(use_log) == multiprocessing.queues.Queue:
         elif type(use_log) == multiprocessing.Queue:
             self.log = get_logger("Transfer", use_log)
         # use logging

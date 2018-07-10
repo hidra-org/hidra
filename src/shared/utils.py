@@ -452,7 +452,9 @@ def check_config(required_params, config, log):
         for key in sorted_keys:
             value = config_reduced[key]
             if type(value) == Endpoints:
-                new_value = json.dumps(value._asdict(), sort_keys=True, indent=2*4)
+                new_value = json.dumps(value._asdict(),
+                                       sort_keys=True,
+                                       indent=2 * 4)
                 as_str = "{}{}: {}".format(" " * indent, key, new_value)
                 # fix indentation
                 as_str = as_str[:-1] + " " * indent + "}"
@@ -763,8 +765,8 @@ MAPPING_ZMQ_CONSTANTS_TO_STR = [
     "PAIR",  # zmq.PAIR = 0
     "PUB",  # zmq.PUB = 1
     "SUB",  # zmq.SUB = 2
-    "REQ", # zmq.REQ = 3
-    "REP", # zmq.REP = 4
+    "REQ",  # zmq.REQ = 3
+    "REP",  # zmq.REP = 4
     "DEALER/XREQ",  # zmq.DEALER/zmq.XREQ = 5
     "ROUTER/XREP",  # zmq.ROUTER/zmq.XREP = 6
     "PULL",  # zmq.PULL = 7
@@ -772,6 +774,7 @@ MAPPING_ZMQ_CONSTANTS_TO_STR = [
     "XPUB",  # zmq.XPUB = 9
     "XSUB",  # zmq.XSUB = 10
 ]
+
 
 def start_socket(name,
                  sock_type,

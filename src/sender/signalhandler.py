@@ -54,11 +54,11 @@ class SignalHandler(Base):
 
         self.log = None
 
-        self.open_requ_vari = []
-        self.open_requ_perm = []
-        self.allowed_queries = []
+        self.vari_requests = []
+        self.registered_streams = []
+        self.registered_queries = []
         # to rotate through the open permanent requests
-        self.next_requ_node = []
+        self.perm_requests = []
 
         self.whitelist = None
         self.open_connections = []
@@ -217,9 +217,9 @@ class SignalHandler(Base):
         while True:
             socks = dict(self.poller.poll())
 
-            #---------------------------------------------------------------------
+            # --------------------------------------------------------------------
             # incoming request from TaskProvider
-            #---------------------------------------------------------------------
+            # --------------------------------------------------------------------
             if (self.request_fw_socket in socks
                     and socks[self.request_fw_socket] == zmq.POLLIN):
 
@@ -231,14 +231,14 @@ class SignalHandler(Base):
                         filename = json.loads(in_message[1].decode("utf-8"))
                         open_requests = []
 
-                        for request_set in self.open_requ_perm:
-                            if request_set:
-                                index = self.open_requ_perm.index(request_set)
+                        for i, trgt_prop in enumerate(self.registered_streams):
+                            request_set = trgt_prop.targets
 
+                            if request_set:
                                 # [<host:port>, <prio>, <suffix_list>,
                                 #  <metadata|data>]
                                 socket_id, prio, pattern, send_type = (
-                                    request_set[self.next_requ_node[index]])
+                                    request_set[self.perm_requests[i]])
 
                                 # Check if filename matches requested
                                 # regex
@@ -249,12 +249,12 @@ class SignalHandler(Base):
                                                           send_type])
 
                                     # distribute in round-robin order
-                                    self.next_requ_node[index] = (
-                                        (self.next_requ_node[index] + 1)
+                                    self.perm_requests[i] = (
+                                        (self.perm_requests[i] + 1)
                                         % len(request_set)
                                     )
 
-                        for request_set in self.open_requ_vari:
+                        for request_set in self.vari_requests:
                             # Check if filename suffix matches requested suffix
                             if (request_set
                                     and (request_set[0][2].match(filename)
@@ -271,10 +271,10 @@ class SignalHandler(Base):
                                 json.dumps(open_requests))
                             self.log.debug("Answered to request: {}"
                                            .format(open_requests))
-                            self.log.debug("open_requ_vari: {}"
-                                           .format(self.open_requ_vari))
-                            self.log.debug("allowed_queries: {}"
-                                           .format(self.allowed_queries))
+                            self.log.debug("vari_requests: {}"
+                                           .format(self.vari_requests))
+                            self.log.debug("registered_queries: {}"
+                                           .format(self.registered_queries))
                         else:
                             open_requests = ["None"]
                             self.request_fw_socket.send_string(
@@ -282,24 +282,25 @@ class SignalHandler(Base):
                             )
                             self.log.debug("Answered to request: {}"
                                            .format(open_requests))
-                            self.log.debug("open_requ_vari: {}"
-                                           .format(self.open_requ_vari))
-                            self.log.debug("allowed_queries: {}"
-                                           .format(self.allowed_queries))
+                            self.log.debug("vari_requests: {}"
+                                           .format(self.vari_requests))
+                            self.log.debug("registered_queries: {}"
+                                           .format(self.registered_queries))
 
                     else:
                         self.log.debug("in_message={}".format(in_message))
                         self.log.error("Failed to receive/answer new signal "
-                                "requests: incoming message not supported")
+                                       "requests: incoming message not "
+                                       "supported")
 
                 except:
                     self.log.debug("in_message={}".format(in_message))
                     self.log.error("Failed to receive/answer new signal "
                                    "requests", exc_info=True)
 
-            #---------------------------------------------------------------------
+            # --------------------------------------------------------------------
             # start/stop command from external
-            #---------------------------------------------------------------------
+            # --------------------------------------------------------------------
             if (self.com_socket in socks
                     and socks[self.com_socket] == zmq.POLLIN):
 
@@ -313,9 +314,9 @@ class SignalHandler(Base):
                 else:
                     self.send_response(unpacked_message.response)
 
-            #---------------------------------------------------------------------
+            # --------------------------------------------------------------------
             # request from external
-            #---------------------------------------------------------------------
+            # --------------------------------------------------------------------
             if (self.request_socket in socks
                     and socks[self.request_socket] == zmq.POLLIN):
 
@@ -326,11 +327,11 @@ class SignalHandler(Base):
                     incoming_socket_id = utils.convert_socket_to_fqdn(
                         in_message[1].decode("utf-8"), self.log)
 
-                    for index, target_properties in enumerate(self.allowed_queries):
-                        query_set = target_properties.targets
+                    for i, trgt_prop in enumerate(self.registered_queries):
+                        query_set = trgt_prop.targets
                         for query in query_set:
                             if incoming_socket_id == query[0]:
-                                self.open_requ_vari[index].append(query)
+                                self.vari_requests[i].append(query)
                                 self.log.info("Add to open requests: {}"
                                               .format(query))
 
@@ -339,11 +340,11 @@ class SignalHandler(Base):
                         in_message[1].decode("utf-8"), self.log
                     )
 
-                    self.open_requ_vari = [
+                    self.vari_requests = [
                         [socket_conf
-                        for socket_conf in request_set
+                         for socket_conf in request_set
                          if incoming_socket_id != socket_conf[0]]
-                        for request_set in self.open_requ_vari
+                        for request_set in self.vari_requests
                     ]
 
                     self.log.info("Remove all occurences from {} from "
@@ -353,9 +354,9 @@ class SignalHandler(Base):
                 else:
                     self.log.info("Request not supported.")
 
-            #---------------------------------------------------------------------
+            # --------------------------------------------------------------------
             # control commands from internal
-            #---------------------------------------------------------------------
+            # --------------------------------------------------------------------
             if (self.control_sub_socket in socks
                     and socks[self.control_sub_socket] == zmq.POLLIN):
 
@@ -495,12 +496,13 @@ class SignalHandler(Base):
                       perm_requests):
         """Register socket ids and updated related lists accordingly.
 
-        Updated registered_ids, vari_requests and perm_requests in place and send
-        confirmation back.
+        Updated registered_ids, vari_requests and perm_requests in place and
+        send confirmation back.
 
         Args:
             signal: Signal to send after finishing
             send_type: The type of data the socket ids should get.
+            appid: The application ID to identify where the signal came from.
             socket_ids: Socket ids to be registered.
             registered_ids: Already registered socket ids.
             vari_requests: List of open requests (query mode).
@@ -520,7 +522,7 @@ class SignalHandler(Base):
                                                           compile_regex=False,
                                                           log=self.log)
 
-        targets =  copy.deepcopy(
+        targets = copy.deepcopy(
             sorted([i + [send_type] for i in socket_ids])
         )
         # compile regex
@@ -544,17 +546,17 @@ class SignalHandler(Base):
 
             # the disjoint socket_ids to be register
             # "set" is used to eliminated duplications
-            # set(<host>:<port>, <host>:<port>, ...) created from target list (=socket_ids)
+            # set(<host>:<port>, <host>:<port>, ...) created from socket_ids
             socket_ids_flatlist = set([socket_conf[0]
                                        for socket_conf in socket_ids])
 
             # If the socket_ids of the node set to be register are either a
             # subset or a superset of an already registered node set
             # overwrite the old one with it
-            # new registration         | registered                | what to done
-            # (host:port, host:port2)  |  (host:port)              |  overwrite: (host:port, host:port2)
-            # (host:port               |  (host:port, host:port2)  |  overwrite: (host:port)
-            # (host:port, host:port2)  |  (host:port, host:port3)  |  ?
+            # new registration  | registered    | what to done
+            # (h:p, h:p2)       |  (h:p)        |  overwrite: (h:p, h:p2)
+            # (h:p              |  (h:p, h:p2)  |  overwrite: (h:p)
+            # (h:p, h:p2)       |  (h:p, h:p3)  |  ?
 
             # Check if socket_ids is sublist of one entry of registered_ids
             # -> overwrite existing entry
@@ -599,7 +601,6 @@ class SignalHandler(Base):
 
             if vari_requests is not None:
                 vari_requests[overwrite_index] = []
-
 
         self.log.debug("after start handling: registered_ids={}"
                        .format(registered_ids))
@@ -657,11 +658,12 @@ class SignalHandler(Base):
                      perm_requests):
         """Unregister socket ids and updated related lists accordingly.
 
-        Updated registered_ids, vari_requests and perm_requests in place and send
-        confirmation back.
+        Updated registered_ids, vari_requests and perm_requests in place and
+        send confirmation back.
 
         Args:
             signal: Signal to send after finishing
+            appid: The application ID to identify where the signal came from.
             socket_ids: Socket ids to be deregistered.
             registered_ids: Currently registered socket ids.
             vari_requests: List of open requests (query mode).
@@ -690,7 +692,7 @@ class SignalHandler(Base):
         if not to_remove:
             self.send_response([b"NO_OPEN_CONNECTION_FOUND"])
             self.log.info("No connection to close was found for {}"
-                          .format(socket_conf))
+                          .format(socket_ids))
         else:
             # send signal back to receiver
             self.send_response([signal])
@@ -704,12 +706,16 @@ class SignalHandler(Base):
 
                 targets = target_properties.targets
 
-                index_to_remove = []
                 for reg_id in to_remove:
                     socket_id = reg_id[0]
 
-                    targets.remove(reg_id)
-                    self.log.debug("Deregister {}".format(socket_id))
+                    try:
+                        targets.remove(reg_id)
+                        self.log.debug("Deregister {}".format(socket_id))
+                    except ValueError:
+                        # reg_id is not contained in targets
+                        # -> nothing to remove
+                        continue
 
                     if not targets:
                         del registered_ids[i]
@@ -724,23 +730,27 @@ class SignalHandler(Base):
 
                         if vari_requests is not None:
                             # vari requests is of the form
-                            # [[[<host>:<port>, <prio>, <regex>, <end_type>],...],...]
-                            vari_requests[i] = [socket_conf
-                                                for socket_conf in vari_requests[i]
-                                                if socket_id != socket_conf[0]]
+                            # [[[<host>:<port>, <prio>, <regex>, <end_type>],
+                            #   ...],
+                            #  ...]
+                            vari_requests[i] = [
+                                socket_conf
+                                for socket_conf in vari_requests[i]
+                                if socket_id != socket_conf[0]
+                            ]
 
-                            self.log.debug("Remove all occurences from {} from "
-                                           "variable request list.".format(socket_id))
+                            self.log.debug("Remove all occurences from {} "
+                                           "from variable request list."
+                                           .format(socket_id))
 
                         # perm_requests is a list of node numbers to feed
                         # next i.e. index of the node inside of the node
                         # set whose request will be served next
                         # -> has to be updated because number of
                         # registered nodes changed
+                        n_targets = len(registered_ids[i].targets)
                         if perm_requests is not None:
-                            perm_requests[i] = (
-                                perm_requests[i] % len(registered_ids[i].targets)
-                            )
+                            perm_requests[i] = perm_requests[i] % n_targets
 
             # send signal to TaskManager
             self.control_pub_socket.send_multipart(
@@ -757,18 +767,18 @@ class SignalHandler(Base):
         appid = unpacked_message.appid
         socket_ids = unpacked_message.targets
 
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         # START_STREAM
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         if signal == b"GET_VERSION":
             self.log.info("Received signal: {}".format(signal))
 
             self.send_response([signal, __version__])
             return
 
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         # START_STREAM
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         elif signal == b"START_STREAM":
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
@@ -778,16 +788,16 @@ class SignalHandler(Base):
                 send_type="data",
                 appid=appid,
                 socket_ids=socket_ids,
-                registered_ids=self.open_requ_perm,
+                registered_ids=self.registered_streams,
                 vari_requests=None,
-                perm_requests=self.next_requ_node
+                perm_requests=self.perm_requests
             )
 
             return
 
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         # START_STREAM_METADATA
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         elif signal == b"START_STREAM_METADATA":
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
@@ -800,17 +810,17 @@ class SignalHandler(Base):
                     send_type="metadata",
                     appid=appid,
                     socket_ids=socket_ids,
-                    registered_ids=self.open_requ_perm,
+                    registered_ids=self.registered_streams,
                     vari_requests=None,
-                    perm_requests=self.next_requ_node
+                    perm_requests=self.perm_requests
                 )
 
             return
 
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         # STOP_STREAM
         # STOP_STREAM_METADATA
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         elif signal == b"STOP_STREAM" or signal == b"STOP_STREAM_METADATA":
             self.log.info("Received signal: {} for host {}"
                           .format(signal, socket_ids))
@@ -819,18 +829,18 @@ class SignalHandler(Base):
                 signal=signal,
                 appid=appid,
                 socket_ids=socket_ids,
-                registered_ids=self.open_requ_perm,
+                registered_ids=self.registered_streams,
                 vari_requests=None,
-                perm_requests=self.next_requ_node
+                perm_requests=self.perm_requests
             )
 
-            self.open_requ_perm, _, self.next_requ_node = ret_val
+            self.registered_streams, _, self.perm_requests = ret_val
 
             return
 
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         # START_QUERY_NEXT
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         elif signal == b"START_QUERY_NEXT":
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
@@ -840,16 +850,16 @@ class SignalHandler(Base):
                 send_type="data",
                 appid=appid,
                 socket_ids=socket_ids,
-                registered_ids=self.allowed_queries,
-                vari_requests=self.open_requ_vari,
+                registered_ids=self.registered_queries,
+                vari_requests=self.vari_requests,
                 perm_requests=None
             )
 
             return
 
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         # START_QUERY_METADATA
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         elif signal == b"START_QUERY_METADATA":
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
@@ -863,17 +873,17 @@ class SignalHandler(Base):
                     send_type="metadata",
                     appid=appid,
                     socket_ids=socket_ids,
-                    registered_ids=self.allowed_queries,
-                    vari_requests=self.open_requ_vari,
+                    registered_ids=self.registered_queries,
+                    vari_requests=self.vari_requests,
                     perm_requests=None
                 )
 
             return
 
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         #  STOP_QUERY_NEXT
         #  STOP_QUERY_METADATA
-        #---------------------------------------------------------------------
+        # --------------------------------------------------------------------
         elif signal == b"STOP_QUERY_NEXT" or signal == b"STOP_QUERY_METADATA":
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
@@ -882,12 +892,12 @@ class SignalHandler(Base):
                 signal=signal,
                 appid=appid,
                 socket_ids=socket_ids,
-                registered_ids=self.allowed_queries,
-                vari_requests=self.open_requ_vari,
+                registered_ids=self.registered_queries,
+                vari_requests=self.vari_requests,
                 perm_requests=None
             )
 
-            self.allowed_queries, self.open_requ_vari, _ = ret_val
+            self.registered_queries, self.vari_requests, _ = ret_val
 
             return
 
