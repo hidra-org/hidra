@@ -75,6 +75,61 @@ def mock_get_logger(logger_name, queue=False, log_level="debug"):
     return MockLogging()
 
 
+class MockZmqSocket(mock.MagicMock):
+
+    def __init__(self, **kwargs):
+        super(MockZmqSocket, self).__init__(**kwargs)
+        self._connected = False
+
+        self.send_multipart = mock.MagicMock()
+        self.recv_multipart = mock.MagicMock()
+
+    def bind(self, endpoint):
+        assert not self._connected
+        assert endpoint != ""
+        self._connected = True
+
+    def connect(self, endpoint):
+        assert not self._connected
+        assert endpoint != ""
+        self._connected = True
+
+    def close(self, linger):
+        assert self._connected
+        self._connected = False
+
+
+class MockZmqPoller(mock.MagicMock):
+
+    def __init__(self, **kwargs):
+        super(MockZmqPoller, self).__init__(**kwargs)
+        self.registered_sockets = []
+
+        self.poll = mock.MagicMock()
+
+    def register(self, socket, event):
+        assert isinstance(socket, zmq.sugar.socket.Socket)
+        assert event in [zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]
+        self.registered_sockets.append([socket, event])
+
+
+class MockZmqPollerAllFake(mock.MagicMock):
+
+    def __init__(self, **kwargs):
+        super(MockZmqPollerAllFake, self).__init__(**kwargs)
+        self.poll = mock.MagicMock()
+        self.register = mock.MagicMock()
+
+
+class MockZmqAuthenticator(mock.MagicMock):
+
+    def __init__(self, **kwargs):
+        super(MockZmqAuthenticator, self).__init__(**kwargs)
+
+        self.start = mock.MagicMock()
+        self.allow = mock.MagicMock()
+
+
 class TestBase(unittest.TestCase):
     """The Base class from which all data fetchers should inherit from.
     """

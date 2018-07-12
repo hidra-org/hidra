@@ -222,9 +222,12 @@ class Transfer(Base):
         self.file_op_conf = None
         self.confirmation_conf = None
 
+        self.data_socket_endpoint = None
+
         self.context = None
         self.ext_context = None
         self.is_ipv6 = False
+        self.zmq_protocol = None
         self.data_con_style = None
 
         self.signal_socket = None
@@ -590,7 +593,7 @@ class Transfer(Base):
         # check correctness of message
         if message and message[0] == b"VERSION_CONFLICT":
             self.stop()
-            raise VersionError("Versions are conflicting. Sender version: {0},"
+            raise VersionError("Versions are conflicting. Sender version: {},"
                                " API version: {}"
                                .format(message[1], __version__))
 
@@ -674,6 +677,9 @@ class Transfer(Base):
         if len(ip_from_host) == 1:
             self.ip = ip_from_host[0]
             self._update_ip()
+        else:
+            self.log.debug("ip_from_host={}".format(ip_from_host))
+            raise CommunicationFailed("IP is ambiguish")
 
         # determine socket identifier (might use DNS name)
         socket_id = "{}:{}".format(host, port).encode("utf-8")
@@ -747,7 +753,7 @@ class Transfer(Base):
             raise NotSupported("Protocol {} is not supported."
                                .format(protocol))
 
-        if self.data_con_style not in ["bind", "connect"]:
+        if data_con_style not in ["bind", "connect"]:
             raise NotSupported("Connection style '{}' is not supported.")
 
         self.zmq_protocol = protocol
@@ -755,7 +761,7 @@ class Transfer(Base):
 
         # determine socket id and address
         endpoint = None
-        for t in ["STEAM", "QUERY_NEXT", "NEXUS"]:
+        for t in ["STREAM", "QUERY_NEXT", "NEXUS"]:
             if t in self.started_connections:
                 socket_id = self.started_connections[t]["id"]
                 endpoint = self.started_connections[t]["endpoint"]
@@ -801,10 +807,10 @@ class Transfer(Base):
             # ----------------------------------- #
 
             # --------- control socket ---------- #
-            # Socket to retrieve control signals from control API
             if not os.path.exists(self.ipc_dir):
                 os.makedirs(self.ipc_dir)
 
+            # Socket to retrieve control signals from control API
             self.control_socket = self._start_socket(
                 name="internal controlling socket",
                 sock_type=zmq.PULL,
@@ -990,6 +996,7 @@ class Transfer(Base):
 
                     self.log.debug("Allowing host {} ({})".format(host, ip[0]))
                     self.auth.allow(ip[0])
+                # getaddrinfo error
                 except socket.gaierror:
                     self.log.error("Could not get IP of host {}. Proceed."
                                    .format(host))
@@ -1306,12 +1313,8 @@ class Transfer(Base):
                 # TODO validate multipart_message
                 # (like correct dict-values for metadata)
 
-                try:
-                    payload = multipart_message[1]
-                except:
-                    self.log.warning("An empty file was received within the "
-                                     "multipart-message", exc_info=True)
-                    payload = None
+                # this does not fail because length was alreay checked
+                payload = multipart_message[1]
 
                 return [metadata, payload]
 

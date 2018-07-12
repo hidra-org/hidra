@@ -19,7 +19,11 @@ from six import iteritems
 
 import utils
 from .__init__ import BASE_DIR
-from test_base import TestBase, create_dir, MockLogging, mock_get_logger
+from test_base import (TestBase,
+                       create_dir,
+                       MockLogging,
+                       mock_get_logger,
+                       MockZmqPoller)
 from signalhandler import SignalHandler, UnpackedMessage, TargetProperties
 from _version import __version__
 
@@ -316,17 +320,6 @@ class TestSignalHandler(TestBase):
     @mock.patch("signalhandler.SignalHandler.stop")
     def test_create_sockets(self, mock_stop):
         current_func_name = inspect.currentframe().f_code.co_name
-
-        class MockZmqPoller(mock.MagicMock):
-
-            def __init__(self, **kwds):
-                super(MockZmqPoller, self).__init__(**kwds)
-                self.registered_sockets = []
-
-            def register(self, socket, event):
-                assert isinstance(socket, zmq.sugar.socket.Socket)
-                assert event in [zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]
-                self.registered_sockets.append([socket, event])
 
         def init():
             with mock.patch("signalhandler.SignalHandler.create_sockets"):

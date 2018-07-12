@@ -8,21 +8,28 @@ from __future__ import absolute_import
 import copy
 import inspect
 import json
+import logging
 import mock
 import os
 import re
 import time
+import socket
 import zmq
-import logging
 from multiprocessing import Queue
 
 from .__init__ import BASE_DIR
-from test_base import TestBase, create_dir
+from test_base import (TestBase,
+                       create_dir,
+                       MockZmqSocket,
+                       MockZmqPollerAllFake,
+                       MockZmqAuthenticator)
 import hidra
 import hidra.transfer as m_transfer
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+class TestException(Exception):
+    pass
 
 class TestTransfer(TestBase):
     """Specification of tests to be performed for the loaded EventDetecor.
@@ -333,17 +340,9 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         self.log.info("{}: NOT SUPPORTED".format(current_func_name))
 
-
         self.transfer_conf["connection_type"] = None
-
-        exception_raised = False
-        # self.assertRaises only works for unittest version >= 2.7
-        try:
+        with self.assertRaises(m_transfer.NotSupported):
             transfer._setup(**self.transfer_conf)
-        except m_transfer.NotSupported:
-            exception_raised = True
-
-        self.assertTrue(exception_raised)
 
     def test_get_remote_version(self):
         current_func_name = inspect.currentframe().f_code.co_name
@@ -408,13 +407,8 @@ class TestTransfer(TestBase):
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
         targets = ""
-        exception_raised = False
-        try:
+        with self.assertRaises(m_transfer.FormatError):
             transfer.initiate(targets)
-        except m_transfer.FormatError:
-            exception_raised = True
-
-        self.assertTrue(exception_raised)
 
         # --------------------------------------------------------------------
         # successful
@@ -458,13 +452,8 @@ class TestTransfer(TestBase):
                         "something_wrong"
                     ]
 
-                    exception_raised = True
-                    try:
+                    with self.assertRaises(m_transfer.CommunicationFailed):
                         transfer.initiate(targets)
-                    except m_transfer.CommunicationFailed:
-                        exception_raised = True
-
-                    self.assertTrue(exception_raised)
 
     def test__create_signal_socket(self):
         # --------------------------------------------------------------------
@@ -477,15 +466,10 @@ class TestTransfer(TestBase):
         m_stop = "hidra.transfer.Transfer.stop"
         with mock.patch(m_start_socket) as mock_start_socket:
             with mock.patch(m_stop) as mock_stop:
-
-                exception_raised = False
-                try:
+                with self.assertRaises(m_transfer.ConnectionFailed):
                     transfer._create_signal_socket()
-                except m_transfer.ConnectionFailed:
-                    exception_raised = True
 
                 self.assertTrue(mock_stop.called)
-                self.assertTrue(exception_raised)
 
         # --------------------------------------------------------------------
         # OK
@@ -521,13 +505,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         targets = ""
 
-        exception_raised = False
-        try:
+        with self.assertRaises(m_transfer.FormatError):
             transfer._set_targets(targets)
-        except m_transfer.FormatError:
-            exception_raised = True
-
-        self.assertTrue(exception_raised)
 
         # --------------------------------------------------------------------
         # one target without suffixes
@@ -592,45 +571,40 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         targets = [[]]
 
-        exception_raised = False
-        try:
+        with self.assertRaises(m_transfer.FormatError):
             transfer._set_targets(targets)
-        except m_transfer.FormatError:
-            exception_raised = True
-
-        self.assertTrue(exception_raised)
 
     def test__send_signal(self):
+        current_func_name = inspect.currentframe().f_code.co_name
+
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
-        class MockZmqSocket(mock.MagicMock):
+        def check_message(transfer, signal, exception):
+            transfer.stop = MockZmqSocket()
 
-            def __init__(self, **kwds):
-                super(MockZmqSocket, self).__init__(**kwds)
-                self._connected = False
+            transfer.signal_socket = MockZmqSocket()
+            transfer.signal_socket.recv_multipart.return_value = [signal, ""]
 
-                self.send_multipart = mock.MagicMock()
-                self.recv_multipart = mock.MagicMock()
+            transfer.poller = MockZmqPollerAllFake()
+            transfer.poller.poll.return_value = {
+                transfer.signal_socket: zmq.POLLIN
+            }
 
-            def bind(self, endpoint):
-                assert not self._connected
-                assert endpoint != ""
-                self._connected = True
+            with self.assertRaises(exception):
+                transfer._send_signal("foo")
 
-            def connect(self, endpoint):
-                assert not self._connected
-                assert endpoint != ""
-                self._connected = True
+            self.assertTrue(transfer.stop.called)
 
-            def close(self, linger):
-                assert self._connected
-                self._connected = False
-
-
+            # cleanup
+            transfer.signal_socket = None
+            transfer.poller = None
+            transfer.stop = None
 
         # --------------------------------------------------------------------
         # no signal
         # --------------------------------------------------------------------
+        self.log.info("{}: NO SIGNAL".format(current_func_name))
+
         ret_val = transfer._send_signal(None)
 
         self.assertIsNone(ret_val)
@@ -638,49 +612,817 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Error when sending
         # --------------------------------------------------------------------
-        class TestException(Exception):
-            pass
+        self.log.info("{}: ERROR WHEN SENDING".format(current_func_name))
 
         transfer.signal_socket = MockZmqSocket()
         transfer.signal_socket.send_multipart.side_effect = TestException()
 
-        exception_raised = False
-        try:
+        with self.assertRaises(TestException):
             transfer._send_signal("foo")
-        except TestException:
-            exception_raised = True
-
-        self.assertTrue(exception_raised)
 
         # cleanup
         transfer.signal_socket = None
 
-    def todo_test__get_data_endpoint(self):
-        pass
+        # --------------------------------------------------------------------
+        # Error when polling
+        # --------------------------------------------------------------------
+        self.log.info("{}: ERROR WHEN POLLING".format(current_func_name))
 
-    def todo_test__update_ip(self):
-        pass
+        transfer.signal_socket = MockZmqSocket()
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.side_effect = TestException()
 
-    def todo_test__get_endpoint(self):
-        pass
+        with self.assertRaises(TestException):
+            transfer._send_signal("foo")
 
-    def todo_test__get_tcp_addr(self):
-        pass
+        # cleanup
+        transfer.signal_socket = None
+        transfer.poller = None
 
-    def todo_test__get_ipc_addr(self):
-        pass
+        # --------------------------------------------------------------------
+        # Error when receiving
+        # --------------------------------------------------------------------
+        self.log.info("{}: ERROR WHEN RECEIVING".format(current_func_name))
 
-    def todo_test_start(self):
-        pass
+        transfer.signal_socket = MockZmqSocket()
+        transfer.signal_socket.recv_multipart.side_effect = TestException()
 
-    def todo_test_setopt(self):
-        pass
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {transfer.signal_socket: zmq.POLLIN}
 
-    def todo_test__unpack_value(self):
-        pass
+        with self.assertRaises(TestException):
+            transfer._send_signal("foo")
 
-    def todo_test_register(self):
-        pass
+        # cleanup
+        transfer.signal_socket = None
+        transfer.poller = None
+
+        # --------------------------------------------------------------------
+        # Received VERSION_CONFLICT
+        # --------------------------------------------------------------------
+        self.log.info("{}: RECEIVED VERSION_CONFLICT"
+                      .format(current_func_name))
+
+        check_message(transfer,
+                      b"VERSION_CONFLICT",
+                      hidra.transfer.VersionError)
+
+        # --------------------------------------------------------------------
+        # Received NO_VALID_HOST
+        # --------------------------------------------------------------------
+        self.log.info("{}: RECEIVED NO_VALID_HOST".format(current_func_name))
+
+        check_message(transfer,
+                      b"NO_VALID_HOST",
+                      hidra.transfer.AuthenticationFailed)
+
+        # --------------------------------------------------------------------
+        # Received CONNECTION_ALREADY_OPEN
+        # --------------------------------------------------------------------
+        self.log.info("{}: RECEIVED CONNECTION_ALREADY_OPEN"
+                      .format(current_func_name))
+
+        check_message(transfer,
+                      b"CONNECTION_ALREADY_OPEN",
+                      hidra.transfer.CommunicationFailed)
+
+        # --------------------------------------------------------------------
+        # Received STORING_DISABLED
+        # --------------------------------------------------------------------
+        self.log.info("{}: RECEIVED STORING_DISABLED"
+                      .format(current_func_name))
+
+        check_message(transfer,
+                      b"STORING_DISABLED",
+                      hidra.transfer.CommunicationFailed)
+
+        # --------------------------------------------------------------------
+        # Received NO_VALID_SIGNAL
+        # --------------------------------------------------------------------
+        self.log.info("{}: RECEIVED NO_VALID_SIGNAL"
+                      .format(current_func_name))
+
+        check_message(transfer,
+                      b"NO_VALID_SIGNAL",
+                      hidra.transfer.CommunicationFailed)
+
+        # --------------------------------------------------------------------
+        # Received not supported
+        # --------------------------------------------------------------------
+        self.log.info("{}: RECEIVED NOT SUPPORTED MESSAGE"
+                      .format(current_func_name))
+
+        transfer.stop = MockZmqSocket()
+
+        transfer.signal_socket = MockZmqSocket()
+        transfer.signal_socket.recv_multipart.return_value = [
+            b"something not supported",
+            ""
+        ]
+
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {
+            transfer.signal_socket: zmq.POLLIN
+        }
+
+        ret_val = transfer._send_signal("foo")
+        self.assertEqual(ret_val, ["something not supported", ""])
+
+        # cleanup
+        transfer.signal_socket = None
+        transfer.poller = None
+        transfer.stop = None
+
+    @mock.patch("socket.getfqdn")
+    def test__get_data_endpoint(self, mock_getfqdn):
+        current_func_name = inspect.currentframe().f_code.co_name
+
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        transfer._updata_ip = mock.MagicMock()
+        transfer._get_endpoint = mock.MagicMock(return_value="my_endpoint")
+
+        host = self.con_ip
+        port = 1234
+        socket_id = "{}:{}".format(host, port).encode("utf-8")
+
+        ipc_dir = "test_dir"
+        ipc_file = "test_file"
+        ipc_socket_id = "{}/{}".format(ipc_dir, ipc_file)
+
+        mock_getfqdn.return_value = host
+
+        # --------------------------------------------------------------------
+        # data_socket_prop: list but wrong format
+        # --------------------------------------------------------------------
+        self.log.info("{}: DATA_SOCKET_PROP: LIST BUT WRONG FORMAT"
+                      .format(current_func_name))
+
+        data_socket_prop = []
+        with self.assertRaises(hidra.transfer.FormatError):
+            transfer._get_data_endpoint(data_socket_prop)
+
+        # --------------------------------------------------------------------
+        # data_socket_prop: list ok
+        # --------------------------------------------------------------------
+        self.log.info("{}: DATA_SOCKET_PROP: LIST OK"
+                      .format(current_func_name))
+
+        data_socket_prop = [host, port]
+        ret_val = transfer._get_data_endpoint(data_socket_prop)
+
+        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+
+        # --------------------------------------------------------------------
+        # data_socket_prop: port only
+        # --------------------------------------------------------------------
+        self.log.info("{}: DATA_SOCKET_PROP: PORT ONLY"
+                      .format(current_func_name))
+
+        data_socket_prop = port
+        ret_val = transfer._get_data_endpoint(data_socket_prop)
+
+        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+
+        # --------------------------------------------------------------------
+        # no data_socket_prop but correct targets
+        # --------------------------------------------------------------------
+        self.log.info("{}: NO DATA_SOCKET_PROP BUT CORRECT TARGETS"
+                      .format(current_func_name))
+
+        transfer.targets = [[socket_id, 1, ".*"]]
+        ret_val = transfer._get_data_endpoint(data_socket_prop=None)
+
+        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+
+        # cleanup
+        transfer.targets = None
+
+        # --------------------------------------------------------------------
+        # no data_socket_prop, too many targets
+        # --------------------------------------------------------------------
+        self.log.info("{}: NO DATA_SOCKET_PROP, TOO MANY TARGETS"
+                      .format(current_func_name))
+
+        transfer.targets = [[socket_id, 1, ".*"], [socket_id, 1, ".*"]]
+        with self.assertRaises(hidra.transfer.FormatError):
+            transfer._get_data_endpoint(data_socket_prop=None)
+
+        # cleanup
+        transfer.targets = None
+
+        # --------------------------------------------------------------------
+        # no data_socket_prop, no targets
+        # --------------------------------------------------------------------
+        self.log.info("{}: DATA_SOCKET_PROP, NO TARGETS"
+                      .format(current_func_name))
+
+        transfer.targets = None
+        with self.assertRaises(hidra.transfer.FormatError):
+            transfer._get_data_endpoint(data_socket_prop=None)
+
+        # --------------------------------------------------------------------
+        # zmq_protocol is ipc
+        # --------------------------------------------------------------------
+        self.log.info("{}: ZMQ_PROTOCOL IS IPC".format(current_func_name))
+
+        transfer.zmq_protocol = "ipc"
+        data_socket_prop = [ipc_dir, ipc_file]
+        ret_val = transfer._get_data_endpoint(data_socket_prop)
+
+        self.assertEqual(ret_val,
+                         (ipc_socket_id, "ipc://{}".format(ipc_socket_id)))
+
+        # cleanup
+        transfer.zmq_protocol = None
+
+        # --------------------------------------------------------------------
+        # set IPs
+        # --------------------------------------------------------------------
+        self.log.info("{}: SET IPS".format(current_func_name))
+
+        data_socket_prop = port
+        with mock.patch("socket.gethostbyaddr") as mock_gethostbyaddr:
+            mock_gethostbyaddr.return_value = ("", [""], ["my_ip"])
+            ret_val = transfer._get_data_endpoint(data_socket_prop)
+
+        self.assertEqual(transfer.ip, "my_ip")
+        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+
+        # --------------------------------------------------------------------
+        # multiple possible IPs
+        # --------------------------------------------------------------------
+        self.log.info("{}: MULTIPLE POSSIBLE IPS".format(current_func_name))
+
+        data_socket_prop = port
+        with mock.patch("socket.gethostbyaddr") as mock_gethostbyaddr:
+            mock_gethostbyaddr.return_value = ("", [""], ["my_ip", "second_ip"])
+
+            with self.assertRaises(hidra.transfer.CommunicationFailed):
+                transfer._get_data_endpoint(data_socket_prop)
+
+        # --------------------------------------------------------------------
+        # IPv4
+        # --------------------------------------------------------------------
+        self.log.info("{}: IPV4".format(current_func_name))
+
+        data_socket_prop = [host, port]
+        with mock.patch("socket.inet_aton") as mock_inet_aton:
+            ret_val = transfer._get_data_endpoint(data_socket_prop)
+
+        self.assertFalse(transfer.is_ipv6)
+        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+
+        # --------------------------------------------------------------------
+        # IPv6
+        # --------------------------------------------------------------------
+        self.log.info("{}: IPV6".format(current_func_name))
+
+        data_socket_prop = [host, port]
+        with mock.patch("socket.inet_aton") as mock_inet_aton:
+            mock_inet_aton.side_effect = socket.error
+            ret_val = transfer._get_data_endpoint(data_socket_prop)
+
+        self.assertTrue(transfer.is_ipv6)
+        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+
+    def test__update_ip(self):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        new_ip = "my_ip"
+
+        transfer.ip = new_ip
+        transfer._update_ip()
+
+        self.assertEqual(transfer.status_check_conf["ip"], new_ip)
+        self.assertEqual(transfer.file_op_conf["ip"], new_ip)
+        self.assertEqual(transfer.confirmation_conf["ip"], new_ip)
+
+    def test__get_endpoint(self):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        transfer._get_tcp_addr = mock.MagicMock(return_value="tcp_addr")
+        transfer._get_ipc_addr = mock.MagicMock(return_value="ipc_addr")
+
+        # --------------------------------------------------------------------
+        # TCP
+        # --------------------------------------------------------------------
+        protocol = "tcp"
+        ret_val = transfer._get_endpoint(protocol,
+                                         ip=None,
+                                         port=None,
+                                         ipc_file=None)
+        self.assertTrue(transfer._get_tcp_addr.called)
+        self.assertEqual(ret_val, "tcp://tcp_addr")
+
+        # --------------------------------------------------------------------
+        # IPC
+        # --------------------------------------------------------------------
+        protocol = "ipc"
+        ret_val = transfer._get_endpoint(protocol,
+                                         ip=None,
+                                         port=None,
+                                         ipc_file=None)
+        self.assertTrue(transfer._get_ipc_addr.called)
+        self.assertEqual(ret_val, "ipc://ipc_addr")
+
+    def test__get_tcp_addr(self):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        ip = "my_ip"
+        port = 1234
+
+        # --------------------------------------------------------------------
+        # IPV4
+        # --------------------------------------------------------------------
+        transfer.is_ipv6 = False
+        ret_val = transfer._get_tcp_addr(ip, port)
+        self.assertEqual(ret_val, "{}:{}".format(ip, port))
+
+        # --------------------------------------------------------------------
+        # IPV4
+        # --------------------------------------------------------------------
+        transfer.is_ipv6 = True
+        ret_val = transfer._get_tcp_addr(ip, port)
+        self.assertEqual(ret_val, "[{}]:{}".format(ip, port))
+
+    def test__get_ipc_addr(self):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        ipc_file = "test_ipc_file"
+        ipc_dir = "test_ipc_dir"
+        pid = 0000
+
+        transfer.ipc_dir = ipc_dir
+        transfer.current_pid = pid
+
+        ret_val = transfer._get_ipc_addr(ipc_file)
+
+        self.assertEqual(ret_val, "{}/{}_{}".format(ipc_dir, pid, ipc_file))
+
+    def test_start(self):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        transfer.register = mock.MagicMock()
+        transfer._get_data_endpoint = mock.MagicMock(
+            return_value = ("test_socket_id", "test_endpoint")
+        )
+        transfer._start_socket = mock.MagicMock()
+        transfer.setopt = mock.MagicMock()
+        transfer.poller = MockZmqPollerAllFake()
+
+        # --------------------------------------------------------------------
+        # Protocol not supported
+        # --------------------------------------------------------------------
+
+        with self.assertRaises(hidra.transfer.NotSupported):
+            transfer.start(protocol="foo")
+
+        # --------------------------------------------------------------------
+        # data_con_style not supported
+        # --------------------------------------------------------------------
+
+        with self.assertRaises(hidra.transfer.NotSupported):
+            transfer.start(data_con_style="foo")
+
+        # --------------------------------------------------------------------
+        # GENERAL
+        # --------------------------------------------------------------------
+
+        transfer.started_connections = {}
+        transfer.connection_type = "QUERY_NEXT"
+        transfer.request_socket = None
+
+        transfer.start()
+
+        self.assertTrue(transfer.register.called)
+        self.assertEqual(transfer.data_socket_endpoint, "test_endpoint")
+        self.assertTrue(transfer._get_data_endpoint.called)
+
+        # cleanup
+        transfer.request_socket = None
+
+        # --------------------------------------------------------------------
+        # QUERY_NEXT
+        # --------------------------------------------------------------------
+
+        transfer.started_connections = {}
+        transfer.connection_type = "QUERY_NEXT"
+        transfer.request_socket = None
+
+        transfer.start()
+
+        expected = {
+            "QUERY_NEXT": {
+                "id": "test_socket_id",
+                "endpoint": "test_endpoint"
+            }
+        }
+        self.assertEqual(transfer.started_connections, expected)
+        self.assertTrue(transfer._start_socket.called)
+        self.assertIsNotNone(transfer.request_socket)
+
+        # cleanup
+        transfer.request_socket = None
+
+        # --------------------------------------------------------------------
+        # NEXUS, ipc dir exists
+        # --------------------------------------------------------------------
+
+        transfer.started_connections = {}
+        transfer.connection_type = "NEXUS"
+        transfer.control_socket = None
+
+        with mock.patch("os.path.exists") as mock_exists:
+            mock_exists.return_value = True
+            with mock.patch("os.makedirs") as mock_makedirs:
+                transfer.start()
+
+                self.assertFalse(mock_makedirs.called)
+
+        expected = {
+            "NEXUS": {
+                "id": "test_socket_id",
+                "endpoint": "test_endpoint"
+            }
+        }
+        self.assertEqual(transfer.started_connections, expected)
+        self.assertTrue(transfer._start_socket.called)
+        self.assertIsNotNone(transfer.control_socket)
+        self.assertTrue(transfer.poller.register.called)
+        self.assertTrue(transfer.setopt.called)
+
+        # cleanup
+        transfer.control_socket = None
+
+        # --------------------------------------------------------------------
+        # NEXUS, ipc dir does not exist
+        # --------------------------------------------------------------------
+
+        transfer.started_connections = {}
+        transfer.connection_type = "NEXUS"
+
+        with mock.patch("os.path.exists") as mock_exists:
+            mock_exists.return_value = False
+            with mock.patch("os.makedirs") as mock_makedirs:
+                transfer.start()
+
+                self.assertTrue(mock_makedirs.called)
+
+        # cleanup
+        transfer.control_socket = None
+
+        # --------------------------------------------------------------------
+        # STREAM
+        # --------------------------------------------------------------------
+
+        transfer.started_connections = {}
+        transfer.connection_type = "STREAM"
+
+        transfer.start()
+
+        expected = {
+            "STREAM": {
+                "id": "test_socket_id",
+                "endpoint": "test_endpoint"
+            }
+        }
+        self.assertEqual(transfer.started_connections, expected)
+
+        # --------------------------------------------------------------------
+        # reopen
+        # --------------------------------------------------------------------
+
+        transfer._get_data_endpoint.reset_mock()
+        transfer.started_connections = {
+            "STREAM": {
+                "id": "test_socket_id",
+                "endpoint": "test_endpoint"
+            }
+        }
+        transfer.connection_type = "STREAM"
+
+        transfer.start()
+
+        expected = {
+            "STREAM": {
+                "id": "test_socket_id",
+                "endpoint": "test_endpoint"
+            }
+        }
+        self.assertEqual(transfer.started_connections, expected)
+        self.assertFalse(transfer._get_data_endpoint.called)
+
+    @mock.patch("hidra.transfer.Transfer.stop")
+    def test_setopt(self, mock_stop):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # status_check, already enabled
+        # --------------------------------------------------------------------
+        transfer.status_check_socket = "foo"
+        transfer.log = mock.MagicMock()
+
+        option = "status_check"
+        transfer.setopt(option)
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("already enabled", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # status_check, ok
+        # --------------------------------------------------------------------
+        transfer._unpack_value = mock.MagicMock()
+        transfer._get_endpoint = mock.MagicMock()
+        transfer._start_socket = mock.MagicMock()
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.status_check_socket = None
+
+        option = "status_check"
+        transfer.setopt(option)
+
+        self.assertTrue(transfer._unpack_value.called)
+        self.assertTrue(transfer._get_endpoint.called)
+        self.assertTrue(transfer._start_socket.called)
+        self.assertIsNotNone(transfer.status_check_socket)
+        self.assertTrue(transfer.poller.register.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # file_op, already enabled
+        # --------------------------------------------------------------------
+        transfer.file_op_socket = "foo"
+        transfer.log = mock.MagicMock()
+
+        option = "file_op"
+        transfer.setopt(option)
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("already enabled", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # file_op, ok
+        # --------------------------------------------------------------------
+        transfer._unpack_value = mock.MagicMock()
+        transfer._get_endpoint = mock.MagicMock()
+        transfer._start_socket = mock.MagicMock()
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.file_op_socket = None
+
+        option = "file_op"
+        transfer.setopt(option)
+
+        self.assertTrue(transfer._unpack_value.called)
+        self.assertTrue(transfer._get_endpoint.called)
+        self.assertTrue(transfer._start_socket.called)
+        self.assertIsNotNone(transfer.file_op_socket)
+        self.assertTrue(transfer.poller.register.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # confirmation, already enabled
+        # --------------------------------------------------------------------
+        transfer.confirmation_socket = "foo"
+        transfer.log = mock.MagicMock()
+
+        option = "confirmation"
+        transfer.setopt(option)
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("already enabled", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # confirmation, ok
+        # --------------------------------------------------------------------
+        transfer._unpack_value = mock.MagicMock()
+        transfer._get_endpoint = mock.MagicMock()
+        transfer._start_socket = mock.MagicMock()
+        transfer.confirmation_socket = None
+
+        option = "confirmation"
+        transfer.setopt(option)
+
+        self.assertTrue(transfer._unpack_value.called)
+        self.assertTrue(transfer._get_endpoint.called)
+        self.assertTrue(transfer._start_socket.called)
+        self.assertIsNotNone(transfer.confirmation_socket)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # Not supported
+        # --------------------------------------------------------------------
+        option = "foo"
+        with self.assertRaises(hidra.transfer.NotSupported):
+            transfer.setopt(option)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+    def test__unpack_value(self):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        protocol = "test_protocol"
+        ip = "test_ip"
+        port = 1234
+
+        # --------------------------------------------------------------------
+        # No value
+        # --------------------------------------------------------------------
+
+        value = None
+        prop = {}
+
+        transfer._unpack_value(value, prop)
+
+        self.assertDictEqual(prop, {})
+
+        # --------------------------------------------------------------------
+        # value list, wrong format
+        # --------------------------------------------------------------------
+
+        value = []
+        prop = {}
+
+        with self.assertRaises(hidra.transfer.FormatError):
+            transfer._unpack_value(value, prop)
+
+        # --------------------------------------------------------------------
+        # value list, no protocol
+        # --------------------------------------------------------------------
+
+        value = [ip, port]
+        prop = {}
+
+        transfer._unpack_value(value, prop)
+
+        expected = {
+            "ip": ip,
+            "port": port
+        }
+        self.assertDictEqual(prop, expected)
+
+        # --------------------------------------------------------------------
+        # value list, with protocol
+        # --------------------------------------------------------------------
+
+        value = [protocol, ip, port]
+        prop = {}
+
+        transfer._unpack_value(value, prop)
+
+        expected = {
+            "protocol": protocol,
+            "ip": ip,
+            "port": port
+        }
+        self.assertDictEqual(prop, expected)
+
+        # --------------------------------------------------------------------
+        # port only
+        # --------------------------------------------------------------------
+
+        value = port
+        prop = {}
+
+        transfer._unpack_value(value, prop)
+
+        expected = {
+            "port": port
+        }
+        self.assertDictEqual(prop, expected)
+
+    #@mock.patch("hidra.transfer.Transfer._start_socket")
+    #def test_register(self, mock_start_socket):
+    @mock.patch("hidra.transfer.Transfer.stop")
+    @mock.patch("hidra.transfer.Transfer._start_socket")
+    def test_register(self, mock_start_socket, mock_stop):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.data_socket = None
+
+        # --------------------------------------------------------------------
+        # no whitelist
+        # --------------------------------------------------------------------
+        mock_start_socket.reset_mock()
+
+        whitelist = None
+        transfer.register(whitelist)
+
+        self.assertTrue(mock_start_socket.called)
+        self.assertIsNotNone(transfer.data_socket)
+        self.assertTrue(transfer.poller.register)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # whitelist: wrong format
+        # --------------------------------------------------------------------
+
+        whitelist = ""
+        with self.assertRaises(hidra.transfer.FormatError):
+            transfer.register(whitelist)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # whitelist ok but empty
+        # --------------------------------------------------------------------
+
+        whitelist = []
+
+        with mock.patch("hidra.transfer.ThreadAuthenticator") as mock_auth:
+            transfer.register(whitelist)
+
+            self.assertTrue(mock_auth.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # whitelist: localhost
+        # --------------------------------------------------------------------
+
+        hidra.transfer.ThreadAuthenticator = MockZmqAuthenticator()
+
+        host = "localhost"
+        whitelist = [host]
+
+        with mock.patch("socket.gethostbyname") as mock_gethostbyname:
+            transfer.register(whitelist)
+
+            self.assertTrue(mock_gethostbyname.called)
+            self.assertTrue(transfer.auth.allow.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # whitelist: not localhost
+        # --------------------------------------------------------------------
+
+        hidra.transfer.ThreadAuthenticator = MockZmqAuthenticator()
+
+        host = "test_host"
+        whitelist = [host]
+
+        with mock.patch("socket.gethostbyaddr") as mock_gethostbyaddr:
+            mock_gethostbyaddr.return_value = "test_ip"
+
+            transfer.register(whitelist)
+
+            self.assertTrue(mock_gethostbyaddr.called)
+            self.assertTrue(transfer.auth.allow.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # whitelist: getting ip fails
+        # --------------------------------------------------------------------
+
+        host = "test_host"
+        whitelist = [host]
+
+        with mock.patch("socket.gethostbyaddr") as mock_gethostbyaddr:
+            mock_gethostbyaddr.side_effect = socket.gaierror()
+
+            transfer.register(whitelist)
+
+            self.assertTrue(mock_gethostbyaddr.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # whitelist: getting ip fails
+        # --------------------------------------------------------------------
+        transfer.log = mock.MagicMock()
+
+        host = "test_host"
+        whitelist = [host]
+
+        with mock.patch("socket.gethostbyaddr") as mock_gethostbyaddr:
+            mock_gethostbyaddr.side_effect = TestException()
+
+            with self.assertRaises(m_transfer.AuthenticationFailed):
+                transfer.register(whitelist)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
 
     def todo_test_read(self):
         pass
@@ -688,8 +1430,353 @@ class TestTransfer(TestBase):
     def todo_test__react_on_message(self):
         pass
 
-    def todo_test_get_chunk(self):
-        pass
+    @mock.patch("hidra.transfer.Transfer.stop")
+    def test_get_chunk(self, mock_stop):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # No connection open
+        # --------------------------------------------------------------------
+        transfer.started_connections = {}
+        transfer.log = mock.MagicMock()
+
+        ret_val = transfer.get_chunk()
+
+        self.assertEqual(ret_val, (None, None))
+        self.assertTrue(transfer.log.error.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # QUERY_NEXT, sending fails
+        # --------------------------------------------------------------------
+
+        transfer.log = mock.MagicMock()
+        transfer.request_socket = MockZmqSocket()
+        transfer.request_socket.send_multipart.side_effect = Exception()
+        transfer.started_connections = {
+            "QUERY_NEXT": {
+                "id": None
+            }
+        }
+
+        ret_val = transfer.get_chunk()
+
+        self.assertEqual(ret_val, (None, None))
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("not send request", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer.request_socket = None
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # polling fails, stop active
+        # --------------------------------------------------------------------
+
+        transfer.log = mock.MagicMock()
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.side_effect = TestException()
+        transfer.stopped_everything = True
+        transfer.started_connections = {"STREAM": None}
+
+        with self.assertRaises(KeyboardInterrupt):
+            transfer.get_chunk()
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # polling fails, stop inactive
+        # --------------------------------------------------------------------
+
+        transfer.log = mock.MagicMock()
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.side_effect = TestException()
+        transfer.stopped_everything = False
+        transfer.started_connections = {"STREAM": None}
+
+        with self.assertRaises(TestException):
+            transfer.get_chunk()
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # status_check: STATUS_CHECK
+        # --------------------------------------------------------------------
+
+        transfer.started_connections = {"STREAM": None}
+        transfer.status_check_socket = MockZmqSocket()
+        transfer.status_check_socket.recv_multipart.return_value = [
+            b"STATUS_CHECK"
+        ]
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {
+            transfer.status_check_socket: zmq.POLLIN
+        }
+
+        transfer.get_chunk()
+
+        self.assertTrue(transfer.status_check_socket.send_multipart.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # status_check: RESET_STATUS
+        # --------------------------------------------------------------------
+
+        transfer.started_connections = {"STREAM": None}
+        transfer.status_check_socket = MockZmqSocket()
+        transfer.status_check_socket.recv_multipart.return_value = [
+            b"RESET_STATUS"
+        ]
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {
+            transfer.status_check_socket: zmq.POLLIN
+        }
+        transfer.status = "foo"
+
+        transfer.get_chunk()
+
+        self.assertTrue(transfer.status_check_socket.send_multipart.called)
+        self.assertEqual(transfer.status, [b"OK"])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # status_check: not supported
+        # --------------------------------------------------------------------
+
+        transfer.started_connections = {"STREAM": None}
+        transfer.status_check_socket = MockZmqSocket()
+        transfer.status_check_socket.recv_multipart.return_value = [
+            b"foo"
+        ]
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {
+            transfer.status_check_socket: zmq.POLLIN
+        }
+
+        transfer.get_chunk()
+
+        transfer.status_check_socket.send_multipart.called_once_with([b"ERROR"])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # data: receiving fails
+        # --------------------------------------------------------------------
+
+        transfer.log = mock.MagicMock()
+        transfer.started_connections = {"STREAM": None}
+        transfer.data_socket = MockZmqSocket()
+        transfer.data_socket.recv_multipart.side_effect = Exception()
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {
+            transfer.data_socket: zmq.POLLIN
+        }
+
+        ret_val = transfer.get_chunk()
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("failed", transfer.log.error.call_args[0][0])
+        self.assertEqual(ret_val, [None, None])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # data: ALIVE_TEST, no timeout
+        # --------------------------------------------------------------------
+
+        transfer.started_connections = {"STREAM": None}
+        transfer.data_socket = MockZmqSocket()
+        transfer.data_socket.recv_multipart.return_value = [
+            b"ALIVE_TEST"
+        ]
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {
+            transfer.data_socket: zmq.POLLIN
+        }
+
+        timeout = -1
+        ret_val = transfer.get_chunk(timeout)
+
+        self.assertEqual(ret_val, [None, None])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # data: ALIVE_TEST, timeout
+        # --------------------------------------------------------------------
+
+        transfer.started_connections = {"STREAM": None}
+        transfer.data_socket = MockZmqSocket()
+        transfer.data_socket.recv_multipart.return_value = [
+            b"ALIVE_TEST"
+        ]
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {
+            transfer.data_socket: zmq.POLLIN
+        }
+
+        timeout = 1
+        with mock.patch("time.time") as mock_time:
+            # The side effect values have to be different from each other,
+            # otherwise the difference becomes 0
+            mock_time.side_effect = [1, 2]
+            ret_val = transfer.get_chunk(timeout)
+
+            self.assertEqual(mock_time.call_count, 2)
+
+        self.assertEqual(ret_val, [None, None])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # data: too short message
+        # --------------------------------------------------------------------
+
+        transfer.log = mock.MagicMock()
+        transfer.started_connections = {"STREAM": None}
+        transfer.data_socket = MockZmqSocket()
+        transfer.data_socket.recv_multipart.return_value = ["foo"]
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {
+            transfer.data_socket: zmq.POLLIN
+        }
+
+        ret_val = transfer.get_chunk()
+
+        self.assertEqual(ret_val, [None, None])
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("too short", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # data: message ok
+        # --------------------------------------------------------------------
+
+        transfer.started_connections = {"STREAM": None}
+        transfer.data_socket = MockZmqSocket()
+        metadata = {"foo": None}
+        transfer.data_socket.recv_multipart.return_value = [
+            json.dumps(metadata).encode("utf-8"),
+            "bar"
+        ]
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {
+            transfer.data_socket: zmq.POLLIN
+        }
+
+        ret_val = transfer.get_chunk()
+
+        self.assertEqual(ret_val, [metadata, "bar"])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # data: metadata error
+        # --------------------------------------------------------------------
+
+        transfer.log = mock.MagicMock()
+        transfer.started_connections = {"STREAM": None}
+        transfer.data_socket = MockZmqSocket()
+        transfer.data_socket.recv_multipart.return_value = [
+            "wrong metadata",
+            "bar"
+        ]
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {
+            transfer.data_socket: zmq.POLLIN
+        }
+
+        ret_val = transfer.get_chunk()
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("extract metadata", transfer.log.error.call_args[0][0])
+
+        self.assertEqual(ret_val, [None, "bar"])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # run in timeout
+        # --------------------------------------------------------------------
+
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {}
+        transfer.started_connections = {"STREAM": None}
+        transfer.request_socket = MockZmqSocket()
+
+        ret_val = transfer.get_chunk()
+
+        self.assertEqual(ret_val, [None, None])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # run in timeout, QUERY_NEXT
+        # --------------------------------------------------------------------
+
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {}
+        transfer.request_socket = MockZmqSocket()
+        transfer.started_connections = {
+            "QUERY_NEXT": {
+                "id": None
+            }
+        }
+
+        ret_val = transfer.get_chunk()
+
+        expected = [
+            mock.call([b"NEXT", None]),
+            mock.call([b"CANCEL", None])
+        ]
+        self.assertEqual(transfer.request_socket.send_multipart.call_args_list,
+                         expected)
+
+        self.assertEqual(ret_val, [None, None])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # run in timeout, QUERY_NEXT, cancel fails
+        # --------------------------------------------------------------------
+
+        transfer.log = mock.MagicMock()
+        transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.poll.return_value = {}
+        transfer.request_socket = MockZmqSocket()
+        transfer.request_socket.send_multipart.side_effect = [None, TestException()]
+        transfer.started_connections = {
+            "QUERY_NEXT": {
+                "id": None
+            }
+        }
+
+        ret_val = transfer.get_chunk()
+
+        self.assertEqual(ret_val, [None, None])
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("not cancel", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
 
     def todo_test_check_file_closed(self):
         pass
