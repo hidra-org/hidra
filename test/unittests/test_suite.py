@@ -11,6 +11,7 @@ import pkgutil
 
 import eventdetectors
 import datafetchers
+import api
 from core.test_taskprovider import TestTaskProvider
 from core.test_datadispatcher import TestDataDispatcher
 from core.test_signalhandler import TestSignalHandler
@@ -119,6 +120,8 @@ def get_testing_suites():
     from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
     from datafetchers.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
 
+    from api.test_transfer import TestTransfer
+
     all_suites = [
 #        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),  # noqa E122
@@ -138,6 +141,8 @@ def get_testing_suites():
 #        unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataManager),  # noqa E122
+
+#        unittest.TestLoader().loadTestsFromTestCase(TestTransfer),  # noqa E122
     ]
 
     return all_suites

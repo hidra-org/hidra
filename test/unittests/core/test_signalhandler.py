@@ -338,7 +338,7 @@ class TestSignalHandler(TestBase):
 
             return sighandler
 
-        def check_registered(sockets, testunit):
+        def check_registered(sighandler, sockets, testunit):
             registered_sockets = sighandler.poller.registered_sockets
             all_socket_confs = []
 
@@ -371,7 +371,7 @@ class TestSignalHandler(TestBase):
             sighandler.control_sub_socket,
             sighandler.request_fw_socket
         ]
-        check_registered(sockets_to_test, self)
+        check_registered(sighandler, sockets_to_test, self)
 
         # resetting QueueHandlers
         sighandler.log.handlers = []
@@ -397,7 +397,7 @@ class TestSignalHandler(TestBase):
             sighandler.com_socket,
             sighandler.request_socket
         ]
-        check_registered(sockets_to_test, self)
+        check_registered(sighandler, sockets_to_test, self)
 
     def test_run(self):
         current_func_name = inspect.currentframe().f_code.co_name

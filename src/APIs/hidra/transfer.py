@@ -103,15 +103,15 @@ def generate_filepath(base_path, config_dict, add_filename=True):
             or config_dict["relative_path"] is None):
         target_path = base_path
 
-    # if the relative path starts with a slash path.join will consider it
-    # as absolute path
-    elif config_dict["relative_path"].startswith("/"):
-        target_path = (os.path.normpath(
-            os.path.join(base_path, config_dict["relative_path"][1:])))
-
     else:
-        target_path = (os.path.normpath(
-            os.path.join(base_path, config_dict["relative_path"])))
+        # if the relative path starts with a slash path.join will consider it
+        # as absolute path
+        if config_dict["relative_path"].startswith("/"):
+            rel_path = config_dict["relative_path"][1:]
+        else:
+            rel_path = config_dict["relative_path"]
+
+        target_path = os.path.normpath(os.path.join(base_path, rel_path))
 
     if add_filename:
         filepath = os.path.join(target_path, config_dict["filename"])
@@ -280,7 +280,8 @@ class Transfer(Base):
         if use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(use_log)
         # use logutils queue
-        elif type(use_log) == multiprocessing.Queue:
+        elif type(use_log) in [multiprocessing.Queue,
+                               multiprocessing.queues.Queue]:
             self.log = get_logger("Transfer", use_log)
         # use logging
         elif use_log:
@@ -380,7 +381,9 @@ class Transfer(Base):
             raise NotSupported("Chosen type of connection is not supported.")
 
     def get_remote_version(self):
+
         self._create_signal_socket()
+
         if self.targets is None:
             self.targets = []
 
@@ -488,14 +491,20 @@ class Transfer(Base):
     def _set_targets(self, targets):
         self.targets = []
 
+        if type(targets) != list or len(targets) < 1:
+            self.stop()
+            self.log.debug("targets={}".format(targets))
+            raise FormatError("Argument 'targets' is of wrong format. "
+                              "Has to be a list.")
+
         # [host, port, prio]
         if (len(targets) == 3
                 and type(targets[0]) != list
                 and type(targets[1]) != list
                 and type(targets[2]) != list):
             host, port, prio = targets
-            endpoint = "{}:{}".format(socket.getfqdn(host), port)
-            self.targets = [[endpoint, prio, ".*"]]
+            addr = "{}:{}".format(socket.getfqdn(host), port)
+            self.targets = [[addr, prio, ".*"]]
 
         # [host, port, prio, suffixes]
         elif (len(targets) == 4
@@ -1205,7 +1214,6 @@ class Transfer(Base):
                 choosen)
 
         """
-
         # query_metadata and stream_metadata are covered with this as well
         if ("STREAM" not in self.started_connections
                 and "QUERY_NEXT" not in self.started_connections):
@@ -1228,25 +1236,15 @@ class Transfer(Base):
 
         while True:
             # receive data
-            if timeout:
-                try:
-                    socks = dict(self.poller.poll(timeout))
-                except:
-                    if self.stopped_everything:
-                        raise KeyboardInterrupt
-                    else:
-                        self.log.error("Could not poll for new message")
-                        raise
-            else:
-                try:
-                    socks = dict(self.poller.poll())
-                except:
-                    if self.stopped_everything:
-                        self.log.debug("Stopping poller")
-                        raise KeyboardInterrupt
-                    else:
-                        self.log.error("Could not poll for new message")
-                        raise
+            try:
+                socks = dict(self.poller.poll(timeout))
+            except:
+                if self.stopped_everything:
+                    self.log.debug("Stopping poller")
+                    raise KeyboardInterrupt
+                else:
+                    self.log.error("Could not poll for new message")
+                    raise
 
             # received signal from status check socket
             if (self.status_check_socket in socks
@@ -1332,7 +1330,20 @@ class Transfer(Base):
 
                 return [None, None]
 
-    def check_file_closed(self, payload, m):
+    def check_file_closed(self, metadata, payload):
+        """Checks if all chunks were received.
+
+        Args:
+            metadata: The metadata of the file.
+            payload: The data of the file.
+
+        Return:
+            True if the patload was the last chunk of the file,
+            False otherwise.
+        """
+
+        m = metadata
+
         # Either the message is smaller than than expected (last chunk)
         # or the size of the origin file was a multiple of the
         # chunksize and this is the last expected chunk (chunk_number
@@ -1389,7 +1400,7 @@ class Transfer(Base):
 
             all_data.append(copy.deepcopy(payload))
 
-            if self.check_file_closed(payload, metadata):
+            if self.check_file_closed(metadata, payload):
                 # indicates end of file. Leave loop
                 self.log.info("New file with modification time {} received "
                               .format(metadata["file_mod_time"]))
@@ -1423,15 +1434,20 @@ class Transfer(Base):
             base_path: The base path under which the file should be stored
             metadata: The metadata recceived together with the data.
         """
+
         # append payload to file
         try:
-            descriptors[filepath].write(payload)
+            descriptors[filepath]["file"].write(payload)
         # file was not open
         except KeyError:
             try:
-                descriptors[filepath] = open(filepath, "wb")
+                descriptors[filepath] = {}
+                descriptors[filepath]["file"] = open(filepath, "wb")
+
                 # write data
-                descriptors[filepath].write(payload)
+                descriptors[filepath]["file"].write(payload)
+                # TODO what todo when chunk_number is not 0?
+                descriptors[filepath]["last_chunk_number"] = metadata["chunk_number"]
             except IOError as e:
                 # errno.ENOENT == "No such file or directory"
                 if e.errno == errno.ENOENT:
@@ -1455,11 +1471,13 @@ class Transfer(Base):
                                                         add_filename=False)
                         os.makedirs(target_path)
 
-                        descriptors[filepath] = open(filepath, "wb")
+                        descriptors[filepath]["file"] = open(filepath, "wb")
                         self.log.info("New target directory created: {}"
                                       .format(target_path))
+
                         # write data
-                        descriptors[filepath].write(payload)
+                        descriptors[filepath]["file"].write(payload)
+                        descriptors[filepath]["last_chunk"] = metadata["chunk_number"]
                     except:
                         self.log.error("Unable to save payload to file: '{}'"
                                        .format(filepath), exc_info=True)
@@ -1508,10 +1526,10 @@ class Transfer(Base):
                            .format(filepath), exc_info=True)
             raise
 
-        if self.check_file_closed(payload, metadata):
+        if self.check_file_closed(metadata, payload):
             # indicates end of file. Leave loop
             try:
-                descriptors[filepath].close()
+                descriptors[filepath]["file"].close()
                 del descriptors[filepath]
 
                 self.log.info("New file with modification time {} received "
@@ -1680,7 +1698,7 @@ class Transfer(Base):
 
         # close remaining open files
         for target in self.file_descriptors:
-            self.file_descriptors[target].close()
+            self.file_descriptors[target]["file"].close()
             self.log.warning("Not all chunks were received for file {}"
                              .format(target))
 
