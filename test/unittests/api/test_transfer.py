@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 
 import copy
+import errno
 import inspect
 import json
 import logging
@@ -1778,23 +1779,1323 @@ class TestTransfer(TestBase):
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
-    def todo_test_check_file_closed(self):
-        pass
+    def test_check_file_closed(self):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
 
-    def todo_test_get(self):
-        pass
+        payload = "1"
 
-    def todo_test_store_data_chunk(self):
-        pass
+        # --------------------------------------------------------------------
+        # payload size is smaller than chunksize
+        # --------------------------------------------------------------------
 
-    def todo_test_store(self):
-        pass
+        metadata = {
+            "chunksize": 2,
+            "filesize": 3,
+            "chunk_number": 1
+        }
 
-    def todo_test_stop(self):
-        pass
+        ret_val = transfer.check_file_closed(metadata, payload)
+        self.assertTrue(ret_val)
 
-    def todo_test_force_stop(self):
-        pass
+        # --------------------------------------------------------------------
+        # original size is multiple of chunksize
+        # --------------------------------------------------------------------
+
+        # chunk_number starts with 0
+
+        metadata = {
+            "chunksize": 1,
+            "filesize": 2,
+            "chunk_number": 1
+        }
+
+        ret_val = transfer.check_file_closed(metadata, payload)
+        self.assertTrue(ret_val)
+
+        # --------------------------------------------------------------------
+        # not the last chunk
+        # --------------------------------------------------------------------
+
+        metadata = {
+            "chunksize": 1,
+            "filesize": 2,
+            "chunk_number": 0
+        }
+
+        ret_val = transfer.check_file_closed(metadata, payload)
+        self.assertFalse(ret_val)
+
+    @mock.patch("hidra.transfer.Transfer.get_chunk")
+    @mock.patch("hidra.transfer.Transfer.check_file_closed")
+    def test_get(self, mock_check_file_closed, mock_get_chunk):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # all data in one iteration
+        # --------------------------------------------------------------------
+
+        metadata = {
+            "file_mod_time": "now",
+            "chunk_number": 0
+        }
+        mock_get_chunk.side_effect = [[metadata, ""]]
+        mock_check_file_closed.side_effect = [True]
+
+        ret_metadata, ret_data = transfer.get()
+
+        expected = {
+            "file_mod_time": "now",
+            "chunk_number": None
+        }
+        self.assertDictEqual(ret_metadata, expected)
+        self.assertEqual(ret_data, "")
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+
+        # --------------------------------------------------------------------
+        # all data in two iteration
+        # --------------------------------------------------------------------
+
+        metadata0 = {
+            "file_mod_time": "now0",
+            "chunk_number": 0
+        }
+        metadata1 = {
+            "file_mod_time": "now1",
+            "chunk_number": 1
+        }
+        mock_get_chunk.side_effect = [[metadata0, "part0"],
+                                      [metadata1, "part1"]]
+        mock_check_file_closed.side_effect = [False, True]
+
+        ret_metadata, ret_data = transfer.get()
+
+        expected = {
+            "file_mod_time": "now0",
+            "chunk_number": None
+        }
+        self.assertDictEqual(ret_metadata, expected)
+        self.assertEqual(ret_data, "part0part1")
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+
+        # --------------------------------------------------------------------
+        # KeyboardInterrupt
+        # --------------------------------------------------------------------
+
+        mock_check_file_closed.reset_mock()
+        metadata = {
+            "file_mod_time": "now",
+            "chunk_number": 0
+        }
+        mock_get_chunk.side_effect = KeyboardInterrupt()
+
+        with self.assertRaises(KeyboardInterrupt):
+            transfer.get()
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+
+        # --------------------------------------------------------------------
+        # Exception when getting chunk, not stopped
+        # --------------------------------------------------------------------
+
+        transfer.log = mock.MagicMock()
+        metadata = {
+            "file_mod_time": "now",
+            "chunk_number": 0
+        }
+        mock_get_chunk.side_effect = TestException()
+        transfer.stopped_everything = False
+
+        with self.assertRaises(TestException):
+            transfer.get()
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+
+        # --------------------------------------------------------------------
+        # Exception when getting chunk, stopped
+        # --------------------------------------------------------------------
+
+        mock_check_file_closed.reset_mock()
+        metadata = {
+            "file_mod_time": "now",
+            "chunk_number": 0
+        }
+        mock_get_chunk.side_effect = TestException()
+        transfer.stopped_everything = True
+
+        transfer.get()
+        self.assertFalse(mock_check_file_closed.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+
+        # --------------------------------------------------------------------
+        # Exception when joining
+        # --------------------------------------------------------------------
+
+        transfer.log = mock.MagicMock()
+        mock_check_file_closed.reset_mock()
+        metadata = {
+            "file_mod_time": "now",
+        }
+        # data is set to int to trigger a TypeError
+        # (string is required to pass)
+        mock_get_chunk.side_effect = [[metadata, 1]]
+        mock_check_file_closed.side_effect = [True]
+
+        with self.assertRaises(TypeError):
+            transfer.get()
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+
+    @mock.patch("hidra.transfer.generate_file_identifier")
+    @mock.patch("hidra.transfer.generate_filepath")
+    @mock.patch("hidra.transfer.Transfer.check_file_closed")
+    def test_store_data_chunk(self,
+                              mock_check_file_closed,
+                              mock_generate_filepath,
+                              mock_gen_file_id):
+        current_func_name = inspect.currentframe().f_code.co_name
+
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        mock_file = mock.MagicMock(write=mock.MagicMock(),
+                                   close=mock.MagicMock())
+        mock_gen_file_id.return_value = "test_file_id"
+
+        filepath = "test_filepath"
+        payload = ""
+        base_path = "test_base_path"
+
+        class TestIOError(IOError):
+            def __init__(self, **kwargs):
+                super(TestIOError, self).__init__(**kwargs)
+                self.errno = errno.ENOENT
+
+        # multiple calls of open (one of which is returns an exception)
+        vars_calls = ["raise", ""]
+        def mock_two_calls(*args):
+            # for some reason there are more than just two calls
+            # open transfer.py is also mocked (why?)
+            try:
+                do = vars_calls.pop(0)
+            except:
+                do = ""
+
+            if do == "raise":
+                raise TestIOError
+            else:
+                return mock.MagicMock()
+
+
+        # --------------------------------------------------------------------
+        # open descriptors, file not closed
+        # --------------------------------------------------------------------
+        self.log.info("{}: OPEN DESCRIPTORS, FILE NOT CLOSED"
+                      .format(current_func_name))
+
+        descriptors = {
+            "test_filepath": {
+                "last_chunk_number": 0,
+                "file": mock_file
+            }
+        }
+        metadata = {
+            "chunk_number": 1
+        }
+
+        mock_check_file_closed.side_effect = [False]
+
+        with mock.patch("__builtin__.open") as mock_open:
+            ret_val = transfer.store_data_chunk(descriptors,
+                                                filepath,
+                                                payload,
+                                                base_path,
+                                                metadata)
+
+        self.assertTrue(ret_val)
+        mock_file.write.assert_called_once_with(payload)
+
+        # cleanup
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+        mock_file.reset_mock()
+
+        # --------------------------------------------------------------------
+        # No open descriptors
+        # --------------------------------------------------------------------
+        self.log.info("{}: NO OPEN DESCRIPTORS".format(current_func_name))
+
+        descriptors = {}
+        metadata = {
+            "chunk_number": 0
+        }
+
+        mock_check_file_closed.side_effect = [False]
+
+        with mock.patch("__builtin__.open") as mock_open:
+            ret_val = transfer.store_data_chunk(descriptors,
+                                                filepath,
+                                                payload,
+                                                base_path,
+                                                metadata)
+
+        self.assertTrue(ret_val)
+
+        # dictEqual does not work because "file" is a different instance
+        # expected = {
+        #     "test_filepath": {
+        #         "last_chunk_number": 0,
+        #         "file": MagicMock
+        #     }
+        # }
+        self.assertIsInstance(descriptors, dict)
+        self.assertIn("test_filepath", descriptors)
+        self.assertIn("last_chunk_number", descriptors["test_filepath"])
+        self.assertEqual(descriptors["test_filepath"]["last_chunk_number"], 0)
+        self.assertIn("file", descriptors["test_filepath"])
+        self.assertIsInstance(descriptors["test_filepath"]["file"], mock.MagicMock)
+
+        # cleanup
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+
+        # --------------------------------------------------------------------
+        # No open descriptors, "No such file or directory" but exception
+        # --------------------------------------------------------------------
+        self.log.info("{}: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY' "
+                      "but exception".format(current_func_name))
+
+        descriptors = {}
+        metadata = {
+            # a missing "relative_path" triggers a KeyError
+            "chunk_number": 0
+        }
+
+        transfer.log = mock.MagicMock()
+
+        with mock.patch("__builtin__.open") as mock_open:
+            # errno.ENOENT == "No such file or directory"
+            mock_open.side_effect = TestIOError()
+
+            with self.assertRaises(KeyError):
+                transfer.store_data_chunk(descriptors,
+                                          filepath,
+                                          payload,
+                                          base_path,
+                                          metadata)
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("save payload", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # No open descriptors, "No such file or directory", all dirs allowed
+        # --------------------------------------------------------------------
+        self.log.info("{}: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY', "
+                      "ALL DIRS ALLOWED".format(current_func_name))
+
+        descriptors = {}
+        metadata = {
+            "relative_path": "test_rel_path",
+            "chunk_number": 0
+        }
+
+        mock_generate_filepath.reset_mock()
+        mock_check_file_closed.side_effect = [False]
+
+        # multiple calls of open (one of which is returns an exception)
+        vars_calls = ["raise", ""]
+
+        with mock.patch("os.makedirs") as mock_makedirs:
+            with mock.patch("__builtin__.open") as mock_open:
+                # errno.ENOENT == "No such file or directory"
+                mock_open.side_effect = mock_two_calls
+
+                transfer.store_data_chunk(descriptors,
+                                          filepath,
+                                          payload,
+                                          base_path,
+                                          metadata)
+
+                self.assertTrue(mock_makedirs.called)
+
+        self.assertTrue(mock_generate_filepath.called)
+        self.assertTrue(ret_val)
+
+        # dictEqual does not work because "file" is a different instance
+        # expected = {
+        #     "test_filepath": {
+        #         "last_chunk_number": 0,
+        #         "file": MagicMock
+        #     }
+        # }
+        self.assertIsInstance(descriptors, dict)
+        self.assertIn("test_filepath", descriptors)
+        self.assertIn("last_chunk_number", descriptors["test_filepath"])
+        self.assertEqual(descriptors["test_filepath"]["last_chunk_number"], 0)
+        self.assertIn("file", descriptors["test_filepath"])
+        self.assertIsInstance(descriptors["test_filepath"]["file"], mock.MagicMock)
+
+        # cleanup
+        mock_generate_filepath.reset_mock()
+
+        # --------------------------------------------------------------------
+        # No open descriptors, "No such file or directory", No dirs allowed
+        # --------------------------------------------------------------------
+        self.log.info("{}: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY', "
+                      "NO DIRS ALLOWED".format(current_func_name))
+
+        descriptors = {}
+        metadata = {
+            "relative_path": "test_rel_path",
+            "chunk_number": 0
+        }
+
+        mock_generate_filepath.reset_mock()
+        mock_check_file_closed.side_effect = [False]
+
+        # multiple calls of open (one of which is returns an exception)
+        vars_calls = ["raise", ""]
+
+        transfer.log = mock.MagicMock()
+        transfer.dirs_not_to_create = "test_rel_path"
+
+        with mock.patch("os.makedirs") as mock_makedirs:
+            with mock.patch("__builtin__.open") as mock_open:
+                # errno.ENOENT == "No such file or directory"
+                mock_open.side_effect = mock_two_calls
+
+                with self.assertRaises(TestIOError):
+                    transfer.store_data_chunk(descriptors,
+                                              filepath,
+                                              payload,
+                                              base_path,
+                                              metadata)
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("write file", transfer.log.error.call_args_list[0][0][0])
+        self.assertFalse(mock_generate_filepath.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_generate_filepath.reset_mock()
+        mock_check_file_closed.side_effect = None
+
+        # --------------------------------------------------------------------
+        # No open descriptors, not "no such file or directory"
+        # --------------------------------------------------------------------
+        self.log.info("{}: NO OPEN DESCRIPTORS, NOT 'NO SUCH FILE OR "
+                      "DIRECTORY'".format(current_func_name))
+
+        descriptors = {}
+        metadata = {
+            "chunk_number": 0
+        }
+
+        transfer.log = mock.MagicMock()
+
+        with mock.patch("__builtin__.open") as mock_open:
+            mock_open.side_effect = IOError()
+
+            with self.assertRaises(IOError):
+                transfer.store_data_chunk(descriptors,
+                                          filepath,
+                                          payload,
+                                          base_path,
+                                          metadata)
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("append payload", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # No open descriptors, unknown exception when open
+        # --------------------------------------------------------------------
+        self.log.info("{}: NO OPEN DESCRIPTORS, UNKNOWN EXCEPTION WHEN OPEN"
+                      .format(current_func_name))
+
+        descriptors = {}
+        metadata = {
+            "chunk_number": 0
+        }
+
+        transfer.log = mock.MagicMock()
+
+        with mock.patch("__builtin__.open") as mock_open:
+            mock_open.side_effect = TestException()
+
+            with self.assertRaises(TestException):
+                transfer.store_data_chunk(descriptors,
+                                          filepath,
+                                          payload,
+                                          base_path,
+                                          metadata)
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("append payload", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # KeyboardInterrupt in write
+        # --------------------------------------------------------------------
+        self.log.info("{}: KEYBOARDINTERRUPT IN WRITE"
+                      .format(current_func_name))
+
+        mock_file.write.side_effect = KeyboardInterrupt()
+        descriptors = {
+            "test_filepath": {
+                "last_chunk_number": 0,
+                "file": mock_file
+            }
+        }
+        metadata = {
+            "chunk_number": 0
+        }
+
+        with self.assertRaises(KeyboardInterrupt):
+            transfer.store_data_chunk(descriptors,
+                                      filepath,
+                                      payload,
+                                      base_path,
+                                      metadata)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_file = mock.MagicMock(write=mock.MagicMock())
+
+        # --------------------------------------------------------------------
+        # descriptors of wrong format
+        # --------------------------------------------------------------------
+        self.log.info("{}: DESCRIPTORS OF WRONG FORMAT"
+                      .format(current_func_name))
+
+        mock_file.write.side_effect = TestException()
+        descriptors = {
+            "test_filepath": {
+                "last_chunk_number": 0,
+                "file": mock_file
+            }
+        }
+        metadata = {
+            "chunk_number": 0
+        }
+
+        transfer.log = mock.MagicMock()
+
+        with self.assertRaises(TestException):
+            transfer.store_data_chunk(descriptors,
+                                      filepath,
+                                      payload,
+                                      base_path,
+                                      metadata)
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("append payload", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_file = mock.MagicMock(write=mock.MagicMock())
+
+        # --------------------------------------------------------------------
+        # send confirmation: not enabled
+        # --------------------------------------------------------------------
+        self.log.info("{}: SEND CONFIRMATION: NOT ENABLED"
+                      .format(current_func_name))
+
+        descriptors = {
+            "test_filepath": {
+                "last_chunk_number": 0,
+                "file": mock_file
+            }
+        }
+        metadata = {
+            "chunk_number": 1,
+            "confirmation_required": True
+        }
+
+        mock_check_file_closed.side_effect = [False]
+        transfer.confirmation_socket = None
+
+        with self.assertRaises(m_transfer.UsageError):
+            transfer.store_data_chunk(descriptors,
+                                      filepath,
+                                      payload,
+                                      base_path,
+                                      metadata)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+        mock_file.reset_mock()
+
+        # --------------------------------------------------------------------
+        # send confirmation: OK
+        # --------------------------------------------------------------------
+        self.log.info("{}: SEND CONFIRMATION: OK".format(current_func_name))
+
+        descriptors = {
+            "test_filepath": {
+                "last_chunk_number": 0,
+                "file": mock_file
+            }
+        }
+        metadata = {
+            "chunk_number": 1,
+            "confirmation_required": "test_topic"
+        }
+
+        mock_check_file_closed.side_effect = [False]
+        transfer.confirmation_socket = mock.MagicMock(
+            send_multipart=mock.MagicMock()
+        )
+
+        transfer.store_data_chunk(descriptors,
+                                  filepath,
+                                  payload,
+                                  base_path,
+                                  metadata)
+
+        self.assertTrue(transfer.confirmation_socket.send_multipart.called)
+        transfer.confirmation_socket.send_multipart.assert_called_once_with(
+            ["test_topic", "test_file_id"]
+        )
+
+        # cleanup
+        transfer.confirmation_socket = None
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+        mock_file.reset_mock()
+
+        # --------------------------------------------------------------------
+        # send confirmation: error
+        # --------------------------------------------------------------------
+        self.log.info("{}: SEND CONFIRMATION: ERROR"
+                      .format(current_func_name))
+
+        descriptors = {
+            "test_filepath": {
+                "last_chunk_number": 0,
+                "file": mock_file
+            }
+        }
+        metadata = {
+            "chunk_number": 1,
+            "confirmation_required": "test_topic"
+        }
+
+        mock_check_file_closed.side_effect = [False]
+        transfer.confirmation_socket = mock.MagicMock(
+            send_multipart=mock.MagicMock()
+        )
+        transfer.confirmation_socket.send_multipart.side_effect = TestException()
+
+        with self.assertRaises(TestException):
+            transfer.store_data_chunk(descriptors,
+                                      filepath,
+                                      payload,
+                                      base_path,
+                                      metadata)
+
+        self.assertTrue(transfer.confirmation_socket.send_multipart.called)
+        transfer.confirmation_socket.send_multipart.assert_called_once_with(
+            ["test_topic", "test_file_id"]
+        )
+
+        # cleanup
+        transfer.confirmation_socket = None
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+        mock_file.reset_mock()
+
+        # --------------------------------------------------------------------
+        # open descriptors, file closed
+        # --------------------------------------------------------------------
+        self.log.info("{}: OPEN DESCRIPTORS, FILE CLOSED"
+                      .format(current_func_name))
+
+        descriptors = {
+            "test_filepath": {
+                "last_chunk_number": 0,
+                "file": mock_file
+            }
+        }
+        metadata = {
+            "chunk_number": 1,
+            "file_mod_time": "now"
+        }
+
+        mock_check_file_closed.side_effect = [True]
+
+        ret_val = transfer.store_data_chunk(descriptors,
+                                            filepath,
+                                            payload,
+                                            base_path,
+                                            metadata)
+
+        self.assertFalse(ret_val)
+        mock_file.close.assert_called_once_with()
+
+        self.assertDictEqual(descriptors, {})
+
+        # cleanup
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+        mock_file.reset_mock()
+
+        # --------------------------------------------------------------------
+        # open descriptors, file closed but error
+        # --------------------------------------------------------------------
+        self.log.info("{}: OPEN DESCRIPTORS, FILE CLOSED BUT ERROR"
+                      .format(current_func_name))
+
+        mock_file_error = mock.MagicMock(close=mock.MagicMock())
+        mock_file_error.close.side_effect = TestException()
+
+        descriptors = {
+            "test_filepath": {
+                "last_chunk_number": 0,
+                "file": mock_file_error
+            }
+        }
+        metadata = {
+            "chunk_number": 1,
+            "file_mod_time": "now"
+        }
+
+        transfer.log = mock.MagicMock()
+        mock_check_file_closed.side_effect = [True]
+
+        with self.assertRaises(TestException):
+            transfer.store_data_chunk(descriptors,
+                                      filepath,
+                                      payload,
+                                      base_path,
+                                      metadata)
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("could not be closed",
+                      transfer.log.error.call_args[0][0])
+
+        # cleanup
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+
+    @mock.patch("hidra.transfer.generate_filepath")
+    @mock.patch("hidra.transfer.Transfer.store_data_chunk")
+    @mock.patch("hidra.transfer.Transfer.get_chunk")
+    def test_store(self,
+                   mock_get_chunk,
+                   mock_store_data_chunk,
+                   mock_gen_filepath):
+
+        current_func_name = inspect.currentframe().f_code.co_name
+
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        target_base_path = "test_base_path"
+
+        # --------------------------------------------------------------------
+        # one iteration, nothing received
+        # --------------------------------------------------------------------
+        self.log.info("{}: ONE ITERATION, NOTHING RECEIVED"
+                      .format(current_func_name))
+
+        metadata = None
+        payload = None
+
+        mock_get_chunk.side_effect = [[metadata, payload]]
+
+        transfer.store(target_base_path)
+
+        self.assertTrue(mock_get_chunk.called)
+        self.assertFalse(mock_gen_filepath.called)
+
+        # cleanup
+        mock_get_chunk.reset_mock()
+
+        # --------------------------------------------------------------------
+        # one iteration, KeyboardInterrupt during receive
+        # --------------------------------------------------------------------
+        self.log.info("{}: ONE ITERATION, KEYBOARDINTERRUPT DURING RECEIVE"
+                      .format(current_func_name))
+
+        metadata = None
+        payload = None
+
+        mock_get_chunk.side_effect = KeyboardInterrupt()
+
+        with self.assertRaises(KeyboardInterrupt):
+            transfer.store(target_base_path)
+
+        # cleanup
+        mock_get_chunk.reset_mock()
+
+        # --------------------------------------------------------------------
+        # one iteration, error during receive, not stopped
+        # --------------------------------------------------------------------
+        self.log.info("{}: ONE ITERATION, ERROR DURING RECEIVE, NOT STOPPED"
+                      .format(current_func_name))
+
+        metadata = None
+        payload = None
+
+        mock_get_chunk.side_effect = TestException()
+        transfer.stopped_everything = False
+        transfer.log = mock.MagicMock()
+
+        with self.assertRaises(TestException):
+            transfer.store(target_base_path)
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("failed", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # one iteration, error during receive, stopped
+        # --------------------------------------------------------------------
+        self.log.info("{}: ONE ITERATION, ERROR DURING RECEIVE, STOPPED"
+                      .format(current_func_name))
+
+        metadata = None
+        payload = None
+
+        mock_get_chunk.side_effect = TestException()
+        transfer.stopped_everything = True
+        mock_gen_filepath.reset_mock()
+
+        transfer.store(target_base_path)
+
+        self.assertFalse(mock_gen_filepath.called)
+
+        # cleanup
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # one iteration, received and closed
+        # --------------------------------------------------------------------
+        self.log.info("{}: ONE ITERATION, RECEIVED AND CLOSE"
+                      .format(current_func_name))
+
+        metadata = {}
+        payload = "foo"
+
+        mock_get_chunk.side_effect = [[metadata, payload]]
+        mock_gen_filepath.side_effect = ["test_target_filepath"]
+        mock_store_data_chunk.side_effect = [False]
+
+        transfer.store(target_base_path)
+
+        self.assertTrue(mock_get_chunk.called)
+        self.assertEqual(mock_get_chunk.call_count, 1)
+        self.assertTrue(mock_gen_filepath.called)
+        self.assertEqual(mock_gen_filepath.call_count, 1)
+        self.assertTrue(mock_store_data_chunk.called)
+        self.assertEqual(mock_store_data_chunk.call_count, 1)
+
+        # cleanup
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        mock_gen_filepath.side_effect = None
+        mock_gen_filepath.reset_mock()
+        mock_store_data_chunk.side_effect = None
+        mock_store_data_chunk.reset_mock()
+
+        # --------------------------------------------------------------------
+        # receive and close in second iteration
+        # --------------------------------------------------------------------
+        self.log.info("{}: RECEIVE AND CLOSE IN SECOND ITERATION"
+                      .format(current_func_name))
+
+        metadata = {}
+        payload = "foo"
+
+        mock_get_chunk.side_effect = [[metadata, payload],
+                                      [metadata, payload]]
+        mock_gen_filepath.side_effect = ["test_target_filepath0",
+                                         "test_target_filepath1"]
+        mock_store_data_chunk.side_effect = [True, False]
+
+        transfer.store(target_base_path)
+
+        self.assertTrue(mock_get_chunk.called)
+        self.assertEqual(mock_get_chunk.call_count, 2)
+        self.assertTrue(mock_gen_filepath.called)
+        self.assertEqual(mock_gen_filepath.call_count, 2)
+        self.assertTrue(mock_store_data_chunk.called)
+        self.assertEqual(mock_store_data_chunk.call_count, 2)
+
+        # cleanup
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        mock_gen_filepath.side_effect = None
+        mock_gen_filepath.reset_mock()
+        mock_store_data_chunk.side_effect = None
+        mock_store_data_chunk.reset_mock()
+
+        # --------------------------------------------------------------------
+        # receive but error in storing
+        # --------------------------------------------------------------------
+        self.log.info("{}: RECEIVE BUT ERROR IN STORING"
+                      .format(current_func_name))
+
+        metadata = {}
+        payload = "foo"
+
+        mock_get_chunk.side_effect = [[metadata, payload]]
+        mock_gen_filepath.side_effect = ["test_target_filepath"]
+        mock_store_data_chunk.side_effect = TestException()
+
+        transfer.status = [b"OK"]
+
+        transfer.store(target_base_path)
+
+        self.assertEqual(transfer.status[0], b"ERROR")
+
+        self.assertTrue(mock_get_chunk.called)
+        self.assertEqual(mock_get_chunk.call_count, 1)
+        self.assertTrue(mock_gen_filepath.called)
+        self.assertEqual(mock_gen_filepath.call_count, 1)
+        self.assertTrue(mock_store_data_chunk.called)
+        self.assertEqual(mock_store_data_chunk.call_count, 1)
+
+        # cleanup
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        mock_gen_filepath.side_effect = None
+        mock_gen_filepath.reset_mock()
+        mock_store_data_chunk.side_effect = None
+        mock_store_data_chunk.reset_mock()
+
+    def test__stop_socket(self):
+        current_func_name = inspect.currentframe().f_code.co_name
+
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # close socket
+        # --------------------------------------------------------------------
+
+        transfer.test_socket = mock.MagicMock()
+        transfer.log = mock.MagicMock()
+
+        transfer._stop_socket("test_socket")
+
+        self.assertIsNone(transfer.test_socket)
+        transfer.log.info.assert_called_once_with("Closing test_socket")
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # socket already closed
+        # --------------------------------------------------------------------
+
+        transfer.test_socket = None
+        transfer._stop_socket("test_socket")
+        self.assertIsNone(transfer.test_socket)
+
+        # --------------------------------------------------------------------
+        # socket already closed
+        # --------------------------------------------------------------------
+
+        test_socket = mock.MagicMock()
+        transfer.log = mock.MagicMock()
+
+        ret_val = transfer._stop_socket("test_socket", test_socket)
+
+        transfer.log.info.assert_called_once_with("Closing test_socket")
+        self.assertIsNone(ret_val)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+    def test_stop(self):
+        current_func_name = inspect.currentframe().f_code.co_name
+
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        mock_file = mock.MagicMock(close=mock.MagicMock())
+
+        # --------------------------------------------------------------------
+        # no open descriptors,
+        # no signal exchange,
+        # no control_socket,
+        # no_auth,
+        # no exteral context
+        # --------------------------------------------------------------------
+        self.log.info("{}: CLOSE SOCKETS".format(current_func_name))
+
+        transfer.file_descriptors = {}
+        transfer.signal_exchanged = None
+        transfer.control_socket = None
+        transfer.auth = None
+
+        transfer.ext_context = True
+        transfer.stopped_everything = False
+
+        transfer.stop()
+
+        self.assertIsNone(transfer.signal_socket)
+        self.assertIsNone(transfer.data_socket)
+        self.assertIsNone(transfer.request_socket)
+        self.assertIsNone(transfer.status_check_socket)
+        self.assertIsNone(transfer.confirmation_socket)
+        self.assertIsNone(transfer.control_socket)
+
+        self.assertTrue(transfer.stopped_everything)
+
+        # --------------------------------------------------------------------
+        # open descriptors
+        # --------------------------------------------------------------------
+        self.log.info("{}: OPEN DESCRIPTORS".format(current_func_name))
+
+        transfer.signal_exchanged = None
+        transfer.control_socket = None
+        transfer.auth = None
+
+        transfer.file_descriptors = {
+            "test_filepath": {
+                "file": mock_file
+            }
+        }
+
+        transfer.stop()
+
+        self.assertDictEqual(transfer.file_descriptors, {})
+
+        # --------------------------------------------------------------------
+        # signal exchanged
+        # --------------------------------------------------------------------
+        self.log.info("{}: SIGNAL EXCHANGED".format(current_func_name))
+
+        transfer.file_descriptors = {}
+        transfer.control_socket = None
+        transfer.auth = None
+
+        def stop_started_connections(transfer, connection):
+            transfer.signal_socket = mock.MagicMock()
+            transfer.signal_exchanged = b"{}".format(connection)
+            transfer.started_connections = {
+                connection: None
+            }
+
+            m_mock_send_signal = "hidra.transfer.Transfer._send_signal"
+            with mock.patch(m_mock_send_signal) as mock_send_signal:
+                with mock.patch("hidra.transfer.Transfer._stop_socket"):
+                    transfer.stop()
+
+                self.assertTrue(mock_send_signal.called)
+                mock_send_signal.assert_called_once_with("STOP_" + connection)
+
+            self.assertDictEqual(transfer.started_connections, {})
+
+            # cleanup
+            transfer.signal_socket = None
+
+        def stop_signal_exchanged(transfer, connection):
+            transfer.signal_socket = mock.MagicMock()
+            transfer.signal_exchanged = connection
+            transfer.started_connections = {}
+
+            m_mock_send_signal = "hidra.transfer.Transfer._send_signal"
+            with mock.patch(m_mock_send_signal) as mock_send_signal:
+                with mock.patch("hidra.transfer.Transfer._stop_socket"):
+                    transfer.stop()
+
+                self.assertTrue(mock_send_signal.called)
+                mock_send_signal.assert_called_once_with("STOP_" + connection)
+
+            # cleanup
+            transfer.signal_socket = None
+
+        stop_started_connections(transfer, "STREAM")
+        stop_signal_exchanged(transfer, b"STREAM")
+        stop_started_connections(transfer, "QUERY_NEXT")
+        stop_signal_exchanged(transfer, b"QUERY_NEXT")
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # control_socket
+        # --------------------------------------------------------------------
+        self.log.info("{}: CONTROL_SOCKET".format(current_func_name))
+
+        transfer.file_descriptors = {}
+        transfer.signal_exchanged = None
+        transfer.auth = None
+
+        transfer.control_socket = mock.MagicMock()
+        transfer.control_conf = {"ipc_file": None}
+
+        with mock.patch("hidra.transfer.Transfer._get_ipc_addr"):
+            with mock.patch("hidra.transfer.Transfer._stop_socket"):
+                with mock.patch("os.remove") as mock_remove:
+                    transfer.stop()
+
+                    self.assertTrue(mock_remove.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # control_socket, Exception
+        # --------------------------------------------------------------------
+        def stop_control_socket_with_exception(transfer, side_effect):
+            transfer.file_descriptors = {}
+            transfer.signal_exchanged = None
+            transfer.auth = None
+
+            transfer.log = mock.MagicMock()
+            transfer.control_socket = mock.MagicMock()
+            transfer.control_conf = {"ipc_file": None}
+
+            with mock.patch("hidra.transfer.Transfer._get_ipc_addr"):
+                with mock.patch("hidra.transfer.Transfer._stop_socket"):
+                    with mock.patch("os.remove") as mock_remove:
+                        mock_remove.side_effect = side_effect
+
+                        transfer.stop()
+
+            self.assertTrue(transfer.log.warning.called)
+            self.assertIn("not remove", transfer.log.warning.call_args[0][0])
+
+            # cleanup
+            transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        self.log.info("{}: CONTROL_SOCKET, OSERROR".format(current_func_name))
+        stop_control_socket_with_exception(transfer, OSError())
+        self.log.info("{}: CONTROL_SOCKET, EXCEPTION"
+                      .format(current_func_name))
+        stop_control_socket_with_exception(transfer, TestException())
+
+        # --------------------------------------------------------------------
+        # auth, ok
+        # --------------------------------------------------------------------
+        self.log.info("{}: AUTH".format(current_func_name))
+
+        transfer.file_descriptors = {}
+        transfer.signal_exchanged = None
+        transfer.control_socket = None
+
+        transfer.auth = mock.MagicMock()
+        transfer.stop()
+        self.assertIsNone(transfer.auth)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # auth, exception
+        # --------------------------------------------------------------------
+        self.log.info("{}: AUTH, EXCEPTION".format(current_func_name))
+
+        transfer.file_descriptors = {}
+        transfer.signal_exchanged = None
+        transfer.control_socket = None
+
+        transfer.auth = mock.MagicMock()
+        transfer.auth.stop.side_effect = TestException()
+        transfer.log = mock.MagicMock()
+
+        transfer.stop()
+
+        self.assertIsNotNone(transfer.auth)
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("Error", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # no external context
+        # --------------------------------------------------------------------
+        self.log.info("{}: NO EXTERNAL CONTEXT".format(current_func_name))
+
+        transfer.file_descriptors = {}
+        transfer.signal_exchanged = None
+        transfer.control_socket = None
+        transfer.auth = None
+
+        transfer.ext_context = False
+        mock_context = mock.MagicMock()
+        transfer.context = mock_context
+
+        transfer.stop()
+
+        self.assertTrue(mock_context.destroy.called)
+        self.assertIsNone(transfer.context)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # no external context, exception
+        # --------------------------------------------------------------------
+        self.log.info("{}: NO EXTERNAL CONTEXT, EXCEPTION"
+                      .format(current_func_name))
+
+        transfer.file_descriptors = {}
+        transfer.signal_exchanged = None
+        transfer.control_socket = None
+        transfer.auth = None
+
+        mock_context = mock.MagicMock()
+        mock_context.destroy.side_effect = TestException()
+
+        transfer.ext_context = False
+        transfer.context = mock_context
+        transfer.log = mock.MagicMock()
+
+        transfer.stop()
+
+        self.assertTrue(transfer.log.error.called)
+        self.assertIn("failed", transfer.log.error.call_args[0][0])
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+    @mock.patch("hidra.transfer.Transfer._send_signal")
+    @mock.patch("hidra.transfer.Transfer._set_targets")
+    @mock.patch("hidra.transfer.Transfer._create_signal_socket")
+    @mock.patch("hidra.transfer.Transfer.stop")
+    def test_force_stop(self,
+                        mock_stop,
+                        mock_create_signal_socket,
+                        mock_set_targets,
+                        mock_send_signal):
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # targets of wrong format
+        # --------------------------------------------------------------------
+
+        with self.assertRaises(m_transfer.FormatError):
+            transfer.force_stop(targets="")
+
+        self.assertTrue(mock_stop.called)
+
+        # --------------------------------------------------------------------
+        # force stop ok
+        # --------------------------------------------------------------------
+
+        def call_force_stop(transfer, connection):
+            transfer.connection_type = connection
+            signal = b"FORCE_STOP_{}".format(connection)
+
+            mock_send_signal.side_effect = [[signal]]
+            transfer.log = mock.MagicMock()
+
+            transfer.force_stop(targets=[])
+
+            mock_send_signal.assert_called_once_with(signal)
+            self.assertTrue(transfer.log.info.called)
+            self.assertIn("Received", transfer.log.info.call_args[0][0])
+
+            # cleanup
+            transfer = m_transfer.Transfer(**self.transfer_conf)
+            mock_send_signal.side_effect = None
+            mock_send_signal.reset_mock()
+
+        call_force_stop(transfer, "STREAM")
+        call_force_stop(transfer, "STREAM_METADATA")
+        call_force_stop(transfer, "QUERY_NEXT")
+        call_force_stop(transfer, "QUERY_NEXT_METADATA")
+
+        # --------------------------------------------------------------------
+        # wrong response
+        # --------------------------------------------------------------------
+
+        transfer.connection_type = "STREAM"
+
+        mock_send_signal.side_effect = [["foo"]]
+        transfer.log = mock.MagicMock()
+
+        transfer.force_stop(targets=[])
+
+        mock_send_signal.assert_called_once_with(b"FORCE_STOP_STREAM")
+        self.assertFalse(transfer.log.info.called)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_send_signal.side_effect = None
+        mock_send_signal.reset_mock()
+
+        # --------------------------------------------------------------------
+        # create context
+        # --------------------------------------------------------------------
+
+        transfer.ext_context = True
+        transfer.context = None
+
+        with mock.patch("zmq.Context"):
+            transfer.force_stop([])
+
+        self.assertIsInstance(transfer.context, mock.MagicMock)
+        self.assertFalse(transfer.ext_context)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+
+        # --------------------------------------------------------------------
+        # create signal_socket
+        # --------------------------------------------------------------------
+
+        transfer.signal_socket = None
+        mock_create_signal_socket.reset_mock()
+
+        transfer.force_stop([])
+
+        mock_create_signal_socket.assert_called_once_with()
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
 
     def tearDown(self):
         super(TestTransfer, self).tearDown()

@@ -19,7 +19,7 @@ import multiprocessing
 from zmq.auth.thread import ThreadAuthenticator
 
 from ._version import __version__
-from ._shared_utils import LoggingFunction, Base
+from ._shared_utils import LoggingFunction, Base, stop_socket
 
 
 class NotSupported(Exception):
@@ -1406,7 +1406,7 @@ class Transfer(Base):
             if self.check_file_closed(metadata, payload):
                 # indicates end of file. Leave loop
                 self.log.info("New file with modification time {} received "
-                              .format(metadata["file_mod_time"]))
+                              .format(all_metadata["file_mod_time"]))
 
                 try:
                     # highlight that the metadata does not correspond to only
@@ -1441,6 +1441,7 @@ class Transfer(Base):
         # append payload to file
         try:
             descriptors[filepath]["file"].write(payload)
+            descriptors[filepath]["last_chunk_number"] = metadata["chunk_number"]
         # file was not open
         except KeyError:
             try:
@@ -1455,6 +1456,7 @@ class Transfer(Base):
                 # errno.ENOENT == "No such file or directory"
                 if e.errno == errno.ENOENT:
                     try:
+                        target_path = None
                         rel_path = metadata["relative_path"]
 
                         # do not create directories defined as immutable,
@@ -1480,7 +1482,7 @@ class Transfer(Base):
 
                         # write data
                         descriptors[filepath]["file"].write(payload)
-                        descriptors[filepath]["last_chunk"] = metadata["chunk_number"]
+                        descriptors[filepath]["last_chunk_number"] = metadata["chunk_number"]
                     except:
                         self.log.error("Unable to save payload to file: '{}'"
                                        .format(filepath), exc_info=True)
@@ -1495,39 +1497,39 @@ class Transfer(Base):
                                .format(filepath), exc_info=True)
                 raise
 
-            if ("confirmation_required" in metadata
-                    and metadata["confirmation_required"]):
-                file_id = generate_file_identifier(metadata)
-                # send confirmation
-                try:
-                    topic = metadata["confirmation_required"].encode()
-#                    topic = b"test"
-                    message = [topic, file_id.encode("utf-8")]
-                    self.confirmation_socket.send_multipart(message)
-
-                    self.log.debug("Sending confirmation for chunk {} of "
-                                   "file '{}' to {}"
-                                   .format(metadata["chunk_number"],
-                                           file_id,
-                                           topic))
-                except:
-                    if self.confirmation_socket is None:
-                        self.log.error("Correct data handling is requested to "
-                                       "be confirmed. Please enable option "
-                                       "'confirmation'")
-                        raise UsageError("Option 'confirmation' is not "
-                                         "enabled")
-                    else:
-                        raise
-
         except KeyboardInterrupt:
             # save the data in the file before quitting
             self.log.debug("KeyboardInterrupt received while writing data")
             raise
         except:
-            self.log.error("Failed to append payload to file: '{0}'"
+            self.log.error("Failed to append payload to file: '{}'"
                            .format(filepath), exc_info=True)
             raise
+
+        if ("confirmation_required" in metadata
+                and metadata["confirmation_required"]):
+            file_id = generate_file_identifier(metadata)
+            # send confirmation
+            try:
+                topic = metadata["confirmation_required"].encode()
+#                    topic = b"test"
+                message = [topic, file_id.encode("utf-8")]
+                self.confirmation_socket.send_multipart(message)
+
+                self.log.debug("Sending confirmation for chunk {} of "
+                               "file '{}' to {}"
+                               .format(metadata["chunk_number"],
+                                       file_id,
+                                       topic))
+            except:
+                if self.confirmation_socket is None:
+                    self.log.error("Correct data handling is requested to "
+                                   "be confirmed. Please enable option "
+                                   "'confirmation'")
+                    raise UsageError("Option 'confirmation' is not "
+                                     "enabled")
+                else:
+                    raise
 
         if self.check_file_closed(metadata, payload):
             # indicates end of file. Leave loop
@@ -1563,7 +1565,7 @@ class Transfer(Base):
 
             try:
                 # timeout (in ms) to be able to react on system signals
-                [payload_metadata, payload] = self.get_chunk(timeout)
+                [metadata, payload] = self.get_chunk(timeout)
             except KeyboardInterrupt:
                 raise
             except:
@@ -1573,11 +1575,11 @@ class Transfer(Base):
                     self.log.error("Getting data failed.", exc_info=True)
                     raise
 
-            if payload_metadata is not None and payload is not None:
+            if metadata is not None and payload is not None:
 
                 # generate target filepath
                 target_filepath = generate_filepath(target_base_path,
-                                                    payload_metadata)
+                                                    metadata)
                 self.log.debug("New chunk for file {} received."
                                .format(target_filepath))
 
@@ -1588,7 +1590,7 @@ class Transfer(Base):
                         filepath=target_filepath,
                         payload=payload,
                         base_path=target_base_path,
-                        metadata=payload_metadata
+                        metadata=metadata
                     )
                     # for testing
 #                    try:
@@ -1621,6 +1623,27 @@ class Transfer(Base):
                 # self.log.debug("No data received. Break loop")
                 break
 
+    def _stop_socket(self, name, socket=None):
+        """Wrapper for stop_socket.
+        """
+
+        # use the class attribute
+        if socket is None:
+            socket = getattr(self, name)
+            use_class_attribute = True
+        else:
+            use_class_attribute = False
+
+        return_socket = stop_socket(name=name,
+                                    socket=socket,
+                                    log=self.log)
+
+        # class attributes are set directly
+        if use_class_attribute:
+            setattr(self, name, return_socket)
+        else:
+            return return_socket
+
     def stop(self):
         """
         * Close open file handler to prevent file corruption
@@ -1631,9 +1654,11 @@ class Transfer(Base):
         """
 
         # Close open file handler to prevent file corruption
-        for target_filepath in list(self.file_descriptors.keys()):
-            self.file_descriptors[target_filepath].close()
-            del self.file_descriptors[target_filepath]
+        for target in list(self.file_descriptors.keys()):
+            self.file_descriptors[target]["file"].close()
+            self.log.warning("Not all chunks were received for file {}"
+                             .format(target))
+            del self.file_descriptors[target]
 
         # Send signal that the application is quitting
         if self.signal_socket and self.signal_exchanged:
@@ -1643,7 +1668,7 @@ class Transfer(Base):
                     or (b"STREAM" in self.signal_exchanged)):
                 signal = b"STOP_STREAM"
             elif ("QUERY_NEXT" in self.started_connections
-                    or (b"QUERY" in self.signal_exchanged)):
+                    or (b"QUERY_NEXT" in self.signal_exchanged)):
                 signal = b"STOP_QUERY_NEXT"
 
             self._send_signal(signal)
@@ -1674,7 +1699,7 @@ class Transfer(Base):
             # remove ipc remainings
             if self.control_socket is not None:
                 control_addr = self._get_ipc_addr(
-                    ipc_file=self.conrol_conf["ipc_file"]
+                    ipc_file=self.control_conf["ipc_file"]
                 )
                 try:
                     os.remove(control_addr)
@@ -1690,27 +1715,18 @@ class Transfer(Base):
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
         # stopping authentication thread
-        if self.auth:
+        if self.auth is not None:
             try:
                 self.auth.stop()
                 self.auth = None
                 self.log.info("Stopping authentication thread...done.")
             except:
-                self.log.error("Stopping authentication thread...done.",
+                self.log.error("Error when stopping authentication thread.",
                                exc_info=True)
-
-        # close remaining open files
-        for target in self.file_descriptors:
-            self.file_descriptors[target]["file"].close()
-            self.log.warning("Not all chunks were received for file {}"
-                             .format(target))
-
-        if self.file_descriptors:
-            self.file_descriptors = dict()
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class
-        if not self.ext_context and self.context:
+        if not self.ext_context and self.context is not None:
             try:
                 self.log.info("Closing ZMQ context...")
                 self.context.destroy()
@@ -1728,7 +1744,7 @@ class Transfer(Base):
             self.stop()
             raise FormatError("Argument 'targets' must be list.")
 
-        if not self.context:
+        if self.context is None:
             self.context = zmq.Context()
             self.ext_context = False
 
@@ -1745,7 +1761,7 @@ class Transfer(Base):
 
         self.log.debug("Create socket for signal exchange...")
 
-        if not self.signal_socket:
+        if self.signal_socket is None:
             self._create_signal_socket()
 
         self._set_targets(targets)
