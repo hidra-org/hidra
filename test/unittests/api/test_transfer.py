@@ -2116,7 +2116,7 @@ class TestTransfer(TestBase):
                                           metadata)
 
         self.assertTrue(transfer.log.error.called)
-        self.assertIn("save payload", transfer.log.error.call_args[0][0])
+        self.assertIn("open file", transfer.log.error.call_args[0][0])
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2286,7 +2286,7 @@ class TestTransfer(TestBase):
             }
         }
         metadata = {
-            "chunk_number": 0
+            "chunk_number": 1
         }
 
         with self.assertRaises(KeyboardInterrupt):
@@ -2314,7 +2314,7 @@ class TestTransfer(TestBase):
             }
         }
         metadata = {
-            "chunk_number": 0
+            "chunk_number": 1
         }
 
         transfer.log = mock.MagicMock()
@@ -2332,6 +2332,50 @@ class TestTransfer(TestBase):
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
         mock_file = mock.MagicMock(write=mock.MagicMock())
+
+        # --------------------------------------------------------------------
+        # chunk_number not in order
+        # --------------------------------------------------------------------
+        self.log.info("{}: CHUNK_NUMBER NOT IN ORDER"
+                      .format(current_func_name))
+
+        descriptors = {
+            "test_filepath": {
+                "last_chunk_number": 1,
+                "file": mock_file
+            }
+        }
+        metadata = {
+            "chunk_number": 0
+        }
+
+        mock_check_file_closed.side_effect = [False]
+
+        with mock.patch("__builtin__.open") as mock_open:
+            transfer.store_data_chunk(descriptors,
+                                      filepath,
+                                      payload,
+                                      base_path,
+                                      metadata)
+
+        # dictEqual does not work because "file" is a different instance
+        # expected = {
+        #     "test_filepath": {
+        #         "last_chunk_number": 0,
+        #         "file": MagicMock
+        #     }
+        # }
+        self.assertIsInstance(descriptors, dict)
+        self.assertIn("test_filepath", descriptors)
+        self.assertIn("last_chunk_number", descriptors["test_filepath"])
+        self.assertEqual(descriptors["test_filepath"]["last_chunk_number"], 0)
+        self.assertIn("file", descriptors["test_filepath"])
+        self.assertIsInstance(descriptors["test_filepath"]["file"], mock.MagicMock)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_file = mock.MagicMock(write=mock.MagicMock())
+
 
         # --------------------------------------------------------------------
         # send confirmation: not enabled

@@ -1439,20 +1439,18 @@ class Transfer(Base):
             metadata: The metadata recceived together with the data.
         """
 
-        # append payload to file
+        # --------------------------------------------------------------------
+        # open file
+        # --------------------------------------------------------------------
         try:
-            descriptors[filepath]["file"].write(payload)
-            descriptors[filepath]["last_chunk_number"] = metadata["chunk_number"]
-        # file was not open
+            desc = descriptors[filepath]
         except KeyError:
             try:
                 descriptors[filepath] = {}
-                descriptors[filepath]["file"] = open(filepath, "wb")
+                desc = descriptors[filepath]
 
-                # write data
-                descriptors[filepath]["file"].write(payload)
-                # TODO what todo when chunk_number is not 0?
-                descriptors[filepath]["last_chunk_number"] = metadata["chunk_number"]
+                desc["file"] = open(filepath, "wb")
+                desc["last_chunk_number"] = None
             except IOError as e:
                 # errno.ENOENT == "No such file or directory"
                 if e.errno == errno.ENOENT:
@@ -1467,9 +1465,7 @@ class Transfer(Base):
                                 and rel_path.startswith(dirs)):
                             self.log.error("Unable to write file '{}': "
                                            "Directory {} is not available"
-                                           .format(filepath,
-                                                   metadata["relative_path"]))
-                            target_path = None
+                                           .format(filepath, rel_path))
                             raise
 
                         target_path = generate_filepath(base_path,
@@ -1477,15 +1473,12 @@ class Transfer(Base):
                                                         add_filename=False)
                         os.makedirs(target_path)
 
-                        descriptors[filepath]["file"] = open(filepath, "wb")
+                        desc["file"] = open(filepath, "wb")
+                        desc["last_chunk_number"] = None
                         self.log.info("New target directory created: {}"
                                       .format(target_path))
-
-                        # write data
-                        descriptors[filepath]["file"].write(payload)
-                        descriptors[filepath]["last_chunk_number"] = metadata["chunk_number"]
                     except:
-                        self.log.error("Unable to save payload to file: '{}'"
+                        self.log.error("Unable to open file: '{}'"
                                        .format(filepath), exc_info=True)
                         self.log.debug("target_path:{}".format(target_path))
                         raise
@@ -1498,6 +1491,32 @@ class Transfer(Base):
                                .format(filepath), exc_info=True)
                 raise
 
+        # --------------------------------------------------------------------
+        # check chunk_number
+        # --------------------------------------------------------------------
+        if metadata["chunk_number"] <= desc["last_chunk_number"]:
+
+            if metadata["chunk_number"] == 0:
+                self.log.debug("Reopen file {}".format(filepath))
+                # close the not finished file
+                desc["file"].close()
+
+                desc["file"] = open(filepath, "wb")
+                desc["last_chunk_number"] = None
+            else:
+                self.log.debug("chunk_number={}"
+                               .format(metadata["chunk_number"]))
+                msg = ("Failed to reopen file '{}': Received a not matching "
+                       "chunk_number".format(filepath))
+                raise DataSavingError(msg)
+
+        # --------------------------------------------------------------------
+        # write data
+        # --------------------------------------------------------------------
+        try:
+            desc["file"].write(payload)
+            # TODO what todo when chunk_number is not 0?
+            desc["last_chunk_number"] = metadata["chunk_number"]
         except KeyboardInterrupt:
             # save the data in the file before quitting
             self.log.debug("KeyboardInterrupt received while writing data")
@@ -1507,6 +1526,9 @@ class Transfer(Base):
                            .format(filepath), exc_info=True)
             raise
 
+        # --------------------------------------------------------------------
+        # send confirmation
+        # --------------------------------------------------------------------
         if ("confirmation_required" in metadata
                 and metadata["confirmation_required"]):
             file_id = generate_file_identifier(metadata)
@@ -1532,6 +1554,9 @@ class Transfer(Base):
                 else:
                     raise
 
+        # --------------------------------------------------------------------
+        # close file
+        # --------------------------------------------------------------------
         if self.check_file_closed(metadata, payload):
             # indicates end of file. Leave loop
             try:
