@@ -16,6 +16,7 @@ import tempfile
 import time
 import zmq
 import multiprocessing
+import multiprocessing.queues
 from zmq.auth.thread import ThreadAuthenticator
 
 from ._version import __version__
