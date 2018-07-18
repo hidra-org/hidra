@@ -1378,13 +1378,14 @@ class Transfer(Base):
 
         """
         run_loop = True
-
-        all_data = []
-        all_metadata = None
+        all_received = {}
 
         # save all chunks to file
         while run_loop:
 
+            # --------------------------------------------------------------------
+            # receive data
+            # --------------------------------------------------------------------
             try:
                 # timeout (in ms) to be able to react on system signals
                 [metadata, payload] = self.get_chunk(timeout=timeout)
@@ -1397,31 +1398,44 @@ class Transfer(Base):
                     self.log.error("Getting data failed.", exc_info=True)
                     raise
 
-            # the metadata is the same for all chunks
-            # (only exception chunk_number)
-            if all_metadata is None:
-                all_metadata = metadata
+            file_id = generate_file_identifier(metadata)
 
-            all_data.append(copy.deepcopy(payload))
+            # --------------------------------------------------------------------
+            # keep track of chunks + check_number
+            # --------------------------------------------------------------------
+            if file_id not in all_received or metadata["chunk_number"] == 0:
+                # "Reopen" file {}"
+                all_received[file_id] = {
+                    "metadata": metadata,
+                    "data": [],
+                }
 
+            all_received[file_id]["data"].append(copy.deepcopy(payload))
+
+            # --------------------------------------------------------------------
+            # return closed file
+            # --------------------------------------------------------------------
             if self.check_file_closed(metadata, payload):
+                # for convenience
+                received = all_received[file_id]
+
                 # indicates end of file. Leave loop
                 self.log.info("New file with modification time {} received "
-                              .format(all_metadata["file_mod_time"]))
+                              .format(received["metadata"]["file_mod_time"]))
 
                 try:
                     # highlight that the metadata does not correspond to only
                     # one chunk anymore
-                    all_metadata["chunk_number"] = None
+                    received["metadata"]["chunk_number"] = None
 
                     # merge the data again
-                    all_data = b"".join(all_data)
+                    received["data"] = b"".join(received["data"])
                 except:
                     self.log.error("Something went wrong when merging chunks",
                                    exc_info=True)
                     raise
 
-                return all_metadata, all_data
+                return received["metadata"], received["data"]
 
     def store_data_chunk(self,
                          descriptors,

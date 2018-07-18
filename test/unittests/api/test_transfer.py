@@ -1304,8 +1304,6 @@ class TestTransfer(TestBase):
         }
         self.assertDictEqual(prop, expected)
 
-    #@mock.patch("hidra.transfer.Transfer._start_socket")
-    #def test_register(self, mock_start_socket):
     @mock.patch("hidra.transfer.Transfer.stop")
     @mock.patch("hidra.transfer.Transfer._start_socket")
     def test_register(self, mock_start_socket, mock_stop):
@@ -1828,13 +1826,19 @@ class TestTransfer(TestBase):
     @mock.patch("hidra.transfer.Transfer.get_chunk")
     @mock.patch("hidra.transfer.Transfer.check_file_closed")
     def test_get(self, mock_check_file_closed, mock_get_chunk):
+        current_func_name = inspect.currentframe().f_code.co_name
+
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
         # --------------------------------------------------------------------
         # all data in one iteration
         # --------------------------------------------------------------------
+        self.log.info("{}: ALL DATA IN ONE ITERATION"
+                      .format(current_func_name))
 
         metadata = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
             "file_mod_time": "now",
             "chunk_number": 0
         }
@@ -1844,6 +1848,8 @@ class TestTransfer(TestBase):
         ret_metadata, ret_data = transfer.get()
 
         expected = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
             "file_mod_time": "now",
             "chunk_number": None
         }
@@ -1860,12 +1866,18 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # all data in two iteration
         # --------------------------------------------------------------------
+        self.log.info("{}: ALL DATA IN TWO ITERATION"
+                      .format(current_func_name))
 
         metadata0 = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
             "file_mod_time": "now0",
             "chunk_number": 0
         }
         metadata1 = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
             "file_mod_time": "now1",
             "chunk_number": 1
         }
@@ -1876,6 +1888,8 @@ class TestTransfer(TestBase):
         ret_metadata, ret_data = transfer.get()
 
         expected = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
             "file_mod_time": "now0",
             "chunk_number": None
         }
@@ -1892,9 +1906,12 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # KeyboardInterrupt
         # --------------------------------------------------------------------
+        self.log.info("{}: KEYBOARDINTERRUPT".format(current_func_name))
 
         mock_check_file_closed.reset_mock()
         metadata = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
             "file_mod_time": "now",
             "chunk_number": 0
         }
@@ -1913,9 +1930,13 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Exception when getting chunk, not stopped
         # --------------------------------------------------------------------
+        self.log.info("{}: EXCEPTION WHEN GETTING CHUNK, NOT STOPPED"
+                      .format(current_func_name))
 
         transfer.log = mock.MagicMock()
         metadata = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
             "file_mod_time": "now",
             "chunk_number": 0
         }
@@ -1935,6 +1956,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Exception when getting chunk, stopped
         # --------------------------------------------------------------------
+        self.log.info("{}: EXCEPTION WHEN GETTING CHUNK, STOPPED"
+                      .format(current_func_name))
 
         mock_check_file_closed.reset_mock()
         metadata = {
@@ -1957,11 +1980,16 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Exception when joining
         # --------------------------------------------------------------------
+        self.log.info("{}: EXCEPTION WHEN JOINING"
+                      .format(current_func_name))
 
         transfer.log = mock.MagicMock()
         mock_check_file_closed.reset_mock()
         metadata = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
             "file_mod_time": "now",
+            "chunk_number": 0
         }
         # data is set to int to trigger a TypeError
         # (string is required to pass)
@@ -1970,6 +1998,54 @@ class TestTransfer(TestBase):
 
         with self.assertRaises(TypeError):
             transfer.get()
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+
+        # --------------------------------------------------------------------
+        # chunks of multiple files received intermixed
+        # --------------------------------------------------------------------
+        self.log.info("{}: CHUNKS OF MULITPLE FILES RECEIVED INTERMIXED"
+                      .format(current_func_name))
+
+        metadata0 = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
+            "file_mod_time": "now0",
+            "chunk_number": 0
+        }
+        metadata1 = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
+            "file_mod_time": "now1",
+            "chunk_number": 1
+        }
+
+        metadata_extra_chunk = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename2",
+            "file_mod_time": "now2",
+            "chunk_number": 0
+        }
+        mock_get_chunk.side_effect = [[metadata0, "part0"],
+                                      [metadata_extra_chunk, "extra_part0"],
+                                      [metadata1, "part1"]]
+        mock_check_file_closed.side_effect = [False, False, True]
+
+        ret_metadata, ret_data = transfer.get()
+
+        expected = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
+            "file_mod_time": "now0",
+            "chunk_number": None
+        }
+        self.assertDictEqual(ret_metadata, expected)
+        self.assertEqual(ret_data, "part0part1")
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
