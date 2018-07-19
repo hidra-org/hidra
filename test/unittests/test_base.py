@@ -98,6 +98,24 @@ class MockZmqSocket(mock.MagicMock):
         assert self._connected
         self._connected = False
 
+class MockZmqContext(mock.MagicMock):
+
+    def __init__(self, **kwargs):
+        super(MockZmqContext, self).__init__(**kwargs)
+        self._destroyed = False
+        self.IPV6 = None
+        self.RCVTIMEO = None
+
+    def socket(self, sock_type):
+        assert not self._destroyed
+#        assert self.IPV6 == 1
+#        assert self.RCVTIMEO is not None
+#        assert sock_type == zmq.REQ
+        return MockZmqSocket()
+
+    def destroy(self, linger=None):
+        assert not self._destroyed
+        self._destroyed = True
 
 class MockZmqPoller(mock.MagicMock):
 

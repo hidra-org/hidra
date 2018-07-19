@@ -121,6 +121,7 @@ def get_testing_suites():
     from datafetchers.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
 
     from api.test_transfer import TestTransfer
+    from api.test_control import TestReceiverControl
 
     all_suites = [
 #        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
@@ -143,6 +144,7 @@ def get_testing_suites():
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataManager),  # noqa E122
 
 #        unittest.TestLoader().loadTestsFromTestCase(TestTransfer),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestReceiverControl),  # noqa E122
     ]
 
     return all_suites

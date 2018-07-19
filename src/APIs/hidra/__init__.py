@@ -10,6 +10,16 @@ from ._shared_utils import LoggingFunction
 from ._version import __version__
 from ._constants import connection_list
 
-__all__ = ["Transfer", "Control", "Ingest", "check_netgroup", "__version__",
-           "connection_list", "LoggingFunction", "generate_filepath",
-           "reset_receiver_status", "convert_suffix_list_to_regex"]
+__all__ = [
+    "Transfer",
+    "Control",
+    "ReceiverControl",
+    "Ingest",
+    "check_netgroup",
+    "__version__",
+    "connection_list",
+    "LoggingFunction",
+    "generate_filepath",
+    "reset_receiver_status",
+    "convert_suffix_list_to_regex"
+]

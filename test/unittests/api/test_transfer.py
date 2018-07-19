@@ -33,7 +33,7 @@ class TestException(Exception):
     pass
 
 class TestTransfer(TestBase):
-    """Specification of tests to be performed for the loaded EventDetecor.
+    """
     """
 
     def setUp(self):

@@ -314,36 +314,97 @@ class Control(Base):
         self.stop()
 
 
-def reset_receiver_status(host, port):
-    """Reset the status flag of the receiver.
+class ReceiverControl(Base):
 
-    After an error occured during data receiving the receiver flags it. Reset
-    is only done by external trigger.
+    def __init__(self, host, port=None):
+        """
+        Args:
+            host: Host the receiver is running on.
+            port (optional): Port the receiver is listening to.
+        """
 
-    Args:
-        host: Host the receiver is running on.
-        port: Port the receiver is listening to.
-    """
+        if port is None:
+            port = 50050
 
-    context = zmq.Context()
+        self.log = None
+        self.context = None
+        self.status_socket = None
+        self.poller = None
 
-    # use no logging but print
-    log = LoggingFunction(None)
+        self._setup(host, port)
 
-    reset_socket = start_socket(
-        name="reset_socket",
-        sock_type=zmq.REQ,
-        sock_con="connect",
-        endpoint="tcp://{}:{}".format(host, port),
-        context=context,
-        log=log
-    )
+    def _setup(self, host, port):
 
-    reset_socket.send_multipart([b"RESET_STATUS"])
-    log.debug("Reset request sent")
+        # use no logging but print
+        self.log = LoggingFunction(None)
 
-    responce = reset_socket.recv_multipart()
-    log.debug("Response: {}".format(responce))
+        self.context = zmq.Context()
 
-    stop_socket(name="reset_socket", socket=reset_socket, log=log)
-    context.destroy()
+        self.status_socket = self._start_socket(
+            name="status_socket",
+            sock_type=zmq.REQ,
+            sock_con="connect",
+            endpoint="tcp://{}:{}".format(host, port)
+        )
+
+        self.timeout = 2000
+        self.poller = zmq.Poller()
+        self.poller.register(self.status_socket, zmq.POLLIN)
+
+    def _get_response(self):
+        try:
+            socks = dict(self.poller.poll(self.timeout))
+        except:
+            self.log.error("Could not poll for new message")
+            raise
+
+        # if there was a response
+        if (self.status_socket in socks
+                and socks[self.status_socket] == zmq.POLLIN):
+
+            response = self.status_socket.recv_multipart()
+            self.log.debug("Response: {}".format(response))
+
+            return response
+        else:
+            raise CommunicationFailed("No response received in time.")
+
+    def get_status(self):
+        """Get the status of the receiver.
+
+        Return:
+            The status of the receiver as string.
+            "OK": Everything is ok.
+            "ERROR": The receiver is in error state.
+        """
+
+        self.status_socket.send_multipart([b"STATUS_CHECK"])
+        self.log.debug("Reset request sent")
+
+        response = self._get_response()
+
+        return response[0]
+
+    def reset_status(self):
+        """Reset the status flag of the receiver.
+
+        After an error occured during data receiving the receiver flags it.
+        Reset is only done by external trigger.
+        """
+
+        self.status_socket.send_multipart([b"RESET_STATUS"])
+        self.log.debug("Reset request sent")
+
+        response = self._get_response()
+
+    def stop(self):
+        if self.context is not None:
+            self.context.destroy(0)
+
+        self._stop_socket(name="status_socket")
+
+    def __del__(self):
+        self.stop()
+
+    def __exit__(self):
+        self.stop()
