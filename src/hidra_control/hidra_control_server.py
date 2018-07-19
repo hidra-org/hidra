@@ -553,10 +553,10 @@ class ControlServer():
 
         self.controller = HidraController(self.beamline, self.log)
 
-        self.con_id = "tcp://{}:{}".format(
-            socket.gethostbyaddr(
-                hidra.connection_list[self.beamline]["host"])[2][0],
-            hidra.connection_list[self.beamline]["port"])
+        host = hidra.connection_list[self.beamline]["host"]
+        host = socket.gethostbyaddr(host)[2][0]
+        port = hidra.connection_list[self.beamline]["port"]
+        self.endpoint = "tcp://{}:{}".format(host, port)
 
         self.socket = None
 
@@ -592,16 +592,16 @@ class ControlServer():
         # socket to get requests
         try:
             self.socket = self.context.socket(zmq.REP)
-            self.socket.bind(self.con_id)
+            self.socket.bind(self.endpoint)
             self.log.info("Start socket (bind): '{}'"
-                          .format(self.con_id))
+                          .format(self.endpoint))
         except zmq.error.ZMQError:
             self.log.error("Failed to start socket (bind) zmqerror: '{}'"
-                           .format(self.con_id), exc_info=True)
+                           .format(self.endpoint), exc_info=True)
             raise
         except:
             self.log.error("Failed to start socket (bind): '{}'"
-                           .format(self.con_id), exc_info=True)
+                           .format(self.endpoint), exc_info=True)
             raise
 
     def run(self):
