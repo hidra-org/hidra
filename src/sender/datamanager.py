@@ -865,34 +865,19 @@ class DataManager(Base):
 
         # indicates if the processed are sent to waiting mode
         sleep_was_sent = False
-
-        if self.use_cleaner:
-            run_loop = (self.signalhandler_thr.is_alive()
-                        and self.taskprovider_pr.is_alive()
-                        and self.cleaner_pr.is_alive()
-                        and all(datadispatcher.is_alive()
-                                for datadispatcher in self.datadispatcher_pr))
-        else:
-            run_loop = (self.signalhandler_thr.is_alive()
-                        and self.taskprovider_pr.is_alive()
-                        and all(datadispatcher.is_alive()
-                                for datadispatcher in self.datadispatcher_pr))
+        run_loop = self.core_parts_status_check()
 
         while run_loop:
 
             if self.check_target_host():
                 if sleep_was_sent:
+                    msg = [b"control", b"WAKEUP"]
                     if self.socket_reconnected:
-                        self.log.info("Sending 'WAKEUP' signal")
-                        self.control_pub_socket.send_multipart([b"control",
-                                                                b"WAKEUP",
-                                                                b"RECONNECT"])
-                        sleep_was_sent = False
-                    else:
-                        self.log.info("Sending 'WAKEUP' signal")
-                        self.control_pub_socket.send_multipart([b"control",
-                                                                b"WAKEUP"])
-                        sleep_was_sent = False
+                        msg += [b"RECONNECT"]
+
+                    self.log.info("Sending 'WAKEUP' signal")
+                    self.control_pub_socket.send_multipart(msg)
+                    sleep_was_sent = False
 
             else:
                 # Due to an unforseeable event there is no active receiver on
@@ -906,21 +891,8 @@ class DataManager(Base):
 
             time.sleep(1)
 
-            if self.use_cleaner:
-                run_loop = (self.continue_run
-                            and self.signalhandler_thr.is_alive()
-                            and self.taskprovider_pr.is_alive()
-                            and self.cleaner_pr.is_alive()
-                            and all(datadispatcher.is_alive()
-                                    for datadispatcher
-                                    in self.datadispatcher_pr))
-            else:
-                run_loop = (self.continue_run
-                            and self.signalhandler_thr.is_alive()
-                            and self.taskprovider_pr.is_alive()
-                            and all(datadispatcher.is_alive()
-                                    for datadispatcher
-                                    in self.datadispatcher_pr))
+            run_loop = (self.continue_run
+                        and self.core_parts_status_check())
 
         # notify which subprocess terminated
         if not self.continue_run:
@@ -935,6 +907,27 @@ class DataManager(Base):
             if not any(datadispatcher.is_alive()
                        for datadispatcher in self.datadispatcher_pr):
                 self.log.info("One DataDispatcher terminated.")
+
+    def core_parts_status_check(self):
+        if self.use_cleaner:
+            status = (
+                self.signalhandler_thr.is_alive()
+                and self.taskprovider_pr.is_alive()
+                and self.cleaner_pr.is_alive()
+                and all(datadispatcher.is_alive()
+                        for datadispatcher
+                        in self.datadispatcher_pr)
+            )
+        else:
+            status = (
+                self.signalhandler_thr.is_alive()
+                and self.taskprovider_pr.is_alive()
+                and all(datadispatcher.is_alive()
+                        for datadispatcher
+                        in self.datadispatcher_pr)
+            )
+        return status
+
 
     def stop(self):
         self.continue_run = False
