@@ -1460,11 +1460,11 @@ class Transfer(Base):
             desc = descriptors[filepath]
         except KeyError:
             try:
-                descriptors[filepath] = {}
+                descriptors[filepath] = {
+                    "file": open(filepath, "wb"),
+                    "last_chunk_number": None
+                }
                 desc = descriptors[filepath]
-
-                desc["file"] = open(filepath, "wb")
-                desc["last_chunk_number"] = None
             except IOError as e:
                 # errno.ENOENT == "No such file or directory"
                 if e.errno == errno.ENOENT:
@@ -1487,8 +1487,11 @@ class Transfer(Base):
                                                         add_filename=False)
                         os.makedirs(target_path)
 
-                        desc["file"] = open(filepath, "wb")
-                        desc["last_chunk_number"] = None
+                        descriptors[filepath] = {
+                            "file": open(filepath, "wb"),
+                            "last_chunk_number": None
+                        }
+                        desc = descriptors[filepath]
                         self.log.info("New target directory created: {}"
                                       .format(target_path))
                     except:
@@ -1695,9 +1698,12 @@ class Transfer(Base):
 
         # Close open file handler to prevent file corruption
         for target in list(self.file_descriptors.keys()):
-            self.file_descriptors[target]["file"].close()
-            self.log.warning("Not all chunks were received for file {}"
-                             .format(target))
+            try:
+                self.file_descriptors[target]["file"].close()
+                self.log.warning("Not all chunks were received for file {}"
+                                 .format(target))
+            except KeyError:
+                pass
             del self.file_descriptors[target]
 
         # Send signal that the application is quitting
