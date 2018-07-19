@@ -383,7 +383,7 @@ class ReceiverControl(Base):
 
         response = self._get_response()
 
-        return response[0]
+        return response
 
     def reset_status(self):
         """Reset the status flag of the receiver.

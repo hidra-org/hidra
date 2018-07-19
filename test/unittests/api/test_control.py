@@ -116,7 +116,7 @@ class TestReceiverControl(TestBase):
 
         ret_val = self.control.get_status()
 
-        self.assertEqual(ret_val, "test_response")
+        self.assertEqual(ret_val, ["test_response"])
         self.control.status_socket.send_multipart.assert_called_once_with(
             ["STATUS_CHECK"]
         )
