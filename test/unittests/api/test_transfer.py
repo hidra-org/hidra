@@ -2057,10 +2057,10 @@ class TestTransfer(TestBase):
     @mock.patch("hidra.transfer.generate_file_identifier")
     @mock.patch("hidra.transfer.generate_filepath")
     @mock.patch("hidra.transfer.Transfer.check_file_closed")
-    def test_store_data_chunk(self,
-                              mock_check_file_closed,
-                              mock_generate_filepath,
-                              mock_gen_file_id):
+    def test_store_chunk(self,
+                         mock_check_file_closed,
+                         mock_generate_filepath,
+                         mock_gen_file_id):
         current_func_name = inspect.currentframe().f_code.co_name
 
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2113,11 +2113,11 @@ class TestTransfer(TestBase):
         mock_check_file_closed.side_effect = [False]
 
         with mock.patch("__builtin__.open") as mock_open:
-            ret_val = transfer.store_data_chunk(descriptors,
-                                                filepath,
-                                                payload,
-                                                base_path,
-                                                metadata)
+            ret_val = transfer.store_chunk(descriptors,
+                                           filepath,
+                                           payload,
+                                           base_path,
+                                           metadata)
 
         self.assertTrue(ret_val)
         mock_file.write.assert_called_once_with(payload)
@@ -2140,11 +2140,11 @@ class TestTransfer(TestBase):
         mock_check_file_closed.side_effect = [False]
 
         with mock.patch("__builtin__.open") as mock_open:
-            ret_val = transfer.store_data_chunk(descriptors,
-                                                filepath,
-                                                payload,
-                                                base_path,
-                                                metadata)
+            ret_val = transfer.store_chunk(descriptors,
+                                           filepath,
+                                           payload,
+                                           base_path,
+                                           metadata)
 
         self.assertTrue(ret_val)
 
@@ -2185,11 +2185,11 @@ class TestTransfer(TestBase):
             mock_open.side_effect = TestIOError()
 
             with self.assertRaises(KeyError):
-                transfer.store_data_chunk(descriptors,
-                                          filepath,
-                                          payload,
-                                          base_path,
-                                          metadata)
+                transfer.store_chunk(descriptors,
+                                     filepath,
+                                     payload,
+                                     base_path,
+                                     metadata)
 
         self.assertTrue(transfer.log.error.called)
         self.assertIn("open file", transfer.log.error.call_args[0][0])
@@ -2220,11 +2220,11 @@ class TestTransfer(TestBase):
                 # errno.ENOENT == "No such file or directory"
                 mock_open.side_effect = mock_two_calls
 
-                transfer.store_data_chunk(descriptors,
-                                          filepath,
-                                          payload,
-                                          base_path,
-                                          metadata)
+                transfer.store_chunk(descriptors,
+                                     filepath,
+                                     payload,
+                                     base_path,
+                                     metadata)
 
                 self.assertTrue(mock_makedirs.called)
 
@@ -2275,11 +2275,11 @@ class TestTransfer(TestBase):
                 mock_open.side_effect = mock_two_calls
 
                 with self.assertRaises(TestIOError):
-                    transfer.store_data_chunk(descriptors,
-                                              filepath,
-                                              payload,
-                                              base_path,
-                                              metadata)
+                    transfer.store_chunk(descriptors,
+                                         filepath,
+                                         payload,
+                                         base_path,
+                                         metadata)
 
         self.assertTrue(transfer.log.error.called)
         self.assertIn("write file", transfer.log.error.call_args_list[0][0][0])
@@ -2307,11 +2307,11 @@ class TestTransfer(TestBase):
             mock_open.side_effect = IOError()
 
             with self.assertRaises(IOError):
-                transfer.store_data_chunk(descriptors,
-                                          filepath,
-                                          payload,
-                                          base_path,
-                                          metadata)
+                transfer.store_chunk(descriptors,
+                                     filepath,
+                                     payload,
+                                     base_path,
+                                     metadata)
 
         self.assertTrue(transfer.log.error.called)
         self.assertIn("append payload", transfer.log.error.call_args[0][0])
@@ -2336,11 +2336,11 @@ class TestTransfer(TestBase):
             mock_open.side_effect = TestException()
 
             with self.assertRaises(TestException):
-                transfer.store_data_chunk(descriptors,
-                                          filepath,
-                                          payload,
-                                          base_path,
-                                          metadata)
+                transfer.store_chunk(descriptors,
+                                     filepath,
+                                     payload,
+                                     base_path,
+                                     metadata)
 
         self.assertTrue(transfer.log.error.called)
         self.assertIn("append payload", transfer.log.error.call_args[0][0])
@@ -2366,11 +2366,11 @@ class TestTransfer(TestBase):
         }
 
         with self.assertRaises(KeyboardInterrupt):
-            transfer.store_data_chunk(descriptors,
-                                      filepath,
-                                      payload,
-                                      base_path,
-                                      metadata)
+            transfer.store_chunk(descriptors,
+                                 filepath,
+                                 payload,
+                                 base_path,
+                                 metadata)
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2396,11 +2396,11 @@ class TestTransfer(TestBase):
         transfer.log = mock.MagicMock()
 
         with self.assertRaises(TestException):
-            transfer.store_data_chunk(descriptors,
-                                      filepath,
-                                      payload,
-                                      base_path,
-                                      metadata)
+            transfer.store_chunk(descriptors,
+                                 filepath,
+                                 payload,
+                                 base_path,
+                                 metadata)
 
         self.assertTrue(transfer.log.error.called)
         self.assertIn("append payload", transfer.log.error.call_args[0][0])
@@ -2428,11 +2428,11 @@ class TestTransfer(TestBase):
         mock_check_file_closed.side_effect = [False]
 
         with mock.patch("__builtin__.open") as mock_open:
-            transfer.store_data_chunk(descriptors,
-                                      filepath,
-                                      payload,
-                                      base_path,
-                                      metadata)
+            transfer.store_chunk(descriptors,
+                                 filepath,
+                                 payload,
+                                 base_path,
+                                 metadata)
 
         # dictEqual does not work because "file" is a different instance
         # expected = {
@@ -2474,11 +2474,11 @@ class TestTransfer(TestBase):
         transfer.confirmation_socket = None
 
         with self.assertRaises(m_transfer.UsageError):
-            transfer.store_data_chunk(descriptors,
-                                      filepath,
-                                      payload,
-                                      base_path,
-                                      metadata)
+            transfer.store_chunk(descriptors,
+                                 filepath,
+                                 payload,
+                                 base_path,
+                                 metadata)
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2507,11 +2507,11 @@ class TestTransfer(TestBase):
             send_multipart=mock.MagicMock()
         )
 
-        transfer.store_data_chunk(descriptors,
-                                  filepath,
-                                  payload,
-                                  base_path,
-                                  metadata)
+        transfer.store_chunk(descriptors,
+                             filepath,
+                             payload,
+                             base_path,
+                             metadata)
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
@@ -2549,11 +2549,11 @@ class TestTransfer(TestBase):
         transfer.confirmation_socket.send_multipart.side_effect = TestException()
 
         with self.assertRaises(TestException):
-            transfer.store_data_chunk(descriptors,
-                                      filepath,
-                                      payload,
-                                      base_path,
-                                      metadata)
+            transfer.store_chunk(descriptors,
+                                 filepath,
+                                 payload,
+                                 base_path,
+                                 metadata)
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
@@ -2586,11 +2586,11 @@ class TestTransfer(TestBase):
 
         mock_check_file_closed.side_effect = [True]
 
-        ret_val = transfer.store_data_chunk(descriptors,
-                                            filepath,
-                                            payload,
-                                            base_path,
-                                            metadata)
+        ret_val = transfer.store_chunk(descriptors,
+                                       filepath,
+                                       payload,
+                                       base_path,
+                                       metadata)
 
         self.assertFalse(ret_val)
         mock_file.close.assert_called_once_with()
@@ -2626,11 +2626,11 @@ class TestTransfer(TestBase):
         mock_check_file_closed.side_effect = [True]
 
         with self.assertRaises(TestException):
-            transfer.store_data_chunk(descriptors,
-                                      filepath,
-                                      payload,
-                                      base_path,
-                                      metadata)
+            transfer.store_chunk(descriptors,
+                                 filepath,
+                                 payload,
+                                 base_path,
+                                 metadata)
 
         self.assertTrue(transfer.log.error.called)
         self.assertIn("could not be closed",
@@ -2641,11 +2641,11 @@ class TestTransfer(TestBase):
         mock_check_file_closed.reset_mock()
 
     @mock.patch("hidra.transfer.generate_filepath")
-    @mock.patch("hidra.transfer.Transfer.store_data_chunk")
+    @mock.patch("hidra.transfer.Transfer.store_chunk")
     @mock.patch("hidra.transfer.Transfer.get_chunk")
     def test_store(self,
                    mock_get_chunk,
-                   mock_store_data_chunk,
+                   mock_store_chunk,
                    mock_gen_filepath):
 
         current_func_name = inspect.currentframe().f_code.co_name
@@ -2747,7 +2747,7 @@ class TestTransfer(TestBase):
 
         mock_get_chunk.side_effect = [[metadata, payload]]
         mock_gen_filepath.side_effect = ["test_target_filepath"]
-        mock_store_data_chunk.side_effect = [False]
+        mock_store_chunk.side_effect = [False]
 
         transfer.store(target_base_path)
 
@@ -2755,16 +2755,16 @@ class TestTransfer(TestBase):
         self.assertEqual(mock_get_chunk.call_count, 1)
         self.assertTrue(mock_gen_filepath.called)
         self.assertEqual(mock_gen_filepath.call_count, 1)
-        self.assertTrue(mock_store_data_chunk.called)
-        self.assertEqual(mock_store_data_chunk.call_count, 1)
+        self.assertTrue(mock_store_chunk.called)
+        self.assertEqual(mock_store_chunk.call_count, 1)
 
         # cleanup
         mock_get_chunk.side_effect = None
         mock_get_chunk.reset_mock()
         mock_gen_filepath.side_effect = None
         mock_gen_filepath.reset_mock()
-        mock_store_data_chunk.side_effect = None
-        mock_store_data_chunk.reset_mock()
+        mock_store_chunk.side_effect = None
+        mock_store_chunk.reset_mock()
 
         # --------------------------------------------------------------------
         # receive and close in second iteration
@@ -2779,7 +2779,7 @@ class TestTransfer(TestBase):
                                       [metadata, payload]]
         mock_gen_filepath.side_effect = ["test_target_filepath0",
                                          "test_target_filepath1"]
-        mock_store_data_chunk.side_effect = [True, False]
+        mock_store_chunk.side_effect = [True, False]
 
         transfer.store(target_base_path)
 
@@ -2787,16 +2787,16 @@ class TestTransfer(TestBase):
         self.assertEqual(mock_get_chunk.call_count, 2)
         self.assertTrue(mock_gen_filepath.called)
         self.assertEqual(mock_gen_filepath.call_count, 2)
-        self.assertTrue(mock_store_data_chunk.called)
-        self.assertEqual(mock_store_data_chunk.call_count, 2)
+        self.assertTrue(mock_store_chunk.called)
+        self.assertEqual(mock_store_chunk.call_count, 2)
 
         # cleanup
         mock_get_chunk.side_effect = None
         mock_get_chunk.reset_mock()
         mock_gen_filepath.side_effect = None
         mock_gen_filepath.reset_mock()
-        mock_store_data_chunk.side_effect = None
-        mock_store_data_chunk.reset_mock()
+        mock_store_chunk.side_effect = None
+        mock_store_chunk.reset_mock()
 
         # --------------------------------------------------------------------
         # receive but error in storing
@@ -2809,7 +2809,7 @@ class TestTransfer(TestBase):
 
         mock_get_chunk.side_effect = [[metadata, payload]]
         mock_gen_filepath.side_effect = ["test_target_filepath"]
-        mock_store_data_chunk.side_effect = TestException()
+        mock_store_chunk.side_effect = TestException()
 
         transfer.status = [b"OK"]
 

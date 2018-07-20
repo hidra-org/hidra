@@ -1437,7 +1437,7 @@ class Transfer(Base):
 
                 return received["metadata"], received["data"]
 
-    def store_data_chunk(self,
+    def store_chunk(self,
                          descriptors,
                          filepath,
                          payload,
@@ -1628,7 +1628,7 @@ class Transfer(Base):
 
                 # TODO: save message to file using a thread (avoids blocking)
                 try:
-                    run_loop = self.store_data_chunk(
+                    run_loop = self.store_chunk(
                         descriptors=self.file_descriptors,
                         filepath=target_filepath,
                         payload=payload,
