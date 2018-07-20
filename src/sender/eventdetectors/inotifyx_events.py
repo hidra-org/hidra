@@ -221,6 +221,7 @@ class CleanUp(threading.Thread):
         return event_list
 
     def stop(self):
+        self.log.debug("Stopping cleanup thread")
         self.run_loop = False
 
 
@@ -413,7 +414,21 @@ class EventDetector(EventDetectorBase):
         """Implementation of the abstract method get_new_event.
         """
 
-        event_message_list = self.get_remaining_events()
+        remaining_events = self.get_remaining_events()
+
+        # only take the events which are not handles yet
+        event_message_list = [
+            event for event in remaining_events
+            if [os.path.join(event["source_path"], event["relative_path"]),
+                event["filename"]] not in self.history
+        ]
+        self.history += [
+            [os.path.join(event["source_path"], event["relative_path"]),
+             event["filename"]]
+            for event in remaining_events
+        ]
+
+        #event_message_list = self.get_remaining_events()
         event_message = {}
 
         events = self.get_events(self.fd, self.timeout)
