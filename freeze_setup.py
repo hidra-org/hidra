@@ -72,6 +72,7 @@ with open(initscript, "r") as f:
                 f_exe.write("USE_EXE=true\n"),
             else:
                 f_exe.write(line)
+os.chmod(exescript, 0o755)
 
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
