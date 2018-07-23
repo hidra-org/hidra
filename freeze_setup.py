@@ -89,7 +89,7 @@ build_exe_options = {
         (libzmq_path, "zmq"),
         (os.path.join(basepath, "logs/.gitignore"),
             os.path.join("logs", ".gitignore")),
-        (os.path.join(basepath, "initscripts", "hidra_exe.sh"), "hidra.sh"),
+        (exescript, "hidra.sh"),
         (os.path.join(confpath, "base_sender.conf"),
             os.path.join("conf", "base_sender.conf")),
         (os.path.join(senderpath, "__init__.py"), "__init__.py"),
