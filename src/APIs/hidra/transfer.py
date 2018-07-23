@@ -629,10 +629,10 @@ class Transfer(Base):
                 - can be a <port>, then the local host is used as <host>
 
         Return:
-            socket_id (str): identifier for the address ID (using the DNS name)
-                             where it is bind to for data receiving
-            addr (str): the address ID to bind to for data receiving
-                                  (this has to use the ip)
+            socket_id (str): Address identifier (using the DNS name) where
+                             it is bind to for data receiving.
+            endpoint (str): The endpoint to bind to for data receiving
+                            (this has to use the ip)
         """
 
         host = ""
