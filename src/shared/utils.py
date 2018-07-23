@@ -1025,20 +1025,20 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_loglevel=False):
         file_loglevel = "debug"
     else:
         file_loglevel = "info"
-    screen_loglevel = onscreen_loglevel.lower()
-
-    if screen_loglevel == "debug":
-        if not verbose:
-            logging.error("Logging on Screen: Option DEBUG in only "
-                          "active when using verbose option as well "
-                          "(Fallback to INFO).")
-
     file_handler = get_file_log_handler(logfile=logfile,
                                         logsize=logsize,
                                         loglevel=file_loglevel)
 
     # Setup stream handler to output to console
-    if screen_loglevel:
+    if onscreen_loglevel:
+        screen_loglevel = onscreen_loglevel.lower()
+
+        if screen_loglevel == "debug":
+            if not verbose:
+                logging.error("Logging on Screen: Option DEBUG in only "
+                              "active when using verbose option as well "
+                              "(Fallback to INFO).")
+
         screen_handler = get_stream_log_handler(loglevel=screen_loglevel)
         return file_handler, screen_handler
     else:
@@ -1084,7 +1084,6 @@ def init_logging(filename_full_path, verbose, onscreen_loglevel=False):
     file_loglevel = logging.INFO
     if verbose:
         file_loglevel = logging.DEBUG
-    screen_loglevel = onscreen_loglevel.lower()
 
     # Set format
     datefmt = "%Y-%m-%d_%H:%M:%S"
@@ -1116,7 +1115,9 @@ def init_logging(filename_full_path, verbose, onscreen_loglevel=False):
 
     # log info to stdout, display messages with different format than the
     # file output
-    if screen_loglevel:
+    if onscreen_loglevel:
+        screen_loglevel = onscreen_loglevel.lower()
+
         if screen_loglevel == "debug" and not verbose:
             logging.error("Logging on Screen: Option DEBUG in only "
                           "active when using verbose option as well "
