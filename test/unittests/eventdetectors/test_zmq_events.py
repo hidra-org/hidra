@@ -218,7 +218,7 @@ class TestEventDetector(EventDetectorTestBase):
 
             self.assertIsInstance(addrs, zmq_events.IpcAddresses)
             self.assertEqual(addrs.eventdet,
-                             "/tmp/hidra/{}_eventDet".format(main_pid))
+                             "/tmp/hidra/{}_eventdet".format(main_pid))
 
         # Windows
         with mock.patch.object(utils, "is_windows") as mock_is_windows:

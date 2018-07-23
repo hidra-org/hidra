@@ -68,7 +68,7 @@ def get_ipc_addresses(config):
     else:
         ipc_ip = "{}/{}".format(config["ipc_dir"], config["main_pid"])
 
-        datafetch = "{}_{}".format(ipc_ip, "dataFetch")
+        datafetch = "{}_{}".format(ipc_ip, "datafetch")
 
         addrs = IpcAddresses(datafetch=datafetch)
 

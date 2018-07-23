@@ -126,17 +126,17 @@ class Ingest(Base):
         else:
             self.log.info("Using ipc for internal communication.")
             self.eventdet_endpoint = "ipc://{}/{}".format(self.ipc_dir,
-                                                          "eventDet")
+                                                          "eventdet")
             self.datafetch_endpoint = "ipc://{}/{}".format(self.ipc_dir,
-                                                           "dataFetch")
+                                                           "datafetch")
 #            self.eventdet_endpoint = ("ipc://{}/{}_{}"
 #                                      .format(self.ipc_dir,
 #                                              self.current_pid,
-#                                              "eventDet"))
+#                                              "eventdet"))
 #            self.datafetch_endpoint = ("ipc://{}/{}_{}"
 #                                       .format(self.ipc_dir,
 #                                               self.current_pid,
-#                                               "dataFetch"))
+#                                               "datafetch"))
 
         self.poller = zmq.Poller()
         self.response_timeout = 1000
@@ -203,7 +203,7 @@ class Ingest(Base):
             raise Exception("Wrong responce received: {}".format(message))
 
     def write(self, data):
-        # send event to eventDet
+        # send event to eventdet
         message = {
             "filename": self.filename,
             "filepart": self.filepart,

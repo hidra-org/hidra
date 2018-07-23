@@ -66,7 +66,7 @@ def get_ipc_addresses(config):
         ipc_ip = "{}/{}".format(config["ipc_dir"],
                                 config["main_pid"])
 
-        eventdet = "{}_{}".format(ipc_ip, "eventDet")
+        eventdet = "{}_{}".format(ipc_ip, "eventdet")
 
         addrs = IpcAddresses(eventdet=eventdet)
 
@@ -114,7 +114,7 @@ def get_endpoints(ipc_addresses, tcp_addresses):
 #        ipc_ip = "{}/{}".format(config["ipc_dir"],
 #                                config["main_pid"])
 #
-#        eventdet_bind = "{}_{}".format(ipc_ip, "eventDet"),
+#        eventdet_bind = "{}_{}".format(ipc_ip, "eventdet"),
 #        eventdet_con = eventdet_bind
 #
 #    addrs = Addresses(
