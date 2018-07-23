@@ -88,7 +88,10 @@ build_exe_options = {
     "include_files": [
         (libzmq_path, "zmq"),
         (os.path.join(basepath, "initscripts", "hidra_exe.sh"), "hidra.sh"),
+        (os.path.join(confpath, "base_sender.conf"),
+            os.path.join("conf", "base_sender.conf")),
         (os.path.join(senderpath, "__init__.py"), "__init__.py"),
+        (os.path.join(senderpath, "base_class.py"), "base_class.py"),
         (os.path.join(senderpath, "taskprovider.py"), "taskprovider.py"),
         (os.path.join(senderpath, "signalhandler.py"), "signalhandler.py"),
         (os.path.join(senderpath, "datadispatcher.py"), "datadispatcher.py"),
