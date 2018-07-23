@@ -87,6 +87,8 @@ build_exe_options = {
     # "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
         (libzmq_path, "zmq"),
+        (os.path.join(basepath, "logs/.gitignore"),
+            os.path.join("logs", ".gitignore")),
         (os.path.join(basepath, "initscripts", "hidra_exe.sh"), "hidra.sh"),
         (os.path.join(confpath, "base_sender.conf"),
             os.path.join("conf", "base_sender.conf")),
