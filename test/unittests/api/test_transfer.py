@@ -2821,16 +2821,16 @@ class TestTransfer(TestBase):
         self.assertEqual(mock_get_chunk.call_count, 1)
         self.assertTrue(mock_gen_filepath.called)
         self.assertEqual(mock_gen_filepath.call_count, 1)
-        self.assertTrue(mock_store_data_chunk.called)
-        self.assertEqual(mock_store_data_chunk.call_count, 1)
+        self.assertTrue(mock_store_chunk.called)
+        self.assertEqual(mock_store_chunk.call_count, 1)
 
         # cleanup
         mock_get_chunk.side_effect = None
         mock_get_chunk.reset_mock()
         mock_gen_filepath.side_effect = None
         mock_gen_filepath.reset_mock()
-        mock_store_data_chunk.side_effect = None
-        mock_store_data_chunk.reset_mock()
+        mock_store_chunk.side_effect = None
+        mock_store_chunk.reset_mock()
 
     def test__stop_socket(self):
         current_func_name = inspect.currentframe().f_code.co_name
