@@ -445,7 +445,7 @@ elif [ -f /etc/SuSE-release ] ; then
 
             ## Start daemon with startproc(8). If this fails
             ## the return value is set appropriately by startproc.
-            /sbin/startproc $DAEMON_EXE $DAEMON_EXE_ARGS
+            /sbin/startproc $DAEMON $DAEMON_ARGS
 
             sleep 5
 
