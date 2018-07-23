@@ -106,10 +106,12 @@ class TestDataManager(TestBase):
         self.start = 100
         self.stop = 105
 
+        self.appid = str(self.config["main_pid"]).encode("utf-8")
+
     def send_signal(self, signal, ports, prio=None):
         self.log.info("send_signal : {}, {}".format(signal, ports))
 
-        send_message = [__version__, signal]
+        send_message = [__version__, self.appid, signal]
 
         targets = []
         if type(ports) == list:
@@ -124,7 +126,8 @@ class TestDataManager(TestBase):
         self.com_socket.send_multipart(send_message)
 
         received_message = self.com_socket.recv()
-        self.log.info("Responce : {}".format(received_message))
+        self.log.info("Response : {}".format(received_message))
+        self.assertEqual(received_message, signal)
 
     def test_datamanager(self):
         """Simulate incoming data and check if received events are correct.

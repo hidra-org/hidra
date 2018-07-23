@@ -17,6 +17,9 @@ from core.test_datadispatcher import TestDataDispatcher
 from core.test_signalhandler import TestSignalHandler
 from core.test_datamanager import TestDataManager
 
+from api.test_transfer import TestTransfer
+from api.test_control import TestReceiverControl
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
@@ -102,6 +105,21 @@ def get_core_suites():
     return all_suites
 
 
+def get_api_suites():
+    """Collects all available hidra api tests
+
+    Returns:
+        An array containing all available api test suites.
+    """
+
+    all_suites = [
+        unittest.TestLoader().loadTestsFromTestCase(TestTransfer),  # noqa E122
+        unittest.TestLoader().loadTestsFromTestCase(TestReceiverControl),  # noqa E122
+    ]
+
+    return all_suites
+
+
 def get_testing_suites():
 
     # for testing
@@ -119,9 +137,6 @@ def get_testing_suites():
     from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
     from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
     from datafetchers.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
-
-    from api.test_transfer import TestTransfer
-    from api.test_control import TestReceiverControl
 
     all_suites = [
 #        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
@@ -162,6 +177,7 @@ def get_suite():
     # get the subsuites
     # BUG: if the event detectors are tested before the datafetchers the
     # program does not stop
+    all_suites += get_api_suites()
     all_suites += get_eventdetector_suites()
     all_suites += get_datafetcher_suites()
     all_suites += get_core_suites()
