@@ -429,7 +429,7 @@ elif [ -f /etc/SuSE-release ] ; then
     do_start()
     {
         printf "Starting $NAME"
-        export LD_LIBRARY_PATH=${BASE_DIR}:$LD_LIBRARY_PATH
+        export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
 
         # Checking if the process is already running
         /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"
