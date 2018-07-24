@@ -293,8 +293,11 @@ def argument_parsing():
         utils.check_existance(params["monitored_dir"])
         if "create_fix_subdirs" in params and params["create_fix_subdirs"]:
             # create the subdirectories which do not exist already
-            utils.create_sub_dirs(params["monitored_dir"],
-                                  params["fix_subdirs"])
+            utils.create_sub_dirs(
+                dir_path=params["monitored_dir"],
+                subdirs=params["fix_subdirs"],
+                dirs_not_to_create=params["dirs_not_to_create"]
+            )
         else:
             # the subdirs have to exist because handles can only be added to
             # directories inside a directory in which a handle was already set,

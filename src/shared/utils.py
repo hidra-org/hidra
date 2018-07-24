@@ -361,20 +361,20 @@ def create_dir(directory, chmod=None, log=logging):
         os.chmod(directory, 0o777)
 
 
-def create_sub_dirs(dir_path, subdirs):
+def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
 
     dir_path = os.path.normpath(dir_path)
     # existance of mount point/monitored dir is essential to start at all
     check_existance(dir_path)
 
+    dirs_not_to_create = tuple(dirs_not_to_create)
     dirs_to_check = [os.path.join(dir_path, directory)
-                     for directory in subdirs]
+                     for directory in subdirs
+                     if not directory.startswith(dirs_not_to_create)]
 
     for d in dirs_to_check:
         try:
-            # do not create parent directories (meaning using mkdirs) because
-            # this would block the fileset creation
-            os.mkdir(d)
+            os.makedirs(d)
             logging.debug("Dir '{}' does not exist. Create it.".format(d))
         except OSError:
             logging.error("Dir '{}' could not be created.".format(d))

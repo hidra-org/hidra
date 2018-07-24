@@ -68,7 +68,7 @@ def argument_parsing():
     parser.add_argument("--target_dir",
                         type=str,
                         help="Where incoming data will be stored to")
-    parser.add_argument("--fix_subdirs",
+    parser.add_argument("--dirs_not_to_create",
                         type=str,
                         help="Subdirectories which should not be created when "
                              "data is stored")
@@ -214,7 +214,7 @@ class DataReceiver:
             raise Exception("Configuration check failed")
         setproctitle.setproctitle(params["procname"])
 
-        self.fix_subdirs = params["fix_subdirs"]
+        self.dirs_not_to_create = params["dirs_not_to_create"]
 
         # for proper clean up if kill is called
         signal.signal(signal.SIGTERM, self.signal_term_handler)
@@ -238,7 +238,7 @@ class DataReceiver:
 
         self.transfer = Transfer(connection_type="STREAM",
                                  use_log=True,
-                                 dirs_not_to_create=self.fix_subdirs)
+                                 dirs_not_to_create=self.dirs_not_to_create)
 
         # only start the thread if a netgroup was configured
         if (params["whitelist"] is not None
