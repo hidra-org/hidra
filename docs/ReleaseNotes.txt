@@ -1,5 +1,44 @@
 HiDRA develop
+- Run hidra as user defined in the config file
+- Added netgroup support in datamanager whitelist
+- Added option to create fixed subdirs in monitored directory
+- Added fix_subdirs awareness to http_events
+- Do not create fix_subdirs in data_receiver
+- If store_data is disabled requests for metadata gets an error
+- Converted hosts to fully qualified domain names
+- Added unittests
+- Fixed sys path extention (prepend instead of append)
+- Fixes stopping of datareceiver if start of transfer failed
+- Fixed signal exchange with transfer API
+- Fixed file loss when shutting down receiver
+- More detailed response from SignalHandler to API (multipart)
+- Fixed datareceiver: Include error message in log file
+- Fixed return code if datareceiver stops because of an error
+- Fixed memory leak in inotifyx -> version requirement of inotifyx
+- Moved ldap uri into configuration files
+- Changed usage and added additional options in hidra.sh
+- Fixed help message in init script
+- Use modified init script also for running frozen code
+- Use current directory when init script is called in executable mode
+- Added additional remove data strategies (stop_on_error and with_confirmation)
+- Split config file (ports/internal settings vs user settings)
+- Reopen not closed file if a first chunk is received again
+- Added api calls to get and reset the receiver status
+- Freeze: Create and use exe script
+- Transfer API:
+    - Added method to get remote version
+    - Added regex support
+    - Added appid to signal exchange
+    - Added getter and setter for appid
+    - Renames QUERY_METADATA into QUERY_NEXT_METADATA
+    - Fixed get for intermixed chunks + 'reopen'
+    - Renamed get to get_chunk and added get method
+
+
 HiDRA 3.1.3
+- Fixed searching path for service file in control server
+- Changed defaults for store_data and remove_data in control client
+
 HiDRA 3.1.2
 - Removed check for fix_subdirs in local_dir
 

@@ -5,7 +5,7 @@ Python moduls:
     - setproctitle
     - six
     - logutils
-    - inotifyx (for inotifyx event detector: file transfer on Linux)
+    - inotifyx (for inotifyx event detector: file transfer on Linux), version 0.2.2 or newer
     - watchdog (for watchdog event detector: file transfer on Windows)
     - requests (for HTTP event detector, used for Eiger)
 
