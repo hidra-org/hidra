@@ -74,6 +74,18 @@ with open(initscript, "r") as f:
                 f_exe.write(line)
 os.chmod(exescript, 0o755)
 
+# BASE_DIR is different for executables because directories are ordered
+# differently
+sender_init = os.path.join(senderpath, "__init__.py")
+exe_sender_init = os.path.join(senderpath, "__init_exe__.py")
+with open(sender_init, "r") as f:
+    with open(exe_sender_init, "w") as f_exe:
+        for line in f:
+            if line == "BASE_PATH = os.path.dirname(os.path.dirname(CURRENT_DIR))\n":
+                f_exe.write("BASE_PATH = CURRENT_DIR\n"),
+            else:
+                f_exe.write(line)
+
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
     # zmq.backend.cython seems to be left out by default
@@ -93,7 +105,7 @@ build_exe_options = {
         (exescript, "hidra.sh"),
         (os.path.join(confpath, "base_sender.conf"),
             os.path.join("conf", "base_sender.conf")),
-        (os.path.join(senderpath, "__init__.py"), "__init__.py"),
+        (exe_sender_init, "__init__.py"),
         (os.path.join(senderpath, "base_class.py"), "base_class.py"),
         (os.path.join(senderpath, "taskprovider.py"), "taskprovider.py"),
         (os.path.join(senderpath, "signalhandler.py"), "signalhandler.py"),
