@@ -134,11 +134,11 @@ class TaskProvider(Base):
                 if e.errno == errno.EINTR:
                     break
                 else:
-                    self.log.error("Invalid fileEvent message received.",
+                    self.log.error("Invalid workload message received.",
                                    exc_info=True)
                     workload_list = []
             except:
-                self.log.error("Invalid fileEvent message received.",
+                self.log.error("Invalid workload message received.",
                                exc_info=True)
                 workload_list = []
 
@@ -223,7 +223,19 @@ class TaskProvider(Base):
                             continue
                         elif message[0] == b"WAKEUP":
                             self.log.debug("Received wakeup signal")
-                            # Wake up from sleeping
+
+                            # cleanup accumulated events
+                            try:
+                                accumulated_workload = self.eventdetector.get_new_event()
+                                self.log.debug("Ingnore accumulated workload: {}"
+                                               .format(accumulated_workload))
+                            except KeyboardInterrupt:
+                                break
+                            except:
+                                self.log.error("Invalid workload message received.",
+                                               exc_info=True)
+
+                                # Wake up from sleeping
                             break
                         elif message[0] == b"EXIT":
                             self.log.debug("Received exit signal")
