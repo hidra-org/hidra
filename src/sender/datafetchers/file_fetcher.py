@@ -159,6 +159,8 @@ class DataFetcher(DataFetcherBase):
 
             # detect if end of file has been reached
             if not file_content:
+                if chunk_number == 0:
+                    self.log.debug("File is empty. Skip sending to target.")
                 break
 
             try:
