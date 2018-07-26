@@ -1,4 +1,4 @@
-HiDRA develop
+# HiDRA develop
 - Run hidra as user defined in the config file
 - Added netgroup support in datamanager whitelist
 - Added option to create fixed subdirs in monitored directory
@@ -35,18 +35,24 @@ HiDRA develop
     - Renamed get to get_chunk and added get method
 
 
-HiDRA 3.1.3
+# 3.1.3
+
 - Fixed searching path for service file in control server
 - Changed defaults for store_data and remove_data in control client
 
-HiDRA 3.1.2
+
+# 3.1.2
+
 - Removed check for fix_subdirs in local_dir
 
-HiDRA 3.1.1
+
+# 3.1.1
+
 - Disabled interactive shell in systemctl call (control server)
 - Fixed missing files in spe
 
-HiDRA 3.1.0
+
+# 3.1.0
 
 - Adjusted host names in mapping for control API
 - Run control server as user hidra
@@ -104,16 +110,19 @@ HiDRA 3.1.0
 - Enabled differentiation between 32 and 64bit architecture when freezing HiDRA
 - Added HiDRA receiver unit file
 
-HiDRA 3.0.2
+
+# 3.0.2
 
 - Fixed parallel hidra control client usage of script and permanent open connection (e.g. Tango)
 
-HiDRA 3.0.1
+
+# 3.0.1
 
 - Added option to get configured settings to hidra control client
 - The connection list is now contained in a separate module
 
-HiDRA 3.0.0
+
+# 3.0.0
 
 - Automatic bump versioning
 - Added generic hidra control client with included authentication (host-based)
@@ -128,18 +137,21 @@ HiDRA 3.0.0
 - Added Python 3 support
 - Renamed APIs and API arguments
 
-HiDRA 2.4.2
+
+# 2.4.2
 
 - Changed process name in init script
 - Building executables with cx_Freeze
 - IPC directory is set to world/write readable when created
 - IPC directory is removed (if empty) when HiDRA is stopped
 
-HiDRA 2.4.1
+
+# 2.4.1
 
 - Changed config file to use file mode by default
 
-HiDRA 2.4.0
+
+# 2.4.0
 
 - exchanged all cPickle calls with json calls
 - renamed init script to hidra.sh
@@ -165,17 +177,20 @@ HiDRA 2.4.0
 - Choose config file for dataReceiver
 - Removed timeout warning in dataTransferAPI
 
-HiDRA 2.3.2
+
+# 2.3.2
 
 - Fixed log rotation
 
-HiDRA 2.3.1
+
+# 2.3.1
 
 - Fixed filename sending for requests (unicode problem)
 - Fixed missing metadata if no target is specified
 - Fixed parallel directory creation attempts
 
-HiDRA 2.3.0
+
+# 2.3.0
 
 - Added method to dataTransferAPI to manually stop streams/queries
 - Added option to specify which file formats to be send via zeromq
@@ -188,12 +203,13 @@ HiDRA 2.3.0
 - Added command line argument error handling
 - Removed ringbuffer remains of old architecture
 
-HiDRA 2.2.1
+
+# 2.2.1
 
 - Fixed data receiving problems with dataTransferAPI due to ZAP
 
 
-HiDRA 2.2.0
+# 2.2.0
 
 - Fixed stopping: The service is shut down if one process dies
 - Enabled whitelist for data receiver
@@ -205,30 +221,30 @@ HiDRA 2.2.0
 - Version check does not consider bugfixes anymore
 
 
-HiDRA 2.1.4
+# 2.1.4
 
 - Fixed copied file removal (Part 2)
 
 
-HiDRA 2.1.3
+# 2.1.3
 
 - Fixed copied file removal (Part 1)
 
 
-HiDRA 2.1.2
+# 2.1.2
 
 - Fixed too high processor usage
 - Fixed suffix check in treewalk after creation of directory
 
 
-HiDRA 2.1.1
+# 2.1.1
 
 - Fixed error handling with incorrect whitelists
 - Fixed version checking
 - Added file create time to metadata
 
 
-HiDRA 2.1.0
+# 2.1.0
 
 - Added file removal safeguard
 - Enabled use of IPC internal communication for Linux nodes
@@ -236,11 +252,12 @@ HiDRA 2.1.0
 - Misc bug fixing
 
 
-HiDRA 2.0.0
+# 2.0.0
 
 - Added functionality to get Data via HTTP Get
 - Redesigned architecture
 
-HiDRA 1.0.0
+
+# 1.0.0
 
 - Initial implementation
