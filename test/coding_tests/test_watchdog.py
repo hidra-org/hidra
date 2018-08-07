@@ -43,7 +43,7 @@ if __name__ == '__main__':
     observer.schedule(MyHandler(), path=dataPath)
     observer.start()
 
-    sourceFile = BASE_PATH + "/test_file.cbf"
+    sourceFile = BASE_PATH + "test/test_files/test_file.cbf"
     targetFile = BASE_PATH + "/data/source/local/raw/100.cbf"
 
     i = 1

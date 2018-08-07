@@ -82,7 +82,10 @@ class TestDataFetcher(DataFetcherTestBase):
         )
 
         # Test data fetcher
-        prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
+        prework_source_file = os.path.join(BASE_DIR,
+                                           "test",
+                                           "test_files",
+                                           "test_file.cbf")
 
         # read file to send it in data pipe
         with open(prework_source_file, "rb") as file_descriptor:

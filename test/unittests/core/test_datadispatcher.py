@@ -63,7 +63,10 @@ class TestDataDispatcher(TestBase):
         """Simulate incoming data and check if received events are correct.
         """
 
-        source_file = os.path.join(BASE_DIR, "test_file.cbf")
+        source_file = os.path.join(BASE_DIR,
+                                   "test",
+                                   "test_files",
+                                   "test_file.cbf")
         target_file = os.path.join(BASE_DIR,
                                    "data",
                                    "source",

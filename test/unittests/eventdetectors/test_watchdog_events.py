@@ -51,7 +51,10 @@ class TestEventDetector(EventDetectorTestBase):
         self.start = 100
         self.stop = 105
 
-        self.source_file = os.path.join(BASE_DIR, "test_1024B.file")
+        self.source_file = os.path.join(BASE_DIR,
+                                        "test",
+                                        "test_files",
+                                        "test_1024B.file")
 
         self.target_base_path = os.path.join(BASE_DIR, "data", "source")
         self.target_relative_path = os.path.join("local", "raw")

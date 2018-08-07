@@ -5,7 +5,7 @@ BASEPATH=${SCRIPTPATH%%/test/TransferTest3.sh}
 echo $BASEPATH
 
 
-oldfile=$BASEPATH/test_file.cbf
+oldfile=$BASEPATH/test/test_files/test_file.cbf
 newfile=$BASEPATH/data/source/local/test_file.cbf
 movedfile=$BASEPATH/data/target/local/test_file.cbf
 

@@ -92,7 +92,10 @@ class TestDataFetcher(DataFetcherTestBase):
             )
 
         # Test file fetcher
-        prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
+        prework_source_file = os.path.join(BASE_DIR,
+                                           "test",
+                                           "test_files",
+                                           "test_file.cbf")
 
         metadata = {
             "source_path": os.path.join(BASE_DIR, "data", "source"),

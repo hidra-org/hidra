@@ -61,7 +61,10 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Test data fetcher
         filename = "test01.cbf"
-        prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
+        prework_source_file = os.path.join(BASE_DIR,
+                                           "test",
+                                           "test_files",
+                                           "test_file.cbf")
 
         # read file to send it in data pipe
         self.log.debug("copy file to asap3-mon")

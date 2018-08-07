@@ -139,7 +139,10 @@ if __name__ == '__main__':
 
     setproctitle.setproctitle("inotifyx_events")
 
-    source_file = os.path.join(BASE_PATH, "test_1024B.file")
+    source_file = os.path.join(BASE_PATH,
+                               "test",
+                               "test_files",
+                               "test_1024B.file")
     target_file_base = os.path.join(
         BASE_PATH, "data", "source", "local") + os.sep
 

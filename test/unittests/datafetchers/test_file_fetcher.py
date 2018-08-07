@@ -68,7 +68,10 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Test file fetcher
         source_dir = os.path.join(BASE_DIR, "data", "source")
-        prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
+        prework_source_file = os.path.join(BASE_DIR,
+                                           "test",
+                                           "test_files",
+                                           "test_file.cbf")
         prework_target_file = os.path.join(source_dir, "local", "100.cbf")
 
         copyfile(prework_source_file, prework_target_file)
@@ -153,7 +156,10 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Test file fetcher
         source_dir = os.path.join(BASE_DIR, "data", "source")
-        prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
+        prework_source_file = os.path.join(BASE_DIR,
+                                           "test",
+                                           "test_files",
+                                           "test_file.cbf")
         prework_target_file = os.path.join(source_dir, "local", "100.cbf")
 
         copyfile(prework_source_file, prework_target_file)

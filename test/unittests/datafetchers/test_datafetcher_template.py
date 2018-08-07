@@ -67,7 +67,10 @@ class TestDataFetcher(DataFetcherTestBase):
             "filename": "100.cbf"
         }
 
-#        prework_source_file = os.path.join(BASE_DIR, "test_file.cbf")
+#        prework_source_file = os.path.join(BASE_DIR,
+#                                           "test",
+#                                           "test_files",
+#                                           "test_file.cbf")
 #        prework_target_file = os.path.join(metadata["source_path"],
 #                                           metadata["relative_path"],
 #                                           metadata["filename"])

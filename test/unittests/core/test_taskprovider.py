@@ -145,7 +145,10 @@ class TestTaskProvider(TestBase):
             endpoint=endpoints.router_con
         )
 
-        source_file = os.path.join(BASE_DIR, "test_file.cbf")
+        source_file = os.path.join(BASE_DIR,
+                                   "test",
+                                   "test_files",
+                                   "test_file.cbf")
         target_file_base = os.path.join(BASE_DIR,
                                         "data",
                                         "source",

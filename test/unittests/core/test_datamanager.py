@@ -186,7 +186,10 @@ class TestDataManager(TestBase):
 
         self.log.debug("test receiver started")
 
-        source_file = os.path.join(BASE_DIR, "test_file.cbf")
+        source_file = os.path.join(BASE_DIR,
+                                   "test",
+                                   "test_files",
+                                   "test_file.cbf")
         target_file_base = os.path.join(BASE_DIR,
                                         "data",
                                         "source",

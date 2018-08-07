@@ -12,17 +12,17 @@ print BASE_PATH
 
 if __name__ == '__main__':
 
-    sourceFile = os.path.join(BASE_PATH, "test_file.cbf")
+    sourceFile = os.path.join(BASE_PATH, "test", "test_files", "test_file.cbf")
     chunkSize = 10485760 # 1024*1024*10 = 10MB
     filepart = 0
-    connectionStr = "ipc://{0}".format(os.path.join(tempfile.gettempdir(), "hidra", "file_sending_test")
+    connectionStr = "ipc://{}".format(os.path.join(tempfile.gettempdir(), "hidra", "file_sending_test")
 
 
     # Set up ZMQ
     context = zmq.Context()
     socket = context.socket(zmq.PUSH)
     socket.connect(connectionStr)
-    print "Socket started (connect) for {c}".format(c=connectionStr)
+    print "Socket started (connect) for {}".format(connectionStr)
 
     # Set up metadata
     metadata = {
