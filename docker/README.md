@@ -18,6 +18,26 @@ cp Dockerfile.sender Dockerfile
 ```
 docker build -t sender_test .
 ```
+* Create the docker container and map directorie from outside the containter as source.
+```
+docker run -it -v <source>:/ramdisk sender_test
+```
+
+### Alternatives
+
+#### Connect from outside
+
+To be able to connect from outside to it, run
+```
+docker run -it -v <source>:/ramdisk -v <target>:/target --net=host sender_test
+```
+
+#### Migrate data locally
+
+* Change conf/datamanager_docker.conf: Enable storing of data
+```
+store_data = True
+```
 * Create the docker container and map directories from outside the containter as source and target.
 ```
 docker run -it -v <source>:/ramdisk -v <target>:/target sender_test
