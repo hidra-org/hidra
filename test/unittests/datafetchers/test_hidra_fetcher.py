@@ -51,7 +51,7 @@ class TestDataFetcher(DataFetcherTestBase):
             "main_pid": self.config["main_pid"]
         }
 
-        self.receiving_ports = ["6005", "6006"]
+        self.receiving_ports = ["50102", "50103"]
 
         self.datafetcher = None
         self.receiving_sockets = None
