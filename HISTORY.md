@@ -1,4 +1,5 @@
 # HiDRA develop
+
 - Run hidra as user defined in the config file
 - Added netgroup support in datamanager whitelist
 - Added option to create fixed subdirs in monitored directory
