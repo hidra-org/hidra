@@ -5,20 +5,20 @@ import os
 import zmq
 import logging
 
-from __init__ import BASE_PATH
-import helpers
+from __init__ import BASE_DIR
+import utils
 
 from hidra import Ingest
 
 
 # enable logging
-logfile_path = os.path.join(BASE_PATH, "logs")
+logfile_path = os.path.join(BASE_DIR, "logs")
 logfile = os.path.join(logfile_path, "test_ingest.log")
-helpers.init_logging(logfile, True, "DEBUG")
+utils.init_logging(logfile, True, "DEBUG")
 
-print ("\n==== TEST: Ingest ====\n")
+print("\n==== TEST: Ingest ====\n")
 
-source_file = os.path.join(BASE_PATH, "test_file.cbf")
+source_file = os.path.join(BASE_DIR, "test_file.cbf")
 chunksize = 524288
 
 context = zmq.Context()
@@ -39,7 +39,7 @@ obj.create_file(os.path.join("test", "1.h5"))
 
 # Open file
 source_fp = open(source_file, "rb")
-print ("Opened file:", source_file)
+print("Opened file:", source_file)
 
 while True:
     try:
@@ -72,4 +72,4 @@ logging.info("Stopping")
 
 obj.stop()
 
-print ("\n==== TEST END: Ingest ====\n")
+print("\n==== TEST END: Ingest ====\n")

@@ -35,8 +35,8 @@ if [ -z "${FORMAT}" ]; then
 fi
 
 case "${FORMAT}" in
-    cbf) FILES=${SOURCE}/test_file.cbf ;;
-    tif) FILES=${SOURCE}/bf_00000.tif
+    cbf) FILES=${SOURCE}/test/test_files/test_file.cbf ;;
+    tif) FILES=${SOURCE}/test/test_files/test_file.tif
 esac
 
 i=1

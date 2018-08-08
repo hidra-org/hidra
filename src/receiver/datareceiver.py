@@ -11,26 +11,27 @@ import threading
 import copy
 import time
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 
-import helpers
+import utils
 from hidra import Transfer
 
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-CONFIG_PATH = os.path.join(BASE_PATH, "conf")
+CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
 whitelist = None
 changed_netgroup = False
 
 
 def argument_parsing():
-    default_config = os.path.join(CONFIG_PATH, "datareceiver.conf")
+    base_config_file = os.path.join(CONFIG_DIR, "base_receiver.conf")
+    default_config_file = os.path.join(CONFIG_DIR, "datareceiver.conf")
 
-    ##################################
-    #   Get command line arguments   #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Get command line arguments
+    # ------------------------------------------------------------------------
 
     parser = argparse.ArgumentParser()
 
@@ -67,6 +68,10 @@ def argument_parsing():
     parser.add_argument("--target_dir",
                         type=str,
                         help="Where incoming data will be stored to")
+    parser.add_argument("--dirs_not_to_create",
+                        type=str,
+                        help="Subdirectories which should not be created when "
+                             "data is stored")
     parser.add_argument("--data_stream_ip",
                         type=str,
                         help="Ip of dataStream-socket to pull new files from")
@@ -76,27 +81,29 @@ def argument_parsing():
                              "files from")
 
     arguments = parser.parse_args()
-    arguments.config_file = arguments.config_file or default_config
+    arguments.config_file = arguments.config_file or default_config_file
 
     # check if config_file exist
-    helpers.check_existance(arguments.config_file)
+    utils.check_existance(arguments.config_file)
 
-    ##################################
-    # Get arguments from config file #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Get arguments from config file
+    # ------------------------------------------------------------------------
 
-    params = helpers.set_parameters(arguments.config_file, arguments)
+    params = utils.set_parameters(base_config_file=base_config_file,
+                                  config_file=arguments.config_file,
+                                  arguments=arguments)
 
-    ##################################
-    #     Check given arguments      #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Check given arguments
+    # ------------------------------------------------------------------------
 
     # check target directory for existance
-    helpers.check_existance(params["target_dir"])
+    utils.check_existance(params["target_dir"])
 
     # check if logfile is writable
     params["log_file"] = os.path.join(params["log_path"], params["log_name"])
-    helpers.check_writable(params["log_file"])
+    utils.check_writable(params["log_file"])
 
     return params
 
@@ -119,7 +126,7 @@ def excecute_ldapsearch_test(netgroup):
     if socks and socks.get(my_socket) == zmq.POLLIN:
         print("Waiting for new whitelist")
         new_whitelist = my_socket.recv_multipart(zmq.NOBLOCK)
-        print("New whitelist received: {0}".format(whitelist))
+        print("New whitelist received: {}".format(whitelist))
 
         return new_whitelist
     else:
@@ -127,13 +134,14 @@ def excecute_ldapsearch_test(netgroup):
 
 
 class CheckNetgroup (threading.Thread):
-    def __init__(self, netgroup, lock):
+    def __init__(self, netgroup, lock, ldapuri):
         self.log = logging.getLogger("CheckNetgroup")
 
         self.log.debug("init")
         self.netgroup = netgroup
         self.lock = lock
         self.run_loop = True
+        self.ldapuri = ldapuri
 
         self.log.debug("threading.Thread init")
         threading.Thread.__init__(self)
@@ -143,8 +151,9 @@ class CheckNetgroup (threading.Thread):
         global changed_netgroup
 
         while self.run_loop:
-#            new_whitelist = excecute_ldapsearch_test(self.netgroup)
-            new_whitelist = helpers.excecute_ldapsearch(self.netgroup)
+            # new_whitelist = excecute_ldapsearch_test(self.netgroup)
+            new_whitelist = utils.excecute_ldapsearch(self.netgroup,
+                                                      self.ldapuri)
 
             # new elements added to whitelist
             new_elements = [e for e in new_whitelist if e not in whitelist]
@@ -152,15 +161,14 @@ class CheckNetgroup (threading.Thread):
             removed_elements = [e for e in whitelist if e not in new_whitelist]
 
             if new_elements or removed_elements:
-                self.lock.acquire()
-                # remember new whitelist
-                whitelist = copy.deepcopy(new_whitelist)
+                with self.lock:
+                    # remember new whitelist
+                    whitelist = copy.deepcopy(new_whitelist)
 
-                # mark that there was a change
-                changed_netgroup = True
-                self.lock.release()
+                    # mark that there was a change
+                    changed_netgroup = True
 
-                self.log.info("Netgroup has changed. New whitelist: {0}"
+                self.log.info("Netgroup has changed. New whitelist: {}"
                               .format(whitelist))
 
             time.sleep(2)
@@ -174,6 +182,8 @@ class DataReceiver:
         global whitelist
 
         self.transfer = None
+        self.checking_thread = None
+        self.timeout = 2000
 
         try:
             params = argument_parsing()
@@ -185,10 +195,10 @@ class DataReceiver:
         root = logging.getLogger()
         root.setLevel(logging.DEBUG)
 
-        handlers = helpers.get_log_handlers(params["log_file"],
-                                            params["log_size"],
-                                            params["verbose"],
-                                            params["onscreen"])
+        handlers = utils.get_log_handlers(params["log_file"],
+                                          params["log_size"],
+                                          params["verbose"],
+                                          params["onscreen"])
 
         if type(handlers) == tuple:
             for h in handlers:
@@ -199,42 +209,48 @@ class DataReceiver:
         self.log = logging.getLogger("DataReceiver")
 
         # set process name
-        check_passed, _ = helpers.check_config(["procname"], params, self.log)
+        check_passed, _ = utils.check_config(["procname"], params, self.log)
         if not check_passed:
             raise Exception("Configuration check failed")
         setproctitle.setproctitle(params["procname"])
+
+        self.dirs_not_to_create = params["dirs_not_to_create"]
 
         # for proper clean up if kill is called
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         self.lock = threading.Lock()
 
-        if (params["whitelist"] is not None
-                and type(params["whitelist"]) == str):
-            self.lock.acquire()
-            whitelist = helpers.excecute_ldapsearch(params["whitelist"])
-            self.log.info("Configured whitelist: {0}".format(whitelist))
-            self.lock.release()
+        if params["whitelist"] is not None:
+            self.log.debug("params['whitelist']={}"
+                           .format(params["whitelist"]))
+            with self.lock:
+                whitelist = utils.extend_whitelist(params["whitelist"],
+                                                   params["ldapuri"],
+                                                   self.log)
+            self.log.info("Configured whitelist: {}".format(whitelist))
 
         self.target_dir = os.path.normpath(params["target_dir"])
         self.data_ip = params["data_stream_ip"]
         self.data_port = params["data_stream_port"]
 
-        self.log.info("Writing to directory '{0}'".format(self.target_dir))
+        self.log.info("Writing to directory '{}'".format(self.target_dir))
 
-        self.transfer = Transfer("STREAM", use_log=True)
+        self.transfer = Transfer(connection_type="STREAM",
+                                 use_log=True,
+                                 dirs_not_to_create=self.dirs_not_to_create)
 
         # only start the thread if a netgroup was configured
         if (params["whitelist"] is not None
-                and type(params["whitelist"]) is not list):
+                and type(params["whitelist"]) == str):
             self.log.debug("Starting checking thread")
             self.checking_thread = CheckNetgroup(params["whitelist"],
-                                                 self.lock)
+                                                 self.lock,
+                                                 params["ldapuri"])
             self.checking_thread.start()
         else:
-            self.log.debug("Checking thread not started: {0}"
+            self.log.debug("Checking thread not started: {}"
                            .format(params["whitelist"]))
-            self.checking_thread = None
 
         try:
             self.run()
@@ -243,6 +259,7 @@ class DataReceiver:
         except:
             self.log.error("Stopping due to unknown error condition",
                            exc_info=True)
+            raise
         finally:
             self.stop()
 
@@ -255,6 +272,7 @@ class DataReceiver:
 #            self.transfer.start(self.data_port)
         except:
             self.log.error("Could not initiate stream", exc_info=True)
+            self.stop(store=False)
             raise
 
         # enable status check requests from any sender
@@ -264,27 +282,44 @@ class DataReceiver:
         self.transfer.setopt("confirmation")
 
         self.log.debug("Waiting for new messages...")
+        self.run_loop = True
         # run loop, and wait for incoming messages
-        while True:
+        while self.run_loop:
             if changed_netgroup:
                 self.log.debug("Reregistering whitelist")
                 self.transfer.register(whitelist)
 
                 # reset flag
-                self.lock.acquire()
-                changed_netgroup = False
-                self.lock.release()
+                with self.lock:
+                    changed_netgroup = False
 
             try:
-                self.transfer.store(self.target_dir, 2000)
+                self.transfer.store(self.target_dir, self.timeout)
             except KeyboardInterrupt:
                 break
             except:
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise
 
-    def stop(self):
+    def stop(self, store=True):
+        self.run_loop = False
+
         if self.transfer is not None:
+            self.transfer.status = [b"ERROR", "receiver is shutting down"]
+
+            if store:
+                stop_timeout = 0.5
+                start_time = time.time()
+                diff_time = (time.time() - start_time) * 1000
+                self.log.debug("Storing remaining data.")
+                while diff_time < stop_timeout:
+                    try:
+                        self.log.debug("Storing remaining data...")
+                        self.transfer.store(self.target_dir, self.timeout)
+                    except:
+                        self.log.error("Storing data...failed.", exc_info=True)
+                    diff_time = (time.time() - start_time) * 1000
+
             self.log.info("Shutting down receiver...")
             self.transfer.stop()
             self.transfer = None

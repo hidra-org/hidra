@@ -1,5 +1,5 @@
 Name:		hidra
-Version:	3.1.3
+Version:	4.0.0
 Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
@@ -15,7 +15,8 @@ BuildRequires:	systemd-units
 Requires:	systemd
 Requires:	python-logutils
 Requires:	python-zmq >= 14.5.0
-Requires:	python-inotifyx
+Requires:	python-inotifyx >= 0.2.2
+Requires:	python-requests
 Requires:	python-setproctitle
 Requires:	python-six
 Requires:	python-hidra = %{version}
@@ -116,6 +117,8 @@ mkdir -p %{buildroot}/var/log/%{name}
 /opt/%{name}/src/hidra_control/hidra_control_client.pyo
 
 %changelog
+* Wed Aug 08 2018 Manuela Kuhn <manuela.kuhn@desy.de> - 4.0.0-1
+- Bump version
 * Mon May 22 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.1.3-1
 - Bump version
 * Fri May 12 2017 Manuela Kuhn <manuela.kuhn@desy.de> - 3.1.2-1

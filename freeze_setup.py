@@ -21,7 +21,7 @@ platform_specific_files = []
 
 # Windows specific packages and config
 if platform.system() == "Windows":
-#    libzmq_path = "C:\Python27\Lib\site-packages\zmq"
+    # libzmq_path = "C:\Python27\Lib\site-packages\zmq"
     platform_specific_packages = ["watchdog"]
 
     platform_specific_files += [
@@ -31,7 +31,7 @@ if platform.system() == "Windows":
 
 # Linux specific packages and config
 else:
-#    libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
+    # libzmq_path = "/usr/local/lib/python2.7/dist-packages/zmq"
     platform_specific_packages = ["inotifyx"]
 
     platform_specific_files += [
@@ -62,6 +62,33 @@ if sys.version_info >= (3, 0):
 else:
     version_specific_packages = ["ConfigParser"]
 
+# reuse the init file for installed HiDRA to reduce amount of maintenance
+initscript = os.path.join(basepath, "initscripts", "hidra.sh")
+exescript = os.path.join(basepath, "initscripts", "hidra_exe.sh")
+with open(initscript, "r") as f:
+    with open(exescript, "w") as f_exe:
+        for line in f:
+            if line == "USE_EXE=false\n":
+                f_exe.write("USE_EXE=true\n"),
+            else:
+                f_exe.write(line)
+os.chmod(exescript, 0o755)
+
+# BASE_DIR is different for executables because directories are ordered
+# differently
+sender_init = os.path.join(senderpath, "__init__.py")
+exe_sender_init = os.path.join(senderpath, "__init_exe__.py")
+with open(sender_init, "r") as f:
+    with open(exe_sender_init, "w") as f_exe:
+        for line in f:
+            ref_line = (
+                "BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))"
+            )
+            if line == ref_line:
+                f_exe.write("BASE_DIR = CURRENT_DIR\n"),
+            else:
+                f_exe.write(line)
+
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
     # zmq.backend.cython seems to be left out by default
@@ -76,13 +103,18 @@ build_exe_options = {
     # "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
         (libzmq_path, "zmq"),
-        (os.path.join(basepath, "initscripts", "hidra.sh"), "hidra.sh"),
-        (os.path.join(senderpath, "__init__.py"), "__init__.py"),
+        (os.path.join(basepath, "logs/.gitignore"),
+            os.path.join("logs", ".gitignore")),
+        (exescript, "hidra.sh"),
+        (os.path.join(confpath, "base_sender.conf"),
+            os.path.join("conf", "base_sender.conf")),
+        (exe_sender_init, "__init__.py"),
+        (os.path.join(senderpath, "base_class.py"), "base_class.py"),
         (os.path.join(senderpath, "taskprovider.py"), "taskprovider.py"),
         (os.path.join(senderpath, "signalhandler.py"), "signalhandler.py"),
         (os.path.join(senderpath, "datadispatcher.py"), "datadispatcher.py"),
         (os.path.join(sharedpath, "logutils"), "logutils"),
-        (os.path.join(sharedpath, "helpers.py"), "helpers.py"),
+        (os.path.join(sharedpath, "utils.py"), "utils.py"),
         (os.path.join(sharedpath, "cfel_optarg.py"), "cfel_optarg.py"),
         (os.path.join(sharedpath, "_version.py"), "_version.py"),
         # event detectors
@@ -125,7 +157,7 @@ executables = [
 ]
 
 setup(name='HiDRA',
-      version='3.1.3',
+      version='4.0.0',
       description='',
       options={"build_exe": build_exe_options,
                "bdist_msi": bdist_msi_options},

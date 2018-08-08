@@ -1,0 +1,17 @@
+FROM ubuntu
+
+RUN apt update && apt install -y \
+    git \
+    python \
+    python-pip
+RUN pip install --upgrade pip==9.0.3 && pip install \
+    pyzmq \
+    setproctitle \
+    six \
+    inotifyx
+RUN cd /opt && \
+    git clone https://stash.desy.de/scm/hidra/hidra.git && \
+    cd hidra && \
+    git checkout develop && \
+    mkdir /var/log/hidra
+ENTRYPOINT ["python", "/opt/hidra/src/sender/datamanager.py", "--verbose", "--config_file", "/opt/hidra/conf/datamanager_docker.conf", "--onscreen", "debug"]

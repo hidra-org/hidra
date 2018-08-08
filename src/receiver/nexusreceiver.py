@@ -5,23 +5,23 @@ import logging
 import os
 import errno
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 
-import helpers
+import utils
 from hidra import Transfer
 
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-CONFIG_PATH = os.path.join(BASE_PATH, "conf")
+CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
 
 def argument_parsing():
-    default_config = os.path.join(CONFIG_PATH, "nexusReceiver.conf")
+    default_config = os.path.join(CONFIG_DIR, "nexusReceiver.conf")
 
-    ##################################
-    #   Get command line arguments   #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Get command line arguments
+    # ------------------------------------------------------------------------
 
     parser = argparse.ArgumentParser()
 
@@ -67,20 +67,23 @@ def argument_parsing():
         or default_config
 
     # check if config_file exist
-    helpers.check_existance(arguments.config_file)
+    utils.check_existance(arguments.config_file)
 
-    ##################################
-    # Get arguments from config file #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Get arguments from config file
+    # ------------------------------------------------------------------------
 
-    params = helpers.set_parameters(arguments.config_file, arguments)
+    params = utils.set_parameters(base_config_file=arguments.config_file,
+                                  config_file=None,
+                                  argumetns=arguments)
 
     if params["whitelist"] is not None and type(params["whitelist"]) == str:
-        params["whitelist"] = helpers.excecute_ldapsearch(params["whitelist"])
+        params["whitelist"] = utils.excecute_ldapsearch(params["whitelist"],
+                                                        params["ldapuri"])
 
-    ##################################
-    #     Check given arguments      #
-    ##################################
+    # ------------------------------------------------------------------------
+    # Check given arguments
+    # ------------------------------------------------------------------------
 
     logfile = os.path.join(params["log_path"], params["log_name"])
 
@@ -88,8 +91,8 @@ def argument_parsing():
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
 
-    handlers = helpers.get_log_handlers(logfile, params["log_size"],
-                                        params["verbose"], params["onscreen"])
+    handlers = utils.get_log_handlers(logfile, params["log_size"],
+                                      params["verbose"], params["onscreen"])
 
     if type(handlers) == tuple:
         for h in handlers:
@@ -98,11 +101,11 @@ def argument_parsing():
         root.addHandler(handlers)
 
     # check target directory for existance
-    helpers.check_existance(params["target_dir"])
+    utils.check_existance(params["target_dir"])
 
     # check if logfile is writable
     params["log_file"] = os.path.join(params["log_path"], params["log_name"])
-    helpers.check_writable(params["log_file"])
+    utils.check_writable(params["log_file"])
 
     return params
 
@@ -146,8 +149,11 @@ class NexusReceiver:
         return logger
 
     def open_callback(self, params, filename):
-        target_file = os.path.join(
-            BASE_PATH, "data", "target", "local", filename)
+        target_file = os.path.join(BASE_DIR,
+                                   "data",
+                                   "target",
+                                   "local",
+                                   filename)
 
         try:
             params["target_fp"] = open(target_file, "wb")
@@ -156,26 +162,26 @@ class NexusReceiver:
             if e.errno == errno.ENOENT:
                 try:
                     target_path = os.path.split(target_file)[0]
-                    print ("target_path", target_path)
+                    print("target_path", target_path)
                     os.makedirs(target_path)
 
                     params["target_fp"] = open(target_file, "wb")
-                    print ("New target directory created:", target_path)
+                    print("New target directory created:", target_path)
                 except:
                     raise
             else:
                     raise
-        print (params, filename)
+        print(params, filename)
 
     def read_callback(self, params, received_data):
         metadata = received_data[0]
         data = received_data[1]
-        print (params, metadata)
+        print(params, metadata)
 
         params["target_fp"].write(data)
 
     def close_callback(self, params, data):
-        print (params, data)
+        print(params, data)
         params["target_fp"].close()
 
     def run(self):

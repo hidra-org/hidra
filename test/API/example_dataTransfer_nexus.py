@@ -7,18 +7,18 @@ import logging
 import threading
 import json
 
-from __init__ import BASE_PATH
-import helpers
+from __init__ import BASE_DIR
+import utils
 
 from hidra import Transfer
 
 
 # enable logging
-logfile_path = os.path.join(os.path.join(BASE_PATH, "logs"))
+logfile_path = os.path.join(os.path.join(BASE_DIR, "logs"))
 logfile = os.path.join(logfile_path, "example_nexus_transfer.log")
-helpers.init_logging(logfile, True, "DEBUG")
+utils.init_logging(logfile, True, "DEBUG")
 
-print ("\n==== TEST: nexus transfer ====\n")
+print("\n==== TEST: nexus transfer ====\n")
 
 
 class SenderAsThread (threading.Thread):
@@ -57,7 +57,7 @@ class SenderAsThread (threading.Thread):
 
         for i in range(5):
             metadata = {
-                "source_path": os.path.join(BASE_PATH, "data", "source"),
+                "source_path": os.path.join(BASE_DIR, "data", "source"),
                 "relative_path": "local",
                 "filename": filename,
                 "filepart": "{0}".format(i)
@@ -105,16 +105,16 @@ class SenderAsThread (threading.Thread):
 
 
 def open_callback(params, retrieved_params):
-    print (params, retrieved_params)
+    print(params, retrieved_params)
 
 
 def close_callback(params, retrieved_params):
     params["run_loop"] = False
-    print (params, retrieved_params)
+    print(params, retrieved_params)
 
 
 def read_callback(params, retrieved_params):
-    print (params, retrieved_params)
+    print(params, retrieved_params)
 
 
 senderThread = SenderAsThread()
@@ -141,4 +141,4 @@ finally:
     senderThread.stop()
     obj.stop()
 
-print ("\n==== TEST END: nexus transfer ====\n")
+print("\n==== TEST END: nexus transfer ====\n")

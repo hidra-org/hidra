@@ -1,5 +1,7 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
+
 from six import iteritems
 
 import os
@@ -9,31 +11,31 @@ import collections
 import threading
 import time
 import copy
+import re
 
 from eventdetectorbase import EventDetectorBase
-import helpers
+import utils
+from hidra import convert_suffix_list_to_regex
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-constants = {}
+CONSTANTS = {}
 file_event_list = []
 
 for name in dir(binding):
-    if name.startswith('IN_'):
-        globals()[name] = constants[name] = getattr(binding, name)
+    if name.startswith("IN_"):
+        globals()[name] = CONSTANTS[name] = getattr(binding, name)
 
 
 # Source: inotifyx library code example
-# Copyright (c) 2005 Manuel Amador
-# Copyright (c) 2009-2011 Forest Bond
-class InotifyEvent (object):
-    '''
+class InotifyEvent(object):
+    """
     InotifyEvent(wd, mask, cookie, name)
 
     A representation of the inotify_event structure.  See the inotify
     documentation for a description of these fields.
-    '''
+    """
 
     wd = None
     mask = None
@@ -47,10 +49,10 @@ class InotifyEvent (object):
         self.name = name
 
     def __str__(self):
-        return '%s: %s' % (self.wd, self.get_mask_description())
+        return "%s: %s" % (self.wd, self.get_mask_description())
 
     def __repr__(self):
-        return '%s(%s, %s, %s, %s)' % (
+        return "%s(%s, %s, %s, %s)" % (
             self.__class__.__name__,
             repr(self.wd),
             repr(self.mask),
@@ -59,23 +61,23 @@ class InotifyEvent (object):
         )
 
     def get_mask_description(self):
-        '''
+        """
         Return an ASCII string describing the mask field in terms of
-        bitwise-or'd IN_* constants, or 0.  The result is valid Python code
+        bitwise-or'd IN_* CONSTANTS, or 0.  The result is valid Python code
         that could be eval'd to get the value of the mask field.  In other
         words, for a given event:
 
         >>> from inotifyx import *
         >>> assert (event.mask == eval(event.get_mask_description()))
-        '''
+        """
 
         parts = []
-        for name, value in constants.items():
+        for name, value in CONSTANTS.items():
             if self.mask & value:
                 parts.append(name)
         if parts:
-            return '|'.join(parts)
-        return '0'
+            return "|".join(parts)
+        return "0"
 
 
 def get_event_message(path, filename, paths):
@@ -122,22 +124,29 @@ def get_event_message(path, filename, paths):
             return event_message
 
 
-class CleanUp (threading.Thread):
-    def __init__(self, paths, mon_subdirs, mon_suffixes, cleanup_time,
-                 action_time, lock, log_queue):
+class CleanUp(threading.Thread):
+    def __init__(self,
+                 paths,
+                 mon_subdirs,
+                 mon_regex,
+                 cleanup_time,
+                 action_time,
+                 lock,
+                 log_queue):
 
-        self.log = helpers.get_logger("CleanUp", log_queue)
+        self.log = utils.get_logger("CleanUp", log_queue, log_level="info")
 
         self.log.debug("init")
         self.paths = paths
 
         self.mon_subdirs = mon_subdirs
-        self.mon_suffixes = mon_suffixes
+        self.mon_regex = mon_regex
 
         self.cleanup_time = cleanup_time
         self.action_time = action_time
 
         self.lock = lock
+        self.run_loop = True
 
         self.log.debug("threading.Thread init")
         threading.Thread.__init__(self)
@@ -148,16 +157,15 @@ class CleanUp (threading.Thread):
                                                       directory))
                         for directory in self.mon_subdirs]
 
-        while True:
+        while self.run_loop:
             try:
                 result = []
                 for dirname in dirs_to_walk:
                     result += self.traverse_directory(dirname)
 
-                self.lock.acquire()
-                file_event_list += result
-                self.lock.release()
-#                self.log.debug("file_event_list: {0}".format(file_event_list))
+                with self.lock:
+                    file_event_list += result
+#                self.log.debug("file_event_list: {}".format(file_event_list))
                 time.sleep(self.action_time)
             except:
                 self.log.error("Stopping loop due to error", exc_info=True)
@@ -167,134 +175,167 @@ class CleanUp (threading.Thread):
     def traverse_directory(self, dirname):
         event_list = []
 
-        for root, directories, files in os.walk(dirname):
+        for root, _, files in os.walk(dirname):
             for filename in files:
-                if not filename.endswith(self.mon_suffixes):
+                if self.mon_regex.match(filename) is None:
                     # self.log.debug("File ending not in monitored Suffixes: "
-                    #               "{0}".format(filename))
+                    #               "{}".format(filename))
                     continue
 
                 filepath = os.path.join(root, filename)
-                self.log.debug("filepath: {0}".format(filepath))
+                self.log.debug("filepath: {}".format(filepath))
 
                 try:
                     time_last_modified = os.stat(filepath).st_mtime
                 except:
                     self.log.error("Unable to get modification time for file: "
-                                   "{0}".format(filepath), exc_info=True)
+                                   "{}".format(filepath), exc_info=True)
                     continue
 
                 try:
                     # get current time
                     time_current = time.time()
                 except:
-                    self.log.error("Unable to get current time for file: {0}"
+                    self.log.error("Unable to get current time for file: {}"
                                    .format(filepath), exc_info=True)
                     continue
 
                 if time_current - time_last_modified >= self.cleanup_time:
-                    self.log.debug("New closed file detected: {0}"
+                    self.log.debug("New closed file detected: {}"
                                    .format(filepath))
-#                    self.log.debug("modTime: {0}, currentTime: {1}"
+#                    self.log.debug("modTime: {}, currentTime: {}"
 #                                   .format(time_last_modified, time_current))
-#                    self.log.debug("time_current - time_last_modified: {0}, "
-#                                   "cleanup_time: {1}"
+#                    self.log.debug("time_current - time_last_modified: {}, "
+#                                   "cleanup_time: {}"
 #                                   .format(
 #                                       (time_current - time_last_modified),
 #                                       self.cleanup_time))
-                    event_message = get_event_message(root, filename,
+                    event_message = get_event_message(root,
+                                                      filename,
                                                       self.paths)
-                    self.log.debug("event_message: {0}".format(event_message))
+                    self.log.debug("event_message: {}".format(event_message))
 
                     # add to result list
                     event_list.append(event_message)
 
         return event_list
 
+    def stop(self):
+        self.log.debug("Stopping cleanup thread")
+        self.run_loop = False
+
 
 class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
 
-        EventDetectorBase.__init__(self, config, log_queue,
+        EventDetectorBase.__init__(self,
+                                   config,
+                                   log_queue,
                                    "inotifyx_events")
 
-        required_params = ["monitored_dir",
-                           "fix_subdirs",
-                           ["monitored_events", dict],
-                           # "event_timeout",
-                           "history_size",
-                           "use_cleanup"]
-
-        # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            config,
-                                                            self.log)
-
-        if config["use_cleanup"]:
-            required_params2 = ["time_till_closed", "action_time"]
-
-            # Check format of config
-            # the second set of parameters only has to be checked if cleanup
-            # is enabled
-            check_passed2, config_reduced2 = (
-                helpers.check_config(required_params2,
-                                     config,
-                                     self.log))
-            if check_passed2:
-                # To merge them the braces have to be removed
-                config_reduced = (config_reduced[:-1]
-                                  + ", "
-                                  + config_reduced2[1:])
-        else:
-            check_passed2 = True
-
-        check_passed = check_passed and check_passed2
+        self.config = config
+        self.log_queue = log_queue
 
         self.wd_to_path = {}
+        self.fd = None
+        self.paths = None
+        self.mon_subdirs = None
+        self.mon_regex_per_event = None
+        self.mon_regex = None
+        # TODO decide if this should go into config
+#            self.timeout = self.config["event_timeout"]
+        self.timeout = 1
+        self.history = None
+        self.lock = None
+
+        self.cleanup_time = None
+        self.action_time = None
+        self.cleanup_thread = None
+
+        self.get_remaining_events = None
+
+        self.set_required_params()
+
+        self.check_config()
+        self.setup()
+
+    def set_required_params(self):
+        """
+        Defines the parameters to be in configuration to run this datafetcher.
+        Depending if use_cleanup is configured other parameters are required.
+        """
+
+        self.required_params = ["monitored_dir",
+                                "fix_subdirs",
+                                ["monitored_events", dict],
+                                # "event_timeout",
+                                "history_size",
+                                "use_cleanup"]
+
+        if self.config["use_cleanup"]:
+            self.required_params += ["time_till_closed", "action_time"]
+
+    def setup(self):
+        """
+        Sets static configuration parameters creates ring buffer and starts
+        cleanup thread.
+        """
+
         self.fd = binding.init()
 
-        # Only proceed if the configuration was correct
-        if check_passed:
-            self.log.info("Configuration for event detector: {0}"
-                          .format(config_reduced))
+        # TODO why is this necessary
+        self.paths = [self.config["monitored_dir"]]
+        self.mon_subdirs = self.config["fix_subdirs"]
 
-            # TODO why is this necessary
-            self.paths = [config["monitored_dir"]]
+        self.mon_regex_per_event = self.config["monitored_events"]
+        self.log.debug("monitored_events={}"
+                       .format(self.config["monitored_events"]))
 
-            self.mon_subdirs = config["fix_subdirs"]
+        regexes = []
+        for key, value in iteritems(self.config["monitored_events"]):
+            self.mon_regex_per_event[key] = (
+                convert_suffix_list_to_regex(value,
+                                             compile_regex=False,
+                                             log=self.log))
 
-            suffix_list = []
-            for key, value in iteritems(config["monitored_events"]):
-                suffix_list += value
-            self.mon_suffixes = tuple(suffix_list)
+            regexes.append(self.mon_regex_per_event[key])
 
-            self.mon_events = config["monitored_events"]
+            # cannot be compiled before because regexes needs to be a list
+            # of string
+            self.mon_regex_per_event[key] = (
+                re.compile(self.mon_regex_per_event[key]))
 
-            # TODO decide if this should go into config
-#            self.timeout = config["event_timeout"]
-            self.timeout = 1
+        self.log.debug("regexes={}".format(regexes))
+        self.mon_regex = convert_suffix_list_to_regex(regexes,
+                                                      suffix=False,
+                                                      compile_regex=True,
+                                                      log=self.log)
 
-            self.history = collections.deque(maxlen=config["history_size"])
+        self.history = collections.deque(maxlen=self.config["history_size"])
 
-            self.lock = threading.Lock()
+        self.lock = threading.Lock()
 
-            self.add_watch()
+        self.add_watch()
 
-            if config["use_cleanup"]:
-                self.cleanup_time = config["time_till_closed"]
-                self.action_time = config["action_time"]
+        if self.config["use_cleanup"]:
+            self.cleanup_time = self.config["time_till_closed"]
+            self.action_time = self.config["action_time"]
 
-                self.cleanup_thread = CleanUp(self.paths, self.mon_subdirs,
-                                              self.mon_suffixes,
-                                              self.cleanup_time,
-                                              self.action_time,
-                                              self.lock, log_queue)
-                self.cleanup_thread.start()
+            self.get_remaining_events = self.get_events_from_cleanup
 
+            self.cleanup_thread = CleanUp(
+                paths=self.paths,
+                mon_subdirs=self.mon_subdirs,
+                mon_regex=self.mon_regex,
+                cleanup_time=self.cleanup_time,
+                action_time=self.action_time,
+                lock=self.lock,
+                log_queue=self.log_queue
+            )
+            self.cleanup_thread.start()
         else:
-            self.log.debug("config={0}".format(config))
-            raise Exception("Wrong configuration")
+            self.get_remaining_events = self.get_no_events
 
     # Modification of the inotifyx example found inside inotifyx library
     # Copyright (c) 2005 Manuel Amador
@@ -320,49 +361,74 @@ class EventDetector(EventDetectorBase):
             for path in self.get_directory_structure():
                 wd = binding.add_watch(self.fd, path)
                 self.wd_to_path[wd] = path
-                self.log.debug("Register watch for path: {0}".format(path))
+                self.log.debug("Register watch for path: {}".format(path))
         except:
-            self.log.error("Could not register watch for path: {0}"
+            self.log.error("Could not register watch for path: {}"
                            .format(path), exc_info=True)
 
     def get_directory_structure(self):
         # Add the default subdirs
-        self.log.debug("paths: {0}".format(self.paths))
+        self.log.debug("paths: {}".format(self.paths))
         dirs_to_walk = [os.path.normpath(os.path.join(self.paths[0],
                                                       directory))
                         for directory in self.mon_subdirs]
-        self.log.debug("dirs_to_walk: {0}".format(dirs_to_walk))
+        self.log.debug("dirs_to_walk: {}".format(dirs_to_walk))
         monitored_dirs = []
 
         # Walk the tree
         for directory in dirs_to_walk:
             if os.path.isdir(directory):
                 monitored_dirs.append(directory)
-                for root, directories, files in os.walk(directory):
+                for root, _, _ in os.walk(directory):
                     # Add the found dirs to the list for the inotify-watch
                     if root not in monitored_dirs:
                         monitored_dirs.append(root)
-                        self.log.info("Add directory to monitor: {0}"
+                        self.log.info("Add directory to monitor: {}"
                                       .format(root))
             else:
-                self.log.info("Dir does not exist: {0}".format(directory))
+                self.log.info("Dir does not exist: {}".format(directory))
 
         return monitored_dirs
 
-    def get_new_event(self):
+    def get_no_events(self):
+        return []
+
+    def get_events_from_cleanup(self):
         global file_event_list
 
-        try:
-            self.lock.acquire()
+        event_message_list = []
+
+        with self.lock:
             # get missed files
             event_message_list = copy.deepcopy(file_event_list)
-            file_event_list = []
-        finally:
-            self.lock.release()
 
-        if event_message_list:
-            self.log.info("Added missed files: {0}".format(event_message_list))
+        file_event_list = []
 
+#        if event_message_list:
+#            self.log.info("Added missed files: {}"
+#                          .format(event_message_list))
+
+        return event_message_list
+
+    def get_new_event(self):
+        """Implementation of the abstract method get_new_event.
+        """
+
+        remaining_events = self.get_remaining_events()
+
+        # only take the events which are not handles yet
+        event_message_list = [
+            event for event in remaining_events
+            if [os.path.join(event["source_path"], event["relative_path"]),
+                event["filename"]] not in self.history
+        ]
+        self.history += [
+            [os.path.join(event["source_path"], event["relative_path"]),
+             event["filename"]]
+            for event in remaining_events
+        ]
+
+        # event_message_list = self.get_remaining_events()
         event_message = {}
 
         events = self.get_events(self.fd, self.timeout)
@@ -386,39 +452,41 @@ class EventDetector(EventDetectorBase):
             is_moved_to = ("IN_MOVED_TO" in parts_array)
 
             current_mon_event = None
-            for key, value in iteritems(self.mon_events):
+            for key, value in iteritems(self.mon_regex_per_event):
                 if key in parts_array:
                     current_mon_event = key
+                    current_mon_regex = value
+#                    current_mon_regex = self.mon_regex_per_event[key]
 
 #            if not is_dir:
-#                self.log.debug("{0} {1} {2}".format(path, event.name, parts)
-#                self.log.debug("current_mon_event: {0}"
+#                self.log.debug("{} {} {}".format(path, event.name, parts))
+#                self.log.debug("current_mon_event: {}"
 #                               .format(current_mon_event))
 #            self.log.debug(event.name)
-#            self.log.debug("is_dir: {0}".format(is_dir))
-#            self.log.debug("is_created: {0}".format(is_created))
-#            self.log.debug("is_moved_from: {0}".format(is_moved_from))
-#            self.log.debug("is_moved_to: {0}".format(is_moved_to))
+#            self.log.debug("is_dir: {}".format(is_dir))
+#            self.log.debug("is_created: {}".format(is_created))
+#            self.log.debug("is_moved_from: {}".format(is_moved_from))
+#            self.log.debug("is_moved_to: {}".format(is_moved_to))
 
             # if a new directory is created or a directory is renamed inside
             # the monitored one, this one has to be monitored as well
             if is_dir and (is_created or is_moved_to):
 
-                # self.log.debug("is_dir and is_created: {0} or is_moved_to: "
-                #                "{1}".format(is_created, is_moved_to))
-                # self.log.debug("{0} {1} {2}".format(path, event.name, parts)
+                # self.log.debug("is_dir and is_created: {} or is_moved_to: "
+                #                "{}".format(is_created, is_moved_to))
+                # self.log.debug("{} {} {}".format(path, event.name, parts)
                 # self.log.debug(event.name)
 
                 dirname = os.path.join(path, event.name)
-                self.log.info("Directory event detected: {0}, {1}"
+                self.log.info("Directory event detected: {}, {}"
                               .format(dirname, parts))
                 if dirname in self.paths:
                     self.log.debug("Directory already contained in path list:"
-                                   " {0}".format(dirname))
+                                   " {}".format(dirname))
                 else:
                     wd = binding.add_watch(self.fd, dirname)
                     self.wd_to_path[wd] = dirname
-                    self.log.info("Added new directory to watch: {0}"
+                    self.log.info("Added new directory to watch: {}"
                                   .format(dirname))
 
                     # because inotify misses subdirectory creations if they
@@ -427,7 +495,7 @@ class EventDetector(EventDetectorBase):
                     # http://stackoverflow.com/questions/15806488/
                     #        inotify-missing-events
                     traversed_path = dirname
-                    for root, directories, files in os.walk(dirname):
+                    for _, directories, files in os.walk(dirname):
                         # Add the found dirs to the list for the inotify-watch
                         for dname in directories:
                             traversed_path = os.path.join(traversed_path,
@@ -435,24 +503,25 @@ class EventDetector(EventDetectorBase):
                             wd = binding.add_watch(self.fd, traversed_path)
                             self.wd_to_path[wd] = traversed_path
                             self.log.info("Added new subdirectory to watch: "
-                                          "{0}".format(traversed_path))
-                        self.log.debug("files: {0}".format(files))
+                                          "{}".format(traversed_path))
+                        self.log.debug("files: {}".format(files))
                         for filename in files:
-                            # self.log.debug("filename: {0}".format(filename))
-                            if not filename.endswith(self.mon_suffixes):
-                                self.log.debug("File ending not in monitored "
-                                               "Suffixes: {0}"
+                            # self.log.debug("filename: {}".format(filename))
+                            if self.mon_regex.match(filename) is None:
+                                self.log.debug("File does not match monitored "
+                                               "regex: {}"
                                                .format(filename))
-                                self.log.debug("detected events were: {0}"
+                                self.log.debug("detected events were: {}"
                                                .format(parts))
                                 continue
-                            event_message = self.get_event_message(path,
-                                                                   filename,
-                                                                   self.paths)
-                            self.log.debug("event_message: {0}"
+
+                            event_message = get_event_message(path,
+                                                              filename,
+                                                              self.paths)
+                            self.log.debug("event_message: {}"
                                            .format(event_message))
                             event_message_list.append(event_message)
-#                            self.log.debug("event_message_list: {0}"
+#                            self.log.debug("event_message_list: {}"
 #                                           .format(event_message_list))
                 continue
 
@@ -460,16 +529,16 @@ class EventDetector(EventDetectorBase):
             if is_dir and is_moved_from:
 
                 # self.log.debug("is_dir and is_moved_from")
-                # self.log.debug("{0} {1} {2}".format(path, event.name, parts)
+                # self.log.debug("{} {} {}".format(path, event.name, parts)
                 # self.log.debug(event.name)
 
                 dirname = os.path.join(path, event.name)
-                for watch, watchPath in iteritems(self.wd_to_path):
-                    if watchPath == dirname:
+                for watch, watch_path in iteritems(self.wd_to_path):
+                    if watch_path == dirname:
                         found_watch = watch
                         break
                 binding.rm_watch(self.fd, found_watch)
-                self.log.info("Removed directory from watch: {0}"
+                self.log.info("Removed directory from watch: {}"
                               .format(dirname))
                 # the IN_MOVE_FROM event always apears before the IN_MOVE_TO
                 # (+ additional) events and thus has to be stored till loop
@@ -486,22 +555,23 @@ class EventDetector(EventDetectorBase):
                     and [path, event.name] not in self.history):
 
                 # self.log.debug("not is_dir")
-                # self.log.debug("current_mon_event: {0}"
+                # self.log.debug("current_mon_event: {}"
                 #                .format(current_mon_event))
-                # self.log.debug("{0} {1} {2}".format(path, event.name, parts)
-                # self.log.debug(event.name)
+                # self.log.debug("{} {} {}".format(path, event.name, parts))
+                # self.log.debug("filename: {}".format(event.name))
+                # self.log.debug("regex match: {}".format(
+                #                current_mon_regex.match(event.name)))
 
-                # only files ending with a suffix specified with the current
+                # only files matching the regex specified with the current
                 # event are monitored
-                if (not event.name.endswith(
-                        tuple(self.mon_events[current_mon_event]))):
+                if current_mon_regex.match(event.name) is None:
                     # self.log.debug("File ending not in monitored Suffixes: "
-                    #                "{0}".format(event.name))
-                    # self.log.debug("detected events were: {0}".format(parts))
+                    #                "{}".format(event.name))
+                    # self.log.debug("detected events were: {}".format(parts))
                     continue
 
                 event_message = get_event_message(path, event.name, self.paths)
-                self.log.debug("event_message {0}".format(event_message))
+                self.log.debug("event_message {}".format(event_message))
                 event_message_list.append(event_message)
 
                 self.history.append([path, event.name])
@@ -509,85 +579,18 @@ class EventDetector(EventDetectorBase):
         return event_message_list
 
     def stop(self):
+        """Implementation of the abstract method stop.
+        """
+
+        if self.cleanup_thread is not None:
+            self.cleanup_thread.stop()
+
         try:
             for wd in self.wd_to_path:
                 try:
                     binding.rm_watch(self.fd, wd)
                 except:
-                    self.log.error("Unable to remove watch: {0}".format(wd),
+                    self.log.error("Unable to remove watch: {}".format(wd),
                                    exc_info=True)
         finally:
             os.close(self.fd)
-
-
-if __name__ == '__main__':
-    from subprocess import call
-    from multiprocessing import Queue
-    from __init__ import BASE_PATH
-    from logutils.queue import QueueHandler
-    import logging
-
-    logfile = os.path.join(BASE_PATH, "logs", "inotifyx_events.log")
-    logsize = 10485760
-
-    log_queue = Queue(-1)
-
-    # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onscreen_log_level="debug")
-
-    # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
-    log_queue_listener.start()
-
-    # Create log and set handler to queue handle
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)  # Log level = DEBUG
-    qh = QueueHandler(log_queue)
-    root.addHandler(qh)
-
-    config = {
-        "monitored_dir": os.path.join(BASE_PATH, "data", "source"),
-        "fix_subdirs": ["commissioning", "current", "local"],
-        "monitored_events": {"IN_CLOSE_WRITE": [".tif", ".cbf"],
-                             "IN_MOVED_TO": [".log"]},
-        # "event_timeout": 0.1,
-        "history_size": 0,
-        "use_cleanup": False,
-        "time_till_closed": 5,
-        "action_time": 120
-    }
-
-    source_file = os.path.join(BASE_PATH, "test_file.cbf")
-    target_file_base = os.path.join(
-        BASE_PATH, "data", "source", "local", "raw") + os.sep
-
-    if not os.path.isdir(target_file_base):
-        os.mkdir(target_file_base)
-
-    eventdetector = EventDetector(config, log_queue)
-
-    i = 100
-    while i <= 110:
-        try:
-            logging.debug("copy")
-            target_file = "{0}{1}.cbf".format(target_file_base, i)
-            call(["cp", source_file, target_file])
-#            copyfile(source_file, target_file)
-            i += 1
-
-            event_list = eventdetector.get_new_event()
-            if event_list:
-                print ("event_list:", event_list)
-
-            time.sleep(1)
-        except KeyboardInterrupt:
-            break
-
-    for number in range(100, i):
-        target_file = "{0}{1}.cbf".format(target_file_base, number)
-        logging.debug("remove {0}".format(target_file))
-        os.remove(target_file)
-
-    log_queue.put_nowait(None)
-    log_queue_listener.stop()

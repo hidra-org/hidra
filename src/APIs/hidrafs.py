@@ -22,7 +22,7 @@ class Passthrough(Operations):
         self.timeout = 2000
         self.read_pointer = 0
 
-        targets = [socket.gethostname(), "50101", 1]
+        targets = [socket.getfqdn(), "50101", 1]
 
         # create HiDRA Transfer instance which wants data by request only
         self.query = Transfer("QUERY_NEXT", signal_host)
@@ -32,7 +32,7 @@ class Passthrough(Operations):
         self.metadata = None
         self.data = None
 
-    # helpers
+    # utils
     # ==================
 
     def __get_logger(self):
@@ -50,17 +50,15 @@ class Passthrough(Operations):
     # Filesystem methods
     # ==================
 
-    """
-    def access(self, path, mode):
-        pass
+#    def access(self, path, mode):
+#        pass
 
-    def chmod(self, path, mode):
-        pass
+#    def chmod(self, path, mode):
+#        pass
 
-    def chown(self, path, uid, gid):
-        pass
+#    def chown(self, path, uid, gid):
+#        pass
 
-    """
     def getattr(self, path, fh=None):
         self.log.debug("path={0}".format(path))
 
@@ -91,7 +89,7 @@ class Passthrough(Operations):
             }
 
     def readdir(self, path, fh):
-#        if self.metadata is None and self.data is None:
+        # if self.metadata is None and self.data is None:
         [self.metadata, self.data] = self.query.get(self.timeout)
 
         if self.metadata is None:
@@ -99,49 +97,47 @@ class Passthrough(Operations):
         else:
             return [".", "..", self.metadata["filename"]]
 
-    """
     # The method readlink() returns a string representing the path to which the
     # symbolic link points. It may return an absolute or relative pathname.
-    def readlink(self, path):
-        pass
+#    def readlink(self, path):
+#        pass
 
     # The method mknod() creates a filesystem node (file, device special file
     # or named pipe) named filename.
-    def mknod(self, path, mode, dev):
-        pass
+#    def mknod(self, path, mode, dev):
+#        pass
 
-    def rmdir(self, path):
-        pass
+#    def rmdir(self, path):
+#        pass
 
-    def mkdir(self, path, mode):
-        pass
+#    def mkdir(self, path, mode):
+#        pass
 
     # The method statvfs() perform a statvfs system call on the given path.
-    def statfs(self, path):
-        pass
+#    def statfs(self, path):
+#        pass
 
     # The method unlink() removes (deletes) the file path. If the path is a
     # directory, OSError is raised.
-    def unlink(self, path):
-        pass
+#    def unlink(self, path):
+#        pass
 
     # The method symlink() creates a symbolic link dst pointing to src.
-    def symlink(self, name, target):
-        pass
+#    def symlink(self, name, target):
+#        pass
 
-    def rename(self, old, new):
-        pass
+#    def rename(self, old, new):
+#        pass
 
-    def link(self, target, name):
-        signal_host = "zitpcx19282.desy.de"
-        targets = ["zitpcx19282.desy.de", "50101", 1]
-        pass
+#    def link(self, target, name):
+#        signal_host = "zitpcx19282.desy.de"
+#        targets = ["zitpcx19282.desy.de", "50101", 1]
+#        pass
 
     # The method utime() sets the access and modified times of the file
     # specified by path.
-    def utimens(self, path, times=None):
-        pass
-    """
+#    def utimens(self, path, times=None):
+#        pass
 
     # File methods
     # ============
@@ -150,7 +146,7 @@ class Passthrough(Operations):
     # flags and possibly its mode according to mode.The default mode is 0777
     # (octal), and the current umask value is first masked out.
     def open(self, path, flags):
-        #self.log.debug("open")
+        # self.log.debug("open")
         if self.metadata is None and self.data is None:
             self.log.debug("get")
             [self.metadata, self.data] = self.query.get(self.timeout)
@@ -158,21 +154,17 @@ class Passthrough(Operations):
         self.read_pointer = 0
         return 0
 
-    """
-    def create(self, path, mode, fi=None):
-        pass
-    """
+#    def create(self, path, mode, fi=None):
+#        pass
 
     def read(self, path, length, offset, fh):
-#        self.log.debug("read")
+        # self.log.debug("read")
 
         self.read_pointer += length
         return self.data[self.read_pointer - length:self.read_pointer]
 
-    """
-    def write(self, path, buf, offset, fh):
-        pass
-    """
+#    def write(self, path, buf, offset, fh):
+#        pass
 
     # The method truncate() truncates the file's size. The file is truncated to
     # (at most) that size of the argument length
@@ -180,21 +172,18 @@ class Passthrough(Operations):
         self.log.debug("truncate")
         pass
 
-    """
     # The method fsync() forces write of file with file descriptor fd to disk.
-    def flush(self, path, fh):
-        self.release(path, fh)
-    """
+#    def flush(self, path, fh):
+#        self.release(path, fh)
 
     def release(self, path, fh):
-        #self.log.debug("release")
+        # self.log.debug("release")
         self.metadata = None
         self.data = None
 
-    """
-    def fsync(self, path, fdatasync, fh):
-        self.release(path, fh)
-    """
+#    def fsync(self, path, fdatasync, fh):
+#        self.release(path, fh)
+
 
 if __name__ == '__main__':
 
@@ -203,7 +192,7 @@ if __name__ == '__main__':
     parser.add_argument("--signal_host",
                         type=str,
                         help="Host where HiDRA is runnning",
-                        default=socket.gethostname())
+                        default=socket.getfqdn())
     parser.add_argument("--mount",
                         type=str,
                         help="Mount point under which hidrafs should be"

@@ -4,11 +4,10 @@ Source: https://stash.desy.de/projects/LSDMA/repos/hidra/browse
 
 Files: *
 Copyright: 2015-2017 Manuela Kuhn <manuela.kuhn@desy.de>
-           <years> <likewise for another author>
-License: AGPL v3
+License: AGPL
 
 Files: debian/*
-Copyright: 2017 Stefan Dietrich <stefan.dietrich@desy.de>
+Copyright: 2017 J. Blume <johannes.blume@desy.de>
 License: GPL-3.0+
 
 License: GPL-3.0+
@@ -28,7 +27,7 @@ License: GPL-3.0+
  On Debian systems, the complete text of the GNU General
  Public License version 3 can be found in "/usr/share/common-licenses/GPL-3".
 
-License: AGPL v3
+License: AGPL
                      GNU AFFERO GENERAL PUBLIC LICENSE
                         Version 3, 19 November 2007
  .

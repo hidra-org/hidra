@@ -1,18 +1,34 @@
 Source: hidra
-Section: unknown
+Section: science
 Priority: optional
-Maintainer: Stefan Dietrich <stefan.dietrich@desy.de>
-Build-Depends: debhelper (>= 8.0.0)
-Standards-Version: 3.9.4
+Maintainer: Manuela Kuhn <manuela.kuhn@desy.de>
+Build-Depends: debhelper (>= 9.0.0), python, dh-python, python-dev, python-setuptools
+Standards-Version: 3.9.6
 Homepage: https://stash.desy.de/projects/LSDMA/repos/hidra/browse
-#Vcs-Git: git://git.debian.org/collab-maint/hidra.git
-#Vcs-Browser: http://git.debian.org/?p=collab-maint/hidra.git;a=summary
 
 Package: hidra
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: python-hidra (= ${binary:Version}), python, systemd, python-logutils, python-inotifyx (>= 0.2.2), python-setproctitle, python-six
 Description: High performance data multiplexing tool
- HiDRA is a generic tool set for high performance data multiplexing with different qualities of service and is based on Python and ZeroMQ.
- It can be used to directly store the data in the storage system but also to send it to some kind of online monitoring or analysis framework.
- Together with OnDA, data can be analyzed with a delay of seconds resulting in an increase of the quality of the generated scientific data by 20 %.
- The modular architecture of the tool (divided into event detectors, data fetchers and receivers) makes it easily extendible and even gives the possibility to adapt the software to specific detectors directly (for example, Eiger and Lambda detector).
+ HiDRA is a generic tool set for high performance data multiplexing
+ with different qualities of service and is based on Python and ZeroMQ.
+ It can be used to directly store the data in the storage system but
+ also to send it to some kind of online monitoring or analysis framework.
+ Together with OnDA, data can be analyzed with a delay of seconds
+ resulting in an increase of the quality of the generated scientific
+ data by 20 %. The modular architecture of the tool (divided into event
+ detectors, data fetchers and receivers) makes it easily extendible and
+ even gives the possibility to adapt the software to specific detectors
+ directly (for example, Eiger and Lambda detector).
+
+Package: hidra-control-client
+Architecture: any
+Depends: python-hidra (= ${binary:Version}), python
+Description: The hidra control client
+ For machines like Eiger detectors which only need the control client
+
+Package: python-hidra
+Architecture: any
+Depends: python, python-zmq (>= 14.5.0)
+Description: python modules for hidra
+ Python modules for HiDRA ( High performance data multiplexing tool )

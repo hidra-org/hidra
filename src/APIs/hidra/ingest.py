@@ -13,7 +13,7 @@ import tempfile
 import socket
 
 # from ._version import __version__
-from ._shared_helpers import LoggingFunction
+from ._shared_utils import LoggingFunction, Base
 
 
 def is_windows():
@@ -23,9 +23,45 @@ def is_windows():
         return False
 
 
-class Ingest():
+class Ingest(Base):
     # return error code
     def __init__(self, use_log=False, context=None):
+
+        self.log = None
+        self.context = None
+        self.ext_context = None
+
+        self.current_pid = None
+
+        self.localhost = None
+        self.localhost_is_ipv6 = None
+
+        self.ext_ip = None
+        self.ipc_dir = None
+
+        self.signal_host = None
+        self.signal_port = None
+        self.event_det_port = None
+        self.data_fetch_port = None
+
+        self.signal_endpoint = None
+        self.eventdet_endpoint = None
+        self.datafetch_endpoint = None
+
+        self.file_op_socket = None
+        self.eventdet_socket = None
+        self.datafetch_socket = None
+
+        self.poller = None
+
+        self.filename = False
+        self.filepart = None
+
+        self.response_timeout = None
+
+        self._setup(use_log, context)
+
+    def _setup(self, use_log, context):
 
         # print messages of certain level to screen
         if use_log in ["debug", "info", "warning", "error", "critical"]:
@@ -56,16 +92,16 @@ class Ingest():
 #        self.localhost = socket.gethostbyaddr("localhost")[2][0]
         try:
             socket.inet_aton(self.localhost)
-            self.log.info("IPv4 address detected for localhost: {0}."
+            self.log.info("IPv4 address detected for localhost: {}."
                           .format(self.localhost))
             self.localhost_is_ipv6 = False
         except socket.error:
-            self.log.info("Address '{0}' is not a IPv4 address, asume it is "
+            self.log.info("Address '{}' is not a IPv4 address, asume it is "
                           "an IPv6 address.".format(self.localhost))
             self.localhost_is_ipv6 = True
 
         self.ext_ip = "0.0.0.0"
-        self.ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
+        self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
 
         self.signal_host = "zitpcx19282"
         self.signal_port = "50050"
@@ -77,118 +113,97 @@ class Ingest():
         # as ...
         self.data_fetch_port = "50010"
 
-        self.signal_con_id = "tcp://{0}:{1}".format(self.signal_host,
+        self.signal_endpoint = "tcp://{}:{}".format(self.signal_host,
                                                     self.signal_port)
 
         if is_windows():
             self.log.info("Using tcp for internal communication.")
-            self.eventdet_con_id = "tcp://{0}:{1}".format(self.localhost,
+            self.eventdet_endpoint = "tcp://{}:{}".format(self.localhost,
                                                           self.event_det_port)
-            self.datafetch_con_id = ("tcp://{0}:{1}"
-                                     .format(self.localhost,
-                                             self.data_fetch_port))
+            self.datafetch_endpoint = ("tcp://{}:{}"
+                                       .format(self.localhost,
+                                               self.data_fetch_port))
         else:
             self.log.info("Using ipc for internal communication.")
-            self.eventdet_con_id = "ipc://{0}/{1}".format(self.ipc_path,
-                                                          "eventDet")
-            self.datafetch_con_id = "ipc://{0}/{1}".format(self.ipc_path,
-                                                           "dataFetch")
-#            self.eventdet_con_id = ("ipc://{0}/{1}_{2}"
-#                                    .format(self.ipc_path,
-#                                            self.current_pid,
-#                                            "eventDet"))
-#            self.datafetch_con_id = ("ipc://{0}/{1}_{2}"
-#                                     .format(self.ipc_path,
-#                                             self.current_pid,
-#                                             "dataFetch"))
-
-        self.file_op_socket = None
-        self.eventdet_socket = None
-        self.datafetch_socket = None
+            self.eventdet_endpoint = "ipc://{}/{}".format(self.ipc_dir,
+                                                          "eventdet")
+            self.datafetch_endpoint = "ipc://{}/{}".format(self.ipc_dir,
+                                                           "datafetch")
+#            self.eventdet_endpoint = ("ipc://{}/{}_{}"
+#                                      .format(self.ipc_dir,
+#                                              self.current_pid,
+#                                              "eventdet"))
+#            self.datafetch_endpoint = ("ipc://{}/{}_{}"
+#                                       .format(self.ipc_dir,
+#                                               self.current_pid,
+#                                               "datafetch"))
 
         self.poller = zmq.Poller()
-
-        self.filename = False
-        self.filepart = None
-
         self.response_timeout = 1000
 
-        self.__create_socket()
+        self._create_socket()
 
-    def __create_socket(self):
+    def _create_socket(self):
 
         # To send file open and file close notification, a communication
         # socket is needed
-        self.file_op_socket = self.context.socket(zmq.REQ)
 
-        # time to wait for the sender to give a confirmation of the signal
-#        self.file_op_socket.RCVTIMEO = self.response_timeout
-        try:
-            self.file_op_socket.connect(self.signal_con_id)
-            self.log.info("file_op_socket started (connect) for '{0}'"
-                          .format(self.signal_con_id))
-        except Exception:
-            self.log.error("Failed to start file_op_socket (connect): '{0}'"
-                           .format(self.signal_con_id), exc_info=True)
-            raise
+        self.file_op_socket = self._start_socket(
+            name="file_op_socket",
+            sock_type=zmq.REQ,
+            sock_con="connect",
+            endpoint=self.signal_endpoint
+        )
 
         # using a Poller to implement the file_op_socket timeout
         # (in older ZMQ version there is no option RCVTIMEO)
-#        self.poller = zmq.Poller()
         self.poller.register(self.file_op_socket, zmq.POLLIN)
 
-        self.eventdet_socket = self.context.socket(zmq.PUSH)
-        self.datafetch_socket = self.context.socket(zmq.PUSH)
+        if is_windows():
+            is_ipv6 = self.localhost_is_ipv6
+        else:
+            is_ipv6 = False
 
-        if is_windows() and self.localhost_is_ipv6:
-            self.eventdet_socket.ipv6 = True
-            self.log.debug("Enabling IPv6 socket eventdet_socket")
+        self.file_op_socket = self._start_socket(
+            name="eventdet_socket",
+            sock_type=zmq.PUSH,
+            sock_con="connect",
+            endpoint=self.eventdet_endpoint,
+            is_ipv6=is_ipv6
+        )
 
-            self.datafetch_socket.ipv6 = True
-            self.log.debug("Enabling IPv6 socket datafetch_socket")
-
-        try:
-            self.eventdet_socket.connect(self.eventdet_con_id)
-            self.log.info("eventdet_socket started (connect) for '{0}'"
-                          .format(self.eventdet_con_id))
-        except:
-            self.log.error("Failed to start eventdet_socket (connect): '{0}'"
-                           .format(self.eventdet_con_id), exc_info=True)
-            raise
-
-        try:
-            self.datafetch_socket.connect(self.datafetch_con_id)
-            self.log.info("datafetch_socket started (connect) for '{0}'"
-                          .format(self.datafetch_con_id))
-        except:
-            self.log.error("Failed to start datafetch_socket (connect): '{0}'"
-                           .format(self.datafetch_con_id), exc_info=True)
-            raise
+        self.datafetch_socket = self._start_socket(
+            name="datafetch_socket",
+            sock_type=zmq.PUSH,
+            sock_con="connect",
+            endpoint=self.datafetch_endpoint,
+            is_ipv6=is_ipv6
+        )
 
     # return error code
     def create_file(self, filename):
         signal = b"OPEN_FILE"
 
         if self.filename and self.filename != filename:
-            raise Exception("File {0} already opened.".format(filename))
+            raise Exception("File {} already opened.".format(filename))
 
         # send notification to receiver
         self.file_op_socket.send_multipart([signal, filename])
         self.log.info("Sending signal to open a new file.")
 
         message = self.file_op_socket.recv_multipart()
-        self.log.debug("Received responce: {0}".format(message))
+        self.log.debug("Received responce: {}".format(message))
 
         if signal == message[0] and filename == message[1]:
             self.filename = filename
             self.filepart = 0
         else:
-            self.log.debug("signal={0} and filename={1}"
+            self.log.debug("signal={} and filename={}"
                            .format(signal, filename))
-            raise Exception("Wrong responce received: {0}".format(message))
+            raise Exception("Wrong responce received: {}".format(message))
 
     def write(self, data):
-        # send event to eventDet
+        # send event to eventdet
         message = {
             "filename": self.filename,
             "filepart": self.filepart,
@@ -219,7 +234,7 @@ class Ingest():
         try:
             self.eventdet_socket.send_multipart(send_message)
             self.log.debug("Sending signal to close the file to "
-                           "eventdet_socket (send_message={0})"
+                           "eventdet_socket (send_message={})"
                            .format(send_message))
         except:
             raise Exception("Sending signal to close the file to "
@@ -238,14 +253,14 @@ class Ingest():
             self.log.info("Received answer to signal...")
             #  Get the reply.
             recv_message = self.file_op_socket.recv_multipart()
-            self.log.info("Received answer to signal: {0}"
+            self.log.info("Received answer to signal: {}"
                           .format(recv_message))
         else:
             recv_message = None
 
         if recv_message != send_message:
-            self.log.debug("received message: {0}".format(recv_message))
-            self.log.debug("send message: {0}".format(send_message))
+            self.log.debug("received message: {}".format(recv_message))
+            self.log.debug("send message: {}".format(send_message))
             raise Exception("Something went wrong while notifying to close "
                             "the file")
 
@@ -259,18 +274,9 @@ class Ingest():
 
         """
         try:
-            if self.file_op_socket:
-                self.log.info("closing file_op_socket...")
-                self.file_op_socket.close(linger=0)
-                self.file_op_socket = None
-            if self.eventdet_socket:
-                self.log.info("closing eventdet_socket...")
-                self.eventdet_socket.close(linger=0)
-                self.eventdet_socket = None
-            if self.datafetch_socket:
-                self.log.info("closing datafetch_socket...")
-                self.datafetch_socket.close(linger=0)
-                self.datafetch_socket = None
+            self._stop_socket(name="file_op_socket")
+            self._stop_socket(name="eventdet_socket")
+            self._stop_socket(name="datafetch_socket")
         except:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 

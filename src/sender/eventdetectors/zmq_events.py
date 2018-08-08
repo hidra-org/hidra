@@ -1,107 +1,238 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
-import os
-import zmq
 import json
+import zmq
+from collections import namedtuple
 
 from eventdetectorbase import EventDetectorBase
-import helpers
+import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
+
+IpcAddresses = namedtuple("ipc_addresses", ["eventdet"])
+TcpAddresses = namedtuple("tcp_addresses", ["eventdet_bind", "eventdet_con"])
+Endpoints = namedtuple("endpoints", ["eventdet_bind", "eventdet_con"])
+
+
+def get_tcp_addresses(config):
+    """Build the addresses used for TCP communcation.
+
+    The addresses are only set if called on Windows. For Linux they are set
+    to None.
+
+    Args:
+        config (dict): A dictionary containing the IPs to bind and to connect
+                       to as well as the ports. Usually con_ip is the DNS name.
+    Returns:
+        A TcpAddresses object.
+    """
+
+    if utils.is_windows():
+        ext_ip = config["ext_ip"]
+        con_ip = config["con_ip"]
+
+        port = config["event_det_port"]
+        eventdet_bind = "{}:{}".format(ext_ip, port)
+        eventdet_con = "{}:{}".format(con_ip, port)
+
+        addrs = TcpAddresses(
+            eventdet_bind=eventdet_bind,
+            eventdet_con=eventdet_con
+        )
+    else:
+        addrs = None
+
+    return addrs
+
+
+def get_ipc_addresses(config):
+    """Build the addresses used for IPC.
+
+    The addresses are only set if called on Linux. On windows they are set
+    to None.
+
+    Args:
+        config (dict): A dictionary conaining the ipc base directory and the
+                       main PID.
+    Returns:
+        An IpcAddresses object.
+    """
+    if utils.is_windows():
+        addrs = None
+    else:
+        ipc_ip = "{}/{}".format(config["ipc_dir"],
+                                config["main_pid"])
+
+        eventdet = "{}_{}".format(ipc_ip, "eventdet")
+
+        addrs = IpcAddresses(eventdet=eventdet)
+
+    return addrs
+
+
+def get_endpoints(ipc_addresses, tcp_addresses):
+    """Configures the ZMQ endpoints depending on the protocol.
+
+    Args:
+        ipc_addresses: The endpoints used for the interprocess communication
+                       (ipc) protocol.
+        tcp_addresses: The endpoints used for communication over TCP.
+    Returns:
+        An Endpoints object containing the bind and connection endpoints.
+    """
+
+    if ipc_addresses is not None:
+        eventdet_bind = "ipc://{}".format(ipc_addresses.eventdet)
+        eventdet_con = eventdet_bind
+
+    elif tcp_addresses is not None:
+        eventdet_bind = "tcp://{}".format(tcp_addresses.eventdet_bind)
+        eventdet_con = "tcp://{}".format(tcp_addresses.eventdet_con)
+    else:
+        msg = "Neither ipc not tcp endpoints are defined"
+        raise Exception(msg)
+
+    return Endpoints(
+        eventdet_bind=eventdet_bind,
+        eventdet_con=eventdet_con
+    )
+
+
+# generalization not used because removing the ipc_addresses later is more
+# difficult
+# Addresses = namedtuple("addresses", ["eventdet_bind", "eventdet_con"])
+# def get_addresses(config):
+#    if not utils.is_windows():
+#        eventdet_bind = "{}:{}".format(config["ext_ip"],
+#                                       config["event_det_port"]),
+#        eventdet_con = "{}:{}".formau(config["con_ip"],
+#                                      config["event_det_port"]),
+#    else:
+#        ipc_ip = "{}/{}".format(config["ipc_dir"],
+#                                config["main_pid"])
+#
+#        eventdet_bind = "{}_{}".format(ipc_ip, "eventdet"),
+#        eventdet_con = eventdet_bind
+#
+#    addrs = Addresses(
+#        eventdet_bind=eventdet_bind,
+#        eventdet_con=eventdet_con
+#    )
+#
+#    return addrs
+#
+#
+# def get_endpoints(config, addrs):
+#
+#    if utils.is_windows():
+#        protocol = "tcp"
+#    else:
+#        protocol = "ipc"
+#
+#    eventdet_bind = "{}://{}".format(protocol, addrs.eventdet_bind)
+#    eventdet_con = "{}://{}".format(protocol, addrs.eventdet_con)
+#
+#    endpoints = Endpoints(
+#        eventdet_bind=eventdet_bind,
+#        eventdet_con=eventdet_con
+#    )
+#
+#    return endpoints
 
 
 class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
 
-        EventDetectorBase.__init__(self, config, log_queue,
+        EventDetectorBase.__init__(self,
+                                   config,
+                                   log_queue,
                                    "zmq_events")
 
-        if helpers.is_windows():
-            required_params = ["context",
-                               "number_of_streams",
-                               "ext_ip",
-                               "event_det_port"]
+        self.config = config
+        self.log_queue = log_queue
+
+        self.ext_context = None
+        self.context = None
+        self.event_socket = None
+
+        self.ipc_addresses = None
+        self.tcp_addresses = None
+        self.endpoints = None
+
+        self.set_required_params()
+
+        self.check_config()
+        self.setup()
+
+    def set_required_params(self):
+        """
+        Defines the parameters to be in configuration to run this datafetcher.
+        Depending if on Linux or Windows other parameters are required.
+        """
+
+        self.required_params = ["context", "number_of_streams"]
+        if utils.is_windows():
+            self.required_params += ["ext_ip", "event_det_port"]
         else:
-            required_params = ["context",
-                               "number_of_streams",
-                               "ipc_path"]
+            self.required_params += ["ipc_dir", "main_pid"]
 
-        # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            config,
-                                                            self.log)
+    def setup(self):
+        """
+        Sets ZMQ endpoints and addresses and creates the ZMQ socket.
+        """
 
-        # Only proceed if the configuration was correct
-        if check_passed:
-            self.log.info("Configuration for event detector: {0}"
-                          .format(config_reduced))
+        self.ipc_addresses = get_ipc_addresses(config=self.config)
+        self.tcp_addresses = get_tcp_addresses(config=self.config)
+        self.endpoints = get_endpoints(ipc_addresses=self.ipc_addresses,
+                                       tcp_addresses=self.tcp_addresses)
 
-            if helpers.is_windows():
-                self.event_det_con_str = ("tcp://{0}:{1}"
-                                          .format(config["ext_ip"],
-                                                  config["event_det_port"]))
-            else:
-                self.event_det_con_str = ("ipc://{0}/{1}"
-                                          .format(config["ipc_path"],
-                                                  "eventDet"))
-
-            self.event_socket = None
-
-            self.number_of_streams = config["number_of_streams"]
-
-            # remember if the context was created outside this class or not
-            if config["context"]:
-                self.context = config["context"]
-                self.ext_context = True
-            else:
-                self.log.info("Registering ZMQ context")
-                self.context = zmq.Context()
-                self.ext_context = False
-
-            self.create_sockets()
-
+        # remember if the context was created outside this class or not
+        if self.config["context"]:
+            self.context = self.config["context"]
+            self.ext_context = True
         else:
-            self.log.debug("config={0}".format(config))
-            raise Exception("Wrong configuration")
-
-    def create_sockets(self):
+            self.log.info("Registering ZMQ context")
+            self.context = zmq.Context()
+            self.ext_context = False
 
         # Create zmq socket to get events
-        try:
-            self.event_socket = self.context.socket(zmq.PULL)
-            self.event_socket.bind(self.event_det_con_str)
-            self.log.info("Start event_socket (bind): '{0}'"
-                          .format(self.event_det_con_str))
-        except:
-            self.log.error("Failed to start event_socket (bind): '{0}'"
-                           .format(self.event_det_con_str), exc_info=True)
-            raise
+        self.event_socket = self.start_socket(
+            name="event_socket",
+            sock_type=zmq.PULL,
+            sock_con="bind",
+            endpoint=self.endpoints.eventdet_bind
+        )
 
     def get_new_event(self):
+        """Implementation of the abstract method get_new_event.
+        """
 
         event_message = self.event_socket.recv_multipart()
 
         if event_message[0] == b"CLOSE_FILE":
-            event_message_list = [event_message
-                                  for i in range(self.number_of_streams)]
+            event_message_list = [
+                event_message for i in range(self.config["number_of_streams"])
+            ]
         else:
             event_message_list = [json.loads(event_message[0].decode("utf-8"))]
 
-        self.log.debug("event_message: {0}".format(event_message_list))
+        self.log.debug("event_message: {}".format(event_message_list))
 
         return event_message_list
 
     def stop(self):
+        """Implementation of the abstract method stop.
+        """
         # close ZMQ
-        if self.event_socket:
-            self.event_socket.close(0)
-            self.event_socket = None
+        self.stop_socket(name="event_socket")
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class
-        if not self.ext_context and self.context:
+        if not self.ext_context and self.context is not None:
             try:
                 self.log.info("Closing ZMQ context...")
                 self.context.destroy(0)
@@ -109,89 +240,3 @@ class EventDetector(EventDetectorBase):
                 self.log.info("Closing ZMQ context...done.")
             except:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
-
-
-if __name__ == '__main__':
-    import time
-    from multiprocessing import Queue
-    from __init__ import BASE_PATH
-    import logging
-    import tempfile
-    from logutils.queue import QueueHandler
-
-    logfile = os.path.join(BASE_PATH, "logs", "zmqDetector.log")
-    logsize = 10485760
-
-    log_queue = Queue(-1)
-
-    # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onscreen_log_level="debug")
-
-    # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
-    log_queue_listener.start()
-
-    # Create log and set handler to queue handle
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)  # Log level = DEBUG
-    qh = QueueHandler(log_queue)
-    root.addHandler(qh)
-
-    ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
-
-    event_det_con_str = "ipc://{0}/{1}".format(ipc_path, "eventDet")
-    print ("event_det_con_str", event_det_con_str)
-    number_of_streams = 1
-    config = {
-        "context": None,
-        "number_of_streams": number_of_streams,
-        "ext_ip": "0.0.0.0",
-        "event_det_port": 50003,
-        "ipc_path": ipc_path
-    }
-
-    eventdetector = EventDetector(config, log_queue)
-
-    source_file = os.path.join(BASE_PATH, "test_file.cbf")
-    target_file_base = os.path.join(
-        BASE_PATH, "data", "source", "local", "raw") + os.sep
-
-    context = zmq.Context.instance()
-
-    # create zmq socket to send events
-    event_socket = context.socket(zmq.PUSH)
-    event_socket.connect(event_det_con_str)
-    logging.info("Start event_socket (connect): '{0}'"
-                 .format(event_det_con_str))
-
-    i = 100
-    while i <= 101:
-        try:
-            logging.debug("generate event")
-            target_file = "{0}{1}.cbf".format(target_file_base, i)
-            message = {
-                "filename": target_file,
-                "filepart": 0,
-                "chunksize": 10
-            }
-
-            event_socket.send_multipart([json.dumps(message).encode("utf-8")])
-            i += 1
-
-            event_list = eventdetector.get_new_event()
-            if event_list:
-                logging.debug("event_list: {0}".format(event_list))
-
-            time.sleep(1)
-        except KeyboardInterrupt:
-            break
-
-    event_socket.send_multipart(
-        [b"CLOSE_FILE", "test_file.cbf".encode("utf8")])
-
-    event_list = eventdetector.get_new_event()
-    logging.debug("event_list: {0}".format(event_list))
-
-    log_queue.put_nowait(None)
-    log_queue_listener.stop()

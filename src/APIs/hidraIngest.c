@@ -199,8 +199,8 @@ HIDRA_ERROR hidraIngest_init (hidraIngest **out)
 //    snprintf(eventDetConId, sizeof(eventDetConId), "tcp://%s:%s", dI->localhost, dI->eventDetPort);
 //    snprintf(dataFetchConId, sizeof(dataFetchConId), "tcp://%s:%s", dI->localhost, dI->dataFetchPort);
     // else:
-    snprintf(eventDetConId, sizeof(eventDetConId), "ipc://%s/eventDet", dI->ipcPath);
-    snprintf(dataFetchConId, sizeof(dataFetchConId), "ipc://%s/dataFetch", dI->ipcPath);
+    snprintf(eventDetConId, sizeof(eventDetConId), "ipc://%s/eventdet", dI->ipcPath);
+    snprintf(dataFetchConId, sizeof(dataFetchConId), "ipc://%s/datafetch", dI->ipcPath);
 
     // Initialize sockets
     if ( (dI->context = zmq_ctx_new ()) == NULL )

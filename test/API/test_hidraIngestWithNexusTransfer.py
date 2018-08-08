@@ -8,19 +8,19 @@ import threading
 import json
 import tempfile
 
-from __init__ import BASE_PATH
-import helpers
+from __init__ import BASE_DIR
+import utils
 
 from hidra import Transfer
 from hidra import Ingest
 
 
 # enable logging
-logfile_path = os.path.join(BASE_PATH, "logs")
+logfile_path = os.path.join(BASE_DIR, "logs")
 logfile = os.path.join(logfile_path, "test_nexus_ingest_with_transfer.log")
-helpers.init_logging(logfile, True, "DEBUG")
+utils.init_logging(logfile, True, "DEBUG")
 
-print ("\n==== TEST: hidraIngest together with nexus transfer ====\n")
+print("\n==== TEST: hidraIngest together with nexus transfer ====\n")
 
 
 class HidraSimulation (threading.Thread):
@@ -162,16 +162,16 @@ def hidra_ingest(numb_to_send):
 
 
 def open_callback(params, retrieved_params):
-    print ("open_callback", params, retrieved_params)
+    print("open_callback", params, retrieved_params)
 
 
 def close_callback(params, retrieved_params):
     params["run_loop"] = False
-    print ("close_callback", params, retrieved_params)
+    print("close_callback", params, retrieved_params)
 
 
 def read_callback(params, retrieved_params):
-    print ("read_callback", params, retrieved_params)
+    print("read_callback", params, retrieved_params)
 
 
 def nexus_transfer():
@@ -197,25 +197,28 @@ def nexus_transfer():
     finally:
         obj.stop()
 
-use_test = True
-# use_test = False
 
-if use_test:
-    hidra_simulation_thread = HidraSimulation()
-    hidra_simulation_thread.start()
+if __name__ == "__main__":
+    use_test = True
+    # use_test = False
 
-number = 5
+    if use_test:
+        hidra_simulation_thread = HidraSimulation()
+        hidra_simulation_thread.start()
 
-hidra_ingest_thread = threading.Thread(target=hidra_ingest, args=(number, ))
-nexus_transfer_thread = threading.Thread(target=nexus_transfer)
+    number = 5
 
-hidra_ingest_thread.start()
-nexus_transfer_thread.start()
+    hidra_ingest_thread = threading.Thread(target=hidra_ingest,
+                                           args=(number, ))
+    nexus_transfer_thread = threading.Thread(target=nexus_transfer)
 
-hidra_ingest_thread.join()
-nexus_transfer_thread.join()
+    hidra_ingest_thread.start()
+    nexus_transfer_thread.start()
 
-if use_test:
-    hidra_simulation_thread.stop()
+    hidra_ingest_thread.join()
+    nexus_transfer_thread.join()
 
-print ("\n==== TEST END: hidraIngest together with nexus transfer ====\n")
+    if use_test:
+        hidra_simulation_thread.stop()
+
+    print("\n==== TEST END: hidraIngest together with nexus transfer ====\n")

@@ -1,22 +1,96 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
-import os
+from collections import namedtuple
 import json
-import tempfile
 import zmq
-#from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
+# from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
 from zmq.utils.strtypes import asbytes
 import multiprocessing
 
 from eventdetectorbase import EventDetectorBase
-import helpers
+import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class MonitorDevice():
-    def __init__(self, in_con_str, out_con_str, mon_con_str):
+IpcAddresses = namedtuple("ipc_addresses", ["out", "mon"])
+Endpoints = namedtuple("addresses", ["in_bind", "in_con",
+                                     "out_bind", "out_con",
+                                     "mon_bind", "mon_con"])
+
+
+def get_ipc_addresses(config):
+    """Build the addresses used for IPC.
+
+    The addresses are only set if called on Linux. On windows they are set
+    to None.
+
+    Args:
+        config (dict): A dictionary conaining the ipc base directory and the
+                       main PID.
+    Returns:
+        An IpcAddresses object.
+    """
+
+    if utils.is_windows():
+        addrs = None
+    else:
+        ipc_ip = "{}/{}".format(config["ipc_dir"],
+                                config["main_pid"])
+
+        out = "{}_{}".format(ipc_ip, "out")
+        mon = "{}_{}".format(ipc_ip, "mon")
+
+        addrs = IpcAddresses(out=out, mon=mon)
+
+    return addrs
+
+
+def get_endpoints(config, ipc_addresses):
+    """Configures the ZMQ endpoints depending on the protocol.
+
+    Args:
+        config (dict): A dictionary containing the IPs to bind and to connect
+                       to as well as the ports. Usually con_ip is teh DNS name.
+        ipc_addresses: The addresses used for the interprocess communication
+                       (ipc) protocol.
+    Returns:
+        An Endpoints object containing the bind and connection endpoints.
+    """
+
+    ext_ip = config["ext_ip"]
+    con_ip = config["con_ip"]
+
+    port = config["ext_data_port"]
+    in_bind = "tcp://{}:{}".format(ext_ip, port)
+    in_con = "tcp://{}:{}".format(con_ip, port)
+
+    if utils.is_windows():
+        port = config["data_fetcher_port"]
+        out_bind = "tcp://{}:{}".format(ext_ip, port)
+        out_con = "tcp://{}:{}".format(con_ip, port)
+
+        port = config["event_det_port"]
+        mon_bind = "tcp://{}:{}".format(ext_ip, port)
+        mon_con = "tcp://{}:{}".format(con_ip, port)
+    else:
+        out_bind = "ipc://{}".format(ipc_addresses.out)
+        out_con = out_bind
+
+        mon_bind = "ipc://{}".format(ipc_addresses.mon)
+        mon_con = mon_bind
+
+    return Endpoints(
+        in_bind=in_bind, in_con=in_con,
+        out_bind=out_bind, out_con=out_con,
+        mon_bind=mon_bind, mon_con=mon_con
+    )
+
+
+class MonitorDevice(object):
+    def __init__(self, in_endpoint, out_endpoint, mon_endpoint):
 
         self.in_prefix = asbytes('in')
         self.out_prefix = asbytes('out')
@@ -24,13 +98,13 @@ class MonitorDevice():
         self.context = zmq.Context()
 
         self.in_socket = self.context.socket(zmq.PULL)
-        self.in_socket.bind(in_con_str)
+        self.in_socket.bind(in_endpoint)
 
         self.out_socket = self.context.socket(zmq.PUSH)
-        self.out_socket.bind(out_con_str)
+        self.out_socket.bind(out_endpoint)
 
         self.mon_socket = self.context.socket(zmq.PUSH)
-        self.mon_socket.bind(mon_con_str)
+        self.mon_socket.bind(mon_endpoint)
 
         self.run()
 
@@ -38,7 +112,7 @@ class MonitorDevice():
         while True:
             try:
                 msg = self.in_socket.recv_multipart()
-#                print ("[MonitoringDevice] In: Received message {0}"
+#                print ("[MonitoringDevice] In: Received message {}"
 #                        .format(msg[0][:20]))
             except KeyboardInterrupt:
                 break
@@ -51,7 +125,7 @@ class MonitorDevice():
 #                    print ("[MonitoringDevice] Mon: Sent message")
 
                     self.out_socket.send_multipart(msg)
-#                    print ("[MonitoringDevice] Out: Sent message {0}"
+#                    print ("[MonitoringDevice] Out: Sent message {}"
 #                            .format([msg[0], msg[1][:20]]))
 
                     mon_msg = [self.out_prefix] + msg
@@ -62,118 +136,99 @@ class MonitorDevice():
 
 
 class EventDetector(EventDetectorBase):
-
     def __init__(self, config, log_queue):
 
-        EventDetectorBase.__init__(self, config, log_queue,
+        EventDetectorBase.__init__(self,
+                                   config,
+                                   log_queue,
                                    "hidra_events")
 
-        if helpers.is_windows():
-            required_params = ["context",
-                               "ext_ip",
-                               "event_det_port",
-                               "ext_data_port"
-                               "data_fetch_port"]
+        self.config = config
+        self.log_queue = log_queue
+
+        self.ipc_addresses = None
+        self.endpoints = None
+
+        self.context = None
+        self.ext_context = None
+        self.monitoringdevice = None
+        self.mon_socket = None
+
+        self.set_required_params()
+
+        self.check_config()
+        self.setup()
+
+    def set_required_params(self):
+        """
+        Defines the parameters to be in configuration to run this datafetcher.
+        Depending if on Linux or Windows other parameters are required.
+        """
+
+        self.required_params = ["context", "ext_ip", "con_ip", "ext_data_port"]
+        if utils.is_windows():
+            self.required_params += ["event_det_port", "data_fetch_port"]
         else:
-            required_params = ["context",
-                               "ext_ip",
-                               "ipc_path",
-                               "main_pid",
-                               "ext_data_port"]
+            self.required_params += ["ipc_dir", "main_pid"]
 
-        # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            config,
-                                                            self.log)
+    def setup(self):
+        """Configures ZMQ sockets and starts monitoring device.
+        """
 
-        # Only proceed if the configuration was correct
-        if check_passed:
-            self.log.info("Configuration for event detector: {0}"
-                          .format(config_reduced))
-
-            if helpers.is_windows():
-                self.in_con_str = ("tcp://{0}:{1}"
-                                   .format(config["ext_ip"],
-                                           config["ext_data_port"]))
-                self.out_con_str = ("tcp://{0}:{1}"
-                                    .format(config["ext_ip"],
-                                            config["data_fetcher_port"]))
-                self.mon_con_str = ("tcp://{0}:{1}"
-                                    .format(config["ext_ip"],
-                                            config["event_det_port"]))
-            else:
-                self.in_con_str = ("tcp://{0}:{1}"
-                                   .format(config["ext_ip"],
-                                           config["ext_data_port"]))
-                self.out_con_str = ("ipc://{0}/{1}_{2}"
-                                    .format(config["ipc_path"],
-                                            config["main_pid"],
-                                            "out"))
-                self.mon_con_str = ("ipc://{0}/{1}_{2}"
-                                    .format(config["ipc_path"],
-                                            config["main_pid"],
-                                            "mon"))
-
-        else:
-            self.log.debug("config={0}".format(config))
-            raise Exception("Wrong configuration")
+        self.ipc_addresses = get_ipc_addresses(config=self.config)
+        self.endpoints = get_endpoints(config=self.config,
+                                       ipc_addresses=self.ipc_addresses)
 
         # Set up monitored queue to get notification when new data is sent to
         # the zmq queue
 
         self.monitoringdevice = multiprocessing.Process(
             target=MonitorDevice,
-            args=(self.in_con_str,
-                  self.out_con_str,
-                  self.mon_con_str))
+            args=(self.endpoints.in_bind,
+                  self.endpoints.out_bind,
+                  self.endpoints.mon_bind)
+        )
 
-        """ original monitored queue from pyzmq is not working
-        in_prefix = asbytes('in')
-        out_prefix = asbytes('out')
-
-        self.monitoringdevice = ThreadMonitoredQueue(
-            #   in       out      mon
-            zmq.PULL, zmq.PUSH, zmq.PUB, in_prefix, out_prefix)
-
-        self.monitoringdevice.bind_in(self.in_con_str)
-        self.monitoringdevice.bind_out(self.out_con_str)
-        self.monitoringdevice.bind_mon(self.mon_con_str)
-        """
+        # original monitored queue from pyzmq is not working
+        # > in_prefix = asbytes('in')
+        # > out_prefix = asbytes('out')
+        #
+        # > self.monitoringdevice = ThreadMonitoredQueue(
+        # >   #   in       out      mon
+        # >   zmq.PULL, zmq.PUSH, zmq.PUB, in_prefix, out_prefix)
+        #
+        # > self.monitoringdevice.bind_in(self.endpoints.in_bind)
+        # > self.monitoringdevice.bind_out(self.endpoints.out_bind)
+        # > self.monitoringdevice.bind_mon(self.endpoints.mon_bind)
 
         self.monitoringdevice.start()
         self.log.info("Monitoring device has started with (bind)\n"
-                      "in: {0}\nout: {1}\nmon: {2}"
-                      .format(self.in_con_str,
-                              self.out_con_str,
-                              self.mon_con_str))
+                      "in: {}\nout: {}\nmon: {}"
+                      .format(self.endpoints.in_bind,
+                              self.endpoints.out_bind,
+                              self.endpoints.mon_bind))
 
         # set up monitoring socket where the events are sent to
-        if config["context"] is not None:
-            self.context = config["context"]
+        if self.config["context"] is not None:
+            self.context = self.config["context"]
             self.ext_context = True
         else:
             self.log.info("Registering ZMQ context")
             self.context = zmq.Context()
             self.ext_context = False
 
-        self.create_sockets()
-
-    def create_sockets(self):
-
         # Create zmq socket to get events
-        try:
-            self.mon_socket = self.context.socket(zmq.PULL)
-            self.mon_socket.connect(self.mon_con_str)
-#            self.mon_socket.setsockopt_string(zmq.SUBSCRIBE, "")
-
-            self.log.info("Start monitoring socket (connect): '{0}'"
-                          .format(self.mon_con_str))
-        except:
-            self.log.error("Failed to start monitoring socket (connect): '{0}'"
-                           .format(self.mon_con_str), exc_info=True)
-            raise
+        self.mon_socket = self.start_socket(
+            name="mon_socket",
+            sock_type=zmq.PULL,
+            sock_con="connect",
+            endpoint=self.endpoints.mon_con
+        )
+#        self.mon_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
     def get_new_event(self):
+        """Implementation of the abstract method get_new_event.
+        """
 
         self.log.debug("waiting for new event")
         message = self.mon_socket.recv_multipart()
@@ -183,28 +238,29 @@ class EventDetector(EventDetectorBase):
         # the metadata were received as string and have to be converted into
         # a dictionary
         metadata = json.loads(metadata)
-        self.log.debug("Monitoring Client: {0}".format(metadata))
+        self.log.debug("Monitoring Client: {}".format(metadata))
 
         # TODO receive more than this one metadata unit
         event_message_list = [metadata]
 
-        self.log.debug("event_message: {0}".format(event_message_list))
+        self.log.debug("event_message: {}".format(event_message_list))
 
         return event_message_list
 
     def stop(self):
+        """Implementation of the abstract method stop.
+        """
 
-        self.monitoringdevice.terminate()
+        if self.monitoringdevice is not None:
+            self.monitoringdevice.terminate()
+            self.monitoringdevice = None
 
         # close ZMQ
-        if self.mon_socket:
-            self.log.info("Closing mon_socket")
-            self.mon_socket.close(0)
-            self.mon_socket = None
+        self.stop_socket(name="mon_socket")
 
         # if the context was created inside this class,
         # it has to be destroyed also within the class
-        if not self.ext_context and self.context:
+        if not self.ext_context and self.context is not None:
             try:
                 self.log.info("Closing ZMQ context...")
                 self.context.destroy(0)
@@ -212,111 +268,3 @@ class EventDetector(EventDetectorBase):
                 self.log.info("Closing ZMQ context...done.")
             except:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
-
-
-if __name__ == '__main__':
-    from multiprocessing import Queue
-    from logutils.queue import QueueHandler
-    from __init__ import BASE_PATH
-    import logging
-
-    logfile = os.path.join(BASE_PATH, "logs", "hidra_events.log")
-    logsize = 10485760
-
-    log_queue = Queue(-1)
-
-    # Get the log Configuration for the lisener
-    h1, h2 = helpers.get_log_handlers(logfile, logsize, verbose=True,
-                                      onscreen_log_level="debug")
-
-    # Start queue listener using the stream handler above
-    log_queue_listener = helpers.CustomQueueListener(log_queue, h1, h2)
-    log_queue_listener.start()
-
-    # Create log and set handler to queue handle
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)  # Log level = DEBUG
-    qh = QueueHandler(log_queue)
-    root.addHandler(qh)
-
-    ipc_path = os.path.join(tempfile.gettempdir(), "hidra")
-#    current_pid = os.getpid()
-    current_pid = 12345
-
-    context = zmq.Context()
-
-    config = {
-        "context": context,
-        "ext_ip": "131.169.185.121",
-        "ipc_path": ipc_path,
-        "main_pid": current_pid,
-        "ext_data_port": "50100"
-    }
-
-    if not os.path.exists(ipc_path):
-        os.mkdir(ipc_path)
-        os.chmod(ipc_path, 0o777)
-        logging.info("Creating directory for IPC communication: {0}"
-                     .format(ipc_path))
-
-    eventdetector = EventDetector(config, log_queue)
-
-    source_file = os.path.join(BASE_PATH, "test_file.cbf")
-    target_file_base = os.path.join(
-        BASE_PATH, "data", "source", "local") + os.sep
-
-    in_con_str = "tcp://{0}:{1}".format(config["ext_ip"],
-                                        config["ext_data_port"])
-    out_con_str = "ipc://{0}/{1}_{2}".format(ipc_path, current_pid, "out")
-
-    local_in = True
-    local_out = True
-
-    if local_in:
-        # create zmq socket to send events
-        data_in_socket = context.socket(zmq.PUSH)
-        data_in_socket.connect(in_con_str)
-        logging.info("Start data_in_socket (connect): '{0}'"
-                     .format(in_con_str))
-
-    if local_out:
-        data_out_socket = context.socket(zmq.PULL)
-        data_out_socket.connect(out_con_str)
-        logging.info("Start data_out_socket (connect): '{0}'"
-                     .format(out_con_str))
-
-    i = 100
-    try:
-        while i <= 101:
-            logging.debug("generate event")
-            target_file = "{0}{1}.cbf".format(target_file_base, i)
-            message = {
-                "filename": target_file,
-                "filepart": 0,
-                "chunksize": 10
-            }
-
-            if local_in:
-                data_in_socket.send_multipart(
-                    [json.dumps(message).encode("utf-8"), b"incoming_data"])
-
-            i += 1
-            event_list = eventdetector.get_new_event()
-            if event_list:
-                logging.debug("event_list: {0}".format(event_list))
-
-            if local_out:
-                message = data_out_socket.recv_multipart()
-                logging.debug("Received - {0}".format(message))
-    except KeyboardInterrupt:
-        pass
-    finally:
-        eventdetector.stop()
-        if local_in:
-            data_in_socket.close()
-        if local_out:
-            data_out_socket.close()
-        context.destroy()
-
-        log_queue.put_nowait(None)
-        log_queue_listener.stop()

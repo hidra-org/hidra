@@ -56,10 +56,10 @@ if __name__ == "__main__":
     try:
         while True:
             time.sleep(0.5)
-            print ("number_of_files={0}".format(number_of_files.value))
+            print("number_of_files={0}".format(number_of_files.value))
     except KeyboardInterrupt:
         pass
     finally:
-        print ("number_of_files={0}".format(number_of_files.value))
+        print("number_of_files={0}".format(number_of_files.value))
         for w in workers:
             w.terminate()

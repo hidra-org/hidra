@@ -5,16 +5,16 @@ import os
 import argparse
 import socket
 
-from __init__ import BASE_PATH
-import helpers
+from __init__ import BASE_DIR
+import utils
 
 from hidra import Transfer
 
 
 # enable logging
-logfile_path = os.path.join(BASE_PATH, "logs")
+logfile_path = os.path.join(BASE_DIR, "logs")
 logfile = os.path.join(logfile_path, "example_force_stop.log")
-helpers.init_logging(logfile, True, "DEBUG")
+utils.init_logging(logfile, True, "DEBUG")
 
 if __name__ == "__main__":
 
@@ -23,14 +23,15 @@ if __name__ == "__main__":
     parser.add_argument("--signal_host",
                         type=str,
                         help="Host where HiDRA is runnning",
-                        default=socket.gethostname())
+                        default=socket.getfqdn())
     parser.add_argument("--target_host",
                         type=str,
                         help="Host where the data should be send to",
-                        default=socket.gethostname())
+                        default=socket.getfqdn())
 
     arguments = parser.parse_args()
 
+#    targets = [[arguments.target_host, "50101", 1, ".*(tif|cbf)$"]]
     targets = [[arguments.target_host, "50100", 1, [".cbf"]],
                [arguments.target_host, "50101", 1, [".cbf"]],
                [arguments.target_host, "50102", 1, [".cbf"]]]
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     transfer_type = "QUERY_NEXT"
 #    transfer_type = "STREAM"
 #    transfer_type = "STREAM_METADATA"
-#    transfer_type = "QUERY_METADATA"
+#    transfer_type = "QUERY_NEXT_METADATA"
 
     query = Transfer(transfer_type, arguments.signal_host, use_log=True)
     query.force_stop(targets)

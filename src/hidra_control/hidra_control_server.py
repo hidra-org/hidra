@@ -21,49 +21,45 @@ except:
     logutils_imported = False
 
 try:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__))))
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 except:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.abspath(sys.argv[0]))))
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-CONFIG_PATH = os.path.join(BASE_PATH, "conf")
-API_PATH = os.path.join(BASE_PATH, "src", "APIs")
+    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
 
-if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
-del SHARED_PATH
-del CONFIG_PATH
+BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
+CONFIG_DIR = os.path.join(BASE_DIR, "conf")
+API_DIR = os.path.join(BASE_DIR, "src", "APIs")
+
+if SHARED_DIR not in sys.path:
+    sys.path.insert(0, SHARED_DIR)
+del SHARED_DIR
+del CONFIG_DIR
 
 try:
     # search in global python modules first
     import hidra
 except:
     # then search in local modules
-    if API_PATH not in sys.path:
-        sys.path.append(API_PATH)
-    del API_PATH
+    if API_DIR not in sys.path:
+        sys.path.insert(0, API_DIR)
+    del API_DIR
 
     import hidra
 
 if not logutils_imported:
     from logutils.queue import QueueHandler  # noqa F811
 
-import helpers  # noqa E402
-from cfel_optarg import parse_parameters
+import utils  # noqa E402
+from cfel_optarg import parse_parameters  # noqa E402
 
 
 BASEDIR = "/opt/hidra"
 
-CONFIG_PATH = "/opt/hidra/conf"
+CONFIG_DIR = "/opt/hidra/conf"
 CONFIG_PREFIX = "datamanager_"
 
-LOGPATH = os.path.join("/var", "log", "hidra")
-#LOGPATH = os.path.join(tempfile.gettempdir(), "hidra", "logs")
+LOGDIR = os.path.join("/var", "log", "hidra")
+# LOGDIR = os.path.join(tempfile.gettempdir(), "hidra", "logs")
 
 beamline_config = dict()
 
@@ -78,33 +74,22 @@ class HidraController():
         # Beamline is read-only, determined by portNo
         self.beamline = beamline
 
-        self.procname = "hidra_{0}".format(self.beamline)
+        self.procname = "hidra_{}".format(self.beamline)
+        self.username = "{}user".format(self.beamline)
 
         # Set log handler
         self.log = log
 
-        self.supported_local_targets = ["current/raw",
-                                        "current/scratch_bl",
-                                        "commissioning/raw",
-                                        "commissioning/scratch_bl",
-                                        "local"]
+        self.fix_subdirs = ["current/raw",
+                            "current/scratch_bl",
+                            "commissioning/raw",
+                            "commissioning/scratch_bl",
+                            "local"]
+        self.local_target = os.path.join("/beamline", self.beamline)
 
         self.master_config = dict()
 
         self.__read_config()
-        """
-        if hidra_status(self.beamline) == "RUNNING":
-            self.master_config = self.__read_config()
-        else:
-            self.master_config["beamline"] = self.beamline
-            self.master_config["det_ip"] = "None"
-            self.master_config["det_api_version"] = "None"
-            self.master_config["history_size"] = 0
-            self.master_config["local_target"] = None
-            self.master_config["store_data"] = None
-            self.master_config["remove_data"] = None
-            self.master_config["whitelist"] = None
-        """
 
         # connection depending hidra configuration, master config one is
         # overwritten with these parameters when start is executed
@@ -116,47 +101,43 @@ class HidraController():
             "det_ip": None,
             "det_api_version": None,
             "history_size": None,
-            "local_target": None,
             "store_data": None,
             "remove_data": None,
-            "whitelist": None
+            "whitelist": None,
+            "ldapuri": None
         }
 
     def __read_config(self):
         global CONFIG_PREFIX
-        global CONFIG_PATH
+        global CONFIG_DIR
 
         # write configfile
         # /etc/hidra/P01.conf
-        joined_path = os.path.join(CONFIG_PATH, CONFIG_PREFIX + self.beamline)
+        joined_path = os.path.join(CONFIG_DIR, CONFIG_PREFIX + self.beamline)
         config_files = glob.glob(joined_path + "_*.conf")
-        self.log.info("Reading config files: {0}".format(config_files))
+        self.log.info("Reading config files: {}".format(config_files))
 
         for cfile in config_files:
             # extract the detector id from the config file name (remove path,
             # prefix, beamline and ending)
             det_id = cfile.replace(joined_path + "_", "")[:-5]
             try:
-                config = helpers.read_config(cfile)
+                config = utils.read_config(cfile)
                 self.master_config[det_id] = (
                     parse_parameters(config)["asection"])
             except IOError:
-                self.log.debug("Configuration file not readable: {0}"
+                self.log.debug("Configuration file not readable: {}"
                                .format(cfile))
         self.log.debug("master_config={0}".format(self.master_config))
 
     def exec_msg(self, msg):
-        '''
+        """
         [b"IS_ALIVE"]
             return "OK"
-        [b"set", host_id, det_id, "local_target", "/gpfs/current/raw"]
-            return "DONE"
-        [b"get", host_id, det_id, "local_target"]
-            return "/gpfs/current/raw"
         [b"do", host_id, det_id, b"start"]
             return "DONE"
         [b"bye", host_id, detector]
-        '''
+        """
         if len(msg) == 0:
             return "ERROR"
 
@@ -192,7 +173,7 @@ class HidraController():
             if len(msg) != 3:
                 return "ERROR"
 
-            self.log.debug("Received 'bye' from host {0} for detector {1}"
+            self.log.debug("Received 'bye' from host {} for detector {}"
                            .format(msg[1], msg[2]))
             if msg[1] in self.all_configs:
                 if msg[2] in self.all_configs[msg[1]]:
@@ -207,9 +188,9 @@ class HidraController():
             return "ERROR"
 
     def set(self, host_id, det_id, param, value):
-        '''
+        """
         set a parameter
-        '''
+        """
         # identify the configuration for this connection
         if host_id not in self.all_configs:
             self.all_configs[host_id] = dict()
@@ -221,42 +202,25 @@ class HidraController():
 
         key = param.lower()
 
-        # IP of the detector
-        if key == "det_ip":
-            current_config["det_ip"] = value
-            return_val = "DONE"
+        supported_keys = [
+            # IP of the detector
+            "det_ip",
+            # API version of the detector
+            "det_api_version",
+            # Number of events stored to look for doubles
+            "history_size",
+            # Flag describing if the data should be stored in local_target
+            "store_data",
+            # Flag describing if the files should be removed from the source
+            "remove_data",
+            # List of hosts allowed to connect to the data distribution
+            "whitelist",
+            # Ldap node and port
+            "ldapuri"
+        ]
 
-        # API version of the detector
-        elif key == "det_api_version":
-            current_config["det_api_version"] = value
-            return_val = "DONE"
-
-        # Number of events stored to look for doubles
-        elif key == "history_size":
-            current_config["history_size"] = value
-            return_val = "DONE"
-
-        # Target to move the files into
-        # e.g. /beamline/p11/current/raw
-        elif key == "local_target" and value in self.supported_local_targets:
-            current_config["local_target"] = os.path.join("/beamline",
-                                                          self.beamline,
-                                                          value)
-            return_val = "DONE"
-
-        # Flag describing if the data should be stored in local_target
-        elif key == "store_data":
-            current_config["store_data"] = value
-            return_val = "DONE"
-
-        # Flag describing if the files should be removed from the source
-        elif key == "remove_data":
-            current_config["remove_data"] = value
-            return_val = "DONE"
-
-        # List of hosts allowed to connect to the data distribution
-        elif key == "whitelist":
-            current_config["whitelist"] = value
+        if key in supported_keys:
+            current_config[key] = value
             return_val = "DONE"
 
         else:
@@ -269,9 +233,9 @@ class HidraController():
         return return_val
 
     def get(self, host_id, det_id, param):
-        '''
+        """
         return the value of a parameter
-        '''
+        """
         # if the requesting client has set parameters before but has not
         # executed start yet, the previously set parameters should be
         # displayed (not the ones with which hidra was started the last time)
@@ -288,37 +252,28 @@ class HidraController():
 
         key = param.lower()
 
-        if key == "det_ip":
-            return current_config["det_ip"]
+        supported_keys = ["det_ip",
+                          "det_api_version",
+                          "history_size",
+                          "store_data",
+                          "remove_data",
+                          "whitelist",
+                          "ldapuri"]
 
-        elif key == "det_api_version":
-            return current_config["det_api_version"]
+        print("key", key)
+        if key == "fix_subdirs":
+            return str(self.fix_subdirs)
 
-        elif key == "history_size":
-            return current_config["history_size"]
-
-        elif key == "local_target":
-            if current_config["local_target"] is None:
-                return current_config["local_target"]
-            return os.path.relpath(current_config["local_target"],
-                                   os.path.join("/beamline", self.beamline))
-
-        elif key == "store_data":
-            return current_config["store_data"]
-
-        elif key == "remove_data":
-            return current_config["remove_data"]
-
-        elif key == "whitelist":
-            return current_config["whitelist"]
+        elif key in supported_keys:
+            return current_config[key]
 
         else:
             return "ERROR"
 
     def do(self, host_id, det_id, cmd):
-        '''
+        """
         executes commands
-        '''
+        """
         key = cmd.lower()
 
         if key == "start":
@@ -337,7 +292,7 @@ class HidraController():
             return "ERROR"
 
     def __write_config(self, host_id, det_id):
-        global CONFIG_PATH
+        global CONFIG_DIR
         global CONFIG_PREFIX
 
         # identify the configuration for this connection
@@ -362,10 +317,10 @@ class HidraController():
         if (current_config["det_ip"]
                 and current_config["det_api_version"]
                 and current_config["history_size"]
-                and current_config["local_target"]
                 and current_config["store_data"] is not None
                 and current_config["remove_data"] is not None
-                and current_config["whitelist"]):
+                and current_config["whitelist"]
+                and current_config["ldapuri"]):
 
             external_ip = hidra.connection_list[self.beamline]["host"]
 
@@ -378,67 +333,52 @@ class HidraController():
                 datafetcher = "http_fetcher"
 
             # write configfile
-            # /etc/hidra/P01.conf
-            #config_file = os.path.join(CONFIG_PATH, CONFIG_PREFIX + "{0}.conf"
-            #                           .format(self.beamline))
-            config_file = os.path.join(CONFIG_PATH,
-                                       CONFIG_PREFIX + "{0}_{1}.conf"
+            # /etc/hidra/P01_eiger01.conf
+            config_file = os.path.join(CONFIG_DIR,
+                                       CONFIG_PREFIX + "{}_{}.conf"
                                        .format(self.beamline, det_id))
-            self.log.info("Writing config file: {0}".format(config_file))
+            self.log.info("Writing config file: {}".format(config_file))
 
             with open(config_file, 'w') as f:
-                f.write("log_path             = {0}\n".format(LOGPATH))
-                f.write("log_name             = datamanager_{0}.log\n"
+                f.write("log_path = {}\n".format(LOGDIR))
+                f.write("log_name = datamanager_{}.log\n"
                         .format(self.beamline))
-                f.write("log_size             = 10485760\n")
-                f.write("procname             = {0}\n".format(self.procname))
-                f.write("ext_ip               = {0}\n".format(external_ip))
-                f.write("com_port             = 50000\n")
-                f.write("request_port         = 50001\n")
+                f.write("log_size = 10485760\n")
+                f.write("procname = {}\n".format(self.procname))
+                f.write("username = {}\n".format(self.username))
+                f.write("ext_ip = {}\n".format(external_ip))
+                f.write("com_port = 50000\n")
+                f.write("request_port = 50001\n")
 
-                f.write("event_detector_type  = {0}\n".format(eventdetector))
-                f.write('fix_subdirs          = ["commissioning/raw", '
-                        '"commissioning/scratch_bl", "current/raw", '
-                        '"current/scratch_bl", "local"]\n')
+                f.write("event_detector_type = {}\n".format(eventdetector))
+                f.write("fix_subdirs = {}\n".format(self.fix_subdirs))
 
                 if eventdetector == "inotifyx_events":
-                    f.write("monitored_dir        = {0}/data/source\n"
-                            .format(BASEDIR))
-                    f.write('monitored_events     = {"IN_CLOSE_WRITE" : [".tif", '
-                            '".cbf", ".nxs"]}\n')
-                f.write("use_cleanup          = False\n")
-                f.write("action_time          = 150\n")
-                f.write("time_till_closed     = 2\n")
+                    f.write("monitored_dir = {}/data/source\n".format(BASEDIR))
+                    f.write('monitored_events = {"IN_CLOSE_WRITE" : '
+                            '[".tif", ".cbf", ".nxs"]}\n')
+                f.write("use_cleanup = False\n")
+                f.write("action_time = 150\n")
+                f.write("time_till_closed = 2\n")
 
-                f.write("data_fetcher_type    = {0}\n".format(datafetcher))
+                f.write("data_fetcher_type = {}\n".format(datafetcher))
 
-                f.write("number_of_streams    = 32\n")
-                f.write("use_data_stream      = False\n")
-                f.write("chunksize            = 10485760\n")
+                f.write("number_of_streams = 32\n")
+                f.write("use_data_stream = False\n")
+                f.write("chunksize = 10485760\n")
 
-                f.write("det_ip               = {0}\n"
-                        .format(current_config["det_ip"]))
-                f.write("det_api_version      = {0}\n"
-                        .format(current_config["det_api_version"]))
-                f.write("history_size         = {0}\n"
-                        .format(current_config["history_size"]))
-                f.write("local_target         = {0}\n"
-                        .format(current_config["local_target"]))
-                f.write("store_data           = {0}\n"
-                        .format(current_config["store_data"]))
-                f.write("remove_data          = {0}\n"
-                        .format(current_config["remove_data"]))
-                f.write("whitelist            = {0}\n"
-                        .format(current_config["whitelist"]))
-		f.write('cleaner_job_con_str  = ""')
+                f.write("local_target = {}\n".format(self.local_target))
 
-                self.log.info("Started with ext_ip: {0}, event detector: {1},"
-                              " data fetcher: {2}".format(external_ip,
-                                                          eventdetector,
-                                                          datafetcher))
+                for key in current_config:
+                    f.write(key + " = {}\n".format(current_config[key]))
+
+                self.log.info("Started with ext_ip: {}, event detector: {},"
+                              " data fetcher: {}".format(external_ip,
+                                                         eventdetector,
+                                                         datafetcher))
 
                 # store the configuration parameters globally
-                self.log.debug("config = {0}".format(current_config))
+                self.log.debug("config = {}".format(current_config))
                 self.master_config[det_id] = dict()
                 for key in current_config:
                     if key != "active":
@@ -449,26 +389,14 @@ class HidraController():
                 current_config["active"] = False
 
         else:
-            self.log.debug("det_ip: {0}"
-                           .format(current_config["det_ip"]))
-            self.log.debug("det_api_version: {0}"
-                           .format(current_config["det_api_version"]))
-            self.log.debug("history_size: {0}"
-                           .format(current_config["history_size"]))
-            self.log.debug("localTarge: {0}"
-                           .format(current_config["local_target"]))
-            self.log.debug("store_data: {0}"
-                           .format(current_config["store_data"]))
-            self.log.debug("remove_data: {0}"
-                           .format(current_config["remove_data"]))
-            self.log.debug("whitelist: {0}"
-                           .format(current_config["whitelist"]))
+            for key in current_config:
+                self.log.debug(key + ":" + current_config[key])
             raise Exception("Not all required parameters are specified")
 
     def start(self, host_id, det_id):
-        '''
+        """
         start ...
-        '''
+        """
 
         # check if service is running
         if hidra_status(self.beamline, det_id, self.log) == "RUNNING":
@@ -496,9 +424,9 @@ class HidraController():
             return "ERROR"
 
     def stop(self, det_id):
-        '''
+        """
         stop ...
-        '''
+        """
         # check if really running before return
         if hidra_status(self.beamline, det_id, self.log) != "RUNNING":
             return "ARLEADY_STOPPED"
@@ -511,9 +439,9 @@ class HidraController():
             return "ERROR"
 
     def restart(self, det_id):
-        '''
+        """
         restart ...
-        '''
+        """
         # stop service
         reval = self.stop()
 
@@ -528,34 +456,41 @@ def call_hidra_service(cmd, beamline, det_id, log):
     SYSTEMD_PREFIX = "hidra@"
     SERVICE_NAME = "hidra"
 
+#    sys_cmd = ["/home/kuhnm/Arbeit/projects/hidra/initscripts/hidra.sh",
+#               "--beamline", "p00",
+#               "--detector", "asap3-mon",
+#               "--"+cmd]
+#    return subprocess.call(sys_cmd)
+
     # systems using systemd
     if (os.path.exists("/usr/lib/systemd")
-            and (os.path.exists("/usr/lib/systemd/{0}.service"
+            and (os.path.exists("/usr/lib/systemd/{}.service"
                                 .format(SYSTEMD_PREFIX))
-                 or os.path.exists("/usr/lib/systemd/system/{0}.service"
-                                .format(SYSTEMD_PREFIX))
-                 or os.path.exists("/etc/systemd/system/{0}.service"
+                 or os.path.exists("/usr/lib/systemd/system/{}.service"
+                                   .format(SYSTEMD_PREFIX))
+                 or os.path.exists("/etc/systemd/system/{}.service"
                                    .format(SYSTEMD_PREFIX)))):
 
-        svc = "{0}{1}_{2}.service".format(SYSTEMD_PREFIX, beamline, det_id)
-        log.debug("Call: systemctl {0} {1}".format(cmd, svc))
+        svc = "{}{}_{}.service".format(SYSTEMD_PREFIX, beamline, det_id)
+        log.debug("Call: systemctl {} {}".format(cmd, svc))
         if cmd == "status":
             return subprocess.call(["systemctl", "is-active", svc])
         else:
-            return subprocess.call(["sudo", "-n",  "systemctl", cmd, svc])
+            return subprocess.call(["sudo", "-n", "systemctl", cmd, svc])
 
     # systems using init scripts
     elif os.path.exists("/etc/init.d") \
             and os.path.exists("/etc/init.d/" + SERVICE_NAME):
-        log.debug("Call: service {0} {1}".format(cmd, svc))
+        log.debug("Call: service {} {}".format(cmd, svc))
         return subprocess.call(["service", SERVICE_NAME, cmd])
         # TODO implement beamline and det_id in hisdra.sh
         # return subprocess.call(["service", SERVICE_NAME, "status",
         #                         beamline, det_id])
+    else:
+        log.debug("Call: no service to call found")
 
 
 def hidra_status(beamline, det_id, log):
-
     try:
         p = call_hidra_service("status", beamline, det_id, log)
     except:
@@ -569,17 +504,16 @@ def hidra_status(beamline, det_id, log):
 
 class ControlServer():
     def __init__(self):
-        global BASE_PATH
 
         arguments = self.argument_parsing()
 
         self.beamline = arguments.beamline
 
-        setproctitle.setproctitle("hidra-control-server_{0}"
+        setproctitle.setproctitle("hidra-control-server_{}"
                                   .format(self.beamline))
 
-        logfile = os.path.join(LOGPATH, "hidra-control-server_{0}.log"
-                                        .format(self.beamline))
+        logfile = os.path.join(LOGDIR, "hidra-control-server_{}.log"
+                                       .format(self.beamline))
         logsize = 10485760
 
         # Get queue
@@ -587,26 +521,26 @@ class ControlServer():
 
         # Get the log Configuration for the lisener
         if arguments.onscreen:
-            h1, h2 = helpers.get_log_handlers(logfile, logsize,
-                                              arguments.verbose,
-                                              arguments.onscreen)
+            h1, h2 = utils.get_log_handlers(logfile, logsize,
+                                            arguments.verbose,
+                                            arguments.onscreen)
 
             # Start queue listener using the stream handler above.
             self.log_queue_listener = (
-                helpers.CustomQueueListener(self.log_queue, h1, h2))
+                utils.CustomQueueListener(self.log_queue, h1, h2))
         else:
-            h1 = helpers.get_log_handlers(logfile, logsize,
-                                          arguments.verbose,
-                                          arguments.onscreen)
+            h1 = utils.get_log_handlers(logfile, logsize,
+                                        arguments.verbose,
+                                        arguments.onscreen)
 
             # Start queue listener using the stream handler above
             self.log_queue_listener = (
-                helpers.CustomQueueListener(self.log_queue, h1))
+                utils.CustomQueueListener(self.log_queue, h1))
 
         self.log_queue_listener.start()
 
         # Create log and set handler to queue handle
-        self.log = helpers.get_logger("ControlServer", self.log_queue)
+        self.log = utils.get_logger("ControlServer", self.log_queue)
 
         self.log.info("Init")
 
@@ -614,10 +548,10 @@ class ControlServer():
 
         self.controller = HidraController(self.beamline, self.log)
 
-        self.con_id = "tcp://{0}:{1}".format(
-            socket.gethostbyaddr(
-                hidra.connection_list[self.beamline]["host"])[2][0],
-            hidra.connection_list[self.beamline]["port"])
+        host = hidra.connection_list[self.beamline]["host"]
+        host = socket.gethostbyaddr(host)[2][0]
+        port = hidra.connection_list[self.beamline]["port"]
+        self.endpoint = "tcp://{}:{}".format(host, port)
 
         self.socket = None
 
@@ -646,33 +580,30 @@ class ControlServer():
         return parser.parse_args()
 
     def create_sockets(self):
-
-        #Create ZeroMQ context
+        # Create ZeroMQ context
         self.log.info("Registering ZMQ context")
         self.context = zmq.Context()
 
         # socket to get requests
         try:
             self.socket = self.context.socket(zmq.REP)
-            self.socket.bind(self.con_id)
-            self.log.info("Start socket (bind): '{0}'"
-                          .format(self.con_id))
+            self.socket.bind(self.endpoint)
+            self.log.info("Start socket (bind): '{}'"
+                          .format(self.endpoint))
         except zmq.error.ZMQError:
-            self.log.error("Failed to start socket (bind) zmqerror: '{0}'"
-                           .format(self.con_id), exc_info=True)
+            self.log.error("Failed to start socket (bind) zmqerror: '{}'"
+                           .format(self.endpoint), exc_info=True)
             raise
         except:
-            self.log.error("Failed to start socket (bind): '{0}'"
-                           .format(self.con_id), exc_info=True)
+            self.log.error("Failed to start socket (bind): '{}'"
+                           .format(self.endpoint), exc_info=True)
             raise
 
     def run(self):
-
         while True:
-
             try:
                 msg = self.socket.recv_multipart()
-                self.log.debug("Recv {0}".format(msg))
+                self.log.debug("Recv {}".format(msg))
             except KeyboardInterrupt:
                 break
 

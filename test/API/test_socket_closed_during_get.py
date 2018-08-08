@@ -19,7 +19,7 @@ signal_socket.send_multipart(
     [b"2.4.2",
      b"START_QUERY_NEXT",
      json.dumps([["zitpcx19282.desy.de:50101", 1, "cbf"]])])
-print ("Signal responded: ", signal_socket.recv_multipart())
+print("Signal responded: ", signal_socket.recv_multipart())
 
 try:
     request_socket.send_multipart(
@@ -30,7 +30,7 @@ try:
     metadata = json.loads(multipart_message[0])
     payload = multipart_message[1:]
 
-    print ("metadata: ", metadata)
+    print("metadata: ", metadata)
 
 finally:
     signal_socket.send_multipart(

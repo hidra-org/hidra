@@ -2,21 +2,22 @@ import os
 import sys
 
 try:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__))))
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 except:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(sys.argv[0]))))
-#    BASE_PATH = os.path.dirname(
-#        os.path.dirname(
-#            os.path.dirname(
-#                os.path.realpath('__file__'))))
+    CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+#    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
 
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
+BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
+API_DIR = os.path.join(BASE_DIR, "src", "APIs")
 
-if SHARED_PATH not in sys.path:
-    sys.path.append(SHARED_PATH)
+if SHARED_DIR not in sys.path:
+    sys.path.insert(0, SHARED_DIR)
+
+try:
+    # search in global python modules first
+    from hidra import Transfer  # noqa F401
+except:
+    # then search in local modules
+    if API_DIR not in sys.path:
+        sys.path.insert(0, API_DIR)

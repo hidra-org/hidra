@@ -7,31 +7,135 @@
 # Required-Stop:     $syslog networking
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Start the ZMQ data transfer
+# Short-Description: Start the HiDRA
 ### END INIT INFO
 
 
-# PATH should only include /usr/* if it runs after the mountnfs.sh script
-PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+# DIR should only include /usr/* if it runs after the mountnfs.sh script
+DIR=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 DESC="HiDRA"
 # Process name (for display)
 NAME=hidra
 SCRIPT_PROC_NAME=hidra
-BASEDIR=/opt/hidra
-DAEMON=$BASEDIR/src/sender/datamanager.py
-DAEMON_EXE=$BASEDIR/datamanager
-DAEMON_ARGS="--verbose --procname $NAME"
-CONFIG_PATH=$BASEDIR/conf
-CONFIG_FILE=$CONFIG_PATH/datamanager.conf
-DAEMON_EXE_ARGS="$DAEMON_ARGS --config_file $CONFIG_FILE --procname $NAME"
-PIDFILE_LOCATION=/opt/hidra
-PIDFILE=${PIDFILE_LOCATION}/$NAME.pid
-IPCPATH=/tmp/hidra
+IPCDIR=/tmp/hidra
 PYTHON=/usr/bin/python
-LOG_DIRECTORY=/var/log/hidra
+CURRENTDIR="$(readlink --canonicalize-existing -- "$0")"
 
-SCRIPTNAME=/etc/init.d/$NAME
+USE_EXE=false
 
+if [ "${USE_EXE}" == "false" ]
+then
+    BASEDIR=/home/kuhnm/projects/hidra
+    #BASEDIR=/opt/hidra
+    SCRIPTNAME=/etc/init.d/$NAME
+else
+    BASEDIR="${CURRENTDIR%/*}"
+    SCRIPTNAME="${CURRENTDIR##*/}"
+
+#    printf "CURRENTDIR: ${CURRENTDIR}\n"
+#    printf "BASEDIR: ${BASEDIR}\n"
+#    printf "SCRIPTNAME: ${SCRIPTNAME}\n"
+fi
+
+PIDFILE_LOCATION=${BASEDIR}
+PIDFILE=${PIDFILE_LOCATION}/$NAME.pid
+CONFIGDIR=$BASEDIR/conf
+
+usage()
+{
+    printf "Usage: $SCRIPTNAME --beamline|--bl <beamline> [--detector|--det <detector>] [--config_file <config_file>] {--start|--stop|--status|--restart|--getsettings}\n" >&2
+    RETVAL=3
+}
+
+
+beamline=
+detector=
+config_file=
+action=
+while test $# -gt 0
+do
+    case $1 in
+        --bl | --beamline)
+            beamline=$2
+            shift
+            ;;
+        --det | --detector)
+            detector=$2
+            shift
+            ;;
+        --config_file)
+            config_file=$2
+            shift
+            ;;
+        --start)
+            action="start"
+            printf "set action to start\n"
+            shift
+            ;;
+        --status)
+            action="status"
+            shift
+            ;;
+        --stop)
+            action="stop"
+            shift
+            ;;
+        --restart)
+            action="restart"
+            shift
+            ;;
+        --getsettings)
+            action="getsettings"
+            shift
+            ;;
+        -h | --help ) usage
+            exit
+            ;;
+        * ) break;  # end of options
+    esac
+    shift
+done
+
+if [ -z ${action+x} ]
+then
+    usage
+    exit 1
+fi
+
+if [ -n "$beamline" ]
+then
+    if [ -n "${detector}" ]
+    then
+        NAME=${SCRIPT_PROC_NAME}_${beamline}_${detector}
+        config_file=${CONFIGDIR}/datamanager_${beamline}_${detector}.conf
+    else
+        NAME=${SCRIPT_PROC_NAME}_${beamline}
+        config_file=${CONFIGDIR}/datamanager_${beamline}.conf
+    fi
+    PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
+else
+    printf "No beamline or detector specified. Fallback to default configuration file"
+    config_file=$CONFIGDIR/datamanager.conf
+fi
+
+if [ "${USE_EXE}" == "false" ]
+then
+    DAEMON=${BASEDIR}/src/sender/datamanager.py
+    DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"
+    LOG_DIRECTORY=/var/log/hidra
+    getsettings=${BASEDIR}/src/shared/getsettings.py
+else
+    DAEMON=${BASEDIR}/datamanager
+    DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"
+    LOG_DIRECTORY=${BASEDIR}/logs
+    getsettings=${BASEDIR}/getsettings
+fi
+
+printf "\nSetting: \n"
+printf "DAEMON=${DAEMON}\n"
+printf "DAEMON_ARGS=${DAEMON_ARGS}\n"
+printf "NAME=${NAME}\n"
+printf "config_file=${config_file}\n\n"
 
 if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 # Red Hat or Centos...
@@ -44,18 +148,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
     GREEN=$(tput setaf 2)
     RED=$(tput setaf 1)
 
-    if [ -n "$2" ] && [ -n "$3" ]
-    then
-        # set variables
-        BEAMLINE="$2"
-        DETECTOR="$3"
-        NAME=${SCRIPT_PROC_NAME}_${BEAMLINE}_${DETECTOR}
-        DAEMON_ARGS="--verbose --config_file ${CONFIG_PATH}/datamanager_${BEAMLINE}_${DETECTOR}.conf --procname $NAME"
-        PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
-    fi
-
-
-    start()
+    do_start()
     {
         status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
         # If the status is RUNNING then don't need to start again.
@@ -87,7 +180,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
         echo
     }
 
-    stop()
+    do_stop()
     {
         #check_status_q || exit 0
         status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
@@ -114,7 +207,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 
             SOCKETID=`cat $PIDFILE`
 
-            rm -f "${IPCPATH}/${SOCKETID}"*
+            rm -f "${IPCDIR}/${SOCKETID}"*
         fi
 
         status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
@@ -127,29 +220,18 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
         fi
     }
 
-    case "$1" in
-        start)
-            start
-            ;;
-        stop)
-            stop
-            ;;
-        restart)
-            printf "Restarting ${NAME}: \n"
-            stop
-            start
-            ;;
-        status)
-            status ${NAME}
-            RETVAL=$?
-            ;;
-        *)
-            printf "Usage: $0 {start|stop|status|restart}\n"
-            RETVAL=1
-            ;;
-    esac
-    exit $RETVAL
+    do_status()
+    {
+        status ${NAME}
+        RETVAL=$?
+    }
 
+    do_restart()
+    {
+        printf "Restarting ${NAME}: \n"
+        do_stop
+        do_start
+    }
 
 elif [ -f /etc/debian_version ] ; then
 # Debian and Ubuntu
@@ -165,21 +247,13 @@ elif [ -f /etc/debian_version ] ; then
     # and status_of_proc is working.
     . /lib/lsb/init-functions
 
-    if [ -n "$2" ] && [ -n "$3" ]
-    then
-        # set variables
-        BEAMLINE="$2"
-        DETECTOR="$3"
-        NAME=${SCRIPT_PROC_NAME}_${BEAMLINE}_${DETECTOR}
-        DAEMON_ARGS="--verbose --config_file ${CONFIG_PATH}/datamanager_${BEAMLINE}_${DETECTOR}.conf --procname $NAME"
-        PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
-    fi
-
     #
     # Function that starts the daemon/service
     #
     do_start()
     {
+        log_daemon_msg "Starting $NAME"
+
         # Checked the PID file exists and check the actual status of process
         if [ -e $PIDFILE ]; then
             status_of_proc -p $PIDFILE $DAEMON "$NAME" > /dev/null && status="1" || status="$?"
@@ -209,12 +283,19 @@ elif [ -f /etc/debian_version ] ; then
         else
             return 1
         fi
+
+        case "$?" in
+            0) log_end_msg 0
+                ;;
+            *) log_end_msg 1
+                ;;
+        esac
     }
 
     cleanup()
     {
         SOCKETID=`cat $PIDFILE`
-        /bin/rm -rf "${IPCPATH}/${SOCKETID}"*
+        /bin/rm -rf "${IPCDIR}/${SOCKETID}"*
 
         # Many daemons don't delete their pidfiles when they exit.
         /bin/rm -rf $PIDFILE
@@ -227,6 +308,8 @@ elif [ -f /etc/debian_version ] ; then
     #
     do_stop()
     {
+        log_daemon_msg "Stopping $NAME"
+
         # Stop the daemon.
         if [ -e $PIDFILE ]; then
 #            status_of_proc $NAME $NAME && exit 0 || exit $?
@@ -259,6 +342,18 @@ elif [ -f /etc/debian_version ] ; then
         else
             log_daemon_msg "$NAME is not running"
         fi
+
+        case "$?" in
+            0) log_end_msg 0
+                ;;
+            *) log_end_msg 1
+                ;;
+        esac
+    }
+
+    do_status()
+    {
+        status_of_proc $NAME $NAME && exit 0 || exit $?
     }
 
     #
@@ -266,83 +361,45 @@ elif [ -f /etc/debian_version ] ; then
     #
     do_reload()
     {
+        log_daemon_msg "Reloading $DESC" "$NAME"
+
         # If the daemon can reload its configuration without
         # restarting (for example, when it is sent a SIGHUP),
         # then implement that here.
         start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $NAME
-        return 0
+        log_end_msg 0
     }
 
-    case "$1" in
-        start)
-            log_daemon_msg "Starting $NAME"
-            do_start
-            case "$?" in
-                0) log_end_msg 0
-                    ;;
-                *) log_end_msg 1
-                    ;;
-            esac
-            ;;
-        stop)
-            log_daemon_msg "Stopping $NAME"
-            do_stop
-            case "$?" in
-                0) log_end_msg 0
-                    ;;
-                *) log_end_msg 1
-                    ;;
-            esac
-            ;;
-        status)
-            status_of_proc $NAME $NAME && exit 0 || exit $?
-            ;;
-        #reload|force-reload)
-            # If do_reload() is not implemented then leave this commented out
-            # and leave 'force-reload' as an alias for 'restart'.
-
-            #log_daemon_msg "Reloading $DESC" "$NAME"
-            #do_reload
-            #log_end_msg $?
-            #;;
-        restart|force-reload)
-            # If the "reload" option is implemented then remove the
-            # 'force-reload' alias
-
-            log_daemon_msg "Restarting $DESC" "$NAME"
-            log_daemon_msg "Stopping $DESC" "$NAME"
-            do_stop
-            stop_status="$?"
-            case "$stop_status" in
-                0) log_end_msg 0
-                    ;;
-                *) log_end_msg 1
-                    ;;
-            esac
-            sleep 3
-            case "$stop_status" in
-                0)
-                    log_daemon_msg "Starting $NAME"
-                    do_start
-                    case "$?" in
-                        0) log_end_msg 0
-                            ;;
-                        *) log_end_msg 1
-                            ;;
-                    esac
-                    ;;
-                *)
-                    # Failed to stop
-                    log_end_msg 1
-                    ;;
-            esac
-            ;;
-        *)
-            #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
-            echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
-            exit 3
-            ;;
-    esac
+    do_restart()
+    {
+        log_daemon_msg "Restarting $DESC" "$NAME"
+        log_daemon_msg "Stopping $DESC" "$NAME"
+        do_stop
+        stop_status="$?"
+        case "$stop_status" in
+            0) log_end_msg 0
+                ;;
+            *) log_end_msg 1
+                ;;
+        esac
+        sleep 3
+        case "$stop_status" in
+            0)
+                log_daemon_msg "Starting $NAME"
+                do_start
+                case "$?" in
+                    0) log_end_msg 0
+                        ;;
+                    *) log_end_msg 1
+                        ;;
+                esac
+                ;;
+            *)
+                # Failed to stop
+                log_end_msg 1
+                ;;
+        esac
+    }
 
 elif [ -f /etc/SuSE-release ] ; then
 # SuSE
@@ -362,7 +419,7 @@ elif [ -f /etc/SuSE-release ] ; then
     cleanup()
     {
         SOCKETID=`cat $PIDFILE`
-        /bin/rm -rf "${IPCPATH}/${SOCKETID}"*
+        /bin/rm -rf "${IPCDIR}/${SOCKETID}"*
 
         # Many daemons don't delete their pidfiles when they exit.
         /bin/rm -rf $PIDFILE
@@ -373,7 +430,7 @@ elif [ -f /etc/SuSE-release ] ; then
     do_start()
     {
         printf "Starting $NAME"
-        export LD_LIBRARY_PATH=/opt/hidra:$LD_LIBRARY_PATH
+        export LD_LIBRARY_DIR=${BASEDIR}:$LD_LIBRARY_DIR
 
         # Checking if the process is already running
         /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"
@@ -389,7 +446,7 @@ elif [ -f /etc/SuSE-release ] ; then
 
             ## Start daemon with startproc(8). If this fails
             ## the return value is set appropriately by startproc.
-            /sbin/startproc $DAEMON_EXE $DAEMON_EXE_ARGS
+            /sbin/startproc $DAEMON $DAEMON_ARGS
 
             sleep 5
 
@@ -419,53 +476,65 @@ elif [ -f /etc/SuSE-release ] ; then
         rc_status -v
     }
 
-    case "$1" in
-        start)
-            do_start
-            ;;
-        stop)
-            do_stop
-            ;;
-        status)
-            printf "Checking for service $NAME "
-            ## Check status with checkproc(8), if process is running
-            ## checkproc will return with exit status 0.
+    do_status()
+    {
+        printf "Checking for service $NAME "
+        ## Check status with checkproc(8), if process is running
+        ## checkproc will return with exit status 0.
 
-            # Return value is slightly different for the status command:
-            # 0 - service up and running
-            # 1 - service dead, but /var/run/  pid  file exists
-            # 2 - service dead, but /var/lock/ lock file exists
-            # 3 - service not running (unused)
-            # 4 - service status unknown :-(
-            # 5--199 reserved (5--99 LSB, 100--149 distro, 150--199 appl.)
+        # Return value is slightly different for the status command:
+        # 0 - service up and running
+        # 1 - service dead, but /var/run/  pid  file exists
+        # 2 - service dead, but /var/lock/ lock file exists
+        # 3 - service not running (unused)
+        # 4 - service status unknown :-(
+        # 5--199 reserved (5--99 LSB, 100--149 distro, 150--199 appl.)
 
-            # NOTE: checkproc returns LSB compliant status values.
-            /sbin/checkproc $NAME
-            # NOTE: rc_status knows that we called this init script with
-            # "status" option and adapts its messages accordingly.
-            rc_status -v
-            ;;
-        #reload|force-reload)
-            # If do_reload() is not implemented then leave this commented out
-            # and leave 'force-reload' as an alias for 'restart'.
+        # NOTE: checkproc returns LSB compliant status values.
+        /sbin/checkproc $NAME
+        # NOTE: rc_status knows that we called this init script with
+        # "status" option and adapts its messages accordingly.
+        rc_status -v
+    }
 
-            #log_daemon_msg "Reloading $DESC" "$NAME"
-            #do_reload
-            #log_end_msg $?
-            #;;
-        restart|force-reload)
-            printf "Not implemented yet\n"
-            do_stop
-            do_start
-            ;;
-        getsettings)
-            $BASEDIR/getsettings
-            ;;
-        *)
-            #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
-            printf "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload|getsettings}\n" >&2
-            exit 3
-            ;;
-    esac
+    do_restart()
+    {
+        printf "Not tested yet\n"
+        do_stop
+        do_start
+    }
 
 fi
+
+case "$action" in
+    start)
+        do_start
+        ;;
+    stop)
+        do_stop
+        ;;
+    status)
+        do_status
+        ;;
+    #reload|force-reload)
+        # If do_reload() is not implemented then leave this commented out
+        # and leave 'force-reload' as an alias for 'restart'.
+
+        #log_daemon_msg "Reloading $DESC" "$NAME"
+        #do_reload
+        #log_end_msg $?
+        #;;
+    #restart|force-reload)
+        # If the "reload" option is implemented then remove the
+        # 'force-reload' alias
+    restart)
+        do_restart
+        ;;
+    getsettings)
+        ${getsettings} --config_file ${config_file}
+        ;;
+    *)
+        usage
+        ;;
+esac
+exit $RETVAL

@@ -6,14 +6,14 @@ import zmq
 import logging
 import json
 
-from __init__ import BASE_PATH
-import helpers
+from __init__ import BASE_DIR
+import utils
 
 
 # enable logging
-logfile_path = os.path.join(BASE_PATH, "logs")
+logfile_path = os.path.join(BASE_DIR, "logs")
 logfile = os.path.join(logfile_path, "test_nexus_transfer.log")
-helpers.init_logging(logfile, True, "DEBUG")
+utils.init_logging(logfile, True, "DEBUG")
 
 
 class Sender ():
@@ -42,7 +42,7 @@ class Sender ():
 
     def run(self):
 
-        source_file = os.path.join(BASE_PATH, "test_file.cbf")
+        source_file = os.path.join(BASE_DIR, "test_file.cbf")
         chunksize = 10485760  # 1024*1024*10 = 10MB
         filepart = 0
         timeout = 2
@@ -56,7 +56,7 @@ class Sender ():
         logging.debug("Recv confirmation: {0}".format(recv_message))
 
         metadata = {
-            "source_path": os.path.join(BASE_PATH, "data", "source"),
+            "source_path": os.path.join(BASE_DIR, "data", "source"),
             "relative_path": "local",
             "filename": filename,
             "file_part": filepart,

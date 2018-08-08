@@ -8,7 +8,7 @@ import setproctitle
 import socket
 import argparse
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 from hidra import Transfer
 
 
@@ -17,7 +17,7 @@ class Worker(multiprocessing.Process):
                  port, number_of_files):
 
         self.id = id
-        self.basepath = os.path.join(BASE_PATH, "data", "target")
+        self.basepath = os.path.join(BASE_DIR, "data", "target")
         self.number_of_files = number_of_files
 
         self.port = port
@@ -31,7 +31,7 @@ class Worker(multiprocessing.Process):
     def run(self):
         try:
             while True:
-                #print("Worker-{0}: waiting".format(self.id))
+                # print("Worker-{0}: waiting".format(self.id))
                 [metadata, data] = self.query.get()
                 if metadata and data:
                     self.number_of_files.value += 1
@@ -55,11 +55,11 @@ if __name__ == "__main__":
     parser.add_argument("--signal_host",
                         type=str,
                         help="Host where HiDRA is runnning",
-                        default=socket.gethostname())
+                        default=socket.getfqdn())
     parser.add_argument("--target_host",
                         type=str,
                         help="Host where the data should be send to",
-                        default=socket.gethostname())
+                        default=socket.getfqdn())
     parser.add_argument("--procname",
                         type=str,
                         help="Name with which the service should be running",
@@ -102,11 +102,11 @@ if __name__ == "__main__":
     try:
         while all(w.is_alive() for w in workers):
             time.sleep(0.5)
-            print ("number_of_files={0}".format(number_of_files.value))
+            print("number_of_files={0}".format(number_of_files.value))
     except KeyboardInterrupt:
         pass
     finally:
-        print ("number_of_files={0}".format(number_of_files.value))
+        print("number_of_files={0}".format(number_of_files.value))
         for w in workers:
             w.terminate()
 

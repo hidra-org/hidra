@@ -1,0 +1,7 @@
+opt/hidra/src/hidra_control/hidra_control_server.py
+opt/hidra/src/receiver/*
+opt/hidra/src/sender/*
+opt/hidra/src/shared/*
+opt/hidra/conf/*
+var/log/hidra
+lib/systemd/system/*

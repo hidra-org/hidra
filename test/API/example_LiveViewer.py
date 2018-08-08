@@ -8,7 +8,7 @@ import socket
 # from PyQt4 import QtCore
 from PyQt4.QtCore import QThread, QMutex
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 
 from hidra import Transfer
 
@@ -35,7 +35,7 @@ class LiveView(QThread):
     transfer_type = "zitpcx19282.desy.de"
 #    transfer_type = "zitpcx22614w.desy.de"
     data_port = "50022"
-    basepath = os.path.join(BASE_PATH, "data", "target")
+    basepath = os.path.join(BASE_DIR, "data", "target")
 #    basepath = "/gpfs"
 
     def __init__(self, path=None, filetype=None, interval=None, parent=None):
@@ -49,8 +49,8 @@ class LiveView(QThread):
 
 #        suffix = [".cbf", ".tif", ".hdf5"]
 
-        self.query = Transfer("QUERY_METADATA", self.transfer_type)
-        self.query.initiate([socket.gethostname(), self.data_port, "1"])
+        self.query = Transfer("QUERY_NEXT_METADATA", self.transfer_type)
+        self.query.initiate([socket.getfqdn(), self.data_port, "1"])
         self.query.start(self.data_port)
 #        self.query.initiate(["zitpcx22614w", self.data_port, "1"])
 #        self.query.start(["zitpcx22614w", self.data_port])
@@ -68,17 +68,17 @@ class LiveView(QThread):
 
     def stop(self, interval=0.0):
         if self.stoptimer < 0.0 and interval > 0.0:
-            print ("Live view thread: Stopping in %d seconds" % interval)
+            print("Live view thread: Stopping in %d seconds" % interval)
             self.stoptimer = interval
             return
-        print ("Live view thread: Stopping thread")
+        print("Live view thread: Stopping thread")
         self.alive = False
 
         self.wait()  # waits until run stops on his own
 
     def run(self):
         self.alive = True
-        print ("Live view thread: started")
+        print("Live view thread: started")
 
         if self.filetype in [LiveView.FILETYPE_CBF, LiveView.FILETYPE_TIF]:  # noqa F821
             # open viewer
@@ -92,7 +92,7 @@ class LiveView(QThread):
                 receivedfile = (
                     self.query.generate_target_filepath(self.basepath,
                                                         metadata))
-                print ("Next file: ", receivedfile)
+                print("Next file: ", receivedfile)
 
                 if receivedfile is None:
                     self.mutex.unlock()
@@ -124,9 +124,9 @@ class LiveView(QThread):
                     time.sleep(0.05)
                     interval += 0.05
         elif self.filetype == LiveView.FILETYPE_HDF5:  # noqa F821
-            print ("Live view thread: HDF5 not supported yet")
+            print("Live view thread: HDF5 not supported yet")
 
-        print ("Live view thread: Thread for Live view died")
+        print("Live view thread: Thread for Live view died")
         self.alive = False
 
     def setPath(self, path=None):  # noqa N802
@@ -161,12 +161,12 @@ if __name__ == '__main__':
     lv = LiveView()
 
     try:
-        print ("LiveViewer start")
+        print("LiveViewer start")
         lv.start()
 
         time.sleep(20)
     finally:
-        print ("LiveViewer stop")
+        print("LiveViewer stop")
         lv.stop()
 
 #    time.sleep(1)

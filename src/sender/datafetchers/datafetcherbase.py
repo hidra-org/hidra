@@ -1,10 +1,17 @@
+from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
-import zmq
-import json
-import sys
 import abc
+import json
 import os
+import sys
+import zmq
+
+import __init__ as init  # noqa F401
+from base_class import Base
+import utils
+from utils import WrongConfiguration
 
 # source:
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
@@ -13,10 +20,6 @@ if sys.version_info[0] >= 3 and sys.version_info[1] >= 4:
 else:
     ABC = abc.ABCMeta(str("ABC"), (), {})
 
-from __init__ import BASE_PATH  # noqa F401
-import helpers
-
-
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
@@ -24,93 +27,163 @@ class DataHandlingError(Exception):
     pass
 
 
-class DataFetcherBase(ABC):
+class DataFetcherBase(Base, ABC):
 
-    def __init__(self, config, log_queue, id, logger_name, context):
+    def __init__(self, config, log_queue, fetcher_id, logger_name, context):
         """Initial setup
 
-        Checks if all required parameters are set in the configuration
+        Checks if the required parameters are set in the configuration for
+        the base setup.
+
+        Args:
+            config (dict): A dictionary containing the configuration
+                           parameters.
+            log_queue: The multiprocessing queue which is used for logging.
+            fetcher_id (int): The ID of this datafetcher instance.
+            logger_name (str): The name to be used for the logger.
+            context: The ZMQ context to be used.
+
         """
 
-        self.id = id
+        self.fetcher_id = fetcher_id
         self.config = config
         self.context = context
+        self.cleaner_job_socket = None
 
-        self.log = helpers.get_logger(logger_name, log_queue)
+        self.log = utils.get_logger(logger_name, log_queue)
 
         self.source_file = None
         self.target_file = None
 
-        required_params = [
+        self.required_params = []
+
+        self.required_base_params = [
             "chunksize",
             "local_target",
-            ["remove_data", [True, False, "deferred_error_handling",
+            ["remove_data", [True,
+                             False,
+                             "stop_on_error",
                              "with_confirmation"]],
-            "cleaner_job_con_str"
+            "endpoints",
+            "main_pid"
         ]
 
+        self.check_config(print_log=False)
+        self.base_setup()
+
+    def check_config(self, print_log=False):
+        """Check that the configuration containes the nessessary parameters.
+
+        Args:
+            print_log (boolean): If a summary of the configured parameters
+                                 should be logged.
+        Raises:
+            WrongConfiguration: The configuration has missing or
+                                wrong parameteres.
+        """
+
+        # combine paramerters which aare needed for all datafetchers with the
+        # specific ones for this fetcher
+        required_params = self.required_base_params + self.required_params
+
         # Check format of config
-        check_passed, config_reduced = helpers.check_config(required_params,
-                                                            self.config,
-                                                            self.log)
+        check_passed, config_reduced = utils.check_config(
+            required_params,
+            self.config,
+            self.log
+        )
 
         if check_passed:
-            self.log.info("Configuration for data fetcher: {0}"
-                          .format(config_reduced))
-
-            if self.config["remove_data"] == "with_confirmation":
-                #creates socket
-                try:
-                    self.cleaner_job_socket = self.context.socket(zmq.PUSH)
-                    self.cleaner_job_socket.connect(
-                        self.config["cleaner_job_con_str"])
-                    self.log.info("Start cleaner job_socket (connect): {0}"
-                                  .format(self.config["cleaner_job_con_str"]))
-                except:
-                    self.log.error("Failed to start cleaner job socket "
-                                   "(connect): '{0}'".format(
-                                       self.config["cleaner_job_con_str"]),
-                                   exc_info=True)
-                    raise
-            else:
-                self.cleaner_job_socket = None
+            if print_log:
+                self.log.info("Configuration for data fetcher: {}"
+                              .format(config_reduced))
 
         else:
-            self.log.debug("config={0}".format(self.config))
-            raise Exception("Wrong configuration")
+            # self.log.debug("config={}".format(self.config))
+            msg = "The configuration has missing or wrong parameteres."
+            raise WrongConfiguration(msg)
 
-    def send_to_targets(self, targets, open_connections, metadata, payload,
+    def base_setup(self):
+        """Sets up the shared components needed by all datafetchers.
+
+        Created a socket to communicate with the cleaner and sets the topic.
+        """
+
+        if self.config["remove_data"] == "with_confirmation":
+            # create socket
+            self.cleaner_job_socket = self.start_socket(
+                name="cleaner_job_socket",
+                sock_type=zmq.PUSH,
+                sock_con="connect",
+                endpoint=self.config["endpoints"].cleaner_job_con
+            )
+
+            self.confirmation_topic = (
+                utils.generate_sender_id(self.config["main_pid"])
+            )
+
+    def send_to_targets(self,
+                        targets,
+                        open_connections,
+                        metadata,
+                        payload,
                         timeout=-1):
+        """Send the data to targets.
 
-        for target, prio, suffixes, send_type in targets:
+        Args:
+            targets: A list of targets where to send the data to.
+                     Each taget has is of the form:
+                        - target: A ZMQ endpoint to send the data to.
+                        - prio (int): With which priority this data should be
+                                      sent:
+                                      - 0 is highes priority with blocking
+                                      - all other prioirities are nonblocking
+                                        but sorted numerically.
+                        - send_type: If the data (means payload and metadata)
+                                     or only the metadata should be sent.
+
+            open_connections (dict): Containing all open sockets. If data was
+                                     send to a target already the socket is
+                                     kept open till the target disconnects.
+            metadata: The metadata of this data block.
+            payload: The data block to be sent.
+            timeout (optional): How long to wait for the message to be received
+                                (default: -1, means wait forever)
+        """
+
+        for target, prio, send_type in targets:
 
             # send data to the data stream to store it in the storage system
             if prio == 0:
                 # socket not known
                 if target not in open_connections:
+                    endpoint = "tcp://{}".format(target)
                     # open socket
                     try:
-                        socket = self.context.socket(zmq.PUSH)
-                        connection_str = "tcp://{0}".format(target)
-
-                        socket.connect(connection_str)
-                        self.log.info("Start socket (connect): '{0}'"
-                                      .format(connection_str))
-
-                        # register socket
-                        open_connections[target] = socket
+                        # start and register socket
+                        open_connections[target] = self.start_socket(
+                            name="socket",
+                            sock_type=zmq.PUSH,
+                            sock_con="connect",
+                            endpoint=endpoint
+                        )
                     except:
-                        raise DataHandlingError("Failed to start socket "
-                                                "(connect): '{0}'"
-                                                .format(connection_str))
+                        self.log.debug("Raising DataHandling error",
+                                       exc_info=True)
+                        msg = ("Failed to start socket (connect): '{}'"
+                               .format(endpoint))
+                        raise DataHandlingError(msg)
 
                 # send data
                 try:
                     if send_type == "data":
                         tracker = open_connections[target].send_multipart(
-                            payload, copy=False, track=True)
-                        self.log.info("Sending message part from file '{0}' "
-                                      "to '{1}' with priority {2}"
+                            payload,
+                            copy=False,
+                            track=True
+                        )
+                        self.log.info("Sending message part from file '{}' "
+                                      "to '{}' with priority {}"
                                       .format(self.source_file, target, prio))
 
                     elif send_type == "metadata":
@@ -118,59 +191,58 @@ class DataFetcherBase(ABC):
                         tracker = open_connections[target].send_multipart(
                             [json.dumps(metadata).encode("utf-8"),
                              json.dumps(None).encode("utf-8")],
-                            copy=False, track=True)
+                            copy=False,
+                            track=True
+                        )
                         self.log.info("Sending metadata of message part from "
-                                      "file '{0}' to '{1}' with priority {2}"
+                                      "file '{}' to '{}' with priority {}"
                                       .format(self.source_file, target, prio))
-                        self.log.debug("metadata={0}".format(metadata))
+                        self.log.debug("metadata={}".format(metadata))
 
                     if not tracker.done:
-                        self.log.debug("Message part from file '{0}' has not "
+                        self.log.debug("Message part from file '{}' has not "
                                        "been sent yet, waiting..."
                                        .format(self.source_file))
                         tracker.wait(timeout)
-                        self.log.debug("Message part from file '{0}' has not "
+                        self.log.debug("Message part from file '{}' has not "
                                        "been sent yet, waiting...done"
                                        .format(self.source_file))
 
                 except:
-                    raise DataHandlingError("Sending (metadata of) message "
-                                            "part from file '{0}' to '{1}' "
-                                            "with priority {2} failed."
-                                            .format(self.source_file, target,
-                                                    prio))
+                    self.log.debug("Raising DataHandling error", exc_info=True)
+                    msg = ("Sending (metadata of) message part from file '{}' "
+                           "to '{}' with priority {} failed."
+                           .format(self.source_file, target, prio))
+                    raise DataHandlingError(msg)
 
             else:
                 # socket not known
                 if target not in open_connections:
-                    # open socket
-                    socket = self.context.socket(zmq.PUSH)
-                    connection_str = "tcp://{0}".format(target)
-
-                    socket.connect(connection_str)
-                    self.log.info("Start socket (connect): '{0}'"
-                                  .format(connection_str))
-
-                    # register socket
-                    open_connections[target] = socket
-
+                    # start and register socket
+                    open_connections[target] = self.start_socket(
+                        name="socket",
+                        sock_type=zmq.PUSH,
+                        sock_con="connect",
+                        endpoint="tcp://{}".format(target)
+                    )
                 # send data
                 if send_type == "data":
                     open_connections[target].send_multipart(payload,
                                                             zmq.NOBLOCK)
-                    self.log.info("Sending message part from file '{0}' to "
-                                  "'{1}' with priority {2}"
+                    self.log.info("Sending message part from file '{}' to "
+                                  "'{}' with priority {}"
                                   .format(self.source_file, target, prio))
 
                 elif send_type == "metadata":
                     open_connections[target].send_multipart(
                         [json.dumps(metadata).encode("utf-8"),
                          json.dumps(None).encode("utf-8")],
-                        zmq.NOBLOCK)
+                        zmq.NOBLOCK
+                    )
                     self.log.info("Sending metadata of message part from file "
-                                  "'{0}' to '{1}' with priority {2}"
+                                  "'{}' to '{}' with priority {}"
                                   .format(self.source_file, target, prio))
-                    self.log.debug("metadata={0}".format(metadata))
+                    self.log.debug("metadata={}".format(metadata))
 
     def generate_file_id(self, metadata):
         """Generates a file id consisting of relative path and file name
@@ -211,12 +283,8 @@ class DataFetcherBase(ABC):
             targets (list):
                 A list of targets where the data or metadata should be sent to.
                 It is of the form:
-                    [[<node_name>:<port>, <priority>,
-                      <list of file suffixes>, <request_type>], ...]
+                    [[<node_name>:<port>, <priority>, <request_type>], ...]
                 where
-                    <list of file suffixes>: is a python of file types which
-                                             should be send to this target.
-                                             e.g. [u'.cbf']
                     <request_type>: u'data' or u'metadata'
             metadata (dict): Dictionary created by the event detector
                              containing:
@@ -239,12 +307,8 @@ class DataFetcherBase(ABC):
             targets (list):
                 A list of targets where the data or metadata should be sent to.
                 It is of the form:
-                    [[<node_name>:<port>, <priority>,
-                      <list of file suffixes>, <request_type>], ...]
+                    [[<node_name>:<port>, <priority>, <request_type>], ...]
                 where
-                    <list of file suffixes>: is a python of file types which
-                                             should be send to this target.
-                                             e.g. [u'.cbf']
                     <request_type>: u'data' or u'metadata'
             metadata (dict): extendet metadata dictionary filled by function
                              get_metadata
@@ -263,12 +327,8 @@ class DataFetcherBase(ABC):
             targets (list):
                 A list of targets where the data or metadata should be sent to.
                 It is of the form:
-                    [[<node_name>:<port>, <priority>,
-                      <list of file suffixes>, <request_type>], ...]
+                    [[<node_name>:<port>, <priority>, <request_type>], ...]
                 where
-                    <list of file suffixes>: is a python of file types which
-                                             should be send to this target.
-                                             e.g. [u'.cbf']
                     <request_type>: u'data' or u'metadata'
             metadata (dict)
             open_connections
@@ -279,16 +339,18 @@ class DataFetcherBase(ABC):
         pass
 
     def close_socket(self):
-        if self.cleaner_job_socket is not None:
-            self.cleaner_job_socket.close(0)
-            self.cleaner_job_socket = None
+        self.stop_socket("cleaner_job_socket")
 
     @abc.abstractmethod
     def stop(self):
+        """Stop and clean up.
+        """
         pass
 
-    def __exit__(self):
+    def __exit__(self, type, value, traceback):
+        self.close_socket()
         self.stop()
 
     def __del__(self):
+        self.close_socket()
         self.stop()

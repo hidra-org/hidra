@@ -5,8 +5,8 @@ import argparse
 import socket
 import os
 
-from __init__ import BASE_PATH
-import helpers
+from __init__ import BASE_DIR
+import utils
 
 from hidra import Transfer
 
@@ -18,22 +18,22 @@ if __name__ == "__main__":
     parser.add_argument("--signal_host",
                         type=str,
                         help="Host where HiDRA is runnning",
-                        default=socket.gethostname())
+                        default=socket.getfqdn())
     parser.add_argument("--target_host",
                         type=str,
                         help="Host where the data should be send to",
-                        default=socket.gethostname())
+                        default=socket.getfqdn())
 
     arguments = parser.parse_args()
 
     # enable logging
-    logfile_path = os.path.join(BASE_PATH, "logs")
+    logfile_path = os.path.join(BASE_DIR, "logs")
     logfile = os.path.join(logfile_path, "testAPI.log")
-    helpers.init_logging(logfile, True, "DEBUG")
+    utils.init_logging(logfile, True, "DEBUG")
 
     targets = [arguments.target_host, "50100", 0]
 
-    print ("\n==== TEST: Stream all files and store them ====\n")
+    print("\n==== TEST: Stream all files and store them ====\n")
 
     query = Transfer("STREAM", arguments.signal_host, use_log=True)
 
@@ -41,23 +41,14 @@ if __name__ == "__main__":
 
     query.start()
 
-    while True:
-        try:
-            result = query.get()
-        except KeyboardInterrupt:
-            break
-        except Exception as e:
-            print ("Getting data failed.")
-            print ("Error was:", e)
-            break
-
-        try:
-            query.store("/opt/hidra/data/target/testStore", result)
-        except Exception as e:
-            print ("Storing data failed.")
-            print ("Error was:", e)
-            break
+    target_dir = os.path.join(BASE_DIR, "data", "zmq_target")
+    target_file = os.path.join(target_dir, "test_store")
+    try:
+        query.store(target_file)
+    except Exception as e:
+        print("Storing data failed.")
+        print("Error was:", e)
 
     query.stop()
 
-    print ("\n==== TEST END: Stream all files and store them ====\n")
+    print("\n==== TEST END: Stream all files and store them ====\n")
