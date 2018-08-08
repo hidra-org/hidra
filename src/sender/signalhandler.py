@@ -635,12 +635,12 @@ class SignalHandler(Base):
 
         if appid is None:
             # check all registered ids and ignore appid
-            reg_to_check = [(i, target_properties)
-                            for i, target_properties in enumerate(registered_ids)]
+            reg_to_check = [(i, target_prop)
+                            for i, target_prop in enumerate(registered_ids)]
         else:
-            reg_to_check = [(i, target_properties)
-                            for i, target_properties in enumerate(registered_ids)
-                            if target_properties.appid == appid]
+            reg_to_check = [(i, target_prop)
+                            for i, target_prop in enumerate(registered_ids)
+                            if target_prop.appid == appid]
 
         # list of socket configurations to remove (in format how they are
         # registered:

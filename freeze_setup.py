@@ -81,7 +81,10 @@ exe_sender_init = os.path.join(senderpath, "__init_exe__.py")
 with open(sender_init, "r") as f:
     with open(exe_sender_init, "w") as f_exe:
         for line in f:
-            if line == "BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))\n":
+            ref_line = (
+                "BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))"
+            )
+            if line == ref_line:
                 f_exe.write("BASE_DIR = CURRENT_DIR\n"),
             else:
                 f_exe.write(line)

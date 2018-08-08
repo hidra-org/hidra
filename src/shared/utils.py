@@ -553,6 +553,7 @@ def get_socket_id(log, ip, is_ipv6=None):
     else:
         return "{}:{}".format(ip)
 
+
 def excecute_ldapsearch(ldap_cn, ldapuri):
 
     p = subprocess.Popen(

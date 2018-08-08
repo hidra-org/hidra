@@ -226,14 +226,14 @@ class TaskProvider(Base):
 
                             # cleanup accumulated events
                             try:
-                                accumulated_workload = self.eventdetector.get_new_event()
-                                self.log.debug("Ingnore accumulated workload: {}"
-                                               .format(accumulated_workload))
+                                acc_events = self.eventdetector.get_new_event()
+                                self.log.debug("Ignore accumulated workload:"
+                                               " {}".format(acc_events))
                             except KeyboardInterrupt:
                                 break
                             except:
-                                self.log.error("Invalid workload message received.",
-                                               exc_info=True)
+                                self.log.error("Invalid workload message "
+                                               "received.", exc_info=True)
 
                                 # Wake up from sleeping
                             break

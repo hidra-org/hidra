@@ -428,7 +428,7 @@ class EventDetector(EventDetectorBase):
             for event in remaining_events
         ]
 
-        #event_message_list = self.get_remaining_events()
+        # event_message_list = self.get_remaining_events()
         event_message = {}
 
         events = self.get_events(self.fd, self.timeout)

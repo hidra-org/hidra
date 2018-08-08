@@ -15,7 +15,7 @@ import zmq
 
 # from ._version import __version__
 from ._constants import connection_list
-from ._shared_utils import LoggingFunction, Base, start_socket, stop_socket
+from ._shared_utils import LoggingFunction, Base
 
 
 class NotSupported(Exception):
@@ -395,7 +395,7 @@ class ReceiverControl(Base):
         self.status_socket.send_multipart([b"RESET_STATUS"])
         self.log.debug("Reset request sent")
 
-        response = self._get_response()
+        self._get_response()
 
     def stop(self):
         if self.context is not None:

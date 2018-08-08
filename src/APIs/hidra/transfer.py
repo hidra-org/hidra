@@ -1243,8 +1243,8 @@ class Transfer(Base):
             the newest data chunk
                 (if connection type "QUERY_NEXT" or "STREAM" was choosen)
             the metadata of the newest data chunk
-                (if connection type "QUERY_NEXT_METADATA" or "STREAM_METADATA" was
-                choosen)
+                (if connection type "QUERY_NEXT_METADATA" or "STREAM_METADATA"
+                was choosen)
 
         """
         # query_metadata and stream_metadata are covered with this as well
@@ -1398,8 +1398,8 @@ class Transfer(Base):
             the newest file
                 (if connection type "QUERY_NEXT" or "STREAM" was choosen)
             the metadata of the newest file
-                (if connection type "QUERY_NEXT_METADATA" or "STREAM_METADATA" was
-                choosen)
+                (if connection type "QUERY_NEXT_METADATA" or "STREAM_METADATA"
+                was choosen)
 
         """
         run_loop = True
@@ -1463,11 +1463,11 @@ class Transfer(Base):
                 return received["metadata"], received["data"]
 
     def store_chunk(self,
-                         descriptors,
-                         filepath,
-                         payload,
-                         base_path,
-                         metadata):
+                    descriptors,
+                    filepath,
+                    payload,
+                    base_path,
+                    metadata):
         """Writes the data chunk into a file.
 
         Args:

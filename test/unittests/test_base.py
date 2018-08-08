@@ -9,7 +9,6 @@ import inspect
 import logging
 import mock
 import os
-import socket
 import tempfile
 import traceback
 import unittest
@@ -98,6 +97,7 @@ class MockZmqSocket(mock.MagicMock):
         assert self._connected
         self._connected = False
 
+
 class MockZmqContext(mock.MagicMock):
 
     def __init__(self, **kwargs):
@@ -116,6 +116,7 @@ class MockZmqContext(mock.MagicMock):
     def destroy(self, linger=None):
         assert not self._destroyed
         self._destroyed = True
+
 
 class MockZmqPoller(mock.MagicMock):
 

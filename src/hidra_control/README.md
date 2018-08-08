@@ -36,8 +36,7 @@ cd /opt/hidra/src/hidra_control
 
 * The arguments '--beamline' and '--det' are mandatory (see description of start)
 * To choose a different path than current/raw
-* Permitted are "current/raw", "current/scratch_bl", "commissioning/raw", 
-  "commissioning/scratch_bl" and "local".
+* Permitted are "current/raw", "current/scratch_bl", "commissioning/raw"commissioning/scratch_bl" and "local".
 * The directory structure is inherited as created on the detector.
 
 ## Stop

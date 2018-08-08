@@ -745,7 +745,7 @@ class DataManager(Base):
                 # no one picked up the test message
                 if not tracker.done:
                     self.log.error("Failed to send {} of fixed streaming host "
-                                   "{}".format(acton_name, addr),
+                                   "{}".format(action_name, addr),
                                    exc_info=True)
                     return False
 
@@ -930,7 +930,6 @@ class DataManager(Base):
                         in self.datadispatcher_pr)
             )
         return status
-
 
     def stop(self):
         self.continue_run = False
