@@ -511,6 +511,48 @@ def convert_socket_to_fqdn(socketids, log):
     return socketids
 
 
+def is_ipv6_address(log, ip):
+    """" Determines if given IP is an IPv4 or an IPv6 addresses
+
+    Args:
+        log: logger for the log messages
+        ip: IP address to check
+
+    Returns:
+        boolean notifying if the IP was IPv4 or IPv6
+    """
+    try:
+        socket.inet_aton(ip)
+        log.info("IPv4 address detected: {}.".format(ip))
+        return False
+    except socket.error:
+        log.info("Address '{}' is not an IPv4 address, asume it is an IPv6 "
+                 "address.".format(ip))
+        return True
+
+
+def get_socket_id(log, ip, is_ipv6=None):
+    """ Determines socket ID for the given port
+
+    If the IP is an IPV6 address the appropriate zeromq syntax is used.
+
+    Args:
+        log: logger for the log messages
+        ip: socket ip
+        is_ipv6 (bool or None, optional): using the IPv6 syntax. If not set,
+                                          the type of the IP is determined
+                                          first.
+
+    """
+
+    if is_ipv6 is None:
+        is_ipv6 = is_ipv6_address(log, ip)
+
+    if is_ipv6:
+        return "[{}]:{}".format(ip)
+    else:
+        return "{}:{}".format(ip)
+
 def excecute_ldapsearch(ldap_cn, ldapuri):
 
     p = subprocess.Popen(

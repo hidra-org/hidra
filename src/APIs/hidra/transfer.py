@@ -909,6 +909,31 @@ class Transfer(Base):
                 )
                 return
 
+#            self.confirmation_protocol = "tcp"
+#            self.confirmation_ip = self.ip
+#
+#            if value is not None:
+#                if type(value) == list:
+#                    if len(value) == 2:
+#                        self.confirmation_ip = value[0]
+#                        self.confirmation_port = value[1]
+#                    elif len(value) == 3:
+#                        self.confirmation_protocol = value[0]
+#                        self.confirmation_ip = value[1]
+#                        self.confirmation_port = value[2]
+#                    else:
+#                        self.log.debug("value={}".format(value))
+#                        raise FormatError("Socket information have to be of "
+#                                          "the form [<host>, <port>].")
+#                else:
+#                    self.confirmation_port = value
+#
+#            con_str = "{}://{}".format(
+#                self.confirmation_protocol,
+#                self.__get_socket_id(self.confirmation_ip,
+#                                     self.confirmation_port))
+#
+
             # ------- confirmation socket ------ #
             # to send the a confirmation to the sender that the data packages
             # was stored successfully
