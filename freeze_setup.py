@@ -157,7 +157,7 @@ executables = [
 ]
 
 setup(name='HiDRA',
-      version='3.1.3',
+      version='4.0.0',
       description='',
       options={"build_exe": build_exe_options,
                "bdist_msi": bdist_msi_options},
