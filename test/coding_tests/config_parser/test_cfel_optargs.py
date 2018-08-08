@@ -3,19 +3,18 @@ import os
 import sys
 
 try:
-    CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 except:
-    CURRENT_PATH = os.path.dirname(os.path.abspath(sys.argv[0]))
+    CURRENT_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
 
-BASE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_PATH)))
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))
+SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
 
-if SHARED_PATH not in sys.path:
-    sys.path.insert(0, SHARED_PATH)
-del SHARED_PATH
+if SHARED_DIR not in sys.path:
+    sys.path.insert(0, SHARED_DIR)
+del SHARED_DIR
 
 from cfel_optarg import parse_parameters
-
 
 config_file = "/opt/hidra/conf/test.conf"
 

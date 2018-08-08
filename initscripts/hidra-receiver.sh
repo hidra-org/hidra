@@ -11,15 +11,15 @@
 ### END INIT INFO
 
 
-# PATH should only include /usr/* if it runs after the mountnfs.sh script
-PATH=/sbin:/usr/sbin:/bin:/usr/bin
+# DIR should only include /usr/* if it runs after the mountnfs.sh script
+DIR=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="HiDRA Receiver"
 # Process name ( For display )
 SCRIPT_NAME=hidra-receiver
-CONFIG_PATH=/opt/hidra/conf
+CONFIGDIR=/opt/hidra/conf
 DAEMON=/opt/hidra/src/receiver/datareceiver.py
 PIDFILE_LOCATION=/opt/hidra
-IPCPATH=/tmp/hidra
+IPCDIR=/tmp/hidra
 PYTHON=/usr/bin/python
 
 SCRIPTNAME=/etc/init.d/$SCRIPT_NAME
@@ -44,7 +44,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
     # set variables
     BEAMLINE="$2"
     NAME=${SCRIPT_NAME}_${BEAMLINE}
-    CONFIG_FILE="${CONFIG_PATH}/receiver_${BEAMLINE}.conf"
+    CONFIG_FILE="${CONFIGDIR}/receiver_${BEAMLINE}.conf"
     DAEMON_ARGS="--verbose --config_file ${CONFIG_FILE} --procname ${NAME}"
 
     if [ ! -f $CONFIG_FILE ]
@@ -111,7 +111,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             killall -KILL $NAME
 
             SOCKETID="`pidofproc ${NAME}`"
-            rm -f "${IPCPATH}/${SOCKETID}"*
+            rm -f "${IPCDIR}/${SOCKETID}"*
         fi
     	RETVAL=$?
 
@@ -174,7 +174,7 @@ elif [ -f /etc/debian_version ] ; then
     # set variables
     BEAMLINE="$2"
     NAME=${SCRIPT_NAME}_${BEAMLINE}
-    DAEMON_ARGS="--verbose --config_file ${CONFIG_PATH}/receiver_${BEAMLINE}.conf"
+    DAEMON_ARGS="--verbose --config_file ${CONFIGDIR}/receiver_${BEAMLINE}.conf"
     PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
 
     #
@@ -217,7 +217,7 @@ elif [ -f /etc/debian_version ] ; then
     cleanup()
     {
         SOCKETID=`cat $PIDFILE`
-        /bin/rm -rf "${IPCPATH}/${SOCKETID}"*
+        /bin/rm -rf "${IPCDIR}/${SOCKETID}"*
 
         # Many daemons don't delete their pidfiles when they exit.
         /bin/rm -rf $PIDFILE

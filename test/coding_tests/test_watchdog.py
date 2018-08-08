@@ -34,17 +34,18 @@ class MyHandler(PatternMatchingEventHandler):
 
 if __name__ == '__main__':
     from shutil import copyfile
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
-    print BASE_PATH
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+    BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+    print BASE_DIR
 
 
-    dataPath = BASE_PATH + "/data/source/local/raw"
+    dataPath = BASE_DIR + "/data/source/local/raw"
     observer = Observer()
     observer.schedule(MyHandler(), path=dataPath)
     observer.start()
 
-    sourceFile = BASE_PATH + "test/test_files/test_file.cbf"
-    targetFile = BASE_PATH + "/data/source/local/raw/100.cbf"
+    sourceFile = BASE_DIR + "test/test_files/test_file.cbf"
+    targetFile = BASE_DIR + "/data/source/local/raw/100.cbf"
 
     i = 1
     try:

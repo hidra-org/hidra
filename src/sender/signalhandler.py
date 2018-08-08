@@ -12,7 +12,7 @@ from collections import namedtuple
 
 from base_class import Base
 
-from __init__ import BASE_PATH  # noqa F401
+from __init__ import BASE_DIR  # noqa F401
 from _version import __version__
 import utils
 from hidra import convert_suffix_list_to_regex

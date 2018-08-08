@@ -8,7 +8,7 @@ import setproctitle
 import socket
 import argparse
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 from hidra import Transfer
 
 
@@ -17,7 +17,7 @@ class Worker(multiprocessing.Process):
                  port, number_of_files):
 
         self.id = id
-        self.basepath = os.path.join(BASE_PATH, "data", "target")
+        self.basepath = os.path.join(BASE_DIR, "data", "target")
         self.number_of_files = number_of_files
 
         self.port = port

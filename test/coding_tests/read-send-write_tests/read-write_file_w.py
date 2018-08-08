@@ -4,23 +4,24 @@ import zmq
 import tempfile
 
 try:
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 except:
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-print BASE_PATH
+    CURRENT_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+print BASE_DIR
 
 
 if __name__ == '__main__':
 
-    targetFile = os.path.join(BASE_PATH, "data", "target", "local", "test.cbf")
-    connectionStr = "ipc://{0}".format(os.path.join(tempfile.gettempdir(), "hidra", "file_sending_test")
+    targetFile = os.path.join(BASE_DIR, "data", "target", "local", "test.cbf")
+    connectionStr = "ipc://{}".format(os.path.join(tempfile.gettempdir(), "hidra", "file_sending_test")
 #    connectionStr = "tcp://0.0.0.0:55555"
 
     # Set up ZMQ
     context = zmq.Context()
     socket = context.socket(zmq.PULL)
     socket.bind(connectionStr)
-    print "Socket started (bind) for {c}".format(c=connectionStr)
+    print "Socket started (bind) for {}".format(connectionStr)
 
     # Open file
     target_fp = open(targetFile, "wb")

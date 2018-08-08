@@ -10,15 +10,16 @@ import os
 import sys
 
 try:
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.realpath ( __file__ ) )))
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__ ))
 except:
-    BASE_PATH = os.path.dirname ( os.path.dirname ( os.path.dirname ( os.path.abspath ( sys.argv[0] ) )))
-SHARED_PATH = BASE_PATH + os.sep + "src" + os.sep + "shared"
-print BASE_PATH
+    CURRENT_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
+print BASE_DIR
 
-if not SHARED_PATH in sys.path:
-    sys.path.insert(0,  SHARED_PATH )
-del SHARED_PATH
+if not SHARED_DIR in sys.path:
+    sys.path.insert(0,  SHARED_DIR)
+del SHARED_DIR
 
 from logutils.queue import QueueHandler, QueueListener
 

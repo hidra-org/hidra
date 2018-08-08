@@ -15,7 +15,7 @@ except ImportError:
     import configparser as ConfigParser
 
 
-CONFIG_PATH = "/opt/hidra/conf"
+CONFIG_DIR = "/opt/hidra/conf"
 CONFIG_PREFIX = "receiver_"
 CONFIG_POSTFIX = ".conf"
 SYSTEMD_PREFIX = "hidra-receiver@"
@@ -123,13 +123,13 @@ def get_config(conf):
 
 
 def get_bls_to_check():
-    global CONFIG_PATH
+    global CONFIG_DIR
     global CONFIG_PREFIX
     global CONFIG_POSTFIX
 
-    files = [[os.path.join(CONFIG_PATH, f),
+    files = [[os.path.join(CONFIG_DIR, f),
               f[len(CONFIG_PREFIX):-len(CONFIG_POSTFIX)]]
-             for f in os.listdir(CONFIG_PATH)
+             for f in os.listdir(CONFIG_DIR)
              if f.startswith(CONFIG_PREFIX) and f.endswith(CONFIG_POSTFIX)]
 
     print("Config files")

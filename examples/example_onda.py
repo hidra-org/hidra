@@ -9,14 +9,14 @@ import setproctitle
 import socket
 import argparse
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 import utils
 
 from hidra import Transfer, generate_filepath
 
 
 # enable logging
-logfile_path = os.path.join(BASE_PATH, "logs")
+logfile_path = os.path.join(BASE_DIR, "logs")
 logfile = os.path.join(logfile_path, "test_onda.log")
 utils.init_logging(logfile, True, "DEBUG")
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 #    transfer_type = "STREAM_METADATA"
 #    transfer_type = "QUERY_NEXT_METADATA"
 
-    basepath = os.path.join(BASE_PATH, "data", "target")
+    basepath = os.path.join(BASE_DIR, "data", "target")
 
     number_of_worker = 3
     workers = []

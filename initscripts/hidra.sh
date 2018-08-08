@@ -11,34 +11,35 @@
 ### END INIT INFO
 
 
-# PATH should only include /usr/* if it runs after the mountnfs.sh script
-PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+# DIR should only include /usr/* if it runs after the mountnfs.sh script
+DIR=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 DESC="HiDRA"
 # Process name (for display)
 NAME=hidra
 SCRIPT_PROC_NAME=hidra
-IPCPATH=/tmp/hidra
+IPCDIR=/tmp/hidra
 PYTHON=/usr/bin/python
-CURRENTPATH="$(readlink --canonicalize-existing -- "$0")"
+CURRENTDIR="$(readlink --canonicalize-existing -- "$0")"
 
 USE_EXE=false
 
 if [ "${USE_EXE}" == "false" ]
 then
-    BASEDIR=/opt/hidra
+    BASEDIR=/home/kuhnm/projects/hidra
+    #BASEDIR=/opt/hidra
     SCRIPTNAME=/etc/init.d/$NAME
 else
-    BASEDIR="${CURRENTPATH%/*}"
-    SCRIPTNAME="${CURRENTPATH##*/}"
+    BASEDIR="${CURRENTDIR%/*}"
+    SCRIPTNAME="${CURRENTDIR##*/}"
 
-#    printf "CURRENTPATH: ${CURRENTPATH}\n"
+#    printf "CURRENTDIR: ${CURRENTDIR}\n"
 #    printf "BASEDIR: ${BASEDIR}\n"
 #    printf "SCRIPTNAME: ${SCRIPTNAME}\n"
 fi
 
 PIDFILE_LOCATION=${BASEDIR}
 PIDFILE=${PIDFILE_LOCATION}/$NAME.pid
-CONFIG_PATH=$BASEDIR/conf
+CONFIGDIR=$BASEDIR/conf
 
 usage()
 {
@@ -106,15 +107,15 @@ then
     if [ -n "${detector}" ]
     then
         NAME=${SCRIPT_PROC_NAME}_${beamline}_${detector}
-        config_file=${CONFIG_PATH}/datamanager_${beamline}_${detector}.conf
+        config_file=${CONFIGDIR}/datamanager_${beamline}_${detector}.conf
     else
         NAME=${SCRIPT_PROC_NAME}_${beamline}
-        config_file=${CONFIG_PATH}/datamanager_${beamline}.conf
+        config_file=${CONFIGDIR}/datamanager_${beamline}.conf
     fi
     PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
 else
     printf "No beamline or detector specified. Fallback to default configuration file"
-    config_file=$CONFIG_PATH/datamanager.conf
+    config_file=$CONFIGDIR/datamanager.conf
 fi
 
 if [ "${USE_EXE}" == "false" ]
@@ -206,7 +207,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 
             SOCKETID=`cat $PIDFILE`
 
-            rm -f "${IPCPATH}/${SOCKETID}"*
+            rm -f "${IPCDIR}/${SOCKETID}"*
         fi
 
         status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
@@ -294,7 +295,7 @@ elif [ -f /etc/debian_version ] ; then
     cleanup()
     {
         SOCKETID=`cat $PIDFILE`
-        /bin/rm -rf "${IPCPATH}/${SOCKETID}"*
+        /bin/rm -rf "${IPCDIR}/${SOCKETID}"*
 
         # Many daemons don't delete their pidfiles when they exit.
         /bin/rm -rf $PIDFILE
@@ -418,7 +419,7 @@ elif [ -f /etc/SuSE-release ] ; then
     cleanup()
     {
         SOCKETID=`cat $PIDFILE`
-        /bin/rm -rf "${IPCPATH}/${SOCKETID}"*
+        /bin/rm -rf "${IPCDIR}/${SOCKETID}"*
 
         # Many daemons don't delete their pidfiles when they exit.
         /bin/rm -rf $PIDFILE
@@ -429,7 +430,7 @@ elif [ -f /etc/SuSE-release ] ; then
     do_start()
     {
         printf "Starting $NAME"
-        export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
+        export LD_LIBRARY_DIR=${BASEDIR}:$LD_LIBRARY_DIR
 
         # Checking if the process is already running
         /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"

@@ -5,7 +5,7 @@ import argparse
 import socket
 import os
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 from hidra import Transfer, generate_filepath
 
 if __name__ == "__main__":
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     arguments = parser.parse_args()
 
     targets = [[arguments.target_host, "50101", 0]]
-    base_target_path = os.path.join(BASE_PATH, "data", "target")
+    base_target_path = os.path.join(BASE_DIR, "data", "target")
 
     print("\n==== TEST: Query for the newest filename ====\n")
 

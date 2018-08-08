@@ -5,7 +5,7 @@ import logging
 import os
 import errno
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 
 import utils
 from hidra import Transfer
@@ -13,11 +13,11 @@ from hidra import Transfer
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-CONFIG_PATH = os.path.join(BASE_PATH, "conf")
+CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
 
 def argument_parsing():
-    default_config = os.path.join(CONFIG_PATH, "nexusReceiver.conf")
+    default_config = os.path.join(CONFIG_DIR, "nexusReceiver.conf")
 
     # ------------------------------------------------------------------------
     # Get command line arguments
@@ -149,8 +149,11 @@ class NexusReceiver:
         return logger
 
     def open_callback(self, params, filename):
-        target_file = os.path.join(
-            BASE_PATH, "data", "target", "local", filename)
+        target_file = os.path.join(BASE_DIR,
+                                   "data",
+                                   "target",
+                                   "local",
+                                   filename)
 
         try:
             params["target_fp"] = open(target_file, "wb")

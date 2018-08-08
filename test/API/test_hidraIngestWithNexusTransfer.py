@@ -8,7 +8,7 @@ import threading
 import json
 import tempfile
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 import utils
 
 from hidra import Transfer
@@ -16,7 +16,7 @@ from hidra import Ingest
 
 
 # enable logging
-logfile_path = os.path.join(BASE_PATH, "logs")
+logfile_path = os.path.join(BASE_DIR, "logs")
 logfile = os.path.join(logfile_path, "test_nexus_ingest_with_transfer.log")
 utils.init_logging(logfile, True, "DEBUG")
 

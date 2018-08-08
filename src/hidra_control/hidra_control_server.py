@@ -21,32 +21,28 @@ except:
     logutils_imported = False
 
 try:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__))))
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 except:
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.abspath(sys.argv[0]))))
-SHARED_PATH = os.path.join(BASE_PATH, "src", "shared")
-CONFIG_PATH = os.path.join(BASE_PATH, "conf")
-API_PATH = os.path.join(BASE_PATH, "src", "APIs")
+    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
 
-if SHARED_PATH not in sys.path:
-    sys.path.insert(0, SHARED_PATH)
-del SHARED_PATH
-del CONFIG_PATH
+BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
+CONFIG_DIR = os.path.join(BASE_DIR, "conf")
+API_DIR = os.path.join(BASE_DIR, "src", "APIs")
+
+if SHARED_DIR not in sys.path:
+    sys.path.insert(0, SHARED_DIR)
+del SHARED_DIR
+del CONFIG_DIR
 
 try:
     # search in global python modules first
     import hidra
 except:
     # then search in local modules
-    if API_PATH not in sys.path:
-        sys.path.insert(0, API_PATH)
-    del API_PATH
+    if API_DIR not in sys.path:
+        sys.path.insert(0, API_DIR)
+    del API_DIR
 
     import hidra
 
@@ -59,11 +55,11 @@ from cfel_optarg import parse_parameters  # noqa E402
 
 BASEDIR = "/opt/hidra"
 
-CONFIG_PATH = "/opt/hidra/conf"
+CONFIG_DIR = "/opt/hidra/conf"
 CONFIG_PREFIX = "datamanager_"
 
-LOGPATH = os.path.join("/var", "log", "hidra")
-# LOGPATH = os.path.join(tempfile.gettempdir(), "hidra", "logs")
+LOGDIR = os.path.join("/var", "log", "hidra")
+# LOGDIR = os.path.join(tempfile.gettempdir(), "hidra", "logs")
 
 beamline_config = dict()
 
@@ -113,11 +109,11 @@ class HidraController():
 
     def __read_config(self):
         global CONFIG_PREFIX
-        global CONFIG_PATH
+        global CONFIG_DIR
 
         # write configfile
         # /etc/hidra/P01.conf
-        joined_path = os.path.join(CONFIG_PATH, CONFIG_PREFIX + self.beamline)
+        joined_path = os.path.join(CONFIG_DIR, CONFIG_PREFIX + self.beamline)
         config_files = glob.glob(joined_path + "_*.conf")
         self.log.info("Reading config files: {}".format(config_files))
 
@@ -296,7 +292,7 @@ class HidraController():
             return "ERROR"
 
     def __write_config(self, host_id, det_id):
-        global CONFIG_PATH
+        global CONFIG_DIR
         global CONFIG_PREFIX
 
         # identify the configuration for this connection
@@ -338,13 +334,13 @@ class HidraController():
 
             # write configfile
             # /etc/hidra/P01_eiger01.conf
-            config_file = os.path.join(CONFIG_PATH,
+            config_file = os.path.join(CONFIG_DIR,
                                        CONFIG_PREFIX + "{}_{}.conf"
                                        .format(self.beamline, det_id))
             self.log.info("Writing config file: {}".format(config_file))
 
             with open(config_file, 'w') as f:
-                f.write("log_path = {}\n".format(LOGPATH))
+                f.write("log_path = {}\n".format(LOGDIR))
                 f.write("log_name = datamanager_{}.log\n"
                         .format(self.beamline))
                 f.write("log_size = 10485760\n")
@@ -508,7 +504,6 @@ def hidra_status(beamline, det_id, log):
 
 class ControlServer():
     def __init__(self):
-        global BASE_PATH
 
         arguments = self.argument_parsing()
 
@@ -517,8 +512,8 @@ class ControlServer():
         setproctitle.setproctitle("hidra-control-server_{}"
                                   .format(self.beamline))
 
-        logfile = os.path.join(LOGPATH, "hidra-control-server_{}.log"
-                                        .format(self.beamline))
+        logfile = os.path.join(LOGDIR, "hidra-control-server_{}.log"
+                                       .format(self.beamline))
         logsize = 10485760
 
         # Get queue

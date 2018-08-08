@@ -8,8 +8,8 @@ from inotifyx.distinfo import version as __version__
 
 print("inotifyx_version", __version__)
 
-BASE_PATH = "/home/kuhnm/projects/hidra"
-print("BASE_PATH", BASE_PATH)
+BASE_DIR = "/home/kuhnm/projects/hidra"
+print("BASE_DIR", BASE_DIR)
 
 constants = {}
 
@@ -75,14 +75,14 @@ class InotifyEvent (object):
 class EventDetector():
 
     def __init__(self):
-        global BASE_PATH
+        global BASE_DIR
 
         self.wd_to_path = {}
         self.fd = binding.init()
 
         self.timeout = 1
 
-        path = BASE_PATH + "/data/source/local"
+        path = BASE_DIR + "/data/source/local"
         wd = binding.add_watch(self.fd, path)
         self.wd_to_path[wd] = path
 
@@ -128,7 +128,7 @@ class EventDetector():
 
 if __name__ == '__main__':
     from subprocess import call
-#    from __init__ import BASE_PATH
+#    from __init__ import BASE_DIR
     import setproctitle
     import resource
 #    import gc
@@ -139,12 +139,14 @@ if __name__ == '__main__':
 
     setproctitle.setproctitle("inotifyx_events")
 
-    source_file = os.path.join(BASE_PATH,
+    source_file = os.path.join(BASE_DIR,
                                "test",
                                "test_files",
                                "test_1024B.file")
-    target_file_base = os.path.join(
-        BASE_PATH, "data", "source", "local") + os.sep
+    target_file_base = os.path.join(BASE_DIR,
+                                    "data",
+                                    "source",
+                                    "local") + os.sep
 
     if not os.path.isdir(target_file_base):
         os.mkdir(target_file_base)

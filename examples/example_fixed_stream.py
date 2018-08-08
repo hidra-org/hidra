@@ -3,14 +3,14 @@ from __future__ import unicode_literals
 
 import os
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 import utils
 
 from hidra import Transfer
 
 
 # enable logging
-logfile_path = os.path.join(BASE_PATH, "logs")
+logfile_path = os.path.join(BASE_DIR, "logs")
 logfile = os.path.join(logfile_path, "test_fixedStream.log")
 utils.init_logging(logfile, True, "DEBUG")
 

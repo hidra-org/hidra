@@ -8,7 +8,7 @@ import socket
 # from PyQt4 import QtCore
 from PyQt4.QtCore import QThread, QMutex
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 
 from hidra import Transfer
 
@@ -35,7 +35,7 @@ class LiveView(QThread):
     transfer_type = "zitpcx19282.desy.de"
 #    transfer_type = "zitpcx22614w.desy.de"
     data_port = "50022"
-    basepath = os.path.join(BASE_PATH, "data", "target")
+    basepath = os.path.join(BASE_DIR, "data", "target")
 #    basepath = "/gpfs"
 
     def __init__(self, path=None, filetype=None, interval=None, parent=None):

@@ -2,10 +2,10 @@ import copy
 import os
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-BASE_PATH = os.path.dirname(os.path.dirname(CURRENT_DIR))
+BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
 
 if __name__ == "__main__":
-    filename = os.path.join(BASE_PATH, "test_file.cbf")
+    filename = os.path.join(BASE_DIR, "test", "test_files", "test_file.cbf")
     chunksize = 10485760
 
     data_chunks = []

@@ -11,7 +11,7 @@ import threading
 import copy
 import time
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 
 import utils
 from hidra import Transfer
@@ -19,15 +19,15 @@ from hidra import Transfer
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-CONFIG_PATH = os.path.join(BASE_PATH, "conf")
+CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
 whitelist = None
 changed_netgroup = False
 
 
 def argument_parsing():
-    base_config_file = os.path.join(CONFIG_PATH, "base_receiver.conf")
-    default_config_file = os.path.join(CONFIG_PATH, "datareceiver.conf")
+    base_config_file = os.path.join(CONFIG_DIR, "base_receiver.conf")
+    default_config_file = os.path.join(CONFIG_DIR, "datareceiver.conf")
 
     # ------------------------------------------------------------------------
     # Get command line arguments

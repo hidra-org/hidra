@@ -7,7 +7,7 @@ import os
 import time
 import zmq
 
-BASE_PATH = "/opt/hidra"
+BASE_DIR = "/opt/hidra"
 
 endpoint = "tcp://131.169.185.121:50100"
 
@@ -17,7 +17,7 @@ socket.connect(endpoint)
 print("Socket connecting to {}".format(endpoint))
 
 metadata = {
-    "source_path": os.path.join(BASE_PATH, "data", "source"),
+    "source_path": os.path.join(BASE_DIR, "data", "source"),
     "relative_path": os.sep + "local",
     "filename": "100.cbf",
     "filesize": 12345,

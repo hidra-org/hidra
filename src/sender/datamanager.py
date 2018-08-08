@@ -23,18 +23,18 @@ from signalhandler import SignalHandler
 from taskprovider import TaskProvider
 from datadispatcher import DataDispatcher
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 import utils
 from _version import __version__
 
-CONFIG_PATH = os.path.join(BASE_PATH, "conf")
+CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 def argument_parsing():
-    base_config_file = os.path.join(CONFIG_PATH, "base_sender.conf")
-    default_config_file = os.path.join(CONFIG_PATH, "datamanager.conf")
+    base_config_file = os.path.join(CONFIG_DIR, "base_sender.conf")
+    default_config_file = os.path.join(CONFIG_DIR, "datamanager.conf")
 
     supported_ed_types = ["inotifyx_events",
                           "watchdog_events",

@@ -5,7 +5,7 @@ import argparse
 import socket
 import os
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 import utils
 
 from hidra import Transfer
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     arguments = parser.parse_args()
 
     # enable logging
-    logfile_path = os.path.join(BASE_PATH, "logs")
+    logfile_path = os.path.join(BASE_DIR, "logs")
     logfile = os.path.join(logfile_path, "testAPI.log")
     utils.init_logging(logfile, True, "DEBUG")
 
@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     query.start()
 
-    target_dir = os.path.join(BASE_PATH, "data", "zmq_target")
+    target_dir = os.path.join(BASE_DIR, "data", "zmq_target")
     target_file = os.path.join(target_dir, "test_store")
     try:
         query.store(target_file)

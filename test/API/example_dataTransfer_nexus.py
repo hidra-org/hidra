@@ -7,14 +7,14 @@ import logging
 import threading
 import json
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 import utils
 
 from hidra import Transfer
 
 
 # enable logging
-logfile_path = os.path.join(os.path.join(BASE_PATH, "logs"))
+logfile_path = os.path.join(os.path.join(BASE_DIR, "logs"))
 logfile = os.path.join(logfile_path, "example_nexus_transfer.log")
 utils.init_logging(logfile, True, "DEBUG")
 
@@ -57,7 +57,7 @@ class SenderAsThread (threading.Thread):
 
         for i in range(5):
             metadata = {
-                "source_path": os.path.join(BASE_PATH, "data", "source"),
+                "source_path": os.path.join(BASE_DIR, "data", "source"),
                 "relative_path": "local",
                 "filename": filename,
                 "filepart": "{0}".format(i)

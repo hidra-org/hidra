@@ -5,14 +5,14 @@ import os
 import argparse
 import socket
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 import utils
 
 from hidra import Transfer
 
 
 # enable logging
-logfile_path = os.path.join(BASE_PATH, "logs")
+logfile_path = os.path.join(BASE_DIR, "logs")
 logfile = os.path.join(logfile_path, "example_get_remote_version.log")
 utils.init_logging(logfile, True, "DEBUG")
 

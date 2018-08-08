@@ -10,15 +10,13 @@ try:
     import hidra
 except:
     # then search in local modules
-    BASE_PATH = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__))))
-    API_PATH = os.path.join(BASE_PATH, "src", "APIs")
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+    BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+    API_DIR = os.path.join(BASE_DIR, "src", "APIs")
 
-    if API_PATH not in sys.path:
-        sys.path.insert(0, API_PATH)
-    del API_PATH
+    if API_DIR not in sys.path:
+        sys.path.insert(0, API_DIR)
+    del API_DIR
 
     import hidra
 

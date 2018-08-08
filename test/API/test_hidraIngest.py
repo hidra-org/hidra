@@ -7,12 +7,12 @@ import logging
 # import json
 import tempfile
 
-from __init__ import BASE_PATH
+from __init__ import BASE_DIR
 import utils
 
 
 # enable logging
-logfile_path = os.path.join(BASE_PATH, "logs")
+logfile_path = os.path.join(BASE_DIR, "logs")
 logfile = os.path.join(logfile_path, "test_ingest.log")
 utils.init_logging(logfile, True, "DEBUG")
 
@@ -67,7 +67,10 @@ class Receiver ():
 
     def run(self):
         file_descriptor = None
-        filename = os.path.join(BASE_PATH, "data", "target", "local",
+        filename = os.path.join(BASE_DIR,
+                                "data",
+                                "target",
+                                "local",
                                 "test.cbf")
 
         mark_as_close = False
