@@ -82,7 +82,7 @@ with open(sender_init, "r") as f:
     with open(exe_sender_init, "w") as f_exe:
         for line in f:
             ref_line = (
-                "BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))"
+                "BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))\n"
             )
             if line == ref_line:
                 f_exe.write("BASE_DIR = CURRENT_DIR\n"),
@@ -157,7 +157,7 @@ executables = [
 ]
 
 setup(name='HiDRA',
-      version='4.0.0',
+      version='4.0.1',
       description='',
       options={"build_exe": build_exe_options,
                "bdist_msi": bdist_msi_options},
