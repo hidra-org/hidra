@@ -158,6 +158,8 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
         fi
 
     	printf "%-50s" "Starting ${NAME}..."
+        export LD_LIBRARY_DIR=${BASEDIR}:$LD_LIBRARY_DIR
+
 	    ${DAEMON} ${DAEMON_ARGS} &
     	RETVAL=$?
 
@@ -253,6 +255,7 @@ elif [ -f /etc/debian_version ] ; then
     do_start()
     {
         log_daemon_msg "Starting $NAME"
+        export LD_LIBRARY_DIR=${BASEDIR}:$LD_LIBRARY_DIR
 
         # Checked the PID file exists and check the actual status of process
         if [ -e $PIDFILE ]; then
