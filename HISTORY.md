@@ -1,5 +1,8 @@
 # HiDRA develop
 
+- Fix LD_IBRARY_PATH in initscipt for all platforms
+- Fix freeze (newline went missing in cleanup)
+
 # HiDRA 4.0.0
 
 - Run hidra as user defined in the config file
