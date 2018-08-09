@@ -1,5 +1,7 @@
 # HiDRA develop
 
+# HiDRA 4.0.1
+
 - Fix LD_IBRARY_PATH in initscipt for all platforms
 - Fix freeze (newline went missing in cleanup)
 
