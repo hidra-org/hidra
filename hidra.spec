@@ -74,7 +74,7 @@ cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
-cp conf/datamanager.conf conf/datareceiver.conf %{buildroot}/opt/%{name}/conf/
+cp conf/datamanager.conf conf/datareceiver.conf conf/base_receiver.conf conf/base_sender.conf %{buildroot}/opt/%{name}/conf/
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
@@ -95,8 +95,6 @@ mkdir -p %{buildroot}/var/log/%{name}
 %systemd_postun_with_restart %{name}@.service
 
 %files
-%doc docs/*
-/opt/%{name}/conf/*
 %attr(0755,root,root) /opt/%{name}/src/receiver/*
 /opt/%{name}/src/sender/*
 %attr(0755,root,root) /opt/%{name}/src/sender/datamanager.py
@@ -109,6 +107,7 @@ mkdir -p %{buildroot}/var/log/%{name}
 %attr(1777,root,root) /var/log/%{name}
 
 %files -n python-hidra
+%doc examples
 %{python_sitelib}/*
 
 %files -n hidra-control-client
