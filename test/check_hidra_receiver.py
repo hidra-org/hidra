@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    socket_id = "{0}:{1}".format(args.host, args.port)
+    socket_id = "{}:{}".format(args.host, args.port)
 
     test = None
     if args.verbose:

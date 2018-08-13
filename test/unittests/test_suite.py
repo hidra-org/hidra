@@ -138,6 +138,8 @@ def get_testing_suites():
     from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
     from datafetchers.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
 
+    from api.test_control import TestControl
+
     all_suites = [
 #        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),  # noqa E122
@@ -158,7 +160,8 @@ def get_testing_suites():
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataManager),  # noqa E122
 
-#        unittest.TestLoader().loadTestsFromTestCase(TestTransfer),  # noqa E122
+        unittest.TestLoader().loadTestsFromTestCase(TestTransfer),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestControl),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestReceiverControl),  # noqa E122
     ]
 
@@ -200,3 +203,15 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+#    import pprint
+#    import threading
+
+#    from hanging_threads import start_monitoring
+#    monitoring_thread = start_monitoring(seconds_frozen=30, test_interval=10)
+
+#    import pdb
+#    pdb.run('main()', globals(), locals())
+
+#    print("At the end")
+#    pprint.pprint(threading._active)

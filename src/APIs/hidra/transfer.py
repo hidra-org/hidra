@@ -872,6 +872,7 @@ class Transfer(Base):
                 sock_type=zmq.REP,
                 sock_con="bind",
                 endpoint=endpoint,
+                zap_domain=b"global",
                 is_ipv6=self.is_ipv6
             )
 
@@ -895,6 +896,7 @@ class Transfer(Base):
                 sock_type=zmq.REP,
                 sock_con="bind",
                 endpoint=endpoint,
+                zap_domain=b"global",
                 is_ipv6=self.is_ipv6,
             )
 
@@ -1009,6 +1011,14 @@ class Transfer(Base):
             self.log.debug("Starting auth thread")
             self.auth = ThreadAuthenticator(self.context)
             self.auth.start()
+
+            if whitelist == []:
+                # if auth.allow is not called for at least one host, all host
+                # are allowed to connect.
+                host = "localhost"
+                ip = [socket.gethostbyname(host)]
+                self.log.debug("Empty whitelist: Allowing host {} ({})".format(host, ip[0]))
+                self.auth.allow(ip[0])
 
             # receive data only from whitelisted nodes
             for host in whitelist:

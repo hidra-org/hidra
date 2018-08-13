@@ -97,6 +97,22 @@ class Control(Base):
                  ldapuri,
                  netgroup_template,
                  use_log=False):
+        """
+        Enables controlling like starting/stopping or setting of parameters of
+        a HiDRA instance. Such an instance is started for a specific beamline
+        together with a specific detector.
+
+        Args:
+            beamline: The beamline for which the HiDRA instance should be
+                      controlled.
+            detector: The detector for which the HiDRA instance should be
+                      controlled.
+            ldapuri: The LDAP uri (<host>:<port>) to connect to check for
+                     authentication.
+            netgroup_template: The template to be used for netgroup
+                               checking of the beamline (e.g. a3{bl}-hosts).
+            use_log (optional): Specified the logging type.
+        """
 
         self.beamline = beamline
         self.detector = detector
@@ -388,7 +404,7 @@ class ReceiverControl(Base):
     def reset_status(self):
         """Reset the status flag of the receiver.
 
-        After an error occured during data receiving the receiver flags it.
+        After an error occurred during data receiving the receiver flags it.
         Reset is only done by external trigger.
         """
 
