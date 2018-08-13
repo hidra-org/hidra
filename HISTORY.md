@@ -1,9 +1,13 @@
 # HiDRA develop
 
+- Fix spec file
+- Fixed typo in LD_LIBRARY_PATH
+- Fixed auth
+
 # HiDRA 4.0.1
 
-- Fix LD_IBRARY_PATH in initscipt for all platforms
-- Fix freeze (newline went missing in cleanup)
+- Fixed LD_IBRARY_PATH in initscipt for all platforms
+- Fixed freeze (newline went missing in cleanup)
 
 # HiDRA 4.0.0
 
