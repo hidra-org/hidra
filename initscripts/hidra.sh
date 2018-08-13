@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # LSB compliant init-script header.
 ### BEGIN INIT INFO
@@ -158,7 +158,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
         fi
 
     	printf "%-50s" "Starting ${NAME}..."
-        export LD_LIBRARY_DIR=${BASEDIR}:$LD_LIBRARY_DIR
+        export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
 
 	    ${DAEMON} ${DAEMON_ARGS} &
     	RETVAL=$?
@@ -255,7 +255,7 @@ elif [ -f /etc/debian_version ] ; then
     do_start()
     {
         log_daemon_msg "Starting $NAME"
-        export LD_LIBRARY_DIR=${BASEDIR}:$LD_LIBRARY_DIR
+        export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
 
         # Checked the PID file exists and check the actual status of process
         if [ -e $PIDFILE ]; then
@@ -433,7 +433,7 @@ elif [ -f /etc/SuSE-release ] ; then
     do_start()
     {
         printf "Starting $NAME"
-        export LD_LIBRARY_DIR=${BASEDIR}:$LD_LIBRARY_DIR
+        export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
 
         # Checking if the process is already running
         /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"

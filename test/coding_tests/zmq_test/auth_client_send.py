@@ -1,11 +1,13 @@
-import zmq
+import socket as socket_m
 import sys
 import time
+import zmq
 
 port = "5556"
 #ip="localhost"
 #ip="*"
-ip="zitpcx19282.desy.de"
+ip="haso111k.desy.de"
+host = socket_m.getfqdn()
 
 context = zmq.Context()
 print "Connecting to server..."

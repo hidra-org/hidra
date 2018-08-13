@@ -20,6 +20,16 @@ from hidra import convert_suffix_list_to_regex
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
+# SignalHandlerSockets = namedtuple(
+#    "signalhandler_sockets", [
+#        "control_pub",
+#        "control_sub",
+#        "request_fw",
+#        "request",
+#        "com"
+#    ]
+# )
+
 UnpackedMessage = namedtuple(
     "unpacked_message", [
         "check_successful",
