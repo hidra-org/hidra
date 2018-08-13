@@ -872,6 +872,7 @@ class Transfer(Base):
                 sock_type=zmq.REP,
                 sock_con="bind",
                 endpoint=endpoint,
+                zap_domain=b"global",
                 is_ipv6=self.is_ipv6
             )
 
@@ -895,6 +896,7 @@ class Transfer(Base):
                 sock_type=zmq.REP,
                 sock_con="bind",
                 endpoint=endpoint,
+                zap_domain=b"global",
                 is_ipv6=self.is_ipv6,
             )
 
