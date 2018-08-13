@@ -1010,6 +1010,14 @@ class Transfer(Base):
             self.auth = ThreadAuthenticator(self.context)
             self.auth.start()
 
+            if whitelist == []:
+                # if auth.allow is not called for at least one host, all host
+                # are allowed to connect.
+                host = "localhost"
+                ip = [socket.gethostbyname(host)]
+                self.log.debug("Empty whitelist: Allowing host {} ({})".format(host, ip[0]))
+                self.auth.allow(ip[0])
+
             # receive data only from whitelisted nodes
             for host in whitelist:
                 try:
