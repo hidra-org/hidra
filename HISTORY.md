@@ -1,6 +1,12 @@
 # HiDRA develop
+# HiDRA 4.0.3
 
-- Fix spec file
+- Fixed version number
+- Fixed Fixed bump version config for HISTORY.md
+
+# HiDRA 4.0.2
+
+- Fixed spec file
 - Fixed typo in LD_LIBRARY_PATH
 - Fixed auth
 
