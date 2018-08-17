@@ -23,5 +23,19 @@ if [ -z "${RELEASE}" ]; then
 fi
 
 bumpversion ${RELEASE} ${DRYRUN} --config-file .bumpversion_prework.cfg
-#git add -u
 bumpversion ${RELEASE} ${DRYRUN} --allow-dirty
+
+#TODO add to git via bumpversion or
+#git add -u
+
+# VERSION=$(cat ./src/shared/_version.py)
+# remove "__version__ = '" at the beginning and "'" at the end
+# VERSION=${VERSION:15:-1}
+# $BRANCH=$(git branch | sed -n '/\* /s///p')
+# git checkout master
+# git pull
+# git merge --no-ff ${BRANCH}
+# git tag -a v${VERSION} -m "Version ${VERSION}"
+# git checkout develop
+# git pull
+# git merge --no-ff ${BRANCH}
