@@ -1,6 +1,7 @@
 # HiDRA develop
+# HiDRA 4.0.2
 
-- Fix spec file
+- Fixed spec file
 - Fixed typo in LD_LIBRARY_PATH
 - Fixed auth
 
