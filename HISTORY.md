@@ -1,4 +1,8 @@
 # HiDRA develop
+
+- Fixed version number
+- Fixed Fixed bump version config for HISTORY.md
+
 # HiDRA 4.0.2
 
 - Fixed spec file
