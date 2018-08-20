@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import errno
 import json
 import logging
 import logging.handlers
@@ -372,12 +373,22 @@ def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
                      for directory in subdirs
                      if not directory.startswith(dirs_not_to_create)]
 
+    throw_exception = False
     for d in dirs_to_check:
         try:
             os.makedirs(d)
             logging.debug("Dir '{}' does not exist. Create it.".format(d))
-        except OSError:
-            logging.error("Dir '{}' could not be created.".format(d))
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                # file exists already
+                pass
+            else:
+                logging.error("Dir '{}' could not be created.".format(d))
+                throw_exception = True
+                raise
+
+    if throw_exception:
+        raise OSError
 
 
 def check_config(required_params, config, log):
