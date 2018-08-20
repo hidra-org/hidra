@@ -16,6 +16,8 @@ The image has to be called suse_build in order use the hidra build script.
 ./suse_build_hidra.sh
 ```
 
+The zipped frozen hidra build can be found under /tmp/hidra_builds/build
+
 # Remarks
 Currently cx_Freeze 4.3.3 is used because of errors when migrating to higher versions.
 
