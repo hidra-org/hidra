@@ -53,6 +53,11 @@ else:
                 ".cache/Python-Eggs/"
                 "setproctitle-1.1.10-py2.7-linux-" + archi_t + ".egg-tmp/"
                 "setproctitle.so"))
+
+        if not os.path.exists(setproctitle_egg_path):
+            import setproctitle
+            setproctitle_egg_path = setproctitle.__file__
+
         platform_specific_files += [(setproctitle_egg_path, "setproctitle.so")]
 
 # Some packages differ in Python 3
