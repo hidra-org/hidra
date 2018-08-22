@@ -604,8 +604,14 @@ def generate_sender_id(main_pid):
 #  Connection paths and strings  #
 # ------------------------------ #
 
+# To be pickable these have to be defined at the top level of a module
+# this is needed because multiprocessing on windows needs these pickable.
+# Additionally the name of the namedtuple has to be the same as the typename
+# otherwise it cannot be pickled on Windows.
+
+
 IpcAddresses = namedtuple(
-    "ipc_addresses", [
+    "IpcAddresses", [
         "control_pub",
         "control_sub",
         "request_fw",
@@ -665,7 +671,7 @@ def set_ipc_addresses(ipc_dir, main_pid, use_cleaner=True):
 
 
 Endpoints = namedtuple(
-    "endpoints", [
+    "Endpoints", [
         "control_pub_bind",
         "control_pub_con",
         "control_sub_bind",

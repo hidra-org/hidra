@@ -9,7 +9,7 @@ import signal
 import errno
 
 from base_class import Base
-import __init__ as init  # noqa F401
+#import __init__ as init  # noqa F401
 import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

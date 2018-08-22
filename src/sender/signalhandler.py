@@ -12,7 +12,7 @@ from collections import namedtuple
 
 from base_class import Base
 
-from __init__ import BASE_DIR  # noqa F401
+#from __init__ import BASE_DIR  # noqa F401#
 from _version import __version__
 import utils
 from hidra import convert_suffix_list_to_regex
@@ -20,8 +20,8 @@ from hidra import convert_suffix_list_to_regex
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-# SignalHandlerSockets = namedtuple(
-#    "signalhandler_sockets", [
+# SignalhandlerSockets = namedtuple(
+#    "SignalhandlerSockets", [
 #        "control_pub",
 #        "control_sub",
 #        "request_fw",
@@ -30,8 +30,9 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 #    ]
 # )
 
+
 UnpackedMessage = namedtuple(
-    "unpacked_message", [
+    "UnpackedMessage", [
         "check_successful",
         "response",
         "appid",
@@ -42,7 +43,7 @@ UnpackedMessage = namedtuple(
 
 
 TargetProperties = namedtuple(
-    "target_properties", [
+    "TargetProperties", [
         "targets",
         "appid"
     ]
