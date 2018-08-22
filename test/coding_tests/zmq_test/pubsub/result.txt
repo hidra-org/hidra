@@ -1,0 +1,29 @@
+               first: pub   |   first: sub
+               second: sub  |   second: pub
+--------------------------------------------
+inproc |
+--------------------------------------------
+pub bind    |    works      |    works
+sub connect |               |
+--------------------------------------------
+pub connect |    works      |    works
+sub bind    |               | (with poll)
+--------------------------------------------
+ipc |
+--------------------------------------------
+pub bind    |    works      |    works
+sub connect | (with sleep)  | (with sleep*)
+--------------------------------------------
+pub connect |    works      |    works
+sub bind    | (with poll*)  | (with poll)
+--------------------------------------------
+tcp |
+--------------------------------------------
+pub bind    |    works      |    works
+sub connect | (with sleep)  | (with sleep*)
+--------------------------------------------
+pub connect |    works      |    works
+sub bind    | (with poll*)  | (with poll)
+--------------------------------------------
+
+* time increased

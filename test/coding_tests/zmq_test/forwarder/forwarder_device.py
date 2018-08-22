@@ -1,3 +1,7 @@
+"""
+to be used together with forwarder_answer.py
+"""
+
 from __future__ import print_function
 
 import os
@@ -38,6 +42,7 @@ except:
     print("Failed to start control socket (connect) : {}".format(control_pub_str))
     raise
 
+# checks if the published message was received in the forwarder_answer.py
 try:
     check_socket = context.socket(zmq.REQ)
     check_socket.bind(check_str)
