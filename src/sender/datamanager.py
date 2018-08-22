@@ -576,19 +576,19 @@ class DataManager(Base):
             self.device = zmq.devices.ThreadDevice(zmq.FORWARDER,
                                                    zmq.SUB,
                                                    zmq.PUB)
-            self.device.bind_in(self.endpoints.control_pub_con)
-            self.device.bind_out(self.endpoints.control_sub_con)
+            self.device.bind_in(self.endpoints.control_pub_bind)
+            self.device.bind_out(self.endpoints.control_sub_bind)
             self.device.setsockopt_in(zmq.SUBSCRIBE, b"")
             self.device.start()
             self.log.info("Start thead device forwarding messages "
                           "from '{}' to '{}'"
-                          .format(self.endpoints.control_pub_con,
-                                  self.endpoints.control_sub_con))
+                          .format(self.endpoints.control_pub_bind,
+                                  self.endpoints.control_sub_bind))
         except:
             self.log.error("Failed to start thead device forwarding messages "
                            "from '{}' to '{}'"
-                           .format(self.endpoints.control_pub_con,
-                                   self.endpoints.control_sub_con),
+                           .format(self.endpoints.control_pub_bind,
+                                   self.endpoints.control_sub_bind),
                            exc_info=True)
             raise
 
