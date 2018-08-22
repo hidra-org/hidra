@@ -967,35 +967,37 @@ class DataManager(Base):
             self.context.destroy(0)
             self.context = None
 
-        ipc_ip = "{}/{}".format(self.ipc_dir, self.current_pid)
-        ipc_con_paths = {
-            "control_pub": "{}_{}".format(ipc_ip, "controlPub"),
-            "control_sub": "{}_{}".format(ipc_ip, "controlSub"),
-            "request_fw": "{}_{}".format(ipc_ip, "requestFw")
-        }
+        if self.endpoints.control_pub_bind.startswith("ipc"):
 
-        # Clean up ipc communication files
-        for key, path in ipc_con_paths.iteritems():
+            ipc_ip = "{}/{}".format(self.ipc_dir, self.current_pid)
+            ipc_con_paths = {
+                "control_pub": "{}_{}".format(ipc_ip, "controlPub"),
+                "control_sub": "{}_{}".format(ipc_ip, "controlSub"),
+                "request_fw": "{}_{}".format(ipc_ip, "requestFw")
+            }
+
+            # Clean up ipc communication files
+            for key, path in ipc_con_paths.iteritems():
+                try:
+                    os.remove(path)
+                    self.log.debug("Removed ipc socket: {}".format(path))
+                except OSError:
+                    self.log.debug("Could not remove ipc socket: {}".format(path))
+                except:
+                    self.log.warning("Could not remove ipc socket: {}"
+                                     .format(path), exc_info=True)
+
+            # Remove temp directory (if empty)
             try:
-                os.remove(path)
-                self.log.debug("Removed ipc socket: {}".format(path))
+                os.rmdir(self.ipc_dir)
+                self.log.debug("Removed IPC direcory: {}".format(self.ipc_dir))
             except OSError:
-                self.log.debug("Could not remove ipc socket: {}".format(path))
+                pass
+    #            self.log.debug("Could not remove IPC directory: {}"
+    #                           .format(self.ipc_dir))
             except:
-                self.log.warning("Could not remove ipc socket: {}"
-                                 .format(path), exc_info=True)
-
-        # Remove temp directory (if empty)
-        try:
-            os.rmdir(self.ipc_dir)
-            self.log.debug("Removed IPC direcory: {}".format(self.ipc_dir))
-        except OSError:
-            pass
-#            self.log.debug("Could not remove IPC directory: {}"
-#                           .format(self.ipc_dir))
-        except:
-            self.log.warning("Could not remove IPC directory: {}"
-                             .format(self.ipc_dir), exc_info=True)
+                self.log.warning("Could not remove IPC directory: {}"
+                                 .format(self.ipc_dir), exc_info=True)
 
         if not self.ext_log_queue and self.log_queue_listener:
             self.log.info("Stopping log_queue")
