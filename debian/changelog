@@ -1,5 +1,5 @@
-hidra (3.1.1-1) jessie; urgency=low
+hidra (4.0.4-1) stretch; urgency=low
 
-  * NMU
+  * repackaged for stretch
 
- -- J. Blume <johannes.blume@desy.de>  Thu, 19 Apr 2017 14:38:14 +0200
+ -- J. Blume <johannes.blume@desy.de>  Thu, 23 Aug 2018 11:36:14 +0200
