@@ -47,5 +47,6 @@ docker rm hidra_build
 cd ${MAPPED_DIR}/build
 mv exe.linux-x86_64-2.7 hidra
 tar -czf hidra-v${VERSION}-x86_64-2.7-suse10.2.tar.gz hidra
-#scp hidra_v${VERSION}-x86_64-2.7-suse10.2.tar.gz $USER@bastion.desy.de:/afs/desy.de/products/hidra/freeze/linux
-#rm hidra_v${VERSION}-x86_64-2.7-suse10.2.tar.gz
+echo "Frozen hidra version can be found in ${MAPPED_DIR}/build"
+#scp hidra-v${VERSION}-x86_64-2.7-suse10.2.tar.gz $USER@bastion.desy.de:/afs/desy.de/products/hidra/freeze/linux
+#rm hidra-v${VERSION}-x86_64-2.7-suse10.2.tar.gz
