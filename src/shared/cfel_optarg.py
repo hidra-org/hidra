@@ -82,7 +82,9 @@ def parse_parameters(config):
                 continue
             if monitor_params[sect][op].startswith("[") and monitor_params[sect][op].endswith("]"):
                 try:
-                    monitor_params[sect][op] = ast.literal_eval(config.get(sect, op))
+                    # to fix raw literal string misinterpreting
+                    tmp = config.get(sect, op).replace("\\", "\\\\")
+                    monitor_params[sect][op] = ast.literal_eval(tmp)
                     continue
                 except (SyntaxError, ValueError):
                     raise RuntimeError('Error parsing parameter {0} in section {1}. Make sure that the syntax is '
@@ -91,7 +93,9 @@ def parse_parameters(config):
                                        'dicts.'.format(op, sect))
             if monitor_params[sect][op].startswith("{") and monitor_params[sect][op].endswith("}"):
                 try:
-                    monitor_params[sect][op] = ast.literal_eval(config.get(sect, op))
+                    # to fix raw literal string misinterpreting
+                    tmp = config.get(sect, op).replace("\\", "\\\\")
+                    monitor_params[sect][op] = ast.literal_eval(tmp)
                     continue
                 except (SyntaxError, ValueError):
                     raise RuntimeError('Error parsing parameter {0} in section {1}. Make sure that the syntax is '

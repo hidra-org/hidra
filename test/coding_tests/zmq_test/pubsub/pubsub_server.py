@@ -1,15 +1,22 @@
-import zmq
-import time
-import sys
+import os
 import random
+import socket as m_socket
+import sys
+import time
+import tempfile
+import zmq
 
 port = "5556"
-#ip = "*"
-ip="zitpcx19282.desy.de"
+ip = m_socket.getfqdn(m_socket.gethostname())
 
 context = zmq.Context()
 socket = context.socket(zmq.PUB)
-socket.connect("tcp://" + ip + ":%s" % port)
+
+ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
+endpoint = "ipc://{}:{}".format(ipc_dir, "pubsub")
+#endpoint = "tcp://{}:{}".format(ip, port)
+
+socket.connect(endpoint)
 time.sleep(0.1)
 
 while True:

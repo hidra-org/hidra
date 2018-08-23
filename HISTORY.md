@@ -1,4 +1,14 @@
 # HiDRA develop
+# HiDRA 4.0.4
+
+- Added automatic freeze build for suse 10 in docker container
+- Changed default value for whitlist on Windows to localhost
+- Fixed start up if fix_subdir cannot be created
+- Fixed windows paths parsing in config
+- Fixed endpoints in forwarder device
+- Fixed: no ipc cleanup for Windows
+- Fixed: startup problems on Windows
+
 # HiDRA 4.0.3
 
 - Fixed version number

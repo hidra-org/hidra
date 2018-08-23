@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import errno
 import json
 import logging
 import logging.handlers
@@ -372,12 +373,22 @@ def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
                      for directory in subdirs
                      if not directory.startswith(dirs_not_to_create)]
 
+    throw_exception = False
     for d in dirs_to_check:
         try:
             os.makedirs(d)
             logging.debug("Dir '{}' does not exist. Create it.".format(d))
-        except OSError:
-            logging.error("Dir '{}' could not be created.".format(d))
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                # file exists already
+                pass
+            else:
+                logging.error("Dir '{}' could not be created.".format(d))
+                throw_exception = True
+                raise
+
+    if throw_exception:
+        raise OSError
 
 
 def check_config(required_params, config, log):
@@ -593,8 +604,14 @@ def generate_sender_id(main_pid):
 #  Connection paths and strings  #
 # ------------------------------ #
 
+# To be pickable these have to be defined at the top level of a module
+# this is needed because multiprocessing on windows needs these pickable.
+# Additionally the name of the namedtuple has to be the same as the typename
+# otherwise it cannot be pickled on Windows.
+
+
 IpcAddresses = namedtuple(
-    "ipc_addresses", [
+    "IpcAddresses", [
         "control_pub",
         "control_sub",
         "request_fw",
@@ -654,7 +671,7 @@ def set_ipc_addresses(ipc_dir, main_pid, use_cleaner=True):
 
 
 Endpoints = namedtuple(
-    "endpoints", [
+    "Endpoints", [
         "control_pub_bind",
         "control_pub_con",
         "control_sub_bind",

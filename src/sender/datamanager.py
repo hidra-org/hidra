@@ -23,7 +23,36 @@ from signalhandler import SignalHandler
 from taskprovider import TaskProvider
 from datadispatcher import DataDispatcher
 
-from __init__ import BASE_DIR
+#from __init__ import BASE_DIR
+
+try:
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+except:
+    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
+
+BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
+EVENTDETECTOR_DIR = os.path.join(CURRENT_DIR, "eventdetectors")
+DATAFETCHER_DIR = os.path.join(CURRENT_DIR, "datafetchers")
+API_DIR = os.path.join(BASE_DIR, "src", "APIs")
+
+if SHARED_DIR not in sys.path:
+    sys.path.insert(0, SHARED_DIR)
+
+if EVENTDETECTOR_DIR not in sys.path:
+    sys.path.insert(0, EVENTDETECTOR_DIR)
+
+if DATAFETCHER_DIR not in sys.path:
+    sys.path.insert(0, DATAFETCHER_DIR)
+
+try:
+    # search in global python modules first
+    from hidra import Transfer  # noqa F401
+except ImportError:
+    # then search in local modules
+    if API_DIR not in sys.path:
+        sys.path.insert(0, API_DIR)
+
 import utils
 from _version import __version__
 
@@ -576,19 +605,19 @@ class DataManager(Base):
             self.device = zmq.devices.ThreadDevice(zmq.FORWARDER,
                                                    zmq.SUB,
                                                    zmq.PUB)
-            self.device.bind_in(self.endpoints.control_pub_con)
-            self.device.bind_out(self.endpoints.control_sub_con)
+            self.device.bind_in(self.endpoints.control_pub_bind)
+            self.device.bind_out(self.endpoints.control_sub_bind)
             self.device.setsockopt_in(zmq.SUBSCRIBE, b"")
             self.device.start()
             self.log.info("Start thead device forwarding messages "
                           "from '{}' to '{}'"
-                          .format(self.endpoints.control_pub_con,
-                                  self.endpoints.control_sub_con))
+                          .format(self.endpoints.control_pub_bind,
+                                  self.endpoints.control_sub_bind))
         except:
             self.log.error("Failed to start thead device forwarding messages "
                            "from '{}' to '{}'"
-                           .format(self.endpoints.control_pub_con,
-                                   self.endpoints.control_sub_con),
+                           .format(self.endpoints.control_pub_bind,
+                                   self.endpoints.control_sub_bind),
                            exc_info=True)
             raise
 
@@ -967,35 +996,37 @@ class DataManager(Base):
             self.context.destroy(0)
             self.context = None
 
-        ipc_ip = "{}/{}".format(self.ipc_dir, self.current_pid)
-        ipc_con_paths = {
-            "control_pub": "{}_{}".format(ipc_ip, "controlPub"),
-            "control_sub": "{}_{}".format(ipc_ip, "controlSub"),
-            "request_fw": "{}_{}".format(ipc_ip, "requestFw")
-        }
+        if self.endpoints.control_pub_bind.startswith("ipc"):
 
-        # Clean up ipc communication files
-        for key, path in ipc_con_paths.iteritems():
+            ipc_ip = "{}/{}".format(self.ipc_dir, self.current_pid)
+            ipc_con_paths = {
+                "control_pub": "{}_{}".format(ipc_ip, "controlPub"),
+                "control_sub": "{}_{}".format(ipc_ip, "controlSub"),
+                "request_fw": "{}_{}".format(ipc_ip, "requestFw")
+            }
+
+            # Clean up ipc communication files
+            for key, path in ipc_con_paths.iteritems():
+                try:
+                    os.remove(path)
+                    self.log.debug("Removed ipc socket: {}".format(path))
+                except OSError:
+                    self.log.debug("Could not remove ipc socket: {}".format(path))
+                except:
+                    self.log.warning("Could not remove ipc socket: {}"
+                                     .format(path), exc_info=True)
+
+            # Remove temp directory (if empty)
             try:
-                os.remove(path)
-                self.log.debug("Removed ipc socket: {}".format(path))
+                os.rmdir(self.ipc_dir)
+                self.log.debug("Removed IPC direcory: {}".format(self.ipc_dir))
             except OSError:
-                self.log.debug("Could not remove ipc socket: {}".format(path))
+                pass
+    #            self.log.debug("Could not remove IPC directory: {}"
+    #                           .format(self.ipc_dir))
             except:
-                self.log.warning("Could not remove ipc socket: {}"
-                                 .format(path), exc_info=True)
-
-        # Remove temp directory (if empty)
-        try:
-            os.rmdir(self.ipc_dir)
-            self.log.debug("Removed IPC direcory: {}".format(self.ipc_dir))
-        except OSError:
-            pass
-#            self.log.debug("Could not remove IPC directory: {}"
-#                           .format(self.ipc_dir))
-        except:
-            self.log.warning("Could not remove IPC directory: {}"
-                             .format(self.ipc_dir), exc_info=True)
+                self.log.warning("Could not remove IPC directory: {}"
+                                 .format(self.ipc_dir), exc_info=True)
 
         if not self.ext_log_queue and self.log_queue_listener:
             self.log.info("Stopping log_queue")

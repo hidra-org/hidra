@@ -1,15 +1,20 @@
-import zmq
 import sys
+import os
+import tempfile
+import zmq
 
 port = "5556"
-#ip="localhost"
 ip="*"
-#ip="zitpcx19282.desy.de"
 
 context = zmq.Context()
 print "Connecting to server..."
 socket = context.socket(zmq.SUB)
-socket.bind ("tcp://"+ ip + ":%s" % port)
+
+ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
+endpoint = "ipc://{}:{}".format(ipc_dir, "pubsub")
+#endpoint = "tcp://{}:{}".format(ip, port)
+
+socket.bind(endpoint)
 
 socket.setsockopt(zmq.SUBSCRIBE, "10001")
 socket.setsockopt(zmq.SUBSCRIBE, "10002")
