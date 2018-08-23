@@ -1,4 +1,5 @@
 # HiDRA develop
+# HiDRA 4.0.5
 # HiDRA 4.0.4
 
 - Added automatic freeze build for suse 10 in docker container
