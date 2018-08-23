@@ -25,6 +25,12 @@ fi
 bumpversion ${RELEASE} ${DRYRUN} --config-file .bumpversion_prework.cfg
 bumpversion ${RELEASE} ${DRYRUN} --allow-dirty
 
+# fix manually because bumversion does not work properly with %z
+echo "Fix timezone"
+current_time=$(date "+%a, %d %b %Y %H")
+timezone=$(date "+%z")
+sed -i -e "s/$current_time\(:[0-9][0-9]:[0-9][0-9]\) $/$current_time\1 $timezone/g" debian/changelog
+
 #TODO add to git via bumpversion or
 #git add -u
 

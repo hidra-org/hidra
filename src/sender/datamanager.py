@@ -388,6 +388,8 @@ class DataManager(Base):
         self.number_of_streams = None
         self.chunksize = None
 
+        self.endpoints = None
+
         self.local_target = None
 
         self.signalhandler_thr = None
@@ -996,7 +998,8 @@ class DataManager(Base):
             self.context.destroy(0)
             self.context = None
 
-        if self.endpoints.control_pub_bind.startswith("ipc"):
+        if (self.endpoints is not None
+                and self.endpoints.control_pub_bind.startswith("ipc")):
 
             ipc_ip = "{}/{}".format(self.ipc_dir, self.current_pid)
             ipc_con_paths = {

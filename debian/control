@@ -3,7 +3,7 @@ Section: science
 Priority: optional
 Maintainer: Manuela Kuhn <manuela.kuhn@desy.de>
 Build-Depends: debhelper (>= 9.0.0), python, dh-python, python-dev, python-setuptools
-Standards-Version: 3.9.6
+Standards-Version: 4.1.4
 Homepage: https://stash.desy.de/projects/LSDMA/repos/hidra/browse
 
 Package: hidra
@@ -29,6 +29,6 @@ Description: The hidra control client
 
 Package: python-hidra
 Architecture: any
-Depends: python, python-zmq (>= 14.5.0)
+Depends: python, python-zmq (>= 14.6.0)
 Description: python modules for hidra
  Python modules for HiDRA ( High performance data multiplexing tool )
