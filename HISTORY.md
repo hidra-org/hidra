@@ -1,4 +1,5 @@
 # HiDRA develop
+# HiDRA 4.0.6
 
 - Fixed default config
 - Fix config_file option in hidra.sh
