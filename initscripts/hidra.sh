@@ -102,20 +102,23 @@ then
     exit 1
 fi
 
-if [ -n "$beamline" ]
+if [ ! -n "$config_file" ]
 then
-    if [ -n "${detector}" ]
+    if [ -n "$beamline" ]
     then
-        NAME=${SCRIPT_PROC_NAME}_${beamline}_${detector}
-        config_file=${CONFIGDIR}/datamanager_${beamline}_${detector}.conf
+        if [ -n "${detector}" ]
+        then
+            NAME=${SCRIPT_PROC_NAME}_${beamline}_${detector}
+            config_file=${CONFIGDIR}/datamanager_${beamline}_${detector}.conf
+        else
+            NAME=${SCRIPT_PROC_NAME}_${beamline}
+            config_file=${CONFIGDIR}/datamanager_${beamline}.conf
+        fi
+        PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
     else
-        NAME=${SCRIPT_PROC_NAME}_${beamline}
-        config_file=${CONFIGDIR}/datamanager_${beamline}.conf
+        printf "No beamline or detector specified. Fallback to default configuration file"
+        config_file=$CONFIGDIR/datamanager.conf
     fi
-    PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
-else
-    printf "No beamline or detector specified. Fallback to default configuration file"
-    config_file=$CONFIGDIR/datamanager.conf
 fi
 
 if [ "${USE_EXE}" == "false" ]
@@ -280,7 +283,7 @@ elif [ -f /etc/debian_version ] ; then
         # 3      Any other error.
         # (--oknodo: If the a process exists start-stop-daemon exits with error
         #  status 0 instead of 1)
-        if start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --background \
+        if /sbin/start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --background \
             --startas $DAEMON -- $DAEMON_ARGS ; then
             return 0
         else
@@ -318,8 +321,8 @@ elif [ -f /etc/debian_version ] ; then
 #            status_of_proc $NAME $NAME && exit 0 || exit $?
             status_of_proc $NAME "$NAME" > /dev/null && status="0" || status="$?"
             if [ "$status" = 0 ]; then
-                start-stop-daemon --stop --quiet --pidfile $PIDFILE #--name $NAME
-#                start-stop-daemon --stop --quiet --retry=TERM/180/KILL/5 --pidfile $PIDFILE
+                /sbin/start-stop-daemon --stop --quiet --pidfile $PIDFILE #--name $NAME
+#                /sbin/start-stop-daemon --stop --quiet --retry=TERM/180/KILL/5 --pidfile $PIDFILE
                 daemon_status="$?"
                 if [ "$daemon_status" = 2 ]; then
                     cleanup
