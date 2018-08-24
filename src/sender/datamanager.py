@@ -18,6 +18,7 @@ import setproctitle
 import tempfile
 import socket
 
+# to make freeze packages work
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 except:

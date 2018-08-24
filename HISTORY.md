@@ -1,6 +1,9 @@
 # HiDRA develop
 
 - Fixed default config
+- Fix config_file option in hidra.sh
+- Fix freeze startup
+- Added exampled
 
 # HiDRA 4.0.5
 
