@@ -1,7 +1,6 @@
 import os
 import sys
 
-# path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 except:

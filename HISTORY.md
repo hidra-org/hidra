@@ -1,5 +1,17 @@
 # HiDRA develop
+# HiDRA 4.0.6
+
+- Fixed default config
+- Fix config_file option in hidra.sh
+- Fix freeze startup
+- Added exampled
+
 # HiDRA 4.0.5
+
+- Added debian package build scripts to bumpversion script
+- Fixed undefined variable error in datamanager shutdown
+- Fixed debian package build scripts
+
 # HiDRA 4.0.4
 
 - Added automatic freeze build for suse 10 in docker container
