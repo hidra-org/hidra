@@ -1511,7 +1511,7 @@ class Transfer(Base):
                         # e.g.commissioning, current and local
                         dirs = self.dirs_not_to_create
                         if (dirs is not None
-                                and rel_path.startswith(dirs)):
+                                and rel_path in dirs):
                             self.log.error("Unable to write file '{}': "
                                            "Directory {} is not available"
                                            .format(filepath, rel_path))
