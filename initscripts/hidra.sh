@@ -22,6 +22,7 @@ PYTHON=/usr/bin/python
 CURRENTDIR="$(readlink --canonicalize-existing -- "$0")"
 
 USE_EXE=false
+SHOW_SCRIPT_SETTINGS=false
 
 if [ "${USE_EXE}" == "false" ]
 then
@@ -137,11 +138,14 @@ else
     getsettings=${BASEDIR}/getsettings
 fi
 
-printf "\nSetting: \n"
-printf "DAEMON=${DAEMON}\n"
-printf "DAEMON_ARGS=${DAEMON_ARGS}\n"
-printf "NAME=${NAME}\n"
-printf "config_file=${config_file}\n\n"
+if [ "${SHOW_SCRIPT_SETTINGS}" == "true" ]
+then
+    printf "\nSetting: \n"
+    printf "DAEMON=${DAEMON}\n"
+    printf "DAEMON_ARGS=${DAEMON_ARGS}\n"
+    printf "NAME=${NAME}\n"
+    printf "config_file=${config_file}\n\n"
+fi
 
 if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 # Red Hat or Centos...
