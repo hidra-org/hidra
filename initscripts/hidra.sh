@@ -26,8 +26,7 @@ SHOW_SCRIPT_SETTINGS=false
 
 if [ "${USE_EXE}" == "false" ]
 then
-    BASEDIR=/home/kuhnm/projects/hidra
-    #BASEDIR=/opt/hidra
+    BASEDIR=/opt/hidra
     SCRIPTNAME=/etc/init.d/$NAME
 else
     BASEDIR="${CURRENTDIR%/*}"
@@ -42,12 +41,64 @@ PIDFILE_LOCATION=${BASEDIR}
 PIDFILE=${PIDFILE_LOCATION}/$NAME.pid
 CONFIGDIR=$BASEDIR/conf
 
+RETVAL=0
+
 usage()
 {
-    printf "Usage: $SCRIPTNAME --beamline|--bl <beamline> [--detector|--det <detector>] [--config_file <config_file>] {--start|--stop|--status|--restart|--getsettings}\n" >&2
+    printf "Usage: $SCRIPTNAME {start|stop|status|restart|getsettings} --beamline|--bl <beamline> [--detector|--det <detector>] [--config_file <config_file>]\n" >&2
     RETVAL=3
 }
 
+# for the environment to be set correctly these have to be loaded before the
+# parameters are parsed
+# e.g. SuSE: if this is done after ther parameters status results in failed
+# and done instead of unused and running
+
+if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
+# red hat or centos...
+
+    # source function library.
+    . /etc/rc.d/init.d/functions
+
+elif [ -f /etc/debian_version ] ; then
+# Debian and Ubuntu
+
+    # Exit if the package is not installed
+#    [ -x "$DAEMON" ] || exit 0
+
+    # Load the VERBOSE setting and other rcS variables
+#    . /lib/init/vars.sh
+
+    # Define LSB log_* functions.
+    # Depend on lsb-base (>= 3.2-14) to ensure that this file is present
+    # and status_of_proc is working.
+    . /lib/lsb/init-functions
+
+elif [ -f /etc/SuSE-release ] ; then
+# SuSE
+
+# source: /etc/init.d/skeleton
+
+    # source function library.
+#    . /lib/lsb/init-functions
+
+    # Shell functions sourced from /etc/rc.status:
+    #      rc_check         check and set local and overall rc status
+    #      rc_status        check and set local and overall rc status
+    #      rc_status -v     be verbose in local rc status and clear it afterwards
+    #      rc_status -v -r  ditto and clear both the local and overall rc status
+    #      rc_status -s     display "skipped" and exit with status 3
+    #      rc_status -u     display "unused" and exit with status 3
+    #      rc_failed        set local and overall rc status to failed
+    #      rc_failed <num>  set local and overall rc status to <num>
+    #      rc_reset         clear both the local and overall rc status
+    #      rc_exit          exit appropriate to overall rc status
+    #      rc_active        checks whether a service is activated by symlinks
+    . /etc/rc.status
+
+    # Reset status of this service
+    rc_reset
+fi
 
 beamline=
 detector=
@@ -59,6 +110,21 @@ do
     input_value=$(echo "$1" | tr '[:upper:]' '[:lower:]')
 
     case $input_value in
+        start)
+            action="start"
+            ;;
+        status)
+            action="status"
+            ;;
+        stop)
+            action="stop"
+            ;;
+        restart)
+            action="restart"
+            ;;
+        getsettings)
+            action="getsettings"
+            ;;
         --bl | --beamline)
             beamline=$2
             shift
@@ -69,27 +135,6 @@ do
             ;;
         --config_file)
             config_file=$2
-            shift
-            ;;
-        --start)
-            action="start"
-            printf "set action to start\n"
-            shift
-            ;;
-        --status)
-            action="status"
-            shift
-            ;;
-        --stop)
-            action="stop"
-            shift
-            ;;
-        --restart)
-            action="restart"
-            shift
-            ;;
-        --getsettings)
-            action="getsettings"
             shift
             ;;
         -h | --help ) usage
@@ -148,10 +193,7 @@ then
 fi
 
 if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
-# Red Hat or Centos...
-
-    # source function library.
-    . /etc/rc.d/init.d/functions
+# red hat or centos...
 
     BLUE=$(tput setaf 4)
     NORMAL=$(tput sgr0)
@@ -247,17 +289,6 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 
 elif [ -f /etc/debian_version ] ; then
 # Debian and Ubuntu
-
-    # Exit if the package is not installed
-#    [ -x "$DAEMON" ] || exit 0
-
-    # Load the VERBOSE setting and other rcS variables
-#    . /lib/init/vars.sh
-
-    # Define LSB log_* functions.
-    # Depend on lsb-base (>= 3.2-14) to ensure that this file is present
-    # and status_of_proc is working.
-    . /lib/lsb/init-functions
 
     #
     # Function that starts the daemon/service
@@ -417,18 +448,6 @@ elif [ -f /etc/debian_version ] ; then
 elif [ -f /etc/SuSE-release ] ; then
 # SuSE
 
-# source: /etc/init.d/skeleton
-
-    # source function library.
-#    . /lib/lsb/init-functions
-
-    # Shell functions sourced from /etc/rc.status
-    . /etc/rc.status
-
-
-    # Reset status of this service
-    rc_reset
-
     cleanup()
     {
         SOCKETID=`cat $PIDFILE`
@@ -516,7 +535,6 @@ elif [ -f /etc/SuSE-release ] ; then
         do_stop
         do_start
     }
-
 fi
 
 case "$action" in
