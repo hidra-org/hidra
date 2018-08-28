@@ -54,7 +54,10 @@ config_file=
 action=
 while test $# -gt 0
 do
-    case $1 in
+    #convert to lower case
+    input_value=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+
+    case $input_value in
         --bl | --beamline)
             beamline=$2
             shift
