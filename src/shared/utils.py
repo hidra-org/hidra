@@ -694,7 +694,12 @@ Endpoints = namedtuple(
 )
 
 
-def set_endpoints(ext_ip, con_ip, ports, ipc_addresses, use_cleaner=True):
+def set_endpoints(ext_ip,
+                  con_ip,
+                  ports,
+                  ipc_addresses,
+                  confirm_ips,
+                  use_cleaner=True):
     """Configures the ZMQ address depending on the protocol.
 
     Sets the connection strings  for the job, control, trigger and
@@ -704,6 +709,8 @@ def set_endpoints(ext_ip, con_ip, ports, ipc_addresses, use_cleaner=True):
         ext_ip: IP to bind TCP connections to
         con_ip: IP to connect TCP connections to
         ipc_addresses: Addresses to use for the IPC connections.
+        confirm_ips: External ips/hostnames to bind and connect cornfirmation
+                     socket to.
         port: A dictionary giving the ports to open TCP connection on
               (only used on Windows).
     Returns:
@@ -783,10 +790,8 @@ def set_endpoints(ext_ip, con_ip, ports, ipc_addresses, use_cleaner=True):
             trigger_bind = "ipc://{}".format(ipc_addresses.cleaner_trigger)
             trigger_con = trigger_bind
 
-        # use self.params["data_stream_targets"][0][0] instead of
-        # ext_ip, con_ip
-        confirm_bind = "tcp://{}:{}".format(ext_ip, ports["confirmation"])
-        confirm_con = "tcp://{}:{}".format(con_ip, ports["confirmation"])
+        confirm_bind = "tcp://{}:{}".format(confirm_ips[0], ports["confirmation"])
+        confirm_con = "tcp://{}:{}".format(confirm_ips[1], ports["confirmation"])
     else:
         job_bind = None
         job_con = None

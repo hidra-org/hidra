@@ -493,10 +493,22 @@ class DataManager(Base):
             use_cleaner=self.use_cleaner
         )
 
+        self.use_data_stream = self.params["use_data_stream"]
+        self.log.info("Usage of data stream set to '{}'"
+                      .format(self.use_data_stream))
+
+        if self.use_data_stream:
+            data_stream_target = self.params["data_stream_targets"][0][0]
+            confirm_ips = [socket.gethostbyaddr(data_stream_target)[2][0],
+                           data_stream_target]
+        else:
+            confirm_ips = [self.ext_ip, self.con_ip]
+
         self.endpoints = utils.set_endpoints(ext_ip=self.ext_ip,
                                              con_ip=self.con_ip,
                                              ports=ports,
                                              ipc_addresses=self.ipc_addresses,
+                                             confirm_ips=confirm_ips,
                                              use_cleaner=self.use_cleaner)
 
         if utils.is_windows():
@@ -516,10 +528,6 @@ class DataManager(Base):
 
         self.whitelist = self.params["whitelist"]
         self.ldapuri = self.params["ldapuri"]
-
-        self.use_data_stream = self.params["use_data_stream"]
-        self.log.info("Usage of data stream set to '{}'"
-                      .format(self.use_data_stream))
 
         if self.use_data_stream:
             if len(self.params["data_stream_targets"]) > 1:

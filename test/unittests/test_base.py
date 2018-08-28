@@ -9,6 +9,7 @@ import inspect
 import logging
 import mock
 import os
+import socket as m_socket
 import tempfile
 import traceback
 import unittest
@@ -161,8 +162,8 @@ class TestBase(unittest.TestCase):
         self.log = None
 
         main_pid = os.getpid()
-        self.con_ip = socket.getfqdn()
-        self.ext_ip = socket.gethostbyaddr(self.con_ip)[2][0]
+        self.con_ip = m_socket.getfqdn()
+        self.ext_ip = m_socket.gethostbyaddr(self.con_ip)[2][0]
         ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
 
         ports = {
@@ -181,9 +182,12 @@ class TestBase(unittest.TestCase):
         self.ipc_addresses = utils.set_ipc_addresses(ipc_dir=ipc_dir,
                                                      main_pid=main_pid)
 
+        confirm_ips = [self.ext_ip, self.con_ip]
+
         endpoints = utils.set_endpoints(ext_ip=self.ext_ip,
                                         con_ip=self.con_ip,
                                         ports=ports,
+                                        confirm_ips=confirm_ips,
                                         ipc_addresses=self.ipc_addresses)
 
         self.config = {
