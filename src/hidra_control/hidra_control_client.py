@@ -64,14 +64,6 @@ def argument_parsing():
     parser.add_argument("--stop",
                         help="Stops the HiDRA server (detector mode)",
                         action="store_true")
-    parser.add_argument("--target",
-                        type=str,
-                        help="Where to write the data to "
-                             "(default: current/raw; options are: "
-                             "current/raw, current/scratch_bl, "
-                             "commissioning/raw, commissioning/scratch_bl "
-                             "or local)",
-                        default="current/raw")
 
     parser.add_argument("--version",
                         help="Displays the used hidra_control version",
@@ -99,11 +91,6 @@ if __name__ == '__main__':
                          "commissioning/scratch_bl",
                          "local"]
 
-    if (arguments.target
-            and os.path.normpath(arguments.target) not in supported_targets):
-        print("ERROR: target not supported")
-        sys.exit(1)
-
     obj = hidra.Control(beamline,
                         arguments.det,
                         LDAPURI,
@@ -122,8 +109,8 @@ if __name__ == '__main__':
             obj.set("det_ip", arguments.det)
             obj.set("det_api_version", arguments.detapi)
             obj.set("history_size", 2000)
-            obj.set("store_data", True)
-            obj.set("remove_data", True)
+            obj.set("store_data", False)
+            obj.set("remove_data", False)
             obj.set("whitelist", NETGROUP_TEMPLATE.format(bl=beamline))
             obj.set("ldapuri", LDAPURI)
 

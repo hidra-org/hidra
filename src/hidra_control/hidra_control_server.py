@@ -224,7 +224,7 @@ class HidraController():
             return_val = "DONE"
 
         else:
-            self.log.debug("key={0}; value={1}".format(key, value))
+            self.log.debug("key={}; value={}".format(key, value))
             return_val = "ERROR"
 
         if return_val != "ERROR":
