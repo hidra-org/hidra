@@ -173,7 +173,7 @@ class Control(Base):
         self.context = zmq.Context()
 
         # socket to get requests
-        self._start_socket(
+        self.socket = self._start_socket(
             name="socket",
             sock_type=zmq.REQ,
             sock_con="connect",
