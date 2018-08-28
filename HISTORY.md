@@ -1,18 +1,26 @@
-# HiDRA develop
-# HiDRA 4.0.6
+# develop
+
+- Fixed subdir creation in transfer API
+- Fixed confirmation endpoint
+- Fixed hidra control client  and datamanager default config values
+- Init script: Fixed status output + changed commands
+- Control client: Removed not supported argument target
+- API: Fixed socket creation in control
+
+# 4.0.6
 
 - Fixed default config
 - Fix config_file option in hidra.sh
 - Fix freeze startup
 - Added exampled
 
-# HiDRA 4.0.5
+# 4.0.5
 
 - Added debian package build scripts to bumpversion script
 - Fixed undefined variable error in datamanager shutdown
 - Fixed debian package build scripts
 
-# HiDRA 4.0.4
+# 4.0.4
 
 - Added automatic freeze build for suse 10 in docker container
 - Changed default value for whitlist on Windows to localhost
@@ -22,23 +30,23 @@
 - Fixed: no ipc cleanup for Windows
 - Fixed: startup problems on Windows
 
-# HiDRA 4.0.3
+# 4.0.3
 
 - Fixed version number
 - Fixed Fixed bump version config for HISTORY.md
 
-# HiDRA 4.0.2
+# 4.0.2
 
 - Fixed spec file
 - Fixed typo in LD_LIBRARY_PATH
 - Fixed auth
 
-# HiDRA 4.0.1
+# 4.0.1
 
 - Fixed LD_IBRARY_PATH in initscipt for all platforms
 - Fixed freeze (newline went missing in cleanup)
 
-# HiDRA 4.0.0
+# 4.0.0
 
 - Run hidra as user defined in the config file
 - Added netgroup support in datamanager whitelist
