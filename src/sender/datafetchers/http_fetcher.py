@@ -96,8 +96,6 @@ class DataFetcher(DataFetcherBase):
         Returns:
 
         """
-        subdir, tmp = os.path.split(metadata["relative_path"])
-
         # the directories current, commissioning and local should
         # not be created
         if metadata["relative_path"] in self.config["fix_subdirs"]:
@@ -109,31 +107,46 @@ class DataFetcher(DataFetcherBase):
                 exc_info=True
             )
             raise
-
-        elif subdir in self.config["fix_subdirs"]:
-            self.log.error(
-                "Unable to move file '{}' to '{}': Directory {} is not "
-                "available.".format(self.source_file,
-                                    self.target_file,
-                                    subdir),
-                exc_info=True
-            )
-            raise
-
         else:
-            try:
-                target_path, filename = os.path.split(self.target_file)
-                os.makedirs(target_path)
-                self.log.info("New target directory created: {}"
-                              .format(target_path))
-            except OSError as e:
-                self.log.info("Target directory creation failed, was already "
-                              "created in the meantime: {}"
-                              .format(target_path))
-            except:
-                self.log.error("Unable to create target directory '{}'."
-                               .format(target_path), exc_info=True)
-                raise
+            fix_subdir_found = False
+            # identify which of the pefixes is the correct one and check that
+            # this is available
+            # e.g. relative_path is commissioning/raw/test_dir but
+            #      commissioning/raw  does not exist, it should not be created
+            for prefix in self.config["fix_subdirs"]:
+                if metadata["relative_path"].startswith(prefix):
+                    fix_subdir_found = True
+
+                    prefix_dir = os.path.join(self.config["local_target"], prefix)
+                    if not os.path.exists(prefix_dir):
+                        self.log.error(
+	                    "Unable to move file '{}' to '{}': Directory {} is not "
+		            "available.".format(self.source_file,
+                                                self.target_file,
+                                                prefix),
+                        exc_info=True
+		        )
+		        raise
+                    else:
+                        # everything is fine -> create directory
+                        try:
+                            target_path, filename = os.path.split(self.target_file)
+                            os.makedirs(target_path)
+                            self.log.info("New target directory created: {}"
+                                          .format(target_path))
+                        except OSError as e:
+                            self.log.info("Target directory creation failed, was already "
+                                          "created in the meantime: {}"
+                                          .format(target_path))
+                        except:
+                            self.log.error("Unable to create target directory '{}'."
+                                           .format(target_path), exc_info=True)
+                            raise
+
+                        break
+
+            if not fix_subdir_found:
+                raise Exception("Relative path was not found in fix_subdir")
 
     def send_data(self, targets, metadata, open_connections):
         """Implementation of the abstract method send_data.
