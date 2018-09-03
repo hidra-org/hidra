@@ -1433,6 +1433,10 @@ class Transfer(Base):
                     self.log.error("Getting data failed.", exc_info=True)
                     raise
 
+            if metadata is None and payload is None:
+                self.log.info("Reached timeout")
+                return metadata, payload
+
             file_id = generate_file_identifier(metadata)
 
             # --------------------------------------------------------------------
@@ -1653,24 +1657,25 @@ class Transfer(Base):
                     self.log.error("Getting data failed.", exc_info=True)
                     raise
 
-            if metadata is not None and payload is not None:
+            if metadata is None and payload is None:
+                # self.log.debug("No data received. Break loop")
+                break
 
-                # generate target filepath
-                target_filepath = generate_filepath(target_base_path,
-                                                    metadata)
-                self.log.debug("New chunk for file {} received."
-                               .format(target_filepath))
+            # generate target filepath
+            target_filepath = generate_filepath(target_base_path, metadata)
+            self.log.debug("New chunk for file {} received."
+                           .format(target_filepath))
 
-                # TODO: save message to file using a thread (avoids blocking)
-                try:
-                    run_loop = self.store_chunk(
-                        descriptors=self.file_descriptors,
-                        filepath=target_filepath,
-                        payload=payload,
-                        base_path=target_base_path,
-                        metadata=metadata
-                    )
-                    # for testing
+            # TODO: save message to file using a thread (avoids blocking)
+            try:
+                run_loop = self.store_chunk(
+                    descriptors=self.file_descriptors,
+                    filepath=target_filepath,
+                    payload=payload,
+                    base_path=target_base_path,
+                    metadata=metadata
+                )
+                # for testing
 #                    try:
 #                        a = 5/0
 #                    except:
@@ -1682,23 +1687,19 @@ class Transfer(Base):
 #                                       str(exc_value).encode("utf-8")]
 #                        self.log.debug("Status changed to: {}"
 #                                       .format(self.status))
-                except:
-                    self.log.debug("Stopping data storing loop")
+            except:
+                self.log.debug("Stopping data storing loop")
 
-                    # returns a tuple (type, value, traceback)
-                    exc_type, exc_value, _ = sys.exc_info()
+                # returns a tuple (type, value, traceback)
+                exc_type, exc_value, _ = sys.exc_info()
 
-                    self.log.error(exc_value)
+                self.log.error(exc_value)
 
-                    self.status = [b"ERROR",
-                                   str(exc_type).encode("utf-8"),
-                                   str(exc_value).encode("utf-8")]
-                    self.log.debug("Status changed to: {}"
-                                   .format(self.status))
+                self.status = [b"ERROR",
+                               str(exc_type).encode("utf-8"),
+                               str(exc_value).encode("utf-8")]
+                self.log.debug("Status changed to: {}".format(self.status))
 
-                    break
-            else:
-                # self.log.debug("No data received. Break loop")
                 break
 
     def _stop_socket(self, name, socket=None):

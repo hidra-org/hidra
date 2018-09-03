@@ -2,8 +2,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-import socket
 import hashlib
+import socket
+import sys
 
 import __init__  # noqa E401
 from hidra import Transfer
@@ -42,6 +43,7 @@ if __name__ == "__main__":
         try:
             [metadata, data] = query.get(timeout)
         except:
+            print(sys.exc_info())
             break
 
         print
