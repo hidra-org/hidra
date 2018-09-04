@@ -1,4 +1,8 @@
 # develop
+
+- Fixed subdir creation in http_fetcher
+- Fixed get in transfer API if timeout is reached
+
 # 4.0.7
 
 - Fixed subdir creation in transfer API
