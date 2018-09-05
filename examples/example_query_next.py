@@ -36,6 +36,7 @@ if __name__ == "__main__":
 
     query.start()
 
+    md5sum = False
     timeout = None
     #timeout = 2000  # in ms
     #while True:
@@ -52,9 +53,10 @@ if __name__ == "__main__":
             print("data", str(data)[:10])
 
             # generate md5sum
-            m = hashlib.md5()
-            m.update(data)
-            print("md5sum", m.hexdigest())
+            if md5sum:
+                m = hashlib.md5()
+                m.update(data)
+                print("md5sum", m.hexdigest())
 
         else:
             print("metadata", metadata)
