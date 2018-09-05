@@ -1,28 +1,28 @@
 # Usage
 
-## build image
+## Create Debian packages
 
-* Create docker image.
+* Run
 ```
-docker build -f ./Dockerfile.build_suse10-2 -t suse_build .
+./debian_build_hidra.sh --version <debian_version>
 ```
+where <debian_version> can be either 8, 9, jessie or stretch.
 
-The image has to be called suse_build in order use the hidra build script.
-
-## build hidra
+## Create SuSE 10.2 executables
 
 * Run
 ```
 ./suse_build_hidra.sh
 ```
 
+This created a docker images with the build environment and then freezes hidra inside a container.
 The zipped frozen hidra build can be found under /tmp/hidra_builds/build
 
-# Remarks
+## Remarks
 Currently cx_Freeze 4.3.3 is used because of errors when migrating to higher versions.
 
 
-# RPM dependencies
+## RPM dependencies
 
 ```
 gcc-4.1.3-29.x86_64.rpm
