@@ -1,3 +1,8 @@
+hidra (4.0.7-2+deb9u5~fsec) stretch; urgency=low
+
+  * Fix pacakge name
+
+ -- M. Kuhn <manuela.kuhn@desy.de>  Tue, 04 Sep 2018 17:07:23 +0200
 hidra (4.0.7-1) stretch; urgency=low
 
   * Bump version
