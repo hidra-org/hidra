@@ -269,7 +269,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             return 0
         fi
 
-    	printf "%-50s" "Stopping ${HIDRA}..."
+        printf "%-50s" "Stopping ${NAME}..."
         HIDRA_PID="`pidofproc ${NAME}`"
         # stop gracefully and wait up to 180 seconds.
         kill $HIDRA_PID > /dev/null 2>&1
@@ -484,9 +484,19 @@ elif [ -f /etc/SuSE-release ] ; then
 
     }
 
+    # rc_status can only work with return values
+    # if the return value has to be checked by something else as well it has to
+    # be reestablished for rc_status
+    return_func()
+    {
+        return $1
+    }
+
+
     do_start()
     {
         printf "Starting $NAME"
+
         export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
 
         # Checking if the process is already running
@@ -508,6 +518,16 @@ elif [ -f /etc/SuSE-release ] ; then
             sleep 5
 
             /sbin/checkproc $NAME
+            worked=$?
+
+            running_procs=$(ps ax -o command --no-header | grep "hidra_" | grep -v grep | grep -v $NAME | sort -u)
+            if [ "$running_procs" != "" ]
+            then
+                echo "Error when starting $NAME. Already running instances detected:"
+                echo "$running_procs"
+            fi
+
+            return_func $worked
         fi
 
         # Remember status and be verbose
