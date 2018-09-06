@@ -1,4 +1,0 @@
-#!/bin/sh
-set -e
-/bin/chmod 1777 /var/log/hidra
-#DEBHELPER#

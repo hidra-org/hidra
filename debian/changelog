@@ -1,3 +1,8 @@
+hidra (4.0.7-4+deb9u5~fsec) stretch; urgency=low
+
+  * Fix postinstall mixup
+
+ -- J. Blume <johannes.blume@desy.de>  Tue, 05 Sep 2018 16:40:21 +0200
 hidra (4.0.7-3+deb9u5~fsec) stretch; urgency=low
 
   * Fix log dir permissions
