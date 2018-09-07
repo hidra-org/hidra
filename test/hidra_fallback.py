@@ -1,70 +1,85 @@
 #!/usr/bin/env python
 
+# This script serves as an example to achieve some kind of HA for HiDRA.
+# It heavily relies on a Spectrum Scale cNFS cluster for IP failover.
+# Failover will be triggered by Spectrum Scale, through a callback:
+# mmaddcallback hidra_fallback --command /usr/local/sbin/hidra_fallback.py \
+#  --event nodeJoin,nodeLeave --async -N cnfsNodes
+# Only tested on CentOS 7
+
 from __future__ import print_function
 
-import subprocess
-# import re
-import socket
-import os
-import StringIO
-# import platform
 try:
     import ConfigParser
 except ImportError:
     # The ConfigParser module has been renamed to configparser in Python 3
     import configparser as ConfigParser
 
+import logging
+import os
+import shlex
+import socket
+import StringIO
+import subprocess
+import sys
+import time
 
-CONFIG_DIR = "/opt/hidra/conf"
+CONFIG_PATH = "/opt/hidra/conf"
 CONFIG_PREFIX = "receiver_"
 CONFIG_POSTFIX = ".conf"
-SYSTEMD_PREFIX = "hidra-receiver@"
-SERVICE_NAME = "hidra-receiver"
+RECEIVER_PREFIX = "hidra-receiver@"
+CONTROL_PREFIX = "hidra-control-server@"
 
 
-def call_initsystem(beamline, command):
-    global SYSTEMD_PREFIX
-    global SERVICE_NAME
+def setup_logging():
+    """Setup logging for stdout"""
 
-#    dist = platform.dist()
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s %(levelname)-8s %(message)s',
+        stream=sys.stdout,
+    )
+
+
+def call_initsystem(beamline, command, daemon):
+
     return_val = None
 
-    # source for the differentiation: https://en.wikipedia.org/wiki/Systemd
-    # systems using systemd
-#    if (dist[0].lower() in ["centos", "redhat"] and dist[1] >= 7
-#        or dist[0].lower() in ["fedora"] and dist[1] >= 15
-#        or dist[0].lower() in ["debian"] and dist[1] >= 8
-#        or dist[0].lower() in ["ubuntu"] and dist[1] >= 15.04):
-    if os.path.isfile("/usr/lib/systemd"):
-        if command == "status":
-            return_val = subprocess.call(["systemctl", "is-active",
-                                          SYSTEMD_PREFIX + beamline])
-        elif command == "start":
-            return_val = subprocess.call(["systemctl", "start",
-                                          SYSTEMD_PREFIX + beamline])
+    if not os.path.exists("/usr/lib/systemd"):
+        print('Script not supported on non-systemd distributions')
+        raise SystemExit(1)
 
-    # systems using init scripts
-#    elif (dist[0].lower() in ["centos", "redhat"] and dist[1] < 7
-#          or dist[0].lower() in ["fedora"] and dist[1] >= 15
-#          or dist[0].lower() in ["debian"] and dist[1] >= 8
-#          or dist[0].lower() in ["ubuntu"] and dist[1] < 15.04):
-    elif os.path.isfile("/etc/init.d"):
-        if command == "status":
-            return_val = subprocess.call(["service", SERVICE_NAME, "status",
-                                          beamline])
-        elif command == "start":
-            return_val = subprocess.call(["service", SERVICE_NAME, "start",
-                                          beamline])
+    if command == "status":
+        systemctl_command = 'systemctl is-active {0}{1}'.format(daemon, beamline)
+    else:
+        systemctl_command = 'systemctl {0} {1}{2}'.format(command, daemon, beamline)
+
+    systemctl = subprocess.Popen(
+        shlex.split(systemctl_command),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    stdout, stderr = systemctl.communicate()
+
+    return_val = systemctl.returncode
 
     return return_val
 
 
 def get_ip_addr():
-    p = subprocess.Popen(["hostname", "-I"],
-                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    command = 'hostname -I'
+
+    hostname = subprocess.Popen(
+        shlex.split(command),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    stdout, stderr = hostname.communicate()
 
     # IPs are separated by a space and the output ends with a new line
-    ip_list = p.stdout.readlines()[0].split(" ")[:-1]
+    ip_list = stdout.split(" ")[:-1]
 
     active_ips = []
     ip_complete = []
@@ -123,17 +138,16 @@ def get_config(conf):
 
 
 def get_bls_to_check():
-    global CONFIG_DIR
+    global CONFIG_PATH
     global CONFIG_PREFIX
     global CONFIG_POSTFIX
 
-    files = [[os.path.join(CONFIG_DIR, f),
+    files = [[os.path.join(CONFIG_PATH, f),
               f[len(CONFIG_PREFIX):-len(CONFIG_POSTFIX)]]
-             for f in os.listdir(CONFIG_DIR)
+             for f in os.listdir(CONFIG_PATH)
              if f.startswith(CONFIG_PREFIX) and f.endswith(CONFIG_POSTFIX)]
 
-    print("Config files")
-    print(files)
+    logging.info('Config files: %s', files)
 
     beamlines_to_activate = []
     beamlines_to_deactivate = []
@@ -163,43 +177,60 @@ def get_bls_to_check():
     return beamlines_to_activate, beamlines_to_deactivate
 
 
-def remove_domain(x):
-    return x.replace(".desy.de", "")
+def remove_domain(fqdn):
+    """Remove desy.de domain from FQDN"""
+
+    return fqdn.replace(".desy.de", "")
 
 
 if __name__ == '__main__':
 
-    # Get IP addresses
-    active_ips = get_ip_addr()
-    print("Active Ips\n", active_ips)
+    setup_logging()
+
+    logging.info('HiDRA failover initiated!')
+
+    number_of_tries = 10
+    i = 0
+    while i < number_of_tries:
+        # Get IP addresses
+        active_ips = get_ip_addr()
+        logging.info('Try: %s, discovered active IPs: %s', i, ', '.join(active_ips))
+        logging.debug('Sleeping for 5s')
+        time.sleep(5)
+        i += 1
 
     # mapping ip/hostname to beamline
     beamlines_to_activate, beamlines_to_deactivate = get_bls_to_check()
-    print("List of beamline receivers to check (activate)\n",
-          beamlines_to_activate)
-    print("List of beamline receivers to check (deactivate)\n",
-          beamlines_to_deactivate)
+    logging.info('List of beamline receiver to check (activate): %s',
+                 ', '.join(beamlines_to_activate))
+
+    logging.info('List of beamline receiver to check (deactivate): %s',
+                 ', '.join(beamlines_to_deactivate))
 
     # check if hidra runs for this beamline
     # and start it if that is not the case
     for bl in beamlines_to_deactivate:
-        p = call_initsystem(bl, "status")
+        for daemon in [RECEIVER_PREFIX, CONTROL_PREFIX]:
+            p = call_initsystem(bl, "status", daemon)
+            logging.debug('Returncode for %s%s to deactivate: %s', daemon, bl, p)
 
-        if p != 0:
-            print("service", bl, "is not running")
-        else:
-            print("service", bl, "is running, but has to be stopped")
-            # stop service
-#            p = call_initsystem(bl, "stop")
+            if p != 0:
+                logging.info('Service %s%s is not running', daemon, bl)
+            else:
+                logging.info('Service %s%s is running, will be stopped', daemon, bl)
+                # stop service
+                p = call_initsystem(bl, "stop", daemon)
 
     # check if hidra runs for this beamline
     # and start it if that is not the case
     for bl in beamlines_to_activate:
-        p = call_initsystem(bl, "status")
+        for daemon in [RECEIVER_PREFIX, CONTROL_PREFIX]:
+            p = call_initsystem(bl, "status", daemon)
+            logging.debug('Returncode for %s%s to activate: %s', daemon, bl, p)
 
-        if p != 0:
-            print("service", bl, "is not running, but has to be started")
-            # start service
-#            p = call_initsystem(bl, "start")
-        else:
-            print("service", bl, "is running")
+            if p != 0:
+                logging.info('Service %s%s is not running, will be started', daemon, bl)
+                # start service
+                p = call_initsystem(bl, "start", daemon)
+            else:
+                logging.info('Service %s%s is running', daemon, bl)
