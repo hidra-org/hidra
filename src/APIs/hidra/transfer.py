@@ -1591,8 +1591,9 @@ class Transfer(Base):
             # send confirmation
             try:
                 topic = metadata["confirmation_required"].encode()
-#                    topic = b"test"
-                message = [topic, file_id.encode("utf-8")]
+                message = [topic,
+                           file_id.encode("utf-8"),
+                           str(metadata["chunk_number"])]
                 self.confirmation_socket.send_multipart(message)
 
                 self.log.debug("Sending confirmation for chunk {} of "

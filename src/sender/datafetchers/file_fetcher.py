@@ -297,10 +297,13 @@ class DataFetcher(DataFetcherBase):
         elif self.config["remove_data"]:
 
             file_id = self.generate_file_id(metadata)
+            # round up the division result
+            n_chunks = -(-metadata["filesize"] // metadata["chunksize"])
 
             self.cleaner_job_socket.send_multipart(
                 [metadata["source_path"].encode("utf-8"),
-                 file_id.encode("utf-8")]
+                 file_id.encode("utf-8"),
+                 str(n_chunks)]
             )
             self.log.debug("Forwarded to cleaner {}".format(file_id))
 

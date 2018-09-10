@@ -118,8 +118,9 @@ class TestDataFetcher(DataFetcherTestBase):
                 target_file = target_file.encode("utf-8")
                 file_id = utils.generate_sender_id(self.config["main_pid"])
                 file_id = file_id.encode("utf-8")
+                n_chunks = str(1)
 
-                message = [target_file, file_id]
+                message = [target_file, file_id, n_chunks]
                 self.log.debug("sending job {}".format(message))
                 job_socket.send_multipart(message)
                 self.log.debug("job sent {}".format(message))

@@ -2540,7 +2540,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            ["test_topic", "test_file_id"]
+            ["test_topic", "test_file_id", "1"]
         )
 
         # cleanup
@@ -2582,7 +2582,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            ["test_topic", "test_file_id"]
+            ["test_topic", "test_file_id", "1"]
         )
 
         # cleanup
