@@ -8,6 +8,7 @@
 - Added building script for debian
 - Improved init script: debug option, more info when failing
 - Added HiDRA Control Server to fallback script
+- Fixed with_confirmation to check all chunks
 - Fixed beamline to host mapping
 - Fixed Windows environment
 
