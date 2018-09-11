@@ -2054,6 +2054,31 @@ class TestTransfer(TestBase):
         mock_check_file_closed.side_effect = None
         mock_check_file_closed.reset_mock()
 
+        # --------------------------------------------------------------------
+        # reach timeout
+        # --------------------------------------------------------------------
+        self.log.info("{}: REACH TIMEOUT".format(current_func_name))
+
+        metadata = {
+            "relative_path": "test_rel_path",
+            "filename": "test_filename",
+            "file_mod_time": "now",
+            "chunk_number": 0
+        }
+        mock_get_chunk.side_effect = [[None, None]]
+
+        ret_metadata, ret_data = transfer.get(timeout=100)
+
+        self.assertIsNone(ret_metadata)
+        self.assertIsNone(ret_data)
+
+        # cleanup
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_get_chunk.side_effect = None
+        mock_get_chunk.reset_mock()
+        mock_check_file_closed.reset_mock()
+
+
     @mock.patch("hidra.transfer.generate_file_identifier")
     @mock.patch("hidra.transfer.generate_filepath")
     @mock.patch("hidra.transfer.Transfer.check_file_closed")
@@ -2515,7 +2540,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            ["test_topic", "test_file_id"]
+            ["test_topic", "test_file_id", "1"]
         )
 
         # cleanup
@@ -2557,7 +2582,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            ["test_topic", "test_file_id"]
+            ["test_topic", "test_file_id", "1"]
         )
 
         # cleanup

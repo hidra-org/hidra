@@ -2,8 +2,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-import socket
 import hashlib
+import socket
+import sys
 
 import __init__  # noqa E401
 from hidra import Transfer
@@ -35,6 +36,7 @@ if __name__ == "__main__":
 
     query.start()
 
+    md5sum = False
     timeout = None
     #timeout = 2000  # in ms
     #while True:
@@ -42,6 +44,7 @@ if __name__ == "__main__":
         try:
             [metadata, data] = query.get(timeout)
         except:
+            print(sys.exc_info())
             break
 
         print
@@ -50,9 +53,10 @@ if __name__ == "__main__":
             print("data", str(data)[:10])
 
             # generate md5sum
-            m = hashlib.md5()
-            m.update(data)
-            print("md5sum", m.hexdigest())
+            if md5sum:
+                m = hashlib.md5()
+                m.update(data)
+                print("md5sum", m.hexdigest())
 
         else:
             print("metadata", metadata)

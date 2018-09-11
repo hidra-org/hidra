@@ -1,0 +1,9 @@
+FROM debian:jessie
+
+RUN apt update && apt install -y \
+    dpkg-dev \
+    debhelper \
+    python \
+    dh-python \
+    python-dev \
+    python-setuptools

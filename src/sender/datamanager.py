@@ -32,7 +32,11 @@ from signalhandler import SignalHandler
 from taskprovider import TaskProvider
 from datadispatcher import DataDispatcher
 
-from __init__ import BASE_DIR
+try:
+    from __init__ import BASE_DIR
+except ImportError:
+    # to make windows work
+    from _environment import BASE_DIR
 
 import utils
 from _version import __version__

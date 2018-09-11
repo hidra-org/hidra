@@ -1,4 +1,18 @@
 # develop
+# 4.0.8
+
+- Fixed subdir creation in http_fetcher
+- Fixed get in transfer API if timeout is reached
+- Fixed debian package nameing
+- Fixed log dir permissions for debian packages
+- Fixed building script for suse 10
+- Added building script for debian
+- Improved init script: debug option, more info when failing
+- Added HiDRA Control Server to fallback script
+- Fixed with_confirmation to check all chunks
+- Fixed beamline to host mapping
+- Fixed Windows environment
+
 # 4.0.7
 
 - Fixed subdir creation in transfer API

@@ -81,10 +81,10 @@ os.chmod(exescript, 0o755)
 
 # BASE_DIR is different for executables because directories are ordered
 # differently
-sender_init = os.path.join(senderpath, "__init__.py")
-exe_sender_init = os.path.join(senderpath, "__init_exe__.py")
-with open(sender_init, "r") as f:
-    with open(exe_sender_init, "w") as f_exe:
+sender_env = os.path.join(senderpath, "_environment.py")
+exe_sender_env = os.path.join(senderpath, "_environment_exe.py")
+with open(sender_env, "r") as f:
+    with open(exe_sender_env, "w") as f_exe:
         for line in f:
             ref_line = (
                 "BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))\n"
@@ -113,7 +113,8 @@ build_exe_options = {
         (exescript, "hidra.sh"),
         (os.path.join(confpath, "base_sender.conf"),
             os.path.join("conf", "base_sender.conf")),
-        (exe_sender_init, "__init__.py"),
+        (os.path.join(senderpath, "__init__.py"), "__init__.py"),
+        (exe_sender_env, "_environment.py"),
         (os.path.join(senderpath, "base_class.py"), "base_class.py"),
         (os.path.join(senderpath, "taskprovider.py"), "taskprovider.py"),
         (os.path.join(senderpath, "signalhandler.py"), "signalhandler.py"),
@@ -162,7 +163,7 @@ executables = [
 ]
 
 setup(name='HiDRA',
-      version='4.0.7',
+      version='4.0.8',
       description='',
       options={"build_exe": build_exe_options,
                "bdist_msi": bdist_msi_options},

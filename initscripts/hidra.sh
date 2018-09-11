@@ -23,6 +23,7 @@ CURRENTDIR="$(readlink --canonicalize-existing -- "$0")"
 
 USE_EXE=false
 SHOW_SCRIPT_SETTINGS=false
+DEBUG=false
 
 if [ "${USE_EXE}" == "false" ]
 then
@@ -45,8 +46,23 @@ RETVAL=0
 
 usage()
 {
-    printf "Usage: $SCRIPTNAME {start|stop|status|restart|getsettings} --beamline|--bl <beamline> [--detector|--det <detector>] [--config_file <config_file>]\n" >&2
-    RETVAL=3
+    #echo "$(basename "$0")"
+    echo "Usage: $SCRIPTNAME COMMAND --beamline|--bl <beamline> [OPTIONS]"
+    echo ""
+    echo "Commands:"
+    echo "    start           starts hidra"
+    echo "    stop            stops hidra"
+    echo "    status          shows the status of hidra"
+    echo "    restart         stops and restarts hidra"
+    echo "    getsettings     if hidra is running, shows the configured settings"
+    echo ""
+    echo "Mandatory arguments:"
+    echo "    --bl, --beamline        the beamline to start hidra for (mandatory)"
+    echo ""
+    echo "Options:"
+    echo "    --det, --detector       the detector which is used"
+    echo "    --config_file <string>  use a different config file"
+    echo "    --debug                 enable verbose output for debugging purposes"
 }
 
 # for the environment to be set correctly these have to be loaded before the
@@ -137,6 +153,9 @@ do
             config_file=$2
             shift
             ;;
+        --debug)
+            DEBUG=true
+            ;;
         -h | --help ) usage
             exit
             ;;
@@ -165,7 +184,7 @@ then
         fi
         PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
     else
-        printf "No beamline or detector specified. Fallback to default configuration file"
+        printf "No beamline or detector specified. Fallback to default configuration file\n"
         config_file=$CONFIGDIR/datamanager.conf
     fi
 fi
@@ -181,6 +200,12 @@ else
     DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"
     LOG_DIRECTORY=${BASEDIR}/logs
     getsettings=${BASEDIR}/getsettings
+fi
+
+if [ "${DEBUG}" == "true" ]
+then
+    DAEMON_ARGS="${DAEMON_ARGS} --onscreen debug"
+    SHOW_SCRIPT_SETTINGS=true
 fi
 
 if [ "${SHOW_SCRIPT_SETTINGS}" == "true" ]
@@ -244,7 +269,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             return 0
         fi
 
-    	printf "%-50s" "Stopping ${HIDRA}..."
+        printf "%-50s" "Stopping ${NAME}..."
         HIDRA_PID="`pidofproc ${NAME}`"
         # stop gracefully and wait up to 180 seconds.
         kill $HIDRA_PID > /dev/null 2>&1
@@ -459,9 +484,19 @@ elif [ -f /etc/SuSE-release ] ; then
 
     }
 
+    # rc_status can only work with return values
+    # if the return value has to be checked by something else as well it has to
+    # be reestablished for rc_status
+    return_func()
+    {
+        return $1
+    }
+
+
     do_start()
     {
         printf "Starting $NAME"
+
         export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
 
         # Checking if the process is already running
@@ -483,6 +518,16 @@ elif [ -f /etc/SuSE-release ] ; then
             sleep 5
 
             /sbin/checkproc $NAME
+            worked=$?
+
+            running_procs=$(ps ax -o command --no-header | grep "hidra_" | grep -v grep | grep -v $NAME | sort -u)
+            if [ "$running_procs" != "" ]
+            then
+                echo "Error when starting $NAME. Already running instances detected:"
+                echo "$running_procs"
+            fi
+
+            return_func $worked
         fi
 
         # Remember status and be verbose
@@ -537,9 +582,21 @@ elif [ -f /etc/SuSE-release ] ; then
     }
 fi
 
+do_start_debug()
+{
+    printf "Starting $NAME"
+    export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
+    $DAEMON $DAEMON_ARGS
+}
+
 case "$action" in
     start)
-        do_start
+        if [ "${DEBUG}" == "true" ]
+        then
+            do_start_debug
+        else
+            do_start
+        fi
         ;;
     stop)
         do_stop

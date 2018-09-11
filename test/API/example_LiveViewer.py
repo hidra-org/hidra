@@ -31,10 +31,8 @@ class LiveView(QThread):
     mutex = None
 
     query = None
-#    transfer_type = "haspp11eval01.desy.de"
-    transfer_type = "zitpcx19282.desy.de"
-#    transfer_type = "zitpcx22614w.desy.de"
-    data_port = "50022"
+    transfer_type = socket.getfqdn()
+    data_port = "50122"
     basepath = os.path.join(BASE_DIR, "data", "target")
 #    basepath = "/gpfs"
 
