@@ -7,6 +7,9 @@
 - Fixed building script for suse 10
 - Added building script for debian
 - Improved init script: debug option, more info when failing
+- Added HiDRA Control Server to fallback script
+- Fixed beamline to host mapping
+- Fixed Windows environment
 
 # 4.0.7
 
