@@ -113,7 +113,7 @@ build_exe_options = {
         (exescript, "hidra.sh"),
         (os.path.join(confpath, "base_sender.conf"),
             os.path.join("conf", "base_sender.conf")),
-        (os.path.join(senderpath, "__init__.py"), "__init__.py")
+        (os.path.join(senderpath, "__init__.py"), "__init__.py"),
         (exe_sender_env, "_environment.py"),
         (os.path.join(senderpath, "base_class.py"), "base_class.py"),
         (os.path.join(senderpath, "taskprovider.py"), "taskprovider.py"),
