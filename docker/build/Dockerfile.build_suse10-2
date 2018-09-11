@@ -85,4 +85,6 @@ RUN mkdir /tmp/hidra_env && \
     cd .. && \
     rm -rf cx_Freeze-4.3.3 && \
     #
-    mkdir /var/log/hidra
+    mkdir /var/log/hidra && \
+    #
+    echo "export LD_LIBRARY_PATH=/usr/local/lib/:\$LD_LIBRARY_PATH" >> ~/.bashrc
