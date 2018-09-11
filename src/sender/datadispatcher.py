@@ -9,7 +9,6 @@ import json
 import signal
 
 from base_class import Base
-#from __init__ import BASE_DIR  # noqa F401
 import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
