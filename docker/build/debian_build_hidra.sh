@@ -46,7 +46,11 @@ else
     exit 1
 fi
 
-MAPPED_DIR=/tmp/hidra_builds/debian${DEBIAN_VERSION}
+VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/shared/_version.py?at=refs%2Fheads%2Fmaster")
+VERSION=${VERSION:15}
+VERSION=${VERSION%?}
+
+MAPPED_DIR=/tmp/hidra_builds/${VERSION}/debian${DEBIAN_VERSION}
 IN_DOCKER_DIR=/external
 DOCKER_DIR=$(pwd)
 
@@ -67,10 +71,6 @@ if [ -d "$MAPPED_DIR/build" ]; then
 fi
 
 cd ${MAPPED_DIR}
-VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/shared/_version.py?at=refs%2Fheads%2Fmaster")
-VERSION=${VERSION:15}
-VERSION=${VERSION%?}
-
 git clone --branch "v$VERSION" https://stash.desy.de/scm/hidra/hidra.git
 
 mv hidra/debian .

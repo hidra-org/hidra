@@ -1,6 +1,10 @@
 #!/bin/bash
 
-MAPPED_DIR=/tmp/hidra_builds
+VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/shared/_version.py?at=refs%2Fheads%2Fmaster")
+VERSION=${VERSION:15}
+VERSION=${VERSION%?}
+
+MAPPED_DIR=/tmp/hidra_builds/${VERSION}/suse10
 IN_DOCKER_DIR=/external
 DOCKER_DIR=$(pwd)
 
@@ -9,7 +13,7 @@ MY_GID=$(id -g $USER)
 MY_GROUP=$(id -g --name $USER)
 
 if [ ! -d "$MAPPED_DIR" ]; then
-    mkdir $MAPPED_DIR
+    mkdir -p $MAPPED_DIR
 fi
 
 if [ -d "$MAPPED_DIR/hidra" ]; then
@@ -22,9 +26,6 @@ fi
 
 cd ${MAPPED_DIR}
 git clone https://stash.desy.de/scm/hidra/hidra.git
-VERSION=$(cat ./hidra/src/shared/_version.py)
-VERSION=${VERSION:15}
-VERSION=${VERSION%?}
 
 # DOCKER
 DOCKER_IMAGE=suse_build
