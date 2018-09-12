@@ -1,4 +1,9 @@
 # develop
+# 4.0.9
+
+- Fixed directories where to find build packages
+- Fixed backward compatibility to 4.0.x versions
+
 # 4.0.8
 
 - Fixed subdir creation in http_fetcher
