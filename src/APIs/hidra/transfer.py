@@ -266,6 +266,7 @@ class Transfer(Base):
 
         self.stopped_everything = False
         self.generate_target_filepath = None
+        self._remote_version = None
 
         self._setup(connection_type,
                     signal_host,
@@ -467,6 +468,8 @@ class Transfer(Base):
 
         else:
             raise CommunicationFailed("Sending start signal ...failed.")
+
+        self._remote_version = self.get_remote_version()
 
     def _create_signal_socket(self):
         """Create socket to exchange signals with sender.
@@ -1591,11 +1594,17 @@ class Transfer(Base):
             # send confirmation
             try:
                 topic = metadata["confirmation_required"].encode()
-                message = [topic,
-                           file_id.encode("utf-8"),
-                           str(metadata["chunk_number"])]
-                self.confirmation_socket.send_multipart(message)
 
+                # to ensure backwards compatibility with 4.0.x versions
+                if self._remote_version <= "4.0.7":
+                    message = [topic,
+                               file_id.encode("utf-8")]
+                else:
+                    message = [topic,
+                               file_id.encode("utf-8"),
+                               str(metadata["chunk_number"])]
+
+                self.confirmation_socket.send_multipart(message)
                 self.log.debug("Sending confirmation for chunk {} of "
                                "file '{}' to {}"
                                .format(metadata["chunk_number"],
