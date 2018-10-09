@@ -246,25 +246,21 @@ class Control(Base):
             Received "DONE" if setting was successful and "ERROR" if not.
         """
 
-        value = list(value)
-
         # flatten list if entry was a list (result: list of lists)
         if type(value[0]) == list:
             value = [item for sublist in value for item in sublist]
+        else:
+            value = value[0]
 
         if attribute == "det_ip":
-            check_netgroup(value[0],
+            check_netgroup(value,
                            self.beamline,
                            self.ldapuri,
                            self.netgroup_template,
                            self.log)
 
-        if attribute == "whitelist":
-            msg = [b"set", self.host, self.detector, attribute,
-                   json.dumps(value)]
-        else:
-            msg = [b"set", self.host, self.detector, attribute,
-                   json.dumps(value[0])]
+        msg = [b"set", self.host, self.detector, attribute,
+               json.dumps(value)]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: {}".format(msg))
