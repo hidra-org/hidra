@@ -593,6 +593,8 @@ class Transfer(Base):
             except:
                 self.log.error("Could not receive answer to signal")
                 raise
+        else:
+            self.log.error("Timeout for signal response")
 
         # check correctness of message
         if message and message[0] == b"VERSION_CONFLICT":
