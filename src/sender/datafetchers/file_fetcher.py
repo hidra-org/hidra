@@ -60,7 +60,6 @@ class DataFetcher(DataFetcherBase):
         # Build source file
         self.source_file = generate_filepath(metadata["source_path"],
                                              metadata)
-
         # Build target file
         # if local_target is not set (== None) generate_filepath returns None
         self.target_file = generate_filepath(self.config["local_target"],
@@ -297,8 +296,13 @@ class DataFetcher(DataFetcherBase):
         elif self.config["remove_data"]:
 
             file_id = self.generate_file_id(metadata)
-            # round up the division result
-            n_chunks = -(-metadata["filesize"] // metadata["chunksize"])
+            try:
+                # round up the division result
+                n_chunks = -(-metadata["filesize"] // metadata["chunksize"])
+            except KeyError:
+                filesize = os.path.getsize(self.source_file)
+                # round up the division result
+                n_chunks = -(-filesize // self.config["chunksize"])
 
             self.cleaner_job_socket.send_multipart(
                 [metadata["source_path"].encode("utf-8"),
