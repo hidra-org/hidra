@@ -50,6 +50,7 @@ class DataFetcher(DataFetcherBase):
 
         if (self.config["remove_data"] == "with_confirmation"
                 and self.config["use_data_stream"]):
+            self.log.debug("Set finish to finish_with_cleaner")
             self.finish = self.finish_with_cleaner
         else:
             self.finish = self.finish_without_cleaner
@@ -294,7 +295,9 @@ class DataFetcher(DataFetcherBase):
                 return
 
         # remove file
-        elif self.config["remove_data"]:
+        # can be set/done in addition to copy -> no elif
+        # (e.g. store_data = True and remove_data = with_confirmation)
+        if self.config["remove_data"]:
 
             file_id = self.generate_file_id(metadata)
             try:
