@@ -1,4 +1,10 @@
 # develop
+
+- Fixed usage of netgroup in whitelist for control API
+- Do not start cleaner when no fix data stream is active
+- Fixed combination store_data enabled and with_confirmation set
+- Changed ipc cleanup: reuse attribute instead of redefining paths
+
 # 4.0.9
 
 - Fixed directories where to find build packages
