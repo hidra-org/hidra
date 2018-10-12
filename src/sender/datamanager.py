@@ -994,20 +994,14 @@ class DataManager(Base):
         if (self.endpoints is not None
                 and self.endpoints.control_pub_bind.startswith("ipc")):
 
-            ipc_ip = "{}/{}".format(self.ipc_dir, self.current_pid)
-            ipc_con_paths = {
-                "control_pub": "{}_{}".format(ipc_ip, "controlPub"),
-                "control_sub": "{}_{}".format(ipc_ip, "controlSub"),
-                "request_fw": "{}_{}".format(ipc_ip, "requestFw")
-            }
-
             # Clean up ipc communication files
-            for key, path in ipc_con_paths.iteritems():
+            for path in self.ipc_addresses:
                 try:
                     os.remove(path)
                     self.log.debug("Removed ipc socket: {}".format(path))
                 except OSError:
-                    self.log.debug("Could not remove ipc socket: {}".format(path))
+                    #self.log.debug("Could not remove ipc socket: {}".format(path))
+                    pass
                 except:
                     self.log.warning("Could not remove ipc socket: {}"
                                      .format(path), exc_info=True)
@@ -1017,9 +1011,8 @@ class DataManager(Base):
                 os.rmdir(self.ipc_dir)
                 self.log.debug("Removed IPC direcory: {}".format(self.ipc_dir))
             except OSError:
-                pass
-    #            self.log.debug("Could not remove IPC directory: {}"
-    #                           .format(self.ipc_dir))
+                self.log.debug("Could not remove IPC directory: {}"
+                               .format(self.ipc_dir))
             except:
                 self.log.warning("Could not remove IPC directory: {}"
                                  .format(self.ipc_dir), exc_info=True)
