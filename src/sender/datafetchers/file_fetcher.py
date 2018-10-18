@@ -48,7 +48,9 @@ class DataFetcher(DataFetcherBase):
 
         self.is_windows = utils.is_windows()
 
-        if self.config["remove_data"] == "with_confirmation":
+        if (self.config["remove_data"] == "with_confirmation"
+                and self.config["use_data_stream"]):
+            self.log.debug("Set finish to finish_with_cleaner")
             self.finish = self.finish_with_cleaner
         else:
             self.finish = self.finish_without_cleaner
@@ -60,7 +62,6 @@ class DataFetcher(DataFetcherBase):
         # Build source file
         self.source_file = generate_filepath(metadata["source_path"],
                                              metadata)
-
         # Build target file
         # if local_target is not set (== None) generate_filepath returns None
         self.target_file = generate_filepath(self.config["local_target"],
@@ -294,11 +295,18 @@ class DataFetcher(DataFetcherBase):
                 return
 
         # remove file
-        elif self.config["remove_data"]:
+        # can be set/done in addition to copy -> no elif
+        # (e.g. store_data = True and remove_data = with_confirmation)
+        if self.config["remove_data"]:
 
             file_id = self.generate_file_id(metadata)
-            # round up the division result
-            n_chunks = -(-metadata["filesize"] // metadata["chunksize"])
+            try:
+                # round up the division result
+                n_chunks = -(-metadata["filesize"] // metadata["chunksize"])
+            except KeyError:
+                filesize = os.path.getsize(self.source_file)
+                # round up the division result
+                n_chunks = -(-filesize // self.config["chunksize"])
 
             self.cleaner_job_socket.send_multipart(
                 [metadata["source_path"].encode("utf-8"),

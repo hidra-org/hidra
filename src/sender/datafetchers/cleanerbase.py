@@ -194,7 +194,6 @@ class CleanerBase(Base, ABC):
                             or received_chunks == [None]):
                         self.remove_element(base_path, file_id)
                         del confirmations[file_id]
-                        del jobs[file_id]
                     else:
                         # correct count
                         self.log.info("More confirmations received than "
