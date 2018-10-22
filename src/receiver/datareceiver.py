@@ -21,7 +21,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
-whitelist = None
+whitelist = []
 changed_netgroup = False
 
 
@@ -108,33 +108,16 @@ def argument_parsing():
     return params
 
 
-def excecute_ldapsearch_test(netgroup):
-    global whitelist
+def reset_changed_netgroup():
+    """helper because global variables can only be reset in same namespace.
+    """
+    global changed_netgroup
 
-    import zmq
-    import socket
-
-    context = zmq.Context()
-    my_socket = context.socket(zmq.PULL)
-    ip = socket.gethostbyaddr("zitpcx19282")[2][0]
-    my_socket.bind("tcp://" + ip + ":51000")
-
-    poller = zmq.Poller()
-    poller.register(my_socket, zmq.POLLIN)
-
-    socks = dict(poller.poll(1000))
-    if socks and socks.get(my_socket) == zmq.POLLIN:
-        print("Waiting for new whitelist")
-        new_whitelist = my_socket.recv_multipart(zmq.NOBLOCK)
-        print("New whitelist received: {}".format(whitelist))
-
-        return new_whitelist
-    else:
-        return whitelist
+    changed_netgroup = False
 
 
 class CheckNetgroup (threading.Thread):
-    def __init__(self, netgroup, lock, ldapuri):
+    def __init__(self, netgroup, lock, ldapuri, ldap_retry_time, check_time):
         self.log = logging.getLogger("CheckNetgroup")
 
         self.log.debug("init")
@@ -142,6 +125,8 @@ class CheckNetgroup (threading.Thread):
         self.lock = lock
         self.run_loop = True
         self.ldapuri = ldapuri
+        self.ldap_retry_time = ldap_retry_time
+        self.check_time = check_time
 
         self.log.debug("threading.Thread init")
         threading.Thread.__init__(self)
@@ -151,9 +136,15 @@ class CheckNetgroup (threading.Thread):
         global changed_netgroup
 
         while self.run_loop:
-            # new_whitelist = excecute_ldapsearch_test(self.netgroup)
             new_whitelist = utils.excecute_ldapsearch(self.netgroup,
                                                       self.ldapuri)
+
+            # if there are problems with ldap the search returns an empty list
+            # -> do nothing but wait till ldap is reachable again
+            if not new_whitelist:
+                self.log.info("LDAP search returned an empty list. Ignore.")
+                time.sleep(self.ldap_retry_time)
+                continue
 
             # new elements added to whitelist
             new_elements = [e for e in new_whitelist if e not in whitelist]
@@ -171,7 +162,7 @@ class CheckNetgroup (threading.Thread):
                 self.log.info("Netgroup has changed. New whitelist: {}"
                               .format(whitelist))
 
-            time.sleep(2)
+            time.sleep(self.check_time)
 
     def stop(self):
         self.run_loop = False
@@ -179,11 +170,28 @@ class CheckNetgroup (threading.Thread):
 
 class DataReceiver:
     def __init__(self):
-        global whitelist
 
         self.transfer = None
         self.checking_thread = None
-        self.timeout = 2000
+        self.timeout = None
+
+        self.log = None
+        self.dirs_not_to_create = None
+        self.lock = None
+        self.target_dir = None
+        self.data_ip = None
+        self.data_port = None
+        self.transfer = None
+        self.checking_thread = None
+
+        self.run_loop = True
+
+        self.setup()
+
+        self.exec_run()
+
+    def setup(self):
+        global whitelist
 
         try:
             params = argument_parsing()
@@ -219,16 +227,42 @@ class DataReceiver:
         # for proper clean up if kill is called
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
+        self.timeout = 2000
         self.lock = threading.Lock()
+
+        try:
+            ldap_retry_time = params["ldap_retry_time"]
+        except KeyError:
+            ldap_retry_time = 10
+
+        try:
+            check_time = params["netgroup_check_time"]
+        except KeyError:
+            check_time = 2
 
         if params["whitelist"] is not None:
             self.log.debug("params['whitelist']={}"
                            .format(params["whitelist"]))
+
             with self.lock:
                 whitelist = utils.extend_whitelist(params["whitelist"],
                                                    params["ldapuri"],
                                                    self.log)
             self.log.info("Configured whitelist: {}".format(whitelist))
+
+        # only start the thread if a netgroup was configured
+        if (params["whitelist"] is not None
+                and type(params["whitelist"]) == str):
+            self.log.debug("Starting checking thread")
+            self.checking_thread = CheckNetgroup(params["whitelist"],
+                                                 self.lock,
+                                                 params["ldapuri"],
+                                                 ldap_retry_time,
+                                                 check_time)
+            self.checking_thread.start()
+        else:
+            self.log.debug("Checking thread not started: {}"
+                           .format(params["whitelist"]))
 
         self.target_dir = os.path.normpath(params["target_dir"])
         self.data_ip = params["data_stream_ip"]
@@ -240,17 +274,7 @@ class DataReceiver:
                                  use_log=True,
                                  dirs_not_to_create=self.dirs_not_to_create)
 
-        # only start the thread if a netgroup was configured
-        if (params["whitelist"] is not None
-                and type(params["whitelist"]) == str):
-            self.log.debug("Starting checking thread")
-            self.checking_thread = CheckNetgroup(params["whitelist"],
-                                                 self.lock,
-                                                 params["ldapuri"])
-            self.checking_thread.start()
-        else:
-            self.log.debug("Checking thread not started: {}"
-                           .format(params["whitelist"]))
+    def exec_run(self):
 
         try:
             self.run()
