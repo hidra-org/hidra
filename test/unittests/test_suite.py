@@ -12,6 +12,7 @@ import pkgutil
 import eventdetectors
 import datafetchers
 import api
+import receiver
 from core.test_taskprovider import TestTaskProvider
 from core.test_datadispatcher import TestDataDispatcher
 from core.test_signalhandler import TestSignalHandler
@@ -19,6 +20,8 @@ from core.test_datamanager import TestDataManager
 
 from api.test_transfer import TestTransfer
 from api.test_control import TestReceiverControl
+
+from receiver.test_datareceiver import TestCheckNetgroup
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -119,6 +122,18 @@ def get_api_suites():
 
     return all_suites
 
+def get_receiver_suites():
+    """Collects all available receiver tests
+
+    Returns:
+        An array containing all available receiver test suites.
+    """
+
+    all_suites = [
+        unittest.TestLoader().loadTestsFromTestCase(TestCheckNetgroup),  # noqa E122
+    ]
+
+    return all_suites
 
 def get_testing_suites():
 
@@ -160,9 +175,11 @@ def get_testing_suites():
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataManager),  # noqa E122
 
-        unittest.TestLoader().loadTestsFromTestCase(TestTransfer),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestTransfer),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestControl),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestReceiverControl),  # noqa E122
+
+        unittest.TestLoader().loadTestsFromTestCase(TestCheckNetgroup),  # noqa E122
     ]
 
     return all_suites
@@ -178,12 +195,11 @@ def get_suite():
     all_suites = []
 
     # get the subsuites
-    # BUG: if the event detectors are tested before the datafetchers the
-    # program does not stop
     all_suites += get_api_suites()
     all_suites += get_eventdetector_suites()
     all_suites += get_datafetcher_suites()
     all_suites += get_core_suites()
+    all_suites += get_receiver_suites()
 
 #    all_suites += get_testing_suites()
 
