@@ -37,11 +37,13 @@ if [[ "$(docker images -q ${DOCKER_IMAGE} 2> /dev/null)" == "" ]]; then
     docker build -f ./Dockerfile.build_suse10-2 -t ${DOCKER_IMAGE} .
 fi
 
+# TODO exit if build fails
+
 cmd="export LD_LIBRARY_PATH=/usr/local/lib/:\$LD_LIBRARY_PATH; \
     cd ${IN_DOCKER_DIR}; \
     /usr/bin/python ${IN_DOCKER_DIR}/hidra/freeze_setup.py build"
 
-docker create -it -v ${MAPPED_DIR}:${IN_DOCKER_DIR} --user=$MY_UID:$MY_GID --name ${DOCKER_CONTAINER} ${DOCKER_IMAGE} bash
+docker create -it -v ${MAPPED_DIR}:${IN_DOCKER_DIR}:Z --user=$MY_UID:$MY_GID --name ${DOCKER_CONTAINER} ${DOCKER_IMAGE} bash
 docker start ${DOCKER_CONTAINER}
 docker exec ${DOCKER_CONTAINER} sh -c "$cmd"
 docker stop ${DOCKER_CONTAINER}
