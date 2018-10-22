@@ -5,9 +5,12 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 
 import copy
+from distutils.version import LooseVersion
 import errno
 import json
 import logging
+import multiprocessing
+import multiprocessing.queues
 import os
 import re
 import socket
@@ -15,8 +18,6 @@ import sys
 import tempfile
 import time
 import zmq
-import multiprocessing
-import multiprocessing.queues
 from zmq.auth.thread import ThreadAuthenticator
 
 from ._version import __version__
@@ -1598,13 +1599,17 @@ class Transfer(Base):
                 topic = metadata["confirmation_required"].encode()
 
                 # to ensure backwards compatibility with 4.0.x versions
-                if self._remote_version <= "4.0.7":
+                # use LooseVersion because otherwise a test like
+                # 4.0.10 <= 4.0.7 fails
+                if self._remote_version <= LooseVersion("4.0.7"):
                     message = [topic,
                                file_id.encode("utf-8")]
+                    print("message old", message)
                 else:
                     message = [topic,
                                file_id.encode("utf-8"),
                                str(metadata["chunk_number"])]
+                    print("message", message)
 
                 self.confirmation_socket.send_multipart(message)
                 self.log.debug("Sending confirmation for chunk {} of "
