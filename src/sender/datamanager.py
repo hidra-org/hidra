@@ -997,6 +997,10 @@ class DataManager(Base):
 
             # Clean up ipc communication files
             for path in self.ipc_addresses:
+
+                if path is None:
+                    continue
+
                 try:
                     os.remove(path)
                     self.log.debug("Removed ipc socket: {}".format(path))
