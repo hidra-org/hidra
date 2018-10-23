@@ -14,7 +14,7 @@ import time
 from __init__ import BASE_DIR
 
 import utils
-from hidra import Transfer
+from hidra import Transfer, __version__
 
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -221,6 +221,8 @@ class DataReceiver:
         if not check_passed:
             raise Exception("Configuration check failed")
         setproctitle.setproctitle(params["procname"])
+
+        self.log.info("Version: {}".format(__version__))
 
         self.dirs_not_to_create = params["dirs_not_to_create"]
 

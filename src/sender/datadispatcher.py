@@ -10,6 +10,7 @@ import signal
 
 from base_class import Base
 import utils
+from _version import __version__
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -233,6 +234,8 @@ class DataDispatcher(Base):
 
                     else:
                         targets = []
+
+                metadata["version"] = __version__
 
                 # get metadata and paths of the file
                 try:
