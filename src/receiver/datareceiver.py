@@ -135,6 +135,11 @@ class CheckNetgroup (threading.Thread):
         global whitelist
         global changed_netgroup
 
+        # wake up evey 2 seconds to see if there is a stopping signal
+        sec_to_sleep = 2
+        ldap_sleep_intervalls = self.ldap_retry_time // sec_to_sleep
+        check_sleep_intervalls = self.check_time // sec_to_sleep
+
         while self.run_loop:
             new_whitelist = utils.excecute_ldapsearch(self.netgroup,
                                                       self.ldapuri)
@@ -143,7 +148,9 @@ class CheckNetgroup (threading.Thread):
             # -> do nothing but wait till ldap is reachable again
             if not new_whitelist:
                 self.log.info("LDAP search returned an empty list. Ignore.")
-                time.sleep(self.ldap_retry_time)
+                for i in range(ldap_sleep_intervalls):
+                    if self.run_loop:
+                        time.sleep(sec_to_sleep)
                 continue
 
             # new elements added to whitelist
@@ -162,7 +169,9 @@ class CheckNetgroup (threading.Thread):
                 self.log.info("Netgroup has changed. New whitelist: {}"
                               .format(whitelist))
 
-            time.sleep(self.check_time)
+            for i in range(check_sleep_intervalls):
+                if self.run_loop:
+                    time.sleep(sec_to_sleep)
 
     def stop(self):
         self.run_loop = False
