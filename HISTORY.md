@@ -1,4 +1,10 @@
 # develop
+
+- Fixed slow stopping of receiver when netgroup_check_time is high
+- Fixed None values in ipc address cleanup
+- Fixed version checks
+- Receiver: handle empty LDAP return lists
+
 # 4.0.10
 
 - Fixed usage of netgroup in whitelist for control API
