@@ -1,4 +1,5 @@
 # develop
+# 4.0.11
 
 - Fixed slow stopping of receiver when netgroup_check_time is high
 - Fixed None values in ipc address cleanup
