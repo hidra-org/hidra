@@ -5,18 +5,19 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 
 import argparse
+from distutils.version import LooseVersion
+import logging
+from multiprocessing import Process, freeze_support, Queue
+import os
+import tempfile
+import threading
+import time
+import setproctitle
+import signal
+import socket
+import sys
 import zmq
 import zmq.devices
-import os
-import sys
-import logging
-import time
-from multiprocessing import Process, freeze_support, Queue
-import threading
-import signal
-import setproctitle
-import tempfile
-import socket
 
 # to make freeze packages work
 try:
@@ -684,7 +685,7 @@ class DataManager(Base):
         # With older ZMQ versions the tracker results in an ZMQError in
         # the DataDispatchers when an event is processed
         # (ZMQError: Address already in use)
-        if zmq.__version__ <= "14.5.0":
+        if LooseVersion(zmq.__version__) <= LooseVersion("14.5.0"):
             try:
                 self.test_socket.send_multipart([test_signal])
                 if use_log:
@@ -996,6 +997,10 @@ class DataManager(Base):
 
             # Clean up ipc communication files
             for path in self.ipc_addresses:
+
+                if path is None:
+                    continue
+
                 try:
                     os.remove(path)
                     self.log.debug("Removed ipc socket: {}".format(path))

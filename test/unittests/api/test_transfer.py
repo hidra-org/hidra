@@ -26,6 +26,7 @@ from test_base import (TestBase,
                        MockZmqAuthenticator)
 import hidra
 import hidra.transfer as m_transfer
+from hidra._version import __version__
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -2512,6 +2513,49 @@ class TestTransfer(TestBase):
         mock_file.reset_mock()
 
         # --------------------------------------------------------------------
+        # send confirmation: OK (backwards compatible)
+        # --------------------------------------------------------------------
+        self.log.info("{}: SEND CONFIRMATION: OK (BACKWARDS COMPATIBLE)"
+                      .format(current_func_name))
+
+        descriptors = {
+            "test_filepath": {
+                "last_chunk_number": 0,
+                "file": mock_file
+            }
+        }
+        metadata = {
+            "chunk_number": 1,
+            "confirmation_required": "test_topic"
+        }
+
+        mock_check_file_closed.side_effect = [False]
+        transfer.confirmation_socket = mock.MagicMock(
+            send_multipart=mock.MagicMock()
+        )
+
+        # would have been set in initiate
+        transfer._remote_version = b"4.0.7"
+
+        transfer.store_chunk(descriptors,
+                             filepath,
+                             payload,
+                             base_path,
+                             metadata)
+
+        self.assertTrue(transfer.confirmation_socket.send_multipart.called)
+        transfer.confirmation_socket.send_multipart.assert_called_once_with(
+            ["test_topic", "test_file_id"]
+        )
+
+        # cleanup
+        transfer.confirmation_socket = None
+        transfer = m_transfer.Transfer(**self.transfer_conf)
+        mock_check_file_closed.side_effect = None
+        mock_check_file_closed.reset_mock()
+        mock_file.reset_mock()
+
+        # --------------------------------------------------------------------
         # send confirmation: OK
         # --------------------------------------------------------------------
         self.log.info("{}: SEND CONFIRMATION: OK".format(current_func_name))
@@ -2532,6 +2576,9 @@ class TestTransfer(TestBase):
             send_multipart=mock.MagicMock()
         )
 
+        # would have been set in initiate
+        transfer._remote_version = __version__
+
         transfer.store_chunk(descriptors,
                              filepath,
                              payload,
@@ -2549,6 +2596,7 @@ class TestTransfer(TestBase):
         mock_check_file_closed.side_effect = None
         mock_check_file_closed.reset_mock()
         mock_file.reset_mock()
+
 
         # --------------------------------------------------------------------
         # send confirmation: error
@@ -2572,6 +2620,8 @@ class TestTransfer(TestBase):
             send_multipart=mock.MagicMock()
         )
         transfer.confirmation_socket.send_multipart.side_effect = TestException()
+        # would have been set in initiate
+        transfer._remote_version = __version__
 
         with self.assertRaises(TestException):
             transfer.store_chunk(descriptors,

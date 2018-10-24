@@ -21,7 +21,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class TestDataDispatcher(TestBase):
-    """Specification of tests to be performed for the TaskProvider.
+    """Specification of tests to be performed for the DataDispatcher.
     """
 
     # pylint: disable=too-many-instance-attributes

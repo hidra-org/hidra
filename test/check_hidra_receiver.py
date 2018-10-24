@@ -2,6 +2,7 @@
 
 import argparse
 #import nagiosplugin
+from distutils.version import LooseVersion
 import sys
 import traceback
 import zmq
@@ -64,7 +65,7 @@ class AliveTest():
             # With older ZMQ versions the tracker results in an ZMQError in
             # the DataDispatchers when an event is processed
             # (ZMQError: Address already in use)
-            if zmq.__version__ <= "14.5.0":
+            if LooseVersion(zmq.__version__) <= LooseVersion("14.5.0"):
 
                 self.socket.send_multipart([b"ALIVE_TEST"])
                 if enable_logging:
