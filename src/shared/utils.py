@@ -790,8 +790,9 @@ def set_endpoints(ext_ip,
             trigger_bind = "ipc://{}".format(ipc_addresses.cleaner_trigger)
             trigger_con = trigger_bind
 
-        confirm_bind = "tcp://{}:{}".format(confirm_ips[0], ports["confirmation"])
-        confirm_con = "tcp://{}:{}".format(confirm_ips[1], ports["confirmation"])
+        port = ports["confirmation"]
+        confirm_bind = "tcp://{}:{}".format(confirm_ips[0], ports)
+        confirm_con = "tcp://{}:{}".format(confirm_ips[1], ports)
     else:
         job_bind = None
         job_con = None

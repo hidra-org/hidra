@@ -1,14 +1,14 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
+import errno
 import json
+import os
 import requests
 import time
-import errno
 
-from datafetcherbase import DataFetcherBase
 from cleanerbase import CleanerBase
+from datafetcherbase import DataFetcherBase
 from hidra import generate_filepath
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
@@ -117,29 +117,34 @@ class DataFetcher(DataFetcherBase):
                 if metadata["relative_path"].startswith(prefix):
                     fix_subdir_found = True
 
-                    prefix_dir = os.path.join(self.config["local_target"], prefix)
+                    prefix_dir = os.path.join(self.config["local_target"],
+                                              prefix)
                     if not os.path.exists(prefix_dir):
                         self.log.error(
-	                    "Unable to move file '{}' to '{}': Directory {} is not "
-		            "available.".format(self.source_file,
-                                                self.target_file,
-                                                prefix),
-                        exc_info=True
-		        )
-		        raise
+                            "Unable to move file '{}' to '{}': Directory {} "
+                            "is not available.".format(self.source_file,
+                                                       self.target_file,
+                                                       prefix),
+                            exc_info=True
+                        )
+                        raise
                     else:
                         # everything is fine -> create directory
                         try:
-                            target_path, filename = os.path.split(self.target_file)
+                            target_path, filename = (
+                                os.path.split(self.target_file)
+                            )
                             os.makedirs(target_path)
                             self.log.info("New target directory created: {}"
                                           .format(target_path))
                         except OSError as e:
-                            self.log.info("Target directory creation failed, was already "
-                                          "created in the meantime: {}"
+                            self.log.info("Target directory creation failed, "
+                                          "was already created in the "
+                                          "meantime: {}"
                                           .format(target_path))
                         except:
-                            self.log.error("Unable to create target directory '{}'."
+                            self.log.error("Unable to create target directory "
+                                           "'{}'."
                                            .format(target_path), exc_info=True)
                             raise
 

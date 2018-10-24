@@ -28,19 +28,19 @@ except:
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
-from base_class import Base
-from signalhandler import SignalHandler
-from taskprovider import TaskProvider
-from datadispatcher import DataDispatcher
+from base_class import Base  # noqa E402
+from signalhandler import SignalHandler  # noqa E402
+from taskprovider import TaskProvider  # noqa E402
+from datadispatcher import DataDispatcher  # noqa E402
 
 try:
-    from __init__ import BASE_DIR
+    from __init__ import BASE_DIR  # noqa E402
 except ImportError:
     # to make windows work
-    from _environment import BASE_DIR
+    from _environment import BASE_DIR  # noqa E402
 
-import utils
-from _version import __version__
+import utils  # noqa E402
+from _version import __version__  # noqa E402
 
 CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
@@ -1005,7 +1005,6 @@ class DataManager(Base):
                     os.remove(path)
                     self.log.debug("Removed ipc socket: {}".format(path))
                 except OSError:
-                    #self.log.debug("Could not remove ipc socket: {}".format(path))
                     pass
                 except:
                     self.log.warning("Could not remove ipc socket: {}"

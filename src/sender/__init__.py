@@ -1,1 +1,1 @@
-from _environment import *
+from _environment import *  # noqa F401
