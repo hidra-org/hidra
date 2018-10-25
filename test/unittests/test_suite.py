@@ -5,6 +5,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
+import argparse
 import unittest
 from importlib import import_module
 import pkgutil
@@ -185,36 +186,54 @@ def get_testing_suites():
     return all_suites
 
 
-def get_suite():
-    """Collect all tests to be performed as one suite.
+def argument_parsing():
 
-    Returns:
-        A unittest TestSuite instance containing all unittests to be performed.
-    """
+    parser = argparse.ArgumentParser()
 
-    all_suites = []
+    parser.add_argument("--suite",
+                        type=str,
+                        nargs="+",
+                        required=True,
+                        help="Which test suites to test")
 
-    # get the subsuites
-    all_suites += get_api_suites()
-    all_suites += get_eventdetector_suites()
-    all_suites += get_datafetcher_suites()
-    all_suites += get_core_suites()
-    all_suites += get_receiver_suites()
+    arguments = parser.parse_args()
 
-#    all_suites += get_testing_suites()
-
-    # combine all subsuites to one big one
-    suite = unittest.TestSuite(all_suites)
-
-    return suite
+    return arguments
 
 
 def main():
     """Run the test suite.
     """
 
+    args = argument_parsing()
+
+    suite_args = args.suite
+
+    all_suites = []
+
+    if "api" in suite_args or "all" in suite_args:
+        all_suites += get_api_suites()
+
+    if "eventdetector" in suite_args or "all" in suite_args:
+        all_suites += get_eventdetector_suites()
+
+    if "datafetcher" in suite_args or "all" in suite_args:
+        all_suites += get_datafetcher_suites()
+
+    if "core" in suite_args or "all" in suite_args:
+        all_suites += get_core_suites()
+
+    if "receiver" in suite_args or "all" in suite_args:
+        all_suites += get_receiver_suites()
+
+    if "test" in suite_args:
+        all_suites += get_testing_suites()
+
+    # combine all subsuites to one big one
+    suite = unittest.TestSuite(all_suites)
+
     runner = unittest.TextTestRunner(verbosity=2)
-    runner.run(get_suite())
+    runner.run(suite)
 
 
 if __name__ == '__main__':
