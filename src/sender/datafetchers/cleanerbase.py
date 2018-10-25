@@ -41,6 +41,10 @@ class CleanerBase(Base, ABC):
         self.config = config
         self.endpoints = endpoints
 
+        self.job_socket = None
+        self.confirmation_socket = None
+        self.control_socket = None
+
         self.continue_run = True
 
         if context:

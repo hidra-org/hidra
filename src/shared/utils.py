@@ -767,8 +767,8 @@ def set_endpoints(ext_ip,
             trigger_con = trigger_bind
 
         port = ports["confirmation"]
-        confirm_bind = "tcp://{}:{}".format(confirm_ips[0], ports)
-        confirm_con = "tcp://{}:{}".format(confirm_ips[1], ports)
+        confirm_bind = "tcp://{}:{}".format(confirm_ips[0], port)
+        confirm_con = "tcp://{}:{}".format(confirm_ips[1], port)
     else:
         job_bind = None
         job_con = None
