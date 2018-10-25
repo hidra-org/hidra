@@ -11,8 +11,6 @@ import pkgutil
 
 import eventdetectors
 import datafetchers
-import api
-import receiver
 from core.test_taskprovider import TestTaskProvider
 from core.test_datadispatcher import TestDataDispatcher
 from core.test_signalhandler import TestSignalHandler
@@ -122,6 +120,7 @@ def get_api_suites():
 
     return all_suites
 
+
 def get_receiver_suites():
     """Collects all available receiver tests
 
@@ -134,6 +133,7 @@ def get_receiver_suites():
     ]
 
     return all_suites
+
 
 def get_testing_suites():
 
@@ -153,7 +153,7 @@ def get_testing_suites():
     from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
     from datafetchers.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
 
-    from api.test_control import TestControl
+    from api.test_control import TestControl  # noqa F401
 
     all_suites = [
 #        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122

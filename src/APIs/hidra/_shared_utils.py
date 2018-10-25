@@ -3,7 +3,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
+import re
 import traceback
+import socket
+import subprocess
 
 
 class Base(object):
@@ -56,6 +59,48 @@ class Base(object):
             setattr(self, name, socket)
         else:
             return socket
+
+
+def execute_ldapsearch(log, ldap_cn, ldapuri):
+
+    # if there were problems with ldapsearch these information are needed
+    try:
+        ldap_host = ldapuri.split(":")[0]
+        ldap_server_ip = socket.gethostbyname(ldap_host)
+    except:
+        log.error("Failed to look up ldap ip", exc_info=True)
+
+    p = subprocess.Popen(
+        ["ldapsearch",
+         "-x",
+         "-H ldap://" + ldapuri,
+         "cn=" + ldap_cn, "-LLL"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    lines = p.stdout.readlines()
+    error = p.stderr.read()
+
+    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+                            re.M | re.I)
+    netgroup = []
+
+    for line in lines:
+        if match_host.match(line):
+            if match_host.match(line).group(1) not in netgroup:
+                netgroup.append(match_host.match(line).group(1))
+
+    try:
+        if error or not netgroup:
+            log.error("Problem when using ldapsearch.")
+            log.debug("stderr={}".format(error))
+            log.debug("stdout={}".format("".join(lines)))
+            log.debug("{} has the IP {}".format(ldap_host, ldap_server_ip))
+    except:
+        # the code inside the try statement could not be tested properly so do
+        # not stop if something was wrong.
+        log.error("Not able to retrieve ldap error information.", exc_info=True)
+
+    return netgroup
 
 
 # ------------------------------ #

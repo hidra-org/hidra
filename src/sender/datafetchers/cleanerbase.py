@@ -2,12 +2,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import zmq
-import threading
-import utils
-import sys
-import time
 import abc
+import sys
+import utils
+import zmq
 
 import __init__  as init # noqa F401  # rename it to remove F811
 from base_class import Base
@@ -42,6 +40,10 @@ class CleanerBase(Base, ABC):
 
         self.config = config
         self.endpoints = endpoints
+
+        self.job_socket = None
+        self.confirmation_socket = None
+        self.control_socket = None
 
         self.continue_run = True
 
@@ -139,7 +141,7 @@ class CleanerBase(Base, ABC):
                     }
 
                 self.log.debug("jobs={}".format(jobs))
-                #self.log.debug("confirmations={}".format(confirmations))
+#                self.log.debug("confirmations={}".format(confirmations))
 
                 if file_id in jobs:
                     this_confirm = confirmations[file_id]
