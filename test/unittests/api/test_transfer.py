@@ -2568,7 +2568,8 @@ class TestTransfer(TestBase):
         }
         metadata = {
             "chunk_number": 1,
-            "confirmation_required": "test_topic"
+            "confirmation_required": "test_topic",
+            "version": __version__
         }
 
         mock_check_file_closed.side_effect = [False]
@@ -2612,7 +2613,8 @@ class TestTransfer(TestBase):
         }
         metadata = {
             "chunk_number": 1,
-            "confirmation_required": "test_topic"
+            "confirmation_required": "test_topic",
+            "version": __version__
         }
 
         mock_check_file_closed.side_effect = [False]
