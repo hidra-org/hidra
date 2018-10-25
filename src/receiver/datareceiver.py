@@ -141,8 +141,9 @@ class CheckNetgroup (threading.Thread):
         check_sleep_intervalls = self.check_time // sec_to_sleep
 
         while self.run_loop:
-            new_whitelist = utils.excecute_ldapsearch(self.netgroup,
-                                                      self.ldapuri)
+            new_whitelist = utils.execute_ldapsearch(self.log,
+                                                     self.netgroup,
+                                                     self.ldapuri)
 
             # if there are problems with ldap the search returns an empty list
             # -> do nothing but wait till ldap is reachable again

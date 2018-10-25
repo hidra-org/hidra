@@ -4,7 +4,7 @@ import socket
 import subprocess
 import re
 
-def excecute_ldapsearch(ldap_cn):
+def execute_ldapsearch(ldap_cn):
 
     p = subprocess.Popen(
         ["ldapsearch",
@@ -29,7 +29,7 @@ beamline = "p01"
 netgroup_name = "a3{0}-hosts".format(beamline)
 hostname = socket.getfqdn()
 
-netgroup = excecute_ldapsearch(netgroup_name)
+netgroup = execute_ldapsearch(netgroup_name)
 print(netgroup)
 
 print("Host", hostname, "is in netgroup:", hostname in netgroup)

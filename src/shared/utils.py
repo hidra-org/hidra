@@ -7,9 +7,7 @@ import logging
 import logging.handlers
 import os
 import platform
-import re
 import shutil
-import subprocess
 import socket
 import sys
 from collections import namedtuple
@@ -17,7 +15,8 @@ from collections import namedtuple
 from cfel_optarg import parse_parameters
 
 from _version import __version__
-from hidra import LoggingFunction
+# do not reimplement the functions already available in the APIs
+from hidra import LoggingFunction, execute_ldapsearch
 
 try:
     import ConfigParser
@@ -490,7 +489,7 @@ def extend_whitelist(whitelist, ldapuri, log):
 
     if whitelist is not None:
         if type(whitelist) == str:
-            whitelist = excecute_ldapsearch(whitelist, ldapuri)
+            whitelist = execute_ldapsearch(log, whitelist, ldapuri)
             log.info("Whitelist after ldapsearch: {}".format(whitelist))
         else:
             whitelist = [socket.getfqdn(host) for host in whitelist]
@@ -563,29 +562,6 @@ def get_socket_id(log, ip, is_ipv6=None):
         return "[{}]:{}".format(ip)
     else:
         return "{}:{}".format(ip)
-
-
-def excecute_ldapsearch(ldap_cn, ldapuri):
-
-    p = subprocess.Popen(
-        ["ldapsearch",
-         "-x",
-         "-H ldap://" + ldapuri,
-         "cn=" + ldap_cn, "-LLL"],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-    lines = p.stdout.readlines()
-
-    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
-                            re.M | re.I)
-    netgroup = []
-
-    for line in lines:
-        if match_host.match(line):
-            if match_host.match(line).group(1) not in netgroup:
-                netgroup.append(match_host.match(line).group(1))
-
-    return netgroup
 
 
 def generate_sender_id(main_pid):

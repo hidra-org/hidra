@@ -15,7 +15,7 @@ import zmq
 
 # from ._version import __version__
 from ._constants import connection_list
-from ._shared_utils import LoggingFunction, Base
+from ._shared_utils import LoggingFunction, Base, execute_ldapsearch
 
 
 class NotSupported(Exception):
@@ -46,29 +46,6 @@ class CommunicationFailed(Exception):
     pass
 
 
-def excecute_ldapsearch(ldap_cn, ldapuri):
-
-    p = subprocess.Popen(
-        ["ldapsearch",
-         "-x",
-         "-H ldap://" + ldapuri,
-         "cn=" + ldap_cn, "-LLL"],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-    lines = p.stdout.readlines()
-
-    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
-                            re.M | re.I)
-    netgroup = []
-
-    for line in lines:
-        if match_host.match(line):
-            if match_host.match(line).group(1) not in netgroup:
-                netgroup.append(match_host.match(line).group(1))
-
-    return netgroup
-
-
 def check_netgroup(hostname, beamline, ldapuri, netgroup_template, log=None):
 
     if log is None:
@@ -79,7 +56,7 @@ def check_netgroup(hostname, beamline, ldapuri, netgroup_template, log=None):
         log = LoggingFunction("debug")
 
     netgroup_name = netgroup_template.format(bl=beamline)
-    netgroup = excecute_ldapsearch(netgroup_name, ldapuri)
+    netgroup = execute_ldapsearch(log, netgroup_name, ldapuri)
 
     # convert host to fully qualified DNS name
     hostname = socket.getfqdn(hostname)

@@ -3,7 +3,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
+import re
 import traceback
+import subprocess
 
 
 class Base(object):
@@ -56,6 +58,32 @@ class Base(object):
             setattr(self, name, socket)
         else:
             return socket
+
+
+def execute_ldapsearch(log, ldap_cn, ldapuri):
+
+    p = subprocess.Popen(
+        ["ldapsearch",
+         "-x",
+         "-H ldap://" + ldapuri,
+         "cn=" + ldap_cn, "-LLL"],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    if p.stderr is not None:
+        log.error("Problem when using ldapsearch %s", p.stderr.read())
+
+    lines = p.stdout.readlines()
+
+    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+                            re.M | re.I)
+    netgroup = []
+
+    for line in lines:
+        if match_host.match(line):
+            if match_host.match(line).group(1) not in netgroup:
+                netgroup.append(match_host.match(line).group(1))
+
+    return netgroup
 
 
 # ------------------------------ #
