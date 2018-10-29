@@ -1,3 +1,33 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements a data fetcher to connect multiple hidra instances
+in series.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
@@ -12,6 +42,10 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class DataFetcher(DataFetcherBase):
+    """
+    Implementation of the data fetcher reacting on data sent by another
+    hidra instance.
+    """
 
     def __init__(self, config, log_queue, fetcher_id, context):
         """Initial setup
@@ -57,8 +91,7 @@ class DataFetcher(DataFetcherBase):
             self.required_params += ["ipc_dir", "main_pid"]
 
     def setup(self):
-        """
-        Sets up and configures the transfer.
+        """Sets up and configures the transfer.
         """
         self.transfer = Transfer("STREAM", use_log=self.log_queue)
 
@@ -80,6 +113,10 @@ class DataFetcher(DataFetcherBase):
 
     def get_metadata(self, targets, metadata):
         """Implementation of the abstract method get_metadata.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata to extend.
         """
 
         timeout = 10000
@@ -127,6 +164,12 @@ class DataFetcher(DataFetcherBase):
 
     def send_data(self, targets, metadata, open_connections):
         """Implementation of the abstract method send_data.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         if not targets:
@@ -148,7 +191,7 @@ class DataFetcher(DataFetcherBase):
         try:
             chunk_payload = [json.dumps(self.metadata_r).encode("utf-8"),
                              self.data_r]
-        except:
+        except Exception:
             self.log.error("Unable to pack multipart-message for file "
                            "'{}'".format(self.source_file),
                            exc_info=True)
@@ -167,7 +210,7 @@ class DataFetcher(DataFetcherBase):
                 .format(self.source_file, self.metadata_r["chunk_number"]),
                 exc_info=True
             )
-        except:
+        except Exception:
             self.log.error(
                 "Unable to send multipart-message for file '{}' (chunk {})"
                 .format(self.source_file, self.metadata_r["chunk_number"]),
@@ -176,6 +219,12 @@ class DataFetcher(DataFetcherBase):
 
     def finish(self, targets, metadata, open_connections):
         """Implementation of the abstract method finish.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
@@ -194,7 +243,7 @@ class DataFetcher(DataFetcherBase):
                 self.log.debug("Passing metadata multipart-message for file "
                                "{}...done.".format(self.source_file))
 
-            except:
+            except Exception:
                 self.log.error(
                     "Unable to send metadata multipart-message for file"
                     "'{}' to '{}'".format(self.source_file, targets_metadata),
@@ -205,14 +254,14 @@ class DataFetcher(DataFetcherBase):
         if self.config["store_data"]:
             try:
                 # TODO: save message to file using a thread (avoids blocking)
-                self.transfer.store_data_chunk(
+                self.transfer.store_chunk(
                     descriptors=self.f_descriptors,
                     filepath=self.target_file,
                     payload=self.data_r,
                     base_path=self.config["local_target"],
                     metadata=self.metadata_r
                 )
-            except:
+            except Exception:
                 self.log.error(
                     "Storing multipart message for file '{}' failed"
                     .format(self.source_file),
@@ -227,7 +276,7 @@ class DataFetcher(DataFetcherBase):
         self.close_socket()
 
         # Close open file handler to prevent file corruption
-        for target_file in list(self.f_descriptors.keys()):
+        for target_file in list(self.f_descriptors):
             self.f_descriptors[target_file].close()
             del self.f_descriptors[target_file]
 
