@@ -1,8 +1,36 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This is a template module for implementing a data fetchers.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
 import json
-# import errno
 
 from datafetcherbase import DataFetcherBase, DataHandlingError
 from hidra import generate_filepath
@@ -11,6 +39,9 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class DataFetcher(DataFetcherBase):
+    """
+    Implementation of the data fetcher.
+    """
 
     def __init__(self, config, log_queue, fetcher_id, context):
 
@@ -24,9 +55,19 @@ class DataFetcher(DataFetcherBase):
         self.required_params = []
 
         self.check_config()
+        self.setup()
+
+    def setup(self):
+        """Sets static configuration parameters.
+        """
+        pass
 
     def get_metadata(self, targets, metadata):
         """Implementation of the abstract method get_metadata.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata to extend.
         """
 
         # Build source file
@@ -47,6 +88,12 @@ class DataFetcher(DataFetcherBase):
 
     def send_data(self, targets, metadata, open_connections):
         """Implementation of the abstract method send_data.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         if not targets:
@@ -75,7 +122,7 @@ class DataFetcher(DataFetcherBase):
                 chunk_payload.append(json.dumps(chunk_metadata)
                                      .encode("utf-8"))
                 chunk_payload.append(file_content)
-            except:
+            except Exception:
                 self.log.error("Unable to pack multipart-message for file "
                                "'{}'".format(self.source_file), exc_info=True)
 
@@ -90,7 +137,7 @@ class DataFetcher(DataFetcherBase):
                                "'{}' (chunk {})"
                                .format(self.source_file, chunk_number),
                                exc_info=True)
-            except:
+            except Exception:
                 self.log.error("Unable to send multipart-message for file "
                                "'{}' (chunk {})"
                                .format(self.source_file, chunk_number),
@@ -98,6 +145,12 @@ class DataFetcher(DataFetcherBase):
 
     def finish(self, targets, metadata, open_connections):
         """Implementation of the abstract method finish.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
@@ -113,7 +166,7 @@ class DataFetcher(DataFetcherBase):
                 self.log.debug("Passing metadata multipart-message for file "
                                "{}...done.".format(self.source_file))
 
-            except:
+            except Exception:
                 self.log.error("Unable to send metadata multipart-message for "
                                "file '{}' to '{}'"
                                .format(self.source_file, targets_metadata),

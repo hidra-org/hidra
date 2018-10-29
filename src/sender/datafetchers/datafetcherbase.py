@@ -1,6 +1,35 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the data fetcher base class from which all data fetchers
+inherit from.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
 import abc
 import json
@@ -8,15 +37,16 @@ import os
 import sys
 import zmq
 
-import __init__ as init  # noqa F401
+import __init__ as init  # noqa F401 # pylint: disable=unused-import
 from base_class import Base
 import utils
 from utils import WrongConfiguration
 
 # source:
+# pylint: disable=line-too-long
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
 if sys.version_info[0] >= 3 and sys.version_info[1] >= 4:
-    ABC = abc.ABC
+    ABC = abc.ABC  # pylint: disable=no-member
 else:
     ABC = abc.ABCMeta(str("ABC"), (), {})
 
@@ -24,10 +54,15 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class DataHandlingError(Exception):
+    """An exception class to be used when handling data.
+    """
     pass
 
 
 class DataFetcherBase(Base, ABC):
+    """
+    Implementation of the data fetcher base class.
+    """
 
     def __init__(self, config, log_queue, fetcher_id, logger_name, context):
         """Initial setup
@@ -44,6 +79,7 @@ class DataFetcherBase(Base, ABC):
             context: The ZMQ context to be used.
 
         """
+        super(DataFetcherBase, self).__init__()
 
         self.fetcher_id = fetcher_id
         self.config = config
@@ -244,8 +280,12 @@ class DataFetcherBase(Base, ABC):
                                   .format(self.source_file, target, prio))
                     self.log.debug("metadata={}".format(metadata))
 
+    # pylint: disable=no-self-use
     def generate_file_id(self, metadata):
         """Generates a file id consisting of relative path and file name
+
+        Args:
+            metadata (dict): The dictionary with the metedata of the file.
         """
         # generate file identifier
         if (metadata["relative_path"] == ""
@@ -339,6 +379,8 @@ class DataFetcherBase(Base, ABC):
         pass
 
     def close_socket(self):
+        """Close open sockets
+        """
         self.stop_socket("cleaner_job_socket")
 
     @abc.abstractmethod
@@ -347,7 +389,7 @@ class DataFetcherBase(Base, ABC):
         """
         pass
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.close_socket()
         self.stop()
 
