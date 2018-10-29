@@ -1,27 +1,58 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements an event detector based on the inotifyx library usable
+for systems running inotify.
+"""
+
+# pylint: disable=broad-except
+# pylint: disable=global-statement
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
-from six import iteritems
-
-import os
-from inotifyx import binding
-# from inotifyx.distinfo import version as __version__
 import collections
+import copy
+import os
+import re
 import threading
 import time
-import copy
-import re
+
+
+from inotifyx import binding
+# from inotifyx.distinfo import version as __version__
+from six import iteritems
 
 from eventdetectorbase import EventDetectorBase
-import utils
 from hidra import convert_suffix_list_to_regex
+import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 CONSTANTS = {}
-file_event_list = []
+_file_event_list = []  # pylint: disable=invalid-name
 
 for name in dir(binding):
     if name.startswith("IN_"):
@@ -36,6 +67,10 @@ class InotifyEvent(object):
     A representation of the inotify_event structure.  See the inotify
     documentation for a description of these fields.
     """
+
+    # pylint: disable=invalid-name
+    # pylint: disable=redefined-outer-name
+    # pylint: disable=too-few-public-methods
 
     wd = None
     mask = None
@@ -80,9 +115,57 @@ class InotifyEvent(object):
         return "0"
 
 
-def get_event_message(path, filename, paths):
+# Modification of the inotifyx example found inside inotifyx library
+# Copyright (c) 2005 Manuel Amador
+# Copyright (c) 2009-2011 Forest Bond
+def get_events(fd, *args):  # pylint: disable=invalid-name
+    '''
+    get_events(fd[, timeout])
 
-    parent_dir = path
+    Return a list of InotifyEvent instances representing events read from
+    inotify. If timeout is None, this will block forever until at least one
+    event can be read.  Otherwise, timeout should be an integer or float
+    specifying a timeout in seconds.  If get_events times out waiting for
+    events, an empty list will be returned.  If timeout is zero, get_events
+    will not block.
+    '''
+    return [
+        InotifyEvent(wd, mask, cookie, name)
+        # pylint: disable=no-member, redefined-outer-name
+        for wd, mask, cookie, name in binding.get_events(fd, *args)
+    ]
+
+
+def get_event_message(parent_dir, filename, paths):
+    """
+    Generates an event messages following the overall event detector schema
+    e.g. input is:
+        parent_dir = /my_home/source_dir/raw/subdir/test1
+        filename = my_file.cbf
+        paths = [/my_home/source_dir/raw,
+                 /my_home/source_dir/scratch_bl]
+    will result in
+        {
+           "source_path" : /my_home/source_dir/raw,
+           "relative_path": subdir/test1,
+           "filename"   : my_file.cbf
+        }
+
+    Args:
+        parent_dir (str): the absolute path of the file
+        filename (str): the name of the file
+        paths (list): a list of source paths to break the parent_dir down to
+
+    Returns:
+        A dictionary of the form
+        {
+           "source_path" : ...
+           "relative_path": ...
+           "filename"   : ...
+        }
+
+    """
+
     relative_path = ""
     event_message = {}
 
@@ -125,6 +208,12 @@ def get_event_message(path, filename, paths):
 
 
 class CleanUp(threading.Thread):
+    """
+    A threading finding left over files and generate events form them.
+    """
+
+    # pylint: disable=too-many-instance-attributes
+
     def __init__(self,
                  paths,
                  mon_subdirs,
@@ -152,7 +241,9 @@ class CleanUp(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        global file_event_list
+        # pylint: disable=invalid-name
+        global _file_event_list
+
         dirs_to_walk = [os.path.normpath(os.path.join(self.paths[0],
                                                       directory))
                         for directory in self.mon_subdirs]
@@ -164,15 +255,25 @@ class CleanUp(threading.Thread):
                     result += self.traverse_directory(dirname)
 
                 with self.lock:
-                    file_event_list += result
-#                self.log.debug("file_event_list: {}".format(file_event_list))
+                    _file_event_list += result
                 time.sleep(self.action_time)
-            except:
+            except Exception:
                 self.log.error("Stopping loop due to error", exc_info=True)
                 self.lock.release()
                 break
 
     def traverse_directory(self, dirname):
+        """
+        Traverses the given directory and generate events for all files found
+        which match the pattern and where not touched for some time.
+
+        Args:
+            dirname (str): the directory to traverse and check for files.
+
+        Returns:
+            A list of event messages.
+        """
+
         event_list = []
 
         for root, _, files in os.walk(dirname):
@@ -187,7 +288,7 @@ class CleanUp(threading.Thread):
 
                 try:
                     time_last_modified = os.stat(filepath).st_mtime
-                except:
+                except Exception:
                     self.log.error("Unable to get modification time for file: "
                                    "{}".format(filepath), exc_info=True)
                     continue
@@ -195,7 +296,7 @@ class CleanUp(threading.Thread):
                 try:
                     # get current time
                     time_current = time.time()
-                except:
+                except Exception:
                     self.log.error("Unable to get current time for file: {}"
                                    .format(filepath), exc_info=True)
                     continue
@@ -221,11 +322,18 @@ class CleanUp(threading.Thread):
         return event_list
 
     def stop(self):
+        """Stops the clean up thread
+        """
+
         self.log.debug("Stopping cleanup thread")
         self.run_loop = False
 
 
 class EventDetector(EventDetectorBase):
+    """
+    Implementation of the event detector for inotify based systems using the
+    inotifyx library.
+    """
 
     def __init__(self, config, log_queue):
 
@@ -238,7 +346,7 @@ class EventDetector(EventDetectorBase):
         self.log_queue = log_queue
 
         self.wd_to_path = {}
-        self.fd = None
+        self.file_descriptor = None
         self.paths = None
         self.mon_subdirs = None
         self.mon_regex_per_event = None
@@ -277,12 +385,13 @@ class EventDetector(EventDetectorBase):
             self.required_params += ["time_till_closed", "action_time"]
 
     def setup(self):
-        """
+        """Initiate class variables and environment.
+
         Sets static configuration parameters creates ring buffer and starts
         cleanup thread.
         """
 
-        self.fd = binding.init()
+        self.file_descriptor = binding.init()  # pylint: disable=no-member
 
         # TODO why is this necessary
         self.paths = [self.config["monitored_dir"]]
@@ -337,36 +446,33 @@ class EventDetector(EventDetectorBase):
         else:
             self.get_remaining_events = self.get_no_events
 
-    # Modification of the inotifyx example found inside inotifyx library
-    # Copyright (c) 2005 Manuel Amador
-    # Copyright (c) 2009-2011 Forest Bond
-    def get_events(self, fd, *args):
-        '''
-        get_events(fd[, timeout])
-
-        Return a list of InotifyEvent instances representing events read from
-        inotify. If timeout is None, this will block forever until at least one
-        event can be read.  Otherwise, timeout should be an integer or float
-        specifying a timeout in seconds.  If get_events times out waiting for
-        events, an empty list will be returned.  If timeout is zero, get_events
-        will not block.
-        '''
-        return [
-            InotifyEvent(wd, mask, cookie, name)
-            for wd, mask, cookie, name in binding.get_events(fd, *args)
-        ]
-
     def add_watch(self):
+        """Add directories to inotify watch.
+
+        Adds all existing directories found inside the source paths to the
+        inotify watch.
+        """
+
         try:
             for path in self.get_directory_structure():
-                wd = binding.add_watch(self.fd, path)
-                self.wd_to_path[wd] = path
+                # pylint: disable=no-member
+                watch_descriptor = binding.add_watch(
+                    self.file_descriptor,
+                    path
+                )
+                self.wd_to_path[watch_descriptor] = path
                 self.log.debug("Register watch for path: {}".format(path))
-        except:
+        except Exception:
             self.log.error("Could not register watch for path: {}"
                            .format(path), exc_info=True)
 
     def get_directory_structure(self):
+        """For all directories configured find all sub-directories contained.
+
+        Returns:
+            A list of directories to be monitored.
+        """
+
         # Add the default subdirs
         self.log.debug("paths: {}".format(self.paths))
         dirs_to_walk = [os.path.normpath(os.path.join(self.paths[0],
@@ -390,19 +496,32 @@ class EventDetector(EventDetectorBase):
 
         return monitored_dirs
 
-    def get_no_events(self):
+    def get_no_events(self):  # pylint: disable=no-self-use
+        """No events to add.
+
+        Returns:
+            An emtpy list
+        """
+
         return []
 
     def get_events_from_cleanup(self):
-        global file_event_list
+        """Gets the events found by the clean up thread.
+
+        Returns:
+            A list of event messages found in cleanup thread.
+        """
+
+        # pylint: disable=invalid-name
+        global _file_event_list
 
         event_message_list = []
 
         with self.lock:
             # get missed files
-            event_message_list = copy.deepcopy(file_event_list)
+            event_message_list = copy.deepcopy(_file_event_list)
 
-        file_event_list = []
+        _file_event_list = []
 
 #        if event_message_list:
 #            self.log.info("Added missed files: {}"
@@ -412,6 +531,9 @@ class EventDetector(EventDetectorBase):
 
     def get_new_event(self):
         """Implementation of the abstract method get_new_event.
+
+        Returns:
+            A list of event messages generated from inotify events.
         """
 
         remaining_events = self.get_remaining_events()
@@ -431,7 +553,7 @@ class EventDetector(EventDetectorBase):
         # event_message_list = self.get_remaining_events()
         event_message = {}
 
-        events = self.get_events(self.fd, self.timeout)
+        events = get_events(self.file_descriptor, self.timeout)
         removed_wd = None
 
         for event in events:
@@ -484,8 +606,11 @@ class EventDetector(EventDetectorBase):
                     self.log.debug("Directory already contained in path list:"
                                    " {}".format(dirname))
                 else:
-                    wd = binding.add_watch(self.fd, dirname)
-                    self.wd_to_path[wd] = dirname
+                    watch_descriptor = binding.add_watch(   # noqa E501 # pylint: disable=no-member
+                        self.file_descriptor,
+                        dirname
+                    )
+                    self.wd_to_path[watch_descriptor] = dirname
                     self.log.info("Added new directory to watch: {}"
                                   .format(dirname))
 
@@ -500,13 +625,19 @@ class EventDetector(EventDetectorBase):
                         for dname in directories:
                             traversed_path = os.path.join(traversed_path,
                                                           dname)
-                            wd = binding.add_watch(self.fd, traversed_path)
-                            self.wd_to_path[wd] = traversed_path
+                            # pylint: disable=no-member
+                            watch_descriptor = binding.add_watch(
+                                self.file_descriptor,
+                                traversed_path
+                            )
+                            self.wd_to_path[watch_descriptor] = traversed_path
                             self.log.info("Added new subdirectory to watch: "
                                           "{}".format(traversed_path))
                         self.log.debug("files: {}".format(files))
+
                         for filename in files:
                             # self.log.debug("filename: {}".format(filename))
+                            # pylint: disable=no-member
                             if self.mon_regex.match(filename) is None:
                                 self.log.debug("File does not match monitored "
                                                "regex: {}"
@@ -537,7 +668,8 @@ class EventDetector(EventDetectorBase):
                     if watch_path == dirname:
                         found_watch = watch
                         break
-                binding.rm_watch(self.fd, found_watch)
+                # pylint: disable=no-member
+                binding.rm_watch(self.file_descriptor, found_watch)
                 self.log.info("Removed directory from watch: {}"
                               .format(dirname))
                 # the IN_MOVE_FROM event always apears before the IN_MOVE_TO
@@ -586,11 +718,15 @@ class EventDetector(EventDetectorBase):
             self.cleanup_thread.stop()
 
         try:
-            for wd in self.wd_to_path:
+            for watch_descriptor in self.wd_to_path:
                 try:
-                    binding.rm_watch(self.fd, wd)
-                except:
-                    self.log.error("Unable to remove watch: {}".format(wd),
+                    binding.rm_watch(  # pylint: disable=no-member
+                        self.file_descriptor,
+                        watch_descriptor
+                    )
+                except Exception:
+                    self.log.error("Unable to remove watch: {}"
+                                   .format(watch_descriptor),
                                    exc_info=True)
         finally:
-            os.close(self.fd)
+            os.close(self.file_descriptor)
