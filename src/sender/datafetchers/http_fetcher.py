@@ -1,11 +1,42 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the data fetcher used for the Eiger detector and other
+detectors with a http interface.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
 import errno
 import json
 import os
-import requests
 import time
+
+import requests
 
 from cleanerbase import CleanerBase
 from datafetcherbase import DataFetcherBase
@@ -16,6 +47,10 @@ __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
 
 
 class DataFetcher(DataFetcherBase):
+    """
+    Implemenation of the data fetcher to get files from the Eiger detector or
+    other detectors with a http interface.
+    """
 
     def __init__(self, config, log_queue, fetcher_id, context):
 
@@ -31,7 +66,7 @@ class DataFetcher(DataFetcherBase):
                                 "remove_data",
                                 "fix_subdirs"]
 
-        self.check_config
+        self.check_config()
         self.setup()
 
     def setup(self):
@@ -49,6 +84,10 @@ class DataFetcher(DataFetcherBase):
 
     def get_metadata(self, targets, metadata):
         """Implementation of the abstract method get_metadata.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata to extend.
         """
 
         # no normpath used because that would transform http://...
@@ -89,24 +128,23 @@ class DataFetcher(DataFetcherBase):
                 raise
 
     def create_directory(self, metadata):
-        """
+        """Creates the directory where the file should be stored.
+
         Args:
             metadata (dict): The file metadata for the directory to be created.
-
-        Returns:
 
         """
         # the directories current, commissioning and local should
         # not be created
         if metadata["relative_path"] in self.config["fix_subdirs"]:
-            self.log.error(
+            msg = (
                 "Unable to move file '{}' to '{}': Directory {} is not "
                 "available.".format(self.source_file,
                                     self.target_file,
-                                    metadata["relative_path"]),
-                exc_info=True
+                                    metadata["relative_path"])
             )
-            raise
+            self.log.error(msg, exc_info=True)
+            raise Exception(msg)
         else:
             fix_subdir_found = False
             # identify which of the pefixes is the correct one and check that
@@ -120,29 +158,27 @@ class DataFetcher(DataFetcherBase):
                     prefix_dir = os.path.join(self.config["local_target"],
                                               prefix)
                     if not os.path.exists(prefix_dir):
-                        self.log.error(
+                        msg = (
                             "Unable to move file '{}' to '{}': Directory {} "
                             "is not available.".format(self.source_file,
                                                        self.target_file,
-                                                       prefix),
-                            exc_info=True
+                                                       prefix)
                         )
-                        raise
+                        self.log.error(msg, exc_info=True)
+                        raise Exception(msg)
                     else:
                         # everything is fine -> create directory
                         try:
-                            target_path, filename = (
-                                os.path.split(self.target_file)
-                            )
+                            target_path, _ = os.path.split(self.target_file)
                             os.makedirs(target_path)
                             self.log.info("New target directory created: {}"
                                           .format(target_path))
-                        except OSError as e:
+                        except OSError:
                             self.log.info("Target directory creation failed, "
                                           "was already created in the "
                                           "meantime: {}"
                                           .format(target_path))
-                        except:
+                        except Exception:
                             self.log.error("Unable to create target directory "
                                            "'{}'."
                                            .format(target_path), exc_info=True)
@@ -155,6 +191,12 @@ class DataFetcher(DataFetcherBase):
 
     def send_data(self, targets, metadata, open_connections):
         """Implementation of the abstract method send_data.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         response = self.config["session"].get(self.source_file)
@@ -162,14 +204,14 @@ class DataFetcher(DataFetcherBase):
             response.raise_for_status()
             self.log.debug("Initiating http get for file '{}' succeeded."
                            .format(self.source_file))
-        except:
+        except Exception:
             self.log.error("Initiating http get for file '{}' failed."
                            .format(self.source_file), exc_info=True)
             return
 
         try:
             chunksize = metadata["chunksize"]
-        except:
+        except Exception:
             self.log.error("Unable to get chunksize", exc_info=True)
 
         file_opened = False
@@ -182,12 +224,12 @@ class DataFetcher(DataFetcherBase):
                 self.log.debug("Opening '{}'...".format(self.target_file))
                 file_descriptor = open(self.target_file, "wb")
                 file_opened = True
-            except IOError as e:
+            except IOError as excp:
                 err_msg = ("Unable to open target file '{}'."
                            .format(self.target_file))
 
                 # errno.ENOENT == "No such file or directory"
-                if e.errno == errno.ENOENT:
+                if excp.errno == errno.ENOENT:
                     self.create_directory(metadata)
 
                     try:
@@ -223,7 +265,7 @@ class DataFetcher(DataFetcherBase):
                 payload = []
                 payload.append(json.dumps(metadata_extended).encode("utf-8"))
                 payload.append(data)
-            except:
+            except Exception:
                 self.log.error("Unable to pack multipart-message for file "
                                "'{}'".format(self.source_file),
                                exc_info=True)
@@ -233,7 +275,7 @@ class DataFetcher(DataFetcherBase):
                     file_descriptor.write(data)
                     self.log.debug("Writing data for file '{}' (chunk {})"
                                    .format(self.source_file, chunk_number))
-                except:
+                except Exception:
                     self.log.error("Unable write data for file '{}'"
                                    .format(self.source_file), exc_info=True)
                     file_written = False
@@ -249,7 +291,7 @@ class DataFetcher(DataFetcherBase):
                            .format(self.source_file))
                     self.log.debug(msg)
 
-                except:
+                except Exception:
                     msg = ("Unable to send multipart-message for file {}"
                            .format(self.source_file))
                     self.log.error(msg, exc_info=True)
@@ -262,7 +304,7 @@ class DataFetcher(DataFetcherBase):
                 self.log.debug("Closing '{}'...".format(self.target_file))
                 file_descriptor.close()
                 file_closed = True
-            except:
+            except Exception:
                 self.log.error("Unable to close target file '{}'."
                                .format(self.target_file), exc_info=True)
                 raise
@@ -284,7 +326,7 @@ class DataFetcher(DataFetcherBase):
                                    "file '{}'...done."
                                    .format(self.source_file))
 
-                except:
+                except Exception:
                     self.log.error("Unable to send metadata multipart-message "
                                    "for file '{}'".format(self.source_file),
                                    exc_info=True)
@@ -295,17 +337,31 @@ class DataFetcher(DataFetcherBase):
         else:
             self.config["remove_flag"] = file_send
 
+    # pylint: disable=method-hidden
     def finish(self, targets, metadata, open_connections):
         """Implementation of the abstract method finish.
 
         Is overwritten when class is instantiated depending if a cleaner class
         is used or not
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
         pass
 
     def finish_with_cleaner(self, targets, metadata, open_connections):
         """Finish method to be used if use of cleaner was configured.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
+         # pylint: disable=unused-argument
 
         file_id = self.generate_file_id(metadata)
 
@@ -316,7 +372,14 @@ class DataFetcher(DataFetcherBase):
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
         """Finish method to use when use of cleaner not configured.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
+         # pylint: disable=unused-argument
 
         if self.config["remove_data"] and self.config["remove_flag"]:
             responce = requests.delete(self.source_file)
@@ -325,7 +388,7 @@ class DataFetcher(DataFetcherBase):
                 responce.raise_for_status()
                 self.log.debug("Deleting file '{}' succeeded."
                                .format(self.source_file))
-            except:
+            except Exception:
                 self.log.error("Deleting file '{}' failed."
                                .format(self.source_file), exc_info=True)
 
@@ -338,6 +401,10 @@ class DataFetcher(DataFetcherBase):
 
 
 class Cleaner(CleanerBase):
+    """
+    Implementation of the cleaner when handling http detectors.
+    """
+
     def remove_element(self, base_path, file_id):
 
         # generate file path
@@ -350,6 +417,6 @@ class Cleaner(CleanerBase):
             responce.raise_for_status()
             self.log.debug("Deleting file '{}' succeeded."
                            .format(source_file))
-        except:
+        except Exception:
             self.log.error("Deleting file '{}' failed."
                            .format(source_file), exc_info=True)
