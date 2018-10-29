@@ -1,3 +1,32 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements a data fetcher for handling files.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
@@ -15,6 +44,9 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class DataFetcher(DataFetcherBase):
+    """
+    Implementation of the data fetcher to handle files.
+    """
 
     def __init__(self, config, log_queue, fetcher_id, context):
 
@@ -57,6 +89,10 @@ class DataFetcher(DataFetcherBase):
 
     def get_metadata(self, targets, metadata):
         """Implementation of the abstract method get_metadata.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata to extend.
         """
 
         # Build source file
@@ -79,7 +115,7 @@ class DataFetcher(DataFetcherBase):
                 self.log.debug("file_mod_time({}) = {}"
                                .format(self.source_file, file_mod_time))
 
-            except:
+            except Exception:
                 self.log.error("Unable to create metadata dictionary.")
                 raise
 
@@ -96,6 +132,7 @@ class DataFetcher(DataFetcherBase):
                 #        }
                 if self.is_windows:
                     # path convertions is save, see:
+                    # pylint: disable=line-too-long
                     # http://softwareengineering.stackexchange.com/questions/245156/is-it-safe-to-convert-windows-file-paths-to-unix-file-paths-with-a-simple-replac  # noqa E501
                     metadata["source_path"] = (
                         metadata["source_path"].replace("\\", "/"))
@@ -112,12 +149,18 @@ class DataFetcher(DataFetcherBase):
                     metadata["confirmation_required"] = False
 
                 self.log.debug("metadata = {}".format(metadata))
-            except:
+            except Exception:
                 self.log.error("Unable to assemble multi-part message.")
                 raise
 
     def send_data(self, targets, metadata, open_connections):
         """Implementation of the abstract method send_data.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         # no targets to send data to -> data can be removed
@@ -145,7 +188,7 @@ class DataFetcher(DataFetcherBase):
         try:
             self.log.debug("Opening '{}'...".format(self.source_file))
             file_descriptor = open(str(self.source_file), "rb")
-        except:
+        except Exception:
             self.log.error("Unable to read source file '{}'"
                            .format(self.source_file), exc_info=True)
             raise
@@ -173,7 +216,7 @@ class DataFetcher(DataFetcherBase):
                 chunk_payload.append(
                     json.dumps(chunk_metadata).encode("utf-8"))
                 chunk_payload.append(file_content)
-            except:
+            except Exception:
                 self.log.error("Unable to pack multipart-message for file "
                                "'{}'".format(self.source_file), exc_info=True)
 
@@ -189,7 +232,7 @@ class DataFetcher(DataFetcherBase):
                                                         chunk_number),
                                exc_info=True)
                 send_error = True
-            except:
+            except Exception:
                 self.log.error("Unable to send multipart-message for file "
                                "'{}' (chunk {})".format(self.source_file,
                                                         chunk_number),
@@ -201,7 +244,7 @@ class DataFetcher(DataFetcherBase):
         try:
             self.log.debug("Closing '{}'...".format(self.source_file))
             file_descriptor.close()
-        except:
+        except Exception:
             self.log.error("Unable to close target file '{}'"
                            .format(self.source_file), exc_info=True)
             raise
@@ -218,13 +261,14 @@ class DataFetcher(DataFetcherBase):
     def _datahandling(self, action_function, metadata):
         try:
             action_function(self.source_file, self.target_file)
-        except IOError as e:
+        except IOError as excp:
 
             # errno.ENOENT == "No such file or directory"
-            if e.errno == errno.ENOENT:
-                subdir, tmp = os.path.split(metadata["relative_path"])
+            if excp.errno == errno.ENOENT:
+                subdir, _ = os.path.split(metadata["relative_path"])
                 target_base_path = os.path.join(
-                    self.target_file.split(subdir + os.sep)[0], subdir)
+                    self.target_file.split(subdir + os.sep)[0], subdir
+                )
 
                 if metadata["relative_path"] in self.config["fix_subdirs"]:
                     self.log.error("Unable to copy/move file '{}' to '{}': "
@@ -233,7 +277,7 @@ class DataFetcher(DataFetcherBase):
                                            metadata["relative_path"]))
                     raise
                 elif (subdir in self.config["fix_subdirs"]
-                        and not os.path.isdir(target_base_path)):
+                      and not os.path.isdir(target_base_path)):
                     self.log.error("Unable to copy/move file '{}' to '{}': "
                                    "Directory {} is not available"
                                    .format(self.source_file,
@@ -242,12 +286,12 @@ class DataFetcher(DataFetcherBase):
                     raise
                 else:
                     try:
-                        target_path, filename = os.path.split(self.target_file)
+                        target_path, _ = os.path.split(self.target_file)
                         os.makedirs(target_path)
                         self.log.info("New target directory created: {}"
                                       .format(target_path))
                         action_function(self.source_file, self.target_file)
-                    except OSError as e:
+                    except OSError:
                         self.log.info("Target directory creation failed, was "
                                       "already created in the meantime: {}"
                                       .format(target_path))
@@ -263,22 +307,35 @@ class DataFetcher(DataFetcherBase):
                                .format(self.source_file, self.target_file),
                                exc_info=True)
                 raise
-        except:
+        except Exception:
             self.log.error("Unable to copy/move file '{}' to '{}'"
                            .format(self.source_file, self.target_file),
                            exc_info=True)
             raise
 
+    # pylint: disable=method-hidden
     def finish(self, targets, metadata, open_connections):
         """Implementation of the abstract method finish.
 
         Is overwritten when class is instantiated depending if a cleaner class
         is used or not
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
         pass
 
     def finish_with_cleaner(self, targets, metadata, open_connections):
         """Finish method to be used if use of cleaner was configured.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
@@ -291,7 +348,10 @@ class DataFetcher(DataFetcherBase):
                 self._datahandling(shutil.copy, metadata)
                 self.log.info("Copying file '{}' ...success."
                               .format(self.source_file))
-            except:
+            except Exception:
+                self.log.error("Could not copy file {} to {}"
+                               .format(self.source_file, self.target_file),
+                               exc_info=True)
                 return
 
         # remove file
@@ -326,7 +386,7 @@ class DataFetcher(DataFetcherBase):
                 self.log.debug("Passing metadata multipart-message for file "
                                "{}...done.".format(self.source_file))
 
-            except:
+            except Exception:
                 self.log.error("Unable to send metadata multipart-message for "
                                "file '{}' to '{}'"
                                .format(self.source_file, targets_metadata),
@@ -334,6 +394,12 @@ class DataFetcher(DataFetcherBase):
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
         """Finish method to use when use of cleaner not configured.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
@@ -348,7 +414,7 @@ class DataFetcher(DataFetcherBase):
                 self._datahandling(shutil.move, metadata)
                 self.log.info("Moving file '{}' to '{}'...success."
                               .format(self.source_file, self.target_file))
-            except:
+            except Exception:
                 self.log.error("Could not move file {} to {}"
                                .format(self.source_file, self.target_file),
                                exc_info=True)
@@ -361,7 +427,10 @@ class DataFetcher(DataFetcherBase):
                 self._datahandling(shutil.copy, metadata)
                 self.log.info("Copying file '{}' ...success."
                               .format(self.source_file))
-            except:
+            except Exception:
+                self.log.error("Could not copy file {} to {}"
+                               .format(self.source_file, self.target_file),
+                               exc_info=True)
                 return
 
         # remove file
@@ -370,7 +439,7 @@ class DataFetcher(DataFetcherBase):
                 os.remove(self.source_file)
                 self.log.info("Removing file '{}' ...success."
                               .format(self.source_file))
-            except:
+            except Exception:
                 self.log.error("Unable to remove file {}"
                                .format(self.source_file), exc_info=True)
 
@@ -387,7 +456,7 @@ class DataFetcher(DataFetcherBase):
                 self.log.debug("Passing metadata multipart-message for file "
                                "{}...done.".format(self.source_file))
 
-            except:
+            except Exception:
                 self.log.error("Unable to send metadata multipart-message for "
                                "file '{}' to '{}'"
                                .format(self.source_file, targets_metadata),
@@ -401,6 +470,10 @@ class DataFetcher(DataFetcherBase):
 
 
 class Cleaner(CleanerBase):
+    """
+    Implementation of the cleaner when handling files.
+    """
+
     def remove_element(self, base_path, file_id):
 
         # generate file path
@@ -410,6 +483,6 @@ class Cleaner(CleanerBase):
         try:
             os.remove(source_file)
             self.log.info("Removing file '{}' ...success".format(source_file))
-        except:
+        except Exception:
             self.log.error("Unable to remove file {}".format(source_file),
                            exc_info=True)
