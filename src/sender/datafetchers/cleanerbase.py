@@ -1,19 +1,50 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the cleaner base class from which all cleaner inherit
+from.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
 import abc
 import sys
 import utils
 import zmq
 
+# pylint: disable=unused-import
 import __init__  as init # noqa F401  # rename it to remove F811
 from base_class import Base
 
 # source:
+# pylint: disable=line-too-long
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
 if sys.version_info[0] >= 3 and sys.version_info[1] >= 4:
-    ABC = abc.ABC
+    ABC = abc.ABC  # pylint: disable=no-member
 else:
     ABC = abc.ABCMeta(str("ABC"), (), {})
 
@@ -21,20 +52,26 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class CleanerBase(Base, ABC):
+    """
+    Implementation of the cleaner base class.
+    """
+
     def __init__(self,
                  config,
                  log_queue,
                  endpoints,
                  context=None):
-        """
+        """Initial setup
 
         Args:
-             config:
-             log_queue:
-             endpoints: ZMQ endpoints to use
-             context (optional): ZMQ context to use
+             config (dict): A dictionary containing the configuration
+                            parameters.
+             log_queue: The multiprocessing queue which is used for logging.
+             endpoints: The ZMQ endpoints to use.
+             context (optional): The ZMQ context to be used.
 
         """
+        super(CleanerBase, self).__init__()
 
         self.log = utils.get_logger("Cleaner", log_queue)
 
@@ -62,6 +99,8 @@ class CleanerBase(Base, ABC):
             pass
 
     def create_sockets(self):
+        """Sets up the ZMQ sockets.
+        """
 
         # socket to get information about data to be removed after
         # confirmation is received
@@ -101,6 +140,9 @@ class CleanerBase(Base, ABC):
         self.poller.register(self.control_socket, zmq.POLLIN)
 
     def run(self):
+        """Doing the actual work.
+        """
+
         confirmations = {}
         jobs = {}
 
@@ -221,7 +263,7 @@ class CleanerBase(Base, ABC):
                     message = self.control_socket.recv_multipart()
                     self.log.debug("Control signal received")
                     self.log.debug("message = {}".format(message))
-                except:
+                except Exception:
                     self.log.error("Receiving control signal...failed",
                                    exc_info=True)
                     continue
@@ -245,9 +287,17 @@ class CleanerBase(Base, ABC):
 
     @abc.abstractmethod
     def remove_element(self, base_path, source_file_id):
+        """How to remove a file fro the source.
+
+        Args:
+            base_path:
+            source_file_id:
+        """
         pass
 
     def stop(self):
+        """ Clean up sockets and zmq environment.
+        """
 
         self.stop_socket(name="job_socket")
         self.stop_socket(name="confirmation_socket")
@@ -258,7 +308,7 @@ class CleanerBase(Base, ABC):
             self.context.destroy(0)
             self.context = None
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):
