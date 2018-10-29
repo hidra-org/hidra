@@ -1,12 +1,41 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements a data fetcher be used together with the hidra ingest
+API.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
-import zmq
-import os
+from collections import namedtuple
 import json
 import time
-from collections import namedtuple
+import os
+import zmq
 
 from datafetcherbase import DataFetcherBase
 import utils
@@ -104,6 +133,9 @@ def get_endpoints(ipc_addresses, tcp_addresses):
 
 
 class DataFetcher(DataFetcherBase):
+    """
+    Implementation of the data fetcher to be used with the ingest API.
+    """
 
     def __init__(self, config, log_queue, fetcher_id, context):
 
@@ -126,7 +158,7 @@ class DataFetcher(DataFetcherBase):
         else:
             self.required_params = ["ipc_dir"]
 
-        self.check_config
+        self.check_config()
         self.setup()
 
     def setup(self):
@@ -201,7 +233,7 @@ class DataFetcher(DataFetcherBase):
             self.log.debug("Getting data out of queue for file '{}'..."
                            .format(self.source_file))
             data = self.socket.recv()
-        except:
+        except Exception:
             self.log.error("Unable to get data out of queue for file '{}'"
                            .format(self.source_file), exc_info=True)
             raise
@@ -223,7 +255,7 @@ class DataFetcher(DataFetcherBase):
             payload = []
             payload.append(json.dumps(metadata_extended).encode("utf-8"))
             payload.append(data)
-        except:
+        except Exception:
             self.log.error("Unable to pack multipart-message for file '{}'"
                            .format(self.source_file), exc_info=True)
 
@@ -233,7 +265,7 @@ class DataFetcher(DataFetcherBase):
                                  payload)
             self.log.debug("Passing multipart-message for file '{}'...done."
                            .format(self.source_file))
-        except:
+        except Exception:
             self.log.error("Unable to send multipart-message for file '{}'"
                            .format(self.source_file), exc_info=True)
 
