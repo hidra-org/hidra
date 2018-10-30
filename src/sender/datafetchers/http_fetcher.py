@@ -361,7 +361,7 @@ class DataFetcher(DataFetcherBase):
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
-         # pylint: disable=unused-argument
+        # pylint: disable=unused-argument
 
         file_id = self.generate_file_id(metadata)
 
@@ -379,7 +379,7 @@ class DataFetcher(DataFetcherBase):
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
-         # pylint: disable=unused-argument
+        # pylint: disable=unused-argument
 
         if self.config["remove_data"] and self.config["remove_flag"]:
             responce = requests.delete(self.source_file)

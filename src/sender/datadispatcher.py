@@ -1,12 +1,40 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the data dispatcher.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
-import zmq
-import os
-import time
 import json
+import os
 import signal
+import time
+import zmq
 
 from base_class import Base
 import utils
@@ -16,6 +44,9 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class DataDispatcher(Base):
+    """
+    Reads the data using the configured module type and send it to the targets.
+    """
 
     def __init__(self,
                  dispatcher_id,
@@ -26,6 +57,8 @@ class DataDispatcher(Base):
                  log_queue,
                  local_target=None,
                  context=None):
+
+        super(DataDispatcher, self).__init__()
 
         self.dispatcher_id = dispatcher_id
         self.endpoints = endpoints
@@ -52,7 +85,7 @@ class DataDispatcher(Base):
             pass
         except KeyboardInterrupt:
             pass
-        except:
+        except Exception:
             self.log.error("Stopping DataDispatcher-{} due to unknown "
                            "error condition.".format(self.dispatcher_id),
                            exc_info=True)
@@ -60,6 +93,12 @@ class DataDispatcher(Base):
             self.stop()
 
     def setup(self, context):
+        """Initializes parameters and creates sockets.
+
+        Args:
+            context: ZMQ context to create the socket on.
+        """
+
         log_name = "DataDispatcher-{}".format(self.dispatcher_id)
         self.log = utils.get_logger(log_name, self.log_queue)
 
@@ -101,11 +140,13 @@ class DataDispatcher(Base):
 
         try:
             self.create_sockets()
-        except:
+        except Exception:
             self.log.error("Cannot create sockets", ext_info=True)
             self.stop()
 
     def create_sockets(self):
+        """Create ZMQ sockets.
+        """
 
         # socket for control signals
         self.control_socket = self.start_socket(
@@ -131,6 +172,8 @@ class DataDispatcher(Base):
         self.poller.register(self.router_socket, zmq.POLLIN)
 
     def run(self):
+        """Reacting on jobs
+        """
 
         fixed_stream_addr = [self.fixed_stream_addr, 0, "data"]
 
@@ -150,7 +193,7 @@ class DataDispatcher(Base):
                     self.log.debug("DataDispatcher-{}: new job received"
                                    .format(self.dispatcher_id))
                     self.log.debug("message = {}".format(message))
-                except:
+                except Exception:
                     self.log.error("DataDispatcher-{}: waiting for new job"
                                    "...failed".format(self.dispatcher_id),
                                    exc_info=True)
@@ -172,7 +215,8 @@ class DataDispatcher(Base):
                 else:
                     metadata = json.loads(message[0].decode("utf-8"))
 
-                    if type(metadata) == list and metadata[0] == b"CLOSE_FILE":
+                    if (isinstance(metadata, list)
+                            and metadata[0] == b"CLOSE_FILE"):
 
                         # workaround for error
                         # "TypeError: Frame 0 (u'CLOSE_FILE') does not support
@@ -245,7 +289,7 @@ class DataDispatcher(Base):
 
                 except KeyboardInterrupt:
                     break
-                except:
+                except Exception:
                     self.log.error("Building of metadata dictionary failed "
                                    "for metadata: {}".format(metadata),
                                    exc_info=True)
@@ -257,7 +301,7 @@ class DataDispatcher(Base):
                 try:
                     self.datafetcher.send_data(targets, metadata,
                                                self.open_connections)
-                except:
+                except Exception:
                     self.log.error("DataDispatcher-{}: Passing new file to "
                                    "data stream...failed"
                                    .format(self.dispatcher_id),
@@ -278,7 +322,7 @@ class DataDispatcher(Base):
                     self.log.debug("DataDispatcher-{}: control signal "
                                    "received".format(self.dispatcher_id))
                     self.log.debug("message = {}".format(message))
-                except:
+                except Exception:
                     self.log.error("DataDispatcher-{}: reiceiving control "
                                    "signal...failed"
                                    .format(self.dispatcher_id),
@@ -312,7 +356,7 @@ class DataDispatcher(Base):
                                            "failed due to KeyboardInterrupt")
                             break_outer_loop = True
                             break
-                        except:
+                        except Exception:
                             self.log.error("Receiving control signal...failed",
                                            exc_info=True)
                             continue
@@ -330,8 +374,8 @@ class DataDispatcher(Base):
                                 for socket_id in self.open_connections:
                                     sckt = self.open_connections[socket_id]
                                     # close the connection
-                                    self.close_socket(name="connection",
-                                                      socket=sckt)
+                                    self.stop_socket(name="connection",
+                                                     socket=sckt)
                                     # reopen it
                                     endpoint = "tcp://" + socket_id
                                     sckt = self.start_socket(
@@ -374,22 +418,34 @@ class DataDispatcher(Base):
                                    .format(message))
 
     def react_to_exit_signal(self):
+        """Reaction to exit signal from control socket.
+        """
         self.log.debug("Router requested to shutdown DataDispatcher-{}."
                        .format(self.dispatcher_id))
 
     def react_to_close_sockets_signal(self, message):
+        """Closing socket specified.
+
+        Args:
+            message: JSON decoded message of the form:
+                     <socket id>, <prio>, <suffix>
+        """
+
         targets = json.loads(message[1].decode("utf-8"))
         try:
-            for socket_id, prio, suffix in targets:
+            for socket_id, _, _ in targets:
                 if socket_id in self.open_connections:
                     self.stop_socket(name="socket{}".format(socket_id),
                                      socket=self.open_connections[socket_id])
                     del self.open_connections[socket_id]
-        except:
+        except Exception:
             self.log.error("Request for closing sockets of wrong format",
                            exc_info=True)
 
     def stop(self):
+        """Stopping, closing sockets and clean up.
+        """
+
         self.continue_run = False
 
         # to prevent the message two be logged multiple times
@@ -416,11 +472,15 @@ class DataDispatcher(Base):
             self.context.destroy(0)
             self.context = None
 
-    def signal_term_handler(self, signal, frame):
+    # pylint: disable=unused-argument
+    def signal_term_handler(self, signal_to_react, frame):
+        """React on external SIGTERM signal.
+        """
+
         self.log.debug('got SIGTERM')
         self.stop()
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):

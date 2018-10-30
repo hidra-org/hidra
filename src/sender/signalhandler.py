@@ -1,14 +1,49 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the signal handler class.
+"""
+
+# pylint: disable=broad-except
+# pylint: disable=too-many-lines
+# pylint: disable=too-many-nested-blocks
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-return-statements
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
-import zmq
-import zmq.devices
-import os
+from collections import namedtuple
 import copy
 import json
+import os
 import re
-from collections import namedtuple
+import zmq
+import zmq.devices
 
 from base_class import Base
 
@@ -50,6 +85,8 @@ TargetProperties = namedtuple(
 
 
 class SignalHandler(Base):
+    """React to signals from outside.
+    """
 
     def __init__(self,
                  config,
@@ -58,6 +95,8 @@ class SignalHandler(Base):
                  ldapuri,
                  log_queue,
                  context=None):
+
+        super(SignalHandler, self).__init__()
 
         self.config = config
         self.endpoints = endpoints
@@ -89,6 +128,14 @@ class SignalHandler(Base):
         self.exec_run()
 
     def setup(self, log_queue, context, whitelist, ldapuri):
+        """Initializes parameters and creates sockets.
+
+        Args:
+            log_queue: Logging queue used to synchronize log messages.
+            context: ZMQ context to create the socket on.
+            whitelist: List of hosts allowed to connect.
+            ldapuri: Ldap node and port needed to check whitelist.
+        """
 
         # Send all logs to the main process
         self.log = utils.get_logger("SignalHandler", log_queue)
@@ -113,6 +160,8 @@ class SignalHandler(Base):
             raise
 
     def create_sockets(self):
+        """Create ZMQ sockets.
+        """
 
         # socket to send control signals to
         self.control_pub_socket = self.start_socket(
@@ -170,6 +219,9 @@ class SignalHandler(Base):
             self.poller.register(self.request_socket, zmq.POLLIN)
 
     def exec_run(self):
+        """Calling run method and react to exceptions.
+        """
+
         try:
             self.run()
         except zmq.ZMQError:
@@ -177,7 +229,7 @@ class SignalHandler(Base):
                            exc_info=True)
         except KeyboardInterrupt:
             pass
-        except:
+        except Exception:
             self.log.error("Stopping SignalHandler due to unknown error "
                            "condition.", exc_info=True)
         finally:
@@ -304,7 +356,7 @@ class SignalHandler(Base):
                                        "requests: incoming message not "
                                        "supported")
 
-                except:
+                except Exception:
                     self.log.debug("in_message={}".format(in_message))
                     self.log.error("Failed to receive/answer new signal "
                                    "requests", exc_info=True)
@@ -374,7 +426,7 @@ class SignalHandler(Base):
                 try:
                     message = self.control_sub_socket.recv_multipart()
                     # self.log.debug("Control signal received.")
-                except:
+                except Exception:
                     self.log.error("Waiting for control signal...failed",
                                    exc_info=True)
                     continue
@@ -438,7 +490,7 @@ class SignalHandler(Base):
 
             host = [t[0].split(":")[0] for t in targets]
             self.log.debug("host {}".format(host))
-        except:
+        except Exception:
             self.log.debug("no valid signal received", exc_info=True)
             return UnpackedMessage(
                 check_successful=False,
@@ -491,7 +543,7 @@ class SignalHandler(Base):
         """Send response back.
         """
 
-        if type(signal) != list:
+        if not isinstance(signal, list):
             signal = [signal]
 
         self.log.debug("Send response back: {}".format(signal))
@@ -737,6 +789,17 @@ class SignalHandler(Base):
         return registered_ids, vari_requests, perm_requests
 
     def react_to_signal(self, unpacked_message):
+        """React to external signal.
+
+        Args:
+            unpacked_message: Named tuple containing all signal information,
+                              e.g.
+                                check_successful=...
+                                response=...
+                                appid=...
+                                signal=...
+                                targets=...
+        """
 
         signal = unpacked_message.signal
         appid = unpacked_message.appid
@@ -860,7 +923,7 @@ class SignalHandler(Base):
         #  STOP_QUERY_NEXT_METADATA
         # --------------------------------------------------------------------
         elif (signal == b"STOP_QUERY_NEXT"
-                or signal == b"STOP_QUERY_NEXT_METADATA"):
+              or signal == b"STOP_QUERY_NEXT_METADATA"):
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
@@ -882,7 +945,7 @@ class SignalHandler(Base):
         # FORCE_STOP_STREAM_METADATA
         # --------------------------------------------------------------------
         elif (signal == b"FORCE_STOP_STREAM"
-                or signal == b"FORCE_STOP_STREAM_METADATA"):
+              or signal == b"FORCE_STOP_STREAM_METADATA"):
             self.log.info("Received signal: {} for host {}"
                           .format(signal, socket_ids))
 
@@ -904,7 +967,7 @@ class SignalHandler(Base):
         #  FORCE_STOP_QUERY_NEXT_METADATA
         # --------------------------------------------------------------------
         elif (signal == b"FORCE_STOP_QUERY_NEXT"
-                or signal == b"FORCE_STOP_QUERY_NEXT_METADATA"):
+              or signal == b"FORCE_STOP_QUERY_NEXT_METADATA"):
 
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
@@ -928,6 +991,9 @@ class SignalHandler(Base):
             self.send_response([b"NO_VALID_SIGNAL"])
 
     def stop(self):
+        """Close sockets and clean up.
+        """
+
         self.log.debug("Closing sockets for SignalHandler")
 
         self.stop_socket(name="com_socket")
@@ -942,7 +1008,7 @@ class SignalHandler(Base):
             self.context.destroy(0)
             self.context = None
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):

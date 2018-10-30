@@ -1,8 +1,36 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the data dispatcher.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
 import argparse
 from distutils.version import LooseVersion
@@ -12,12 +40,13 @@ import os
 import tempfile
 import threading
 import time
-import setproctitle
 import signal
 import socket
 import sys
 import zmq
 import zmq.devices
+
+import setproctitle
 
 # to make freeze packages work
 try:
@@ -28,9 +57,13 @@ except:
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
+# pylint: disable=wrong-import-position
 from base_class import Base  # noqa E402
+# pylint: disable=wrong-import-position
 from signalhandler import SignalHandler  # noqa E402
+# pylint: disable=wrong-import-position
 from taskprovider import TaskProvider  # noqa E402
+# pylint: disable=wrong-import-position
 from datadispatcher import DataDispatcher  # noqa E402
 
 try:
@@ -48,6 +81,9 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 def argument_parsing():
+    """Parses and checks the command line arguments used.
+    """
+
     base_config_file = os.path.join(CONFIG_DIR, "base_sender.conf")
     default_config_file = os.path.join(CONFIG_DIR, "datamanager.conf")
 
@@ -340,8 +376,13 @@ def argument_parsing():
 
 
 class DataManager(Base):
+    """The main class.
+    """
 
     def __init__(self, log_queue=None, config=None):
+
+        super(DataManager, self).__init__()
+
         self.device = None
         self.control_pub_socket = None
         self.test_socket = None
@@ -383,6 +424,8 @@ class DataManager(Base):
         self.cleaner_pr = None
         self.datadispatcher_pr = []
 
+        self.cleaner_m = None
+
         self.zmq_again_occured = None
         self.socket_reconnected = None
 
@@ -393,6 +436,14 @@ class DataManager(Base):
 #        self.run()
 
     def setup(self, config, log_queue):
+        """Initializes parameters and creates sockets.
+
+        Args:
+            config (dict): All the configuration set either via config file or
+                           command line parameter.
+            log_queue: Logging queue used to synchronize log messages.
+        """
+
         self.localhost = "127.0.0.1"
 
         self.current_pid = os.getpid()
@@ -422,23 +473,28 @@ class DataManager(Base):
 
             # Get the log Configuration for the lisener
             if self.params["onscreen"]:
-                h1, h2 = utils.get_log_handlers(self.params["log_file"],
-                                                self.params["log_size"],
-                                                self.params["verbose"],
-                                                self.params["onscreen"])
+                handler1, handler2 = utils.get_log_handlers(
+                    self.params["log_file"],
+                    self.params["log_size"],
+                    self.params["verbose"],
+                    self.params["onscreen"]
+                )
 
                 # Start queue listener using the stream handler above.
                 self.log_queue_listener = utils.CustomQueueListener(
-                    self.log_queue, h1, h2)
+                    self.log_queue, handler1, handler2
+                )
             else:
-                h1 = utils.get_log_handlers(self.params["log_file"],
-                                            self.params["log_size"],
-                                            self.params["verbose"],
-                                            self.params["onscreen"])
+                handler1 = utils.get_log_handlers(
+                    self.params["log_file"],
+                    self.params["log_size"],
+                    self.params["verbose"],
+                    self.params["onscreen"]
+                )
 
                 # Start queue listener using the stream handler above
                 self.log_queue_listener = (
-                    utils.CustomQueueListener(self.log_queue, h1))
+                    utils.CustomQueueListener(self.log_queue, handler1))
 
             self.log_queue_listener.start()
 
@@ -454,6 +510,8 @@ class DataManager(Base):
                                              self.log)
         if not check_passed:
             raise Exception("Configuration check failed")
+
+        # pylint: disable=no-member
         setproctitle.setproctitle(self.params["procname"])
         self.log.info("Running as {}".format(self.params["procname"]))
 
@@ -596,6 +654,9 @@ class DataManager(Base):
         self.log.debug("Registering global ZMQ context")
 
     def create_sockets(self):
+        """Create ZMQ sockets.
+        """
+
         # initiate forwarder for control signals (multiple pub, multiple sub)
         try:
             self.device = zmq.devices.ThreadDevice(zmq.FORWARDER,
@@ -626,6 +687,15 @@ class DataManager(Base):
         )
 
     def check_status_receiver(self, enable_logging=False):
+        """Communicate to the receiver and checks status.
+
+        Args:
+            enable_logging (optional, bool): if log messages should be
+                                             generated.
+        Returns:
+            Boolean depending if the status was ok or not.
+        """
+
         return self.communicate_with_receiver(
             test_signal=b"STATUS_CHECK",
             socket_conf=dict(
@@ -639,6 +709,15 @@ class DataManager(Base):
         )
 
     def test_fixed_streaming_host(self, enable_logging=False):
+        """Comminicates with the receiver and checks if it is alive.
+
+        Args:
+            enable_logging (optional, bool): if log messages should be
+                                             generated.
+        Returns:
+            Boolean depending if the receiver is alive or not.
+        """
+
         return self.communicate_with_receiver(
             test_signal=b"ALIVE_TEST",
             socket_conf=dict(
@@ -656,6 +735,15 @@ class DataManager(Base):
                                   socket_conf,
                                   addr,
                                   use_log=False):
+        """Communicates to the receiver and checks response.
+
+        Args:
+            test_signal (str): The signal to send to the receiver
+            socket_conf (dict): The configuration of the socket to use for
+                                communication.
+            addr: The address of the socket.
+            use_log (optional, bool): if log messages should be generated.
+        """
 
         # no data stream used means that no receiver is used
         # -> status always is fine
@@ -673,7 +761,7 @@ class DataManager(Base):
             # socket
             try:
                 self.test_socket = self.start_socket(**socket_conf)
-            except:
+            except Exception:
                 return False
 
         if use_log:
@@ -701,7 +789,7 @@ class DataManager(Base):
             except KeyboardInterrupt:
                 # nothing to log
                 raise
-            except:
+            except Exception:
                 self.log.error("Failed to {} of fixed streaming host {}"
                                .format(action_name, addr), exc_info=True)
                 return False
@@ -725,7 +813,7 @@ class DataManager(Base):
                     try:
                         socket_conf["message"] = "Restart"
                         self.test_socket = self.start_socket(**socket_conf)
-                    except:
+                    except Exception:
                         # TODO is this right here?
                         pass
 
@@ -805,7 +893,7 @@ class DataManager(Base):
             except KeyboardInterrupt:
                 # nothing to log
                 raise
-            except:
+            except Exception:
                 self.log.error("Failed to send {} of fixed streaming host {}"
                                .format(action_name, addr), exc_info=True)
                 return False
@@ -813,6 +901,9 @@ class DataManager(Base):
         return True
 
     def run(self):
+        """Running while reacting to exceptions.
+        """
+
         try:
             if self.check_target_host(enable_logging=True):
                 self.create_sockets()
@@ -820,15 +911,18 @@ class DataManager(Base):
                 self.exec_run()
         except KeyboardInterrupt:
             pass
-        except:
+        except Exception:
             self.log.error("Stopping due to unknown error condition",
                            exc_info=True)
         finally:
             self.stop()
 
     def exec_run(self):
+        """Starting all thread and processes and checks if they are running.
+        """
 
         # SignalHandler
+        # "bug in pylint pylint: disable=bad-continuation
         self.signalhandler_thr = threading.Thread(target=SignalHandler,
                                                   args=(
                                                       self.params,
@@ -850,6 +944,7 @@ class DataManager(Base):
             return
 
         # TaskProvider
+        # "bug in pylint pylint: disable=bad-continuation
         self.taskprovider_pr = Process(target=TaskProvider,
                                        args=(
                                            self.params,
@@ -869,7 +964,8 @@ class DataManager(Base):
                 target=self.cleaner_m.Cleaner,
                 args=(self.params,
                       self.log_queue,
-                      self.endpoints))
+                      self.endpoints)
+            )
             self.cleaner_pr.start()
 
         self.log.info("Configured Type of data fetcher: {}"
@@ -878,18 +974,20 @@ class DataManager(Base):
         # DataDispatcher
         for i in range(self.number_of_streams):
             dispatcher_id = b"{}/{}".format(i, self.number_of_streams)
-            pr = Process(target=DataDispatcher,
-                         args=(
-                             dispatcher_id,
-                             self.endpoints,
-                             self.chunksize,
-                             self.fixed_stream_addr,
-                             self.params,
-                             self.log_queue,
-                             self.local_target)
-                         )
-            pr.start()
-            self.datadispatcher_pr.append(pr)
+            # "bug in pylint # pylint: disable=bad-continuation
+            proc = Process(target=DataDispatcher,
+                           args=(
+                               dispatcher_id,
+                               self.endpoints,
+                               self.chunksize,
+                               self.fixed_stream_addr,
+                               self.params,
+                               self.log_queue,
+                               self.local_target
+                               )
+                           )
+            proc.start()
+            self.datadispatcher_pr.append(proc)
 
         # indicates if the processed are sent to waiting mode
         sleep_was_sent = False
@@ -937,6 +1035,12 @@ class DataManager(Base):
                 self.log.info("One DataDispatcher terminated.")
 
     def core_parts_status_check(self):
+        """Check if the core componets still are running.
+
+        Returns:
+            A boolean if the components are running or not.
+        """
+
         if self.use_cleaner:
             status = (
                 self.signalhandler_thr.is_alive()
@@ -957,6 +1061,9 @@ class DataManager(Base):
         return status
 
     def stop(self):
+        """Close socket and clean up.
+        """
+
         self.continue_run = False
 
         if self.log is None:
@@ -1006,7 +1113,7 @@ class DataManager(Base):
                     self.log.debug("Removed ipc socket: {}".format(path))
                 except OSError:
                     pass
-                except:
+                except Exception:
                     self.log.warning("Could not remove ipc socket: {}"
                                      .format(path), exc_info=True)
 
@@ -1017,7 +1124,7 @@ class DataManager(Base):
             except OSError:
                 self.log.debug("Could not remove IPC directory: {}"
                                .format(self.ipc_dir))
-            except:
+            except Exception:
                 self.log.warning("Could not remove IPC directory: {}"
                                  .format(self.ipc_dir), exc_info=True)
 
@@ -1027,11 +1134,15 @@ class DataManager(Base):
             self.log_queue_listener.stop()
             self.log_queue_listener = None
 
-    def signal_term_handler(self, signal, frame):
+    # pylint: disable=unused-argument
+    def signal_term_handler(self, signal_to_react, frame):
+        """React on external SIGTERM signal.
+        """
+
         self.log.debug('got SIGTERM')
         self.stop()
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):
@@ -1042,9 +1153,9 @@ if __name__ == '__main__':
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     freeze_support()
 
-    sender = None
+    sender = None  # pylint: disable=invalid-name
     try:
-        sender = DataManager()
+        sender = DataManager()  # pylint: disable=invalid-name
         sender.run()
     finally:
         if sender is not None:
