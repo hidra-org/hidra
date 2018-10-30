@@ -1,15 +1,49 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the receiver.
+"""
+
+# pylint: disable=broad-except
+# pylint: disable=global-statement
+# pylint: disable=global-variable-not-assigned
+# pylint: disable=invalid-name
+
+from __future__ import absolute_import
 from __future__ import print_function
+from __future__ import unicode_literals
 
 import argparse
+import copy
 import logging
 import os
-import setproctitle
 import signal
 import threading
-import copy
 import time
+
+import setproctitle
 
 from __init__ import BASE_DIR
 
@@ -21,11 +55,14 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
-whitelist = []
-changed_netgroup = False
+_whitelist = []
+_changed_netgroup = False
 
 
 def argument_parsing():
+    """Parses and checks the command line arguments used.
+    """
+
     base_config_file = os.path.join(CONFIG_DIR, "base_receiver.conf")
     default_config_file = os.path.join(CONFIG_DIR, "datareceiver.conf")
 
@@ -111,12 +148,15 @@ def argument_parsing():
 def reset_changed_netgroup():
     """helper because global variables can only be reset in same namespace.
     """
-    global changed_netgroup
+    global _changed_netgroup
 
-    changed_netgroup = False
+    _changed_netgroup = False
 
 
-class CheckNetgroup (threading.Thread):
+class CheckNetgroup(threading.Thread):
+    """A thread checking on a regular basis if the netgroup has changed.
+    """
+
     def __init__(self, netgroup, lock, ldapuri, ldap_retry_time, check_time):
         self.log = logging.getLogger("CheckNetgroup")
 
@@ -132,8 +172,8 @@ class CheckNetgroup (threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        global whitelist
-        global changed_netgroup
+        global _whitelist
+        global _changed_netgroup
 
         # wake up evey 2 seconds to see if there is a stopping signal
         sec_to_sleep = 2
@@ -157,36 +197,42 @@ class CheckNetgroup (threading.Thread):
             # -> do nothing but wait till ldap is reachable again
             if not new_whitelist:
                 self.log.info("LDAP search returned an empty list. Ignore.")
-                for i in range(ldap_sleep_intervalls):
+                for _ in range(ldap_sleep_intervalls):
                     if self.run_loop:
                         time.sleep(sec_to_sleep)
                 continue
 
             # new elements added to whitelist
-            new_elements = [e for e in new_whitelist if e not in whitelist]
+            new_elements = [e for e in new_whitelist if e not in _whitelist]
             # elements which were removed from whitelist
-            removed_elements = [e for e in whitelist if e not in new_whitelist]
+            removed_elements = [e for e in _whitelist
+                                if e not in new_whitelist]
 
             if new_elements or removed_elements:
                 with self.lock:
                     # remember new whitelist
-                    whitelist = copy.deepcopy(new_whitelist)
+                    _whitelist = copy.deepcopy(new_whitelist)
 
                     # mark that there was a change
-                    changed_netgroup = True
+                    _changed_netgroup = True
 
                 self.log.info("Netgroup has changed. New whitelist: {}"
-                              .format(whitelist))
+                              .format(_whitelist))
 
-            for i in range(check_sleep_intervalls):
+            for _ in range(check_sleep_intervalls):
                 if self.run_loop:
                     time.sleep(sec_to_sleep)
 
     def stop(self):
+        """Stopping.
+        """
         self.run_loop = False
 
 
-class DataReceiver:
+class DataReceiver(object):
+    """Receives data and stores it to disc usign the hidra API.
+    """
+
     def __init__(self):
 
         self.transfer = None
@@ -209,7 +255,10 @@ class DataReceiver:
         self.exec_run()
 
     def setup(self):
-        global whitelist
+        """Initializes parameters, logging and transfer object.
+        """
+
+        global _whitelist
 
         try:
             params = argument_parsing()
@@ -226,9 +275,9 @@ class DataReceiver:
                                           params["verbose"],
                                           params["onscreen"])
 
-        if type(handlers) == tuple:
-            for h in handlers:
-                root.addHandler(h)
+        if isinstance(handlers, tuple):
+            for hdl in handlers:
+                root.addHandler(hdl)
         else:
             root.addHandler(handlers)
 
@@ -238,6 +287,8 @@ class DataReceiver:
         check_passed, _ = utils.check_config(["procname"], params, self.log)
         if not check_passed:
             raise Exception("Configuration check failed")
+
+        # pylint: disable=no-member
         setproctitle.setproctitle(params["procname"])
 
         self.log.info("Version: {}".format(__version__))
@@ -265,14 +316,14 @@ class DataReceiver:
                            .format(params["whitelist"]))
 
             with self.lock:
-                whitelist = utils.extend_whitelist(params["whitelist"],
-                                                   params["ldapuri"],
-                                                   self.log)
-            self.log.info("Configured whitelist: {}".format(whitelist))
+                _whitelist = utils.extend_whitelist(params["whitelist"],
+                                                    params["ldapuri"],
+                                                    self.log)
+            self.log.info("Configured whitelist: {}".format(_whitelist))
 
         # only start the thread if a netgroup was configured
         if (params["whitelist"] is not None
-                and type(params["whitelist"]) == str):
+                and isinstance(params["whitelist"], str)):
             self.log.debug("Starting checking thread")
             self.checking_thread = CheckNetgroup(params["whitelist"],
                                                  self.lock,
@@ -295,12 +346,14 @@ class DataReceiver:
                                  dirs_not_to_create=self.dirs_not_to_create)
 
     def exec_run(self):
+        """Wrapper around run to react to exceptions.
+        """
 
         try:
             self.run()
         except KeyboardInterrupt:
             pass
-        except:
+        except Exception:
             self.log.error("Stopping due to unknown error condition",
                            exc_info=True)
             raise
@@ -308,13 +361,16 @@ class DataReceiver:
             self.stop()
 
     def run(self):
-        global whitelist
-        global changed_netgroup
+        """Start the transfer and stores the data.
+        """
+
+        global _whitelist
+        global _changed_netgroup
 
         try:
-            self.transfer.start([self.data_ip, self.data_port], whitelist)
+            self.transfer.start([self.data_ip, self.data_port], _whitelist)
 #            self.transfer.start(self.data_port)
-        except:
+        except Exception:
             self.log.error("Could not initiate stream", exc_info=True)
             self.stop(store=False)
             raise
@@ -329,23 +385,30 @@ class DataReceiver:
         self.run_loop = True
         # run loop, and wait for incoming messages
         while self.run_loop:
-            if changed_netgroup:
+            if _changed_netgroup:
                 self.log.debug("Reregistering whitelist")
-                self.transfer.register(whitelist)
+                self.transfer.register(_whitelist)
 
                 # reset flag
                 with self.lock:
-                    changed_netgroup = False
+                    _changed_netgroup = False
 
             try:
                 self.transfer.store(self.target_dir, self.timeout)
             except KeyboardInterrupt:
                 break
-            except:
+            except Exception:
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise
 
     def stop(self, store=True):
+        """Stop threads, close sockets and cleanes up.
+
+        Args:
+            store (optional, bool): Run a little longer to store remaining
+                                    data.
+        """
+
         self.run_loop = False
 
         if self.transfer is not None:
@@ -360,7 +423,7 @@ class DataReceiver:
                     try:
                         self.log.debug("Storing remaining data...")
                         self.transfer.store(self.target_dir, self.timeout)
-                    except:
+                    except Exception:
                         self.log.error("Storing data...failed.", exc_info=True)
                     diff_time = (time.time() - start_time) * 1000
 
@@ -374,11 +437,15 @@ class DataReceiver:
             self.log.debug("checking_thread stopped")
             self.checking_thread = None
 
-    def signal_term_handler(self, signal, frame):
+    # pylint: disable=unused-argument
+    def signal_term_handler(self, signal_to_react, frame):
+        """React on external SIGTERM signal.
+        """
+
         self.log.debug('got SIGTERM')
         self.stop()
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):
@@ -387,4 +454,4 @@ class DataReceiver:
 
 if __name__ == "__main__":
     # start file receiver
-    receiver = DataReceiver()
+    DataReceiver()

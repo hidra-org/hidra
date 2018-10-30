@@ -20,7 +20,7 @@ if SHARED_DIR not in sys.path:
 try:
     # search in global python modules first
     from hidra import Transfer  # noqa F401
-except:
+except ImportError:
     # then search in local modules
     if API_DIR not in sys.path:
         sys.path.insert(0, API_DIR)
