@@ -17,7 +17,7 @@ import utils
 from .__init__ import BASE_DIR
 from test_base import TestBase
 import datareceiver
-from datareceiver import CheckNetgroup, whitelist, changed_netgroup, reset_changed_netgroup
+from datareceiver import CheckNetgroup, _whitelist, _changed_netgroup, reset_changed_netgroup
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -64,12 +64,12 @@ class TestCheckNetgroup(TestBase):
         checknetgroup = CheckNetgroup(**kwargs)
         reset_changed_netgroup()
 
-        with mock.patch.object(datareceiver, "whitelist", whitelist):
+        with mock.patch.object(datareceiver, "_whitelist", whitelist):
             with self.assertRaises(MyException):
                 checknetgroup.run()
-            self.assertEqual(datareceiver.whitelist, whitelist)
+            self.assertEqual(datareceiver._whitelist, whitelist)
 
-        self.assertFalse(datareceiver.changed_netgroup)
+        self.assertFalse(datareceiver._changed_netgroup)
 
         # --------------------------------------------------------------------
         # netgroup changed
@@ -83,12 +83,12 @@ class TestCheckNetgroup(TestBase):
         checknetgroup = CheckNetgroup(**kwargs)
         reset_changed_netgroup()
 
-        with mock.patch.object(datareceiver, "whitelist", whitelist):
+        with mock.patch.object(datareceiver, "_whitelist", whitelist):
             with self.assertRaises(MyException):
                 checknetgroup.run()
-            self.assertEqual(datareceiver.whitelist, new_whitelist)
+            self.assertEqual(datareceiver._whitelist, new_whitelist)
 
-        self.assertTrue(datareceiver.changed_netgroup)
+        self.assertTrue(datareceiver._changed_netgroup)
 
         # --------------------------------------------------------------------
         # empty ldap search
@@ -101,12 +101,12 @@ class TestCheckNetgroup(TestBase):
         checknetgroup = CheckNetgroup(**kwargs)
         reset_changed_netgroup()
 
-        with mock.patch.object(datareceiver, "whitelist", whitelist):
+        with mock.patch.object(datareceiver, "_whitelist", whitelist):
             with self.assertRaises(MyException):
                 checknetgroup.run()
-            self.assertEqual(datareceiver.whitelist, whitelist)
+            self.assertEqual(datareceiver._whitelist, whitelist)
 
-        self.assertFalse(datareceiver.changed_netgroup)
+        self.assertFalse(datareceiver._changed_netgroup)
 
     def tearDown(self):
         super(TestCheckNetgroup, self).tearDown()
