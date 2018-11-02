@@ -12,13 +12,9 @@ from multiprocessing import Queue
 import json
 import copy
 import zmq
-import glob
 
-try:
-    from logutils.queue import QueueHandler
-    logutils_imported = True
-except:
-    logutils_imported = False
+import glob
+from logutils.queue import QueueHandler
 
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -45,9 +41,6 @@ except:
     del API_DIR
 
     import hidra
-
-if not logutils_imported:
-    from logutils.queue import QueueHandler  # noqa F811
 
 import utils  # noqa E402
 from parameter_utils import parse_parameters  # noqa E402

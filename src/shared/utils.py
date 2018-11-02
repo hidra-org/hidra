@@ -38,7 +38,9 @@ import os
 import platform
 import socket as socket_m
 import sys
+
 from collections import namedtuple
+from logutils.queue import QueueListener, QueueHandler
 
 from parameter_utils import parse_parameters
 
@@ -51,19 +53,6 @@ try:
 except ImportError:
     # The ConfigParser module has been renamed to configparser in Python 3
     import configparser as ConfigParser
-
-try:
-    # try to use the system module
-    from logutils.queue import QueueListener, QueueHandler
-except ImportError:
-    # there is no module logutils installed, fallback on the one in shared
-    from shared import SHARED_DIR
-    if SHARED_DIR not in sys.path:
-        sys.path.insert(0, SHARED_DIR)
-
-    # pylint: disable=ungrouped-imports
-    from logutils.queue import QueueListener, QueueHandler
-
 
 def is_windows():
     """Determines if code is run on a windows system.
