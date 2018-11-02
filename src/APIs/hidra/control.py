@@ -1,52 +1,65 @@
-# API to communicate with a data transfer unit
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
 
-from __future__ import print_function
-# from __future__ import unicode_literals
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+API to communicate with a hidra control server or with a hidra receiver.
+"""
+
+# pylint: disable=broad-except
+
 from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
 
 import json
 import logging
 import os
-import re
 import socket
-import subprocess
 import sys
 import zmq
 
 # from ._version import __version__
 from ._constants import connection_list
-from ._shared_utils import LoggingFunction, Base, execute_ldapsearch
-
-
-class NotSupported(Exception):
-    pass
-
-
-class UsageError(Exception):
-    pass
-
-
-class FormatError(Exception):
-    pass
-
-
-class ConnectionFailed(Exception):
-    pass
-
-
-class VersionError(Exception):
-    pass
-
-
-class AuthenticationFailed(Exception):
-    pass
-
-
-class CommunicationFailed(Exception):
-    pass
+from ._shared_utils import (
+    CommunicationFailed,
+    LoggingFunction,
+    Base,
+    execute_ldapsearch
+)
 
 
 def check_netgroup(hostname, beamline, ldapuri, netgroup_template, log=None):
+    """Check if a host is in a netgroup belonging to a certain beamline.
+
+    Args:
+        hostname: The host to check.
+        beamline: The beamline to which the host should belong to.
+        ldapuri: Ldap node and port needed to check whitelist.
+        netgroup_template: A template of the netgroup.
+        log (optional): if the result should be logged.
+                        None: no logging
+                        False: use print
+                        anything else: use the standard logging module
+    """
 
     if log is None:
         log = LoggingFunction(None)
@@ -68,6 +81,9 @@ def check_netgroup(hostname, beamline, ldapuri, netgroup_template, log=None):
 
 
 class Control(Base):
+    """Communicate with a hidra control server.
+    """
+
     def __init__(self,
                  beamline,
                  detector,
@@ -91,6 +107,8 @@ class Control(Base):
             use_log (optional): Specified the logging type.
         """
 
+        super(Control, self).__init__()
+
         self.beamline = beamline
         self.detector = detector
         self.ldapuri = ldapuri
@@ -106,15 +124,21 @@ class Control(Base):
         self._setup()
 
     def _setup(self):
+
+        # pylint: disable=redefined-variable-type
+
         # print messages of certain level to screen
         if self.use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(self.use_log)
+
         # use logging
         elif self.use_log:
             self.log = logging.getLogger("Control")
+
         # use no logging at all
         elif self.use_log is None:
             self.log = LoggingFunction(None)
+
         # print everything to screen
         else:
             self.log = LoggingFunction("debug")
@@ -202,11 +226,14 @@ class Control(Base):
             Value of the attribute.
         """
 
+        # pylint: disable=unused-argument
+
         msg = [b"get", self.host, self.detector, attribute]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: {}".format(msg))
 
+        # TODO implement timeout
         reply = self.socket.recv()
         self.log.debug("recv: {}".format(reply))
 
@@ -224,7 +251,7 @@ class Control(Base):
         """
 
         # flatten list if entry was a list (result: list of lists)
-        if type(value[0]) == list:
+        if isinstance(value[0], list):
             value = [item for sublist in value for item in sublist]
         else:
             value = value[0]
@@ -247,7 +274,7 @@ class Control(Base):
 
         return reply
 
-    def do(self, command, timeout=None):
+    def do(self, command, timeout=None):  # pylint: disable=invalid-name
         """Request the server to execute a command.
 
         Args:
@@ -262,11 +289,14 @@ class Control(Base):
             - status: "RUNNING", "NOT RUNNING"
         """
 
+        # pylint: disable=unused-argument
+
         msg = [b"do", self.host, self.detector, command]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: {}".format(msg))
 
+        # TODO implement timeout
         reply = self.socket.recv()
         self.log.debug("recv: {}".format(reply))
 
@@ -293,10 +323,10 @@ class Control(Base):
 
             try:
                 self._stop_socket(name="socket")
-            except:
+            except Exception:
                 self.log.error("closing sockets...failed.", exc_info=True)
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):
@@ -304,6 +334,8 @@ class Control(Base):
 
 
 class ReceiverControl(Base):
+    """Communicate with a hidra receiver.
+    """
 
     def __init__(self, host, port=None):
         """
@@ -311,6 +343,8 @@ class ReceiverControl(Base):
             host: Host the receiver is running on.
             port (optional): Port the receiver is listening to.
         """
+
+        super(ReceiverControl, self).__init__()
 
         if port is None:
             port = 50050
@@ -387,13 +421,16 @@ class ReceiverControl(Base):
         self._get_response()
 
     def stop(self):
+        """Clean up zmq part.
+        """
+
         if self.context is not None:
             self.context.destroy(0)
 
         self._stop_socket(name="status_socket")
 
-    def __del__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
-    def __exit__(self):
+    def __del__(self):
         self.stop()

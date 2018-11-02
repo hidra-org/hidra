@@ -1,15 +1,89 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
 
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module proovides utilities used in the hidra APIs.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
 import re
-import traceback
-import socket
+import socket as socket_m
 import subprocess
+import traceback
+
+
+class NotSupported(Exception):
+    """Raised when a parameter is not supported."""
+    pass
+
+
+class UsageError(Exception):
+    """Raised when API was used in a wrong way."""
+    pass
+
+
+class FormatError(Exception):
+    """Raised when a parameter is of the wrong format."""
+    pass
+
+
+class ConnectionFailed(Exception):
+    """Raised when the connection to hidra could not be established."""
+    pass
+
+
+class VersionError(Exception):
+    """Raised when the api and the hidra version do not match."""
+    pass
+
+
+class AuthenticationFailed(Exception):
+    """Raised when the connection to hidra is not allowed."""
+    pass
+
+
+class CommunicationFailed(Exception):
+    """
+    Raised when a the connection to hidra is established but something was
+    wrong with the communication.
+    """
+    pass
+
+
+class DataSavingError(Exception):
+    """Raised when an error occured while the data was saved."""
+    pass
 
 
 class Base(object):
+    """The base class from which all API classes should inherit from.
+    """
+    # pylint: disable=too-few-public-methods
+
     def __init__(self):
         self.log = None
         self.context = None
@@ -24,6 +98,7 @@ class Base(object):
                       message=None):
         """Wrapper of start_socket.
         """
+
         return start_socket(
             name=name,
             sock_type=sock_type,
@@ -62,23 +137,32 @@ class Base(object):
 
 
 def execute_ldapsearch(log, ldap_cn, ldapuri):
+    """Searches ldap for a netgroup and parses the output.
+
+    Args:
+        ldap_cn: The ldap common name to search.
+        ldapuri: Ldap node and port needed to check whitelist.
+
+    Return:
+        A list of hosts contained in the netgroup.
+    """
 
     # if there were problems with ldapsearch these information are needed
     try:
         ldap_host = ldapuri.split(":")[0]
-        ldap_server_ip = socket.gethostbyname(ldap_host)
-    except:
+        ldap_server_ip = socket_m.gethostbyname(ldap_host)
+    except Exception:
         log.error("Failed to look up ldap ip", exc_info=True)
 
-    p = subprocess.Popen(
+    proc = subprocess.Popen(
         ["ldapsearch",
          "-x",
          "-H ldap://" + ldapuri,
          "cn=" + ldap_cn, "-LLL"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    lines = p.stdout.readlines()
-    error = p.stderr.read()
+    lines = proc.stdout.readlines()
+    error = proc.stderr.read()
 
     match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
                             re.M | re.I)
@@ -95,10 +179,11 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
             log.debug("stderr={}".format(error))
             log.debug("stdout={}".format("".join(lines)))
             log.debug("{} has the IP {}".format(ldap_host, ldap_server_ip))
-    except:
+    except Exception:
         # the code inside the try statement could not be tested properly so do
         # not stop if something was wrong.
-        log.error("Not able to retrieve ldap error information.", exc_info=True)
+        log.error("Not able to retrieve ldap error information.",
+                  exc_info=True)
 
     return netgroup
 
@@ -210,7 +295,9 @@ def stop_socket(name, socket, log):
 #            Logging             #
 # ------------------------------ #
 
-class LoggingFunction:
+class LoggingFunction(object):
+    """Overwrites logging with print or suppresses it.
+    """
 
     def __init__(self, level="debug"):
         if level == "debug":
@@ -260,70 +347,21 @@ class LoggingFunction:
             self.error = self.no_out
             self.critical = self.no_out
 
-    def out(self, x, exc_info=None):
+    def out(self, msg, exc_info=None):
+        """Prints to screen.
+
+        Args:
+            msg: The message to print.
+            exc_info: If a traceback should be printed in addition.
+        """
+        # pylint: disable=no-self-use
+
         if exc_info:
-            print(x, traceback.format_exc())
+            print(msg, traceback.format_exc())
         else:
-            print(x)
+            print(msg)
 
-    def no_out(self, x, exc_info=None):
+    def no_out(self, msg, exc_info=None):
+        """Print nothing.
+        """
         pass
-
-
-class LoggingFunctionOld:
-    def out(self, x, exc_info=None):
-        if exc_info:
-            print(x, traceback.format_exc())
-        else:
-            print(x)
-
-    def no_out(self, x, exc_info=None):
-        pass
-
-    def __init__(self, level="debug"):
-        if level == "debug":
-            # using output
-            self.debug = lambda x, exc_info=None: self.out(x, exc_info)
-            self.info = lambda x, exc_info=None: self.out(x, exc_info)
-            self.warning = lambda x, exc_info=None: self.out(x, exc_info)
-            self.error = lambda x, exc_info=None: self.out(x, exc_info)
-            self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-        elif level == "info":
-            # using no output
-            self.debug = lambda x, exc_info=None: self.no_out(x, exc_info)
-            # using output
-            self.info = lambda x, exc_info=None: self.out(x, exc_info)
-            self.warning = lambda x, exc_info=None: self.out(x, exc_info)
-            self.error = lambda x, exc_info=None: self.out(x, exc_info)
-            self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-        elif level == "warning":
-            # using no output
-            self.debug = lambda x, exc_info=None: self.no_out(x, exc_info)
-            self.info = lambda x, exc_info=None: self.no_out(x, exc_info)
-            # using output
-            self.warning = lambda x, exc_info=None: self.out(x, exc_info)
-            self.error = lambda x, exc_info=None: self.out(x, exc_info)
-            self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-        elif level == "error":
-            # using no output
-            self.debug = lambda x, exc_info=None: self.no_out(x, exc_info)
-            self.info = lambda x, exc_info=None: self.no_out(x, exc_info)
-            self.warning = lambda x, exc_info=None: self.no_out(x, exc_info)
-            # using output
-            self.error = lambda x, exc_info=None: self.out(x, exc_info)
-            self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-        elif level == "critical":
-            # using no output
-            self.debug = lambda x, exc_info=None: self.no_out(x, exc_info)
-            self.info = lambda x, exc_info=None: self.no_out(x, exc_info)
-            self.warning = lambda x, exc_info=None: self.no_out(x, exc_info)
-            self.error = lambda x, exc_info=None: self.no_out(x, exc_info)
-            # using output
-            self.critical = lambda x, exc_info=None: self.out(x, exc_info)
-        elif level is None:
-            # using no output
-            self.debug = lambda x, exc_info=None: self.no_out(x, exc_info)
-            self.info = lambda x, exc_info=None: self.no_out(x, exc_info)
-            self.warning = lambda x, exc_info=None: self.no_out(x, exc_info)
-            self.error = lambda x, exc_info=None: self.no_out(x, exc_info)
-            self.critical = lambda x, exc_info=None: self.no_out(x, exc_info)

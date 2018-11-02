@@ -1,31 +1,64 @@
-# API to ingest data into a data transfer unit
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
 
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+API to ingest data into a data transfer unit
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
+import json
+import logging
 import os
 import platform
-import zmq
-import logging
-import json
-import tempfile
 import socket
+import tempfile
+import zmq
 
 # from ._version import __version__
 from ._shared_utils import LoggingFunction, Base
 
 
 def is_windows():
-    if platform.system() == "Windows":
-        return True
-    else:
-        return False
+    """Determines if code is run on a windows system.
+
+    Returns:
+        True if on windows, False otherwise.
+    """
+
+    return platform.system() == "Windows"
 
 
 class Ingest(Base):
-    # return error code
+    """Ingest data into a hidra instance.
+    """
+
     def __init__(self, use_log=False, context=None):
+
+        super(Ingest, self).__init__()
 
         self.log = None
         self.context = None
@@ -63,15 +96,20 @@ class Ingest(Base):
 
     def _setup(self, use_log, context):
 
+        # pylint: disable=redefined-variable-type
+
         # print messages of certain level to screen
         if use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(use_log)
+
         # use logging
         elif use_log:
             self.log = logging.getLogger("Ingest")
+
         # use no logging at all
         elif use_log is None:
             self.log = LoggingFunction(None)
+
         # print everything to screen
         else:
             self.log = LoggingFunction("debug")
@@ -180,8 +218,13 @@ class Ingest(Base):
             is_ipv6=is_ipv6
         )
 
-    # return error code
     def create_file(self, filename):
+        """Notify hidra to open a file.
+
+        Args:
+            filename: The name of the file to create.
+        """
+
         signal = b"OPEN_FILE"
 
         if self.filename and self.filename != filename:
@@ -203,6 +246,13 @@ class Ingest(Base):
             raise Exception("Wrong responce received: {}".format(message))
 
     def write(self, data):
+        """Write data into the file.
+
+        Args:
+            data: The data to be written (as binary block).
+        """
+        # pylint: disable=redefined-variable-type
+
         # send event to eventdet
         message = {
             "filename": self.filename,
@@ -219,8 +269,10 @@ class Ingest(Base):
         self.filepart += 1
 #        self.log.debug("write action sent: {0}".format(message))
 
-    # return error code
     def close_file(self):
+        """Close the file.
+        """
+
         # send close-signal to signal socket
         send_message = [b"CLOSE_FILE", self.filename]
         try:
@@ -242,7 +294,7 @@ class Ingest(Base):
 
         try:
             socks = dict(self.poller.poll(10000))  # in ms
-        except:
+        except Exception:
             socks = None
             self.log.error("Could not poll for signal", exc_info=True)
 
@@ -271,13 +323,13 @@ class Ingest(Base):
         """
         Send signal that the displayer is quitting, close ZMQ connections,
         destoying context
-
         """
+
         try:
             self._stop_socket(name="file_op_socket")
             self._stop_socket(name="eventdet_socket")
             self._stop_socket(name="datafetch_socket")
-        except:
+        except Exception:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
         # if the context was created inside this class,
@@ -288,10 +340,10 @@ class Ingest(Base):
                 self.context.destroy(0)
                 self.context = None
                 self.log.info("Closing ZMQ context...done.")
-            except:
+            except Exception:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):
