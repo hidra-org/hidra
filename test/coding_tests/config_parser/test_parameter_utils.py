@@ -14,9 +14,9 @@ if SHARED_DIR not in sys.path:
     sys.path.insert(0, SHARED_DIR)
 del SHARED_DIR
 
-from cfel_optarg import parse_parameters
+from parameter_utils import parse_parameters
 
-config_file = "/opt/hidra/conf/test.conf"
+config_file = os.path.join(CURRENT_DIR, "test.conf")
 
 config = ConfigParser.RawConfigParser()
 config.read(config_file)

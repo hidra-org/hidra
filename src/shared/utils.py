@@ -40,7 +40,7 @@ import socket as socket_m
 import sys
 from collections import namedtuple
 
-from cfel_optarg import parse_parameters
+from parameter_utils import parse_parameters
 
 from _version import __version__
 # do not reimplement the functions already available in the APIs

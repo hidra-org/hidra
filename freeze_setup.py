@@ -121,7 +121,7 @@ build_exe_options = {
         (os.path.join(senderpath, "datadispatcher.py"), "datadispatcher.py"),
         (os.path.join(sharedpath, "logutils"), "logutils"),
         (os.path.join(sharedpath, "utils.py"), "utils.py"),
-        (os.path.join(sharedpath, "cfel_optarg.py"), "cfel_optarg.py"),
+        (os.path.join(sharedpath, "parameter_utils.py"), "parameter_utils.py"),
         (os.path.join(sharedpath, "_version.py"), "_version.py"),
         # event detectors
         (os.path.join(senderpath, "eventdetectors", "eventdetectorbase.py"),

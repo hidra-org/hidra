@@ -50,7 +50,7 @@ if not logutils_imported:
     from logutils.queue import QueueHandler  # noqa F811
 
 import utils  # noqa E402
-from cfel_optarg import parse_parameters  # noqa E402
+from parameter_utils import parse_parameters  # noqa E402
 
 
 BASEDIR = "/opt/hidra"
