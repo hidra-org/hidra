@@ -1,26 +1,53 @@
 #!/usr/bin/env python
+
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
 #
-import time
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This server configures and starts up hidra.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import argparse
+import copy
+import glob
+import json
 import os
 import sys
 import socket
 import subprocess
-import argparse
-import setproctitle
+import time
 from multiprocessing import Queue
 # import tempfile
-import json
-import copy
 import zmq
 
-import glob
-from logutils.queue import QueueHandler
+import setproctitle
 
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except:
-    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
-
+CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
 SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
 CONFIG_DIR = os.path.join(BASE_DIR, "conf")
@@ -31,20 +58,21 @@ if SHARED_DIR not in sys.path:
 del SHARED_DIR
 del CONFIG_DIR
 
+# pylint: disable=wrong-import-position
+
+import utils  # noqa E402
+from parameter_utils import parse_parameters  # noqa E402
+
 try:
-    # search in global python modules first
+    # search in global python modules
     import hidra
-except:
-    # then search in local modules
+except ImportError:
+    # search in local modules
     if API_DIR not in sys.path:
         sys.path.insert(0, API_DIR)
     del API_DIR
 
     import hidra
-
-import utils  # noqa E402
-from parameter_utils import parse_parameters  # noqa E402
-
 
 BASEDIR = "/opt/hidra"
 
@@ -54,14 +82,13 @@ CONFIG_PREFIX = "datamanager_"
 LOGDIR = os.path.join("/var", "log", "hidra")
 # LOGDIR = os.path.join(tempfile.gettempdir(), "hidra", "logs")
 
-beamline_config = dict()
 
-
-class HidraController():
-    '''
-    this class holds getter/setter for all parameters
+class HidraController(object):
+    """
+    This class holds getter/setter for all parameters
     and function members that control the operation.
-    '''
+    """
+
     def __init__(self, beamline, log):
 
         # Beamline is read-only, determined by portNo
@@ -101,6 +128,7 @@ class HidraController():
         }
 
     def __read_config(self):
+        # pylint: disable=global-variable-not-assigned
         global CONFIG_PREFIX
         global CONFIG_DIR
 
@@ -263,7 +291,7 @@ class HidraController():
         else:
             return "ERROR"
 
-    def do(self, host_id, det_id, cmd):
+    def do(self, host_id, det_id, cmd):  # pylint: disable=invalid-name
         """
         executes commands
         """
@@ -276,7 +304,7 @@ class HidraController():
             return self.stop(det_id)
 
         elif key == "restart":
-            return self.restart(det_id)
+            return self.restart(host_id, det_id)
 
         elif key == "status":
             return hidra_status(self.beamline, det_id, self.log)
@@ -285,6 +313,7 @@ class HidraController():
             return "ERROR"
 
     def __write_config(self, host_id, det_id):
+        # pylint: disable=global-variable-not-assigned
         global CONFIG_DIR
         global CONFIG_PREFIX
 
@@ -332,7 +361,7 @@ class HidraController():
                                        .format(self.beamline, det_id))
             self.log.info("Writing config file: {}".format(config_file))
 
-            with open(config_file, 'w') as f:
+            with open(config_file, 'w') as f:  # pylint: disable=invalid-name
                 f.write("log_path = {}\n".format(LOGDIR))
                 f.write("log_name = datamanager_{}.log\n"
                         .format(self.beamline))
@@ -397,7 +426,7 @@ class HidraController():
 
         try:
             self.__write_config(host_id, det_id)
-        except:
+        except Exception:
             self.log.error("Config file not written", exc_info=True)
             return "ERROR"
 
@@ -431,23 +460,34 @@ class HidraController():
             self.log.error("Could not stop the service.")
             return "ERROR"
 
-    def restart(self, det_id):
+    def restart(self, host_id, det_id):
         """
         restart ...
         """
         # stop service
-        reval = self.stop()
+        reval = self.stop(det_id)
 
         if reval == "DONE":
             # start service
-            return self.start()
+            return self.start(host_id, det_id)
         else:
             return "ERROR"
 
 
 def call_hidra_service(cmd, beamline, det_id, log):
-    SYSTEMD_PREFIX = "hidra@"
-    SERVICE_NAME = "hidra"
+    """Command hidra (e.g. start, stop, statu,...).
+
+    Args:
+        beamline: For which beamline to command hidra.
+        det_id: Which detector to command hidra for.
+        log: log handler.
+
+    Returns:
+        Return value of the systemd or service call.
+    """
+
+    systemd_prefix = "hidra@"
+    service_name = "hidra"
 
 #    sys_cmd = ["/home/kuhnm/Arbeit/projects/hidra/initscripts/hidra.sh",
 #               "--beamline", "p00",
@@ -458,13 +498,13 @@ def call_hidra_service(cmd, beamline, det_id, log):
     # systems using systemd
     if (os.path.exists("/usr/lib/systemd")
             and (os.path.exists("/usr/lib/systemd/{}.service"
-                                .format(SYSTEMD_PREFIX))
+                                .format(systemd_prefix))
                  or os.path.exists("/usr/lib/systemd/system/{}.service"
-                                   .format(SYSTEMD_PREFIX))
+                                   .format(systemd_prefix))
                  or os.path.exists("/etc/systemd/system/{}.service"
-                                   .format(SYSTEMD_PREFIX)))):
+                                   .format(systemd_prefix)))):
 
-        svc = "{}{}_{}.service".format(SYSTEMD_PREFIX, beamline, det_id)
+        svc = "{}{}_{}.service".format(systemd_prefix, beamline, det_id)
         log.debug("Call: systemctl {} {}".format(cmd, svc))
         if cmd == "status":
             return subprocess.call(["systemctl", "is-active", svc])
@@ -473,40 +513,100 @@ def call_hidra_service(cmd, beamline, det_id, log):
 
     # systems using init scripts
     elif os.path.exists("/etc/init.d") \
-            and os.path.exists("/etc/init.d/" + SERVICE_NAME):
+            and os.path.exists("/etc/init.d/" + service_name):
         log.debug("Call: service {} {}".format(cmd, svc))
-        return subprocess.call(["service", SERVICE_NAME, cmd])
+        return subprocess.call(["service", service_name, cmd])
         # TODO implement beamline and det_id in hisdra.sh
-        # return subprocess.call(["service", SERVICE_NAME, "status",
+        # return subprocess.call(["service", service_name, "status",
         #                         beamline, det_id])
     else:
         log.debug("Call: no service to call found")
 
 
 def hidra_status(beamline, det_id, log):
+    """Request hidra status.
+
+    Args:
+        beamline: For which beamline to command hidra.
+        det_id: Which detector to command hidra for.
+        log: log handler.
+
+    Returns:
+        A string describing the status:
+            'RUNNING'
+            'NOT RUNNING'
+            'ERROR'
+
+    """
+
     try:
-        p = call_hidra_service("status", beamline, det_id, log)
-    except:
+        proc = call_hidra_service("status", beamline, det_id, log)
+    except Exception:
         return "ERROR"
 
-    if p == 0:
+    if proc == 0:
         return "RUNNING"
     else:
         return "NOT RUNNING"
 
 
-class ControlServer():
+def argument_parsing():
+    """Parsing of command line arguments.
+    """
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--beamline",
+                        type=str,
+                        help="Beamline for which the HiDRA Server "
+                             "(detector mode) should be started",
+                        default="p00")
+    parser.add_argument("--verbose",
+                        help="More verbose output",
+                        action="store_true")
+    parser.add_argument("--onscreen",
+                        type=str,
+                        help="Display logging on screen "
+                             "(options are CRITICAL, ERROR, WARNING, "
+                             "INFO, DEBUG)",
+                        default=False)
+
+    return parser.parse_args()
+
+
+class ControlServer(object):
+    """The main server class.
+    """
+
     def __init__(self):
 
-        arguments = self.argument_parsing()
+        self.beamline = None
+        self.context = None
+        self.socket = None
+
+        self.master_config = None
+        self.controller = None
+        self.endpoint = None
+
+        self.log_queue = None
+        self.log_queue_listener = None
+
+        self._setup()
+
+    def _setup(self):
+
+        arguments = argument_parsing()
 
         self.beamline = arguments.beamline
 
+        # pylint: disable=no-member
         setproctitle.setproctitle("hidra-control-server_{}"
                                   .format(self.beamline))
 
-        logfile = os.path.join(LOGDIR, "hidra-control-server_{}.log"
-                                       .format(self.beamline))
+        logfile = os.path.join(
+            LOGDIR,
+            "hidra-control-server_{}.log".format(self.beamline)
+        )
         logsize = 10485760
 
         # Get queue
@@ -514,21 +614,29 @@ class ControlServer():
 
         # Get the log Configuration for the lisener
         if arguments.onscreen:
-            h1, h2 = utils.get_log_handlers(logfile, logsize,
-                                            arguments.verbose,
-                                            arguments.onscreen)
+            handler1, handler2 = utils.get_log_handlers(
+                logfile,
+                logsize,
+                arguments.verbose,
+                arguments.onscreen
+            )
 
             # Start queue listener using the stream handler above.
-            self.log_queue_listener = (
-                utils.CustomQueueListener(self.log_queue, h1, h2))
+            self.log_queue_listener = utils.CustomQueueListener(
+                self.log_queue, handler1, handler2
+            )
         else:
-            h1 = utils.get_log_handlers(logfile, logsize,
-                                        arguments.verbose,
-                                        arguments.onscreen)
+            handler1 = utils.get_log_handlers(
+                logfile,
+                logsize,
+                arguments.verbose,
+                arguments.onscreen
+            )
 
             # Start queue listener using the stream handler above
-            self.log_queue_listener = (
-                utils.CustomQueueListener(self.log_queue, h1))
+            self.log_queue_listener = utils.CustomQueueListener(
+                self.log_queue, handler1
+            )
 
         self.log_queue_listener.start()
 
@@ -537,8 +645,6 @@ class ControlServer():
 
         self.log.info("Init")
 
-        self.master_config = None
-
         self.controller = HidraController(self.beamline, self.log)
 
         host = hidra.connection_list[self.beamline]["host"]
@@ -546,33 +652,12 @@ class ControlServer():
         port = hidra.connection_list[self.beamline]["port"]
         self.endpoint = "tcp://{}:{}".format(host, port)
 
-        self.socket = None
-
-        self.create_sockets()
+        self._create_sockets()
 
         self.run()
 
-    def argument_parsing(self):
-        parser = argparse.ArgumentParser()
+    def _create_sockets(self):
 
-        parser.add_argument("--beamline",
-                            type=str,
-                            help="Beamline for which the HiDRA Server "
-                                 "(detector mode) should be started",
-                            default="p00")
-        parser.add_argument("--verbose",
-                            help="More verbose output",
-                            action="store_true")
-        parser.add_argument("--onscreen",
-                            type=str,
-                            help="Display logging on screen "
-                                 "(options are CRITICAL, ERROR, WARNING, "
-                                 "INFO, DEBUG)",
-                            default=False)
-
-        return parser.parse_args()
-
-    def create_sockets(self):
         # Create ZeroMQ context
         self.log.info("Registering ZMQ context")
         self.context = zmq.Context()
@@ -587,12 +672,15 @@ class ControlServer():
             self.log.error("Failed to start socket (bind) zmqerror: '{}'"
                            .format(self.endpoint), exc_info=True)
             raise
-        except:
+        except Exception:
             self.log.error("Failed to start socket (bind): '{}'"
                            .format(self.endpoint), exc_info=True)
             raise
 
     def run(self):
+        """Waiting for new control commands and execute them.
+        """
+
         while True:
             try:
                 msg = self.socket.recv_multipart()
@@ -606,7 +694,7 @@ class ControlServer():
 
             elif msg[0] == b"exit":
                 self.log.debug("Received 'exit'")
-                self.close()
+                self.stop()
                 sys.exit(1)
 
             reply = self.controller.exec_msg(msg)
@@ -614,16 +702,19 @@ class ControlServer():
             self.socket.send(reply)
 
     def stop(self):
+        """Clean up zmq sockets.
+        """
+
         if self.socket:
             self.log.info("Closing Socket")
             self.socket.close()
-            self.spcket = None
+            self.socket = None
         if self.context:
             self.log.info("Destroying Context")
             self.context.destroy()
             self.context = None
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):
