@@ -52,7 +52,7 @@ except:
     import hidra
 
 # the list transformation is needed for Python 3 compliance
-ALLOWED_BEAMLINES = list(hidra.connection_list.keys())
+ALLOWED_BEAMLINES = list(hidra.CONNECTION_LIST.keys())
 # ALLOWED_BEAMLINES = ["p00", "p01", "p02.1", "p02.2", "p03", "p04", "p05",
 #                      "p06", "p07", "p08", "p09", "p10", "p11"]
 

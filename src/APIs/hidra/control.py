@@ -38,7 +38,7 @@ import sys
 import zmq
 
 # from ._version import __version__
-from ._constants import connection_list
+from ._constants import CONNECTION_LIST
 from ._shared_utils import (
     CommunicationFailed,
     LoggingFunction,
@@ -161,8 +161,8 @@ class Control(Base):
 
         try:
             endpoint = "tcp://{}:{}".format(
-                connection_list[self.beamline]["host"],
-                connection_list[self.beamline]["port"]
+                CONNECTION_LIST[self.beamline]["host"],
+                CONNECTION_LIST[self.beamline]["port"]
             )
             self.log.info("Starting connection to {}".format(endpoint))
         except KeyError:

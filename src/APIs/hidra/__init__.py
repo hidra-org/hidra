@@ -8,7 +8,8 @@ from .control import Control  # noqa F401
 from .control import check_netgroup
 from ._shared_utils import LoggingFunction, execute_ldapsearch
 from ._version import __version__
-from ._constants import connection_list
+from ._constants import CONNECTION_LIST
+
 
 __all__ = [
     "Transfer",
@@ -17,7 +18,7 @@ __all__ = [
     "Ingest",
     "check_netgroup",
     "__version__",
-    "connection_list",
+    "CONNECTION_LIST",
     "LoggingFunction",
     "execute_ldapsearch",
     "generate_filepath",

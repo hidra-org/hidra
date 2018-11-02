@@ -1,4 +1,4 @@
-connection_list = {
+CONNECTION_LIST = {
     "p00": {
         "host": "asap3-p00",
         "port": 51000

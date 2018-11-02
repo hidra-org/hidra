@@ -344,7 +344,7 @@ class HidraController(object):
                 and current_config["whitelist"]
                 and current_config["ldapuri"]):
 
-            external_ip = hidra.connection_list[self.beamline]["host"]
+            external_ip = hidra.CONNECTION_LIST[self.beamline]["host"]
 
             # TODO set p00 to http
             if self.beamline == "p00":
@@ -647,9 +647,9 @@ class ControlServer(object):
 
         self.controller = HidraController(self.beamline, self.log)
 
-        host = hidra.connection_list[self.beamline]["host"]
+        host = hidra.CONNECTION_LIST[self.beamline]["host"]
         host = socket.gethostbyaddr(host)[2][0]
-        port = hidra.connection_list[self.beamline]["port"]
+        port = hidra.CONNECTION_LIST[self.beamline]["port"]
         self.endpoint = "tcp://{}:{}".format(host, port)
 
         self._create_sockets()
