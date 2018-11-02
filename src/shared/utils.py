@@ -1,5 +1,34 @@
-from __future__ import unicode_literals
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module provides utilities use thoughout different parts of hidra.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
+from __future__ import unicode_literals
 
 import errno
 import json
@@ -7,8 +36,7 @@ import logging
 import logging.handlers
 import os
 import platform
-import shutil
-import socket
+import socket as socket_m
 import sys
 from collections import namedtuple
 
@@ -26,45 +54,55 @@ except ImportError:
 
 try:
     # try to use the system module
-    from logutils.queue import QueueListener
-    from logutils.queue import QueueHandler
-except:
+    from logutils.queue import QueueListener, QueueHandler
+except ImportError:
     # there is no module logutils installed, fallback on the one in shared
     from shared import SHARED_DIR
     if SHARED_DIR not in sys.path:
         sys.path.insert(0, SHARED_DIR)
 
-    from logutils.queue import QueueListener
-    from logutils.queue import QueueHandler
+    # pylint: disable=ungrouped-imports
+    from logutils.queue import QueueListener, QueueHandler
 
 
 def is_windows():
-    if platform.system() == "Windows":
-        return True
-    # osRelease = platform.release()
-    # supportedWindowsReleases = ["7"]
-    # if osRelease in supportedWindowsReleases:
-    #     return True
-    else:
-        return False
+    """Determines if code is run on a windows system.
+
+    Returns:
+        True if on windows, False otherwise.
+    """
+
+    return platform.system() == "Windows"
 
 
 def is_linux():
-    if platform.system() == "Linux":
-        return True
-    else:
-        return False
+    """Determines if code is run on a Linux system.
+
+    Returns:
+        True if on linux, False otherwise.
+    """
+
+    return platform.system() == "Linux"
 
 
 class WrongConfiguration(Exception):
+    """Raised when something is wrong with the configuration.
+    """
     pass
 
 
-# This function is needed because configParser always needs a section name
-# the used config file consists of key-value pairs only
-# source: http://stackoverflow.com/questions/2819696/
-#                parsing-properties-file-in-python/2819788#2819788
-class FakeSecHead (object):
+# source: http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788  # noqa E501
+class FakeSecHead(object):
+    """Adds a fake section had to the configuration.
+
+    This function is needed because configParser always needs a section name
+    but the used config file consists of key-value pairs only
+    """
+
+    # pylint: disable=missing-docstring
+    # pylint: disable=too-few-public-methods
+    # pylint: disable=invalid-name
+
     def __init__(self, fp):
         self.fp = fp
         self.sechead = '[asection]\n'
@@ -79,24 +117,39 @@ class FakeSecHead (object):
             return self.fp.readline()
 
 
-def str2bool(v):
-    return v.lower() == "true"
-
-
 def read_config(config_file):
+    """Read and parse configuration data from the file.
+
+    Args:
+        config_file (str): Absolute path to the configuration file.
+
+    Returns:
+
+    """
 
     config = ConfigParser.RawConfigParser()
     try:
         config.readfp(FakeSecHead(open(config_file)))
-    except:
-        with open(config_file, 'r') as f:
-            config_string = '[asection]\n' + f.read()
+    except:  # TODO why was this necessary? # pylint: disable=bare-except
+        with open(config_file, 'r') as open_file:
+            config_string = '[asection]\n' + open_file.read()
         config.read_string(config_string)
 
     return config
 
 
 def set_parameters(base_config_file, config_file, arguments):
+    """
+    Merges configration parameters from different sources.
+    Hierarchy: base config overwritten by config overwritten by arguments.
+
+    Args:
+        base_config_file (str): Absolute path to the base configuration file.
+        config_file (str): Absolute path to the configuration file to
+                           overwrite the base configuration.
+        arguments (dict): Arguments with highest priority.
+    """
+
     base_config = parse_parameters(read_config(base_config_file))["asection"]
 
     if config_file is not None:
@@ -111,7 +164,7 @@ def set_parameters(base_config_file, config_file, arguments):
     for arg in vars(arguments):
         arg_value = getattr(arguments, arg)
         if arg_value is not None:
-            if type(arg_value) is str:
+            if isinstance(arg_value, str):
                 if arg_value.lower() == "none":
                     base_config[arg] = None
                 elif arg_value.lower() == "false":
@@ -126,56 +179,14 @@ def set_parameters(base_config_file, config_file, arguments):
     return base_config
 
 
-# http://code.activestate.com/recipes/541096-prompt-the-user-for-confirmation/
-def confirm(prompt=None, resp=False):
-    """prompts for yes or no response from the user. Returns True for yes and
-    False for no.
-
-    'resp' should be set to the default value assumed by the caller when
-    user simply types ENTER.
-
-    >>> confirm(prompt='Create Directory?', resp=True)
-    Create Directory? [y]|n:
-    True
-    >>> confirm(prompt='Create Directory?', resp=False)
-    Create Directory? [n]|y:
-    False
-    >>> confirm(prompt='Create Directory?', resp=False)
-    Create Directory? [n]|y: y
-    True
-
-    """
-
-    if prompt is None:
-        prompt = 'Confirm'
-
-    if resp:
-        prompt = '%s [%s]|%s: ' % (prompt, 'y', 'n')
-    else:
-        prompt = '%s [%s]|%s: ' % (prompt, 'n', 'y')
-
-    while True:
-        try:
-            ans = raw_input(prompt)  # noqa F821
-        except KeyboardInterrupt:
-            logging.error("Keyboard Interruption detected.")
-        except Exception as e:
-            logging.error("Something went wrong with the confirmation.")
-            logging.debug("Error was: {}".format(e))
-            break
-
-        if not ans:
-            return resp
-        if ans not in ['y', 'Y', 'n', 'N']:
-            logging.error("please enter y or n.")
-            continue
-        if ans == 'y' or ans == 'Y':
-            return True
-        if ans == 'n' or ans == 'N':
-            return False
-
-
 def check_type(specified_type, supported_types, log_string):
+    """Checks if type is of the correct form. Exits program if not.
+
+    Args:
+        specified_type: The type to check.
+        supported_types: The supported types to check against.
+        log_string (str): String to start the log message with.
+    """
 
     specified_type = specified_type.lower()
 
@@ -187,37 +198,23 @@ def check_type(specified_type, supported_types, log_string):
         sys.exit(1)
 
 
-def check_dir_empty(dir_path):
-
-    # check if directory is empty
-    if os.listdir(dir_path):
-        msg = "Directory '{}' is not empty.".format(dir_path)
-        logging.debug(msg)
-        prompt = msg + "\nShould its content be removed?"
-        if confirm(prompt=prompt, resp=True):
-            for element in os.listdir(dir_path):
-                path = os.path.join(dir_path, element)
-                if os.path.isdir(path):
-                    try:
-                        os.rmdir(path)
-                    except OSError:
-                        shutil.rmtree(path)
-                else:
-                    os.remove(path)
-            logging.info("All elements of directory {} were removed."
-                         .format(dir_path))
-
-
 def check_any_sub_dir_exists(dir_path, subdirs):
+    """
+    Checks if directory contains any the subdirs. Exits program if none exists.
+
+    Args:
+        dir_path (str): Absolute path of the directory to check.
+        subdirs (list): List of subdirectories to check.
+    """
 
     dir_path = os.path.normpath(dir_path)
     dirs_to_check = [os.path.join(dir_path, directory)
                      for directory in subdirs]
     no_subdir = True
 
-    for d in dirs_to_check:
+    for i in dirs_to_check:
         # check directory path for existance. exits if it does not exist
-        if os.path.exists(d):
+        if os.path.exists(i):
             no_subdir = False
 
     if no_subdir:
@@ -228,10 +225,19 @@ def check_any_sub_dir_exists(dir_path, subdirs):
 
 
 def check_sub_dir_contained(dir_path, subdirs):
-    """ Checks for dir_path contains one of the subdirs
-        e.g. dir_path=/gpfs, subdirs=[current/raw] -> False
-             dir_path=/beamline/p01/current/raw, subdirs=[current/raw] -> True
     """
+    Checks if dir contains one of the subdirs.
+    e.g. dir_path=/gpfs, subdirs=[current/raw] -> False
+         dir_path=/beamline/p01/current/raw, subdirs=[current/raw] -> True
+
+    Args:
+        dir_path (str): Absolute path of the directory to check.
+        subdirs (list): List of subdirectories to check.
+
+    Returns:
+        True if the subdirs are contained, False otherwise.
+    """
+
     subdir_contained = False
     for subdir in subdirs:
         if dir_path[-len(subdir):] == subdir:
@@ -241,18 +247,30 @@ def check_sub_dir_contained(dir_path, subdirs):
 
 
 def check_all_sub_dir_exist(dir_path, subdirs):
+    """Checks that all subdirecories exist. Exits otherwise.
+
+    Args:
+        dir_path (str): Absolute path of the directory to check.
+        subdirs (list): List of subdirectories to check.
+    """
 
     dir_path = os.path.normpath(dir_path)
     dirs_to_check = [os.path.join(dir_path, directory)
                      for directory in subdirs]
 
-    for d in dirs_to_check:
-        if not os.path.exists(d):
-            logging.error("Dir '{}' does not exist. Abort.".format(d))
+    for i in dirs_to_check:
+        if not os.path.exists(i):
+            logging.error("Dir '{}' does not exist. Abort.".format(i))
             sys.exit(1)
 
 
 def check_existance(path):
+    """Checks if a file or directory exists. Exists otherwise.
+
+    Args:
+        path (str): Absolute path of the directory or file.
+    """
+
     if path is None:
         logging.error("No path to check found (path={}). Abort.".format(path))
         sys.exit(1)
@@ -271,17 +289,21 @@ def check_existance(path):
 
 
 def check_writable(file_to_check):
-    # Exits if file can be written
+    """ Check if hte file can be written. Exists otherwise.
+
+    Args:
+        file_to_check (str): Absolute path of the file to check.
+    """
     try:
         file_descriptor = open(file_to_check, "a")
         file_descriptor.close()
-    except:
+    except Exception:
         logging.error("Unable to create the file {}".format(file_to_check))
         sys.exit(1)
 
 
 def check_version(version, log):
-    """ Compares version depending on the minor releases
+    """ Compares version depending on the minor releases.
 
     Args:
         version (str): version string of the form
@@ -302,17 +324,27 @@ def check_version(version, log):
 
 
 def check_host(host, whitelist, log):
+    """Checks if a host is allowed to connect.
+
+    Args:
+        host: The host to check.
+        whitelist: The whitelist to check against.
+        log: log handler.
+
+    Returns:
+        A boolean of the result.
+    """
 
     if whitelist is None:
         return True
 
     if host and whitelist:
-        if type(host) == list:
+        if isinstance(host, list):
             return_val = True
             for hostname in host:
-                host_modified = socket.getfqdn(hostname)
+                host_modified = socket_m.getfqdn(hostname)
 
-                if (host_modified not in whitelist):
+                if host_modified not in whitelist:
                     log.info("Host {} is not allowed to connect"
                              .format(hostname))
                     return_val = False
@@ -320,7 +352,7 @@ def check_host(host, whitelist, log):
             return return_val
 
         else:
-            host_modified = socket.getfqdn(host)
+            host_modified = socket_m.getfqdn(host)
 
             if host_modified in whitelist:
                 return True
@@ -331,6 +363,13 @@ def check_host(host, whitelist, log):
 
 
 def check_ping(host, log=logging):
+    """Check if a host is pingable. Exists if not.
+
+    Args:
+        host: The host to check.
+        log (optional): log handler.
+    """
+
     if is_windows():
         response = os.system("ping -n 1 -w 2 {}".format(host))
     else:
@@ -349,6 +388,7 @@ def create_dir(directory, chmod=None, log=logging):
         directory: The absolute path of the directory to be created.
         chmod (optional): Mode bits to change the permissions of the directory
                           to.
+        log (optional): log hanlder.
     """
 
     if not os.path.isdir(directory):
@@ -362,6 +402,20 @@ def create_dir(directory, chmod=None, log=logging):
 
 
 def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
+    """
+    Create subdirectories while making sure that certain dirs are not created.
+    e.g. current/raw/my_dir should be created but without creating current/raw
+
+    Args:
+        dir_path (str): Absolute path of the base where for all
+                        subdirectories.
+        subdirs (list): The subdirectories to create.
+        dirs_not_to_create: The directories to make sure not to create by
+                            accident.
+
+    Raises:
+        OSError: If directory create failed.
+    """
 
     dir_path = os.path.normpath(dir_path)
     # existance of mount point/monitored dir is essential to start at all
@@ -373,16 +427,16 @@ def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
                      if not directory.startswith(dirs_not_to_create)]
 
     throw_exception = False
-    for d in dirs_to_check:
+    for i in dirs_to_check:
         try:
-            os.makedirs(d)
-            logging.debug("Dir '{}' does not exist. Create it.".format(d))
-        except OSError as e:
-            if e.errno == errno.EEXIST:
-                # file exists already
+            os.makedirs(i)
+            logging.debug("Dir '{}' does not exist. Create it.".format(i))
+        except OSError as excp:
+            if excp.errno == errno.EEXIST:
+                # dir exists already
                 pass
             else:
-                logging.error("Dir '{}' could not be created.".format(d))
+                logging.error("Dir '{}' could not be created.".format(i))
                 throw_exception = True
                 raise
 
@@ -391,8 +445,7 @@ def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
 
 
 def check_config(required_params, config, log):
-    """
-    Check the configuration
+    """Check the configuration.
 
     Args:
 
@@ -417,14 +470,14 @@ def check_config(required_params, config, log):
 
     for param in required_params:
         # multiple checks have to be done
-        if type(param) == list:
+        if isinstance(param, list):
             # checks if the parameter is contained in the config dict
             if param[0] not in config:
                 log.error("Configuration of wrong format. "
                           "Missing parameter '{}'".format(param[0]))
                 check_passed = False
             # check if the parameter is one of the supported values
-            elif type(param[1]) == list:
+            elif isinstance(param[1], list):
                 if config[param[0]] not in param[1]:
                     log.error("Configuration of wrong format. Options for "
                               "parameter '{}' are {}"
@@ -433,7 +486,7 @@ def check_config(required_params, config, log):
                               .format(param[0], config[param[0]]))
                     check_passed = False
             # check if the parameter has the supported type
-            elif type(config[param[0]]) != param[1]:
+            elif not isinstance(config[param[0]], param[1]):
                 log.error("Configuration of wrong format. Parameter '{}' is "
                           "of format '{}' but should be of format '{}'"
                           .format(param[0], type(config[param[0]]), param[1]))
@@ -461,7 +514,7 @@ def check_config(required_params, config, log):
         dict_to_list = []
         for key in sorted_keys:
             value = config_reduced[key]
-            if type(value) == Endpoints:
+            if isinstance(value, Endpoints):
                 new_value = json.dumps(value._asdict(),
                                        sort_keys=True,
                                        indent=2 * 4)
@@ -473,6 +526,7 @@ def check_config(required_params, config, log):
 
             dict_to_list.append(as_str)
 
+        # pylint: disable=redefined-variable-type
         dict_to_str = "{\n"
         dict_to_str += ",\n".join(dict_to_list)
         dict_to_str += "\n}"
@@ -481,18 +535,26 @@ def check_config(required_params, config, log):
 
 
 def extend_whitelist(whitelist, ldapuri, log):
-    """
-    Only fully qualified domain named should be in the whitlist
+    """Only fully qualified domain named should be in the whitlist.
+
+    Args:
+        whitelist (list): List with host names
+        ldapuri (str): Ldap node and port needed to check whitelist.
+        log: log handler
+
+    Returns:
+        The whitelist where the fully qualified domain name for all hosts
+        contained is added.
     """
 
     log.info("Configured whitelist: {}".format(whitelist))
 
     if whitelist is not None:
-        if type(whitelist) == str:
+        if isinstance(whitelist, str):
             whitelist = execute_ldapsearch(log, whitelist, ldapuri)
             log.info("Whitelist after ldapsearch: {}".format(whitelist))
         else:
-            whitelist = [socket.getfqdn(host) for host in whitelist]
+            whitelist = [socket_m.getfqdn(host) for host in whitelist]
             log.debug("Converted whitelist: {}".format(whitelist))
 
     return whitelist
@@ -501,27 +563,39 @@ def extend_whitelist(whitelist, ldapuri, log):
 def convert_socket_to_fqdn(socketids, log):
     """
     Converts hosts to fully qualified domain name
-    e.g. [["my_host:50101", ...], ...] -> [["my_host.desy.de:50101", ...], ...]
-    or "my_host:50101" -> "my_host.desy.de:50101"
+
+    Args:
+        socketids (str): The socket ids to convert which where send by the
+                         hidra API, e.g.
+                         [["cfeld-pcx27533:50101", 1, ".*(tif|cbf)$"], ...]
+                         or "my_host:50101"
+
+        log: log handler
+
+    Returns:
+        socketids where the hostname was converted. E.g.
+        [["my_host:50101", ...], ...] -> [["my_host.desy.de:50101", ...], ...]
+        or "my_host:50101" -> "my_host.desy.de:50101"
     """
-    if type(socketids) == list:
+
+    if isinstance(socketids, list):
         for target in socketids:
             # socketids had the format
             # [["cfeld-pcx27533:50101", 1, ".*(tif|cbf)$"], ...]
-            if type(target) == list:
+            if isinstance(target, list):
                 host, port = target[0].split(":")
-                new_target = "{}:{}".format(socket.getfqdn(host), port)
+                new_target = "{}:{}".format(socket_m.getfqdn(host), port)
                 target[0] = new_target
     else:
         host, port = socketids.split(":")
-        socketids = "{}:{}".format(socket.getfqdn(host), port)
+        socketids = "{}:{}".format(socket_m.getfqdn(host), port)
 
     log.debug("converted socketids={}".format(socketids))
 
     return socketids
 
 
-def is_ipv6_address(log, ip):
+def is_ipv6_address(log, ip):  # pylint: disable=invalid-name
     """" Determines if given IP is an IPv4 or an IPv6 addresses
 
     Args:
@@ -531,37 +605,42 @@ def is_ipv6_address(log, ip):
     Returns:
         boolean notifying if the IP was IPv4 or IPv6
     """
+    # pylint: disable=invalid-name
+
     try:
-        socket.inet_aton(ip)
+        socket_m.inet_aton(ip)
         log.info("IPv4 address detected: {}.".format(ip))
         return False
-    except socket.error:
+    except socket_m.error:
         log.info("Address '{}' is not an IPv4 address, asume it is an IPv6 "
                  "address.".format(ip))
         return True
 
 
-def get_socket_id(log, ip, is_ipv6=None):
-    """ Determines socket ID for the given port
+def get_socket_id(log, ip, port, is_ipv6=None):  # pylint: disable=invalid-name
+    """ Determines socket ID for the given host and port
 
     If the IP is an IPV6 address the appropriate zeromq syntax is used.
 
     Args:
         log: logger for the log messages
-        ip: socket ip
+        ip: The ip to use.
+        port: The port to use.
         is_ipv6 (bool or None, optional): using the IPv6 syntax. If not set,
                                           the type of the IP is determined
                                           first.
 
+    Returns:
+        The socket id with the correct syntax.
     """
 
     if is_ipv6 is None:
         is_ipv6 = is_ipv6_address(log, ip)
 
     if is_ipv6:
-        return "[{}]:{}".format(ip)
+        return "[{}]:{}".format(ip, port)
     else:
-        return "{}:{}".format(ip)
+        return "{}:{}".format(ip, port)
 
 
 def generate_sender_id(main_pid):
@@ -569,11 +648,12 @@ def generate_sender_id(main_pid):
 
     Args:
         main_pid: The PID of the datamanager
-    Return:
+
+    Returns:
         A byte string containing the identifier
     """
 
-    return b"{}_{}".format(socket.getfqdn(), main_pid)
+    return b"{}_{}".format(socket_m.getfqdn(), main_pid)
 
 
 # ------------------------------ #
@@ -836,6 +916,9 @@ def start_socket(name,
         log: Logger used for log messages.
         message (optional): wording to be used in the message
                             (default: Start).
+
+    Returns:
+        The ZMQ socket with the specified properties.
     """
 
     if message is None:
@@ -874,6 +957,8 @@ def stop_socket(name, socket, log):
         socket: The ZMQ socket to be closed.
         log: Logger used for log messages.
 
+    Returns:
+        None if the socket was closed.
     """
 
     if socket is not None:
@@ -888,26 +973,32 @@ def stop_socket(name, socket, log):
 #            Logging             #
 # ------------------------------ #
 
-# http://stackoverflow.com/questions/25585518/
-#        python-logging-logutils-with-queuehandler-and-queuelistener#25594270
-class CustomQueueListener (QueueListener):
+# http://stackoverflow.com/questions/25585518/python-logging-logutils-with-queuehandler-and-queuelistener#25594270
+class CustomQueueListener(QueueListener):
+    """
+    Overcome the limitation in the QueueListener implementation
+    concerning independent setting of log levels for two handler.
+    """
+
+    # pylint: disable=invalid-name
+
     def __init__(self, queue, *handlers):
+        """Initialize an instance with the specified queue and handlers.
+        """
+
         super(CustomQueueListener, self).__init__(queue, *handlers)
-        """
-        Initialise an instance with the specified queue and
-        handlers.
-        """
+
         # Changing this to a list from tuple in the parent class
         self.handlers = list(handlers)
 
     def handle(self, record):
-        """
-        Override handle a record.
+        """Override handle a record.
 
         This just loops through the handlers offering them the record
         to handle.
 
-        :param record: The record to handle.
+        Args:
+            record: The record to handle.
         """
         record = self.prepare(record)
         for handler in self.handlers:
@@ -916,15 +1007,13 @@ class CustomQueueListener (QueueListener):
                 handler.handle(record)
 
     def addHandler(self, hdlr):  # noqa: N802
+        """Add the specified handler to this logger.
         """
-        Add the specified handler to this logger.
-        """
-        if not (hdlr in self.handlers):
+        if hdlr not in self.handlers:
             self.handlers.append(hdlr)
 
     def removeHandler(self, hdlr):  # noqa: N802
-        """
-        Remove the specified handler from this logger.
+        """Remove the specified handler from this logger.
         """
         if hdlr in self.handlers:
             hdlr.close()
@@ -965,20 +1054,20 @@ def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
 
     # convert log level corresponding logging equivalent
     if loglevel == "critical":
-        loglevel = logging.CRITICAL
+        loglvl = logging.CRITICAL
     elif loglevel == "error":
-        loglevel = logging.ERROR
+        loglvl = logging.ERROR
     elif loglevel == "warning":
-        loglevel = logging.WARNING
+        loglvl = logging.WARNING
     elif loglevel == "info":
-        loglevel = logging.INFO
+        loglvl = logging.INFO
     else:
-        loglevel = logging.DEBUG
+        loglvl = logging.DEBUG
 
     formatter = logging.Formatter(datefmt=datefmt, fmt=fmt)
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
-    handler.setLevel(loglevel)
+    handler.setLevel(loglvl)
 
     return handler
 
@@ -1004,6 +1093,7 @@ def get_file_log_handler(logfile,
         Linux: The file is rotated once it exceeds the 'logsize' defined.
                (total number of backup count is 5).
     """
+    # pylint: disable=redefined-variable-type
 
     # set format
     if datafmt is None:
@@ -1073,7 +1163,7 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_loglevel=False):
 
     # Setup stream handler to output to console
     if onscreen_loglevel:
-        screen_loglevel = onscreen_loglevel.lower()
+        screen_loglevel = onscreen_loglevel.lower()  # pylint:disable=no-member
 
         if screen_loglevel == "debug":
             if not verbose:
@@ -1094,14 +1184,16 @@ def get_logger(logger_name, queue=False, log_level="debug"):
     Note that on Windows you can't rely on fork semantics, so each process
     will run the logging configuration code when it starts.
     """
+    # pylint: disable=redefined-variable-type
+
     loglevel = log_level.lower()
 
     if queue:
         # Create log and set handler to queue handle
-        h = QueueHandler(queue)  # Just the one handler needed
+        handler = QueueHandler(queue)  # Just the one handler needed
         logger = logging.getLogger(logger_name)
         logger.propagate = False
-        logger.addHandler(h)
+        logger.addHandler(handler)
 
         if loglevel == "debug":
             logger.setLevel(logging.DEBUG)
@@ -1119,7 +1211,16 @@ def get_logger(logger_name, queue=False, log_level="debug"):
     return logger
 
 
-def init_logging(filename_full_path, verbose, onscreen_loglevel=False):
+def init_logging(filename, verbose, onscreen_loglevel=False):
+    """
+
+    Args:
+        filename (str): The absolute file path of the log file.
+        verbose (bool):  If verbose mode should be used.
+        oncreen_loglevel (bool, optional): If the log messages should be
+                                           printed to screen.
+    """
+
     # see https://docs.python.org/2/howto/logging-cookbook.html
 
     # more detailed logging if verbose-option has been set
@@ -1144,10 +1245,10 @@ def init_logging(filename_full_path, verbose, onscreen_loglevel=False):
     logging.basicConfig(level=file_loglevel,
                         format=filefmt,
                         datefmt=datefmt,
-                        filename=filename_full_path,
+                        filename=filename,
                         filemode="a")
 
-#        file_handler = logging.FileHandler(filename=filename_full_path,
+#        file_handler = logging.FileHandler(filename=filename,
 #                                           mode="a")
 #        file_handler_format = logging.Formatter(datefmt=datefmt,
 #                                                fmt=filefmt)
@@ -1158,7 +1259,7 @@ def init_logging(filename_full_path, verbose, onscreen_loglevel=False):
     # log info to stdout, display messages with different format than the
     # file output
     if onscreen_loglevel:
-        screen_loglevel = onscreen_loglevel.lower()
+        screen_loglevel = onscreen_loglevel.lower()  # pylint:disable=no-member
 
         if screen_loglevel == "debug" and not verbose:
             logging.error("Logging on Screen: Option DEBUG in only "
