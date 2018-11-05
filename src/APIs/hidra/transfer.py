@@ -802,7 +802,7 @@ class Transfer(Base):
 
             self.started_connections["QUERY_NEXT"] = {
                 "id": socket_id,
-                "endpoint": endpoint
+                "endpoint": socket_endpoint
             }
 
         elif self.connection_type in ["NEXUS"]:
@@ -830,12 +830,12 @@ class Transfer(Base):
 
             self.started_connections["NEXUS"] = {
                 "id": socket_id,
-                "endpoint": endpoint
+                "endpoint": socket_endpoint
             }
         else:
             self.started_connections["STREAM"] = {
                 "id": socket_id,
-                "endpoint": endpoint
+                "endpoint": socket_endpoint
             }
 
     def setopt(self, option, value=None):
