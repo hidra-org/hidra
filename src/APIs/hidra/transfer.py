@@ -21,8 +21,7 @@
 #
 
 """
-API to communicate with a hidra sender unit
-
+API to communicate with a hidra sender unit.
 """
 
 # pylint: disable=broad-except

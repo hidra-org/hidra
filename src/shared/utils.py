@@ -54,6 +54,7 @@ except ImportError:
     # The ConfigParser module has been renamed to configparser in Python 3
     import configparser as ConfigParser
 
+
 def is_windows():
     """Determines if code is run on a windows system.
 

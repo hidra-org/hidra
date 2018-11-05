@@ -493,8 +493,9 @@ class DataManager(Base):
                 )
 
                 # Start queue listener using the stream handler above
-                self.log_queue_listener = (
-                    utils.CustomQueueListener(self.log_queue, handler1))
+                self.log_queue_listener = utils.CustomQueueListener(
+                    self.log_queue, handler1
+                )
 
             self.log_queue_listener.start()
 
