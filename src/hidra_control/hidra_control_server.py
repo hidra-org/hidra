@@ -64,14 +64,14 @@ import utils  # noqa E402
 from parameter_utils import parse_parameters  # noqa E402
 
 try:
-    # search in global python modules
-    import hidra
-except ImportError:
     # search in local modules
     if API_DIR not in sys.path:
         sys.path.insert(0, API_DIR)
     del API_DIR
 
+    import hidra
+except ImportError:
+    # search in global python modules
     import hidra
 
 BASEDIR = "/opt/hidra"
