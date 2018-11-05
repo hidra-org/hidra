@@ -1,3 +1,25 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Testing the zmq_events event detector.
 """
 
@@ -5,52 +27,32 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import inspect
 import mock
 import zmq
 
-from .__init__ import BASE_DIR
 from test_base import TestBase, MockZmqSocket, MockZmqPoller
-import hidra
 import hidra.control as m_control
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 class TestException(Exception):
+    """A custom exception to throw and catch.
+    """
     pass
 
-class TestControl(TestBase):
-    """
+
+class TestReceiverControl(TestBase):
+    """Specification of tests to be performed for the control API.
     """
 
     def setUp(self):
-        super(TestControl, self).setUp()
+        super(TestReceiverControl, self).setUp()
 
         # attributes inherited from parent class:
         # self.config
         # self.con_ip
         # self.ext_ip
 
-    def old_test_receiver(self):
-        with mock.patch("zmq.Context") as mock_context:
-            mock_context.return_value = mock.MagicMock(socket=mock.MagicMock())
-            mock_socket = mock.MagicMock()
-
-            m_control.reset_receiver_status("test_host", 50050)
-
-            print(mock_context.called)
-            print(mock_context.mock_calls)
-            print(mock_context.socket.send_multipart.called)
-
-    def tearDown(self):
-        super(TestControl, self).tearDown()
-
-
-class TestReceiverControl(TestBase):
-    """
-    """
-    def setUp(self):
-        super(TestReceiverControl, self).setUp()
 
         self.host = self.con_ip
         self.port = 1234
@@ -61,9 +63,13 @@ class TestReceiverControl(TestBase):
                     self.control = m_control.ReceiverControl(self.host, self.port)
 
     def test__setup(self):
+        """Test the setup method.
+        """
+
         with mock.patch("hidra.control.ReceiverControl._setup"):
             self.control = m_control.ReceiverControl(self.host, self.port)
 
+        # pylint: disable=protected-access
         self.control._setup(self.host, self.port)
 
         self.assertIsInstance(self.control.context, zmq.Context)
@@ -71,6 +77,10 @@ class TestReceiverControl(TestBase):
         self.assertIsInstance(self.control.poller, zmq.Poller)
 
     def test_get_response(self):
+        """Test the get_response method.
+        """
+
+        # pylint: disable=protected-access
 
         self.control.status_socket = MockZmqSocket()
         self.control.status_socket.recv_multipart.return_value = ["test_response"]
@@ -109,6 +119,11 @@ class TestReceiverControl(TestBase):
         self.control.status_socket = None
 
     def test_get_status(self):
+        """Test the get_status method.
+        """
+
+        # pylint: disable=protected-access
+
         self.control._get_response = MockZmqSocket()
         self.control._get_response.return_value = ["test_response"]
 
@@ -126,6 +141,11 @@ class TestReceiverControl(TestBase):
         self.control.status_socket = None
 
     def test_reset_status(self):
+        """Test the reset_status method.
+        """
+
+        # pylint: disable=protected-access
+
         self.control._get_response = MockZmqSocket()
         self.control._get_response.return_value = ["test_response"]
 

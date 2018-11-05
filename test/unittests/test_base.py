@@ -1,21 +1,46 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Providing a base for all test classes.
 """
 
+# pylint: disable=global-variable-not-assigned
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
 import inspect
 import logging
-import mock
+from multiprocessing import Queue
 import os
 import socket as m_socket
 import tempfile
 import traceback
 import unittest
 import zmq
-from multiprocessing import Queue
+
 from logutils.queue import QueueHandler
+import mock
 
 import utils
 
@@ -72,10 +97,14 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
 def mock_get_logger(logger_name, queue=False, log_level="debug"):
     """Wrapper for the get_logger function
     """
+    # pylint: disable=unused-argument
+
     return MockLogging()
 
 
 class MockZmqSocket(mock.MagicMock):
+    """Mock a zmq socket.
+    """
 
     def __init__(self, **kwargs):
         super(MockZmqSocket, self).__init__(**kwargs)
@@ -85,29 +114,43 @@ class MockZmqSocket(mock.MagicMock):
         self.recv_multipart = mock.MagicMock()
 
     def bind(self, endpoint):
+        """Mock the socket bind method.
+        """
         assert not self._connected
         assert endpoint != ""
         self._connected = True
 
     def connect(self, endpoint):
+        """Mock the socket connect method.
+        """
         assert not self._connected
         assert endpoint != ""
         self._connected = True
 
     def close(self, linger):
+        """Mock the socket close method.
+        """
+        # pylint: disable=unused-argument
+
         assert self._connected
         self._connected = False
 
 
 class MockZmqContext(mock.MagicMock):
+    """Mock a zmq context.
+    """
 
     def __init__(self, **kwargs):
         super(MockZmqContext, self).__init__(**kwargs)
         self._destroyed = False
-        self.IPV6 = None
-        self.RCVTIMEO = None
+        self.IPV6 = None  # pylint: disable=invalid-name
+        self.RCVTIMEO = None  # pylint: disable=invalid-name
 
     def socket(self, sock_type):
+        """Mock a zmq socket call.
+        """
+        # pylint: disable=unused-argument
+
         assert not self._destroyed
 #        assert self.IPV6 == 1
 #        assert self.RCVTIMEO is not None
@@ -115,11 +158,17 @@ class MockZmqContext(mock.MagicMock):
         return MockZmqSocket()
 
     def destroy(self, linger=None):
+        """Mock the context destroy method.
+        """
+        # pylint: disable=unused-argument
+
         assert not self._destroyed
         self._destroyed = True
 
 
 class MockZmqPoller(mock.MagicMock):
+    """Mock the zmq poller.
+    """
 
     def __init__(self, **kwargs):
         super(MockZmqPoller, self).__init__(**kwargs)
@@ -128,12 +177,16 @@ class MockZmqPoller(mock.MagicMock):
         self.poll = mock.MagicMock()
 
     def register(self, socket, event):
+        """Mock the poller register method.
+        """
         assert isinstance(socket, zmq.sugar.socket.Socket)
         assert event in [zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]
         self.registered_sockets.append([socket, event])
 
 
 class MockZmqPollerAllFake(mock.MagicMock):
+    """Mock the zmq poller. All methods come from mock.
+    """
 
     def __init__(self, **kwargs):
         super(MockZmqPollerAllFake, self).__init__(**kwargs)
@@ -142,6 +195,8 @@ class MockZmqPollerAllFake(mock.MagicMock):
 
 
 class MockZmqAuthenticator(mock.MagicMock):
+    """Mock the zmq authenticator.
+    """
 
     def __init__(self, **kwargs):
         super(MockZmqAuthenticator, self).__init__(**kwargs)
@@ -160,6 +215,7 @@ class TestBase(unittest.TestCase):
         self.log_queue = False
         self.listener = None
         self.log = None
+        self.context = None
 
         main_pid = os.getpid()
         self.con_ip = m_socket.getfqdn()
@@ -280,7 +336,7 @@ class TestBase(unittest.TestCase):
             return return_socket
 
     def tearDown(self):
-        for key, endpoint in vars(self.ipc_addresses).iteritems():
+        for _, endpoint in vars(self.ipc_addresses).iteritems():
             try:
                 os.remove(endpoint)
                 self.log.debug("Removed ipc socket: {}".format(endpoint))
@@ -288,7 +344,7 @@ class TestBase(unittest.TestCase):
                 pass
 #                selfi.log.debug("Could not remove ipc socket: {}"
 #                               .format(endpoint))
-            except:
+            except Exception:
                 self.log.warning("Could not remove ipc socket: {}"
                                  .format(endpoint), exc_info=True)
 

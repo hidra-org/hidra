@@ -1,21 +1,45 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Testing the task provider.
 """
 
+# pylint: disable=missing-docstring
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
 import json
+from multiprocessing import Process, freeze_support
 import os
 import time
-import zmq
-from multiprocessing import Process, freeze_support
 from shutil import copyfile
+import zmq
 
-from .__init__ import BASE_DIR
 from test_base import TestBase, create_dir
 from datamanager import DataManager
 from _version import __version__
+from .__init__ import BASE_DIR
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -40,6 +64,9 @@ class TestDataManager(TestBase):
 
         # Register context
         self.context = zmq.Context()
+        self.com_socket = None
+        self.fixed_recv_socket = None
+        self.receiving_sockets = None
 
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
@@ -114,14 +141,14 @@ class TestDataManager(TestBase):
         send_message = [__version__, self.appid, signal]
 
         targets = []
-        if type(ports) == list:
+        if isinstance(ports, list):
             for port in ports:
                 targets.append(["{}:{}".format(self.con_ip, port), prio, [""]])
         else:
             targets.append(["{}:{}".format(self.con_ip, ports), prio, [""]])
 
-        targets = json.dumps(targets).encode("utf-8")
-        send_message.append(targets)
+        targets_json = json.dumps(targets).encode("utf-8")
+        send_message.append(targets_json)
 
         self.com_socket.send_multipart(send_message)
 
@@ -219,8 +246,8 @@ class TestDataManager(TestBase):
                     self.log.info("received: {}"
                                   .format(json.loads(recv_message[0])))
 
-        except Exception as e:
-            self.log.error("Exception detected: {}".format(e),
+        except Exception as excp:
+            self.log.error("Exception detected: {}".format(excp),
                            exc_info=True)
         finally:
             self.stop_socket(name="com_socket")
@@ -239,7 +266,7 @@ class TestDataManager(TestBase):
                 try:
                     os.remove(target_file)
                     self.log.debug("remove {}".format(target_file))
-                except:
+                except Exception:
                     pass
 
     def tearDown(self):

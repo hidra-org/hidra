@@ -1,24 +1,50 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Testing the task provider.
 """
 
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=redefined-variable-type
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
 import inspect
 import json
 import logging
-import mock
+from multiprocessing import freeze_support
 import os
 import re
 import threading
 import time
 import zmq
-from multiprocessing import freeze_support
+
+import mock
 from six import iteritems
 
 import utils
-from .__init__ import BASE_DIR
 from test_base import (TestBase,
                        create_dir,
                        MockLogging,
@@ -26,11 +52,13 @@ from test_base import (TestBase,
                        MockZmqPoller)
 from signalhandler import SignalHandler, UnpackedMessage, TargetProperties
 from _version import __version__
+from .__init__ import BASE_DIR
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class RequestPuller(threading.Thread):
+
     def __init__(self, endpoints, log_queue):
         threading.Thread.__init__(self)
 
@@ -56,14 +84,14 @@ class RequestPuller(threading.Thread):
                 msg = json.dumps(filename).encode("utf-8")
                 self.request_fw_socket.send_multipart([b"GET_REQUESTS", msg])
                 self.log.info("send {}".format(msg))
-            except Exception as e:
+            except Exception:
                 raise
 
             try:
                 requests = json.loads(self.request_fw_socket.recv_string())
                 self.log.info("Requests: {}".format(requests))
                 time.sleep(0.25)
-            except Exception as e:
+            except Exception:
                 raise
 
     def stop(self):
@@ -78,7 +106,7 @@ class RequestPuller(threading.Thread):
 
             self.context.term()
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
 
@@ -132,14 +160,14 @@ class TestSignalHandler(TestBase):
         send_message = [__version__, app_id, signal]
 
         targets = []
-        if type(ports) == list:
+        if isinstance(ports, list):
             for port in ports:
                 targets.append(["{}:{}".format(self.con_ip, port), prio, [""]])
         else:
             targets.append(["{}:{}".format(self.con_ip, ports), prio, [""]])
 
-        targets = json.dumps(targets).encode("utf-8")
-        send_message.append(targets)
+        targets_json = json.dumps(targets).encode("utf-8")
+        send_message.append(targets_json)
 
         socket.send_multipart(send_message)
 
@@ -272,6 +300,8 @@ class TestSignalHandler(TestBase):
     # it is called in __del__
     @mock.patch("signalhandler.SignalHandler.stop")
     def test_setup(self, mock_stop):
+        # pylint: disable=unused-argument
+
         current_func_name = inspect.currentframe().f_code.co_name
 
         with mock.patch("signalhandler.SignalHandler.setup"):
@@ -319,6 +349,8 @@ class TestSignalHandler(TestBase):
 
     @mock.patch("signalhandler.SignalHandler.stop")
     def test_create_sockets(self, mock_stop):
+        # pylint: disable=unused-argument
+
         current_func_name = inspect.currentframe().f_code.co_name
 
         def init():
@@ -1058,7 +1090,7 @@ class TestSignalHandler(TestBase):
         # assert_called_once only works version >3.6
         self.assertTrue(mocked_func.call_count == 1)
 
-        args, kwargs = mocked_func.call_args
+        args, _ = mocked_func.call_args
         # mock returns a tuple with the args
         self.assertTrue(args[0] == [signal])
 
@@ -1075,7 +1107,7 @@ class TestSignalHandler(TestBase):
         # assert_called_once only works version >3.6
         self.assertTrue(mocked_func.call_count == 1)
 
-        args, kwargs = mocked_func.call_args
+        args, _ = mocked_func.call_args
         # mock returns a tuple with the args
         self.assertTrue(args[0] == signal)
 

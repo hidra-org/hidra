@@ -1,26 +1,49 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Testing the zmq_events event detector.
 """
 
+# pylint: disable=protected-access
+# pylint: disable=missing-docstring
+# pylint: disable=redefined-variable-type
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
-import copy
 import errno
 import inspect
 import json
 import logging
-import mock
-import os
+from multiprocessing import Queue
 import re
-import time
 import socket
 import zmq
-from multiprocessing import Queue
 
-from .__init__ import BASE_DIR
+import mock
+
+#from .__init__ import BASE_DIR
 from test_base import (TestBase,
-                       create_dir,
                        MockZmqSocket,
                        MockZmqPollerAllFake,
                        MockZmqAuthenticator)
@@ -30,11 +53,15 @@ from hidra._version import __version__
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+
 class TestException(Exception):
+    """A custom exception to throw and catch.
+    """
     pass
 
+
 class TestTransfer(TestBase):
-    """
+    """Specification of tests to be performed for the transfer API.
     """
 
     def setUp(self):
@@ -55,7 +82,11 @@ class TestTransfer(TestBase):
 
 
     def test_get_logger(self):
+
         def test_logger_with_queue(log_level, logging_level):
+            """Helper function to test logger using a log queue.
+            """
+
             queue = Queue(-1)
 
             logger = m_transfer.get_logger("my_logger_name",
@@ -80,6 +111,7 @@ class TestTransfer(TestBase):
         test_logger_with_queue("critical", logging.CRITICAL)
 
     def test_generate_filepath(self):
+
         config_dict = {
             "relative_path": None,
             "filename": None
@@ -191,6 +223,8 @@ class TestTransfer(TestBase):
 
     def test_convert_suffix_list_to_regex(self):
 
+        # pylint: disable=invalid-name
+
         # --------------------------------------------------------------------
         # already regex (not compiled)
         # --------------------------------------------------------------------
@@ -236,7 +270,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         log = mock.MagicMock()
         ret_val = m_transfer.convert_suffix_list_to_regex(pattern=".*",
-                                                        log=log)
+                                                          log=log)
 
         self.assertGreater(len(log.method_calls), 0)
 
@@ -248,7 +282,7 @@ class TestTransfer(TestBase):
         }
 
         with mock.patch("hidra.transfer.Transfer._setup"):
-             transfer = m_transfer.Transfer(**self.transfer_conf)
+            transfer = m_transfer.Transfer(**self.transfer_conf)
 
         def check_loggingfunction(log_level):
             self.transfer_conf["use_log"] = log_level
@@ -347,7 +381,6 @@ class TestTransfer(TestBase):
             transfer._setup(**self.transfer_conf)
 
     def test_get_remote_version(self):
-        current_func_name = inspect.currentframe().f_code.co_name
 
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
@@ -408,9 +441,9 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
-        targets = ""
+        wrong_targets = ""
         with self.assertRaises(m_transfer.FormatError):
-            transfer.initiate(targets)
+            transfer.initiate(wrong_targets)
 
         # --------------------------------------------------------------------
         # successful
@@ -505,10 +538,10 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # target not a list
         # --------------------------------------------------------------------
-        targets = ""
+        wrong_targets = ""
 
         with self.assertRaises(m_transfer.FormatError):
-            transfer._set_targets(targets)
+            transfer._set_targets(wrong_targets)
 
         # --------------------------------------------------------------------
         # one target without suffixes
@@ -964,7 +997,7 @@ class TestTransfer(TestBase):
         transfer = m_transfer.Transfer(**self.transfer_conf)
         transfer.register = mock.MagicMock()
         transfer._get_data_endpoint = mock.MagicMock(
-            return_value = ("test_socket_id", "test_endpoint")
+            return_value=("test_socket_id", "test_endpoint")
         )
         transfer._start_socket = mock.MagicMock()
         transfer.setopt = mock.MagicMock()
@@ -1048,6 +1081,7 @@ class TestTransfer(TestBase):
         self.assertEqual(transfer.started_connections, expected)
         self.assertTrue(transfer._start_socket.called)
         self.assertIsNotNone(transfer.control_socket)
+        # pylint: disable=no-member
         self.assertTrue(transfer.poller.register.called)
         self.assertTrue(transfer.setopt.called)
 
@@ -1113,7 +1147,7 @@ class TestTransfer(TestBase):
         self.assertFalse(transfer._get_data_endpoint.called)
 
     @mock.patch("hidra.transfer.Transfer.stop")
-    def test_setopt(self, mock_stop):
+    def test_setopt(self, mock_stop):  # pylint: disable=unused-argument
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
         # --------------------------------------------------------------------
@@ -1121,6 +1155,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         transfer.status_check_socket = "foo"
         transfer.log = mock.MagicMock()
+        transfer.log.error = mock.MagicMock()
 
         option = "status_check"
         transfer.setopt(option)
@@ -1138,6 +1173,7 @@ class TestTransfer(TestBase):
         transfer._get_endpoint = mock.MagicMock()
         transfer._start_socket = mock.MagicMock()
         transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.register = mock.MagicMock()
         transfer.status_check_socket = None
 
         option = "status_check"
@@ -1308,6 +1344,8 @@ class TestTransfer(TestBase):
     @mock.patch("hidra.transfer.Transfer.stop")
     @mock.patch("hidra.transfer.Transfer._start_socket")
     def test_register(self, mock_start_socket, mock_stop):
+        # pylint: disable=unused-argument
+
         transfer = m_transfer.Transfer(**self.transfer_conf)
         transfer.poller = MockZmqPollerAllFake()
         transfer.data_socket = None
@@ -1331,9 +1369,9 @@ class TestTransfer(TestBase):
         # whitelist: wrong format
         # --------------------------------------------------------------------
 
-        whitelist = ""
+        wrong_whitelist = ""
         with self.assertRaises(hidra.transfer.FormatError):
-            transfer.register(whitelist)
+            transfer.register(wrong_whitelist)
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -1432,6 +1470,8 @@ class TestTransfer(TestBase):
 
     @mock.patch("hidra.transfer.Transfer.stop")
     def test_get_chunk(self, mock_stop):
+        # pylint: disable=unused-argument
+
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
         # --------------------------------------------------------------------
@@ -2106,15 +2146,15 @@ class TestTransfer(TestBase):
 
         # multiple calls of open (one of which is returns an exception)
         vars_calls = ["raise", ""]
-        def mock_two_calls(*args):
+        def mock_two_calls(*args):  # pylint: disable=unused-argument
             # for some reason there are more than just two calls
             # open transfer.py is also mocked (why?)
             try:
-                do = vars_calls.pop(0)
-            except:
-                do = ""
+                call = vars_calls.pop(0)
+            except Exception:
+                call = ""
 
-            if do == "raise":
+            if call == "raise":
                 raise TestIOError
             else:
                 return mock.MagicMock()
@@ -2530,9 +2570,12 @@ class TestTransfer(TestBase):
         }
 
         mock_check_file_closed.side_effect = [False]
-        transfer.confirmation_socket = mock.MagicMock(
-            send_multipart=mock.MagicMock()
-        )
+        transfer.confirmation_socket = mock.MagicMock()
+        transfer.confirmation_socket.send_multipart = mock.MagicMock()
+
+#        transfer.confirmation_socket = mock.MagicMock(
+#            send_multipart=mock.MagicMock()
+#        )
 
         # would have been set in initiate
         transfer._remote_version = b"4.0.7"
@@ -2910,7 +2953,6 @@ class TestTransfer(TestBase):
         mock_store_chunk.reset_mock()
 
     def test__stop_socket(self):
-        current_func_name = inspect.currentframe().f_code.co_name
 
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
@@ -2920,6 +2962,7 @@ class TestTransfer(TestBase):
 
         transfer.test_socket = mock.MagicMock()
         transfer.log = mock.MagicMock()
+        transfer.log.info = mock.MagicMock()
 
         transfer._stop_socket("test_socket")
 
@@ -3085,6 +3128,8 @@ class TestTransfer(TestBase):
         # control_socket, Exception
         # --------------------------------------------------------------------
         def stop_control_socket_with_exception(transfer, side_effect):
+            # pylint: disable=invalid-name
+
             transfer.file_descriptors = {}
             transfer.signal_exchanged = None
             transfer.auth = None
@@ -3207,6 +3252,8 @@ class TestTransfer(TestBase):
                         mock_create_signal_socket,
                         mock_set_targets,
                         mock_send_signal):
+        # pylint: disable=unused-argument
+
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
         # --------------------------------------------------------------------

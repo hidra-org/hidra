@@ -1,9 +1,31 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Unittest suite for HiDRA
 """
 
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
 import argparse
 import unittest
@@ -137,56 +159,65 @@ def get_receiver_suites():
 
 
 def get_testing_suites():
+    """Invidual tests for manual testing.
 
-    # for testing
-    from eventdetectors.test_inotifyx_events import TestEventDetector as TestInotifyxEvents  # noqa F401
-    from eventdetectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents  # noqa F401
-    from eventdetectors.test_http_events import TestEventDetector as TestHttpEvents  # noqa F401
-    from eventdetectors.test_zmq_events import TestEventDetector as TestZmqEvents  # noqa F401
-    from eventdetectors.test_hidra_events import TestEventDetector as TestHidraEvents  # noqa F401
-    from eventdetectors.test_eventdetector_template import TestEventDetector as TestEventDetectorTemplate  # noqa F401
+    Returns:
+        An array containing the added test suites.
+    """
 
-    from datafetchers.test_cleanerbase import TestDataFetcher as TestCleanerbase  # noqa F401
-    from datafetchers.test_file_fetcher import TestDataFetcher as TestFileFetcher  # noqa F401
-    from datafetchers.test_http_fetcher import TestDataFetcher as TestHttpFetcher  # noqa F401
-    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
-    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
-    from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
-    from datafetchers.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
-
-    from api.test_control import TestControl  # noqa F401
-
-    all_suites = [
+#    # pylint: disable=line-too-long
+#
+#    # for testing
+#    from eventdetectors.test_inotifyx_events import TestEventDetector as TestInotifyxEvents  # noqa F401
+#    from eventdetectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents  # noqa F401
+#    from eventdetectors.test_http_events import TestEventDetector as TestHttpEvents  # noqa F401
+#    from eventdetectors.test_zmq_events import TestEventDetector as TestZmqEvents  # noqa F401
+#    from eventdetectors.test_hidra_events import TestEventDetector as TestHidraEvents  # noqa F401
+#    from eventdetectors.test_eventdetector_template import TestEventDetector as TestEventDetectorTemplate  # noqa F401
+#
+#    from datafetchers.test_cleanerbase import TestDataFetcher as TestCleanerbase  # noqa F401
+#    from datafetchers.test_file_fetcher import TestDataFetcher as TestFileFetcher  # noqa F401
+#    from datafetchers.test_http_fetcher import TestDataFetcher as TestHttpFetcher  # noqa F401
+#    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
+#    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
+#    from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
+#    from datafetchers.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
+#
+#    from api.test_control import TestControl  # noqa F401
+#
+    all_suites = []
 #        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestHttpEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestZmqEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestHidraEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestEventDetectorTemplate),  # noqa E122
-
+#
 #        unittest.TestLoader().loadTestsFromTestCase(TestCleanerbase),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestFileFetcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestHttpFetcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestZmqFetcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestHidraFetcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataFetcherTemplate),  # noqa E122
-
+#
 #        unittest.TestLoader().loadTestsFromTestCase(TestSignalHandler),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestDataManager),  # noqa E122
-
+#
 #        unittest.TestLoader().loadTestsFromTestCase(TestTransfer),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestControl),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestReceiverControl),  # noqa E122
-
-        unittest.TestLoader().loadTestsFromTestCase(TestCheckNetgroup),  # noqa E122
-    ]
+#
+#        unittest.TestLoader().loadTestsFromTestCase(TestCheckNetgroup),  # noqa E122
+#    ]
 
     return all_suites
 
 
 def argument_parsing():
+    """Parsing command line arguments.
+    """
 
     parser = argparse.ArgumentParser()
 

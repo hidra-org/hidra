@@ -1,65 +1,52 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Testing the zmq_events event detector.
 """
 
+# pylint: disable=missing-docstring
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
 import copy
 import json
-import mock
 import os
 import time
 import zmq
 
-from .__init__ import BASE_DIR
-from .eventdetector_test_base import EventDetectorTestBase
-from test_base import create_dir  # , MockLogging, mock_get_logger
+import mock
+
+from test_base import (create_dir,
+                       MockZmqContext)
+#                       MockZmqSocket,
+#                       MockLogging, mock_get_logger
 import zmq_events
 import utils
+from .__init__ import BASE_DIR
+from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
-
-
-class MockZmqSocket(mock.MagicMock):
-
-    def __init__(self, **kwds):
-        super(MockZmqSocket, self).__init__(**kwds)
-        self._connected = False
-
-    def bind(self, endpoint):
-        assert not self._connected
-        assert endpoint != ""
-        self._connected = True
-
-    def connect(self, endpoint):
-        assert not self._connected
-        assert endpoint != ""
-        self._connected = True
-
-    def close(self, linger):
-        assert self._connected
-        self._connected = False
-
-
-class MockZmqContext(mock.MagicMock):
-
-    def __init__(self, **kwargs):
-        super(MockZmqContext, self).__init__(**kwargs)
-        self._destroyed = False
-        self.IPV6 = None
-        self.RCVTIMEO = None
-
-    def socket(self, sock_type):
-        assert not self._destroyed
-#        assert self.IPV6 == 1
-#        assert self.RCVTIMEO is not None
-#        assert sock_type == zmq.REQ
-        return MockZmqSocket()
-
-    def destroy(self, linger):
-        assert not self._destroyed
-        self._destroyed = True
 
 
 class TestEventDetector(EventDetectorTestBase):
@@ -117,6 +104,7 @@ class TestEventDetector(EventDetectorTestBase):
 
     @mock.patch("zmq_events.EventDetector.setup")
     def test_config_check(self, mock_setup):
+        # pylint: disable=unused-argument
 
         def check_params(eventdetector, ref_config):
             params_to_check = ref_config.keys()
@@ -318,14 +306,14 @@ class TestEventDetector(EventDetectorTestBase):
                 self.log.debug("generate event")
                 target_file = os.path.join(self.target_dir,
                                            "{}.cbf".format(i))
-                message = {
+                event_message = {
                     u"filename": target_file,
                     u"filepart": 0,
                     u"chunksize": 10
                 }
 
                 self.event_socket.send_multipart(
-                    [json.dumps(message).encode("utf-8")]
+                    [json.dumps(event_message).encode("utf-8")]
                 )
 
                 event_list = self.eventdetector.get_new_event()
@@ -334,7 +322,7 @@ class TestEventDetector(EventDetectorTestBase):
 
 #                self.assertEqual(len(event_list), 1)
 #                self.assertDictEqual(event_list[0], expected_result_dict)
-                self.assertIn(message, event_list)
+                self.assertIn(event_message, event_list)
 
                 time.sleep(1)
             except KeyboardInterrupt:
