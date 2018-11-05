@@ -1334,7 +1334,7 @@ class Transfer(Base):
                         # measure how much time is left from the timeout value
                         # timeout is in ms, timestamp in s
                         timeout -= (time.time() - timestamp) * 1000
-                    if timeout < 0:
+                    if timeout is not None and timeout < 0:
                         return [None, None]
                     else:
                         continue
