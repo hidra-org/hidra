@@ -471,8 +471,9 @@ class Transfer(Base):
                           "connection type 'NEXUS'")
             return
 
-        if isinstance(targets, list):
+        if not isinstance(targets, list):
             self.stop()
+            self.log.debug("targets={}".format(targets))
             raise FormatError("Argument 'targets' must be list.")
 
         if not self.context:
@@ -1337,6 +1338,7 @@ class Transfer(Base):
                 was choosen)
 
         """
+
         # query_metadata and stream_metadata are covered with this as well
         if ("STREAM" not in self.started_connections
                 and "QUERY_NEXT" not in self.started_connections):
@@ -1927,7 +1929,7 @@ class Transfer(Base):
                      [[host, port, prio, file type], ...]
         """
 
-        if isinstance(targets, list):
+        if not isinstance(targets, list):
             self.stop()
             raise FormatError("Argument 'targets' must be list.")
 
