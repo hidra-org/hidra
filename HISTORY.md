@@ -1,5 +1,15 @@
 # develop
+
+- Transfer: Fixed timeout in get command
+- Transfer: Fix started connection bookkeeping
+- Receiver: Fixed deactivated whitelist
+- Show receiver status in status message of hidra.sh
+- Fixed typo in suse build Dockerfile
+
 # 4.0.12
+
+- Added verbose output if ldapsearch fails.
+
 # 4.0.11
 
 - Fixed slow stopping of receiver when netgroup_check_time is high
