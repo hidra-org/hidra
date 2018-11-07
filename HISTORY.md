@@ -6,6 +6,7 @@
 - Receiver: Fixed deactivated whitelist
 - Show receiver status in status message of hidra.sh
 - Fixed typo in suse build Dockerfile
+- Added branch support in suse build
 
 # 4.0.12
 
