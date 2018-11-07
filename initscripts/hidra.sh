@@ -195,11 +195,13 @@ then
     DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"
     LOG_DIRECTORY=/var/log/hidra
     getsettings=${BASEDIR}/src/shared/getsettings.py
+    get_receiver_status=${BASEDIR}/src/shared/get_receiver_status.py
 else
     DAEMON=${BASEDIR}/datamanager
     DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"
     LOG_DIRECTORY=${BASEDIR}/logs
     getsettings=${BASEDIR}/getsettings
+    get_receiver_status=${BASEDIR}/get_receiver_status
 fi
 
 if [ "${DEBUG}" == "true" ]
@@ -603,6 +605,8 @@ case "$action" in
         ;;
     status)
         do_status
+        echo
+        ${get_receiver_status} --config_file ${config_file}
         ;;
     #reload|force-reload)
         # If do_reload() is not implemented then leave this commented out
