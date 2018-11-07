@@ -261,6 +261,8 @@ class DataReceiver:
                                                    params["ldapuri"],
                                                    self.log)
             self.log.info("Configured whitelist: {}".format(whitelist))
+        else:
+            whitelist = None
 
         # only start the thread if a netgroup was configured
         if (params["whitelist"] is not None
