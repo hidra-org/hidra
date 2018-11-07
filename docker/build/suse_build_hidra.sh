@@ -1,9 +1,16 @@
 #!/bin/bash
 
-VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/shared/_version.py?at=refs%2Fheads%2Fmaster")
+# default is master
+BRANCH=master
+
+VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/shared/_version.py?at=refs%2Fheads%2F${BRANCH}")
 # cut of the first 16 characters
 VERSION=${VERSION:16}
 VERSION=${VERSION%?}
+
+if [ "$BRANCH" != "master" ]; then
+    VERSION=${VERSION}${BRANCH}
+fi
 
 MAPPED_DIR=/tmp/hidra_builds/${VERSION}/suse10
 IN_DOCKER_DIR=/external
@@ -27,6 +34,11 @@ fi
 
 cd ${MAPPED_DIR}
 git clone https://stash.desy.de/scm/hidra/hidra.git
+
+if [ "$BRANCH" != "master" ]; then
+    cd hidra
+    git checkout ${BRANCH}
+fi
 
 # DOCKER
 DOCKER_IMAGE=suse_build
