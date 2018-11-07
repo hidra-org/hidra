@@ -767,20 +767,20 @@ class Transfer(Base):
         self.data_con_style = data_con_style
 
         # determine socket id and address
-        endpoint = None
+        socket_endpoint = None
         for t in ["STREAM", "QUERY_NEXT", "NEXUS"]:
             if t in self.started_connections:
                 socket_id = self.started_connections[t]["id"]
-                endpoint = self.started_connections[t]["endpoint"]
+                socket_endpoint = self.started_connections[t]["endpoint"]
 
-        if endpoint is not None:
+        if socket_endpoint is not None:
             self.log.info("Reopening already started connection.")
         else:
-            socket_id, endpoint = self._get_data_endpoint(data_socket_id)
+            socket_id, socket_endpoint = self._get_data_endpoint(data_socket_id)
 
         # -- authenication and data socket -- #
         # remember the endpoint for reestablishment of the connection
-        self.data_socket_endpoint = endpoint
+        self.data_socket_endpoint = socket_endpoint
         self.log.debug("data_socket_endpoint={}"
                        .format(self.data_socket_endpoint))
 
