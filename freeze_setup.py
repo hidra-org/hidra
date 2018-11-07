@@ -160,6 +160,7 @@ bdist_msi_options = {
 executables = [
     Executable(os.path.join(senderpath, "datamanager.py")),
     Executable(os.path.join(sharedpath, "getsettings.py"))
+    Executable(os.path.join(sharedpath, "get_receiver_status.py"))
 ]
 
 setup(name='HiDRA',
