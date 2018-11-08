@@ -606,6 +606,7 @@ case "$action" in
     status)
         do_status
         echo
+        export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
         ${get_receiver_status} --config_file ${config_file}
         ;;
     #reload|force-reload)
