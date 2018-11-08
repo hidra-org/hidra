@@ -26,7 +26,7 @@
 This module implements the data dispatcher.
 """
 
-# pylint: disable=broad-except
+# pylint: disable=redefined-variable-type
 
 from __future__ import absolute_import
 from __future__ import print_function

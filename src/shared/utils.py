@@ -81,7 +81,9 @@ class WrongConfiguration(Exception):
     pass
 
 
-# source: http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788  # noqa E501
+# source:
+# pylint: disable=line-too-long
+#http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788  # noqa E501
 class FakeSecHead(object):
     """Adds a fake section had to the configuration.
 

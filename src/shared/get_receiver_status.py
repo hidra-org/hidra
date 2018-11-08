@@ -33,7 +33,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-import socket
+#import socket
 import sys
 import traceback
 
@@ -93,7 +93,7 @@ def main():
         data_stream_targets = params["data_stream_targets"] # = [["asap3-p00", 50100]]
         hosts = [target[0] for target in data_stream_targets]
 
-        # TODO makje generic
+        # TODO make generic
         host = hosts[0]
 
     control = ReceiverControl(host)
