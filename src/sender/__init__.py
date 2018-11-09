@@ -28,4 +28,4 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from ._environment import *  # noqa F401 # pylint: disable=wildcard-import
+from _environment import *  # noqa F401 # pylint: disable=wildcard-import
