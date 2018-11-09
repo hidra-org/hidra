@@ -347,21 +347,28 @@ class LoggingFunction(object):
             self.error = self.no_out
             self.critical = self.no_out
 
-    def out(self, msg, exc_info=None):
+    def out(self, msg, *args, **kwargs):
         """Prints to screen.
 
         Args:
             msg: The message to print.
+            args: The arguments to fill in into msg.
             exc_info: If a traceback should be printed in addition.
+
         """
+
         # pylint: disable=no-self-use
 
-        if exc_info:
+        msg = str(msg)
+        if args:
+            msg = msg % args
+
+        if "exc_info" in kwargs and kwargs["exc_info"]:
             print(msg, traceback.format_exc())
         else:
             print(msg)
 
-    def no_out(self, msg, exc_info=None):
+    def no_out(self, msg, *args, **kwargs):
         """Print nothing.
         """
         pass

@@ -78,17 +78,25 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
         mock.MagicMock.__init__(self, **kwargs)
         utils.LoggingFunction.__init__(self, level="debug")
 
-    def out(self, message, exc_info=False):
+    def out(self, message, *args, **kwargs):
         """Forward the output to stdout.
 
         Args:
             message: the messages to be logged.
+            args: The arguments to fill in into msg.
             exc_info (optional): Append a traceback.
         """
+
+        msg = str(message)
+        if args:
+            msg = msg % args
+
+
         caller = inspect.getframeinfo(inspect.stack()[1][0])
         fname = os.path.split(caller.filename)[1]
-        msg = "[{}:{}] > {}".format(fname, caller.lineno, message)
-        if exc_info:
+        msg = "[{}:{}] > {}".format(fname, caller.lineno, msg)
+
+        if "exc_info" in kwargs and kwargs["exc_info"]:
             print(msg, traceback.format_exc())
         else:
             print(msg)
