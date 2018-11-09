@@ -35,7 +35,6 @@ import mock
 import zmq
 
 from hidra_fetcher import DataFetcher
-from .__init__ import BASE_DIR
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -59,8 +58,8 @@ class TestDataFetcher(DataFetcherTestBase):
             "remove_data": False,
             "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
             # "local_target": None,
-            "local_target": os.path.join(BASE_DIR, "data", "zmq_target"),
-            # "local_target": os.path.join(BASE_DIR, "data", "target"),
+            "local_target": os.path.join(self.base_dir, "data", "zmq_target"),
+            # "local_target": os.path.join(self.base_dir, "data", "target"),
             "ipc_dir": self.config["ipc_dir"],
             "main_pid": self.config["main_pid"],
             "endpoints": self.config["endpoints"],
@@ -114,13 +113,13 @@ class TestDataFetcher(DataFetcherTestBase):
             )
 
         # Test file fetcher
-        prework_source_file = os.path.join(BASE_DIR,
+        prework_source_file = os.path.join(self.base_dir,
                                            "test",
                                            "test_files",
                                            "test_file.cbf")
 
         metadata = {
-            "source_path": os.path.join(BASE_DIR, "data", "source"),
+            "source_path": os.path.join(self.base_dir, "data", "source"),
             "relative_path": os.sep + "local",
             "filename": "100.cbf",
             "filesize": os.stat(prework_source_file).st_size,

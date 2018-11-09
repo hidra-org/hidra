@@ -32,7 +32,6 @@ import os
 import subprocess
 
 from file_fetcher import DataFetcher
-from .__init__ import BASE_DIR
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -58,7 +57,7 @@ class TestDataFetcher(DataFetcherTestBase):
             "main_pid": self.config["main_pid"],
             "endpoints": self.config["endpoints"],
             "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
-            "local_target": os.path.join(BASE_DIR, "data", "target")
+            "local_target": os.path.join(self.base_dir, "data", "target")
         }
 
         self.cleaner_config = {
@@ -83,7 +82,7 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Test data fetcher
         filename = "test01.cbf"
-        prework_source_file = os.path.join(BASE_DIR,
+        prework_source_file = os.path.join(self.base_dir,
                                            "test",
                                            "test_files",
                                            "test_file.cbf")

@@ -37,7 +37,6 @@ import zmq
 
 from cleanerbase import CleanerBase
 import utils
-from .__init__ import BASE_DIR
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -126,11 +125,11 @@ class TestDataFetcher(DataFetcherTestBase):
         time.sleep(0.5)
 
         # Test cleaner
-        source_file = os.path.join(BASE_DIR,
+        source_file = os.path.join(self.base_dir,
                                    "test",
                                    "test_files",
                                    "test_file.cbf")
-        target_path = os.path.join(BASE_DIR, "data", "source", "local")
+        target_path = os.path.join(self.base_dir, "data", "source", "local")
 
         try:
             for i in range(5):

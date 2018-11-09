@@ -20,6 +20,9 @@
 #     Manuela Kuhn <manuela.kuhn@desy.de>
 #
 
+"""Package providing the event detector test classes.
+"""
+
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -27,13 +30,30 @@ from __future__ import unicode_literals
 import os
 import sys
 
-CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
-API_DIR = os.path.join(BASE_DIR, "src", "APIs")
+CURRENT_DIR = os.path.realpath(__file__)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))
+
 SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
+SENDER_DIR = os.path.join(BASE_DIR, "src", "sender")
+EVENT_DETECTOR_DIR = os.path.join(SENDER_DIR, "eventdetectors")
+DATAFETCHER_DIR = os.path.join(SENDER_DIR, "datafetchers")
+API_DIR = os.path.join(BASE_DIR, "src", "APIs")
+RECEIVER_DIR = os.path.join(BASE_DIR, "src", "receiver")
 
 if SHARED_DIR not in sys.path:
     sys.path.insert(0, SHARED_DIR)
 
+if SENDER_DIR not in sys.path:
+    sys.path.insert(0, SENDER_DIR)
+
+if EVENT_DETECTOR_DIR not in sys.path:
+    sys.path.insert(0, EVENT_DETECTOR_DIR)
+
+if DATAFETCHER_DIR not in sys.path:
+    sys.path.insert(0, DATAFETCHER_DIR)
+
 if API_DIR not in sys.path:
     sys.path.insert(0, API_DIR)
+
+if RECEIVER_DIR not in sys.path:
+    sys.path.insert(0, RECEIVER_DIR)

@@ -35,7 +35,6 @@ import time
 import zmq
 
 from file_fetcher import DataFetcher, Cleaner
-from .__init__ import BASE_DIR
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -58,7 +57,7 @@ class TestDataFetcher(DataFetcherTestBase):
             "remove_data": False,
             "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
             "local_target": None,
-            # "local_target": os.path.join(BASE_DIR, "data", "target"),
+            # "local_target": os.path.join(self.base_dir, "data", "target"),
             "main_pid": self.config["main_pid"],
             "endpoints": self.config["endpoints"]
         }
@@ -88,8 +87,8 @@ class TestDataFetcher(DataFetcherTestBase):
             self.receiving_sockets.append(self.set_up_recv_socket(port))
 
         # Test file fetcher
-        source_dir = os.path.join(BASE_DIR, "data", "source")
-        prework_source_file = os.path.join(BASE_DIR,
+        source_dir = os.path.join(self.base_dir, "data", "source")
+        prework_source_file = os.path.join(self.base_dir,
                                            "test",
                                            "test_files",
                                            "test_file.cbf")
@@ -99,7 +98,7 @@ class TestDataFetcher(DataFetcherTestBase):
         time.sleep(0.5)
 
         metadata = {
-            "source_path": os.path.join(BASE_DIR, "data", "source"),
+            "source_path": os.path.join(self.base_dir, "data", "source"),
             "relative_path": os.sep + "local",
             "filename": "100.cbf"
         }
@@ -176,8 +175,8 @@ class TestDataFetcher(DataFetcherTestBase):
         )
 
         # Test file fetcher
-        source_dir = os.path.join(BASE_DIR, "data", "source")
-        prework_source_file = os.path.join(BASE_DIR,
+        source_dir = os.path.join(self.base_dir, "data", "source")
+        prework_source_file = os.path.join(self.base_dir,
                                            "test",
                                            "test_files",
                                            "test_file.cbf")

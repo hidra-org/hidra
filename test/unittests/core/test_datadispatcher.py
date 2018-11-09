@@ -36,7 +36,6 @@ import zmq
 
 from test_base import TestBase, create_dir
 from datadispatcher import DataDispatcher
-from .__init__ import BASE_DIR
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -58,13 +57,14 @@ class TestDataDispatcher(TestBase):
         # self.config
         # self.con_ip
         # self.ext_ip
+        # self.base_dir
 
         self.context = zmq.Context()
 
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
 
-        self.local_target = os.path.join(BASE_DIR, "data", "target")
+        self.local_target = os.path.join(self.base_dir, "data", "target")
         self.chunksize = 10485760  # = 1024*1024*10 = 10 MiB
 
         self.datadispatcher_config = {
@@ -84,11 +84,11 @@ class TestDataDispatcher(TestBase):
         """Simulate incoming data and check if received events are correct.
         """
 
-        source_file = os.path.join(BASE_DIR,
+        source_file = os.path.join(self.base_dir,
                                    "test",
                                    "test_files",
                                    "test_file.cbf")
-        target_file = os.path.join(BASE_DIR,
+        target_file = os.path.join(self.base_dir,
                                    "data",
                                    "source",
                                    "local",
@@ -127,7 +127,7 @@ class TestDataDispatcher(TestBase):
             receiving_sockets.append(self.set_up_recv_socket(port))
 
         metadata = {
-            "source_path": os.path.join(BASE_DIR, "data", "source"),
+            "source_path": os.path.join(self.base_dir, "data", "source"),
             "relative_path": "local",
             "filename": "100.cbf"
         }

@@ -36,7 +36,6 @@ from zmq_fetcher import (DataFetcher,
                          get_ipc_addresses,
                          get_tcp_addresses,
                          get_endpoints)
-from .__init__ import BASE_DIR
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -53,7 +52,7 @@ class TestDataFetcher(DataFetcherTestBase):
         super(TestDataFetcher, self).setUp()
 
         # Set up config
-#        local_target = os.path.join(BASE_DIR, "data", "target")
+#        local_target = os.path.join(self.base_dir, "data", "target")
 
         self.datafetcher_config = {
             "context": self.context,
@@ -104,7 +103,7 @@ class TestDataFetcher(DataFetcherTestBase):
         )
 
         # Test data fetcher
-        prework_source_file = os.path.join(BASE_DIR,
+        prework_source_file = os.path.join(self.base_dir,
                                            "test",
                                            "test_files",
                                            "test_file.cbf")
@@ -118,7 +117,7 @@ class TestDataFetcher(DataFetcherTestBase):
         self.log.debug("File send")
 
         metadata = {
-            "source_path": os.path.join(BASE_DIR, "data", "source"),
+            "source_path": os.path.join(self.base_dir, "data", "source"),
             "relative_path": os.sep + "local" + os.sep + "raw",
             "filename": "100.cbf"
         }

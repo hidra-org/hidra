@@ -42,6 +42,7 @@ import zmq
 from logutils.queue import QueueHandler
 import mock
 
+import _environment
 import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -224,6 +225,7 @@ class TestBase(unittest.TestCase):
         self.listener = None
         self.log = None
         self.context = None
+        self.base_dir = _environment.BASE_DIR
 
         main_pid = os.getpid()
         self.con_ip = m_socket.getfqdn()

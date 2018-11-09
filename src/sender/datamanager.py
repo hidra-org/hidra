@@ -49,10 +49,7 @@ import zmq.devices
 import setproctitle
 
 # to make freeze packages work
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except:
-    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
+CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)

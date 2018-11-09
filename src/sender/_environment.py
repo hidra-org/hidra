@@ -30,12 +30,7 @@ from __future__ import unicode_literals
 import os
 import sys
 
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except:
-    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
-# CURRENT_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
-# CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 # to make windows work
 BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
@@ -53,10 +48,5 @@ if EVENTDETECTOR_DIR not in sys.path:
 if DATAFETCHER_DIR not in sys.path:
     sys.path.insert(0, DATAFETCHER_DIR)
 
-try:
-    # search in local modules
-    if API_DIR not in sys.path:
-        sys.path.insert(0, API_DIR)
-except ImportError:
-    # search in global python modules
-    from hidra import Transfer  # noqa F401
+if API_DIR not in sys.path:
+    sys.path.insert(0, API_DIR)

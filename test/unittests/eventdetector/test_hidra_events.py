@@ -12,7 +12,6 @@ import zmq
 from hidra_events import (EventDetector,
                           get_ipc_addresses,
                           get_endpoints)
-from .__init__ import BASE_DIR
 from .eventdetector_test_base import EventDetectorTestBase, create_dir
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -50,7 +49,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.start = 100
         self.stop = 101
 
-        target_base_path = os.path.join(BASE_DIR, "data", "source")
+        target_base_path = os.path.join(self.base_dir, "data", "source")
         target_relative_path = os.path.join("local", "raw")
         self.target_path = os.path.join(target_base_path,
                                         target_relative_path)

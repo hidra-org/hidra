@@ -39,7 +39,6 @@ import zmq
 from test_base import TestBase, create_dir
 from datamanager import DataManager
 from _version import __version__
-from .__init__ import BASE_DIR
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -61,6 +60,7 @@ class TestDataManager(TestBase):
         # self.config
         # self.con_ip
         # self.ext_ip
+        # self.base_dir
 
         # Register context
         self.context = zmq.Context()
@@ -71,7 +71,7 @@ class TestDataManager(TestBase):
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
 
-        self.local_target = os.path.join(BASE_DIR, "data", "target")
+        self.local_target = os.path.join(self.base_dir, "data", "target")
         self.chunksize = 10485760  # = 1024*1024*10 = 10 MiB
 
         self.config["fixed_recv"] = 50100
@@ -212,11 +212,11 @@ class TestDataManager(TestBase):
 
         self.log.debug("test receiver started")
 
-        source_file = os.path.join(BASE_DIR,
+        source_file = os.path.join(self.base_dir,
                                    "test",
                                    "test_files",
                                    "test_file.cbf")
-        target_file_base = os.path.join(BASE_DIR,
+        target_file_base = os.path.join(self.base_dir,
                                         "data",
                                         "source",
                                         "local",

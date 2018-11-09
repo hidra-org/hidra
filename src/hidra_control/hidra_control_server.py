@@ -58,21 +58,15 @@ if SHARED_DIR not in sys.path:
 del SHARED_DIR
 del CONFIG_DIR
 
+if API_DIR not in sys.path:
+    sys.path.insert(0, API_DIR)
+del API_DIR
+
 # pylint: disable=wrong-import-position
 
+import hidra
 import utils  # noqa E402
 from parameter_utils import parse_parameters  # noqa E402
-
-try:
-    # search in local modules
-    if API_DIR not in sys.path:
-        sys.path.insert(0, API_DIR)
-    del API_DIR
-
-    import hidra
-except ImportError:
-    # search in global python modules
-    import hidra
 
 BASEDIR = "/opt/hidra"
 

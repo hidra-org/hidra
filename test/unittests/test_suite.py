@@ -32,6 +32,7 @@ import unittest
 from importlib import import_module
 import pkgutil
 
+import _environment
 import eventdetector
 import datafetcher
 from core.test_taskprovider import TestTaskProvider

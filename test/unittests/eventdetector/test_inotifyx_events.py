@@ -34,7 +34,6 @@ import logging
 from shutil import copyfile
 
 from inotifyx_events import EventDetector
-from .__init__ import BASE_DIR
 from .eventdetector_test_base import EventDetectorTestBase, create_dir
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -56,7 +55,7 @@ class TestEventDetector(EventDetectorTestBase):
         # self.ext_ip
 
         self.event_detector_config = {
-            "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
+            "monitored_dir": os.path.join(self.base_dir, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
             "monitored_events": {
                 "IN_CLOSE_WRITE": [".tif", ".cbf", ".file"],
@@ -72,12 +71,12 @@ class TestEventDetector(EventDetectorTestBase):
         self.start = 100
         self.stop = 110
 
-        self.source_file = os.path.join(BASE_DIR,
+        self.source_file = os.path.join(self.base_dir,
                                         "test",
                                         "test_files",
                                         "test_1024B.file")
 
-        self.target_base_path = os.path.join(BASE_DIR, "data", "source")
+        self.target_base_path = os.path.join(self.base_dir, "data", "source")
         self.target_relative_path = os.path.join("local", "raw")
 
         self.target_file_base = os.path.join(self.target_base_path,

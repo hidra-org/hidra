@@ -43,7 +43,6 @@ from test_base import (create_dir,
 #                       MockLogging, mock_get_logger
 import zmq_events
 import utils
-from .__init__ import BASE_DIR
 from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -79,7 +78,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.start = 100
         self.stop = 101
 
-        target_base_dir = os.path.join(BASE_DIR, "data", "source")
+        target_base_dir = os.path.join(self.base_dir, "data", "source")
         target_relative_dir = os.path.join("local", "raw")
         self.target_dir = os.path.join(target_base_dir,
                                        target_relative_dir)

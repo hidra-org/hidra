@@ -34,7 +34,6 @@ from shutil import copyfile
 
 from test_base import create_dir
 from watchdog_events import EventDetector
-from .__init__ import BASE_DIR
 from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -57,7 +56,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.event_detector_config = {
             # TODO normpath to make insensitive to "/" at the end
-            "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
+            "monitored_dir": os.path.join(self.base_dir, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
             "monitored_events": {
                 "IN_CLOSE_WRITE": [".tif", ".cbf", ".file"],
@@ -73,12 +72,12 @@ class TestEventDetector(EventDetectorTestBase):
         self.start = 100
         self.stop = 105
 
-        self.source_file = os.path.join(BASE_DIR,
+        self.source_file = os.path.join(self.base_dir,
                                         "test",
                                         "test_files",
                                         "test_1024B.file")
 
-        self.target_base_path = os.path.join(BASE_DIR, "data", "source")
+        self.target_base_path = os.path.join(self.base_dir, "data", "source")
         self.target_relative_path = os.path.join("local", "raw")
 
         self.target_file_base = os.path.join(self.target_base_path,

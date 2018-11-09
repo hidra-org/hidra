@@ -39,7 +39,6 @@ import zmq
 from test_base import TestBase, create_dir
 from taskprovider import TaskProvider
 import utils
-from .__init__ import BASE_DIR
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -119,6 +118,7 @@ class TestTaskProvider(TestBase):
         # self.config
         # self.con_ip
         # self.ext_ip
+        # self.base_dir
 
         self.context = zmq.Context()
 
@@ -127,7 +127,7 @@ class TestTaskProvider(TestBase):
 
         self.taskprovider_config = {
             "event_detector_type": "inotifyx_events",
-            "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
+            "monitored_dir": os.path.join(self.base_dir, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
             "monitored_events": {
                 "IN_CLOSE_WRITE": [".tif", ".cbf"],
@@ -167,11 +167,11 @@ class TestTaskProvider(TestBase):
             endpoint=endpoints.router_con
         )
 
-        source_file = os.path.join(BASE_DIR,
+        source_file = os.path.join(self.base_dir,
                                    "test",
                                    "test_files",
                                    "test_file.cbf")
-        target_file_base = os.path.join(BASE_DIR,
+        target_file_base = os.path.join(self.base_dir,
                                         "data",
                                         "source",
                                         "local",

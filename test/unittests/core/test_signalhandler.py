@@ -52,7 +52,6 @@ from test_base import (TestBase,
                        MockZmqPoller)
 from signalhandler import SignalHandler, UnpackedMessage, TargetProperties
 from _version import __version__
-from .__init__ import BASE_DIR
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -134,7 +133,7 @@ class TestSignalHandler(TestBase):
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
 
-        self.local_target = os.path.join(BASE_DIR, "data", "target")
+        self.local_target = os.path.join(self.base_dir, "data", "target")
         self.chunksize = 10485760  # = 1024*1024*10 = 10 MiB
 
         general_config = {
