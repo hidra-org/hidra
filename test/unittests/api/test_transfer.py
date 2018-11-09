@@ -296,7 +296,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # external context
         # --------------------------------------------------------------------
-        self.log.info("{}: EXTERNAL CONTEXT".format(current_func_name))
+        self.log.info("%s: EXTERNAL CONTEXT", current_func_name)
 
         self.transfer_conf["context"] = conf["context"]
         transfer._setup(**self.transfer_conf)
@@ -311,7 +311,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no external context
         # --------------------------------------------------------------------
-        self.log.info("{}: NO EXTERNAL CONTEXT".format(current_func_name))
+        self.log.info("%s: NO EXTERNAL CONTEXT", current_func_name)
 
         self.transfer_conf["context"] = None
         transfer._setup(**self.transfer_conf)
@@ -327,7 +327,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # use LoggingFunction
         # --------------------------------------------------------------------
-        self.log.info("{}: USE LOGGINGFUNCTION".format(current_func_name))
+        self.log.info("%s: USE LOGGINGFUNCTION", current_func_name)
 
         check_loggingfunction("debug")
         check_loggingfunction("info")
@@ -338,7 +338,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # use logging queue
         # --------------------------------------------------------------------
-        self.log.info("{}: USE LOGGING QUEUE".format(current_func_name))
+        self.log.info("%s: USE LOGGING QUEUE", current_func_name)
 
         self.transfer_conf["use_log"] = Queue(-1)
         with mock.patch("hidra.transfer.get_logger") as mock_get_logger:
@@ -349,7 +349,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # use logging
         # --------------------------------------------------------------------
-        self.log.info("{}: USE LOGGING".format(current_func_name))
+        self.log.info("%s: USE LOGGING", current_func_name)
 
         self.transfer_conf["use_log"] = True
         transfer._setup(**self.transfer_conf)
@@ -359,22 +359,21 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no logging
         # --------------------------------------------------------------------
-        self.log.info("{}: NO LOGGING".format(current_func_name))
+        self.log.info("%s: NO LOGGING", current_func_name)
 
         check_loggingfunction(None)
 
         # --------------------------------------------------------------------
         # no logging method configured
         # --------------------------------------------------------------------
-        self.log.info("{}: NO LOGGING METHOD CONFIGURED"
-                      .format(current_func_name))
+        self.log.info("%s: NO LOGGING METHOD CONFIGURED", current_func_name)
 
         check_loggingfunction("debug")
 
         # --------------------------------------------------------------------
         # not supported
         # --------------------------------------------------------------------
-        self.log.info("{}: NOT SUPPORTED".format(current_func_name))
+        self.log.info("%s: NOT SUPPORTED", current_func_name)
 
         self.transfer_conf["connection_type"] = None
         with self.assertRaises(m_transfer.NotSupported):
@@ -638,7 +637,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no signal
         # --------------------------------------------------------------------
-        self.log.info("{}: NO SIGNAL".format(current_func_name))
+        self.log.info("%s: NO SIGNAL", current_func_name)
 
         ret_val = transfer._send_signal(None)
 
@@ -647,7 +646,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Error when sending
         # --------------------------------------------------------------------
-        self.log.info("{}: ERROR WHEN SENDING".format(current_func_name))
+        self.log.info("%s: ERROR WHEN SENDING", current_func_name)
 
         transfer.signal_socket = MockZmqSocket()
         transfer.signal_socket.send_multipart.side_effect = TestException()
@@ -661,7 +660,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Error when polling
         # --------------------------------------------------------------------
-        self.log.info("{}: ERROR WHEN POLLING".format(current_func_name))
+        self.log.info("%s: ERROR WHEN POLLING", current_func_name)
 
         transfer.signal_socket = MockZmqSocket()
         transfer.poller = MockZmqPollerAllFake()
@@ -677,7 +676,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Error when receiving
         # --------------------------------------------------------------------
-        self.log.info("{}: ERROR WHEN RECEIVING".format(current_func_name))
+        self.log.info("%s: ERROR WHEN RECEIVING", current_func_name)
 
         transfer.signal_socket = MockZmqSocket()
         transfer.signal_socket.recv_multipart.side_effect = TestException()
@@ -695,8 +694,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received VERSION_CONFLICT
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED VERSION_CONFLICT"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVED VERSION_CONFLICT", current_func_name)
 
         check_message(transfer,
                       b"VERSION_CONFLICT",
@@ -705,7 +703,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received NO_VALID_HOST
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED NO_VALID_HOST".format(current_func_name))
+        self.log.info("%s: RECEIVED NO_VALID_HOST", current_func_name)
 
         check_message(transfer,
                       b"NO_VALID_HOST",
@@ -714,8 +712,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received CONNECTION_ALREADY_OPEN
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED CONNECTION_ALREADY_OPEN"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVED CONNECTION_ALREADY_OPEN",
+                      current_func_name)
 
         check_message(transfer,
                       b"CONNECTION_ALREADY_OPEN",
@@ -724,8 +722,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received STORING_DISABLED
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED STORING_DISABLED"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVED STORING_DISABLED", current_func_name)
 
         check_message(transfer,
                       b"STORING_DISABLED",
@@ -734,8 +731,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received NO_VALID_SIGNAL
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED NO_VALID_SIGNAL"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVED NO_VALID_SIGNAL", current_func_name)
 
         check_message(transfer,
                       b"NO_VALID_SIGNAL",
@@ -744,8 +740,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received not supported
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED NOT SUPPORTED MESSAGE"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVED NOT SUPPORTED MESSAGE", current_func_name)
 
         transfer.stop = MockZmqSocket()
 
@@ -789,8 +784,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # data_socket_prop: list but wrong format
         # --------------------------------------------------------------------
-        self.log.info("{}: DATA_SOCKET_PROP: LIST BUT WRONG FORMAT"
-                      .format(current_func_name))
+        self.log.info("%s: DATA_SOCKET_PROP: LIST BUT WRONG FORMAT",
+                      current_func_name)
 
         data_socket_prop = []
         with self.assertRaises(hidra.transfer.FormatError):
@@ -799,8 +794,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # data_socket_prop: list ok
         # --------------------------------------------------------------------
-        self.log.info("{}: DATA_SOCKET_PROP: LIST OK"
-                      .format(current_func_name))
+        self.log.info("%s: DATA_SOCKET_PROP: LIST OK", current_func_name)
 
         data_socket_prop = [host, port]
         ret_val = transfer._get_data_endpoint(data_socket_prop)
@@ -810,8 +804,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # data_socket_prop: port only
         # --------------------------------------------------------------------
-        self.log.info("{}: DATA_SOCKET_PROP: PORT ONLY"
-                      .format(current_func_name))
+        self.log.info("%s: DATA_SOCKET_PROP: PORT ONLY", current_func_name)
 
         data_socket_prop = port
         ret_val = transfer._get_data_endpoint(data_socket_prop)
@@ -821,8 +814,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no data_socket_prop but correct targets
         # --------------------------------------------------------------------
-        self.log.info("{}: NO DATA_SOCKET_PROP BUT CORRECT TARGETS"
-                      .format(current_func_name))
+        self.log.info("%s: NO DATA_SOCKET_PROP BUT CORRECT TARGETS",
+                      current_func_name)
 
         transfer.targets = [[socket_id, 1, ".*"]]
         ret_val = transfer._get_data_endpoint(data_socket_prop=None)
@@ -835,8 +828,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no data_socket_prop, too many targets
         # --------------------------------------------------------------------
-        self.log.info("{}: NO DATA_SOCKET_PROP, TOO MANY TARGETS"
-                      .format(current_func_name))
+        self.log.info("%s: NO DATA_SOCKET_PROP, TOO MANY TARGETS",
+                      current_func_name)
 
         transfer.targets = [[socket_id, 1, ".*"], [socket_id, 1, ".*"]]
         with self.assertRaises(hidra.transfer.FormatError):
@@ -848,8 +841,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no data_socket_prop, no targets
         # --------------------------------------------------------------------
-        self.log.info("{}: DATA_SOCKET_PROP, NO TARGETS"
-                      .format(current_func_name))
+        self.log.info("%s: DATA_SOCKET_PROP, NO TARGETS",
+                      current_func_name)
 
         transfer.targets = None
         with self.assertRaises(hidra.transfer.FormatError):
@@ -858,7 +851,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # zmq_protocol is ipc
         # --------------------------------------------------------------------
-        self.log.info("{}: ZMQ_PROTOCOL IS IPC".format(current_func_name))
+        self.log.info("%s: ZMQ_PROTOCOL IS IPC", current_func_name)
 
         transfer.zmq_protocol = "ipc"
         data_socket_prop = [ipc_dir, ipc_file]
@@ -873,7 +866,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # set IPs
         # --------------------------------------------------------------------
-        self.log.info("{}: SET IPS".format(current_func_name))
+        self.log.info("%s: SET IPS", current_func_name)
 
         data_socket_prop = port
         with mock.patch("socket.gethostbyaddr") as mock_gethostbyaddr:
@@ -886,7 +879,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # multiple possible IPs
         # --------------------------------------------------------------------
-        self.log.info("{}: MULTIPLE POSSIBLE IPS".format(current_func_name))
+        self.log.info("%s: MULTIPLE POSSIBLE IPS", current_func_name)
 
         data_socket_prop = port
         with mock.patch("socket.gethostbyaddr") as mock_gethostbyaddr:
@@ -898,7 +891,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # IPv4
         # --------------------------------------------------------------------
-        self.log.info("{}: IPV4".format(current_func_name))
+        self.log.info("%s: IPV4", current_func_name)
 
         data_socket_prop = [host, port]
         with mock.patch("socket.inet_aton") as mock_inet_aton:
@@ -910,7 +903,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # IPv6
         # --------------------------------------------------------------------
-        self.log.info("{}: IPV6".format(current_func_name))
+        self.log.info("%s: IPV6", current_func_name)
 
         data_socket_prop = [host, port]
         with mock.patch("socket.inet_aton") as mock_inet_aton:
@@ -1874,8 +1867,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # all data in one iteration
         # --------------------------------------------------------------------
-        self.log.info("{}: ALL DATA IN ONE ITERATION"
-                      .format(current_func_name))
+        self.log.info("%s: ALL DATA IN ONE ITERATION", current_func_name)
 
         metadata = {
             "relative_path": "test_rel_path",
@@ -1907,8 +1899,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # all data in two iteration
         # --------------------------------------------------------------------
-        self.log.info("{}: ALL DATA IN TWO ITERATION"
-                      .format(current_func_name))
+        self.log.info("%s: ALL DATA IN TWO ITERATION", current_func_name)
 
         metadata0 = {
             "relative_path": "test_rel_path",
@@ -1947,7 +1938,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # KeyboardInterrupt
         # --------------------------------------------------------------------
-        self.log.info("{}: KEYBOARDINTERRUPT".format(current_func_name))
+        self.log.info("%s: KEYBOARDINTERRUPT", current_func_name)
 
         mock_check_file_closed.reset_mock()
         metadata = {
@@ -1971,8 +1962,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Exception when getting chunk, not stopped
         # --------------------------------------------------------------------
-        self.log.info("{}: EXCEPTION WHEN GETTING CHUNK, NOT STOPPED"
-                      .format(current_func_name))
+        self.log.info("%s: EXCEPTION WHEN GETTING CHUNK, NOT STOPPED",
+                      current_func_name)
 
         transfer.log = mock.MagicMock()
         metadata = {
@@ -1997,8 +1988,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Exception when getting chunk, stopped
         # --------------------------------------------------------------------
-        self.log.info("{}: EXCEPTION WHEN GETTING CHUNK, STOPPED"
-                      .format(current_func_name))
+        self.log.info("%s: EXCEPTION WHEN GETTING CHUNK, STOPPED",
+                      current_func_name)
 
         mock_check_file_closed.reset_mock()
         metadata = {
@@ -2021,8 +2012,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Exception when joining
         # --------------------------------------------------------------------
-        self.log.info("{}: EXCEPTION WHEN JOINING"
-                      .format(current_func_name))
+        self.log.info("%s: EXCEPTION WHEN JOINING", current_func_name)
 
         transfer.log = mock.MagicMock()
         mock_check_file_closed.reset_mock()
@@ -2050,8 +2040,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # chunks of multiple files received intermixed
         # --------------------------------------------------------------------
-        self.log.info("{}: CHUNKS OF MULITPLE FILES RECEIVED INTERMIXED"
-                      .format(current_func_name))
+        self.log.info("%s: CHUNKS OF MULITPLE FILES RECEIVED INTERMIXED",
+                      current_func_name)
 
         metadata0 = {
             "relative_path": "test_rel_path",
@@ -2098,7 +2088,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # reach timeout
         # --------------------------------------------------------------------
-        self.log.info("{}: REACH TIMEOUT".format(current_func_name))
+        self.log.info("%s: REACH TIMEOUT", current_func_name)
 
         metadata = {
             "relative_path": "test_rel_path",
@@ -2163,8 +2153,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # open descriptors, file not closed
         # --------------------------------------------------------------------
-        self.log.info("{}: OPEN DESCRIPTORS, FILE NOT CLOSED"
-                      .format(current_func_name))
+        self.log.info("%s: OPEN DESCRIPTORS, FILE NOT CLOSED",
+                      current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2196,7 +2186,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS".format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS", current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2235,8 +2225,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors, "No such file or directory" but exception
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY' "
-                      "but exception".format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY' "
+                      "but exception", current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2266,8 +2256,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors, "No such file or directory", all dirs allowed
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY', "
-                      "ALL DIRS ALLOWED".format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY', "
+                      "ALL DIRS ALLOWED", current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2317,8 +2307,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors, "No such file or directory", No dirs allowed
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY', "
-                      "NO DIRS ALLOWED".format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY', "
+                      "NO DIRS ALLOWED", current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2359,8 +2349,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors, not "no such file or directory"
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS, NOT 'NO SUCH FILE OR "
-                      "DIRECTORY'".format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS, NOT 'NO SUCH FILE OR "
+                      "DIRECTORY'", current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2388,8 +2378,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors, unknown exception when open
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS, UNKNOWN EXCEPTION WHEN OPEN"
-                      .format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS, UNKNOWN EXCEPTION WHEN OPEN",
+                      current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2417,8 +2407,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # KeyboardInterrupt in write
         # --------------------------------------------------------------------
-        self.log.info("{}: KEYBOARDINTERRUPT IN WRITE"
-                      .format(current_func_name))
+        self.log.info("%s: KEYBOARDINTERRUPT IN WRITE", current_func_name)
 
         mock_file.write.side_effect = KeyboardInterrupt()
         descriptors = {
@@ -2445,8 +2434,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # descriptors of wrong format
         # --------------------------------------------------------------------
-        self.log.info("{}: DESCRIPTORS OF WRONG FORMAT"
-                      .format(current_func_name))
+        self.log.info("%s: DESCRIPTORS OF WRONG FORMAT", current_func_name)
 
         mock_file.write.side_effect = TestException()
         descriptors = {
@@ -2478,8 +2466,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # chunk_number not in order
         # --------------------------------------------------------------------
-        self.log.info("{}: CHUNK_NUMBER NOT IN ORDER"
-                      .format(current_func_name))
+        self.log.info("%s: CHUNK_NUMBER NOT IN ORDER", current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2522,8 +2509,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # send confirmation: not enabled
         # --------------------------------------------------------------------
-        self.log.info("{}: SEND CONFIRMATION: NOT ENABLED"
-                      .format(current_func_name))
+        self.log.info("%s: SEND CONFIRMATION: NOT ENABLED", current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2555,8 +2541,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # send confirmation: OK (backwards compatible)
         # --------------------------------------------------------------------
-        self.log.info("{}: SEND CONFIRMATION: OK (BACKWARDS COMPATIBLE)"
-                      .format(current_func_name))
+        self.log.info("%s: SEND CONFIRMATION: OK (BACKWARDS COMPATIBLE)",
+                      current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2601,7 +2587,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # send confirmation: OK
         # --------------------------------------------------------------------
-        self.log.info("{}: SEND CONFIRMATION: OK".format(current_func_name))
+        self.log.info("%s: SEND CONFIRMATION: OK", current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2645,8 +2631,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # send confirmation: error
         # --------------------------------------------------------------------
-        self.log.info("{}: SEND CONFIRMATION: ERROR"
-                      .format(current_func_name))
+        self.log.info("%s: SEND CONFIRMATION: ERROR", current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2690,8 +2675,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # open descriptors, file closed
         # --------------------------------------------------------------------
-        self.log.info("{}: OPEN DESCRIPTORS, FILE CLOSED"
-                      .format(current_func_name))
+        self.log.info("%s: OPEN DESCRIPTORS, FILE CLOSED", current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2725,8 +2709,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # open descriptors, file closed but error
         # --------------------------------------------------------------------
-        self.log.info("{}: OPEN DESCRIPTORS, FILE CLOSED BUT ERROR"
-                      .format(current_func_name))
+        self.log.info("%s: OPEN DESCRIPTORS, FILE CLOSED BUT ERROR",
+                      current_func_name)
 
         mock_file_error = mock.MagicMock(close=mock.MagicMock())
         mock_file_error.close.side_effect = TestException()
@@ -2777,8 +2761,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # one iteration, nothing received
         # --------------------------------------------------------------------
-        self.log.info("{}: ONE ITERATION, NOTHING RECEIVED"
-                      .format(current_func_name))
+        self.log.info("%s: ONE ITERATION, NOTHING RECEIVED", current_func_name)
 
         metadata = None
         payload = None
@@ -2796,8 +2779,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # one iteration, KeyboardInterrupt during receive
         # --------------------------------------------------------------------
-        self.log.info("{}: ONE ITERATION, KEYBOARDINTERRUPT DURING RECEIVE"
-                      .format(current_func_name))
+        self.log.info("%s: ONE ITERATION, KEYBOARDINTERRUPT DURING RECEIVE",
+                      current_func_name)
 
         metadata = None
         payload = None
@@ -2813,8 +2796,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # one iteration, error during receive, not stopped
         # --------------------------------------------------------------------
-        self.log.info("{}: ONE ITERATION, ERROR DURING RECEIVE, NOT STOPPED"
-                      .format(current_func_name))
+        self.log.info("%s: ONE ITERATION, ERROR DURING RECEIVE, NOT STOPPED",
+                      current_func_name)
 
         metadata = None
         payload = None
@@ -2837,8 +2820,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # one iteration, error during receive, stopped
         # --------------------------------------------------------------------
-        self.log.info("{}: ONE ITERATION, ERROR DURING RECEIVE, STOPPED"
-                      .format(current_func_name))
+        self.log.info("%s: ONE ITERATION, ERROR DURING RECEIVE, STOPPED",
+                      current_func_name)
 
         metadata = None
         payload = None
@@ -2859,8 +2842,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # one iteration, received and closed
         # --------------------------------------------------------------------
-        self.log.info("{}: ONE ITERATION, RECEIVED AND CLOSE"
-                      .format(current_func_name))
+        self.log.info("%s: ONE ITERATION, RECEIVED AND CLOSE",
+                      current_func_name)
 
         metadata = {}
         payload = "foo"
@@ -2889,8 +2872,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # receive and close in second iteration
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVE AND CLOSE IN SECOND ITERATION"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVE AND CLOSE IN SECOND ITERATION",
+                      current_func_name)
 
         metadata = {}
         payload = "foo"
@@ -2921,8 +2904,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # receive but error in storing
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVE BUT ERROR IN STORING"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVE BUT ERROR IN STORING", current_func_name)
 
         metadata = {}
         payload = "foo"
@@ -3009,7 +2991,7 @@ class TestTransfer(TestBase):
         # no_auth,
         # no exteral context
         # --------------------------------------------------------------------
-        self.log.info("{}: CLOSE SOCKETS".format(current_func_name))
+        self.log.info("%s: CLOSE SOCKETS", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None
@@ -3033,7 +3015,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # open descriptors
         # --------------------------------------------------------------------
-        self.log.info("{}: OPEN DESCRIPTORS".format(current_func_name))
+        self.log.info("%s: OPEN DESCRIPTORS", current_func_name)
 
         transfer.signal_exchanged = None
         transfer.control_socket = None
@@ -3052,7 +3034,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # signal exchanged
         # --------------------------------------------------------------------
-        self.log.info("{}: SIGNAL EXCHANGED".format(current_func_name))
+        self.log.info("%s: SIGNAL EXCHANGED", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.control_socket = None
@@ -3105,7 +3087,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # control_socket
         # --------------------------------------------------------------------
-        self.log.info("{}: CONTROL_SOCKET".format(current_func_name))
+        self.log.info("%s: CONTROL_SOCKET", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None
@@ -3151,16 +3133,15 @@ class TestTransfer(TestBase):
             # cleanup
             transfer = m_transfer.Transfer(**self.transfer_conf)
 
-        self.log.info("{}: CONTROL_SOCKET, OSERROR".format(current_func_name))
+        self.log.info("%s: CONTROL_SOCKET, OSERROR", current_func_name)
         stop_control_socket_with_exception(transfer, OSError())
-        self.log.info("{}: CONTROL_SOCKET, EXCEPTION"
-                      .format(current_func_name))
+        self.log.info("%s: CONTROL_SOCKET, EXCEPTION", current_func_name)
         stop_control_socket_with_exception(transfer, TestException())
 
         # --------------------------------------------------------------------
         # auth, ok
         # --------------------------------------------------------------------
-        self.log.info("{}: AUTH".format(current_func_name))
+        self.log.info("%s: AUTH", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None
@@ -3176,7 +3157,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # auth, exception
         # --------------------------------------------------------------------
-        self.log.info("{}: AUTH, EXCEPTION".format(current_func_name))
+        self.log.info("%s: AUTH, EXCEPTION", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None
@@ -3198,7 +3179,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no external context
         # --------------------------------------------------------------------
-        self.log.info("{}: NO EXTERNAL CONTEXT".format(current_func_name))
+        self.log.info("%s: NO EXTERNAL CONTEXT", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None
@@ -3220,8 +3201,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no external context, exception
         # --------------------------------------------------------------------
-        self.log.info("{}: NO EXTERNAL CONTEXT, EXCEPTION"
-                      .format(current_func_name))
+        self.log.info("%s: NO EXTERNAL CONTEXT, EXCEPTION", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None

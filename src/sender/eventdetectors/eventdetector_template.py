@@ -70,7 +70,7 @@ class EventDetector(EventDetectorBase):
             "filename": "my_file.cbf"
         }]
 
-        self.log.debug("event_message: {}".format(event_message_list))
+        self.log.debug("event_message: %s", event_message_list)
 
         return event_message_list
 

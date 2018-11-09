@@ -88,8 +88,8 @@ class EventDetectorBase(Base):
 
         # Only proceed if the configuration was correct
         if check_passed:
-            self.log.info("Configuration for event detector: {}"
-                          .format(config_reduced))
+            self.log.info("Configuration for event detector: %s",
+                          config_reduced)
         else:
             # self.log.debug("config={}".format(self.config))
             msg = "The configuration has missing or wrong parameteres."

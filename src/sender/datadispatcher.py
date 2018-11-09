@@ -86,8 +86,8 @@ class DataDispatcher(Base):
         except KeyboardInterrupt:
             pass
         except Exception:
-            self.log.error("Stopping DataDispatcher-{} due to unknown "
-                           "error condition.".format(self.dispatcher_id),
+            self.log.error("Stopping DataDispatcher-%s due to unknown "
+                           "error condition.", self.dispatcher_id,
                            exc_info=True)
         finally:
             self.stop()
@@ -104,14 +104,14 @@ class DataDispatcher(Base):
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
-        self.log.debug("DataDispatcher-{} started (PID {})."
-                       .format(self.dispatcher_id, os.getpid()))
+        self.log.debug("DataDispatcher-%s started (PID %s).",
+                       self.dispatcher_id, os.getpid())
 
         formated_config = str(json.dumps(self.config,
                                          sort_keys=True,
                                          indent=4))
-        self.log.info("Configuration for data dispatcher: {}"
-                      .format(formated_config))
+        self.log.info("Configuration for data dispatcher: %s",
+                      formated_config)
 
         # dict with information of all open sockets to which a data stream is
         # opened (host, port,...)
@@ -127,8 +127,8 @@ class DataDispatcher(Base):
                     and not self.config["context"]):
                 self.config["context"] = self.context
 
-        self.log.info("Loading data fetcher: {}"
-                      .format(self.config["data_fetcher_type"]))
+        self.log.info("Loading data fetcher: %s",
+                      self.config["data_fetcher_type"])
         datafetcher_m = __import__(self.config["data_fetcher_type"])
 
         self.datafetcher = datafetcher_m.DataFetcher(self.config,
@@ -178,8 +178,8 @@ class DataDispatcher(Base):
         fixed_stream_addr = [self.fixed_stream_addr, 0, "data"]
 
         while self.continue_run:
-            self.log.debug("DataDispatcher-{}: waiting for new job"
-                           .format(self.dispatcher_id))
+            self.log.debug("DataDispatcher-%s: waiting for new job",
+                           self.dispatcher_id)
             socks = dict(self.poller.poll())
 
             # ----------------------------------------------------------------
@@ -190,12 +190,12 @@ class DataDispatcher(Base):
 
                 try:
                     message = self.router_socket.recv_multipart()
-                    self.log.debug("DataDispatcher-{}: new job received"
-                                   .format(self.dispatcher_id))
-                    self.log.debug("message = {}".format(message))
+                    self.log.debug("DataDispatcher-%s: new job received",
+                                   self.dispatcher_id)
+                    self.log.debug("message = %s", message)
                 except Exception:
-                    self.log.error("DataDispatcher-{}: waiting for new job"
-                                   "...failed".format(self.dispatcher_id),
+                    self.log.error("DataDispatcher-%s: waiting for new job"
+                                   "...failed", self.dispatcher_id,
                                    exc_info=True)
                     continue
 
@@ -206,8 +206,8 @@ class DataDispatcher(Base):
 
                     if self.fixed_stream_addr:
                         targets.insert(0, fixed_stream_addr)
-                        self.log.debug("Added fixed_stream_addr {} to targets "
-                                       "{}".format(fixed_stream_addr, targets))
+                        self.log.debug("Added fixed_stream_addr %s to targets "
+                                       "%s", fixed_stream_addr, targets)
 
                     # sort the target list by the priority
                     targets = sorted(targets, key=lambda target: target[1])
@@ -256,8 +256,8 @@ class DataDispatcher(Base):
                         tracker = sckt.send_multipart(metadata,
                                                       copy=False,
                                                       track=True)
-                        self.log.info("Sending close file signal to '{}' with "
-                                      "priority 0".format(fixed_stream_addr))
+                        self.log.info("Sending close file signal to '%s' with "
+                                      "priority 0", fixed_stream_addr)
 
                         # socket not known
                         if not tracker.done:
@@ -273,8 +273,8 @@ class DataDispatcher(Base):
 
                     elif self.fixed_stream_addr:
                         targets = [fixed_stream_addr]
-                        self.log.debug("Added fixed_stream_addr to targets {}."
-                                       .format(targets))
+                        self.log.debug("Added fixed_stream_addr to targets "
+                                       "%s.", targets)
 
                     else:
                         targets = []
@@ -291,7 +291,7 @@ class DataDispatcher(Base):
                     break
                 except Exception:
                     self.log.error("Building of metadata dictionary failed "
-                                   "for metadata: {}".format(metadata),
+                                   "for metadata: %s", metadata,
                                    exc_info=True)
                     # skip all further instructions and
                     # continue with next iteration
@@ -302,9 +302,8 @@ class DataDispatcher(Base):
                     self.datafetcher.send_data(targets, metadata,
                                                self.open_connections)
                 except Exception:
-                    self.log.error("DataDispatcher-{}: Passing new file to "
-                                   "data stream...failed"
-                                   .format(self.dispatcher_id),
+                    self.log.error("DataDispatcher-%s: Passing new file to "
+                                   "data stream...failed", self.dispatcher_id,
                                    exc_info=True)
 
                 # finish data handling
@@ -319,13 +318,12 @@ class DataDispatcher(Base):
 
                 try:
                     message = self.control_socket.recv_multipart()
-                    self.log.debug("DataDispatcher-{}: control signal "
-                                   "received".format(self.dispatcher_id))
-                    self.log.debug("message = {}".format(message))
+                    self.log.debug("DataDispatcher-%s: control signal "
+                                   "received", self.dispatcher_id)
+                    self.log.debug("message = %s", message)
                 except Exception:
-                    self.log.error("DataDispatcher-{}: reiceiving control "
-                                   "signal...failed"
-                                   .format(self.dispatcher_id),
+                    self.log.error("DataDispatcher-%s: reiceiving control "
+                                   "signal...failed", self.dispatcher_id,
                                    exc_info=True)
                     continue
 
@@ -342,8 +340,8 @@ class DataDispatcher(Base):
                     continue
 
                 elif message[0] == b"SLEEP":
-                    self.log.debug("Router requested DataDispatcher-{} to "
-                                   "wait.".format(self.dispatcher_id))
+                    self.log.debug("Router requested DataDispatcher-%s to "
+                                   "wait.", self.dispatcher_id)
                     break_outer_loop = False
 
                     # if there are problems on the receiving side no data
@@ -400,7 +398,7 @@ class DataDispatcher(Base):
 
                         else:
                             self.log.error("Unhandled control signal received:"
-                                           " {}".format(message))
+                                           " %s", message)
 
                     # the exit signal should become effective
                     if break_outer_loop:
@@ -414,14 +412,14 @@ class DataDispatcher(Base):
                     continue
 
                 else:
-                    self.log.error("Unhandled control signal received: {}"
-                                   .format(message))
+                    self.log.error("Unhandled control signal received: %s",
+                                   message)
 
     def react_to_exit_signal(self):
         """Reaction to exit signal from control socket.
         """
-        self.log.debug("Router requested to shutdown DataDispatcher-{}."
-                       .format(self.dispatcher_id))
+        self.log.debug("Router requested to shutdown DataDispatcher-%s.",
+                       self.dispatcher_id)
 
     def react_to_close_sockets_signal(self, message):
         """Closing socket specified.
@@ -450,8 +448,8 @@ class DataDispatcher(Base):
 
         # to prevent the message two be logged multiple times
         if self.continue_run:
-            self.log.debug("Closing sockets for DataDispatcher-{}"
-                           .format(self.dispatcher_id))
+            self.log.debug("Closing sockets for DataDispatcher-%s",
+                           self.dispatcher_id)
 
         for connection in self.open_connections:
             self.stop_socket(

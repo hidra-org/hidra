@@ -131,8 +131,8 @@ class DataFetcherBase(Base, ABC):
 
         if check_passed:
             if print_log:
-                self.log.info("Configuration for data fetcher: {}"
-                              .format(config_reduced))
+                self.log.info("Configuration for data fetcher: %s",
+                              config_reduced)
 
         else:
             # self.log.debug("config={}".format(self.config))
@@ -218,9 +218,9 @@ class DataFetcherBase(Base, ABC):
                             copy=False,
                             track=True
                         )
-                        self.log.info("Sending message part from file '{}' "
-                                      "to '{}' with priority {}"
-                                      .format(self.source_file, target, prio))
+                        self.log.info("Sending message part from file '%s' "
+                                      "to '%s' with priority %s",
+                                      self.source_file, target, prio)
 
                     elif send_type == "metadata":
                         # json.dumps(None) is 'N.'
@@ -231,18 +231,18 @@ class DataFetcherBase(Base, ABC):
                             track=True
                         )
                         self.log.info("Sending metadata of message part from "
-                                      "file '{}' to '{}' with priority {}"
-                                      .format(self.source_file, target, prio))
-                        self.log.debug("metadata={}".format(metadata))
+                                      "file '%s' to '%s' with priority %s",
+                                      self.source_file, target, prio)
+                        self.log.debug("metadata=%s", metadata)
 
                     if not tracker.done:
-                        self.log.debug("Message part from file '{}' has not "
-                                       "been sent yet, waiting..."
-                                       .format(self.source_file))
+                        self.log.debug("Message part from file '%s' has not "
+                                       "been sent yet, waiting...",
+                                       self.source_file)
                         tracker.wait(timeout)
-                        self.log.debug("Message part from file '{}' has not "
-                                       "been sent yet, waiting...done"
-                                       .format(self.source_file))
+                        self.log.debug("Message part from file '%s' has not "
+                                       "been sent yet, waiting...done",
+                                       self.source_file)
 
                 except:
                     self.log.debug("Raising DataHandling error", exc_info=True)
@@ -265,9 +265,9 @@ class DataFetcherBase(Base, ABC):
                 if send_type == "data":
                     open_connections[target].send_multipart(payload,
                                                             zmq.NOBLOCK)
-                    self.log.info("Sending message part from file '{}' to "
-                                  "'{}' with priority {}"
-                                  .format(self.source_file, target, prio))
+                    self.log.info("Sending message part from file '%s' to "
+                                  "'%s' with priority %s",
+                                  self.source_file, target, prio)
 
                 elif send_type == "metadata":
                     open_connections[target].send_multipart(
@@ -276,9 +276,9 @@ class DataFetcherBase(Base, ABC):
                         zmq.NOBLOCK
                     )
                     self.log.info("Sending metadata of message part from file "
-                                  "'{}' to '{}' with priority {}"
-                                  .format(self.source_file, target, prio))
-                    self.log.debug("metadata={}".format(metadata))
+                                  "'%s' to '%s' with priority %s",
+                                  self.source_file, target, prio)
+                    self.log.debug("metadata=%s", metadata)
 
     # pylint: disable=no-self-use
     def generate_file_id(self, metadata):

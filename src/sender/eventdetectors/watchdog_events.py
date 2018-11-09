@@ -94,7 +94,7 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
 
         regexes = []
         for event, regex in iteritems(config["monitored_events"]):
-            self.log.debug("event: {}, pattern: {}".format(event, regex))
+            self.log.debug("event: %s, pattern: %s", event, regex)
             regex = convert_suffix_list_to_regex(regex,
                                                  compile_regex=True,
                                                  log=self.log)
@@ -125,8 +125,8 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         self.log.debug("init: super")
         super(WatchdogEventHandler, self,).__init__()
 
-        self.log.debug("self.detect_close={}, self.detect_move={}"
-                       .format(self.detect_close, self.detect_move))
+        self.log.debug("self.detect_close=%s, self.detect_move=%s",
+                       self.detect_close, self.detect_move)
 
     def process(self, event):
         """
@@ -167,8 +167,8 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         if self.detect_close and self.detect_close.match(event.src_path):
             self.log.debug("On close event detected (from create)")
             if not event.is_directory:
-                self.log.debug("Append event to _event_list_to_observe: {}"
-                               .format(event.src_path))
+                self.log.debug("Append event to _event_list_to_observe: %s",
+                               event.src_path)
 #                _event_list_to_observe.append(event.src_path)
                 bisect.insort_left(_event_list_to_observe, event.src_path)
 
@@ -337,18 +337,18 @@ class CheckModTime(threading.Thread):
                     try:
                         with self.lock:
                             _event_list_to_observe.remove(event)
-                        self.log.debug("Removing event: {}".format(event))
+                        self.log.debug("Removing event: %s", event)
                     except Exception:
-                        self.log.error("Removing event failed: {}"
-                                       .format(event), exc_info=True)
-                        self.log.debug("_event_list_to_observe_tmp={}"
-                                       .format(_event_list_to_observe_tmp))
-                        self.log.debug("_event_list_to_observe={}"
-                                       .format(_event_list_to_observe))
+                        self.log.error("Removing event failed: %s", event,
+                                       exc_info=True)
+                        self.log.debug("_event_list_to_observe_tmp=%s",
+                                       _event_list_to_observe_tmp)
+                        self.log.debug("_event_list_to_observe=%s",
+                                       _event_list_to_observe)
                 _event_list_to_observe_tmp = []
 
-#                self.log.debug("List to observe after map-function: {0}"
-#                               .format(_event_list_to_observe))
+#                self.log.debug("List to observe after map-function: %s",
+#                               _event_list_to_observe)
                 time.sleep(self.action_time)
             except Exception:
                 self.log.error("Stopping loop due to error", exc_info=True)
@@ -379,8 +379,8 @@ class CheckModTime(threading.Thread):
 #                _event_list_to_observe_tmp.append(filepath)
 #            return
         except Exception:
-            self.log.error("Unable to get modification time for file: {}"
-                           .format(filepath), exc_info=True)
+            self.log.error("Unable to get modification time for file: %s",
+                           filepath, exc_info=True)
             # remove the file from the observing list
             with self.lock:
                 _event_list_to_observe_tmp.append(filepath)
@@ -390,15 +390,15 @@ class CheckModTime(threading.Thread):
             # get current time
             time_current = time.time()
         except Exception:
-            self.log.error("Unable to get current time for file: {}"
-                           .format(filepath), exc_info=True)
+            self.log.error("Unable to get current time for file: %s",
+                           filepath, exc_info=True)
 
         # compare ( >= limit)
         if time_current - time_last_modified >= self.time_till_closed:
-            self.log.debug("New closed file detected: {}".format(filepath))
+            self.log.debug("New closed file detected: %s", filepath)
 
             event_message = get_event_message(filepath, self.mon_dir)
-            self.log.debug("event_message: {}".format(event_message))
+            self.log.debug("event_message: %s", event_message)
 
             # add to result list
 #            self.log.debug("check_last_modified-{0} _event_message_list {1}"
@@ -412,9 +412,8 @@ class CheckModTime(threading.Thread):
 #                           "_event_list_to_observe_tmp "{1}"
 #                           .format(thread_name, _event_list_to_observe_tmp))
         else:
-            self.log.debug("File was last modified {} sec ago: {}"
-                           .format(time_current - time_last_modified,
-                                   filepath))
+            self.log.debug("File was last modified %s sec ago: %s",
+                           time_current - time_last_modified, filepath)
 
     def stop(self):
         """ Stopping the loop and closing the pool
@@ -480,7 +479,7 @@ class EventDetector(EventDetectorBase):
         self.paths = [os.path.normpath(os.path.join(self.mon_dir,
                                                     directory))
                       for directory in self.config["fix_subdirs"]]
-        self.log.debug("paths: {}".format(self.paths))
+        self.log.debug("paths: %s", self.paths)
 
         self.lock = threading.Lock()
 
@@ -496,8 +495,7 @@ class EventDetector(EventDetectorBase):
             self.observer_threads.append(observer)
 
             observer.start()
-            self.log.info("Started observer for directory: {}"
-                          .format(path))
+            self.log.info("Started observer for directory: %s", path)
 
         self.checking_thread = CheckModTime(
             number_of_threads=4,

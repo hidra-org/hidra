@@ -250,10 +250,8 @@ class EventDetector(EventDetectorBase):
 
         self.monitoringdevice.start()
         self.log.info("Monitoring device has started with (bind)\n"
-                      "in: {}\nout: {}\nmon: {}"
-                      .format(self.endpoints.in_bind,
-                              self.endpoints.out_bind,
-                              self.endpoints.mon_bind))
+                      "in: %s\nout: %s\nmon: %s", self.endpoints.in_bind,
+                      self.endpoints.out_bind, self.endpoints.mon_bind)
 
         # set up monitoring socket where the events are sent to
         if self.config["context"] is not None:
@@ -285,12 +283,12 @@ class EventDetector(EventDetectorBase):
         # the metadata were received as string and have to be converted into
         # a dictionary
         metadata = json.loads(metadata)
-        self.log.debug("Monitoring Client: {}".format(metadata))
+        self.log.debug("Monitoring Client: %s", metadata)
 
         # TODO receive more than this one metadata unit
         event_message_list = [metadata]
 
-        self.log.debug("event_message: {}".format(event_message_list))
+        self.log.debug("event_message: %s", event_message_list)
 
         return event_message_list
 

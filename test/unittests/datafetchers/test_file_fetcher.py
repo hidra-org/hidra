@@ -111,8 +111,8 @@ class TestDataFetcher(DataFetcherTestBase):
 
         open_connections = dict()
 
-        self.log.debug("open_connections before function call: {}"
-                       .format(open_connections))
+        self.log.debug("open_connections before function call: %s",
+                       open_connections)
 
         self.datafetcher.get_metadata(targets, metadata)
 
@@ -120,14 +120,14 @@ class TestDataFetcher(DataFetcherTestBase):
 
         self.datafetcher.finish(targets, metadata, open_connections)
 
-        self.log.debug("open_connections after function call: {}"
-                       .format(open_connections))
+        self.log.debug("open_connections after function call: %s",
+                       open_connections)
 
         try:
             for sckt in self.receiving_sockets:
                 recv_message = sckt.recv_multipart()
                 recv_message = json.loads(recv_message[0].decode("utf-8"))
-                self.log.info("received: {}".format(recv_message))
+                self.log.info("received: %s", recv_message)
         except KeyboardInterrupt:
             pass
 
@@ -199,8 +199,8 @@ class TestDataFetcher(DataFetcherTestBase):
 
         open_connections = dict()
 
-        self.log.debug("open_connections before function call: {}"
-                       .format(open_connections))
+        self.log.debug("open_connections before function call: %s",
+                       open_connections)
 
         self.datafetcher.get_metadata(targets, metadata)
 
@@ -217,16 +217,16 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # send file identifier to cleaner
         confirmation_socket.send(file_id.encode("utf-8"))
-        self.log.debug("confirmation sent {}".format(file_id))
+        self.log.debug("confirmation sent %s", file_id)
 
-        self.log.debug("open_connections after function call: {}"
-                       .format(open_connections))
+        self.log.debug("open_connections after function call: %s",
+                       open_connections)
 
         try:
             for sckt in self.receiving_sockets:
                 recv_message = sckt.recv_multipart()
                 recv_message = json.loads(recv_message[0].decode("utf-8"))
-                self.log.info("received: {}".format(recv_message))
+                self.log.info("received: %s", recv_message)
         except KeyboardInterrupt:
             pass
 

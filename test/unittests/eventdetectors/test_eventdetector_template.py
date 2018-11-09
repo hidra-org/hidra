@@ -61,7 +61,7 @@ class TestEventDetector(EventDetectorTestBase):
             try:
                 event_list = self.eventdetector.get_new_event()
                 if event_list:
-                    self.log.debug("event_list: {}".format(event_list))
+                    self.log.debug("event_list: %s", event_list)
             except KeyboardInterrupt:
                 break
 

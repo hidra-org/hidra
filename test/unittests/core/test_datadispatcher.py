@@ -151,7 +151,7 @@ class TestDataDispatcher(TestBase):
             for sckt in receiving_sockets:
                 recv_message = sckt.recv_multipart()
                 recv_message = json.loads(recv_message[0].decode("utf-8"))
-                self.log.info("received: {}".format(recv_message))
+                self.log.info("received: %s", recv_message)
         except KeyboardInterrupt:
             pass
         finally:

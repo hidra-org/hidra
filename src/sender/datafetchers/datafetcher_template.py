@@ -105,8 +105,8 @@ class DataFetcher(DataFetcherBase):
         if not targets_data:
             return
 
-        self.log.debug("Passing multipart-message for file '{}'..."
-                       .format(self.source_file))
+        self.log.debug("Passing multipart-message for file '%s'...",
+                       self.source_file)
 
         for i in range(5):
 
@@ -124,7 +124,7 @@ class DataFetcher(DataFetcherBase):
                 chunk_payload.append(file_content)
             except Exception:
                 self.log.error("Unable to pack multipart-message for file "
-                               "'{}'".format(self.source_file), exc_info=True)
+                               "'%s'", self.source_file, exc_info=True)
 
             # send message to data targets
             try:
@@ -134,14 +134,12 @@ class DataFetcher(DataFetcherBase):
                                      payload=chunk_payload)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{}' (chunk {})"
-                               .format(self.source_file, chunk_number),
-                               exc_info=True)
+                               "'%s' (chunk %s)", self.source_file,
+                               chunk_number, exc_info=True)
             except Exception:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{}' (chunk {})"
-                               .format(self.source_file, chunk_number),
-                               exc_info=True)
+                               "'%s' (chunk %s)", self.source_file,
+                               chunk_number, exc_info=True)
 
     def finish(self, targets, metadata, open_connections):
         """Implementation of the abstract method finish.
@@ -164,13 +162,12 @@ class DataFetcher(DataFetcherBase):
                                      metadata=metadata,
                                      payload=None)
                 self.log.debug("Passing metadata multipart-message for file "
-                               "{}...done.".format(self.source_file))
+                               "%s...done.", self.source_file)
 
             except Exception:
                 self.log.error("Unable to send metadata multipart-message for "
-                               "file '{}' to '{}'"
-                               .format(self.source_file, targets_metadata),
-                               exc_info=True)
+                               "file '%s' to '%s'", self.source_file,
+                               targets_metadata, exc_info=True)
 
     def stop(self):
         """Implementation of the abstract method stop.

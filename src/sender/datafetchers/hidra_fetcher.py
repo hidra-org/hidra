@@ -181,20 +181,18 @@ class DataFetcher(DataFetcherBase):
         if not targets_data:
             return
 
-        self.log.debug("Received data for file {} (chunknumber {})"
-                       .format(self.source_file,
-                               self.metadata_r["chunk_number"]))
+        self.log.debug("Received data for file %s (chunknumber %s)",
+                       self.source_file, self.metadata_r["chunk_number"])
 
-        self.log.debug("Passing multipart-message for file '{}'..."
-                       .format(self.source_file))
+        self.log.debug("Passing multipart-message for file '%s'...",
+                       self.source_file)
 
         try:
             chunk_payload = [json.dumps(self.metadata_r).encode("utf-8"),
                              self.data_r]
         except Exception:
             self.log.error("Unable to pack multipart-message for file "
-                           "'{}'".format(self.source_file),
-                           exc_info=True)
+                           "'%s'", self.source_file, exc_info=True)
 
         # send message to data targets
         try:
@@ -206,14 +204,14 @@ class DataFetcher(DataFetcherBase):
             )
         except DataHandlingError:
             self.log.error(
-                "Unable to send multipart-message for file '{}' (chunk {})"
-                .format(self.source_file, self.metadata_r["chunk_number"]),
+                "Unable to send multipart-message for file '%s' (chunk %s)",
+                self.source_file, self.metadata_r["chunk_number"],
                 exc_info=True
             )
         except Exception:
             self.log.error(
-                "Unable to send multipart-message for file '{}' (chunk {})"
-                .format(self.source_file, self.metadata_r["chunk_number"]),
+                "Unable to send multipart-message for file '%s' (chunk %s)",
+                self.source_file, self.metadata_r["chunk_number"],
                 exc_info=True
             )
 
@@ -241,12 +239,12 @@ class DataFetcher(DataFetcherBase):
                     timeout=self.config["send_timeout"]
                 )
                 self.log.debug("Passing metadata multipart-message for file "
-                               "{}...done.".format(self.source_file))
+                               "%s...done.", self.source_file)
 
             except Exception:
                 self.log.error(
                     "Unable to send metadata multipart-message for file"
-                    "'{}' to '{}'".format(self.source_file, targets_metadata),
+                    "'%s' to '%s'", self.source_file, targets_metadata,
                     exc_info=True
                 )
 
@@ -263,8 +261,8 @@ class DataFetcher(DataFetcherBase):
                 )
             except Exception:
                 self.log.error(
-                    "Storing multipart message for file '{}' failed"
-                    .format(self.source_file),
+                    "Storing multipart message for file '%s' failed",
+                    self.source_file,
                     exc_info=True
                 )
 

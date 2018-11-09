@@ -76,7 +76,7 @@ class TestCheckNetgroup(TestBase):
         # --------------------------------------------------------------------
         # no netgroup change
         # --------------------------------------------------------------------
-        self.log.info("{}: NO NETGROUP CHANGED".format(current_func_name))
+        self.log.info("%s: NO NETGROUP CHANGED", current_func_name)
 
         whitelist = ["test_host"]
         new_whitelist = whitelist
@@ -95,7 +95,7 @@ class TestCheckNetgroup(TestBase):
         # --------------------------------------------------------------------
         # netgroup changed
         # --------------------------------------------------------------------
-        self.log.info("{}: NETGROUP CHANGED".format(current_func_name))
+        self.log.info("%s: NETGROUP CHANGED", current_func_name)
 
         whitelist = ["test_host"]
         new_whitelist = ["new_test_host"]
@@ -114,7 +114,7 @@ class TestCheckNetgroup(TestBase):
         # --------------------------------------------------------------------
         # empty ldap search
         # --------------------------------------------------------------------
-        self.log.info("{}: EMPTY LDAP SEARCH".format(current_func_name))
+        self.log.info("%s: EMPTY LDAP SEARCH", current_func_name)
 
         whitelist = ["test_host"]
         mock_ldap.side_effect = [[], whitelist, MyException]

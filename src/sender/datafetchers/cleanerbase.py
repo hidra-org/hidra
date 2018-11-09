@@ -167,9 +167,9 @@ class CleanerBase(Base, ABC):
                 else:
                     chunk_number = None
 
-                self.log.debug("topic={}".format(topic))
-                self.log.debug("New confirmation received: {}".format(file_id))
-                self.log.debug("chunk_number={}".format(chunk_number))
+                self.log.debug("topic=%s", topic)
+                self.log.debug("New confirmation received: %s", file_id)
+                self.log.debug("chunk_number=%s", chunk_number)
 
                 if file_id in confirmations and chunk_number != 1:
                     confirmations[file_id]["count"] += 1
@@ -182,7 +182,7 @@ class CleanerBase(Base, ABC):
                         "chunks": [chunk_number]
                     }
 
-                self.log.debug("jobs={}".format(jobs))
+                self.log.debug("jobs=%s", jobs)
 #                self.log.debug("confirmations={}".format(confirmations))
 
                 if file_id in jobs:
@@ -202,16 +202,15 @@ class CleanerBase(Base, ABC):
                         else:
                             # correct count
                             self.log.info("More confirmations received than "
-                                          "chunks sent for file {}."
-                                          .format(file_id))
-                            self.log.debug("chunks received={}"
-                                           .format(this_confirm["chunks"]))
+                                          "chunks sent for file %s.", file_id)
+                            self.log.debug("chunks received=%s",
+                                           this_confirm["chunks"])
 
                             this_confirm["count"] = len(received_chunks)
                             this_confirm["chunks"] = received_chunks
                 else:
                     self.log.debug("confirmations without job notification "
-                                   "received: {}".format(file_id))
+                                   "received: %s", file_id)
 
             # ----------------------------------------------------------------
             # messages from DataFetcher
@@ -221,7 +220,7 @@ class CleanerBase(Base, ABC):
 
                 self.log.debug("Waiting for job")
                 message = self.job_socket.recv_multipart()
-                self.log.debug("New job received: {}".format(message))
+                self.log.debug("New job received: %s", message)
 
                 base_path, file_id, n_chunks = message
                 n_chunks = int(n_chunks)
@@ -241,10 +240,9 @@ class CleanerBase(Base, ABC):
                     else:
                         # correct count
                         self.log.info("More confirmations received than "
-                                      "chunks sent for file {}."
-                                      .format(file_id))
-                        self.log.debug("chunks received={}"
-                                       .format(this_confirm["chunks"]))
+                                      "chunks sent for file %s.", file_id)
+                        self.log.debug("chunks received=%s",
+                                       this_confirm["chunks"])
 
                         this_confirm["count"] = len(received_chunks)
                         this_confirm["chunks"] = received_chunks
@@ -262,7 +260,7 @@ class CleanerBase(Base, ABC):
                 try:
                     message = self.control_socket.recv_multipart()
                     self.log.debug("Control signal received")
-                    self.log.debug("message = {}".format(message))
+                    self.log.debug("message = %s", message)
                 except Exception:
                     self.log.error("Receiving control signal...failed",
                                    exc_info=True)
@@ -282,8 +280,8 @@ class CleanerBase(Base, ABC):
                     self.log.debug("Received exit signal")
                     break
                 else:
-                    self.log.error("Unhandled control signal received: {}"
-                                   .format(message))
+                    self.log.error("Unhandled control signal received: %s",
+                                   message)
 
     @abc.abstractmethod
     def remove_element(self, base_path, source_file_id):

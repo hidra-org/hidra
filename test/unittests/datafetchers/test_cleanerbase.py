@@ -80,11 +80,10 @@ class TestDataFetcher(DataFetcherTestBase):
                 # remove file
                 try:
                     os.remove(source_file)
-                    self.log.info("Removing file '{}' ...success"
-                                  .format(source_file))
+                    self.log.info("Removing file '%s' ...success", source_file)
                 except Exception:  # pylint: disable=broad-except
-                    self.log.error("Unable to remove file {}"
-                                   .format(source_file), exc_info=True)
+                    self.log.error("Unable to remove file %s", source_file,
+                                   exc_info=True)
 
         endpoints = self.config["endpoints"]
 
@@ -144,13 +143,13 @@ class TestDataFetcher(DataFetcherTestBase):
                 n_chunks = str(1)
 
                 message = [target_file, file_id, n_chunks]
-                self.log.debug("sending job {}".format(message))
+                self.log.debug("sending job %s", message)
                 job_socket.send_multipart(message)
-                self.log.debug("job sent {}".format(message))
+                self.log.debug("job sent %s", message)
 
                 message = [file_id, target_file]
                 confirmation_socket.send_multipart(message)
-                self.log.debug("confirmation sent {}".format(message))
+                self.log.debug("confirmation sent %s", message)
         except KeyboardInterrupt:
             pass
         finally:

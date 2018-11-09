@@ -119,12 +119,13 @@ class TestEventDetector(EventDetectorTestBase):
                                       eventdetector.check_config)
 
                     # check that this is the only missing parameter
-                    msg = ("Configuration of wrong format. Missing parameter: "
-                           "'{}'".format(param))
-                    eventdetector.log.error.assert_called_with(msg)
+                    eventdetector.log.error.assert_called_with(
+                        "Configuration of wrong format. Missing parameter: "
+                        "'%s'", param
+                    )
                     eventdetector.log.error.reset_mock()
                 except AssertionError:
-                    self.log.debug("checking param {}".format(param))
+                    self.log.debug("checking param %s", param)
                     raise
 
         # test Linux
@@ -318,7 +319,7 @@ class TestEventDetector(EventDetectorTestBase):
 
                 event_list = self.eventdetector.get_new_event()
                 if event_list:
-                    self.log.debug("event_list: {}".format(event_list))
+                    self.log.debug("event_list: %s", event_list)
 
 #                self.assertEqual(len(event_list), 1)
 #                self.assertDictEqual(event_list[0], expected_result_dict)
@@ -332,7 +333,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.event_socket.send_multipart(message)
 
         event_list = self.eventdetector.get_new_event()
-        self.log.debug("event_list: {}".format(event_list))
+        self.log.debug("event_list: %s", event_list)
 
         self.assertIn(message, event_list)
 

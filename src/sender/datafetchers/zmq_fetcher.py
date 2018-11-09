@@ -190,7 +190,7 @@ class DataFetcher(DataFetcherBase):
         except:
             self.log.error("Invalid fileEvent message received.",
                            exc_info=True)
-            self.log.debug("metadata={}".format(metadata))
+            self.log.debug("metadata=%s", metadata)
             # skip all further instructions and continue with next iteration
             raise
 
@@ -215,7 +215,7 @@ class DataFetcher(DataFetcherBase):
                 metadata["file_create_time"] = time.time()
                 # chunksize is coming from zmq_events
 
-                self.log.debug("metadata = {}".format(metadata))
+                self.log.debug("metadata = %s", metadata)
             except:
                 self.log.error("Unable to assemble multi-part message.",
                                exc_info=True)
@@ -230,12 +230,12 @@ class DataFetcher(DataFetcherBase):
 
         # reading source file into memory
         try:
-            self.log.debug("Getting data out of queue for file '{}'..."
-                           .format(self.source_file))
+            self.log.debug("Getting data out of queue for file '%s'...",
+                           self.source_file)
             data = self.socket.recv()
         except Exception:
-            self.log.error("Unable to get data out of queue for file '{}'"
-                           .format(self.source_file), exc_info=True)
+            self.log.error("Unable to get data out of queue for file '%s'",
+                           self.source_file, exc_info=True)
             raise
 
     #    try:
@@ -244,8 +244,8 @@ class DataFetcher(DataFetcherBase):
     #        self.log.error("Unable to get chunksize", exc_info=True)
 
         try:
-            self.log.debug("Packing multipart-message for file {}..."
-                           .format(self.source_file))
+            self.log.debug("Packing multipart-message for file %s...",
+                           self.source_file)
             chunk_number = 0
 
             # assemble metadata for zmq-message
@@ -256,18 +256,18 @@ class DataFetcher(DataFetcherBase):
             payload.append(json.dumps(metadata_extended).encode("utf-8"))
             payload.append(data)
         except Exception:
-            self.log.error("Unable to pack multipart-message for file '{}'"
-                           .format(self.source_file), exc_info=True)
+            self.log.error("Unable to pack multipart-message for file '%s'",
+                           self.source_file, exc_info=True)
 
         # send message
         try:
             self.send_to_targets(targets, open_connections, metadata_extended,
                                  payload)
-            self.log.debug("Passing multipart-message for file '{}'...done."
-                           .format(self.source_file))
+            self.log.debug("Passing multipart-message for file '%s'...done.",
+                           self.source_file)
         except Exception:
-            self.log.error("Unable to send multipart-message for file '{}'"
-                           .format(self.source_file), exc_info=True)
+            self.log.error("Unable to send multipart-message for file '%s'",
+                           self.source_file, exc_info=True)
 
     def finish(self, targets, metadata, open_connections):
         """Implementation of the abstract method finish.

@@ -105,15 +105,13 @@ class DataFetcher(DataFetcherBase):
 
         if targets:
             try:
-                self.log.debug("get filesize for '{}'..."
-                               .format(self.source_file))
+                self.log.debug("get filesize for '%s'...", self.source_file)
                 filesize = os.path.getsize(self.source_file)
                 file_mod_time = os.stat(self.source_file).st_mtime
                 file_create_time = os.stat(self.source_file).st_ctime
-                self.log.debug("filesize({}) = {}"
-                               .format(self.source_file, filesize))
-                self.log.debug("file_mod_time({}) = {}"
-                               .format(self.source_file, file_mod_time))
+                self.log.debug("filesize(%s) = %s", self.source_file, filesize)
+                self.log.debug("file_mod_time(%s) = %s", self.source_file,
+                               file_mod_time)
 
             except Exception:
                 self.log.error("Unable to create metadata dictionary.")
@@ -148,7 +146,7 @@ class DataFetcher(DataFetcherBase):
                 else:
                     metadata["confirmation_required"] = False
 
-                self.log.debug("metadata = {}".format(metadata))
+                self.log.debug("metadata = %s", metadata)
             except Exception:
                 self.log.error("Unable to assemble multi-part message.")
                 raise
@@ -186,15 +184,15 @@ class DataFetcher(DataFetcherBase):
 
         # reading source file into memory
         try:
-            self.log.debug("Opening '{}'...".format(self.source_file))
+            self.log.debug("Opening '%s'...", self.source_file)
             file_descriptor = open(str(self.source_file), "rb")
         except Exception:
-            self.log.error("Unable to read source file '{}'"
-                           .format(self.source_file), exc_info=True)
+            self.log.error("Unable to read source file '%s'",
+                           self.source_file, exc_info=True)
             raise
 
-        self.log.debug("Passing multipart-message for file '{}'..."
-                       .format(self.source_file))
+        self.log.debug("Passing multipart-message for file '%s'...",
+                       self.source_file)
         # sending data divided into chunks
         while True:
 
@@ -218,7 +216,7 @@ class DataFetcher(DataFetcherBase):
                 chunk_payload.append(file_content)
             except Exception:
                 self.log.error("Unable to pack multipart-message for file "
-                               "'{}'".format(self.source_file), exc_info=True)
+                               "'%s'", self.source_file, exc_info=True)
 
             # send message to data targets
             try:
@@ -228,25 +226,23 @@ class DataFetcher(DataFetcherBase):
                                      payload=chunk_payload)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{}' (chunk {})".format(self.source_file,
-                                                        chunk_number),
-                               exc_info=True)
+                               "'%s' (chunk %s)", self.source_file,
+                               chunk_number, exc_info=True)
                 send_error = True
             except Exception:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{}' (chunk {})".format(self.source_file,
-                                                        chunk_number),
-                               exc_info=True)
+                               "'%s' (chunk %s)", self.source_file,
+                               chunk_number, exc_info=True)
 
             chunk_number += 1
 
         # close file
         try:
-            self.log.debug("Closing '{}'...".format(self.source_file))
+            self.log.debug("Closing '%s'...", self.source_file)
             file_descriptor.close()
         except Exception:
-            self.log.error("Unable to close target file '{}'"
-                           .format(self.source_file), exc_info=True)
+            self.log.error("Unable to close target file '%s'",
+                           self.source_file, exc_info=True)
             raise
 
         # do not remove data until a confirmation is sent back from the
@@ -271,45 +267,44 @@ class DataFetcher(DataFetcherBase):
                 )
 
                 if metadata["relative_path"] in self.config["fix_subdirs"]:
-                    self.log.error("Unable to copy/move file '{}' to '{}': "
-                                   "Directory {} is not available"
-                                   .format(self.source_file, self.target_file,
-                                           metadata["relative_path"]))
+                    self.log.error("Unable to copy/move file '%s' to '%s': "
+                                   "Directory %s is not available",
+                                   self.source_file, self.target_file,
+                                   metadata["relative_path"])
                     raise
                 elif (subdir in self.config["fix_subdirs"]
                       and not os.path.isdir(target_base_path)):
-                    self.log.error("Unable to copy/move file '{}' to '{}': "
-                                   "Directory {} is not available"
-                                   .format(self.source_file,
-                                           self.target_file,
-                                           subdir))
+                    self.log.error("Unable to copy/move file '%s' to '%s': "
+                                   "Directory %s is not available",
+                                   self.source_file, self.target_file,
+                                   subdir)
                     raise
                 else:
                     try:
                         target_path, _ = os.path.split(self.target_file)
                         os.makedirs(target_path)
-                        self.log.info("New target directory created: {}"
-                                      .format(target_path))
+                        self.log.info("New target directory created: %s",
+                                      target_path)
                         action_function(self.source_file, self.target_file)
                     except OSError:
                         self.log.info("Target directory creation failed, was "
-                                      "already created in the meantime: {}"
-                                      .format(target_path))
+                                      "already created in the meantime: %s",
+                                      target_path)
                         action_function(self.source_file, self.target_file)
                     except:
-                        err_msg = ("Unable to copy/move file '{}' to '{}'"
-                                   .format(self.source_file, self.target_file))
+                        err_msg = ("Unable to copy/move file '%s' to '%s'",
+                                   self.source_file, self.target_file)
                         self.log.error(err_msg, exc_info=True)
-                        self.log.debug("target_path: {}".format(target_path))
+                        self.log.debug("target_path: %s", target_path)
                         raise
             else:
-                self.log.error("Unable to copy/move file '{}' to '{}'"
-                               .format(self.source_file, self.target_file),
+                self.log.error("Unable to copy/move file '%s' to '%s'",
+                               self.source_file, self.target_file,
                                exc_info=True)
                 raise
         except Exception:
-            self.log.error("Unable to copy/move file '{}' to '{}'"
-                           .format(self.source_file, self.target_file),
+            self.log.error("Unable to copy/move file '%s' to '%s'",
+                           self.source_file, self.target_file,
                            exc_info=True)
             raise
 
@@ -346,11 +341,11 @@ class DataFetcher(DataFetcherBase):
         if self.config["store_data"]:
             try:
                 self._datahandling(shutil.copy, metadata)
-                self.log.info("Copying file '{}' ...success."
-                              .format(self.source_file))
+                self.log.info("Copying file '%s' ...success.",
+                              self.source_file)
             except Exception:
-                self.log.error("Could not copy file {} to {}"
-                               .format(self.source_file, self.target_file),
+                self.log.error("Could not copy file %s to %s",
+                               self.source_file, self.target_file,
                                exc_info=True)
                 return
 
@@ -373,7 +368,7 @@ class DataFetcher(DataFetcherBase):
                  file_id.encode("utf-8"),
                  str(n_chunks)]
             )
-            self.log.debug("Forwarded to cleaner {}".format(file_id))
+            self.log.debug("Forwarded to cleaner %s", file_id)
 
         # send message to metadata targets
         if targets_metadata:
@@ -384,13 +379,12 @@ class DataFetcher(DataFetcherBase):
                                      payload=None,
                                      timeout=self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
-                               "{}...done.".format(self.source_file))
+                               "%s...done.", self.source_file)
 
             except Exception:
                 self.log.error("Unable to send metadata multipart-message for "
-                               "file '{}' to '{}'"
-                               .format(self.source_file, targets_metadata),
-                               exc_info=True)
+                               "file '%s' to '%s'", self.source_file,
+                               targets_metadata, exc_info=True)
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
         """Finish method to use when use of cleaner not configured.
@@ -412,11 +406,11 @@ class DataFetcher(DataFetcherBase):
 
             try:
                 self._datahandling(shutil.move, metadata)
-                self.log.info("Moving file '{}' to '{}'...success."
-                              .format(self.source_file, self.target_file))
+                self.log.info("Moving file '%s' to '%s'...success.",
+                              self.source_file, self.target_file)
             except Exception:
-                self.log.error("Could not move file {} to {}"
-                               .format(self.source_file, self.target_file),
+                self.log.error("Could not move file %s to %s",
+                               self.source_file, self.target_file,
                                exc_info=True)
                 return
 
@@ -425,11 +419,11 @@ class DataFetcher(DataFetcherBase):
         elif self.config["store_data"]:
             try:
                 self._datahandling(shutil.copy, metadata)
-                self.log.info("Copying file '{}' ...success."
-                              .format(self.source_file))
+                self.log.info("Copying file '%s' ...success.",
+                              self.source_file)
             except Exception:
-                self.log.error("Could not copy file {} to {}"
-                               .format(self.source_file, self.target_file),
+                self.log.error("Could not copy file %s to %s",
+                               self.source_file, self.target_file,
                                exc_info=True)
                 return
 
@@ -437,11 +431,11 @@ class DataFetcher(DataFetcherBase):
         elif self.config["remove_data"] and self.config["remove_flag"]:
             try:
                 os.remove(self.source_file)
-                self.log.info("Removing file '{}' ...success."
-                              .format(self.source_file))
+                self.log.info("Removing file '%s' ...success.",
+                              self.source_file)
             except Exception:
-                self.log.error("Unable to remove file {}"
-                               .format(self.source_file), exc_info=True)
+                self.log.error("Unable to remove file %s",
+                               self.source_file, exc_info=True)
 
             self.config["remove_flag"] = False
 
@@ -454,13 +448,12 @@ class DataFetcher(DataFetcherBase):
                                      payload=None,
                                      timeout=self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
-                               "{}...done.".format(self.source_file))
+                               "%s...done.", self.source_file)
 
             except Exception:
                 self.log.error("Unable to send metadata multipart-message for "
-                               "file '{}' to '{}'"
-                               .format(self.source_file, targets_metadata),
-                               exc_info=True)
+                               "file '%s' to '%s'", self.source_file,
+                               targets_metadata, exc_info=True)
 
     def stop(self):
         """Implementation of the abstract method stop.
@@ -482,7 +475,7 @@ class Cleaner(CleanerBase):
         # remove file
         try:
             os.remove(source_file)
-            self.log.info("Removing file '{}' ...success".format(source_file))
+            self.log.info("Removing file '%s' ...success", source_file)
         except Exception:
-            self.log.error("Unable to remove file {}".format(source_file),
+            self.log.error("Unable to remove file %s", source_file,
                            exc_info=True)

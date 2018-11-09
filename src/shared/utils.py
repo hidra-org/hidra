@@ -183,10 +183,9 @@ def check_type(specified_type, supported_types, log_string):
     specified_type = specified_type.lower()
 
     if specified_type in supported_types:
-        logging.debug("{} '{}' is ok.".format(log_string, specified_type))
+        logging.debug("%s '%s' is ok.", log_string, specified_type)
     else:
-        logging.error("{} '{}' is not supported."
-                      .format(log_string, specified_type))
+        logging.error("%s '%s' is not supported.", log_string, specified_type)
         sys.exit(1)
 
 
@@ -211,8 +210,8 @@ def check_any_sub_dir_exists(dir_path, subdirs):
 
     if no_subdir:
         logging.error("There are none of the specified subdirectories inside "
-                      "'{}'. Abort.".format(dir_path))
-        logging.error("Checked paths: {}".format(dirs_to_check))
+                      "'%s'. Abort.", dir_path)
+        logging.error("Checked paths: %s", dirs_to_check)
         sys.exit(1)
 
 
@@ -252,7 +251,7 @@ def check_all_sub_dir_exist(dir_path, subdirs):
 
     for i in dirs_to_check:
         if not os.path.exists(i):
-            logging.error("Dir '{}' does not exist. Abort.".format(i))
+            logging.error("Dir '%s' does not exist. Abort.", i)
             sys.exit(1)
 
 
@@ -264,7 +263,7 @@ def check_existance(path):
     """
 
     if path is None:
-        logging.error("No path to check found (path={}). Abort.".format(path))
+        logging.error("No path to check found (path=%s). Abort.", path)
         sys.exit(1)
 
     # Check path for existance.
@@ -275,8 +274,7 @@ def check_existance(path):
         obj_type = "File"
 
     if not os.path.exists(path):
-        logging.error("{} '{}' does not exist. Abort."
-                      .format(obj_type, path))
+        logging.error("%s '%s' does not exist. Abort.", obj_type, path)
         sys.exit(1)
 
 
@@ -290,7 +288,7 @@ def check_writable(file_to_check):
         file_descriptor = open(file_to_check, "a")
         file_descriptor.close()
     except Exception:
-        logging.error("Unable to create the file {}".format(file_to_check))
+        logging.error("Unable to create the file %s", file_to_check)
         sys.exit(1)
 
 
@@ -302,8 +300,7 @@ def check_version(version, log):
                        <major release>.<minor release>.<patch level>
         log: logging handler
     """
-    log.debug("remote version: {}, local version: {}"
-              .format(version, __version__))
+    log.debug("remote version: %s, local version: %s", version, __version__)
 
     if version.rsplit(".", 1)[0] < __version__.rsplit(".", 1)[0]:
         log.info("Version of receiver is lower. Please update receiver.")
@@ -337,8 +334,7 @@ def check_host(host, whitelist, log):
                 host_modified = socket_m.getfqdn(hostname)
 
                 if host_modified not in whitelist:
-                    log.info("Host {} is not allowed to connect"
-                             .format(hostname))
+                    log.info("Host %s is not allowed to connect", hostname)
                     return_val = False
 
             return return_val
@@ -349,7 +345,7 @@ def check_host(host, whitelist, log):
             if host_modified in whitelist:
                 return True
             else:
-                log.info("Host {} is not allowed to connect".format(host))
+                log.info("Host %s is not allowed to connect", host)
 
     return False
 
@@ -369,7 +365,7 @@ def check_ping(host, log=logging):
                              .format(host))
 
     if response != 0:
-        log.error("{} is not pingable.".format(host))
+        log.error("%s is not pingable.", host)
         sys.exit(1)
 
 
@@ -385,7 +381,7 @@ def create_dir(directory, chmod=None, log=logging):
 
     if not os.path.isdir(directory):
         os.mkdir(directory)
-        log.info("Creating directory: {}".format(directory))
+        log.info("Creating directory: %s", directory)
 
     if chmod is not None:
         # the permission have to changed explicitly because
@@ -422,13 +418,13 @@ def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
     for i in dirs_to_check:
         try:
             os.makedirs(i)
-            logging.debug("Dir '{}' does not exist. Create it.".format(i))
+            logging.debug("Dir '%s' does not exist. Create it.", i)
         except OSError as excp:
             if excp.errno == errno.EEXIST:
                 # dir exists already
                 pass
             else:
-                logging.error("Dir '{}' could not be created.".format(i))
+                logging.error("Dir '%s' could not be created.", i)
                 throw_exception = True
                 raise
 
@@ -466,27 +462,26 @@ def check_config(required_params, config, log):
             # checks if the parameter is contained in the config dict
             if param[0] not in config:
                 log.error("Configuration of wrong format. "
-                          "Missing parameter '{}'".format(param[0]))
+                          "Missing parameter '%s'", param[0])
                 check_passed = False
             # check if the parameter is one of the supported values
             elif isinstance(param[1], list):
                 if config[param[0]] not in param[1]:
                     log.error("Configuration of wrong format. Options for "
-                              "parameter '{}' are {}"
-                              .format(param[0], param[1]))
-                    log.debug("parameter '{}' = {}"
-                              .format(param[0], config[param[0]]))
+                              "parameter '%s' are %s", param[0], param[1])
+                    log.debug("parameter '%s' = %s", param[0],
+                              config[param[0]])
                     check_passed = False
             # check if the parameter has the supported type
             elif not isinstance(config[param[0]], param[1]):
-                log.error("Configuration of wrong format. Parameter '{}' is "
-                          "of format '{}' but should be of format '{}'"
-                          .format(param[0], type(config[param[0]]), param[1]))
+                log.error("Configuration of wrong format. Parameter '%s' is "
+                          "of format '%s' but should be of format '%s'",
+                          param[0], type(config[param[0]]), param[1])
                 check_passed = False
         # checks if the parameter is contained in the config dict
         elif param not in config:
-            log.error("Configuration of wrong format. Missing parameter: '{}'"
-                      .format(param))
+            log.error("Configuration of wrong format. Missing parameter: '%s'",
+                      param)
             check_passed = False
         else:
             config_reduced[param] = config[param]
@@ -544,10 +539,10 @@ def extend_whitelist(whitelist, ldapuri, log):
     if whitelist is not None:
         if isinstance(whitelist, str):
             whitelist = execute_ldapsearch(log, whitelist, ldapuri)
-            log.info("Whitelist after ldapsearch: {}".format(whitelist))
+            log.info("Whitelist after ldapsearch: %s", whitelist)
         else:
             whitelist = [socket_m.getfqdn(host) for host in whitelist]
-            log.debug("Converted whitelist: {}".format(whitelist))
+            log.debug("Converted whitelist: %s", whitelist)
 
     return whitelist
 
@@ -582,7 +577,7 @@ def convert_socket_to_fqdn(socketids, log):
         host, port = socketids.split(":")
         socketids = "{}:{}".format(socket_m.getfqdn(host), port)
 
-    log.debug("converted socketids={}".format(socketids))
+    log.debug("converted socketids=%s", socketids)
 
     return socketids
 
@@ -604,8 +599,8 @@ def is_ipv6_address(log, ip):  # pylint: disable=invalid-name
         log.info("IPv4 address detected: {}.".format(ip))
         return False
     except socket_m.error:
-        log.info("Address '{}' is not an IPv4 address, asume it is an IPv6 "
-                 "address.".format(ip))
+        log.info("Address '%s' is not an IPv4 address, asume it is an IPv6 "
+                 "address.", ip)
         return True
 
 
@@ -924,18 +919,11 @@ def start_socket(name,
             socket.connect(endpoint)
         elif sock_con == "bind":
             socket.bind(endpoint)
-        log.info("{} {} ({}, {}): '{}'".format(message,
-                                               name,
-                                               sock_con,
-                                               sock_type_as_str,
-                                               endpoint))
+        log.info("%s %s (%s, %s): '%s'", message, name, sock_con,
+                 sock_type_as_str, endpoint)
     except:
-        log.error("Failed to {} {} ({}, {}): '{}'".format(name,
-                                                          message.lower(),
-                                                          sock_con,
-                                                          sock_type_as_str,
-                                                          endpoint),
-                  exc_info=True)
+        log.error("Failed to %s %s (%s, %s): '%s'", name, message.lower(),
+                  sock_con, sock_type_as_str, endpoint, exc_info=True)
         raise
 
     return socket
@@ -954,7 +942,7 @@ def stop_socket(name, socket, log):
     """
 
     if socket is not None:
-        log.info("Closing {}".format(name))
+        log.info("Closing %s", name)
         socket.close(0)
         socket = None
 
@@ -1030,8 +1018,8 @@ def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
     # check log_level
     supported_loglevel = ["debug", "info", "warning", "error", "critical"]
     if loglevel not in supported_loglevel:
-        logging.error("Logging on Screen: Option {} is not supported."
-                      .format(loglevel))
+        logging.error("Logging on Screen: Option %s is not supported.",
+                      loglevel)
         sys.exit(1)
 
     # set format

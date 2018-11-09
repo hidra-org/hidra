@@ -89,7 +89,7 @@ class EventDetector(EventDetectorBase):
         self.det_api_version = self.config["det_api_version"]
         self.det_url = ("http://{}/filewriter/api/{}/files"
                         .format(self.det_ip, self.det_api_version))
-        self.log.debug("Getting files from: {}".format(self.det_url))
+        self.log.debug("Getting files from: %s", self.det_url)
 #            http://192.168.138.37/filewriter/api/1.6.0/files
 
         # history to prevend double events
@@ -123,8 +123,8 @@ class EventDetector(EventDetectorBase):
         except KeyboardInterrupt:
             return event_message_list
         except Exception:
-            self.log.error("Error in getting file list from {0}"
-                           .format(self.det_url), exc_info=True)
+            self.log.error("Error in getting file list from %s", self.det_url,
+                           exc_info=True)
             # Wait till next try to prevent denial of service
             time.sleep(self.sleep_time)
             return event_message_list
@@ -155,7 +155,7 @@ class EventDetector(EventDetectorBase):
                     "relative_path": relative_path,
                     "filename": filename
                 }
-                self.log.debug("event_message {}".format(event_message))
+                self.log.debug("event_message %s", event_message)
                 event_message_list.append(event_message)
                 self.files_downloaded.append(file_obj)
 

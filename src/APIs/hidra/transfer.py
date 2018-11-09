@@ -432,7 +432,7 @@ class Transfer(Base):
             return message[1]
         else:
             self.log.error("Invalid confirmation received...")
-            self.log.debug("message={}".format(message))
+            self.log.debug("message=%s", message)
             return None
 
     def set_appid(self, appid):
@@ -472,7 +472,7 @@ class Transfer(Base):
 
         if not isinstance(targets, list):
             self.stop()
-            self.log.debug("targets={}".format(targets))
+            self.log.debug("targets=%s", targets)
             raise FormatError("Argument 'targets' must be list.")
 
         if not self.context:
@@ -541,7 +541,7 @@ class Transfer(Base):
 
         if not isinstance(targets, list) or len(targets) < 1:
             self.stop()
-            self.log.debug("targets={}".format(targets))
+            self.log.debug("targets=%s", targets)
             raise FormatError("Argument 'targets' is of wrong format. "
                               "Has to be a list.")
 
@@ -591,7 +591,7 @@ class Transfer(Base):
                     self.targets.append([addr, prio, regex])
                 else:
                     self.stop()
-                    self.log.debug("targets={}".format(targets))
+                    self.log.debug("targets=%s", targets)
                     raise FormatError("Argument 'targets' is of wrong format.")
 
     def _send_signal(self, signal):
@@ -608,7 +608,7 @@ class Transfer(Base):
         trg = json.dumps(self.targets).encode('utf-8')
         send_message.append(trg)
 
-        self.log.debug("Signal: {}".format(send_message))
+        self.log.debug("Signal: %s", send_message)
         try:
             self.signal_socket.send_multipart(send_message)
         except:
@@ -628,8 +628,7 @@ class Transfer(Base):
             try:
                 #  Get the reply.
                 message = self.signal_socket.recv_multipart()
-                self.log.info("Received answer to signal: {}"
-                              .format(message))
+                self.log.info("Received answer to signal: %s", message)
 
             except:
                 self.log.error("Could not receive answer to signal")
@@ -688,16 +687,14 @@ class Transfer(Base):
 
         # determine host (may be DNS name) and port
         if data_socket_prop:
-            self.log.debug("Specified data_socket_prop: {}"
-                           .format(data_socket_prop))
+            self.log.debug("Specified data_socket_prop: %s", data_socket_prop)
 
             if isinstance(data_socket_prop, list):
                 if len(data_socket_prop) == 2:
                     host = data_socket_prop[0]
                     port = data_socket_prop[1]
                 else:
-                    self.log.debug("data_socket_prop={}"
-                                   .format(data_socket_prop))
+                    self.log.debug("data_socket_prop=%s", data_socket_prop)
                     raise FormatError("Socket information have to be of the "
                                       "form [<host>, <port>].")
             else:
@@ -727,7 +724,7 @@ class Transfer(Base):
             self.ip = ip_from_host[0]
             self._update_ip()
         else:
-            self.log.debug("ip_from_host={}".format(ip_from_host))
+            self.log.debug("ip_from_host=%s", ip_from_host)
             raise CommunicationFailed("IP is ambiguish")
 
         # determine socket identifier (might use DNS name)
@@ -736,11 +733,11 @@ class Transfer(Base):
         # Distinguish between IPv4 and IPv6 addresses
         try:
             socket_m.inet_aton(self.ip)
-            self.log.info("IPv4 address detected: {}.".format(self.ip))
+            self.log.info("IPv4 address detected: %s.", self.ip)
             self.is_ipv6 = False
         except socket_m.error:
-            self.log.info("Address '{}' is not an IPv4 address, "
-                          "asume it is an IPv6 address.".format(self.ip))
+            self.log.info("Address '%s' is not an IPv4 address, "
+                          "asume it is an IPv6 address.", self.ip)
             self.is_ipv6 = True
 
         # determine socket endpoint to bind to (uses IP)
@@ -823,7 +820,8 @@ class Transfer(Base):
                                .format(protocol))
 
         if data_con_style not in ["bind", "connect"]:
-            raise NotSupported("Connection style '{}' is not supported.")
+            raise NotSupported("Connection style '{}' is not supported."
+                               .format(data_con_style))
 
         self.zmq_protocol = protocol
         self.data_con_style = data_con_style
@@ -843,8 +841,7 @@ class Transfer(Base):
         # -- authenication and data socket -- #
         # remember the endpoint for reestablishment of the connection
         self.data_socket_endpoint = socket_endpoint
-        self.log.debug("data_socket_endpoint={}"
-                       .format(self.data_socket_endpoint))
+        self.log.debug("data_socket_endpoint=%s", self.data_socket_endpoint)
 
         self.register(whitelist)
         # ----------------------------------- #
@@ -926,7 +923,7 @@ class Transfer(Base):
             # TODO create Thread which handles this asynchroniously
             if self.status_check_socket is not None:
                 self.log.error("Status check is already enabled (used port: "
-                               "{})".format(self.status_check_conf["port"]))
+                               "%s)", self.status_check_conf["port"])
                 return
 
             # ------- status check socket ------ #
@@ -950,7 +947,7 @@ class Transfer(Base):
         elif option == "file_op":
             if self.file_op_socket is not None:
                 self.log.error("File operation is already enabled (used port: "
-                               "{})".format(self.file_op_conf["port"]))
+                               "%s)", self.file_op_conf["port"])
                 return
 
             # ------- status check socket ------ #
@@ -974,8 +971,8 @@ class Transfer(Base):
         elif option == "confirmation":
             if self.confirmation_socket is not None:
                 self.log.error(
-                    "Confirmation is already enabled (used port: {})"
-                    .format(self.confirmation_conf["port"])
+                    "Confirmation is already enabled (used port: %s)",
+                    self.confirmation_conf["port"]
                 )
                 return
 
@@ -992,7 +989,7 @@ class Transfer(Base):
 #                        self.confirmation_ip = value[1]
 #                        self.confirmation_port = value[2]
 #                    else:
-#                        self.log.debug("value={}".format(value))
+#                        self.log.debug("value=%s", value)
 #                        raise FormatError("Socket information have to be of "
 #                                          "the form [<host>, <port>].")
 #                else:
@@ -1045,10 +1042,11 @@ class Transfer(Base):
                     prop["ip"] = value[1]
                     prop["port"] = value[2]
                 else:
-                    self.log.debug("value={}".format(value))
-                    msg = ("Socket information has to be of the form"
-                           "[<host>, <port>].")
-                    raise FormatError(msg)
+                    self.log.debug("value=%s", value)
+                    raise FormatError(
+                        "Socket information has to be of the form "
+                        "[<host>, <port>]."
+                    )
             else:
                 prop["port"] = value
 
@@ -1064,9 +1062,10 @@ class Transfer(Base):
 
         if whitelist is not None:
             if not isinstance(whitelist, list):
-                self.log.debug("whitelist {}".format(whitelist))
-                msg = "Whitelist has to be a list of IPs/DNS names"
-                raise FormatError(msg)
+                self.log.debug("whitelist %s", whitelist)
+                raise FormatError(
+                    "Whitelist has to be a list of IPs/DNS names"
+                )
 
             if self.auth is not None:
                 # to add hosts to the whitelist the authentication thread has
@@ -1085,8 +1084,8 @@ class Transfer(Base):
                 # are allowed to connect.
                 host = "localhost"
                 ip = [socket_m.gethostbyname(host)]
-                self.log.debug("Empty whitelist: Allowing host {} ({})"
-                               .format(host, ip[0]))
+                self.log.debug("Empty whitelist: Allowing host %s (%s)",
+                               host, ip[0])
                 self.auth.allow(ip[0])
 
             # receive data only from whitelisted nodes
@@ -1099,16 +1098,17 @@ class Transfer(Base):
                         # returns (hostname, aliaslist, ipaddrlist)
                         ip = socket_m.gethostbyaddr(host)[2]
 
-                    self.log.debug("Allowing host {} ({})".format(host, ip[0]))
+                    self.log.debug("Allowing host %s (%s)", host, ip[0])
                     self.auth.allow(ip[0])
                 # getaddrinfo error
                 except socket_m.gaierror:
-                    self.log.error("Could not get IP of host {}. Proceed."
-                                   .format(host))
+                    self.log.error("Could not get IP of host %s. Proceed.",
+                                   host)
                 except:
                     self.log.error("Error was: ", exc_info=True)
-                    msg = "Could not get IP of host {}".format(host)
-                    raise AuthenticationFailed(msg)
+                    raise AuthenticationFailed(
+                        "Could not get IP of host {}".format(host)
+                    )
 
         # Recreate the socket (now with the new whitelist enabled)
         self.data_socket = self._start_socket(
@@ -1138,9 +1138,10 @@ class Transfer(Base):
 
         if (not self.connection_type == "NEXUS"
                 or "NEXUS" not in self.started_connections):
-            msg = ("Wrong connection type (current: {}) or session"
-                   " not started.".format(self.connection_type))
-            raise UsageError(msg)
+            raise UsageError(
+                "Wrong connection type (current: {}) or session not started."
+                .format(self.connection_type)
+            )
 
         self.callback_params = callback_params
         self.open_callback = open_callback
@@ -1164,14 +1165,14 @@ class Transfer(Base):
                 self.log.debug("status_check_socket is polling")
 
                 message = self.status_check_socket.recv_multipart()
-                self.log.debug("status_check_socket recv: {}".format(message))
+                self.log.debug("status_check_socket recv: %s", message)
 
                 # request to close the open file
                 if message[0] == b"CLOSE_FILE":
                     if self.all_close_recvd:
                         self.status_check_socket.send_multipart(message)
-                        logging.debug("status_check_socket (file operation) "
-                                      "send: {}".format(message))
+                        self.log.debug("status_check_socket (file operation) "
+                                       "send: %s", message)
                         self.all_close_recvd = False
 
                         self.close_callback(self.callback_params,
@@ -1184,7 +1185,7 @@ class Transfer(Base):
                 elif message[0] == b"OPEN_FILE":
                     self.status_check_socket.send_multipart(message)
                     self.log.debug("status_check_socket (file operation) "
-                                   "send: {}".format(message))
+                                   "send: %s", message)
 
                     try:
                         self.open_callback(self.callback_params, message[1])
@@ -1205,8 +1206,8 @@ class Transfer(Base):
 
                 try:
                     multipart_message = self.data_socket.recv_multipart()
-#                    self.log.debug("multipart_message={}"
-#                                    .format(multipart_message[:100]))
+#                    self.log.debug("multipart_message=%s",
+#                                   multipart_message[:100])
                 except Exception:
                     self.log.error("Could not receive data due to unknown "
                                    "error.", exc_info=True)
@@ -1217,8 +1218,8 @@ class Transfer(Base):
                 if len(multipart_message) < 2:
                     self.log.error("Received mutipart-message is too short. "
                                    "Either config or file content is missing.")
-#                    self.log.debug("multipart_message={}"
-#                                   .format(multipart_message[:100]))
+#                    self.log.debug("multipart_message=%s",
+#                                   multipart_message[:100])
                     # TODO return errorcode
 
                 try:
@@ -1250,31 +1251,29 @@ class Transfer(Base):
             except:
                 self.log.error("Could not extract id from the "
                                "multipart-message", exc_info=True)
-                self.log.debug("multipart-message: {}"
-                               .format(multipart_message),
+                self.log.debug("multipart-message: %s", multipart_message,
                                exc_info=True)
                 raise
 
             self.recvd_close_from.append(file_id)
             self.log.debug("Received close-file signal from "
-                           "DataDispatcher-{}".format(file_id))
+                           "DataDispatcher-%s", file_id)
 
             # get number of signals to wait for
             if not self.number_of_streams:
                 self.number_of_streams = int(file_id.split("/")[1])
 
             # have all signals arrived?
-            self.log.debug("self.recvd_close_from={}, "
-                           "self.number_of_streams={}"
-                           .format(self.recvd_close_from,
-                                   self.number_of_streams))
+            self.log.debug("self.recvd_close_from=%s, "
+                           "self.number_of_streams=%s",
+                           self.recvd_close_from, self.number_of_streams)
             if len(self.recvd_close_from) == self.number_of_streams:
                 self.log.info("All close-file-signals arrived")
                 if self.reply_to_signal:
                     self.status_check_socket.send_multipart(
                         self.reply_to_signal)
                     self.log.debug("status_check_socket (file operation) "
-                                   "send: {}".format(self.reply_to_signal))
+                                   "send: %s", self.reply_to_signal)
 
                     self.reply_to_signal = False
                     self.recvd_close_from = []
@@ -1286,10 +1285,9 @@ class Transfer(Base):
                     self.all_close_recvd = True
 
             else:
-                self.log.info("self.recvd_close_from={}, "
-                              "self.number_of_streams={}"
-                              .format(self.recvd_close_from,
-                                      self.number_of_streams))
+                self.log.info("self.recvd_close_from=%s, "
+                              "self.number_of_streams=%s",
+                              self.recvd_close_from, self.number_of_streams)
 
         else:
             # extract multipart message
@@ -1300,9 +1298,8 @@ class Transfer(Base):
                 if multipart_message[0] != 'null':
                     self.log.error("Could not extract metadata from the "
                                    "multipart-message.", exc_info=True)
-                    self.log.debug("multipartmessage[0] = {}"
-                                   .format(multipart_message[0]),
-                                   exc_info=True)
+                    self.log.debug("multipartmessage[0] = %s",
+                                   multipart_message[0], exc_info=True)
                 metadata = None
 
             # TODO validate multipart_message
@@ -1375,18 +1372,17 @@ class Transfer(Base):
                     and socks[self.status_check_socket] == zmq.POLLIN):
 
                 message = self.status_check_socket.recv_multipart()
-#                self.log.debug("status_check_socket recv: {0}"
-#                               .format(message))
+#                self.log.debug("status_check_socket recv: %s", message)
 
                 # request to close the open file
                 if message[0] == b"STATUS_CHECK":
                     self.status_check_socket.send_multipart(self.status)
-#                    logging.debug("status_check_socket send: {0}"
-#                                  .format(self.status))
+#                    self.log.debug("status_check_socket send: %s",
+#                                   self.status)
                 elif message[0] == b"RESET_STATUS":
                     self.status = [b"OK"]
                     self.log.debug("Reset request received. Status changed "
-                                   "to: {}".format(self.status))
+                                   "to: %s", self.status)
                     self.status_check_socket.send_multipart(self.status)
                 # received not supported signal
                 else:
@@ -1415,8 +1411,8 @@ class Transfer(Base):
                 elif len(multipart_message) < 2:
                     self.log.error("Received mutipart-message is too short. "
                                    "Either config or file content is missing.")
-                    self.log.debug("multipart_message={}"
-                                   .format(multipart_message[:100]))
+                    self.log.debug("multipart_message=%s",
+                                   multipart_message[:100])
                     return [None, None]
 
                 # extract multipart message
@@ -1598,9 +1594,9 @@ class Transfer(Base):
                         dirs = self.dirs_not_to_create
                         if (dirs is not None
                                 and rel_path in dirs):
-                            self.log.error("Unable to write file '{}': "
-                                           "Directory {} is not available"
-                                           .format(filepath, rel_path))
+                            self.log.error("Unable to write file '%s': "
+                                           "Directory %s is not available",
+                                           filepath, rel_path)
                             raise
 
                         target_path = generate_filepath(base_path,
@@ -1613,20 +1609,20 @@ class Transfer(Base):
                             "last_chunk_number": None
                         }
                         desc = descriptors[filepath]
-                        self.log.info("New target directory created: {}"
-                                      .format(target_path))
+                        self.log.info("New target directory created: %s",
+                                      target_path)
                     except Exception:
-                        self.log.error("Unable to open file: '{}'"
-                                       .format(filepath), exc_info=True)
-                        self.log.debug("target_path:{}".format(target_path))
+                        self.log.error("Unable to open file: '%s'", filepath,
+                                       exc_info=True)
+                        self.log.debug("target_path:%s", target_path)
                         raise
                 else:
-                    self.log.error("Failed to append payload to file: '{}'"
-                                   .format(filepath), exc_info=True)
+                    self.log.error("Failed to append payload to file: '%s'",
+                                   filepath, exc_info=True)
                     raise
             except Exception:
-                self.log.error("Failed to append payload to file: '{}'"
-                               .format(filepath), exc_info=True)
+                self.log.error("Failed to append payload to file: '%s'",
+                               filepath, exc_info=True)
                 raise
 
         # --------------------------------------------------------------------
@@ -1635,18 +1631,18 @@ class Transfer(Base):
         if metadata["chunk_number"] <= desc["last_chunk_number"]:
 
             if metadata["chunk_number"] == 0:
-                self.log.debug("Reopen file {}".format(filepath))
+                self.log.debug("Reopen file %s", filepath)
                 # close the not finished file
                 desc["file"].close()
 
                 desc["file"] = open(filepath, "wb")
                 desc["last_chunk_number"] = None
             else:
-                self.log.debug("chunk_number={}"
-                               .format(metadata["chunk_number"]))
-                msg = ("Failed to reopen file '{}': Received a not matching "
-                       "chunk_number".format(filepath))
-                raise DataSavingError(msg)
+                self.log.debug("chunk_number=%s", metadata["chunk_number"])
+                raise DataSavingError(
+                    "Failed to reopen file '%s': Received a not matching "
+                    "chunk_number".format(filepath)
+                )
 
         # --------------------------------------------------------------------
         # write data
@@ -1660,8 +1656,8 @@ class Transfer(Base):
             self.log.debug("KeyboardInterrupt received while writing data")
             raise
         except:
-            self.log.error("Failed to append payload to file: '{}'"
-                           .format(filepath), exc_info=True)
+            self.log.error("Failed to append payload to file: '%s'", filepath,
+                           exc_info=True)
             raise
 
         # --------------------------------------------------------------------
@@ -1692,11 +1688,9 @@ class Transfer(Base):
                                str(metadata["chunk_number"])]
 
                 self.confirmation_socket.send_multipart(message)
-                self.log.debug("Sending confirmation for chunk {} of "
-                               "file '{}' to {}"
-                               .format(metadata["chunk_number"],
-                                       file_id,
-                                       topic))
+                self.log.debug("Sending confirmation for chunk %s of "
+                               "file '%s' to %s", metadata["chunk_number"],
+                               file_id, topic)
             except Exception:
                 if self.confirmation_socket is None:
                     self.log.error("Correct data handling is requested to "
@@ -1716,12 +1710,12 @@ class Transfer(Base):
                 descriptors[filepath]["file"].close()
                 del descriptors[filepath]
 
-                self.log.info("New file with modification time {} received "
-                              "and saved: {}"
-                              .format(metadata["file_mod_time"], filepath))
+                self.log.info("New file with modification time %s received "
+                              "and saved: %s", metadata["file_mod_time"],
+                              filepath)
             except Exception:
-                self.log.error("File could not be closed: {}"
-                               .format(filepath), exc_info=True)
+                self.log.error("File could not be closed: %s", filepath,
+                               exc_info=True)
                 raise
             return False
         else:
@@ -1760,8 +1754,7 @@ class Transfer(Base):
 
             # generate target filepath
             target_filepath = generate_filepath(target_base_path, metadata)
-            self.log.debug("New chunk for file {} received."
-                           .format(target_filepath))
+            self.log.debug("New chunk for file %s received.", target_filepath)
 
             # TODO: save message to file using a thread (avoids blocking)
             try:
@@ -1782,8 +1775,7 @@ class Transfer(Base):
 #                        self.status = [b"ERROR",
 #                                       str(exc_type).encode("utf-8"),
 #                                       str(exc_value).encode("utf-8")]
-#                        self.log.debug("Status changed to: {}"
-#                                       .format(self.status))
+#                        self.log.debug("Status changed to: %s", self.status)
             except Exception:
                 self.log.debug("Stopping data storing loop")
 
@@ -1795,7 +1787,7 @@ class Transfer(Base):
                 self.status = [b"ERROR",
                                str(exc_type).encode("utf-8"),
                                str(exc_value).encode("utf-8")]
-                self.log.debug("Status changed to: {}".format(self.status))
+                self.log.debug("Status changed to: %s", self.status)
 
                 break
 
@@ -1833,8 +1825,8 @@ class Transfer(Base):
         for target in list(self.file_descriptors):
             try:
                 self.file_descriptors[target]["file"].close()
-                self.log.warning("Not all chunks were received for file {}"
-                                 .format(target))
+                self.log.warning("Not all chunks were received for file %s",
+                                 target)
             except KeyError:
                 pass
             del self.file_descriptors[target]
@@ -1882,14 +1874,13 @@ class Transfer(Base):
                 )
                 try:
                     os.remove(control_addr)
-                    self.log.debug("Removed ipc address: {}"
-                                   .format(control_addr))
+                    self.log.debug("Removed ipc address: %s", control_addr)
                 except OSError:
-                    self.log.warning("Could not remove ipc address: {}"
-                                     .format(control_addr))
+                    self.log.warning("Could not remove ipc address: %s",
+                                     control_addr)
                 except Exception:
-                    self.log.warning("Could not remove ipc address: {}"
-                                     .format(control_addr), exc_info=True)
+                    self.log.warning("Could not remove ipc address: %s",
+                                     control_addr, exc_info=True)
         except Exception:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 

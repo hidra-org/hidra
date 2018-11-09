@@ -216,8 +216,8 @@ class CheckNetgroup(threading.Thread):
                     # mark that there was a change
                     _changed_netgroup = True
 
-                self.log.info("Netgroup has changed. New whitelist: {}"
-                              .format(_whitelist))
+                self.log.info("Netgroup has changed. New whitelist: %s",
+                              _whitelist)
 
             for _ in range(check_sleep_intervalls):
                 if self.run_loop:
@@ -291,7 +291,7 @@ class DataReceiver(object):
         # pylint: disable=no-member
         setproctitle.setproctitle(params["procname"])
 
-        self.log.info("Version: {}".format(__version__))
+        self.log.info("Version: %s", __version__)
 
         self.dirs_not_to_create = params["dirs_not_to_create"]
 
@@ -312,14 +312,13 @@ class DataReceiver(object):
             check_time = 2
 
         if params["whitelist"] is not None:
-            self.log.debug("params['whitelist']={}"
-                           .format(params["whitelist"]))
+            self.log.debug("params['whitelist']=%s", params["whitelist"])
 
             with self.lock:
                 _whitelist = utils.extend_whitelist(params["whitelist"],
                                                     params["ldapuri"],
                                                     self.log)
-            self.log.info("Configured whitelist: {}".format(_whitelist))
+            self.log.info("Configured whitelist: %s", _whitelist)
         else:
             _whitelist = None
 
@@ -334,14 +333,14 @@ class DataReceiver(object):
                                                  check_time)
             self.checking_thread.start()
         else:
-            self.log.debug("Checking thread not started: {}"
-                           .format(params["whitelist"]))
+            self.log.debug("Checking thread not started: %s",
+                           params["whitelist"])
 
         self.target_dir = os.path.normpath(params["target_dir"])
         self.data_ip = params["data_stream_ip"]
         self.data_port = params["data_stream_port"]
 
-        self.log.info("Writing to directory '{}'".format(self.target_dir))
+        self.log.info("Writing to directory '%s'", self.target_dir)
 
         self.transfer = Transfer(connection_type="STREAM",
                                  use_log=True,

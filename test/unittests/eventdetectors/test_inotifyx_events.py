@@ -105,7 +105,7 @@ class TestEventDetector(EventDetectorTestBase):
 
             filename = "{}.cbf".format(i)
             target_file = "{}{}".format(self.target_file_base, filename)
-            self.log.debug("copy {}".format(target_file))
+            self.log.debug("copy %s", target_file)
             copyfile(self.source_file, target_file)
             time.sleep(0.1)
 
@@ -121,7 +121,7 @@ class TestEventDetector(EventDetectorTestBase):
                 self.assertDictEqual(event_list[0],
                                      expected_result_dict)
             except AssertionError:
-                self.log.debug("event_list", event_list)
+                self.log.debug("event_list %s", event_list)
                 raise
 
     # this should not be executed automatically only if needed for debugging
@@ -154,20 +154,19 @@ class TestEventDetector(EventDetectorTestBase):
         steps = 10
 
         memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        self.log.info("Memory usage at start: {} (kb)"
-                      .format(memory_usage_old))
+        self.log.info("Memory usage at start: %s (kb)", memory_usage_old)
 
 #        hp = hpy()
 #        hp.setrelheap()
 
         step_loop = (self.stop - self.start) / steps
-        self.log.info("Used steps:", steps)
+        self.log.info("Used steps: %s", steps)
 
         try:
             for step in range(steps):
                 start = self.start + step * step_loop
                 stop = start + step_loop
-#                self.log.debug ("start=", start, "stop=", stop)
+#                self.log.debug("start=%s, stop=%s", start, stop)
                 for i in range(start, stop):
 
                     target_file = "{}{}.cbf".format(self.target_file_base, i)
@@ -175,15 +174,15 @@ class TestEventDetector(EventDetectorTestBase):
                     time.sleep(0.1)
 
                     if i % 100 == 0:
-                        self.log.info("copy index {}".format(i))
+                        self.log.info("copy index %s", i)
                         event_list = self.eventdetector.get_new_event()
 
 #                    time.sleep(0.5)
 
                 memory_usage_new = (
                     resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-                self.log.info("Memory usage in iteration {}: {} (kb)"
-                              .format(step, memory_usage_new))
+                self.log.info("Memory usage in iteration %s: %s (kb)",
+                              step, memory_usage_new)
                 if memory_usage_new > memory_usage_old:
                     memory_usage_old = memory_usage_new
 #                    self.log.debug(hp.heap())
@@ -194,27 +193,27 @@ class TestEventDetector(EventDetectorTestBase):
             if self.event_detector_config["use_cleanup"]:
                 time.sleep(4)
                 event_list = self.eventdetector.get_new_event()
-                self.log.debug("len of event_list={}".format(len(event_list)))
+                self.log.debug("len of event_list=%s", len(event_list))
 
                 memory_usage_new = (
                     resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-                self.log.info("Memory usage: {} (kb)".format(memory_usage_new))
+                self.log.info("Memory usage: %s (kb)", memory_usage_new)
                 time.sleep(1)
 
                 event_list = self.eventdetector.get_new_event()
-                self.log.debug("len of event_list={}".format(len(event_list)))
+                self.log.debug("len of event_list=%s", len(event_list))
 
                 memory_usage_new = (
                     resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-                self.log.info("Memory usage: {} (kb)".format(memory_usage_new))
+                self.log.info("Memory usage: %s (kb)", memory_usage_new)
 
                 event_list = self.eventdetector.get_new_event()
-                self.log.info("len of event_list={}".format(len(event_list)))
+                self.log.info("len of event_list=%s", len(event_list))
 
             memory_usage_new = (
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-            self.log.info("Memory usage before stop: {} (kb)"
-                          .format(memory_usage_new))
+            self.log.info("Memory usage before stop: %s (kb)",
+                          memory_usage_new)
             time.sleep(5)
 
     def tearDown(self):

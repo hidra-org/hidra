@@ -121,7 +121,7 @@ class DataFetcher(DataFetcherBase):
                     self.config["remove_data"] == "with_confirmation"
                 )
 
-                self.log.debug("metadata = {}".format(metadata))
+                self.log.debug("metadata = %s", metadata)
             except:
                 self.log.error("Unable to assemble multi-part message.",
                                exc_info=True)
@@ -138,13 +138,12 @@ class DataFetcher(DataFetcherBase):
         # not be created
         if metadata["relative_path"] in self.config["fix_subdirs"]:
             msg = (
-                "Unable to move file '{}' to '{}': Directory {} is not "
-                "available.".format(self.source_file,
-                                    self.target_file,
-                                    metadata["relative_path"])
+                "Unable to move file '%s' to '%s': Directory %s is not "
+                "available.", self.source_file, self.target_file,
+                metadata["relative_path"]
             )
             self.log.error(msg, exc_info=True)
-            raise Exception(msg)
+            raise Exception(msg[0].format(*msg[1:]))
         else:
             fix_subdir_found = False
             # identify which of the pefixes is the correct one and check that
@@ -159,29 +158,26 @@ class DataFetcher(DataFetcherBase):
                                               prefix)
                     if not os.path.exists(prefix_dir):
                         msg = (
-                            "Unable to move file '{}' to '{}': Directory {} "
-                            "is not available.".format(self.source_file,
-                                                       self.target_file,
-                                                       prefix)
+                            "Unable to move file '%s' to '%s': Directory %s "
+                            "is not available.", self.source_file,
+                            self.target_file, prefix
                         )
                         self.log.error(msg, exc_info=True)
-                        raise Exception(msg)
+                        raise Exception(msg[0].format(*msg[1:]))
                     else:
                         # everything is fine -> create directory
                         try:
                             target_path, _ = os.path.split(self.target_file)
                             os.makedirs(target_path)
-                            self.log.info("New target directory created: {}"
-                                          .format(target_path))
+                            self.log.info("New target directory created: %s",
+                                          target_path)
                         except OSError:
                             self.log.info("Target directory creation failed, "
                                           "was already created in the "
-                                          "meantime: {}"
-                                          .format(target_path))
+                                          "meantime: %s", target_path)
                         except Exception:
                             self.log.error("Unable to create target directory "
-                                           "'{}'."
-                                           .format(target_path), exc_info=True)
+                                           "'%s'.", target_path, exc_info=True)
                             raise
 
                         break
@@ -202,11 +198,11 @@ class DataFetcher(DataFetcherBase):
         response = self.config["session"].get(self.source_file)
         try:
             response.raise_for_status()
-            self.log.debug("Initiating http get for file '{}' succeeded."
-                           .format(self.source_file))
+            self.log.debug("Initiating http get for file '%s' succeeded.",
+                           self.source_file)
         except Exception:
-            self.log.error("Initiating http get for file '{}' failed."
-                           .format(self.source_file), exc_info=True)
+            self.log.error("Initiating http get for file '%s' failed.",
+                           self.source_file, exc_info=True)
             return
 
         try:
@@ -221,12 +217,12 @@ class DataFetcher(DataFetcherBase):
 
         if self.config["store_data"]:
             try:
-                self.log.debug("Opening '{}'...".format(self.target_file))
+                self.log.debug("Opening '%s'...", self.target_file)
                 file_descriptor = open(self.target_file, "wb")
                 file_opened = True
             except IOError as excp:
-                err_msg = ("Unable to open target file '{}'."
-                           .format(self.target_file))
+                err_msg = ("Unable to open target file '%s'.",
+                           self.target_file)
 
                 # errno.ENOENT == "No such file or directory"
                 if excp.errno == errno.ENOENT:
@@ -250,12 +246,11 @@ class DataFetcher(DataFetcherBase):
         targets_metadata = [i for i in targets if i[2] == "metadata"]
         chunk_number = 0
 
-        self.log.debug("Getting data for file '{}'..."
-                       .format(self.source_file))
+        self.log.debug("Getting data for file '%s'...", self.source_file)
         # reading source file into memory
         for data in response.iter_content(chunk_size=chunksize):
-            self.log.debug("Packing multipart-message for file '{}'..."
-                           .format(self.source_file))
+            self.log.debug("Packing multipart-message for file '%s'...",
+                           self.source_file)
 
             try:
                 # assemble metadata for zmq-message
@@ -267,17 +262,17 @@ class DataFetcher(DataFetcherBase):
                 payload.append(data)
             except Exception:
                 self.log.error("Unable to pack multipart-message for file "
-                               "'{}'".format(self.source_file),
+                               "'%s'", self.source_file,
                                exc_info=True)
 
             if self.config["store_data"] and file_opened:
                 try:
                     file_descriptor.write(data)
-                    self.log.debug("Writing data for file '{}' (chunk {})"
-                                   .format(self.source_file, chunk_number))
+                    self.log.debug("Writing data for file '%s' (chunk %s)",
+                                   self.source_file, chunk_number)
                 except Exception:
-                    self.log.error("Unable write data for file '{}'"
-                                   .format(self.source_file), exc_info=True)
+                    self.log.error("Unable write data for file '%s'",
+                                   self.source_file, exc_info=True)
                     file_written = False
 
             if targets_data != []:
@@ -287,13 +282,13 @@ class DataFetcher(DataFetcherBase):
                                          open_connections,
                                          metadata_extended,
                                          payload)
-                    msg = ("Passing multipart-message for file {}...done."
-                           .format(self.source_file))
+                    msg = ("Passing multipart-message for file %s...done.",
+                           self.source_file)
                     self.log.debug(msg)
 
                 except Exception:
-                    msg = ("Unable to send multipart-message for file {}"
-                           .format(self.source_file))
+                    msg = ("Unable to send multipart-message for file %s",
+                           self.source_file)
                     self.log.error(msg, exc_info=True)
                     file_send = False
 
@@ -301,12 +296,12 @@ class DataFetcher(DataFetcherBase):
 
         if self.config["store_data"] and file_opened:
             try:
-                self.log.debug("Closing '{}'...".format(self.target_file))
+                self.log.debug("Closing '%s'...", self.target_file)
                 file_descriptor.close()
                 file_closed = True
             except Exception:
-                self.log.error("Unable to close target file '{}'."
-                               .format(self.target_file), exc_info=True)
+                self.log.error("Unable to close target file '%s'.",
+                               self.target_file, exc_info=True)
                 raise
 
             # update the creation and modification time
@@ -323,12 +318,11 @@ class DataFetcher(DataFetcherBase):
                                          metadata_extended,
                                          payload)
                     self.log.debug("Passing metadata multipart-message for "
-                                   "file '{}'...done."
-                                   .format(self.source_file))
+                                   "file '%s'...done.", self.source_file)
 
                 except Exception:
                     self.log.error("Unable to send metadata multipart-message "
-                                   "for file '{}'".format(self.source_file),
+                                   "for file '%s'", self.source_file,
                                    exc_info=True)
 
             self.config["remove_flag"] = (file_opened
@@ -368,7 +362,7 @@ class DataFetcher(DataFetcherBase):
         self.cleaner_job_socket.send_multipart(
             [metadata["source_path"].encode("utf-8"),
              file_id.encode("utf-8")])
-        self.log.debug("Forwarded to cleaner {}".format(file_id))
+        self.log.debug("Forwarded to cleaner %s", file_id)
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
         """Finish method to use when use of cleaner not configured.
@@ -386,11 +380,11 @@ class DataFetcher(DataFetcherBase):
 
             try:
                 responce.raise_for_status()
-                self.log.debug("Deleting file '{}' succeeded."
-                               .format(self.source_file))
+                self.log.debug("Deleting file '%s' succeeded.",
+                               self.source_file)
             except Exception:
-                self.log.error("Deleting file '{}' failed."
-                               .format(self.source_file), exc_info=True)
+                self.log.error("Deleting file '%s' failed.", self.source_file,
+                               exc_info=True)
 
     def stop(self):
         """Implementation of the abstract method stop.
@@ -415,8 +409,7 @@ class Cleaner(CleanerBase):
 
         try:
             responce.raise_for_status()
-            self.log.debug("Deleting file '{}' succeeded."
-                           .format(source_file))
+            self.log.debug("Deleting file '%s' succeeded.", source_file)
         except Exception:
-            self.log.error("Deleting file '{}' failed."
-                           .format(source_file), exc_info=True)
+            self.log.error("Deleting file '%s' failed.", source_file,
+                           exc_info=True)

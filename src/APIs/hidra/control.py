@@ -164,9 +164,9 @@ class Control(Base):
                 CONNECTION_LIST[self.beamline]["host"],
                 CONNECTION_LIST[self.beamline]["port"]
             )
-            self.log.info("Starting connection to {}".format(endpoint))
+            self.log.info("Starting connection to %s", endpoint)
         except KeyError:
-            self.log.error("Beamline {} not supported".format(self.beamline))
+            self.log.error("Beamline %s not supported", self.beamline)
             sys.exit(1)
 
         # Create ZeroMQ context
@@ -211,7 +211,7 @@ class Control(Base):
             self.log.info("HiDRA control server up and answering.")
         else:
             self.log.error("HiDRA control server is in failed state.")
-            self.log.debug("responce was: {}".format(responce))
+            self.log.debug("responce was: %s", responce)
             self.stop(unregister=False)
             sys.exit(1)
 
@@ -231,11 +231,11 @@ class Control(Base):
         msg = [b"get", self.host, self.detector, attribute]
 
         self.socket.send_multipart(msg)
-        self.log.debug("sent: {}".format(msg))
+        self.log.debug("sent: %s", msg)
 
         # TODO implement timeout
         reply = self.socket.recv()
-        self.log.debug("recv: {}".format(reply))
+        self.log.debug("recv: %s", reply)
 
         return json.loads(reply)
 
@@ -267,10 +267,10 @@ class Control(Base):
                json.dumps(value)]
 
         self.socket.send_multipart(msg)
-        self.log.debug("sent: {}".format(msg))
+        self.log.debug("sent: %s", msg)
 
         reply = self.socket.recv()
-        self.log.debug("recv: {}".format(reply))
+        self.log.debug("recv: %s", reply)
 
         return reply
 
@@ -294,11 +294,11 @@ class Control(Base):
         msg = [b"do", self.host, self.detector, command]
 
         self.socket.send_multipart(msg)
-        self.log.debug("sent: {}".format(msg))
+        self.log.debug("sent: %s", msg)
 
         # TODO implement timeout
         reply = self.socket.recv()
-        self.log.debug("recv: {}".format(reply))
+        self.log.debug("recv: %s", reply)
 
         return reply
 
@@ -316,10 +316,10 @@ class Control(Base):
                 msg = [b"bye", self.host, self.detector]
 
                 self.socket.send_multipart(msg)
-                self.log.debug("sent: {}".format(msg))
+                self.log.debug("sent: %s", msg)
 
                 reply = self.socket.recv()
-                self.log.debug("recv: {} ".format(reply))
+                self.log.debug("recv: %s", reply)
 
             try:
                 self._stop_socket(name="socket")
@@ -386,7 +386,7 @@ class ReceiverControl(Base):
                 and socks[self.status_socket] == zmq.POLLIN):
 
             response = self.status_socket.recv_multipart()
-            self.log.debug("Response: {}".format(response))
+            self.log.debug("Response: %s", response)
 
             return response
         else:

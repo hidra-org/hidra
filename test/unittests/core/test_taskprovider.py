@@ -62,8 +62,8 @@ class RequestResponder(threading.Thread):
         endpoint = self.config["endpoints"].request_fw_con
         self.request_fw_socket = self.context.socket(zmq.REP)
         self.request_fw_socket.bind(endpoint)
-        self.log.info("request_fw_socket started (bind) for '{}'"
-                      .format(endpoint))
+        self.log.info("request_fw_socket started (bind) for '%s'",
+                      endpoint)
 
     def run(self):
         """Answer to all incoming requests.
@@ -80,11 +80,11 @@ class RequestResponder(threading.Thread):
         while self.continue_run:
             try:
                 request = self.request_fw_socket.recv_multipart()
-                self.log.debug("Received request: {}".format(request))
+                self.log.debug("Received request: %s", request)
 
                 message = json.dumps(open_requests).encode("utf-8")
                 self.request_fw_socket.send(message)
-                self.log.debug("Answer: {}".format(open_requests))
+                self.log.debug("Answer: %s", open_requests)
             except zmq.ContextTerminated:
                 self.log.debug("ContextTerminated -> break")
                 break
@@ -185,11 +185,11 @@ class TestTaskProvider(TestBase):
                 time.sleep(0.5)
                 target_file = os.path.join(target_file_base,
                                            "{}.cbf".format(i))
-                self.log.debug("copy to {}".format(target_file))
+                self.log.debug("copy to %s", target_file)
                 copyfile(source_file, target_file)
 
                 workload = router_socket.recv_multipart()
-                self.log.info("next workload {}".format(workload))
+                self.log.info("next workload %s", workload)
                 time.sleep(1)
         except KeyboardInterrupt:
             pass
@@ -203,7 +203,7 @@ class TestTaskProvider(TestBase):
             for number in range(self.start, self.stop):
                 target_file = os.path.join(target_file_base,
                                            "{}.cbf".format(number))
-                self.log.debug("remove {}".format(target_file))
+                self.log.debug("remove %s", target_file)
                 os.remove(target_file)
 
     def tearDown(self):

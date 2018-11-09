@@ -113,7 +113,7 @@ class TestEventDetector(EventDetectorTestBase):
             filename = "{}.cbf".format(i)
             target_file = os.path.join(self.target_file_base,
                                        "{}".format(filename))
-            self.log.debug("copy {}".format(target_file))
+            self.log.debug("copy %s", target_file)
             copyfile(self.source_file, target_file)
             time.sleep(self.time_all_events_detected)
 
@@ -130,7 +130,7 @@ class TestEventDetector(EventDetectorTestBase):
                 self.assertEqual(len(event_list), 1)
                 self.assertDictEqual(event_list[0], expected_result_dict)
             except AssertionError:
-                self.log.debug("event_list {}".format(event_list))
+                self.log.debug("event_list %s", event_list)
                 raise
 
     def test_multiple_files(self):
@@ -150,7 +150,7 @@ class TestEventDetector(EventDetectorTestBase):
             filename = "{}.cbf".format(i)
             target_file = os.path.join(self.target_file_base,
                                        "{}".format(filename))
-            self.log.debug("copy {}".format(target_file))
+            self.log.debug("copy %s", target_file)
             copyfile(self.source_file, target_file)
 
             expected_result_dict = {
@@ -172,7 +172,7 @@ class TestEventDetector(EventDetectorTestBase):
             for res_dict in expected_result:
                 self.assertIn(res_dict, event_list)
         except AssertionError:
-            # self.log.debug("event_list {}".format(event_list))
+            # self.log.debug("event_list %s", event_list)
             raise
 
     # this should not be executed automatically only if needed for debugging
@@ -198,14 +198,13 @@ class TestEventDetector(EventDetectorTestBase):
         steps = 10
 
         memory_usage_old = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        self.log.debug("Memory usage at start: {} (kb)"
-                       .format(memory_usage_old))
+        self.log.debug("Memory usage at start: %s (kb)", memory_usage_old)
 
 #        hp = hpy()
 #        hp.setrelheap()
 
         step_loop = (self.stop - self.start) / steps
-        self.log.debug("Used steps: {}".format(steps))
+        self.log.debug("Used steps: %s", steps)
 
         for step in range(steps):
             start = int(self.start + step * step_loop)
@@ -218,15 +217,15 @@ class TestEventDetector(EventDetectorTestBase):
                 copyfile(self.source_file, target_file)
 
                 if i % 100 == 0:
-                    self.log.debug("copy index {}".format(i))
+                    self.log.debug("copy index %s", i)
                     self.eventdetector.get_new_event()
 
 #                time.sleep(0.5)
 
             memory_usage_new = (
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-            self.log.debug("Memory usage in iteration {}: {} (kb)"
-                           .format(step, memory_usage_new))
+            self.log.debug("Memory usage in iteration %s: %$ (kb)",
+                           step, memory_usage_new)
             if memory_usage_new > memory_usage_old:
                 memory_usage_old = memory_usage_new
 #                print(hp.heap())
@@ -242,7 +241,7 @@ class TestEventDetector(EventDetectorTestBase):
                 target_file = os.path.join(self.target_file_base,
                                            "{}.cbf".format(i))
                 os.remove(target_file)
-                self.log.debug("remove {}".format(target_file))
+                self.log.debug("remove %s", target_file)
             except OSError:
                 pass
 

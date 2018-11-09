@@ -107,8 +107,8 @@ class TestDataFetcher(DataFetcherTestBase):
 
         open_connections = dict()
 
-        self.log.debug("open_connections before function call: {}"
-                       .format(open_connections))
+        self.log.debug("open_connections before function call: %s",
+                       open_connections)
 
         datafetcher.get_metadata(targets, metadata)
         # source_file = "http://131.169.55.170/test_httpget/data/test_file.cbf"
@@ -117,14 +117,14 @@ class TestDataFetcher(DataFetcherTestBase):
 
         datafetcher.finish(targets, metadata, open_connections)
 
-        self.log.debug("open_connections after function call: {}"
-                       .format(open_connections))
+        self.log.debug("open_connections after function call: %s",
+                       open_connections)
 
         try:
             for sckt in receiving_socket:
                 recv_message = sckt.recv_multipart()
                 recv_message = json.loads(recv_message[0].decode("utf-8"))
-                self.log.info("received: {}".format(recv_message))
+                self.log.info("received: %s", recv_message)
         except KeyboardInterrupt:
             pass
         finally:

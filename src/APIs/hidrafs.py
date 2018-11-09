@@ -94,7 +94,7 @@ class Passthrough(Operations):
 #        pass
 
     def getattr(self, path, fh=None):
-        self.log.debug("path={0}".format(path))
+        self.log.debug("path=%s", path)
 
         if path == "/" or path.startswith("/.Trash"):
             st = os.lstat(path)  # pylint: disable=invalid-name

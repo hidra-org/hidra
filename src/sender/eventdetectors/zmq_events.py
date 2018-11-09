@@ -252,7 +252,7 @@ class EventDetector(EventDetectorBase):
         else:
             event_message_list = [json.loads(event_message[0].decode("utf-8"))]
 
-        self.log.debug("event_message: {}".format(event_message_list))
+        self.log.debug("event_message: %s", event_message_list)
 
         return event_message_list
 

@@ -136,7 +136,7 @@ class TestDataManager(TestBase):
         self.appid = str(self.config["main_pid"]).encode("utf-8")
 
     def send_signal(self, signal, ports, prio=None):
-        self.log.info("send_signal : {}, {}".format(signal, ports))
+        self.log.info("send_signal : %s, %s", signal, ports)
 
         send_message = [__version__, self.appid, signal]
 
@@ -153,7 +153,7 @@ class TestDataManager(TestBase):
         self.com_socket.send_multipart(send_message)
 
         received_message = self.com_socket.recv()
-        self.log.info("Response : {}".format(received_message))
+        self.log.info("Response : %s", received_message)
         self.assertEqual(received_message, signal)
 
     def test_datamanager(self):
@@ -169,11 +169,10 @@ class TestDataManager(TestBase):
 #        try:
 #            self.com_socket = self.context.socket(zmq.REQ)
 #            self.com_socket.connect(endpoints.com_con)
-#            self.log.info("Start com_socket (connect): {}"
-#                          .format(endpoints.com_con))
+#            self.log.info("Start com_socket (connect): %s", endpoints.com_con)
 #        except:
-#            self.log.error("Failed to start com_socket (connect): {}"
-#                           .format(endpoints.com_con))
+#            self.log.error("Failed to start com_socket (connect): %s"
+#                           endpoints.com_con)
 #            raise
         self.com_socket = self.start_socket(
             name="com_socket",
@@ -228,7 +227,7 @@ class TestDataManager(TestBase):
             for i in range(self.start, self.stop):
                 target_file = os.path.join(target_file_base,
                                            "{}.cbf".format(i))
-                self.log.debug("copy to {}".format(target_file))
+                self.log.debug("copy to %s", target_file)
                 copyfile(source_file, target_file)
 
                 time.sleep(1)
@@ -238,16 +237,15 @@ class TestDataManager(TestBase):
                 if recv_message == ["ALIVE_TEST"]:
                     continue
 
-                self.log.info("received fixed: {}"
-                              .format(json.loads(recv_message[0])))
+                self.log.info("received fixed: %s",
+                              json.loads(recv_message[0]))
 
                 for sckt in self.receiving_sockets:
                     recv_message = sckt.recv_multipart()
-                    self.log.info("received: {}"
-                                  .format(json.loads(recv_message[0])))
+                    self.log.info("received: %s", json.loads(recv_message[0]))
 
         except Exception as excp:
-            self.log.error("Exception detected: {}".format(excp),
+            self.log.error("Exception detected: %s", excp,
                            exc_info=True)
         finally:
             self.stop_socket(name="com_socket")
@@ -265,7 +263,7 @@ class TestDataManager(TestBase):
                                            "{}.cbf".format(i))
                 try:
                     os.remove(target_file)
-                    self.log.debug("remove {}".format(target_file))
+                    self.log.debug("remove %s", target_file)
                 except Exception:
                     pass
 

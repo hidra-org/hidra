@@ -263,7 +263,7 @@ class TestBase(unittest.TestCase):
 
         self._init_logging(loglevel=LOGLEVEL)
 
-#        self.log.debug("{} pid {}".format(self.__class__.__name__, main_pid))
+#        self.log.debug("%s pid %s", self.__class__.__name__, main_pid)
 
     def __iter__(self):
         for attr, value in self.__dict__.iteritems():
@@ -347,14 +347,13 @@ class TestBase(unittest.TestCase):
         for _, endpoint in vars(self.ipc_addresses).iteritems():
             try:
                 os.remove(endpoint)
-                self.log.debug("Removed ipc socket: {}".format(endpoint))
+                self.log.debug("Removed ipc socket: %s", endpoint)
             except OSError:
                 pass
-#                selfi.log.debug("Could not remove ipc socket: {}"
-#                               .format(endpoint))
+#                selfi.log.debug("Could not remove ipc socket: %s", endpoint)
             except Exception:
-                self.log.warning("Could not remove ipc socket: {}"
-                                 .format(endpoint), exc_info=True)
+                self.log.warning("Could not remove ipc socket: %s", endpoint,
+                                 exc_info=True)
 
         if self.listener is not None:
             self.log_queue.put_nowait(None)

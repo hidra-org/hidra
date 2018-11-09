@@ -105,7 +105,7 @@ class TestEventDetector(EventDetectorTestBase):
 
                 event_list = self.eventdetector.get_new_event()
                 if event_list:
-                    self.log.debug("event_list: {}".format(event_list))
+                    self.log.debug("event_list: %s", event_list)
 
                 self.assertIn(message, event_list)
                 self.assertEqual(len(event_list), 1)
@@ -113,7 +113,7 @@ class TestEventDetector(EventDetectorTestBase):
 
                 if local_out:
                     recv_message = data_out_socket.recv_multipart()
-                    self.log.debug("Received - {}".format(recv_message))
+                    self.log.debug("Received - %s", recv_message)
 
         except KeyboardInterrupt:
             pass

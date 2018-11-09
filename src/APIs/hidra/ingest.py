@@ -130,12 +130,12 @@ class Ingest(Base):
 #        self.localhost = socket.gethostbyaddr("localhost")[2][0]
         try:
             socket.inet_aton(self.localhost)
-            self.log.info("IPv4 address detected for localhost: {}."
-                          .format(self.localhost))
+            self.log.info("IPv4 address detected for localhost: %s.",
+                          self.localhost)
             self.localhost_is_ipv6 = False
         except socket.error:
-            self.log.info("Address '{}' is not a IPv4 address, asume it is "
-                          "an IPv6 address.".format(self.localhost))
+            self.log.info("Address '%s' is not a IPv4 address, asume it is "
+                          "an IPv6 address.", self.localhost)
             self.localhost_is_ipv6 = True
 
         self.ext_ip = "0.0.0.0"
@@ -235,15 +235,14 @@ class Ingest(Base):
         self.log.info("Sending signal to open a new file.")
 
         message = self.file_op_socket.recv_multipart()
-        self.log.debug("Received responce: {}".format(message))
+        self.log.debug("Received responce: %s", message)
 
         if signal == message[0] and filename == message[1]:
             self.filename = filename
             self.filepart = 0
         else:
-            self.log.debug("signal={} and filename={}"
-                           .format(signal, filename))
-            raise Exception("Wrong responce received: {}".format(message))
+            self.log.debug("signal=%s and filename=%s", signal, filename)
+            raise Exception("Wrong responce received: %s", message)
 
     def write(self, data):
         """Write data into the file.
@@ -267,7 +266,7 @@ class Ingest(Base):
         # send data to ZMQ-Queue
         self.datafetch_socket.send(data)
         self.filepart += 1
-#        self.log.debug("write action sent: {0}".format(message))
+#        self.log.debug("write action sent: %s", message)
 
     def close_file(self):
         """Close the file.
@@ -286,8 +285,7 @@ class Ingest(Base):
         try:
             self.eventdet_socket.send_multipart(send_message)
             self.log.debug("Sending signal to close the file to "
-                           "eventdet_socket (send_message={})"
-                           .format(send_message))
+                           "eventdet_socket (send_message=%s)", send_message)
         except:
             raise Exception("Sending signal to close the file to "
                             "eventdet_socket...failed")
@@ -305,14 +303,13 @@ class Ingest(Base):
             self.log.info("Received answer to signal...")
             #  Get the reply.
             recv_message = self.file_op_socket.recv_multipart()
-            self.log.info("Received answer to signal: {}"
-                          .format(recv_message))
+            self.log.info("Received answer to signal: %s", recv_message)
         else:
             recv_message = None
 
         if recv_message != send_message:
-            self.log.debug("received message: {}".format(recv_message))
-            self.log.debug("send message: {}".format(send_message))
+            self.log.debug("received message: %s", recv_message)
+            self.log.debug("send message: %s", send_message)
             raise Exception("Something went wrong while notifying to close "
                             "the file")
 
