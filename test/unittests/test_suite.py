@@ -32,8 +32,8 @@ import unittest
 from importlib import import_module
 import pkgutil
 
-import eventdetectors
-import datafetchers
+import eventdetector
+import datafetcher
 from core.test_taskprovider import TestTaskProvider
 from core.test_datadispatcher import TestDataDispatcher
 from core.test_signalhandler import TestSignalHandler
@@ -58,17 +58,17 @@ def get_eventdetector_suites():
 
     # find all event detector test modules
     # iter_modules returns: importer, modname, ispkg
-    for _, modname, _ in pkgutil.iter_modules(eventdetectors.__path__):
+    for _, modname, _ in pkgutil.iter_modules(eventdetector.__path__):
         # the base class not a test module
         if modname in ["eventdetector_test_base"]:
             continue
 
         # load the test suite
-        module_name = "eventdetectors.{}".format(modname)
+        module_name = "eventdetector.{}".format(modname)
         module = import_module(module_name).TestEventDetector
         suite = unittest.TestLoader().loadTestsFromTestCase(module)
         # this is equivalent to loading one module like this
-        # > from eventdetectors.test_inotifyx_events \
+        # > from eventdetector.test_inotifyx_events \
         # >     import TestEventDetector as TestInotifyxEvents
         # > loader = unittest.TestLoader()
         # > suite = loader.loadTestsFromTestCase(TestInotifyxEvents)
@@ -90,18 +90,18 @@ def get_datafetcher_suites():
 
     # find all event detector test modules
     # iter_modules returns: importer, modname, ispkg
-    for _, modname, _ in pkgutil.iter_modules(datafetchers.__path__):
+    for _, modname, _ in pkgutil.iter_modules(datafetcher.__path__):
         # the base class not a test module
         # TODO exclude test_http_fetcher only temporarily till bug is fixed
         if modname in ["datafetcher_test_base", "test_http_fetcher"]:
             continue
 
         # load the test suite
-        module_name = "datafetchers.{}".format(modname)
+        module_name = "datafetcher.{}".format(modname)
         module = import_module(module_name).TestDataFetcher
         suite = unittest.TestLoader().loadTestsFromTestCase(module)
         # this is equivalent to loading one module like this
-        # > from datafetchers.test_file_fetcher \
+        # > from datafetcher.test_file_fetcher \
         # >     import TestDataFetcher as TestFileFetcher
         # > loader = unittest.TestLoader()
         # > suite = loader.loadTestsFromTestCase(TestFileFetcher)
@@ -168,20 +168,20 @@ def get_testing_suites():
 #    # pylint: disable=line-too-long
 #
 #    # for testing
-#    from eventdetectors.test_inotifyx_events import TestEventDetector as TestInotifyxEvents  # noqa F401
-#    from eventdetectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents  # noqa F401
-#    from eventdetectors.test_http_events import TestEventDetector as TestHttpEvents  # noqa F401
-#    from eventdetectors.test_zmq_events import TestEventDetector as TestZmqEvents  # noqa F401
-#    from eventdetectors.test_hidra_events import TestEventDetector as TestHidraEvents  # noqa F401
-#    from eventdetectors.test_eventdetector_template import TestEventDetector as TestEventDetectorTemplate  # noqa F401
+#    from eventdetector.test_inotifyx_events import TestEventDetector as TestInotifyxEvents  # noqa F401
+#    from eventdetector.test_watchdog_events import TestEventDetector as TestWatchdogEvents  # noqa F401
+#    from eventdetector.test_http_events import TestEventDetector as TestHttpEvents  # noqa F401
+#    from eventdetector.test_zmq_events import TestEventDetector as TestZmqEvents  # noqa F401
+#    from eventdetector.test_hidra_events import TestEventDetector as TestHidraEvents  # noqa F401
+#    from eventdetector.test_eventdetector_template import TestEventDetector as TestEventDetectorTemplate  # noqa F401
 #
-#    from datafetchers.test_cleanerbase import TestDataFetcher as TestCleanerbase  # noqa F401
-#    from datafetchers.test_file_fetcher import TestDataFetcher as TestFileFetcher  # noqa F401
-#    from datafetchers.test_http_fetcher import TestDataFetcher as TestHttpFetcher  # noqa F401
-#    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
-#    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
-#    from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
-#    from datafetchers.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
+#    from datafetcher.test_cleanerbase import TestDataFetcher as TestCleanerbase  # noqa F401
+#    from datafetcher.test_file_fetcher import TestDataFetcher as TestFileFetcher  # noqa F401
+#    from datafetcher.test_http_fetcher import TestDataFetcher as TestHttpFetcher  # noqa F401
+#    from datafetcher.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
+#    from datafetcher.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
+#    from datafetcher.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
+#    from datafetcher.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
 #
 #    from api.test_control import TestControl  # noqa F401
 #
