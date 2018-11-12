@@ -22,14 +22,31 @@ if [ -z "${RELEASE}" ]; then
     usage
 fi
 
-bumpversion ${RELEASE} ${DRYRUN} --config-file .bumpversion_prework.cfg
-bumpversion ${RELEASE} ${DRYRUN} --allow-dirty
+fix_timezone()
+{
+    # fix manually because bumversion does not work properly with %z
+    echo "Fix timezone"
+    current_time=$(date "+%a, %d %b %Y %H")
+    timezone=$(date "+%z")
+    sed -i -e "s/$current_time\(:[0-9][0-9]:[0-9][0-9]\) $/$current_time\1 $timezone/g" debian/changelog
+}
 
-# fix manually because bumversion does not work properly with %z
-echo "Fix timezone"
-current_time=$(date "+%a, %d %b %Y %H")
-timezone=$(date "+%z")
-sed -i -e "s/$current_time\(:[0-9][0-9]:[0-9][0-9]\) $/$current_time\1 $timezone/g" debian/changelog
+fix_changelog_entries()
+{
+    changelog_entries=$(grep "$current_time\(:[0-9][0-9]:[0-9][0-9]\) $timezone" debian/changelog | wc -l)
+    if [ $changelog_entries != 1 ]; then
+        echo "Fix number of entries in changelog (entries=$changelog_entries)"
+        #(?<!^) - ignore the beginning of the file for this regex
+        search_regex="(?<!^)hidra .*\n\n.*\n\n.*$current_time.*"
+        perl -i -p0e "s/$search_regex//g" debian/changelog
+    fi
+}
+
+bumpversion ${RELEASE} ${DRYRUN} --config-file .bumpversion_prework.cfg || return 1
+bumpversion ${RELEASE} ${DRYRUN} --allow-dirty || return 1
+
+fix_timezone
+fix_changelog_entries
 
 #TODO add to git via bumpversion or
 #git add -u
