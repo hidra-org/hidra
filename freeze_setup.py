@@ -41,6 +41,7 @@ from distutils.sysconfig import get_python_lib
 import os
 import sys
 import platform
+import zmq
 
 from cx_Freeze import setup, Executable
 
@@ -49,7 +50,15 @@ SENDERPATH = os.path.join(BASEPATH, "src", "sender")
 SHAREDPATH = os.path.join(BASEPATH, "src", "shared")
 APIPATH = os.path.join(BASEPATH, "src", "APIs", "hidra")
 CONFPATH = os.path.join(BASEPATH, "conf")
-LIBZMQ_PATH = os.path.join(get_python_lib(), "zmq")
+
+def get_zmq_path():
+    """Find the correct zmq path
+    """
+
+    path = os.path.dirname(zmq.__file__)
+#    path = os.path.join(get_python_lib(), "zmq")
+
+    return path
 
 def windows_specific():
     """Set Windows specific packages and config
@@ -172,7 +181,7 @@ BUILD_EXE_OPTIONS = {
     # libzmq.pyd is a vital dependency
     # "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
-        (LIBZMQ_PATH, "zmq"),
+        (get_zmq_path(), "zmq"),
         (os.path.join(BASEPATH, "logs/.gitignore"),
          os.path.join("logs", ".gitignore")),
         (get_init(), "hidra.sh"),
