@@ -1,4 +1,10 @@
 # develop
+# 4.0.14
+
+- Fixed windows startup and cx_Freeze 5.x compatibility
+- Fix bumpversion for multiple changelog entries
+- Fixed LD_LIBRARY_PATH for receiver status (init script)
+
 # 4.0.13
 
 - Transfer: Fixed timeout in get command
