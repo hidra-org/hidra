@@ -29,7 +29,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import __init__ as init  # noqa F401 # pylint: disable=unused-import
+import _environment
 import utils
 
 

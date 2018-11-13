@@ -48,8 +48,11 @@ import zmq.devices
 
 import setproctitle
 
-# to make freeze packages work
-CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+# to make windows freeze work (cx_Freeze 5.x)
+try:
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+except NameError:
+    CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
@@ -63,12 +66,7 @@ from taskprovider import TaskProvider  # noqa E402
 # pylint: disable=wrong-import-position
 from datadispatcher import DataDispatcher  # noqa E402
 
-try:
-    from __init__ import BASE_DIR  # noqa E402
-except ImportError:
-    # to make windows work
-    from _environment import BASE_DIR  # noqa E402
-
+from _environment import BASE_DIR  # noqa E402
 import utils  # noqa E402
 from _version import __version__  # noqa E402
 
