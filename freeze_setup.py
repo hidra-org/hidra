@@ -170,14 +170,19 @@ else:
 # Dependencies are automatically detected, but it might need fine tuning.
 BUILD_EXE_OPTIONS = {
     # zmq.backend.cython seems to be left out by default
-    "packages": (["zmq",
-                  "zmq.backend.cython",
-                  "logging.handlers",
-                  "setproctitle",
-                  "six",
-                  "ast"]
-                 + VERSION_SPECIFIC_PACKAGES
-                 + PLATFORM_SPECIFIC_PACKAGES),
+    "packages": (
+        [
+            "ast",
+            "logging.handlers",
+            "logutils",
+            "setproctitle",
+            "six",
+            "zmq",
+            "zmq.backend.cython",
+        ]
+        + VERSION_SPECIFIC_PACKAGES
+        + PLATFORM_SPECIFIC_PACKAGES
+    ),
     # libzmq.pyd is a vital dependency
     # "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
@@ -193,7 +198,6 @@ BUILD_EXE_OPTIONS = {
         (os.path.join(SENDERPATH, "taskprovider.py"), "taskprovider.py"),
         (os.path.join(SENDERPATH, "signalhandler.py"), "signalhandler.py"),
         (os.path.join(SENDERPATH, "datadispatcher.py"), "datadispatcher.py"),
-        (os.path.join(SHAREDPATH, "logutils"), "logutils"),
         (os.path.join(SHAREDPATH, "utils.py"), "utils.py"),
         (os.path.join(SHAREDPATH, "parameter_utils.py"), "parameter_utils.py"),
         (os.path.join(SHAREDPATH, "_version.py"), "_version.py"),
