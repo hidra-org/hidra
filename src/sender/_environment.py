@@ -1,14 +1,7 @@
 import os
 import sys
 
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except:
-    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
-# CURRENT_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
-# CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
-
-# to make windows work
+CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
 SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
 EVENTDETECTOR_DIR = os.path.join(CURRENT_DIR, "eventdetectors")
