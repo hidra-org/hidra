@@ -23,6 +23,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import multiprocessing
 import os
 import select
 import shutil
@@ -110,17 +111,27 @@ def get_events(fd, *args):
 
 
 def create_test_files(watch_dir, n_files):
+    t_start = time.time()
     for i in range(n_files):
-        with open(os.path.join(watch_dir, "test_file"), "w"):
+        with open(os.path.join(watch_dir, "test_file"), "w") as f:
             pass
 
+    t_needed = time.time() - t_start
+    print("created {} in {} s, ({} Hz)".format(n_files, t_needed, n_files / t_needed))
 
-def _main():
-    watch_dir = "/tmp/watch_tree"
-    n_files = 1000000
 
-    create_thread = threading.Thread(target=create_test_files,
-                                     args=(watch_dir,n_files))
+def create_and_get_events(watch_dir, n_files, use_pr):
+    if use_pr:
+        print("use multiprocessing")
+        job_type = multiprocessing.Process
+    else:
+        print("use threading")
+        job_type = threading.Thread
+
+    create_pr = job_type(
+        target=create_test_files,
+        args=(watch_dir, n_files)
+    )
 
     try:
         os.mkdir(watch_dir)
@@ -139,16 +150,23 @@ def _main():
         os.close(fd)
         sys.exit(1)
 
-    create_thread.start()
+    create_pr.start()
 
     n_events = 0
+    timeout = 2
     t = time.time()
     run_loop = True
     try:
         while run_loop:
-            events = get_events(fd)
+            events = get_events(fd, timeout)
+
+            if not events:
+                run_loop = False
 
             for event in events:
+                if event.wd < 0:
+                    continue
+
                 path = wd_to_path[event.wd]
                 event_type = event.get_mask_description()
                 event_type_array = event_type.split("|")
@@ -156,18 +174,25 @@ def _main():
                 if "IN_OPEN" in event_type_array:
                     n_events += 1
 
-                    if n_events % 100000 == 0:
-                        print(n_events)
-
-                    if n_events == n_files:
-                        run_loop = False
-
     except KeyboardInterrupt:
         pass
     finally:
         os.close(fd)
 
-    print("n_events", n_events, "total {}s".format(time.time() - t))
+    t_needed = time.time() - t
+    print("n_events {} in {} s, ({} Hz)".format(n_events, t_needed, n_events / t_needed))
+    create_pr.join()
+
+
+def _main():
+    watch_dir = "/tmp/watch_tree"
+    n_files = 1000000
+
+    use_pr = True
+    create_and_get_events(watch_dir, n_files, use_pr)
+
+    use_pr = False
+    create_and_get_events(watch_dir, n_files, use_pr)
 
 
 if __name__ == '__main__':
