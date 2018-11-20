@@ -45,6 +45,7 @@ if API_DIR not in sys.path:
     sys.path.insert(0, API_DIR)
 del API_DIR
 
+# pylint: disable=wrong-import-position
 import hidra
 
 # the list transformation is needed for Python 3 compliance

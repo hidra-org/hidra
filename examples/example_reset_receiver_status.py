@@ -25,15 +25,13 @@ This module implements an example for resetting the status of the receiver
 after an error occured.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
 import socket
 
-import __init__  # noqa E401  # pylint: disable=unused-import
+import _environment  # pylint: disable=unused-import
 from hidra.control import ReceiverControl
 
 

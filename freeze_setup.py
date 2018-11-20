@@ -37,7 +37,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from distutils.sysconfig import get_python_lib
+#from distutils.sysconfig import get_python_lib
 import os
 import sys
 import platform
@@ -57,13 +57,14 @@ def get_zmq_path():
 
     path = os.path.dirname(zmq.__file__)
 #    path = os.path.join(get_python_lib(), "zmq")
+#    LIBZMQ_PATH = "C:\Python27\Lib\site-packages\zmq"
+#    LIBZMQ_PATH = "/usr/local/lib/python2.7/dist-packages/zmq"
 
     return path
 
 def windows_specific():
     """Set Windows specific packages and config
     """
-    # LIBZMQ_PATH = "C:\Python27\Lib\site-packages\zmq"
     packages = ["watchdog"]
 
     files = [
@@ -79,7 +80,6 @@ def linux_specific():
     """Set Linux specific packages and config
     """
 
-    # LIBZMQ_PATH = "/usr/local/lib/python2.7/dist-packages/zmq"
     packages = ["inotifyx"]
 
     files = [
@@ -169,7 +169,6 @@ else:
 
 # Dependencies are automatically detected, but it might need fine tuning.
 BUILD_EXE_OPTIONS = {
-    # zmq.backend.cython seems to be left out by default
     "packages": (
         [
             "ast",
@@ -178,6 +177,7 @@ BUILD_EXE_OPTIONS = {
             "setproctitle",
             "six",
             "zmq",
+            # zmq.backend.cython seems to be left out by default
             "zmq.backend.cython",
         ]
         + VERSION_SPECIFIC_PACKAGES

@@ -225,7 +225,7 @@ class TestEventDetector(EventDetectorTestBase):
             try:
                 target_file = "{}{}.cbf".format(self.target_file_base, number)
                 os.remove(target_file)
-                logging.debug("remove {}".format(target_file))
+                logging.debug("remove %s", target_file)
             except OSError:
                 pass
 

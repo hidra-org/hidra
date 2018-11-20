@@ -24,15 +24,13 @@
 This module implements an example for the STREAM to a fixed target mode.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
 
-from __init__ import BASE_DIR
+from _environment import BASE_DIR
 import utils
 
 from hidra import Transfer

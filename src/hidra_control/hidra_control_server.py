@@ -660,15 +660,14 @@ class ControlServer(object):
         try:
             self.socket = self.context.socket(zmq.REP)
             self.socket.bind(self.endpoint)
-            self.log.info("Start socket (bind): '{}'"
-                          .format(self.endpoint))
+            self.log.info("Start socket (bind): '%s'", self.endpoint)
         except zmq.error.ZMQError:
-            self.log.error("Failed to start socket (bind) zmqerror: '{}'"
-                           .format(self.endpoint), exc_info=True)
+            self.log.error("Failed to start socket (bind) zmqerror: '%s'",
+                           self.endpoint, exc_info=True)
             raise
         except Exception:
-            self.log.error("Failed to start socket (bind): '{}'"
-                           .format(self.endpoint), exc_info=True)
+            self.log.error("Failed to start socket (bind): '%s'",
+                           self.endpoint, exc_info=True)
             raise
 
     def run(self):
@@ -678,7 +677,7 @@ class ControlServer(object):
         while True:
             try:
                 msg = self.socket.recv_multipart()
-                self.log.debug("Recv {}".format(msg))
+                self.log.debug("Recv %s", msg)
             except KeyboardInterrupt:
                 break
 

@@ -25,8 +25,6 @@ This module implements an example for the QUERY_NEXT mode where the chunks are
 received separately.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -35,7 +33,7 @@ import argparse
 import socket
 import hashlib
 
-import __init__  # noqa E401  # pylint: disable=unused-import
+import _environment  # pylint: disable=unused-import
 from hidra import Transfer
 
 

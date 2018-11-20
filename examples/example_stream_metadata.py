@@ -24,8 +24,6 @@
 This module implements an example for the STREAM_METADATA mode.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -33,7 +31,7 @@ from __future__ import unicode_literals
 import argparse
 import socket
 
-import __init__  # noqa F401  # pylint: disable=unused-import
+import _environment  # pylint: disable=unused-import
 from hidra import Transfer
 
 

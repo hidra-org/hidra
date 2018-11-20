@@ -35,7 +35,7 @@ import os
 import argparse
 import socket
 
-from __init__ import BASE_DIR
+from _environment import BASE_DIR
 import utils
 
 from hidra import Transfer

@@ -24,8 +24,6 @@
 This module implements an example for an onda connection.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -39,7 +37,7 @@ import time
 
 import setproctitle
 
-from __init__ import BASE_DIR
+from _environment import BASE_DIR
 import utils
 
 from hidra import Transfer, generate_filepath
@@ -64,13 +62,13 @@ class Worker(multiprocessing.Process):
 
         self.transfer_type = transfer_type
 
-        self.log = logging.getLogger("Worker-{}".format(self.identifier))
+        self.log = logging.getLogger("Worker-%s", self.identifier)
 
         self.query = Transfer(self.transfer_type, signal_host, use_log=True)
 
         self.basepath = basepath
 
-        self.log.debug("start Transfer on port {}".format(port))
+        self.log.debug("start Transfer on port %s", port)
         # targets are locally
         self.query.start([target_host, port])
 #        self.query.start(port)
@@ -80,7 +78,7 @@ class Worker(multiprocessing.Process):
     def run(self):
         while True:
             try:
-                self.log.debug("Worker-{0}: waiting".format(self.identifier))
+                self.log.debug("Worker-%s: waiting", self.identifier)
                 [metadata, data] = self.query.get()
                 time.sleep(0.1)
             except Exception:
@@ -88,18 +86,18 @@ class Worker(multiprocessing.Process):
 
             if self.transfer_type in ["QUERY_NEXT_METADATA",
                                       "STREAM_METADATA"]:
-                self.log.debug("Worker-{}: metadata {}"
-                               .format(self.identifier, metadata["filename"]))
+                self.log.debug("Worker-%s: metadata %s",
+                               self.identifier, metadata["filename"])
 
                 filepath = generate_filepath(self.basepath, metadata)
 
-                self.log.debug("Worker-{}: filepath {}"
-                               .format(self.identifier, filepath))
+                self.log.debug("Worker-%s: filepath %s",
+                               self.identifier, filepath)
 
                 with open(filepath, "r") as file_descriptor:
                     file_descriptor.read()
-                    self.log.debug("Worker-{}: file {} read"
-                                   .format(self.identifier, filepath))
+                    self.log.debug("Worker-%s: file %s read",
+                                   self.identifier, filepath)
             else:
                 print("filepath", generate_filepath(self.basepath, metadata))
                 print("metadata", metadata)

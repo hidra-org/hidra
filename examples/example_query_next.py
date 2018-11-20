@@ -24,8 +24,6 @@
 This module implements an example for the QUERY-NEXT mode.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -35,7 +33,7 @@ import hashlib
 import socket
 import sys
 
-import __init__  # noqa E401 # pylint: disable=unused-import
+import _environment  # pylint: disable=unused-import
 from hidra import Transfer
 
 
