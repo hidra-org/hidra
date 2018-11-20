@@ -10,7 +10,7 @@ good-names=i,j,k,ex,Run,_,ip,f
 [TYPECHECK]
 
 # List of module names for which member attributes should not be checked
-ignored-modules = zmq, setproctitle
+ignored-modules = zmq, setproctitle, inotifyx.binding
 
 [MESSAGES CONTROL]
 

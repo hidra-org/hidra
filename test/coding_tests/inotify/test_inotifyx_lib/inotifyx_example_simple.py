@@ -107,7 +107,7 @@ def get_events(fd, *args):
 
 
 def _main():
-    watch_dir = ["/tmp/watch_tree"]
+    watch_dir = "/tmp/watch_tree"
 
     try:
         for path in watch_dir:
@@ -120,17 +120,15 @@ def _main():
     wd_to_path = {}
 
     try:
-        for path in watch_dir:
-            wd = binding.add_watch(fd, path)
-            wd_to_path[wd] = path
-
+        wd = binding.add_watch(fd, watch_dir)
+        wd_to_path[wd] = watch_dir
         print("wd_to_path: ", wd_to_path)
     except:
         print("stopped")
         os.close(fd)
         sys.exit(1)
 
-    with open(os.path.join(watch_dir[0], "test_file"), "w"):
+    with open(os.path.join(watch_dir, "test_file"), "w"):
         pass
 
     try:

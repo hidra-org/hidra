@@ -1,74 +1,80 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""Perform tests on the inotify library.
+"""
+
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import multiprocessing
-import os
-import shutil
-import threading
 import time
 
 import inotify.adapters
 
-
-def create_test_files(watch_dir, n_files):
-    t_start = time.time()
-    for i in range(n_files):
-        with open(os.path.join(watch_dir, "test_file"), "w"):
-            pass
-
-    t_needed = time.time() - t_start
-    print("created {} in {} s, ({} Hz)".format(n_files, t_needed, n_files / t_needed))
+from performance_base import PerformanceBase, do_tests
 
 
-def create_and_get_events(watch_dir, n_files, use_pr):
-    if use_pr:
-        print("use multiprocessing")
-        job_type = multiprocessing.Process
-    else:
-        print("use threading")
-        job_type = threading.Thread
+class CreateAndGet(PerformanceBase):
+    """Create and get events with the inotify library.
+    """
 
-    create_pr = job_type(
-        target=create_test_files,
-        args=(watch_dir, n_files)
-    )
+    def __init__(self, watch_dir, n_files):
+        super(CreateAndGet, self).__init__(watch_dir, n_files)
 
-    try:
-        os.mkdir(watch_dir)
-    except OSError:
-        pass
+        self.inotify = inotify.adapters.InotifyTree(watch_dir)
 
-    i = inotify.adapters.InotifyTree(watch_dir)
+    def run(self):
+        """Run the event detection.
+        """
 
-    create_pr.start()
+        if self.create_job is not None:
+            self.create_job.start()
 
-    n_events = 0
-    t = time.time()
-    timeout = 2
-    for event in i.event_gen(yield_nones=False, timeout_s=timeout):
-        (_, type_names, path, filename) = event
-        if "IN_OPEN" in type_names:
-            n_events += 1
+        n_events = 0
+        t_start = 0
+        timeout = 2
+        while True:
+            for event in self.inotify.event_gen(yield_nones=False, timeout_s=timeout):
+                (_, type_names, _, _) = event
 
-            if n_events == n_files:
+                if not t_start:
+                    t_start = time.time()
+
+                if "IN_OPEN" in type_names:
+                    n_events += 1
+
+                    if n_events == self.n_files:
+                        break
+            if t_start:
                 break
 
-    t_needed = time.time() - t
-    print("n_events {} in {} s, ({} Hz)".format(n_events, t_needed, n_events / t_needed))
-    create_pr.join()
+        t_needed = time.time() - t_start
+        print("n_events {} in {} s, ({} Hz)"
+              .format(n_events, t_needed, n_events / t_needed))
 
-
-def _main():
-    watch_dir = "/tmp/watch_tree"
-    n_files = 1000000
-
-    use_pr = True
-    create_and_get_events(watch_dir, n_files, use_pr)
-
-    use_pr = False
-    create_and_get_events(watch_dir, n_files, use_pr)
+        if self.create_job is not None:
+            self.create_job.join()
 
 
 if __name__ == '__main__':
-    _main()
+    do_tests(CreateAndGet)

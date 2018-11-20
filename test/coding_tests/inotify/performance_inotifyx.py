@@ -1,3 +1,26 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+# the inotifyx library part:
 # Copyright (c) 2005 Manuel Amador
 # Copyright (c) 2009-2011 Forest Bond
 #
@@ -19,36 +42,37 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+"""Perform tests on the inotifyx library.
+"""
+
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import multiprocessing
 import os
-import select
-import shutil
-import sys
-import threading
 import time
 
 from inotifyx import binding
-from inotifyx.distinfo import version as __version__
+
+from performance_base import PerformanceBase, do_tests
 
 
-constants = {}
+_constants = {}  # pylint: disable=invalid-name
 
 for name in dir(binding):
     if name.startswith('IN_'):
-        globals()[name] = constants[name] = getattr(binding, name)
+        globals()[name] = _constants[name] = getattr(binding, name)
 
 
 class InotifyEvent(object):
-    '''
+    """
     InotifyEvent(wd, mask, cookie, name)
 
     A representation of the inotify_event structure.  See the inotify
     documentation for a description of these fields.
-    '''
+    """
+    # pylint: disable=redefined-outer-name
+    # pylint: disable=invalid-name
 
     wd = None
     mask = None
@@ -66,11 +90,11 @@ class InotifyEvent(object):
 
     def __repr__(self):
         return '%s(%s, %s, %s, %s)' % (
-          self.__class__.__name__,
-          repr(self.wd),
-          repr(self.mask),
-          repr(self.cookie),
-          repr(self.name),
+            self.__class__.__name__,
+            repr(self.wd),
+            repr(self.mask),
+            repr(self.cookie),
+            repr(self.name),
         )
 
     def get_mask_description(self):
@@ -85,7 +109,7 @@ class InotifyEvent(object):
         '''
 
         parts = []
-        for name, value in constants.items():
+        for name, value in _constants.items():
             if self.mask & value:
                 parts.append(name)
         if parts:
@@ -94,7 +118,7 @@ class InotifyEvent(object):
 
 
 def get_events(fd, *args):
-    '''
+    """
     get_events(fd[, timeout])
 
     Return a list of InotifyEvent instances representing events read from
@@ -103,97 +127,67 @@ def get_events(fd, *args):
     specifying a timeout in seconds.  If get_events times out waiting for
     events, an empty list will be returned.  If timeout is zero, get_events
     will not block.
-    '''
+    """
+    # pylint: disable=redefined-outer-name
+    # pylint: disable=invalid-name
+
     return [
-      InotifyEvent(wd, mask, cookie, name)
-      for wd, mask, cookie, name in binding.get_events(fd, *args)
+        InotifyEvent(wd, mask, cookie, name)
+        for wd, mask, cookie, name in binding.get_events(fd, *args)
     ]
 
 
-def create_test_files(watch_dir, n_files):
-    t_start = time.time()
-    for i in range(n_files):
-        with open(os.path.join(watch_dir, "test_file"), "w") as f:
-            pass
+class CreateAndGet(PerformanceBase):
+    """Create and get events with the inotifyx library.
+    """
 
-    t_needed = time.time() - t_start
-    print("created {} in {} s, ({} Hz)".format(n_files, t_needed, n_files / t_needed))
+    def __init__(self, watch_dir, n_files):
+        super(CreateAndGet, self).__init__(watch_dir, n_files)
+        self.wd_to_path = {}
+        self.inotify_binding = binding.init()
 
+        wd = binding.add_watch(self.inotify_binding, self.watch_dir)
+        self.wd_to_path[wd] = self.watch_dir
 
-def create_and_get_events(watch_dir, n_files, use_pr):
-    if use_pr:
-        print("use multiprocessing")
-        job_type = multiprocessing.Process
-    else:
-        print("use threading")
-        job_type = threading.Thread
+    def run(self):
+        """Run the event detection.
+        """
 
-    create_pr = job_type(
-        target=create_test_files,
-        args=(watch_dir, n_files)
-    )
+        if self.create_job is not None:
+            self.create_job.start()
 
-    try:
-        os.mkdir(watch_dir)
-    except OSError:
-        pass
-
-    fd = binding.init()
-
-    wd_to_path = {}
-
-    try:
-        wd = binding.add_watch(fd, watch_dir)
-        wd_to_path[wd] = watch_dir
-    except:
-        print("stopped")
-        os.close(fd)
-        sys.exit(1)
-
-    create_pr.start()
-
-    n_events = 0
-    timeout = 2
-    t = time.time()
-    run_loop = True
-    try:
+        n_events = 0
+        run_loop = True
+        t_start = 0
         while run_loop:
-            events = get_events(fd, timeout)
+            events = get_events(self.inotify_binding, self.timeout)
 
-            if not events:
+            if t_start and not events:
                 run_loop = False
 
             for event in events:
+                if not t_start:
+                    t_start = time.time()
+
                 if event.wd < 0:
                     continue
 
-                path = wd_to_path[event.wd]
                 event_type = event.get_mask_description()
                 event_type_array = event_type.split("|")
 
                 if "IN_OPEN" in event_type_array:
                     n_events += 1
 
-    except KeyboardInterrupt:
-        pass
-    finally:
-        os.close(fd)
+        t_needed = time.time() - t_start
+        print("n_events {} in {} s, ({} Hz)"
+              .format(n_events, t_needed, n_events / t_needed))
 
-    t_needed = time.time() - t
-    print("n_events {} in {} s, ({} Hz)".format(n_events, t_needed, n_events / t_needed))
-    create_pr.join()
+        if self.create_job is not None:
+            self.create_job.join()
 
-
-def _main():
-    watch_dir = "/tmp/watch_tree"
-    n_files = 1000000
-
-    use_pr = True
-    create_and_get_events(watch_dir, n_files, use_pr)
-
-    use_pr = False
-    create_and_get_events(watch_dir, n_files, use_pr)
+    def stop(self):
+        os.close(self.inotify_binding)
 
 
 if __name__ == '__main__':
-    _main()
+    do_tests(CreateAndGet)
