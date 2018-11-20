@@ -20,6 +20,7 @@ SCRIPT_PROC_NAME=hidra
 IPCDIR=/tmp/hidra
 PYTHON=/usr/bin/python
 CURRENTDIR="$(readlink --canonicalize-existing -- "$0")"
+START_CHECK_DELAY=3
 
 USE_EXE=false
 SHOW_SCRIPT_SETTINGS=false
@@ -242,6 +243,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 	    ${DAEMON} ${DAEMON_ARGS} &
     	RETVAL=$?
 
+        # give it time to properly start up
         TIMEOUT=0
         status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
         while [ $status != "1" ] && [ $TIMEOUT -lt 5 ] ; do
@@ -250,6 +252,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
         done
 
+        # detect status
         status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
         if [ $status = "1" ]; then
             printf "%4s\n" "[ ${GREEN}OK${NORMAL} ]"
@@ -322,16 +325,16 @@ elif [ -f /etc/debian_version ] ; then
     #
     do_start()
     {
-        log_daemon_msg "Starting $NAME"
         export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
 
         # Checked the PID file exists and check the actual status of process
         if [ -e $PIDFILE ]; then
-            status_of_proc -p $PIDFILE $DAEMON "$NAME" > /dev/null && status="1" || status="$?"
+            pidof $NAME >/dev/null
+            status=$?
             # If the status is SUCCESS then don't need to start again.
-            if [ $status = "1" ]; then
-                log_daemon_msg "$NAME is already running"
-                exit 0
+            if [ $status -eq 0 ]; then
+                log_success_msg "$NAME is already running"
+                return 0
             fi
         fi
 
@@ -350,17 +353,24 @@ elif [ -f /etc/debian_version ] ; then
         #  status 0 instead of 1)
         if /sbin/start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --background \
             --startas $DAEMON -- $DAEMON_ARGS ; then
-            return 0
+
+            # give it time to properly start up
+            sleep $START_CHECK_DELAY
+
+            # detect status
+            pidof $NAME >/dev/null
+            status=$?
+            if [ $status = "0" ]; then
+                log_success_msg "Starting $NAME"
+                return 0
+            else
+                log_failure_msg "Starting $NAME"
+                return 1
+            fi
         else
+            log_failure_msg "Starting $NAME"
             return 1
         fi
-
-        case "$?" in
-            0) log_end_msg 0
-                ;;
-            *) log_end_msg 1
-                ;;
-        esac
     }
 
     cleanup()
@@ -379,21 +389,30 @@ elif [ -f /etc/debian_version ] ; then
     #
     do_stop()
     {
-        log_daemon_msg "Stopping $NAME"
 
         # Stop the daemon.
         if [ -e $PIDFILE ]; then
-#            status_of_proc $NAME $NAME && exit 0 || exit $?
-            status_of_proc $NAME "$NAME" > /dev/null && status="0" || status="$?"
-            if [ "$status" = 0 ]; then
+            log_msg="Stopping $NAME"
+
+            # returns: 0 if process exists, 1 otherwise
+            pidof $NAME > /dev/null
+            status=$?
+            # If the status is SUCCESS then don't need to start again.
+            if [ $status -eq 0 ]; then
                 /sbin/start-stop-daemon --stop --quiet --pidfile $PIDFILE #--name $NAME
 #                /sbin/start-stop-daemon --stop --quiet --retry=TERM/180/KILL/5 --pidfile $PIDFILE
+
                 daemon_status="$?"
                 if [ "$daemon_status" = 2 ]; then
+                    # stop successful but the end of the schedule was
+                    # reached and the processes were still running
                     cleanup
+                    log_success_msg $log_msg
                     return 1
                 elif [ "$daemon_status" = 0 ]; then
+                    # stop successful
                     cleanup
+                    log_success_msg $log_msg
                     return 0
                 fi
 
@@ -407,24 +426,19 @@ elif [ -f /etc/debian_version ] ; then
                 [ "$?" = 2 ] && cleanup && return 1
 
                 cleanup
+                log_success_msg $log_msg
             else
                 cleanup
+                log_success_msg $log_msg
             fi
         else
-            log_daemon_msg "$NAME is not running"
+            log_success_msg "$NAME is not running"
         fi
-
-        case "$?" in
-            0) log_end_msg 0
-                ;;
-            *) log_end_msg 1
-                ;;
-        esac
     }
 
     do_status()
     {
-        status_of_proc $NAME $NAME && exit 0 || exit $?
+        status_of_proc $NAME $NAME && return 0 || return $?
     }
 
     #
@@ -443,33 +457,9 @@ elif [ -f /etc/debian_version ] ; then
 
     do_restart()
     {
-        log_daemon_msg "Restarting $DESC" "$NAME"
-        log_daemon_msg "Stopping $DESC" "$NAME"
         do_stop
-        stop_status="$?"
-        case "$stop_status" in
-            0) log_end_msg 0
-                ;;
-            *) log_end_msg 1
-                ;;
-        esac
         sleep 3
-        case "$stop_status" in
-            0)
-                log_daemon_msg "Starting $NAME"
-                do_start
-                case "$?" in
-                    0) log_end_msg 0
-                        ;;
-                    *) log_end_msg 1
-                        ;;
-                esac
-                ;;
-            *)
-                # Failed to stop
-                log_end_msg 1
-                ;;
-        esac
+        do_start
     }
 
 elif [ -f /etc/SuSE-release ] ; then
@@ -517,7 +507,7 @@ elif [ -f /etc/SuSE-release ] ; then
             ## the return value is set appropriately by startproc.
             /sbin/startproc $DAEMON $DAEMON_ARGS
 
-            sleep 5
+            sleep $START_CHECK_DELAY
 
             /sbin/checkproc $NAME
             worked=$?
