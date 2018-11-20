@@ -1640,7 +1640,7 @@ class Transfer(Base):
             else:
                 self.log.debug("chunk_number=%s", metadata["chunk_number"])
                 raise DataSavingError(
-                    "Failed to reopen file '%s': Received a not matching "
+                    "Failed to reopen file '{}': Received a not matching "
                     "chunk_number".format(filepath)
                 )
 
