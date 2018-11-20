@@ -148,12 +148,25 @@ do
             beamline=$(echo "$2" | tr '[:upper:]' '[:lower:]')
             shift
             ;;
+        --bl=* | --beamline=*)
+            # case insensitive
+            beamline=$(echo "${input_value#*=}" | tr '[:upper:]' '[:lower:]')
+            shift
+            ;;
         --det | --detector)
             detector=$2
             shift
             ;;
+        --det=* | --detector=*)
+            detector=${input_value#*=}
+            shift
+            ;;
         --config_file)
             config_file=$2
+            shift
+            ;;
+        --config_file=*)
+            config_file=${input_value#*=}
             shift
             ;;
         --debug)
