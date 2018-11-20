@@ -58,7 +58,8 @@ usage()
     echo "    getsettings     if hidra is running, shows the configured settings"
     echo ""
     echo "Mandatory arguments:"
-    echo "    --bl, --beamline        the beamline to start hidra for (mandatory)"
+    echo "    --bl, --beamline        the beamline to start hidra for (mandatory,"
+    echo "                            case insensitive)"
     echo ""
     echo "Options:"
     echo "    --det, --detector       the detector which is used"
@@ -143,7 +144,8 @@ do
             action="getsettings"
             ;;
         --bl | --beamline)
-            beamline=$2
+            # case insensitive
+            beamline=$(echo "$2" | tr '[:upper:]' '[:lower:]')
             shift
             ;;
         --det | --detector)
