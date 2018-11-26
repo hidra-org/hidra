@@ -33,7 +33,6 @@ API_DIR = os.path.join(BASE_DIR, "src", "APIs")
 if SHARED_DIR not in sys.path:
     sys.path.insert(0, SHARED_DIR)
 del SHARED_DIR
-del CONFIG_DIR
 
 try:
     # search in global python modules first
@@ -52,14 +51,14 @@ if not logutils_imported:
 import utils  # noqa E402
 from cfel_optarg import parse_parameters  # noqa E402
 
-
-BASEDIR = "/opt/hidra"
-
-CONFIG_DIR = "/opt/hidra/conf"
+#CONFIG_DIR = "/opt/hidra/conf"
 CONFIG_PREFIX = "datamanager_"
 
 LOGDIR = os.path.join("/var", "log", "hidra")
-# LOGDIR = os.path.join(tempfile.gettempdir(), "hidra", "logs")
+#LOGDIR = os.path.join(BASE_DIR, "logs")
+
+BACKUP_FILE = "/beamline/support/hidra/instances.txt"
+#BACKUP_FILE = os.path.join(BASE_DIR, "src/hidra_control/instances.txt")
 
 beamline_config = dict()
 
@@ -88,6 +87,9 @@ class HidraController():
         self.local_target = os.path.join("/beamline", self.beamline)
 
         self.master_config = dict()
+
+        self.instances = None
+        self._get_instances()
 
         self.__read_config()
 
@@ -129,6 +131,13 @@ class HidraController():
                 self.log.debug("Configuration file not readable: {}"
                                .format(cfile))
         self.log.debug("master_config={0}".format(self.master_config))
+
+    def _get_instances(self):
+        try:
+            with open(BACKUP_FILE, 'r') as f:
+                self.instances = json.loads(f.read())
+        except IOError:
+            self.instances = {}
 
     def exec_msg(self, msg):
         """
@@ -354,7 +363,7 @@ class HidraController():
                 f.write("fix_subdirs = {}\n".format(self.fix_subdirs))
 
                 if eventdetector == "inotifyx_events":
-                    f.write("monitored_dir = {}/data/source\n".format(BASEDIR))
+                    f.write("monitored_dir = {}/data/source\n".format(BASE_DIR))
                     f.write('monitored_events = {"IN_CLOSE_WRITE" : '
                             '[".tif", ".cbf", ".nxs"]}\n')
                 f.write("use_cleanup = False\n")
@@ -393,6 +402,34 @@ class HidraController():
                 self.log.debug(key + ":" + current_config[key])
             raise Exception("Not all required parameters are specified")
 
+    def _update_instances(self, det_id, mode):
+        """Keep track which instances where started or stopped.
+        """
+
+        if mode == "add":
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            if self.beamline in self.instances:
+                self.instances[self.beamline][det_id] = timestamp
+            else:
+                self.instances[self.beamline] = {det_id: timestamp}
+
+        elif mode == "remove":
+            if self.beamline in self.instances:
+                try:
+                    del self.instances[self.beamline][det_id]
+                except KeyError:
+                    self.log.warning("detector {} was not found in instance "
+                                     "list".format(det_id))
+            else:
+                self.log.warning("beamline {} was not found in instance list"
+                                 .format(self.beamline))
+        else:
+            self.log.error("mode {} not supported".format(mode))
+            return
+
+        with open(BACKUP_FILE, "w") as f:
+            f.write(json.dumps(self.instances, sort_keys=True, indent=4))
+
     def start(self, host_id, det_id):
         """
         start ...
@@ -417,11 +454,13 @@ class HidraController():
         time.sleep(1)
 
         # check if really running before return
-        if hidra_status(self.beamline, det_id, self.log) == "RUNNING":
-            return "DONE"
-        else:
+        if hidra_status(self.beamline, det_id, self.log) != "RUNNING":
             self.log.error("Service is not running after triggering start.")
             return "ERROR"
+
+        # remember that the instance was started
+        self._update_instances(det_id, "add")
+        return "DONE"
 
     def stop(self, det_id):
         """
@@ -432,11 +471,12 @@ class HidraController():
             return "ARLEADY_STOPPED"
 
         # stop service
-        if call_hidra_service("stop", self.beamline, det_id, self.log) == 0:
-            return "DONE"
-        else:
+        if call_hidra_service("stop", self.beamline, det_id, self.log) != 0:
             self.log.error("Could not stop the service.")
             return "ERROR"
+
+        self._update_instances(det_id, "remove")
+        return "DONE"
 
     def restart(self, det_id):
         """
