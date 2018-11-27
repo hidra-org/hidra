@@ -71,50 +71,20 @@ def get_event_message(parent_dir, filename, paths):
 
     """
 
-    relative_path = ""
-    event_message = {}
+    for path in paths:
+        if parent_dir.startswith(path):
 
-    # traverse the relative path till the original path is reached
-    # e.g. created file: /source/dir1/dir2/test.tif
-    while True:
+            relative_path = os.path.relpath(parent_dir, path)
 
-        if parent_dir == "/":
-            raise Exception("Something went wrong")
-
-        elif parent_dir not in paths:
-            (parent_dir, rel_dir) = os.path.split(parent_dir)
-            # the os.sep is needed at the beginning because the relative path
-            # is built up from the right
-            # e.g.
-            # self.paths = ["/tmp/test/source"]
-            # path = /tmp/test/source/local/testdir
-            # first iteration:  parent_dir = /tmp/test/source/local,
-            #                   rel_dir = /testdir
-            # second iteration: parent_dir = /tmp/test/source,
-            #                   rel_dir = /local/testdir
-            relative_path = os.sep + rel_dir + relative_path
-
-        else:
-            # remove beginning "/"
-            if relative_path.startswith(os.sep):
-                relative_path = os.path.normpath(relative_path[1:])
-            else:
-                relative_path = os.path.normpath(relative_path)
-
-            # the event for a file /tmp/test/source/local/file1.tif is of
-            # the form:
-            # {
-            #   "source_path" : "/tmp/test/source"
-            #   "relative_path": "local"
-            #   "filename"   : "file1.tif"
-            # }
             event_message = {
-                "source_path": parent_dir,
+                "source_path": path,
                 "relative_path": relative_path,
                 "filename": filename
             }
 
             return event_message
+
+    raise Exception("Building event message failed")
 
 
 class CleanUp(threading.Thread):
