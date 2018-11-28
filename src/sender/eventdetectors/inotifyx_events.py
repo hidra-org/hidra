@@ -37,8 +37,6 @@ import copy
 import os
 import re
 import threading
-import time
-
 
 from inotifyx import binding
 # from inotifyx.distinfo import version as __version__
@@ -46,7 +44,7 @@ from six import iteritems
 
 from eventdetectorbase import EventDetectorBase
 from hidra import convert_suffix_list_to_regex
-import utils
+from inotify_utils import get_event_message, CleanUp
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -136,198 +134,6 @@ def get_events(fd, *args):  # pylint: disable=invalid-name
     ]
 
 
-def get_event_message(parent_dir, filename, paths):
-    """
-    Generates an event messages following the overall event detector schema
-    e.g. input is:
-        parent_dir = /my_home/source_dir/raw/subdir/test1
-        filename = my_file.cbf
-        paths = [/my_home/source_dir/raw,
-                 /my_home/source_dir/scratch_bl]
-    will result in
-        {
-           "source_path" : /my_home/source_dir/raw,
-           "relative_path": subdir/test1,
-           "filename"   : my_file.cbf
-        }
-
-    Args:
-        parent_dir (str): the absolute path of the file
-        filename (str): the name of the file
-        paths (list): a list of source paths to break the parent_dir down to
-
-    Returns:
-        A dictionary of the form
-        {
-           "source_path" : ...
-           "relative_path": ...
-           "filename"   : ...
-        }
-
-    """
-
-    relative_path = ""
-    event_message = {}
-
-    # traverse the relative path till the original path is reached
-    # e.g. created file: /source/dir1/dir2/test.tif
-    while True:
-        if parent_dir not in paths:
-            (parent_dir, rel_dir) = os.path.split(parent_dir)
-            # the os.sep is needed at the beginning because the relative path
-            # is built up from the right
-            # e.g.
-            # self.paths = ["/tmp/test/source"]
-            # path = /tmp/test/source/local/testdir
-            # first iteration:  parent_dir = /tmp/test/source/local,
-            #                   rel_dir = /testdir
-            # second iteration: parent_dir = /tmp/test/source,
-            #                   rel_dir = /local/testdir
-            relative_path = os.sep + rel_dir + relative_path
-        else:
-            # remove beginning "/"
-            if relative_path.startswith(os.sep):
-                relative_path = os.path.normpath(relative_path[1:])
-            else:
-                relative_path = os.path.normpath(relative_path)
-
-            # the event for a file /tmp/test/source/local/file1.tif is of
-            # the form:
-            # {
-            #   "source_path" : "/tmp/test/source"
-            #   "relative_path": "local"
-            #   "filename"   : "file1.tif"
-            # }
-            event_message = {
-                "source_path": parent_dir,
-                "relative_path": relative_path,
-                "filename": filename
-            }
-
-            return event_message
-
-
-class CleanUp(threading.Thread):
-    """
-    A threading finding left over files and generate events form them.
-    """
-
-    # pylint: disable=too-many-instance-attributes
-
-    def __init__(self,
-                 paths,
-                 mon_subdirs,
-                 mon_regex,
-                 cleanup_time,
-                 action_time,
-                 lock,
-                 log_queue):
-
-        self.log = utils.get_logger("CleanUp", log_queue, log_level="info")
-
-        self.log.debug("init")
-        self.paths = paths
-
-        self.mon_subdirs = mon_subdirs
-        self.mon_regex = mon_regex
-
-        self.cleanup_time = cleanup_time
-        self.action_time = action_time
-
-        self.lock = lock
-        self.run_loop = True
-
-        self.log.debug("threading.Thread init")
-        threading.Thread.__init__(self)
-
-    def run(self):
-        # pylint: disable=invalid-name
-        global _file_event_list
-
-        dirs_to_walk = [os.path.normpath(os.path.join(self.paths[0],
-                                                      directory))
-                        for directory in self.mon_subdirs]
-
-        while self.run_loop:
-            try:
-                result = []
-                for dirname in dirs_to_walk:
-                    result += self.traverse_directory(dirname)
-
-                with self.lock:
-                    _file_event_list += result
-                time.sleep(self.action_time)
-            except Exception:
-                self.log.error("Stopping loop due to error", exc_info=True)
-                self.lock.release()
-                break
-
-    def traverse_directory(self, dirname):
-        """
-        Traverses the given directory and generate events for all files found
-        which match the pattern and where not touched for some time.
-
-        Args:
-            dirname (str): the directory to traverse and check for files.
-
-        Returns:
-            A list of event messages.
-        """
-
-        event_list = []
-
-        for root, _, files in os.walk(dirname):
-            for filename in files:
-                if self.mon_regex.match(filename) is None:
-                    # self.log.debug("File ending not in monitored Suffixes: "
-                    #               "{}".format(filename))
-                    continue
-
-                filepath = os.path.join(root, filename)
-                self.log.debug("filepath: %s", filepath)
-
-                try:
-                    time_last_modified = os.stat(filepath).st_mtime
-                except Exception:
-                    self.log.error("Unable to get modification time for file: "
-                                   "%s", filepath, exc_info=True)
-                    continue
-
-                try:
-                    # get current time
-                    time_current = time.time()
-                except Exception:
-                    self.log.error("Unable to get current time for file: %s",
-                                   filepath, exc_info=True)
-                    continue
-
-                if time_current - time_last_modified >= self.cleanup_time:
-                    self.log.debug("New closed file detected: %s",
-                                   filepath)
-#                    self.log.debug("modTime: %s, currentTime: %s",
-#                                   time_last_modified, time_current)
-#                    self.log.debug("time_current - time_last_modified: %s, "
-#                                   "cleanup_time: %s",
-#                                   (time_current - time_last_modified),
-#                                   self.cleanup_time)
-                    event_message = get_event_message(root,
-                                                      filename,
-                                                      self.paths)
-                    self.log.debug("event_message: %s", event_message)
-
-                    # add to result list
-                    event_list.append(event_message)
-
-        return event_list
-
-    def stop(self):
-        """Stops the clean up thread
-        """
-
-        self.log.debug("Stopping cleanup thread")
-        self.run_loop = False
-
-
 class EventDetector(EventDetectorBase):
     """
     Implementation of the event detector for inotify based systems using the
@@ -362,12 +168,12 @@ class EventDetector(EventDetectorBase):
 
         self.get_remaining_events = None
 
-        self.set_required_params()
+        self._set_required_params()
 
         self.check_config()
-        self.setup()
+        self._setup()
 
-    def set_required_params(self):
+    def _set_required_params(self):
         """
         Defines the parameters to be in configuration to run this datafetcher.
         Depending if use_cleanup is configured other parameters are required.
@@ -383,7 +189,7 @@ class EventDetector(EventDetectorBase):
         if self.config["use_cleanup"]:
             self.required_params += ["time_till_closed", "action_time"]
 
-    def setup(self):
+    def _setup(self):
         """Initiate class variables and environment.
 
         Sets static configuration parameters creates ring buffer and starts
@@ -423,13 +229,13 @@ class EventDetector(EventDetectorBase):
 
         self.lock = threading.Lock()
 
-        self.add_watch()
+        self._add_watch()
 
         if self.config["use_cleanup"]:
             self.cleanup_time = self.config["time_till_closed"]
             self.action_time = self.config["action_time"]
 
-            self.get_remaining_events = self.get_events_from_cleanup
+            self.get_remaining_events = self._get_events_from_cleanup
 
             self.cleanup_thread = CleanUp(
                 paths=self.paths,
@@ -442,9 +248,9 @@ class EventDetector(EventDetectorBase):
             )
             self.cleanup_thread.start()
         else:
-            self.get_remaining_events = self.get_no_events
+            self.get_remaining_events = self._get_no_events
 
-    def add_watch(self):
+    def _add_watch(self):
         """Add directories to inotify watch.
 
         Adds all existing directories found inside the source paths to the
@@ -452,7 +258,7 @@ class EventDetector(EventDetectorBase):
         """
 
         try:
-            for path in self.get_directory_structure():
+            for path in self._get_directory_structure():
                 # pylint: disable=no-member
                 watch_descriptor = binding.add_watch(
                     self.file_descriptor,
@@ -464,7 +270,7 @@ class EventDetector(EventDetectorBase):
             self.log.error("Could not register watch for path: %s", path,
                            exc_info=True)
 
-    def get_directory_structure(self):
+    def _get_directory_structure(self):
         """For all directories configured find all sub-directories contained.
 
         Returns:
@@ -493,7 +299,7 @@ class EventDetector(EventDetectorBase):
 
         return monitored_dirs
 
-    def get_no_events(self):  # pylint: disable=no-self-use
+    def _get_no_events(self):  # pylint: disable=no-self-use
         """No events to add.
 
         Returns:
@@ -502,7 +308,7 @@ class EventDetector(EventDetectorBase):
 
         return []
 
-    def get_events_from_cleanup(self):
+    def _get_events_from_cleanup(self):
         """Gets the events found by the clean up thread.
 
         Returns:
