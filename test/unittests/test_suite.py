@@ -66,7 +66,12 @@ def get_eventdetector_suites():
 
         # load the test suite
         module_name = "eventdetector.{}".format(modname)
-        module = import_module(module_name).TestEventDetector
+
+        if modname == "test_inotify_utils":
+            module = import_module(module_name).TestInotifyUtils
+        else:
+            module = import_module(module_name).TestEventDetector
+
         suite = unittest.TestLoader().loadTestsFromTestCase(module)
         # this is equivalent to loading one module like this
         # > from eventdetector.test_inotifyx_events \
@@ -170,6 +175,8 @@ def get_testing_suites():
 #
 #    # for testing
 #    from eventdetector.test_inotifyx_events import TestEventDetector as TestInotifyxEvents  # noqa F401
+#    from eventdetector.test_inotify_events import TestEventDetector as TestInotifyEvents  # noqa F401
+#    from eventdetector.test_inotify_utils import TestInotifyUtils  # noqa F401
 #    from eventdetector.test_watchdog_events import TestEventDetector as TestWatchdogEvents  # noqa F401
 #    from eventdetector.test_http_events import TestEventDetector as TestHttpEvents  # noqa F401
 #    from eventdetector.test_zmq_events import TestEventDetector as TestZmqEvents  # noqa F401
@@ -188,6 +195,8 @@ def get_testing_suites():
 #
     all_suites = []
 #        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestInotifyEvents),  # noqa E122
+#        unittest.TestLoader().loadTestsFromTestCase(TestInotifyUtils),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestHttpEvents),  # noqa E122
 #        unittest.TestLoader().loadTestsFromTestCase(TestZmqEvents),  # noqa E122

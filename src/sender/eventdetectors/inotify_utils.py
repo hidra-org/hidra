@@ -139,7 +139,6 @@ class CleanUp(threading.Thread):
                 time.sleep(self.action_time)
             except Exception:
                 self.log.error("Stopping loop due to error", exc_info=True)
-                self.lock.release()
                 break
 
     def traverse_directory(self, dirname):
