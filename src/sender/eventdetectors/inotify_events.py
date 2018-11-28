@@ -80,7 +80,7 @@ class EventDetector(EventDetectorBase):
         self.mon_regex_per_event = None
         self.mon_regex = None
         # TODO decide if this should go into config
-#            self.timeout = self.config["event_timeout"]
+#        self.timeout = self.config["event_timeout"]
         self.timeout = 1
         self.history = None
         self.lock = None
@@ -89,14 +89,14 @@ class EventDetector(EventDetectorBase):
         self.action_time = None
         self.cleanup_thread = None
 
-        self.get_remaining_events = None
+        self._get_remaining_events = None
 
-        self.set_required_params()
+        self._set_required_params()
 
         self.check_config()
-        self.setup()
+        self._setup()
 
-    def set_required_params(self):
+    def _set_required_params(self):
         """
         Defines the parameters to be in configuration to run this datafetcher.
         Depending if use_cleanup is configured other parameters are required.
@@ -112,15 +112,20 @@ class EventDetector(EventDetectorBase):
         if self.config["use_cleanup"]:
             self.required_params += ["time_till_closed", "action_time"]
 
-    def setup(self):
+    def _setup(self):
         """Initiate class variables and environment.
 
         Sets static configuration parameters creates ring buffer and starts
         cleanup thread.
         """
 
-        self.inotify = inotify.adapters.InotifyTree(self.config["monitored_dir"])
-        #self.inotify = inotify.adapters.InotifyTrees(self.config["monitored_dir"])
+        watch_dirs = [
+            os.path.normpath(
+                os.path.join(self.config["monitored_dir"], directory)
+            )
+            for directory in self.config["fix_subdirs"]
+        ]
+        self.inotify = inotify.adapters.InotifyTrees(watch_dirs)
         self.inotify_event_gen = self.inotify.event_gen(yield_nones=False)
 
         # TODO why is this necessary
@@ -135,7 +140,8 @@ class EventDetector(EventDetectorBase):
             self.mon_regex_per_event[key] = (
                 convert_suffix_list_to_regex(value,
                                              compile_regex=False,
-                                             log=self.log))
+                                             log=self.log)
+            )
 
             regexes.append(self.mon_regex_per_event[key])
 
@@ -158,7 +164,7 @@ class EventDetector(EventDetectorBase):
             self.cleanup_time = self.config["time_till_closed"]
             self.action_time = self.config["action_time"]
 
-            self.get_remaining_events = self.get_events_from_cleanup
+            self._get_remaining_events = self._get_events_from_cleanup
 
             self.cleanup_thread = CleanUp(
                 paths=self.paths,
@@ -171,9 +177,9 @@ class EventDetector(EventDetectorBase):
             )
             self.cleanup_thread.start()
         else:
-            self.get_remaining_events = get_no_events
+            self._get_remaining_events = get_no_events
 
-    def get_events_from_cleanup(self):
+    def _get_events_from_cleanup(self):
         """Gets the events found by the clean up thread.
 
         Returns:
@@ -204,7 +210,7 @@ class EventDetector(EventDetectorBase):
             A list of event messages generated from inotify events.
         """
 
-        remaining_events = self.get_remaining_events()
+        remaining_events = self._get_remaining_events()
 
         # only take the events which are not handles yet
         event_message_list = [
