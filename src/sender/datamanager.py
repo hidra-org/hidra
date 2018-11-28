@@ -83,6 +83,7 @@ def argument_parsing():
     default_config_file = os.path.join(CONFIG_DIR, "datamanager.conf")
 
     supported_ed_types = ["inotifyx_events",
+                          "inotify_events",
                           "watchdog_events",
                           "zmq_events",
                           "http_events",
