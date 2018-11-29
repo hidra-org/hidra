@@ -436,12 +436,14 @@ class HidraController():
                                        .format(self.beamline, det_id))
             self.log.info("Writing config file: {}".format(config_file))
 
+            procname = "{}_{}".format(self.procname, det_id)
+            logname = "datamanager_{}_{}.log".format(self.beamline, det_id)
+
             with open(config_file, 'w') as f:
                 f.write("log_path = {}\n".format(LOGDIR))
-                f.write("log_name = datamanager_{}.log\n"
-                        .format(self.beamline))
+                f.write("log_name = {}\n".format(logname))
                 f.write("log_size = 10485760\n")
-                f.write("procname = {}\n".format(self.procname))
+                f.write("procname = {}\n".format(procname))
                 f.write("username = {}\n".format(self.username))
                 f.write("ext_ip = {}\n".format(external_ip))
                 f.write("com_port = 50000\n")
