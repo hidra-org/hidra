@@ -231,14 +231,21 @@ class HidraController():
         elif msg[0] == b"set":
             if len(msg) < 4:
                 return "ERROR"
+            _, host_id, det_id, param, value = msg
 
-            return self.set(msg[1], msg[2], msg[3], json.loads(msg[4]))
+            return self.set(host_id,
+                            socket.getfqdn(det_id),
+                            param,
+                            json.loads(value))
 
         elif msg[0] == b"get":
             if len(msg) != 4:
                 return "ERROR"
+            _, host_id, det_id, param = msg
 
-            reply = json.dumps(self.get(msg[1], msg[2], msg[3]))
+            reply = json.dumps(self.get(host_id,
+                                        socket.getfqdn(det_id),
+                                        param))
             self.log.debug("reply is {0}".format(reply))
 
             if reply is None:
@@ -251,21 +258,27 @@ class HidraController():
             if len(msg) != 4:
                 return "ERROR"
 
-            return self.do(msg[1], msg[2], msg[3])
+            _, host_id, det_id, cmd = msg
+            return self.do(host_id, socket.getfqdn(det_id), cmd)
 
         elif msg[0] == b"bye":
             if len(msg) != 3:
                 return "ERROR"
 
+            _, host_id, det_id = msg
+            det_id = socket.getfqdn(det_id)
+
             self.log.debug("Received 'bye' from host {} for detector {}"
-                           .format(msg[1], msg[2]))
-            if msg[1] in self.all_configs:
-                if msg[2] in self.all_configs[msg[1]]:
-                    del self.all_configs[msg[1]][msg[2]]
+                           .format(host_id, det_id))
+            if host_id in self.all_configs:
+                try:
+                    del self.all_configs[host_id][det_id]
+                except KeyError:
+                    pass
 
                 # no configs for this host left
-                if not self.all_configs[msg[1]]:
-                    del self.all_configs[msg[1]]
+                if not self.all_configs[host_id]:
+                    del self.all_configs[host_id]
 
             return "DONE"
         else:
