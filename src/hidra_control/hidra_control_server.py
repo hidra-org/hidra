@@ -538,16 +538,16 @@ class HidraController():
         self.instances.remove(det_id)
         return "DONE"
 
-    def restart(self, det_id):
+    def restart(self, host_id, det_id):
         """
         restart ...
         """
         # stop service
-        reval = self.stop()
+        reval = self.stop(det_ip)
 
         if reval == "DONE":
             # start service
-            return self.start()
+            return self.start(host_id, det_ip)
         else:
             return "ERROR"
 
