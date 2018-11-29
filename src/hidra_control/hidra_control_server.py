@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#
+
 import time
 import os
 import sys
@@ -73,7 +73,6 @@ class InstanceTracking(object):
 
         self.instances = None
         self._set_instances()
-        print(self.instances)
 
     def _set_instances(self):
         """Set all previously started instances.
@@ -357,7 +356,6 @@ class HidraController():
                           "whitelist",
                           "ldapuri"]
 
-        print("key", key)
         if key == "fix_subdirs":
             return str(self.fix_subdirs)
 
