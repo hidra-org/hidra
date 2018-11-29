@@ -713,7 +713,7 @@ class ControlServer():
 
             elif msg[0] == b"exit":
                 self.log.debug("Received 'exit'")
-                self.close()
+                self.stop()
                 sys.exit(1)
 
             reply = self.controller.exec_msg(msg)
@@ -724,7 +724,7 @@ class ControlServer():
         if self.socket:
             self.log.info("Closing Socket")
             self.socket.close()
-            self.spcket = None
+            self.socket = None
         if self.context:
             self.log.info("Destroying Context")
             self.context.destroy()
