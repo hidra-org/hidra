@@ -63,11 +63,93 @@ BACKUP_FILE = "/beamline/support/hidra/instances.txt"
 beamline_config = dict()
 
 
+class InstanceTracking(object):
+    """Handles instance tracking.
+    """
+
+    def __init__(self, beamline, log):
+        self.beamline = beamline
+        self.log = log
+
+        self.instances = None
+        self._set_instances()
+        print(self.instances)
+
+    def _set_instances(self):
+        """Set all previously started instances.
+        """
+
+        try:
+            with open(BACKUP_FILE, 'r') as f:
+                self.instances = json.loads(f.read())
+        except IOError:
+            self.instances = {}
+
+    def _update_instances(self):
+        """Updates the instances file
+        """
+
+        with open(BACKUP_FILE, "w") as f:
+            f.write(json.dumps(self.instances, sort_keys=True, indent=4))
+
+    def add(self, det_id):
+        """Mark instance as started.
+        """
+
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        if self.beamline in self.instances:
+            self.instances[self.beamline][det_id] = timestamp
+        else:
+            self.instances[self.beamline] = {det_id: timestamp}
+
+        self._update_instances()
+
+    def remove(self, det_id):
+        """Remove instance from tracking.
+        """
+
+        if self.beamline in self.instances:
+            try:
+                del self.instances[self.beamline][det_id]
+            except KeyError:
+                self.log.warning("detector {} was not found in instance "
+                                 "list".format(det_id))
+        else:
+            self.log.warning("beamline {} was not found in instance list"
+                             .format(self.beamline))
+
+        self._update_instances()
+
+
+    def restart_instances(self):
+        """Restarts instances if needed.
+        """
+
+        if self.beamline not in self.instances:
+            return
+
+        for det_id in self.instances[self.beamline]:
+            # check if running
+            if hidra_status(self.beamline, det_id, self.log) == "RUNNING":
+                self.log.info("Started hidra for {}_{}, already running"
+                              .format(self.beamline, det_id))
+                continue
+
+            # restart
+            if call_hidra_service("start", self.beamline, det_id, self.log) == 0:
+                self.log.info("Started hidra for {}_{}"
+                              .format(self.beamline, det_id))
+            else:
+                self.log.error("Could not start hidra for {}_{}"
+                               .format(self.beamline, det_id))
+
+
 class HidraController():
-    '''
+    """
     this class holds getter/setter for all parameters
     and function members that control the operation.
-    '''
+    """
+
     def __init__(self, beamline, log):
 
         # Beamline is read-only, determined by portNo
@@ -88,8 +170,8 @@ class HidraController():
 
         self.master_config = dict()
 
-        self.instances = None
-        self._get_instances()
+        self.instances = InstanceTracking(self.beamline, self.log)
+        self.instances.restart_instances()
 
         self.__read_config()
 
@@ -131,13 +213,6 @@ class HidraController():
                 self.log.debug("Configuration file not readable: {}"
                                .format(cfile))
         self.log.debug("master_config={0}".format(self.master_config))
-
-    def _get_instances(self):
-        try:
-            with open(BACKUP_FILE, 'r') as f:
-                self.instances = json.loads(f.read())
-        except IOError:
-            self.instances = {}
 
     def exec_msg(self, msg):
         """
@@ -402,34 +477,6 @@ class HidraController():
                 self.log.debug(key + ":" + current_config[key])
             raise Exception("Not all required parameters are specified")
 
-    def _update_instances(self, det_id, mode):
-        """Keep track which instances where started or stopped.
-        """
-
-        if mode == "add":
-            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-            if self.beamline in self.instances:
-                self.instances[self.beamline][det_id] = timestamp
-            else:
-                self.instances[self.beamline] = {det_id: timestamp}
-
-        elif mode == "remove":
-            if self.beamline in self.instances:
-                try:
-                    del self.instances[self.beamline][det_id]
-                except KeyError:
-                    self.log.warning("detector {} was not found in instance "
-                                     "list".format(det_id))
-            else:
-                self.log.warning("beamline {} was not found in instance list"
-                                 .format(self.beamline))
-        else:
-            self.log.error("mode {} not supported".format(mode))
-            return
-
-        with open(BACKUP_FILE, "w") as f:
-            f.write(json.dumps(self.instances, sort_keys=True, indent=4))
-
     def start(self, host_id, det_id):
         """
         start ...
@@ -459,7 +506,7 @@ class HidraController():
             return "ERROR"
 
         # remember that the instance was started
-        self._update_instances(det_id, "add")
+        self.instances.add(det_id)
         return "DONE"
 
     def stop(self, det_id):
@@ -475,7 +522,7 @@ class HidraController():
             self.log.error("Could not stop the service.")
             return "ERROR"
 
-        self._update_instances(det_id, "remove")
+        self.instances.remove(det_id)
         return "DONE"
 
     def restart(self, det_id):
