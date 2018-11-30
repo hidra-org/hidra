@@ -1,4 +1,10 @@
 # develop
+# 4.0.15
+
+- Restart hidra instances on control_server start
+- Control_client: fixed detector argument (fqdn)
+- Control_server: Add detector id to procname and log file name
+
 # 4.0.14
 
 - Fixed windows startup and cx_Freeze 5.x compatibility
