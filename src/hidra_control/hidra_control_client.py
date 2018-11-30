@@ -34,6 +34,7 @@ from __future__ import unicode_literals
 
 import argparse
 import os
+import socket
 import sys
 
 # search in local modules
