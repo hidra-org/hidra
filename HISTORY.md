@@ -1,4 +1,5 @@
 # develop
+# 4.0.16
 # 4.0.15
 
 - Restart hidra instances on control_server start
