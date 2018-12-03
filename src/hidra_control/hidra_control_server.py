@@ -61,20 +61,18 @@ del API_DIR
 
 # pylint: disable=wrong-import-position
 
-import hidra
+import hidra  # noqa E402
 import utils  # noqa E402
 from parameter_utils import parse_parameters  # noqa E402
 
-#CONFIG_DIR = "/opt/hidra/conf"
+# CONFIG_DIR = "/opt/hidra/conf"
 CONFIG_PREFIX = "datamanager_"
 
 LOGDIR = os.path.join("/var", "log", "hidra")
-#LOGDIR = os.path.join(BASE_DIR, "logs")
+# LOGDIR = os.path.join(BASE_DIR, "logs")
 
 BACKUP_FILE = "/beamline/support/hidra/instances.txt"
-#BACKUP_FILE = os.path.join(BASE_DIR, "src/hidra_control/instances.txt")
-
-beamline_config = dict()
+# BACKUP_FILE = os.path.join(BASE_DIR, "src/hidra_control/instances.txt")
 
 
 class InstanceTracking(object):
@@ -132,7 +130,6 @@ class InstanceTracking(object):
                              .format(self.beamline))
 
         self._update_instances()
-
 
     def restart_instances(self):
         """Restarts instances if needed.
@@ -205,8 +202,6 @@ class HidraController(object):
         }
 
     def __read_config(self):
-        global CONFIG_PREFIX
-        global CONFIG_DIR
 
         # write configfile
         # /etc/hidra/P01.conf
@@ -467,7 +462,8 @@ class HidraController(object):
                 f.write("fix_subdirs = {}\n".format(self.fix_subdirs))
 
                 if eventdetector == "inotifyx_events":
-                    f.write("monitored_dir = {}/data/source\n".format(BASE_DIR))
+                    f.write("monitored_dir = {}/data/source\n"
+                            .format(BASE_DIR))
                     f.write('monitored_events = {"IN_CLOSE_WRITE" : '
                             '[".tif", ".cbf", ".nxs"]}\n')
                 f.write("use_cleanup = False\n")
@@ -667,7 +663,7 @@ def argument_parsing():
     return parser.parse_args()
 
 
-class ControlServer():
+class ControlServer(object):
     """The main server class.
     """
 

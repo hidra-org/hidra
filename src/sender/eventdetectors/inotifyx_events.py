@@ -25,9 +25,6 @@ This module implements an event detector based on the inotifyx library usable
 for systems running inotify.
 """
 
-# pylint: disable=broad-except
-# pylint: disable=global-statement
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -129,7 +126,7 @@ def get_events(fd, *args):  # pylint: disable=invalid-name
     '''
     return [
         InotifyEvent(wd, mask, cookie, name)
-        # pylint: disable=no-member, redefined-outer-name
+        # pylint: disable=redefined-outer-name
         for wd, mask, cookie, name in binding.get_events(fd, *args)
     ]
 
@@ -324,7 +321,7 @@ class EventDetector(EventDetectorBase):
             # get missed files
             event_message_list = copy.deepcopy(_file_event_list)
 
-        _file_event_list = []
+            _file_event_list = []
 
 #        if event_message_list:
 #            self.log.info("Added missed files: {}"

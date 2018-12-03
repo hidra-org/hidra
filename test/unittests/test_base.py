@@ -92,7 +92,6 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
         if args:
             msg = msg % args
 
-
         caller = inspect.getframeinfo(inspect.stack()[1][0])
         fname = os.path.split(caller.filename)[1]
         msg = "[{}:{}] > {}".format(fname, caller.lineno, msg)

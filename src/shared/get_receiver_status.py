@@ -33,7 +33,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-#import socket
 import sys
 import traceback
 
@@ -65,7 +64,8 @@ def get_arguments():
                         help="Host where HiDRA is runnning")
     parser.add_argument("--config_file",
                         type=str,
-                        help="Location of the configuration file to extract the host from")
+                        help="Location of the configuration file to extract "
+                             "the host from")
 
     return parser
 
@@ -77,7 +77,6 @@ def main():
     parser = get_arguments()
     args = parser.parse_args()
 
-
     host = args.host
 
     default_config_file = "/opt/hidra/conf/datamanager.conf"
@@ -87,10 +86,10 @@ def main():
         parser.error("Either use --host or --config_file but not both.")
 
     if host is None:
-        #host = socket.getfqdn()
-
-        params = utils.parse_parameters(utils.read_config(config_file))["asection"]
-        data_stream_targets = params["data_stream_targets"] # = [["asap3-p00", 50100]]
+        params = utils.parse_parameters(
+            utils.read_config(config_file)
+        )["asection"]
+        data_stream_targets = params["data_stream_targets"]
         hosts = [target[0] for target in data_stream_targets]
 
         # TODO make generic
@@ -104,8 +103,8 @@ def main():
         if status == ["OK"]:
             print(CGREEN + "running." + CEND)
         else:
-            print(CYELLOW + \
-                  "running but in error state:" \
+            print(CYELLOW +
+                  "running but in error state:"
                   + CEND)
             print(status)
 
@@ -114,8 +113,8 @@ def main():
         print(traceback.format_exception_only(type(excp), excp)[0], end="")
 
     except Exception:
-        print(CRED + \
-              "not reachable. Unknown Error.\n" \
+        print(CRED +
+              "not reachable. Unknown Error.\n"
               + CEND)
         print(traceback.format_exc())
 

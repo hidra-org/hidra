@@ -80,7 +80,7 @@ def argument_parsing():
                                   argumetns=arguments)
 
     if params["whitelist"] is not None and type(params["whitelist"]) == str:
-        params["whitelist"] = utils.execute_ldapsearch(log,
+        params["whitelist"] = utils.execute_ldapsearch(logging,
                                                        params["whitelist"],
                                                        params["ldapuri"])
 

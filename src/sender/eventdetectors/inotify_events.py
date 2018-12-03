@@ -36,7 +36,6 @@ import copy
 import os
 import re
 import threading
-import time
 
 import inotify.adapters
 from six import iteritems
@@ -44,9 +43,11 @@ from six import iteritems
 from eventdetectorbase import EventDetectorBase
 from hidra import convert_suffix_list_to_regex
 from inotify_utils import get_event_message, CleanUp
-import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
+
+_file_event_list = []  # pylint: disable=invalid-name
 
 
 def get_no_events():
@@ -241,7 +242,8 @@ class EventDetector(EventDetectorBase):
                 if current_mon_regex.match(filename) is None:
                     self.log.debug("File ending not in monitored suffixes: "
                                    "%s", filename)
-                    self.log.debug("detected events were: %s", current_mon_events)
+                    self.log.debug("detected events were: %s",
+                                   current_mon_event)
 
                 event_message = get_event_message(path, filename, self.paths)
                 self.log.debug("event_message %s", event_message)

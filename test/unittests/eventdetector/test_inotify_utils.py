@@ -27,14 +27,10 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import unittest
 import os
-import time
-import logging
-from shutil import copyfile
 
-from inotify_utils import get_event_message, CleanUp
-from .eventdetector_test_base import EventDetectorTestBase, create_dir
+from inotify_utils import get_event_message
+from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -56,9 +52,11 @@ class TestInotifyUtils(EventDetectorTestBase):
 
         source_path = "/ramdisk/source_dir/raw"
         relative_path = ""
-        #relative_path = "subdir/testdir"
+#        relative_path = "subdir/testdir"
 
-        self.abs_file_path = os.path.normpath(os.path.join(source_path, relative_path))
+        self.abs_file_path = os.path.normpath(
+            os.path.join(source_path, relative_path)
+        )
         print(self.abs_file_path)
         self.filename = "test_file.cbf"
         self.paths = ["/ramdisk/source_dir/raw", "/ramdisk/source_dir/scratch"]
@@ -124,9 +122,7 @@ class TestInotifyUtils(EventDetectorTestBase):
         paths = ["/ramdisk/source_dir/raw", "/ramdisk/source_dir/scratch"]
 
         with self.assertRaises(Exception):
-            event_message = get_event_message(abs_file_path,
-                                              filename,
-                                              paths)
+            get_event_message(abs_file_path, filename, paths)
 
     def tearDown(self):
         super(TestInotifyUtils, self).tearDown()

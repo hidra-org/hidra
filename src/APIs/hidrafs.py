@@ -217,6 +217,7 @@ class Passthrough(Operations):
 #    def fsync(self, path, fdatasync, fh):
 #        self.release(path, fh)
 
+
 def main():
 
     parser = argparse.ArgumentParser()

@@ -32,7 +32,7 @@ import unittest
 from importlib import import_module
 import pkgutil
 
-import _environment
+import _environment  # noqa F401 # pylint: disable=unused-import
 import eventdetector
 import datafetcher
 from core.test_taskprovider import TestTaskProvider

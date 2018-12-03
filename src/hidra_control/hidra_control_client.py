@@ -34,7 +34,6 @@ from __future__ import unicode_literals
 
 import argparse
 import os
-import socket
 import sys
 
 # search in local modules
@@ -47,7 +46,7 @@ if API_DIR not in sys.path:
 del API_DIR
 
 # pylint: disable=wrong-import-position
-import hidra
+import hidra  # noqa E402
 
 # the list transformation is needed for Python 3 compliance
 ALLOWED_BEAMLINES = list(hidra.CONNECTION_LIST.keys())

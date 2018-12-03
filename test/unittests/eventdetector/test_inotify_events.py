@@ -28,19 +28,17 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import copy
-import mock
 import os
 import re
-import time
-import logging
-import unittest
-from shutil import copyfile
-from six import iteritems
+
+import mock
 
 from inotify_events import EventDetector
-from .eventdetector_test_base import EventDetectorTestBase, create_dir
+from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
+# pylint: disable=protected-access
 
 
 class TestEventDetector(EventDetectorTestBase):
@@ -126,7 +124,8 @@ class TestEventDetector(EventDetectorTestBase):
         }
         expected_result2 = re.compile("(.*(.log)$|.*(.tif|.cbf|.file)$)$")
 
-        self.assertDictEqual(self.eventdetector.mon_regex_per_event, expected_result1)
+        self.assertDictEqual(self.eventdetector.mon_regex_per_event,
+                             expected_result1)
         self.assertEqual(self.eventdetector.mon_regex, expected_result2)
 
         self.assertIsNone(self.eventdetector.cleanup_thread)
@@ -148,7 +147,6 @@ class TestEventDetector(EventDetectorTestBase):
 
             self.assertIsInstance(self.eventdetector.cleanup_thread,
                                   mock.MagicMock)
-
 
     def tearDown(self):
         super(TestEventDetector, self).tearDown()

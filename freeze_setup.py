@@ -37,7 +37,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-#from distutils.sysconfig import get_python_lib
+# from distutils.sysconfig import get_python_lib
 import os
 import sys
 import platform
@@ -51,6 +51,7 @@ SHAREDPATH = os.path.join(BASEPATH, "src", "shared")
 APIPATH = os.path.join(BASEPATH, "src", "APIs", "hidra")
 CONFPATH = os.path.join(BASEPATH, "conf")
 
+
 def get_zmq_path():
     """Find the correct zmq path
     """
@@ -61,6 +62,7 @@ def get_zmq_path():
 #    LIBZMQ_PATH = "/usr/local/lib/python2.7/dist-packages/zmq"
 
     return path
+
 
 def windows_specific():
     """Set Windows specific packages and config
@@ -145,7 +147,8 @@ def get_environment():
         with open(exe_env, "w") as f_exe:
             for line in f:
                 ref_line = (
-                    "BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))\n"
+                    "BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))"
+                    "\n"
                 )
                 if line == ref_line:
                     f_exe.write("BASE_DIR = CURRENT_DIR\n")
