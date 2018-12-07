@@ -87,7 +87,7 @@ def main():
 
     if host is None:
         params = utils.parse_parameters(
-            utils.read_config(config_file)
+            utils.load_config(config_file)
         )["asection"]
         data_stream_targets = params["data_stream_targets"]
         hosts = [target[0] for target in data_stream_targets]

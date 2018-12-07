@@ -1,0 +1,53 @@
+general:
+    #log_path: &log_path /var/log/hidra
+    log_path: &log_path /home/kuhnm/projects/hidra/logs
+    log_size: 10485760
+
+    # use {bl} as placeholder for the beamline
+    log_name: hidra-control-server_{bl}.log
+    procname: hidra-control-server_{bl}
+
+    #backup_file:/beamline/support/hidra/instances.txt
+    backup_file: /home/kuhnm/projects/hidra/instances.txt
+
+    # use {bl} as placeholder for the beamline and {det} for the detector
+    hidra_config_name: datamanager_{bl}_{det}.conf
+
+hidraconfig_static:
+    log_path: *log_path
+    log_size: 10485760
+    com_port: 50000
+    request_port: 50001
+    fix_subdirs:
+        - current/raw
+        - current/scratch_bl
+        - commissioning/raw
+        - commissioning/scratch_bl
+        - local
+    use_cleanup: False
+    action_time: 150
+    time_till_closed: 2
+    number_of_streams: 32
+    use_data_stream: False
+    chunksize: 10485760
+
+    event_detector_type: http_events
+    data_fetcher_type: http_fetcher
+
+    # event_detector_type: inotifyx_events
+    # data_fetcher_type: file_fetcher
+    # monitored_dir: /home/kuhnm/projects/hidra/data/source
+    # monitored_events:
+    #     IN_CLOSE_WRITE :
+    #         - .tif
+    #         - .cbf
+    #         - .nxs
+
+hidraconfig_variable:
+# use {bl} as placeholder for the beamline
+
+    log_name: datamanager_{bl}
+    local_target: /beamline/{bl}
+    procname: hidra_{bl}
+    # quotes needed because placeholder is at the beginning
+    username: "{bl}user"

@@ -24,14 +24,12 @@
 This module provides utilities use thoughout different parts of hidra.
 """
 
-# pylint: disable=broad-except
-
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import (absolute_import,
+                        division,
+                        print_function,
+                        unicode_literals)
 
 import errno
-import json
 import logging
 import logging.handlers
 import os
@@ -41,8 +39,6 @@ import sys
 
 from collections import namedtuple
 from logutils.queue import QueueListener, QueueHandler
-
-from parameter_utils import parse_parameters
 
 from _version import __version__
 # do not reimplement the functions already available in the APIs
@@ -54,6 +50,12 @@ except ImportError:
     # The ConfigParser module has been renamed to configparser in Python 3
     import configparser as ConfigParser
 
+from utils_config import (check_config,
+                          load_config,
+                          parse_parameters,
+                          set_parameters,
+                          update_dict,
+                          WrongConfiguration)
 
 def is_windows():
     """Determines if code is run on a windows system.
@@ -73,102 +75,6 @@ def is_linux():
     """
 
     return platform.system() == "Linux"
-
-
-class WrongConfiguration(Exception):
-    """Raised when something is wrong with the configuration.
-    """
-    pass
-
-
-# source:
-# pylint: disable=line-too-long
-#http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788  # noqa E501
-class FakeSecHead(object):
-    """Adds a fake section had to the configuration.
-
-    This function is needed because configParser always needs a section name
-    but the used config file consists of key-value pairs only
-    """
-
-    # pylint: disable=missing-docstring
-    # pylint: disable=too-few-public-methods
-    # pylint: disable=invalid-name
-
-    def __init__(self, fp):
-        self.fp = fp
-        self.sechead = '[asection]\n'
-
-    def readline(self):
-        if self.sechead:
-            try:
-                return self.sechead
-            finally:
-                self.sechead = None
-        else:
-            return self.fp.readline()
-
-
-def read_config(config_file):
-    """Read and parse configuration data from the file.
-
-    Args:
-        config_file (str): Absolute path to the configuration file.
-
-    Returns:
-
-    """
-
-    config = ConfigParser.RawConfigParser()
-    try:
-        config.readfp(FakeSecHead(open(config_file)))
-    except:  # TODO why was this necessary? # pylint: disable=bare-except
-        with open(config_file, 'r') as open_file:
-            config_string = '[asection]\n' + open_file.read()
-        config.read_string(config_string)
-
-    return config
-
-
-def set_parameters(base_config_file, config_file, arguments):
-    """
-    Merges configration parameters from different sources.
-    Hierarchy: base config overwritten by config overwritten by arguments.
-
-    Args:
-        base_config_file (str): Absolute path to the base configuration file.
-        config_file (str): Absolute path to the configuration file to
-                           overwrite the base configuration.
-        arguments (dict): Arguments with highest priority.
-    """
-
-    base_config = parse_parameters(read_config(base_config_file))["asection"]
-
-    if config_file is not None:
-        config = parse_parameters(read_config(config_file))["asection"]
-
-        # overwrite base config parameters with the ones in the config_file
-        for key in config:
-            base_config[key] = config[key]
-
-    # arguments set when the program is called have a higher priority than
-    # the ones in the config file
-    for arg in vars(arguments):
-        arg_value = getattr(arguments, arg)
-        if arg_value is not None:
-            if isinstance(arg_value, str):
-                if arg_value.lower() == "none":
-                    base_config[arg] = None
-                elif arg_value.lower() == "false":
-                    base_config[arg] = False
-                elif arg_value.lower() == "true":
-                    base_config[arg] = True
-                else:
-                    base_config[arg] = arg_value
-            else:
-                base_config[arg] = arg_value
-
-    return base_config
 
 
 def check_type(specified_type, supported_types, log_string):
@@ -430,95 +336,6 @@ def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
 
     if throw_exception:
         raise OSError
-
-
-def check_config(required_params, config, log):
-    """Check the configuration.
-
-    Args:
-
-        required_params (list): list which can contain multiple formats
-            - string: check if the parameter is contained
-            - list of the format [<name>, <format>]: checks if the parameter
-                is contained and has the right format
-            - list of the format [<name>, <list of options>]: checks if the
-                parameter is contained and set to supported values
-        config (dict): dictionary where the configuration is stored
-        log (class Logger): Logger instance of the module logging
-
-    Returns:
-
-        check_passed: if all checks were successfull
-        config_reduced (str): serialized dict containing the values of the
-                              required parameters only
-    """
-
-    check_passed = True
-    config_reduced = {}
-
-    for param in required_params:
-        # multiple checks have to be done
-        if isinstance(param, list):
-            # checks if the parameter is contained in the config dict
-            if param[0] not in config:
-                log.error("Configuration of wrong format. "
-                          "Missing parameter '%s'", param[0])
-                check_passed = False
-            # check if the parameter is one of the supported values
-            elif isinstance(param[1], list):
-                if config[param[0]] not in param[1]:
-                    log.error("Configuration of wrong format. Options for "
-                              "parameter '%s' are %s", param[0], param[1])
-                    log.debug("parameter '%s' = %s", param[0],
-                              config[param[0]])
-                    check_passed = False
-            # check if the parameter has the supported type
-            elif not isinstance(config[param[0]], param[1]):
-                log.error("Configuration of wrong format. Parameter '%s' is "
-                          "of format '%s' but should be of format '%s'",
-                          param[0], type(config[param[0]]), param[1])
-                check_passed = False
-        # checks if the parameter is contained in the config dict
-        elif param not in config:
-            log.error("Configuration of wrong format. Missing parameter: '%s'",
-                      param)
-            check_passed = False
-        else:
-            config_reduced[param] = config[param]
-
-    try:
-        dict_to_str = str(
-            json.dumps(config_reduced, sort_keys=True, indent=4)
-        )
-    except TypeError:
-        # objects like e.g. zm.context are not JSON serializable
-        # convert manually
-        sorted_keys = sorted(config_reduced.keys())
-        indent = 4
-
-        # putting it into a list first and the join it if more efficient
-        # than string concatenation
-        dict_to_list = []
-        for key in sorted_keys:
-            value = config_reduced[key]
-            if isinstance(value, Endpoints):
-                new_value = json.dumps(value._asdict(),
-                                       sort_keys=True,
-                                       indent=2 * 4)
-                as_str = "{}{}: {}".format(" " * indent, key, new_value)
-                # fix indentation
-                as_str = as_str[:-1] + " " * indent + "}"
-            else:
-                as_str = "{}{}: {}".format(" " * indent, key, value)
-
-            dict_to_list.append(as_str)
-
-        # pylint: disable=redefined-variable-type
-        dict_to_str = "{\n"
-        dict_to_str += ",\n".join(dict_to_list)
-        dict_to_str += "\n}"
-
-    return check_passed, dict_to_str
 
 
 def extend_whitelist(whitelist, ldapuri, log):
