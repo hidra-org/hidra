@@ -367,10 +367,13 @@ class DataDispatcher(Base):
 
                         elif message[0] == b"WAKEUP":
                             self.log.debug("Received wakeup signal")
+
                             if len(message) == 2 and message[1] == "RECONNECT":
+
                                 # Reestablish all open data connections
                                 for socket_id in self.open_connections:
                                     sckt = self.open_connections[socket_id]
+
                                     # close the connection
                                     self.stop_socket(name="connection",
                                                      socket=sckt)
