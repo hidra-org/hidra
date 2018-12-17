@@ -37,25 +37,24 @@ import platform
 import socket as socket_m
 import sys
 
-from collections import namedtuple
 from logutils.queue import QueueListener, QueueHandler
 
 from _version import __version__
 # do not reimplement the functions already available in the APIs
 from hidra import LoggingFunction, execute_ldapsearch
 
-try:
-    import ConfigParser
-except ImportError:
-    # The ConfigParser module has been renamed to configparser in Python 3
-    import configparser as ConfigParser
-
-from utils_config import (check_config,
+# load config utils into namespace for convenience
+# pylint: disable=unused-import
+from utils_datatypes import (IpcAddresses, # noqa F401
+                             Endpoints,
+                             MAPPING_ZMQ_CONSTANTS_TO_STR)
+from utils_config import (check_config, # noqa F401
                           load_config,
                           parse_parameters,
                           set_parameters,
                           update_dict,
                           WrongConfiguration)
+
 
 def is_windows():
     """Determines if code is run on a windows system.
@@ -464,24 +463,6 @@ def generate_sender_id(main_pid):
 #  Connection paths and strings  #
 # ------------------------------ #
 
-# To be pickable these have to be defined at the top level of a module
-# this is needed because multiprocessing on windows needs these pickable.
-# Additionally the name of the namedtuple has to be the same as the typename
-# otherwise it cannot be pickled on Windows.
-
-
-IpcAddresses = namedtuple(
-    "IpcAddresses", [
-        "control_pub",
-        "control_sub",
-        "request_fw",
-        "router",
-        "cleaner_job",
-        "cleaner_trigger",
-    ]
-)
-
-
 def set_ipc_addresses(ipc_dir, main_pid, use_cleaner=True):
     """Sets the ipc connection paths.
 
@@ -528,30 +509,6 @@ def set_ipc_addresses(ipc_dir, main_pid, use_cleaner=True):
         cleaner_job=job,
         cleaner_trigger=trigger,
     )
-
-
-Endpoints = namedtuple(
-    "Endpoints", [
-        "control_pub_bind",
-        "control_pub_con",
-        "control_sub_bind",
-        "control_sub_con",
-        "request_bind",
-        "request_con",
-        "request_fw_bind",
-        "request_fw_con",
-        "router_bind",
-        "router_con",
-        "com_bind",
-        "com_con",
-        "cleaner_job_bind",
-        "cleaner_job_con",
-        "cleaner_trigger_bind",
-        "cleaner_trigger_con",
-        "confirm_bind",
-        "confirm_con",
-    ]
-)
 
 
 def set_endpoints(ext_ip,
@@ -682,25 +639,9 @@ def set_endpoints(ext_ip,
         confirm_con=confirm_con,
     )
 
-
 # ------------------------------ #
 #         ZMQ functions          #
 # ------------------------------ #
-
-MAPPING_ZMQ_CONSTANTS_TO_STR = [
-    "PAIR",  # zmq.PAIR = 0
-    "PUB",  # zmq.PUB = 1
-    "SUB",  # zmq.SUB = 2
-    "REQ",  # zmq.REQ = 3
-    "REP",  # zmq.REP = 4
-    "DEALER/XREQ",  # zmq.DEALER/zmq.XREQ = 5
-    "ROUTER/XREP",  # zmq.ROUTER/zmq.XREP = 6
-    "PULL",  # zmq.PULL = 7
-    "PUSH",  # zmq.PUSH = 8
-    "XPUB",  # zmq.XPUB = 9
-    "XSUB",  # zmq.XSUB = 10
-]
-
 
 def start_socket(name,
                  sock_type,

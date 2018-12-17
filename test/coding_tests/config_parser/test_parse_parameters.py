@@ -14,7 +14,7 @@ if SHARED_DIR not in sys.path:
     sys.path.insert(0, SHARED_DIR)
 del SHARED_DIR
 
-from parameter_utils import parse_parameters
+from utils_config import parse_parameters
 
 config_file = os.path.join(CURRENT_DIR, "test.conf")
 
