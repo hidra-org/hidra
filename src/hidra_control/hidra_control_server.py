@@ -30,8 +30,6 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from six import iteritems
-
 import argparse
 import copy
 import glob
@@ -42,9 +40,10 @@ import socket
 import subprocess
 import time
 from multiprocessing import Queue
-import zmq
 
 import setproctitle
+from six import iteritems
+import zmq
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
@@ -64,7 +63,6 @@ del API_DIR
 
 import hidra  # noqa E402
 import utils  # noqa E402
-from parameter_utils import parse_parameters  # noqa E402
 
 CONFIG_PREFIX = "datamanager_"
 
@@ -141,7 +139,10 @@ class InstanceTracking(object):
                 continue
 
             # restart
-            if call_hidra_service("start", self.beamline, det_id, self.log) == 0:
+            if call_hidra_service("start",
+                                  self.beamline,
+                                  det_id,
+                                  self.log) == 0:
                 self.log.info("Started hidra for %s_%s",
                               self.beamline, det_id)
             else:
@@ -203,7 +204,7 @@ class HidraController(object):
             try:
                 config = utils.load_config(cfile)
                 self.master_config[det_id] = (
-                    parse_parameters(config)["asection"])
+                    utils.parse_parameters(config)["asection"])
             except IOError:
                 self.log.debug("Configuration file not readable: %s", cfile)
         self.log.debug("master_config=%s", self.master_config)
@@ -451,10 +452,12 @@ class HidraController(object):
                 for key, value in iteritems(config_to_write):
                     f.write("{} = {}\n".format(key, value))
 
-            eventdetector = self.config["hidraconfig_static"]["event_detector_type"]
-            datafetcher = self.config["hidraconfig_static"]["data_fetcher_type"]
+            config_static = self.config["hidraconfig_static"]
+            eventdetector = config_static["event_detector_type"]
+            datafetcher = config_static["data_fetcher_type"]
             self.log.info(
-                "Started withdd ext_ip: %s, event detector: %s, data fetcher: %s",
+                "Started withdd ext_ip: %s, event detector: %s, "
+                "data fetcher: %s",
                 external_ip, eventdetector, datafetcher
             )
 
@@ -636,7 +639,6 @@ def argument_parsing():
 
     # convert to dict and map to config section
     arguments = {"general": vars(arguments)}
-
 
     # ------------------------------------------------------------------------
     # Get arguments from config file and comand line

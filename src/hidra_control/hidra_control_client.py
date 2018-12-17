@@ -26,8 +26,6 @@
 This client to communicate with the server and configure and start up hidra.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals

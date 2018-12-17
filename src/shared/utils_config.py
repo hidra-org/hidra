@@ -80,7 +80,8 @@ def load_config(config_file, config_type=None, log=logging):
             config = ConfigParser.RawConfigParser()
             try:
                 config.readfp(_FakeSecHead(open(config_file)))
-            except:  # TODO why was this necessary? # pylint: disable=bare-except
+            # TODO why was this necessary?
+            except:  # pylint: disable=bare-except
                 with open(config_file, 'r') as open_file:
                     config_string = '[asection]\n' + open_file.read()
                 config.read_string(config_string)
@@ -90,7 +91,7 @@ def load_config(config_file, config_type=None, log=logging):
                 config = yaml.load(f)
 
             # check for "None" entries
-            _fix_none_entries(d=config)
+            _fix_none_entries(dictionary=config)
     except Exception:
         log.error("Could not load config file %s", config_file)
         raise
@@ -98,34 +99,34 @@ def load_config(config_file, config_type=None, log=logging):
     return config
 
 
-def _fix_none_entries(d):
+def _fix_none_entries(dictionary):
     """Converts all "None" entries in the dictionary to NoneType.
 
     Args:
-        d (dict): The dictionary to travers.
+        dictionary (dict): The dictionary to travers.
     """
 
-    for k, v in d.items():
-        if isinstance(v, dict):
-            _fix_none_entries(v)
+    for key, value in dictionary.items():
+        if isinstance(value, dict):
+            _fix_none_entries(value)
         else:
-            if v == "None":
-                d[k] = None
+            if value == "None":
+                dictionary[key] = None
 
 
-def update_dict(d, d_to_update):
+def update_dict(dictionary, dict_to_update):
     """Updated one dictionary recursively with the entires of another.
 
     Args:
-        d (dict): The dict used to update d_to_update.
-        d_to_update (dict): The dictionary whose entries should be updated.
+        dictionary (dict): The dict used to update dict_to_update.
+        dict_to_update (dict): The dictionary whose entries should be updated.
     """
 
-    for k, v in d.items():
-        if isinstance(v, dict):
-            update_dict(v, d_to_update[k])
+    for key, value in dictionary.items():
+        if isinstance(value, dict):
+            update_dict(value, dict_to_update[key])
         else:
-            d_to_update[k] = v
+            dict_to_update[key] = value
 
 
 def check_config(required_params, config, log):

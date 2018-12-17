@@ -639,6 +639,7 @@ def set_endpoints(ext_ip,
         confirm_con=confirm_con,
     )
 
+
 # ------------------------------ #
 #         ZMQ functions          #
 # ------------------------------ #
