@@ -202,7 +202,7 @@ BUILD_EXE_OPTIONS = {
         (os.path.join(SENDERPATH, "signalhandler.py"), "signalhandler.py"),
         (os.path.join(SENDERPATH, "datadispatcher.py"), "datadispatcher.py"),
         (os.path.join(SHAREDPATH, "utils.py"), "utils.py"),
-        (os.path.join(SHAREDPATH, "parameter_utils.py"), "parameter_utils.py"),
+        (os.path.join(SHAREDPATH, "utils_config.py"), "utils_config.py"),
         (os.path.join(SHAREDPATH, "_version.py"), "_version.py"),
         # event detectors
         (os.path.join(SENDERPATH, "eventdetectors", "eventdetectorbase.py"),
