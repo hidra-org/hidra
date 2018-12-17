@@ -355,7 +355,7 @@ class HidraController(object):
                           "ldapuri"]
 
         if key == "fix_subdirs":
-            return str(self.fix_subdirs)
+            return str(self.config["hidraconfig_static"]["fix_subdirs"])
 
         elif key in supported_keys:
             return current_config[key]
