@@ -217,14 +217,14 @@ class HidraController(object):
         [b"bye", host_id, detector]
         """
         if len(msg) == 0:
-            return "ERROR"
+            return b"ERROR"
 
         if msg[0] == b"IS_ALIVE":
             return b"OK"
 
         elif msg[0] == b"set":
             if len(msg) < 4:
-                return "ERROR"
+                return b"ERROR"
             _, host_id, det_id, param, value = msg
 
             return self.set(host_id,
@@ -234,30 +234,32 @@ class HidraController(object):
 
         elif msg[0] == b"get":
             if len(msg) != 4:
-                return "ERROR"
+                return b"ERROR"
             _, host_id, det_id, param = msg
 
-            reply = json.dumps(self.get(host_id,
-                                        socket.getfqdn(det_id),
-                                        param))
+            reply = json.dumps(
+                self.get(host_id,
+                         socket.getfqdn(det_id),
+                         param)
+            ).encode("utf-8")
             self.log.debug("reply is %s", reply)
 
             if reply is None:
                 self.log.debug("reply is None")
-                reply = "None"
+                reply = b"None"
 
             return reply
 
         elif msg[0] == b"do":
             if len(msg) != 4:
-                return "ERROR"
+                return b"ERROR"
 
             _, host_id, det_id, cmd = msg
             return self.do(host_id, socket.getfqdn(det_id), cmd)
 
         elif msg[0] == b"bye":
             if len(msg) != 3:
-                return "ERROR"
+                return b"ERROR"
 
             _, host_id, det_id = msg
             det_id = socket.getfqdn(det_id)
@@ -275,9 +277,9 @@ class HidraController(object):
                 if not self.all_configs[host_id]:
                     del self.all_configs[host_id]
 
-            return "DONE"
+            return b"DONE"
         else:
-            return "ERROR"
+            return b"ERROR"
 
     def set(self, host_id, det_id, param, value):
         """
@@ -313,13 +315,13 @@ class HidraController(object):
 
         if key in supported_keys:
             current_config[key] = value
-            return_val = "DONE"
+            return_val = b"DONE"
 
         else:
             self.log.debug("key=%s; value=%s", key, value)
-            return_val = "ERROR"
+            return_val = b"ERROR"
 
-        if return_val != "ERROR":
+        if return_val != b"ERROR":
             current_config["active"] = True
 
         return return_val
@@ -359,7 +361,7 @@ class HidraController(object):
             return current_config[key]
 
         else:
-            return "ERROR"
+            return b"ERROR"
 
     def do(self, host_id, det_id, cmd):  # pylint: disable=invalid-name
         """
@@ -380,7 +382,7 @@ class HidraController(object):
             return hidra_status(self.beamline, det_id, self.log)
 
         else:
-            return "ERROR"
+            return b"ERROR"
 
     def __write_config(self, host_id, det_id):
         # pylint: disable=global-variable-not-assigned
@@ -476,47 +478,47 @@ class HidraController(object):
         """
 
         # check if service is running
-        if hidra_status(self.beamline, det_id, self.log) == "RUNNING":
-            return "ALREADY_RUNNING"
+        if hidra_status(self.beamline, det_id, self.log) == b"RUNNING":
+            return b"ALREADY_RUNNING"
 
         try:
             self.__write_config(host_id, det_id)
         except Exception:
             self.log.error("Config file not written", exc_info=True)
-            return "ERROR"
+            return b"ERROR"
 
         # start service
         if call_hidra_service("start", self.beamline, det_id, self.log) != 0:
             self.log.error("Could not start the service.")
-            return "ERROR"
+            return b"ERROR"
 
         # Needed because status always returns "RUNNING" in the first second
         time.sleep(1)
 
         # check if really running before return
-        if hidra_status(self.beamline, det_id, self.log) != "RUNNING":
+        if hidra_status(self.beamline, det_id, self.log) != b"RUNNING":
             self.log.error("Service is not running after triggering start.")
-            return "ERROR"
+            return b"ERROR"
 
         # remember that the instance was started
         self.instances.add(det_id)
-        return "DONE"
+        return b"DONE"
 
     def stop(self, det_id):
         """
         stop ...
         """
         # check if really running before return
-        if hidra_status(self.beamline, det_id, self.log) != "RUNNING":
-            return "ARLEADY_STOPPED"
+        if hidra_status(self.beamline, det_id, self.log) != b"RUNNING":
+            return b"ARLEADY_STOPPED"
 
         # stop service
         if call_hidra_service("stop", self.beamline, det_id, self.log) != 0:
             self.log.error("Could not stop the service.")
-            return "ERROR"
+            return b"ERROR"
 
         self.instances.remove(det_id)
-        return "DONE"
+        return b"DONE"
 
     def restart(self, host_id, det_id):
         """
@@ -525,11 +527,11 @@ class HidraController(object):
         # stop service
         reval = self.stop(det_id)
 
-        if reval == "DONE":
+        if reval == b"DONE":
             # start service
             return self.start(host_id, det_id)
         else:
-            return "ERROR"
+            return b"ERROR"
 
 
 def call_hidra_service(cmd, beamline, det_id, log):
@@ -599,12 +601,12 @@ def hidra_status(beamline, det_id, log):
     try:
         proc = call_hidra_service("status", beamline, det_id, log)
     except Exception:
-        return "ERROR"
+        return b"ERROR"
 
     if proc == 0:
-        return "RUNNING"
+        return b"RUNNING"
     else:
-        return "NOT RUNNING"
+        return b"NOT RUNNING"
 
 
 def argument_parsing():

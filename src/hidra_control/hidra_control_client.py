@@ -156,7 +156,7 @@ def client():
 
         elif arguments.getsettings:
 
-            if obj.do("status") == "RUNNING":
+            if obj.do("status") == b"RUNNING":
                 print("Configured settings:")
                 print("Detector IP:                   {}"
                       .format(obj.get("det_ip")))

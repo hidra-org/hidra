@@ -228,7 +228,12 @@ class Control(Base):
 
         # pylint: disable=unused-argument
 
-        msg = [b"get", self.host, self.detector, attribute]
+        msg = [
+            b"get",
+            self.host,
+            self.detector,
+            b"{}".format(attribute)
+        ]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: %s", msg)
@@ -263,8 +268,13 @@ class Control(Base):
                            self.netgroup_template,
                            self.log)
 
-        msg = [b"set", self.host, self.detector, attribute,
-               json.dumps(value)]
+        msg = [
+            b"set",
+            self.host,
+            self.detector,
+            b"{}".format(attribute),
+            json.dumps(value)
+        ]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: %s", msg)
@@ -291,7 +301,7 @@ class Control(Base):
 
         # pylint: disable=unused-argument
 
-        msg = [b"do", self.host, self.detector, command]
+        msg = [b"do", self.host, self.detector, b"{}".format(command)]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: %s", msg)
