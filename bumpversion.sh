@@ -51,7 +51,7 @@ fix_changelog_entries
 #TODO add to git via bumpversion or
 #git add -u
 
-# VERSION=$(cat ./src/shared/_version.py)
+# VERSION=$(cat ./src/APIs/utils/_version.py)
 # remove "__version__ = '" at the beginning and "'" at the end
 # VERSION=${VERSION:15:-1}
 # $BRANCH=$(git branch | sed -n '/\* /s///p')

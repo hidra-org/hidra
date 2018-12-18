@@ -33,23 +33,11 @@ from __future__ import unicode_literals
 import json
 import logging
 import os
-import platform
 import socket
 import tempfile
 import zmq
 
-# from ._version import __version__
-from ._shared_utils import LoggingFunction, Base
-
-
-def is_windows():
-    """Determines if code is run on a windows system.
-
-    Returns:
-        True if on windows, False otherwise.
-    """
-
-    return platform.system() == "Windows"
+from .utils import LoggingFunction, Base, is_windows
 
 
 class Ingest(Base):

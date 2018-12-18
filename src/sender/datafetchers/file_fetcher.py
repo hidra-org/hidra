@@ -38,7 +38,7 @@ import errno
 from datafetcherbase import DataFetcherBase, DataHandlingError
 from cleanerbase import CleanerBase
 from hidra import generate_filepath
-import utils
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

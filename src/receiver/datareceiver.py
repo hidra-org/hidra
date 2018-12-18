@@ -26,8 +26,6 @@
 This module implements the receiver.
 """
 
-# pylint: disable=broad-except
-# pylint: disable=global-statement
 # pylint: disable=global-variable-not-assigned
 # pylint: disable=invalid-name
 
@@ -47,8 +45,8 @@ import setproctitle
 
 from __init__ import BASE_DIR
 
-import utils
 from hidra import Transfer, __version__
+import hidra.utils as utils
 
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

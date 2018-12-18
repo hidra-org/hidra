@@ -37,7 +37,7 @@ import json
 import logging
 import yaml
 
-from utils_datatypes import Endpoints
+from .utils_datatypes import Endpoints
 
 try:
     import ConfigParser

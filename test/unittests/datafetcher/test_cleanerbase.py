@@ -36,7 +36,7 @@ import shutil
 import zmq
 
 from cleanerbase import CleanerBase
-import utils
+import hidra.utils as utils
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

@@ -48,8 +48,8 @@ import time
 import zmq
 from zmq.auth.thread import ThreadAuthenticator
 
-from ._version import __version__
-from ._shared_utils import (
+from .utils._version import __version__
+from .utils import (
     NotSupported,
     UsageError,
     FormatError,
@@ -59,8 +59,7 @@ from ._shared_utils import (
     CommunicationFailed,
     DataSavingError,
     LoggingFunction,
-    Base,
-    stop_socket
+    Base
 )
 
 
@@ -1790,27 +1789,6 @@ class Transfer(Base):
                 self.log.debug("Status changed to: %s", self.status)
 
                 break
-
-    def _stop_socket(self, name, socket=None):
-        """Wrapper for stop_socket.
-        """
-
-        # use the class attribute
-        if socket is None:
-            socket = getattr(self, name)
-            use_class_attribute = True
-        else:
-            use_class_attribute = False
-
-        return_socket = stop_socket(name=name,
-                                    socket=socket,
-                                    log=self.log)
-
-        # class attributes are set directly
-        if use_class_attribute:
-            setattr(self, name, return_socket)
-        else:
-            return return_socket
 
     def stop(self):
         """

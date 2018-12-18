@@ -37,9 +37,8 @@ import socket
 import sys
 import zmq
 
-# from ._version import __version__
 from ._constants import CONNECTION_LIST
-from ._shared_utils import (
+from .utils import (
     CommunicationFailed,
     LoggingFunction,
     Base,

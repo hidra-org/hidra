@@ -9,8 +9,8 @@ import errno
 
 from __init__ import BASE_DIR
 
-import utils
 from hidra import Transfer
+import hidra.utils as utils
 
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

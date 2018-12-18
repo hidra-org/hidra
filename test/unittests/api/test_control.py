@@ -35,6 +35,7 @@ import hidra.control as m_control
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+
 class TestException(Exception):
     """A custom exception to throw and catch.
     """
@@ -53,14 +54,14 @@ class TestReceiverControl(TestBase):
         # self.con_ip
         # self.ext_ip
 
-
         self.host = self.con_ip
         self.port = 1234
 
         with mock.patch("zmq.Context"):
             with mock.patch("zmq.Poller"):
                 with mock.patch("hidra.control.ReceiverControl._start_socket"):
-                    self.control = m_control.ReceiverControl(self.host, self.port)
+                    self.control = m_control.ReceiverControl(self.host,
+                                                             self.port)
 
     def test__setup(self):
         """Test the setup method.
@@ -73,7 +74,8 @@ class TestReceiverControl(TestBase):
         self.control._setup(self.host, self.port)
 
         self.assertIsInstance(self.control.context, zmq.Context)
-        self.assertIsInstance(self.control.status_socket, zmq.sugar.socket.Socket)
+        self.assertIsInstance(self.control.status_socket,
+                              zmq.sugar.socket.Socket)
         self.assertIsInstance(self.control.poller, zmq.Poller)
 
     def test_get_response(self):
@@ -83,7 +85,9 @@ class TestReceiverControl(TestBase):
         # pylint: disable=protected-access
 
         self.control.status_socket = MockZmqSocket()
-        self.control.status_socket.recv_multipart.return_value = ["test_response"]
+        self.control.status_socket.recv_multipart.return_value = [
+            "test_response"
+        ]
 
         self.control.poller = MockZmqPoller()
 

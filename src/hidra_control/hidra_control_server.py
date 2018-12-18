@@ -47,13 +47,8 @@ import zmq
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
-SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
 CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 API_DIR = os.path.join(BASE_DIR, "src", "APIs")
-
-if SHARED_DIR not in sys.path:
-    sys.path.insert(0, SHARED_DIR)
-del SHARED_DIR
 
 if API_DIR not in sys.path:
     sys.path.insert(0, API_DIR)
@@ -62,7 +57,7 @@ del API_DIR
 # pylint: disable=wrong-import-position
 
 import hidra  # noqa E402
-import utils  # noqa E402
+import hidra.utils  as utils # noqa E402
 
 CONFIG_PREFIX = "datamanager_"
 

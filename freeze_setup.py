@@ -47,8 +47,8 @@ from cx_Freeze import setup, Executable
 
 BASEPATH = os.path.dirname(os.path.abspath(__file__))
 SENDERPATH = os.path.join(BASEPATH, "src", "sender")
-SHAREDPATH = os.path.join(BASEPATH, "src", "shared")
 APIPATH = os.path.join(BASEPATH, "src", "APIs", "hidra")
+UTILSPATH = os.path.join(APIPATH, "utils")
 CONFPATH = os.path.join(BASEPATH, "conf")
 
 
@@ -201,9 +201,8 @@ BUILD_EXE_OPTIONS = {
         (os.path.join(SENDERPATH, "taskprovider.py"), "taskprovider.py"),
         (os.path.join(SENDERPATH, "signalhandler.py"), "signalhandler.py"),
         (os.path.join(SENDERPATH, "datadispatcher.py"), "datadispatcher.py"),
-        (os.path.join(SHAREDPATH, "utils.py"), "utils.py"),
-        (os.path.join(SHAREDPATH, "utils_config.py"), "utils_config.py"),
-        (os.path.join(SHAREDPATH, "_version.py"), "_version.py"),
+        # only for readability (not for actual code)
+        (os.path.join(UTILSPATH, "_version.py"), "_version.py"),
         # event detectors
         (os.path.join(SENDERPATH, "eventdetectors", "eventdetectorbase.py"),
          os.path.join("eventdetectors", "eventdetectorbase.py")),
@@ -240,8 +239,8 @@ BDIS_MSI_OPTIONS = {
 
 EXECUTABLES = [
     Executable(os.path.join(SENDERPATH, "datamanager.py")),
-    Executable(os.path.join(SHAREDPATH, "getsettings.py")),
-    Executable(os.path.join(SHAREDPATH, "get_receiver_status.py"))
+    Executable(os.path.join(UTILSPATH, "getsettings.py")),
+    Executable(os.path.join(UTILSPATH, "get_receiver_status.py"))
 ]
 
 setup(name='HiDRA',

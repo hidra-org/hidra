@@ -37,8 +37,8 @@ import time
 import zmq
 
 from base_class import Base
-import utils
-from _version import __version__
+import hidra.utils as utils
+from hidra import __version__
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

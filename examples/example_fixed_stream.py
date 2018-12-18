@@ -31,9 +31,9 @@ from __future__ import unicode_literals
 import os
 
 from _environment import BASE_DIR
-import utils
 
 from hidra import Transfer
+import hidra.utils as utils
 
 
 def main():

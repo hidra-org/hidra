@@ -44,14 +44,14 @@ import zmq
 import mock
 from six import iteritems
 
-import utils
 from test_base import (TestBase,
                        create_dir,
                        MockLogging,
                        mock_get_logger,
                        MockZmqPoller)
 from signalhandler import SignalHandler, UnpackedMessage, TargetProperties
-from _version import __version__
+import hidra.utils as utils
+from hidra import __version__
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

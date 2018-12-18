@@ -37,10 +37,10 @@ import os
 import sys
 import zmq
 
-import __init__ as init  # noqa F401 # pylint: disable=unused-import
+#import __init__ as init  # noqa F401 # pylint: disable=unused-import
 from base_class import Base
-import utils
-from utils import WrongConfiguration
+import hidra.utils as utils
+from hidra.utils import WrongConfiguration
 
 # source:
 # pylint: disable=line-too-long

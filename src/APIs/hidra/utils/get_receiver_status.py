@@ -36,10 +36,10 @@ import argparse
 import sys
 import traceback
 
-import __init__  # noqa F401  # pylint: disable=unused-import
+#import __init__  # noqa F401  # pylint: disable=unused-import
 from hidra.control import ReceiverControl
 from hidra import CommunicationFailed
-import utils
+import hidra.utils as utils
 
 # colors to print on screen
 CEND = '\033[0m'

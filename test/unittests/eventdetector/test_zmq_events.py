@@ -42,7 +42,7 @@ from test_base import (create_dir,
 #                       MockZmqSocket,
 #                       MockLogging, mock_get_logger
 import zmq_events
-import utils
+import hidra.utils as utils
 from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

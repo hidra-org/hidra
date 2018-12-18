@@ -90,6 +90,7 @@ class TestInotifyUtils(EventDetectorTestBase):
             self.log.debug("event_message %s", event_message)
             raise
 
+    # pylint: disable=invalid-name
     def test_get_event_message_no_rel_path(self):
         """Simulate incoming data and check if received events are correct.
         """

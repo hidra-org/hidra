@@ -3,7 +3,7 @@
 # default is master
 BRANCH=master
 
-VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/shared/_version.py?at=refs%2Fheads%2F${BRANCH}")
+VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/APIs/utils/_version.py?at=refs%2Fheads%2F${BRANCH}")
 # cut of the first 16 characters
 VERSION=${VERSION:16}
 VERSION=${VERSION%?}

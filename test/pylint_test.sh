@@ -5,8 +5,8 @@ pylint -r no \
     src/sender/*.py \
     src/sender/eventdetectors/*.py \
     src/sender/datafetchers/*.py \
-    src/shared/*.py \
-    src/APIs src/receiver/*.py \
+    src/APIs \
+    src/receiver/*.py \
     src/hidra_control/*.py \
     test/unittests/*.py \
     test/unittests/api/*.py \

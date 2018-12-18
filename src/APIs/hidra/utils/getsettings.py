@@ -35,8 +35,8 @@ from __future__ import unicode_literals
 
 import argparse
 
-import __init__  # noqa F401  # pylint: disable=unused-import
-import utils
+#import __init__  # noqa F401  # pylint: disable=unused-import
+import hidra.utils as utils
 
 
 def get_arguments():
