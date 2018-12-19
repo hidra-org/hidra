@@ -38,6 +38,7 @@ import sys
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
 API_DIR = os.path.join(BASE_DIR, "src", "APIs")
+CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
 if API_DIR not in sys.path:
     sys.path.insert(0, API_DIR)
@@ -45,22 +46,17 @@ del API_DIR
 
 # pylint: disable=wrong-import-position
 import hidra  # noqa E402
+import hidra.utils as utils  # noqa E402
 
 # the list transformation is needed for Python 3 compliance
 ALLOWED_BEAMLINES = list(hidra.CONNECTION_LIST.keys())
-# ALLOWED_BEAMLINES = ["p00", "p01", "p02.1", "p02.2", "p03", "p04", "p05",
-#                      "p06", "p07", "p08", "p09", "p10", "p11"]
-
-LDAPURI = "it-ldap-slave.desy.de:1389"
-NETGROUP_TEMPLATE = "a3{bl}-hosts"
 
 
 def argument_parsing():
     """Parsing command line arguments.
     """
 
-    # pylint: disable=global-variable-not-assigned
-    global ALLOWED_BEAMLINES
+    config_file = os.path.join(CONFIG_DIR, "control_client.yaml")
 
     parser = argparse.ArgumentParser()
 
@@ -103,56 +99,127 @@ def argument_parsing():
                              "(detector mode)",
                         action="store_true")
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # convert to dict and map to config section
+    args_dict = vars(args)
+
+    # hidra config
+    arguments = {
+        "hidra": {
+            "det_ip": args_dict["det"],
+            "det_api_version": args_dict["detapi"]
+        }
+    }
+    del args_dict["det"]
+    del args_dict["detapi"]
+
+    # general config
+    arguments["general"] = args_dict
+
+    # ------------------------------------------------------------------------
+    # Get arguments from config file and comand line
+    # ------------------------------------------------------------------------
+    utils.check_existance(config_file)
+
+    config = utils.load_config(config_file)
+    utils.update_dict(arguments, config)
+
+    check_config(config)
+
+    return config
+
+
+def check_config(config):
+    log = utils.LoggingFunction("debug")
+
+    # general section
+    required_params = ["beamline", "ldapuri", "netgroup_template"]
+    check_passed, config_reduced = utils.check_config(
+        required_params,
+        config["general"],
+        log
+    )
+
+    if not check_passed:
+        raise utils.WrongConfiguration(
+            "The general section of configuration has missing or wrong "
+            "parameteres."
+        )
+
+    # hidra section
+    required_params = ["history_size", "store_data", "remove_data"]
+    check_passed, config_reduced = utils.check_config(
+        required_params,
+        config["hidra"],
+        log
+    )
+
+    if not check_passed:
+        raise utils.WrongConfiguration(
+            "The hidra section of configuration has missing or wrong "
+            "parameteres."
+        )
+
+    if "whitelist" not in config["hidra"]:
+        config["hidra"]["whitelist"] = (
+            config["general"]["netgroup_template"]
+            .format(bl=config["general"]["beamline"])
+        )
 
 
 def client():
     """The hidra control client.
     """
 
-    arguments = argument_parsing()
+    config = argument_parsing()
 
-    if arguments.version:
+    config_g = config["general"]
+    config_hidra = config["hidra"]
+
+    if config_g["version"]:
         print("Hidra version: {}".format(hidra.__version__))
         sys.exit(0)
 
-    beamline = arguments.beamline
+    beamline = config_g["beamline"]
+    ldapuri = config_g["ldapuri"]
+    netgroup_template = config_g["netgroup_template"]
 
     obj = hidra.Control(beamline,
-                        arguments.det,
-                        LDAPURI,
-                        NETGROUP_TEMPLATE,
+                        config_hidra["det_ip"],
+                        ldapuri,
+                        netgroup_template,
                         use_log="warning")
 
     try:
-        if arguments.start:
+        if config_g["start"]:
             # check if beamline is allowed to get data from this detector
-            hidra.check_netgroup(arguments.det,
+            hidra.check_netgroup(config_hidra["det_ip"],
                                  beamline,
-                                 LDAPURI,
-                                 NETGROUP_TEMPLATE.format(bl=beamline),
+                                 ldapuri,
+                                 netgroup_template.format(bl=beamline),
                                  log=hidra.LoggingFunction())
 
-            obj.set("det_ip", arguments.det)
-            obj.set("det_api_version", arguments.detapi)
-            obj.set("history_size", 2000)
-            obj.set("store_data", False)
-            obj.set("remove_data", False)
-            obj.set("whitelist", NETGROUP_TEMPLATE.format(bl=beamline))
-            obj.set("ldapuri", LDAPURI)
+            obj.set("det_ip", config_hidra["det_ip"])
+            obj.set("det_api_version", config_hidra["det_api_version"])
+            obj.set("history_size", config_hidra["history_size"])
+            obj.set("store_data", config_hidra["store_data"])
+            obj.set("remove_data", config_hidra["remove_data"])
+            obj.set("whitelist", config_hidra["whitelist"])
+            obj.set("ldapuri", ldapuri)
 
             print("Starting HiDRA (detector mode):", obj.do("start"))
 
-#        elif arguments.restart:
+#        elif config_g["restart"]:
 #            print ("Restarting HiDRA (detector mode):", obj.do("restart"))
 
-        elif arguments.status:
+        elif config_g["status"]:
             print("Status of HiDRA (detector mode):", obj.do("status"))
 
-        elif arguments.stop:
+        elif config_g["stop"]:
             print("Stopping HiDRA (detector mode):", obj.do("stop"))
 
-        elif arguments.getsettings:
+        elif config_g["getsettings"]:
 
             if obj.do("status") == b"RUNNING":
                 print("Configured settings:")
@@ -179,5 +246,5 @@ def client():
         obj.stop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     client()

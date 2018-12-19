@@ -1,0 +1,12 @@
+general:
+    ldapuri: "it-ldap-slave.desy.de:1389"
+    # use {bl} as placeholder for the beamline
+    netgroup_template: "a3{bl}-hosts"
+
+hidra:
+    det_api_version: 1.6.0
+    history_size: 2000
+    store_data: False
+    remove_data: False
+    # default whitelist: all hosts contained in the beamline netgroup
+    # to change that set whitelist here
