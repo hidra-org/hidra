@@ -91,6 +91,16 @@ class InstanceTracking(object):
         with open(self.backup_file, "w") as f:
             f.write(json.dumps(self.instances, sort_keys=True, indent=4))
 
+    def get_instances(self):
+        """Get all previously started instances
+
+        Returns:
+            A dictionary containing the instances of the form:
+            { <beamline>: { <detector>: timestamp } }
+        """
+
+        return self.instances
+
     def add(self, det_id):
         """Mark instance as started.
         """
@@ -377,6 +387,9 @@ class HidraController(object):
         elif key == "status":
             return hidra_status(self.beamline, det_id, self.log)
 
+        elif key == "get_instances":
+            return self.get_instances()
+
         else:
             return b"ERROR"
 
@@ -501,6 +514,16 @@ class HidraController(object):
         # remember that the instance was started
         self.instances.add(det_id)
         return b"DONE"
+
+    def get_instances(self):
+        """Get the started hidra instances
+
+        Returns:
+            List of detectors started for this beamline as json dump.
+        """
+
+        bl_instances = self.instances.get_instances()[self.beamline]
+        return json.dumps(list(bl_instances.keys())).encode("utf-8")
 
     def stop(self, det_id):
         """

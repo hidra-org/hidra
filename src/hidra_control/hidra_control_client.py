@@ -208,7 +208,13 @@ def client():
             obj.set("whitelist", config_hidra["whitelist"])
             obj.set("ldapuri", ldapuri)
 
-            print("Starting HiDRA (detector mode):", obj.do("start"))
+            res_start = obj.do("start")
+            print("Starting HiDRA (detector mode):", res_start)
+
+            if res_start == b"ERROR":
+                instances = obj.do("get_instances")
+                if instances:
+                    print("Instances already running for:", instances)
 
 #        elif config_g["restart"]:
 #            print ("Restarting HiDRA (detector mode):", obj.do("restart"))

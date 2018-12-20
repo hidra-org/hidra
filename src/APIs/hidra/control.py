@@ -307,6 +307,10 @@ class Control(Base):
 
         # TODO implement timeout
         reply = self.socket.recv()
+
+        if command == "get_settings":
+            reply = json.loads(reply)
+
         self.log.debug("recv: %s", reply)
 
         return reply
