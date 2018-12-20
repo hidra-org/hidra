@@ -2962,7 +2962,7 @@ class TestTransfer(TestBase):
         transfer._stop_socket("test_socket")
 
         self.assertIsNone(transfer.test_socket)
-        transfer.log.info.assert_called_once_with("Closing test_socket")
+        transfer.log.info.assert_called_once_with("Closing %s", "test_socket")
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2984,7 +2984,7 @@ class TestTransfer(TestBase):
 
         ret_val = transfer._stop_socket("test_socket", test_socket)
 
-        transfer.log.info.assert_called_once_with("Closing test_socket")
+        transfer.log.info.assert_called_once_with("Closing %s", "test_socket")
         self.assertIsNone(ret_val)
 
         # cleanup

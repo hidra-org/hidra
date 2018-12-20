@@ -818,7 +818,7 @@ class TestSignalHandler(TestBase):
         ]
         sighandler.vari_requests = [[]]
 
-        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+        with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
             sighandler.run()
 
@@ -843,7 +843,7 @@ class TestSignalHandler(TestBase):
         sighandler.registered_queries = []
         sighandler.vari_requests = []
 
-        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+        with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
             sighandler.run()
 
@@ -865,7 +865,7 @@ class TestSignalHandler(TestBase):
         sighandler.registered_queries = []
         sighandler.vari_requests = []
 
-        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+        with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
             sighandler.run()
 
@@ -889,7 +889,7 @@ class TestSignalHandler(TestBase):
             [[socket_id, 0, re.compile(".*"), send_type]]
         ]
 
-        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+        with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
             sighandler.run()
 
@@ -916,7 +916,7 @@ class TestSignalHandler(TestBase):
              ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]]
         ]
 
-        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+        with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
             sighandler.run()
 
