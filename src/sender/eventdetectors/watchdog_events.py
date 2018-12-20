@@ -46,7 +46,7 @@ from watchdog.observers import Observer
 from watchdog.events import RegexMatchingEventHandler
 
 from eventdetectorbase import EventDetectorBase
-import utils
+import hidra.utils as utils
 from hidra import convert_suffix_list_to_regex
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

@@ -33,17 +33,17 @@ from .transfer import convert_suffix_list_to_regex
 from .ingest import Ingest  # noqa F401
 from .control import Control  # noqa F401
 from .control import check_netgroup
-from ._shared_utils import (LoggingFunction,
-                            execute_ldapsearch,
-                            NotSupported,
-                            UsageError,
-                            FormatError,
-                            ConnectionFailed,
-                            VersionError,
-                            AuthenticationFailed,
-                            CommunicationFailed,
-                            DataSavingError)
-from ._version import __version__
+from .utils import (LoggingFunction,
+                    execute_ldapsearch,
+                    NotSupported,
+                    UsageError,
+                    FormatError,
+                    ConnectionFailed,
+                    VersionError,
+                    AuthenticationFailed,
+                    CommunicationFailed,
+                    DataSavingError)
+from .utils._version import __version__
 from ._constants import CONNECTION_LIST
 
 

@@ -24,15 +24,6 @@
 This module implements the signal handler class.
 """
 
-# pylint: disable=broad-except
-# pylint: disable=too-many-lines
-# pylint: disable=too-many-nested-blocks
-# pylint: disable=too-many-arguments
-# pylint: disable=too-many-branches
-# pylint: disable=too-many-statements
-# pylint: disable=too-many-locals
-# pylint: disable=too-many-return-statements
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -47,9 +38,8 @@ import zmq.devices
 
 from base_class import Base
 
-from _version import __version__
-import utils
-from hidra import convert_suffix_list_to_regex
+from hidra import convert_suffix_list_to_regex, __version__
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

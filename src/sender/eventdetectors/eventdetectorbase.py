@@ -32,10 +32,12 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import sys
+
 import abc
-import __init__  # noqa F401 # pylint: disable=unused-import
-import utils
-from utils import WrongConfiguration
+
+#import __init__  # noqa F401 # pylint: disable=unused-import
+import hidra.utils as utils
+from hidra.utils import WrongConfiguration
 from base_class import Base
 
 # source:

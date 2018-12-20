@@ -52,7 +52,7 @@ class TestCheckNetgroup(TestBase):
     def setUp(self):
         super(TestCheckNetgroup, self).setUp()
 
-    @mock.patch("utils.execute_ldapsearch")
+    @mock.patch("hidra.utils.execute_ldapsearch")
     @mock.patch("threading.Thread")
     def test_check_netgroup(self, mock_thread, mock_ldap):
         """Simulate netgroup changes.

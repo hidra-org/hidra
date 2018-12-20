@@ -1,6 +1,6 @@
 [MASTER]
 
-init-hook='import sys; import os; BASE_DIR = "/home/kuhnm/projects/hidra"; sys.path.append(BASE_DIR + "/src/sender/eventdetectors"); sys.path.append(BASE_DIR + "/src/sender/datafetchers"); sys.path.append(BASE_DIR + "/src/sender"); sys.path.append(BASE_DIR + "/src/shared"); sys.path.append(BASE_DIR + "/src/receiver")'
+init-hook='import sys; import os; BASE_DIR = "/home/kuhnm/projects/hidra"; sys.path.append(BASE_DIR + "/src/sender/eventdetectors"); sys.path.append(BASE_DIR + "/src/sender/datafetchers"); sys.path.append(BASE_DIR + "/src/sender"); sys.path.append(BASE_DIR + "/src/API"); sys.path.append(BASE_DIR + "/src/receiver")'
 
 [BASIC]
 

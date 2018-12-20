@@ -24,6 +24,8 @@
 This module implements an example for an onda connection.
 """
 
+# pylint: disable=too-many-function-args
+
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -38,9 +40,8 @@ import time
 import setproctitle
 
 from _environment import BASE_DIR
-import utils
-
 from hidra import Transfer, generate_filepath
+import hidra.utils as utils
 
 
 class Worker(multiprocessing.Process):

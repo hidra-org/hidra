@@ -37,9 +37,8 @@ import socket
 import sys
 import zmq
 
-# from ._version import __version__
 from ._constants import CONNECTION_LIST
-from ._shared_utils import (
+from .utils import (
     CommunicationFailed,
     LoggingFunction,
     Base,
@@ -228,7 +227,12 @@ class Control(Base):
 
         # pylint: disable=unused-argument
 
-        msg = [b"get", self.host, self.detector, attribute]
+        msg = [
+            b"get",
+            self.host,
+            self.detector,
+            b"{}".format(attribute)
+        ]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: %s", msg)
@@ -263,8 +267,13 @@ class Control(Base):
                            self.netgroup_template,
                            self.log)
 
-        msg = [b"set", self.host, self.detector, attribute,
-               json.dumps(value)]
+        msg = [
+            b"set",
+            self.host,
+            self.detector,
+            b"{}".format(attribute),
+            json.dumps(value)
+        ]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: %s", msg)
@@ -291,13 +300,17 @@ class Control(Base):
 
         # pylint: disable=unused-argument
 
-        msg = [b"do", self.host, self.detector, command]
+        msg = [b"do", self.host, self.detector, b"{}".format(command)]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: %s", msg)
 
         # TODO implement timeout
         reply = self.socket.recv()
+
+        if command == "get_settings":
+            reply = json.loads(reply)
+
         self.log.debug("recv: %s", reply)
 
         return reply

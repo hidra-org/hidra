@@ -38,7 +38,7 @@ import zmq
 
 from test_base import TestBase, create_dir
 from taskprovider import TaskProvider
-import utils
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

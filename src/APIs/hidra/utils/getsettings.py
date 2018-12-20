@@ -35,8 +35,8 @@ from __future__ import unicode_literals
 
 import argparse
 
-import __init__  # noqa F401  # pylint: disable=unused-import
-import utils
+#import __init__  # noqa F401  # pylint: disable=unused-import
+import hidra.utils as utils
 
 
 def get_arguments():
@@ -60,7 +60,7 @@ def main():
     args = get_arguments()
 
     config_file = args.config_file
-    params = utils.parse_parameters(utils.read_config(config_file))["asection"]
+    params = utils.parse_parameters(utils.load_config(config_file))["asection"]
 
     print("Configured settings:")
     print("Monitored direcory:            {}".format(params["monitored_dir"]))

@@ -38,7 +38,7 @@ import zmq
 
 from test_base import TestBase, create_dir
 from datamanager import DataManager
-from _version import __version__
+from hidra import __version__
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

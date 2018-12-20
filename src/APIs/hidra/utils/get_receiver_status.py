@@ -36,10 +36,10 @@ import argparse
 import sys
 import traceback
 
-import __init__  # noqa F401  # pylint: disable=unused-import
+#import __init__  # noqa F401  # pylint: disable=unused-import
 from hidra.control import ReceiverControl
 from hidra import CommunicationFailed
-import utils
+import hidra.utils as utils
 
 # colors to print on screen
 CEND = '\033[0m'
@@ -87,7 +87,7 @@ def main():
 
     if host is None:
         params = utils.parse_parameters(
-            utils.read_config(config_file)
+            utils.load_config(config_file)
         )["asection"]
         data_stream_targets = params["data_stream_targets"]
         hosts = [target[0] for target in data_stream_targets]

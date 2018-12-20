@@ -113,7 +113,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         with mock.patch("inotify_events.EventDetector._setup"):
             with mock.patch("inotify_events.EventDetector.check_config"):
-                with mock.patch("utils.get_logger"):
+                with mock.patch("hidra.utils.get_logger"):
                     self.eventdetector = EventDetector(config, self.log_queue)
 
         self.eventdetector._setup()
@@ -139,7 +139,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         with mock.patch("inotify_events.EventDetector._setup"):
             with mock.patch("inotify_events.EventDetector.check_config"):
-                with mock.patch("utils.get_logger"):
+                with mock.patch("hidra.utils.get_logger"):
                     self.eventdetector = EventDetector(config, self.log_queue)
 
         with mock.patch("inotify_events.CleanUp"):

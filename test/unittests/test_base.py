@@ -24,6 +24,7 @@
 """
 
 # pylint: disable=global-variable-not-assigned
+# pylint: disable=too-many-ancestors
 
 from __future__ import absolute_import
 from __future__ import print_function
@@ -43,7 +44,7 @@ from logutils.queue import QueueHandler
 import mock
 
 import _environment
-import utils
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -88,7 +89,7 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
             exc_info (optional): Append a traceback.
         """
 
-        msg = str(message)
+        msg = unicode(message)
         if args:
             msg = msg % args
 

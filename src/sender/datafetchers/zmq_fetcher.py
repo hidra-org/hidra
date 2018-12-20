@@ -38,7 +38,7 @@ import os
 import zmq
 
 from datafetcherbase import DataFetcherBase
-import utils
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

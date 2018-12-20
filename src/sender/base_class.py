@@ -30,7 +30,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import _environment  # noqa F401 # pylint: disable=unused-import
-import utils
+import hidra.utils as utils
 
 
 # ------------------------------ #

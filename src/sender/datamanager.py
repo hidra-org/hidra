@@ -67,8 +67,8 @@ from taskprovider import TaskProvider  # noqa E402
 from datadispatcher import DataDispatcher  # noqa E402
 
 from _environment import BASE_DIR  # noqa E402
-import utils  # noqa E402
-from _version import __version__  # noqa E402
+import hidra.utils as utils # noqa E402
+from hidra import __version__  # noqa E402
 
 CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 

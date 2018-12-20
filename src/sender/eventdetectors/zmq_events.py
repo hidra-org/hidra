@@ -36,7 +36,7 @@ import json
 import zmq
 
 from eventdetectorbase import EventDetectorBase
-import utils
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

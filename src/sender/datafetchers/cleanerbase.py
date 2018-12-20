@@ -33,11 +33,12 @@ from __future__ import unicode_literals
 
 import abc
 import sys
-import utils
 import zmq
 
+import hidra.utils as utils
+
 # pylint: disable=unused-import
-import __init__  as init # noqa F401  # rename it to remove F811
+#import __init__  as init # noqa F401  # rename it to remove F811
 from base_class import Base
 
 # source:

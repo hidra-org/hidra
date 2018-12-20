@@ -46,7 +46,7 @@ else
     exit 1
 fi
 
-VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/shared/_version.py?at=refs%2Fheads%2Fmaster")
+VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/APIs/utils/_version.py?at=refs%2Fheads%2Fmaster")
 VERSION=${VERSION:15}
 VERSION=${VERSION%?}
 
