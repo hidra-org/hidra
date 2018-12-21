@@ -33,6 +33,7 @@ import errno
 import logging
 import os
 import platform
+import pwd
 import socket as socket_m
 import sys
 
@@ -264,7 +265,7 @@ def create_dir(directory, chmod=None, log=logging):
         directory: The absolute path of the directory to be created.
         chmod (optional): Mode bits to change the permissions of the directory
                           to.
-        log (optional): log hanlder.
+        log (optional): log handler.
     """
 
     if not os.path.isdir(directory):
@@ -318,3 +319,55 @@ def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
 
     if throw_exception:
         raise OSError
+
+
+def change_user(config):
+    """Set the effective uid to the username.
+
+    Args:
+        config (dict): A configuration dictionary containing the username as
+                       entry "username".
+
+    Returns:
+        A password database entry for the effective uid was changed to.
+    """
+
+    try:
+        # get uid as int
+        user_info = pwd.getpwnam(config["username"])
+    except KeyError:
+        # no user change needed
+        return pwd.getpwuid(os.geteuid())
+
+    try:
+        os.seteuid(user_info.pw_uid)
+    except AttributeError:
+        # on windows (user change is not possible)
+        user_info = pwd.getpwuid(os.geteuid())
+    except Exception:
+        logging.error("Failed to set user to %s (uid %s)",
+                       self.params["username"], user_info.pw_uid)
+        raise
+
+    return user_info
+
+
+def log_user_change(log, uid_changed_flag, user_info):
+    """Logs if a user change took place
+
+    Args:
+        log: log handler
+        uis_changed_flag: flag if the change
+        user_info: a password database entry of the user name changed to.
+    """
+
+    if uid_changed_flag:
+        log.info("Running as user %s (uid %s)",
+                 user_info.pw_name, user_info.pw_uid)
+    elif is_windows:
+        log.info("No user change performed (windows), "
+                 "running as user %s, (uid %s)",
+                 user_info.pw_name, user_info.pw_uid)
+    else:
+        log.info("No user change needed, running as user %s (uid %s)",
+                 user_info.pw_name, user_info.pw_uid)

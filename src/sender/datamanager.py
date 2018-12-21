@@ -458,6 +458,10 @@ class DataManager(Base):
             self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
             raise
 
+        # change user
+        user_info = utils.change_user(self.params)
+
+        # set up logging
         if log_queue is not None:
             self.log_queue = log_queue
             self.ext_log_queue = True
@@ -497,6 +501,8 @@ class DataManager(Base):
 
         # Create log and set handler to queue handle
         self.log = utils.get_logger("DataManager", self.log_queue)
+
+        utils.log_user_change(self.log, "username" in self.params, user_info)
 
         self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
         self.log.info("Configured ipc_dir: {}".format(self.ipc_dir))

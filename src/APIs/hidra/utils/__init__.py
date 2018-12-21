@@ -39,7 +39,9 @@ from .utils_general import (is_windows,
                             check_host,
                             check_ping,
                             create_dir,
-                            create_sub_dirs)
+                            create_sub_dirs,
+                            change_user,
+                            log_user_change)
 
 from .utils_datatypes import (IpcAddresses,
                               Endpoints,
