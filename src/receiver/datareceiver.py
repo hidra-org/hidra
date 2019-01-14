@@ -265,7 +265,7 @@ class DataReceiver(object):
             raise
 
         # change user
-        user_info = utils.change_user(params)
+        user_info, user_was_changed = utils.change_user(params)
 
         # enable logging
         root = logging.getLogger()
@@ -284,7 +284,7 @@ class DataReceiver(object):
 
         self.log = logging.getLogger("DataReceiver")
 
-        utils.log_user_change(self.log, "username" in params, user_info)
+        utils.log_user_change(self.log, user_was_changed, user_info)
 
         # set process name
         check_passed, _ = utils.check_config(["procname"], params, self.log)

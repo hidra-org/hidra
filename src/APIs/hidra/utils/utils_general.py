@@ -329,30 +329,37 @@ def change_user(config):
                        entry "username".
 
     Returns:
-        A password database entry for the effective uid was changed to.
+        A tuple containing the password database entry of the effective user and
+        a boolean if the user was changed or just stayed as is (True: was changed).
     """
+
+    start_user = pwd.getpwuid(os.geteuid())
+
+    try:
+        if start_user.pw_name == config["username"]:
+            # nothing to do
+            return start_user, False
+    except KeyError:
+        # no user change needed
+        return start_user, False
 
     try:
         # get uid as int
         user_info = pwd.getpwnam(config["username"])
-    except KeyError:
-        # no user change needed
-        return pwd.getpwuid(os.geteuid())
 
-    try:
         os.seteuid(user_info.pw_uid)
     except AttributeError:
         # on windows (user change is not possible)
-        user_info = pwd.getpwuid(os.geteuid())
+        user_info = start_user
     except Exception:
         logging.error("Failed to set user to %s (uid %s)",
                        self.params["username"], user_info.pw_uid)
         raise
 
-    return user_info
+    return user_info, True
 
 
-def log_user_change(log, uid_changed_flag, user_info):
+def log_user_change(log, user_was_changed, user_info):
     """Logs if a user change took place
 
     Args:
@@ -361,7 +368,7 @@ def log_user_change(log, uid_changed_flag, user_info):
         user_info: a password database entry of the user name changed to.
     """
 
-    if uid_changed_flag:
+    if user_was_changed:
         log.info("Running as user %s (uid %s)",
                  user_info.pw_name, user_info.pw_uid)
     elif is_windows:
