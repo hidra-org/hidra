@@ -60,10 +60,10 @@ def get_tcp_addresses(config):
     """
 
     if utils.is_windows():
-        ext_ip = config["ext_ip"]
-        con_ip = config["con_ip"]
+        ext_ip = config["network"]["ext_ip"]
+        con_ip = config["network"]["con_ip"]
 
-        port = config["event_det_port"]
+        port = config["eventdetector"]["zmq_events"]["event_det_port"]
         eventdet_bind = "{}:{}".format(ext_ip, port)
         eventdet_con = "{}:{}".format(con_ip, port)
 
@@ -92,8 +92,8 @@ def get_ipc_addresses(config):
     if utils.is_windows():
         addrs = None
     else:
-        ipc_ip = "{}/{}".format(config["ipc_dir"],
-                                config["main_pid"])
+        ipc_ip = "{}/{}".format(config["network"]["ipc_dir"],
+                                config["network"]["main_pid"])
 
         eventdet = "{}_{}".format(ipc_ip, "eventdet")
 
@@ -179,13 +179,24 @@ class EventDetector(EventDetectorBase):
 
     def __init__(self, config, log_queue):
 
+        # needs to be initialized before parent init
+        # reason: if the latter fails stop would otherwise run into problems
+        self.ext_context = None
+        self.context = None
+        self.event_socket = None
+
         EventDetectorBase.__init__(self,
                                    config,
                                    log_queue,
                                    "zmq_events")
 
-        self.config = config
-        self.log_queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_ed - the config of the event detector
+        #   self.config - the module specific config
+        #   self.ed_type -  the name of the eventdetector module
+        #   self.log_queue
+        #   self.log
 
         self.ext_context = None
         self.context = None
@@ -197,6 +208,8 @@ class EventDetector(EventDetectorBase):
 
         self.set_required_params()
 
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
         self.setup()
 
@@ -206,25 +219,32 @@ class EventDetector(EventDetectorBase):
         Depending if on Linux or Windows other parameters are required.
         """
 
-        self.required_params = ["context", "number_of_streams"]
+        self.required_params = {
+            "eventdetector": {self.ed_type: ["context", "number_of_streams"]},
+            "network": ["context"]
+        }
+
         if utils.is_windows():
-            self.required_params += ["ext_ip", "event_det_port"]
+            self.required_params["network"] += ["ext_ip"]
+
+            ed_params = self.required_params["eventdetector"][self.ed_type]
+            ed_params += ["event_det_port"]
         else:
-            self.required_params += ["ipc_dir", "main_pid"]
+            self.required_params["network"] += ["ipc_dir", "main_pid"]
 
     def setup(self):
         """
         Sets ZMQ endpoints and addresses and creates the ZMQ socket.
         """
 
-        self.ipc_addresses = get_ipc_addresses(config=self.config)
-        self.tcp_addresses = get_tcp_addresses(config=self.config)
+        self.ipc_addresses = get_ipc_addresses(config=self.config_all)
+        self.tcp_addresses = get_tcp_addresses(config=self.config_all)
         self.endpoints = get_endpoints(ipc_addresses=self.ipc_addresses,
                                        tcp_addresses=self.tcp_addresses)
 
         # remember if the context was created outside this class or not
-        if self.config["context"]:
-            self.context = self.config["context"]
+        if self.config_all["network"]["context"]:
+            self.context = self.config_all["network"]["context"]
             self.ext_context = True
         else:
             self.log.info("Registering ZMQ context")
@@ -246,9 +266,8 @@ class EventDetector(EventDetectorBase):
         event_message = self.event_socket.recv_multipart()
 
         if event_message[0] == b"CLOSE_FILE":
-            event_message_list = [
-                event_message for _ in range(self.config["number_of_streams"])
-            ]
+            n_streams = self.config["number_of_streams"]
+            event_message_list = [event_message for _ in range(n_streams)]
         else:
             event_message_list = [json.loads(event_message[0].decode("utf-8"))]
 

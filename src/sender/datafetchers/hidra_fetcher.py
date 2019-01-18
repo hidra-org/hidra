@@ -60,8 +60,14 @@ class DataFetcher(DataFetcherBase):
                                  "hidra_fetcher-{}".format(fetcher_id),
                                  context)
 
-        self.config = config
-        self.log_queue = log_queue
+
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_df - the config of the datafetcher
+        #   self.config - the module specific config
+        #   self.df_type -  the name of the datafetcher module
+        #   self.log_queue
+        #   self.log
 
         self.f_descriptors = dict()
         self.transfer = None
@@ -70,8 +76,11 @@ class DataFetcher(DataFetcherBase):
 
         self.set_required_params()
 
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
-        self.setup()
+
+        self._setup()
 
     def set_required_params(self):
         """
@@ -90,7 +99,7 @@ class DataFetcher(DataFetcherBase):
         else:
             self.required_params += ["ipc_dir", "main_pid"]
 
-    def setup(self):
+    def _setup(self):
         """Sets up and configures the transfer.
         """
         self.transfer = Transfer("STREAM", use_log=self.log_queue)

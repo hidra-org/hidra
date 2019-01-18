@@ -289,61 +289,99 @@ def argument_parsing():
     # Get arguments from config file and comand line
     # ------------------------------------------------------------------------
 
-    params = utils.set_parameters(base_config_file=base_config_file,
-                                  config_file=arguments.config_file,
-                                  arguments=arguments)
+    from pprint import pprint
+
+    config = utils.load_config(base_config_file)
+    config_detailed = utils.load_config(arguments.config_file)
+
+    # if config and yaml is mixed mapping has to take place before merging them
+    config = utils.map_conf_format(config)
+    config_detailed = utils.map_conf_format(config_detailed)
+    arguments_dict = utils.map_conf_format(arguments, is_namespace=True)
+
+    utils.update_dict(config_detailed, config)
+    utils.update_dict(arguments_dict, config)
+
+#    config = utils.set_parameters(base_config_file=base_config_file,
+#                                  config_file=arguments.config_file,
+#                                  arguments=arguments)
 
     # ------------------------------------------------------------------------
     # Check given arguments
     # ------------------------------------------------------------------------
 
-    required_params = ["log_path",
-                       "log_name",
-                       "procname",
-                       "ext_ip",
-                       "event_detector_type",
-                       "data_fetcher_type",
-                       "store_data",
-                       "use_data_stream",
-                       "chunksize"]
-#                       "local_target"]
+    required_params = {
+        "general": [
+            "log_path",
+            "log_name",
+            "procname",
+            "ext_ip"
+        ],
+        "eventdetector": [
+            "event_detector_type",
+        ],
+        "datafetcher": [
+            "data_fetcher_type",
+            "chunksize",
+            "use_data_stream",
+            "store_data",
+#            "local_target"
+        ]
+    }
 
     # Check format of config
     check_passed, _ = utils.check_config(required_params,
-                                         params,
+                                         config,
                                          logging)
-
     if not check_passed:
         logging.error("Wrong configuration")
         sys.exit(1)
 
+
+    # for convenience
+    config_gen = config["general"]
+    config_ed = config["eventdetector"]
+    config_df = config["datafetcher"]
+    eventdetector_type = config_ed["event_detector_type"]
+    datafetcher_type = config_df["data_fetcher_type"]
+
     # check if logfile is writable
-    params["log_file"] = os.path.join(params["log_path"], params["log_name"])
-    utils.check_writable(params["log_file"])
+    config_gen["log_file"] = os.path.join(config_gen["log_path"],
+                                          config_gen["log_name"])
+    utils.check_writable(config_gen["log_file"])
 
     # check if the event_detector_type is supported
-    utils.check_type(params["event_detector_type"],
+    utils.check_type(eventdetector_type,
                      supported_ed_types,
                      "Event detector")
 
     # check if the data_fetcher_type is supported
-    utils.check_type(params["data_fetcher_type"],
+    utils.check_type(datafetcher_type,
                      supported_df_types,
                      "Data fetcher")
 
     # check if directories exist
-    utils.check_existance(params["log_path"])
-    if "monitored_dir" in params:
-        # get rid of formating errors
-        params["monitored_dir"] = os.path.normpath(params["monitored_dir"])
+    utils.check_existance(config_gen["log_path"])
 
-        utils.check_existance(params["monitored_dir"])
-        if "create_fix_subdirs" in params and params["create_fix_subdirs"]:
+    # TODO move this into eventdetector directly
+    if (eventdetector_type in config_ed
+        and "monitored_dir" in config_ed[eventdetector_type]):
+        # for convenience
+        config_ed_type = config_ed[eventdetector_type]
+
+        # get rid of formating errors
+        config_ed_type["monitored_dir"] = os.path.normpath(
+            config_ed_type["monitored_dir"]
+        )
+
+        utils.check_existance(config_ed_type["monitored_dir"])
+        if ("create_fix_subdirs" in config_ed_type
+            and config_ed_type["create_fix_subdirs"]):
             # create the subdirectories which do not exist already
             utils.create_sub_dirs(
-                dir_path=params["monitored_dir"],
-                subdirs=params["fix_subdirs"],
-                dirs_not_to_create=params["dirs_not_to_create"]
+                dir_path=config_ed_type["monitored_dir"],
+                subdirs=config_ed_type["fix_subdirs"],
+                dirs_not_to_create=config_ed_type["dirs_not_to_create"]
             )
         else:
             # the subdirs have to exist because handles can only be added to
@@ -352,23 +390,38 @@ def argument_parsing():
             # - all subdirs created are detected + handlers are set
             # - new directory on the same as monitored dir
             #   (e.g. current/scratch_bl) cannot be detected
-            utils.check_all_sub_dir_exist(params["monitored_dir"],
-                                          params["fix_subdirs"])
-    if params["store_data"]:
-        utils.check_existance(params["local_target"])
+            utils.check_all_sub_dir_exist(config_ed_type["monitored_dir"],
+                                          config_ed_type["fix_subdirs"])
+
+    if config_df["store_data"]:
+        # set process name
+        check_passed, _ = utils.check_config(["local_target"],
+                                             config_df,
+                                             self.log)
+        if not check_passed:
+            raise Exception("Wrong configuration")
+
+        utils.check_existance(config_df["local_target"])
         # check if local_target contains fixed_subdirs
         # e.g. local_target = /beamline/p01/current/raw and
         #      fix_subdirs contain current/raw
-#        if not utils.check_sub_dir_contained(params["local_target"],
-#                                             params["fix_subdirs"]):
+#        if not utils.check_sub_dir_contained(config_df["local_target"],
+#                                             config_ed["fix_subdirs"]):
 #            # not in Eiger mode
-#            utils.check_all_sub_dir_exist(params["local_target"],
-#                                          params["fix_subdirs"])
+#            utils.check_all_sub_dir_exist(config_df["local_target"],
+#                                          config_ed["fix_subdirs"])
 
-    if params["use_data_stream"]:
-        utils.check_ping(params["data_stream_targets"][0][0])
+    if config_df["use_data_stream"]:
 
-    return params
+        check_passed, _ = utils.check_config(["data_stream_targets"],
+                                             config_df,
+                                             self.log)
+        if not check_passed:
+            raise Exception("Wrong configuration")
+
+        utils.check_ping(config_df["data_stream_targets"][0][0])
+
+    return config
 
 
 class DataManager(Base):
@@ -397,7 +450,7 @@ class DataManager(Base):
 
         self.reestablish_time = None
         self.continue_run = None
-        self.params = None
+        self.config = None
         self.use_cleaner = None
 
         self.whitelist = None
@@ -450,16 +503,20 @@ class DataManager(Base):
 
         try:
             if config is None:
-                self.params = argument_parsing()
+                self.config = argument_parsing()
             else:
-                self.params = config
+                self.config = config
         except:
             self.log = logging
             self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
             raise
 
+        config_gen = self.config["general"]
+        config_ed = self.config["eventdetector"]
+        config_df = self.config["datafetcher"]
+
         # change user
-        user_info, user_was_changed = utils.change_user(self.params)
+        user_info, user_was_changed = utils.change_user(config_gen)
 
         # set up logging
         if log_queue is not None:
@@ -472,12 +529,12 @@ class DataManager(Base):
             self.log_queue = Queue(-1)
 
             # Get the log Configuration for the lisener
-            if self.params["onscreen"]:
+            if config_gen["onscreen"]:
                 handler1, handler2 = utils.get_log_handlers(
-                    self.params["log_file"],
-                    self.params["log_size"],
-                    self.params["verbose"],
-                    self.params["onscreen"]
+                    config_gen["log_file"],
+                    config_gen["log_size"],
+                    config_gen["verbose"],
+                    config_gen["onscreen"]
                 )
 
                 # Start queue listener using the stream handler above.
@@ -486,10 +543,10 @@ class DataManager(Base):
                 )
             else:
                 handler1 = utils.get_log_handlers(
-                    self.params["log_file"],
-                    self.params["log_size"],
-                    self.params["verbose"],
-                    self.params["onscreen"]
+                    config_gen["log_file"],
+                    config_gen["log_size"],
+                    config_gen["verbose"],
+                    config_gen["onscreen"]
                 )
 
                 # Start queue listener using the stream handler above
@@ -508,15 +565,9 @@ class DataManager(Base):
         self.log.info("Configured ipc_dir: {}".format(self.ipc_dir))
 
         # set process name
-        check_passed, _ = utils.check_config(["procname"],
-                                             self.params,
-                                             self.log)
-        if not check_passed:
-            raise Exception("Configuration check failed")
-
         # pylint: disable=no-member
-        setproctitle.setproctitle(self.params["procname"])
-        self.log.info("Running as {}".format(self.params["procname"]))
+        setproctitle.setproctitle(config_gen["procname"])
+        self.log.info("Running as {}".format(config_gen["procname"]))
 
         self.log.info("DataManager started (PID {})."
                       .format(self.current_pid))
@@ -533,24 +584,24 @@ class DataManager(Base):
 
         # Enable specification via IP and DNS name
         # TODO make this IPv6 compatible
-        if self.params["ext_ip"] == "0.0.0.0":
-            self.ext_ip = self.params["ext_ip"]
+        if config_gen["ext_ip"] == "0.0.0.0":
+            self.ext_ip = config_gen["ext_ip"]
         else:
-            self.ext_ip = socket.gethostbyaddr(self.params["ext_ip"])[2][0]
+            self.ext_ip = socket.gethostbyaddr(config_gen["ext_ip"])[2][0]
         self.con_ip = socket.getfqdn()
 
-        self.use_cleaner = (self.params["remove_data"] == "with_confirmation")
+        self.use_cleaner = (config_df["remove_data"] == "with_confirmation")
 
         ports = {
-            "com": self.params["com_port"],
-            "request": self.params["request_port"],
-            "request_fw": self.params["request_fw_port"],
-            "router": self.params["router_port"],
-            "control_pub": self.params["control_pub_port"],
-            "control_sub": self.params["control_sub_port"],
-            "cleaner": self.params["cleaner_port"],
-            "cleaner_trigger": self.params["cleaner_trigger_port"],
-            "confirmation": self.params["confirmation_port"],
+            "com": config_gen["com_port"],
+            "request": config_gen["request_port"],
+            "request_fw": config_gen["request_fw_port"],
+            "control_pub": config_gen["control_pub_port"],
+            "control_sub": config_gen["control_sub_port"],
+            "router": config_df["router_port"],
+            "cleaner": config_df["cleaner_port"],
+            "cleaner_trigger": config_df["cleaner_trigger_port"],
+            "confirmation": config_df["confirmation_port"],
         }
 
         self.ipc_addresses = utils.set_ipc_addresses(
@@ -559,12 +610,12 @@ class DataManager(Base):
             use_cleaner=self.use_cleaner
         )
 
-        self.use_data_stream = self.params["use_data_stream"]
+        self.use_data_stream = config_df["use_data_stream"]
         self.log.info("Usage of data stream set to '{}'"
                       .format(self.use_data_stream))
 
         if self.use_data_stream:
-            data_stream_target = self.params["data_stream_targets"][0][0]
+            data_stream_target = config_df["data_stream_targets"][0][0]
             confirm_ips = [socket.gethostbyaddr(data_stream_target)[2][0],
                            data_stream_target]
         else:
@@ -583,34 +634,37 @@ class DataManager(Base):
             self.log.info("Using ipc for internal communication.")
 
         # Make ipc_dir accessible for modules
-        self.params["ext_ip"] = self.ext_ip
-        self.params["con_ip"] = self.con_ip
-        self.params["ipc_dir"] = self.ipc_dir
-        self.params["main_pid"] = self.current_pid
-        self.params["endpoints"] = self.endpoints
-        # TODO: this should not be set here (it belong to the moduls)
-        self.params["context"] = None
-        self.params["session"] = None
+        self.config["network"] = {
+            "ext_ip": self.ext_ip,
+            "con_ip": self.con_ip,
+            "ipc_dir": self.ipc_dir,
+            "main_pid": self.current_pid,
+            "endpoints": self.endpoints,
+            # TODO: this should not be set here (it belong to the modules)
+            "context": None,
+            "session": None
+        }
 
-        self.whitelist = self.params["whitelist"]
-        self.ldapuri = self.params["ldapuri"]
+
+        self.whitelist = config_gen["whitelist"]
+        self.ldapuri = config_gen["ldapuri"]
 
         if self.use_data_stream:
-            if len(self.params["data_stream_targets"]) > 1:
+            if len(config_df["data_stream_targets"]) > 1:
                 self.log.error("Targets to send data stream to have more than "
                                "one entry which is not supported")
                 self.log.debug("data_stream_targets: {}"
-                               .format(self.params["data_stream_targets"]))
+                               .format(config_df["data_stream_targets"]))
                 sys.exit(1)
 
             self.fixed_stream_addr = (
-                "{}:{}".format(self.params["data_stream_targets"][0][0],
-                               self.params["data_stream_targets"][0][1]))
+                "{}:{}".format(config_df["data_stream_targets"][0][0],
+                               config_df["data_stream_targets"][0][1]))
 
-            if self.params["remove_data"] == "stop_on_error":
+            if config_df["remove_data"] == "stop_on_error":
                 self.status_check_id = (
-                    "{}:{}".format(self.params["data_stream_targets"][0][0],
-                                   self.params["status_check_port"]))
+                    "{}:{}".format(config_df["data_stream_targets"][0][0],
+                                   config_df["status_check_port"]))
 
                 self.log.info("Enabled receiver checking")
                 self.check_target_host = self.check_status_receiver
@@ -625,15 +679,15 @@ class DataManager(Base):
             self.fixed_stream_addr = None
             self.status_check_id = None
 
-        self.number_of_streams = self.params["number_of_streams"]
-        self.chunksize = self.params["chunksize"]
+        self.number_of_streams = config_df["number_of_streams"]
+        self.chunksize = config_df["chunksize"]
 
         try:
-            self.local_target = self.params["local_target"]
+            self.local_target = config_df["local_target"]
             self.log.info("Configured local_target: {}"
                           .format(self.local_target))
         except KeyError:
-            self.params["local_target"] = None
+            config_df["local_target"] = None
             self.local_target = None
 
         self.signalhandler_thr = None
@@ -928,7 +982,7 @@ class DataManager(Base):
         # "bug in pylint pylint: disable=bad-continuation
         self.signalhandler_thr = threading.Thread(target=SignalHandler,
                                                   args=(
-                                                      self.params,
+                                                      self.config,
                                                       self.endpoints,
                                                       self.whitelist,
                                                       self.ldapuri,
@@ -950,7 +1004,7 @@ class DataManager(Base):
         # "bug in pylint pylint: disable=bad-continuation
         self.taskprovider_pr = Process(target=TaskProvider,
                                        args=(
-                                           self.params,
+                                           self.config,
                                            self.endpoints,
                                            self.log_queue
                                            )
@@ -960,19 +1014,19 @@ class DataManager(Base):
         # Cleaner
         if self.use_cleaner:
             self.log.info("Loading cleaner from data fetcher module: {}"
-                          .format(self.params["data_fetcher_type"]))
-            self.cleaner_m = __import__(self.params["data_fetcher_type"])
+                          .format(self.config["datafetcher"]["data_fetcher_type"]))
+            self.cleaner_m = __import__(self.config["datafetcher"]["data_fetcher_type"])
 
             self.cleaner_pr = Process(
                 target=self.cleaner_m.Cleaner,
-                args=(self.params,
+                args=(self.config,
                       self.log_queue,
                       self.endpoints)
             )
             self.cleaner_pr.start()
 
         self.log.info("Configured Type of data fetcher: {}"
-                      .format(self.params["data_fetcher_type"]))
+                      .format(self.config["datafetcher"]["data_fetcher_type"]))
 
         # DataDispatcher
         for i in range(self.number_of_streams):
@@ -984,7 +1038,7 @@ class DataManager(Base):
                                self.endpoints,
                                self.chunksize,
                                self.fixed_stream_addr,
-                               self.params,
+                               self.config,
                                self.log_queue,
                                self.local_target
                                )

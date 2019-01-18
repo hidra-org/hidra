@@ -33,6 +33,7 @@ from __future__ import (absolute_import,
                         unicode_literals)
 
 import ast
+import copy
 import json
 import logging
 import yaml
@@ -58,8 +59,8 @@ def load_config(config_file, config_type=None, log=logging):
     Args:
         config_file (str): Absolute path to the configuration file.
         config_type (str): The type the configuration is in (config or yaml).
-                           If not set the file extenstion is used for automatic
-                           detection.
+                           If not set (or set to None) the file extenstion is
+                           used for automatic detection.
 
     Returns:
         Configuration dictionary.
@@ -77,14 +78,16 @@ def load_config(config_file, config_type=None, log=logging):
 
     try:
         if file_type == "conf":
-            config = ConfigParser.RawConfigParser()
+            configparser = ConfigParser.RawConfigParser()
             try:
-                config.readfp(_FakeSecHead(open(config_file)))
+                configparser.readfp(_FakeSecHead(open(config_file)))
             # TODO why was this necessary?
             except:  # pylint: disable=bare-except
                 with open(config_file, 'r') as open_file:
                     config_string = '[asection]\n' + open_file.read()
-                config.read_string(config_string)
+                configparser.read_string(config_string)
+
+            config = parse_parameters(configparser)["asection"]
 
         elif file_type == "yaml":
             with open(config_file) as f:
@@ -124,12 +127,170 @@ def update_dict(dictionary, dict_to_update):
 
     for key, value in dictionary.items():
         if isinstance(value, dict):
-            update_dict(value, dict_to_update[key])
+            try:
+                update_dict(value, dict_to_update[key])
+            except KeyError:
+                dict_to_update[key] = value
         else:
             dict_to_update[key] = value
 
 
-def check_config(required_params, config, log):
+def map_conf_format(flat_config, is_namespace=False):
+    """
+    A temporary workaround to keep backwards compatibility to config file
+    format.
+
+    Args:
+        flat_config: A flat dictionary containing the configuration parameters.
+
+    Returns:
+
+    """
+
+    mapping = {
+        "general": {
+            "log_path": "log_path",
+            "log_name": "log_name",
+            "log_size": "log_size",
+            "username": "username",
+            "procname": "procname",
+            "ext_ip": "ext_ip",
+            "whitelist": "whitelist",
+            "com_port": "com_port",
+            "ldapuri": "ldapuri",
+            "request_port": "request_port",
+            "request_fw_port": "request_fw_port",
+            "control_pub_port": "control_pub_port",
+            "control_sub_port": "control_sub_port",
+            "config_file": "config_file",
+            "verbose": "verbose",
+            "onscreen": "onscreen"
+        },
+        "eventdetector": {
+            "event_detector_type": "event_detector_type",
+            "ext_data_port": "ext_data_port",
+            "event_det_port": "event_det_port",
+            "dirs_not_to_create": "dirs_not_to_create",
+            "inotify_events": {
+                "monitored_dir": "monitored_dir",
+                "fix_subdirs": "fix_subdirs",
+                "create_fix_subdirs": "create_fix_subdirs",
+                "monitored_events": "monitored_events",
+                "history_size": "history_size",
+                "use_cleanup": "use_cleanup",
+                "action_time": "action_time",
+                "time_till_closed": "time_till_closed"
+            },
+            "inotifyx_events": {
+                "monitored_dir": "monitored_dir",
+                "fix_subdirs": "fix_subdirs",
+                "create_fix_subdirs": "create_fix_subdirs",
+                "monitored_events": "monitored_events",
+                "history_size": "history_size",
+                "use_cleanup": "use_cleanup",
+                "action_time": "action_time",
+                "time_till_closed": "time_till_closed"
+            },
+            "watchdog_events": {
+                "monitored_dir": "monitored_dir",
+                "fix_subdirs": "fix_subdirs",
+                "create_fix_subdirs": "create_fix_subdirs",
+                "monitored_events": "monitored_events",
+                "action_time": "action_time",
+                "time_till_closed": "time_till_closed"
+            },
+            "http_events": {
+                "fix_subdirs": "fix_subdirs",
+                "history_size": "history_size",
+                "det_ip": "det_ip",
+                "det_api_version": "det_api_version"
+            },
+            "zmq_events": {
+                "number_of_streams": "number_of_streams",
+                "ext_data_port": "ext_data_port"
+            },
+            "hidra_events": {
+                "ext_data_port": "ext_data_port"
+            }
+        },
+        "datafetcher": {
+            "data_fetcher_type": "data_fetcher_type",
+            "data_fetcher_port": "data_fetcher_port",
+            "status_check_resp_port": "status_check_resp_port",
+            "confirmation_resp_port": "confirmation_resp_port",
+            "chunksize": "chunksize",
+            "router_port": "router_port",
+            "status_check_port": "status_check_port",
+            "cleaner_port": "cleaner_port",
+            "cleaner_trigger_port": "cleaner_trigger_port",
+            "confirmation_port": "confirmation_port",
+            "use_data_stream": "use_data_stream",
+            "data_stream_targets": "data_stream_targets",
+            "number_of_streams": "number_of_streams",
+            "remove_data": "remove_data",
+            "store_data": "store_data",
+            "local_target": "local_target",
+            "file_fetcher": {
+                "store_data": "store_data",
+                "local_target": "local_target"
+            },
+            "http_fetcher": {
+                "store_data": "store_data",
+                "local_target": "local_target"
+            }
+        }
+    }
+
+    def _traverse_dict(config):
+        for key, value in config.items():
+            if isinstance(value, dict):
+                _traverse_dict(value)
+            else:
+                try:
+                    config[key] = flat_config[key]
+                except KeyError:
+                    del config[key]
+
+    if is_namespace:
+        arguments = copy.deepcopy(flat_config)
+        flat_config = {}
+
+        # arguments set when the program is called have a higher priority than
+        # the ones in the config file
+        for arg in vars(arguments):
+            arg_value = getattr(arguments, arg)
+            if arg_value is not None:
+                if isinstance(arg_value, str):
+                    if arg_value.lower() == "none":
+                        flat_config[arg] = None
+                    elif arg_value.lower() == "false":
+                        flat_config[arg] = False
+                    elif arg_value.lower() == "true":
+                        flat_config[arg] = True
+                    else:
+                        flat_config[arg] = arg_value
+                else:
+                    flat_config[arg] = arg_value
+
+            config = copy.deepcopy(mapping)
+            _traverse_dict(config)
+
+    else:
+#        is_flat = all(not isinstance(value, dict)
+#                      for key, value in flat_config.items()
+#                      if key not in ["fix_subdirs", "monitored_events"])
+        is_flat = "general" not in flat_config
+
+        if is_flat:
+            config = copy.deepcopy(mapping)
+            _traverse_dict(config)
+        else:
+            config = flat_config
+
+    return config
+
+
+def check_config(required_params, config, log, serialize=True):
     """Check the configuration.
 
     Args:
@@ -142,53 +303,138 @@ def check_config(required_params, config, log):
                 parameter is contained and set to supported values
         config (dict): dictionary where the configuration is stored
         log (class Logger): Logger instance of the module logging
+        serialize (bool, optional): if the reduced config should be a
+                                    serialized string or not
 
     Returns:
 
         check_passed: if all checks were successfull
-        config_reduced (str): serialized dict containing the values of the
-                              required parameters only
+        config_reduced (str or dict): serialized (only if serialize=True) dict
+                                      containing the values of the required
+                                      parameters only
     """
 
     check_passed = True
     config_reduced = {}
 
-    for param in required_params:
-        # multiple checks have to be done
-        if isinstance(param, list):
-            # checks if the parameter is contained in the config dict
-            if param[0] not in config:
-                log.error("Configuration of wrong format. "
-                          "Missing parameter '%s'", param[0])
+    def _check_param(param_list, config, error_msg):
+        check_passed = True
+        config_reduced = {}
+
+        for param in param_list:
+
+            # if the type of the parameter should be checked as well the entry
+            # is a list instead of a string
+            if isinstance(param, list):
+                # if the type is checked the entry is of the form
+                # [<param_name>, <param_type>]
+                # or [<param_name>, <list of param values>]
+                param_name, param_type = param
+            else:
+                param_name, param_type = param, None
+
+            if param_name not in config:
+                log.error("%s Missing parameter: '%s'",
+                          error_msg, param_name)
                 check_passed = False
-            # check if the parameter is one of the supported values
-            elif isinstance(param[1], list):
-                if config[param[0]] not in param[1]:
-                    log.error("Configuration of wrong format. Options for "
-                              "parameter '%s' are %s", param[0], param[1])
-                    log.debug("parameter '%s' = %s", param[0],
-                              config[param[0]])
+                continue
+
+            # check param type or value
+            elif param_type is not None:
+
+                # check if the parameter is one of the supported values
+                if isinstance(param_type, list):
+                    if config[param_name] not in param_type:
+                        log.error("%s Options for parameter '%s' are %s",
+                                  error_msg, param_name, param_type)
+                        log.debug("parameter '%s' = %s", param_name,
+                                  config[param_name])
+                        check_passed = False
+                        continue
+
+                # check if the parameter has the supported type
+                elif not isinstance(config[param_name], param_type):
+                    log.error("%s Parameter '%s' is of format '%s' but should "
+                              "be of format '%s'",
+                              error_msg, param_name,
+                              type(config[param_name]), param_type)
                     check_passed = False
-            # check if the parameter has the supported type
-            elif not isinstance(config[param[0]], param[1]):
-                log.error("Configuration of wrong format. Parameter '%s' is "
-                          "of format '%s' but should be of format '%s'",
-                          param[0], type(config[param[0]]), param[1])
+                    continue
+
+            config_reduced[param_name] = config[param_name]
+            check_passed = True
+
+        return check_passed, config_reduced
+
+    def _check_params_dict(required_params, config, msg):
+        check_passed = True
+        config_reduced = {}
+
+        for key, value in required_params.items():
+            error_msg = msg
+
+            # check general format
+            if key not in config:
+                log.error("%s Missing section: '%s'", error_msg, key)
                 check_passed = False
-        # checks if the parameter is contained in the config dict
-        elif param not in config:
-            log.error("Configuration of wrong format. Missing parameter: '%s'",
-                      param)
-            check_passed = False
-        else:
-            config_reduced[param] = config[param]
+                continue
+
+            error_msg = "{} (section '{}')".format(error_msg, key)
+
+            if isinstance(value, dict):
+                sub_check_passed, sub_config_reduced = _check_params_dict(
+                    value, config[key], error_msg
+                )
+            else:
+                sub_check_passed, sub_config_reduced = _check_param(
+                    value, config[key], error_msg
+                )
+
+            check_passed = check_passed and sub_check_passed
+            config_reduced[key] = sub_config_reduced
+
+        return check_passed, config_reduced
+
+    error_msg = "Configuration of wrong format."
+
+    if isinstance(required_params, list):
+        check_passed, config_reduced = _check_param(
+            required_params, config, error_msg
+        )
+
+    elif isinstance(required_params, dict):
+        check_passed, config_reduced = _check_params_dict(
+            required_params, config, error_msg
+        )
+    else:
+        log.error("%s required_params has wrong input format.",
+                  error_msg)
+        check_passed = False
+
+    if serialize:
+        dict_to_str = build_serialized_config(config_reduced)
+    else:
+        dict_to_str = config_reduced
+
+    return check_passed, dict_to_str
+
+
+def build_serialized_config(config_reduced):
+    """Serialize configuration into an easily readable string.
+
+    Args:
+        config_reduced (dict): The configuration dictionary to serialize.
+
+    Returns:
+        The serialized dictionary as string.
+    """
 
     try:
         dict_to_str = str(
             json.dumps(config_reduced, sort_keys=True, indent=4)
         )
     except TypeError:
-        # objects like e.g. zm.context are not JSON serializable
+        # objects like e.g. zmq.context are not JSON serializable
         # convert manually
         sorted_keys = sorted(config_reduced.keys())
         indent = 4
@@ -215,7 +461,7 @@ def check_config(required_params, config, log):
         dict_to_str += ",\n".join(dict_to_list)
         dict_to_str += "\n}"
 
-    return check_passed, dict_to_str
+    return dict_to_str
 
 
 # ----------------------------------------------------------------------------
@@ -252,7 +498,7 @@ class _FakeSecHead(object):
 
 def set_parameters(base_config_file, config_file=None, arguments=None):
     """
-    Merges configration parameters from different sources.
+    Merges configuration parameters from different sources.
     Hierarchy: base config overwritten by config overwritten by arguments.
 
     Args:
@@ -262,10 +508,10 @@ def set_parameters(base_config_file, config_file=None, arguments=None):
         arguments (dict): Arguments with highest priority.
     """
 
-    base_config = parse_parameters(load_config(base_config_file))["asection"]
+    base_config = load_config(base_config_file)
 
     if config_file is not None:
-        config = parse_parameters(load_config(config_file))["asection"]
+        config = load_config(config_file)
 
         # overwrite base config parameters with the ones in the config_file
         for key in config:

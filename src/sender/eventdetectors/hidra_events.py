@@ -32,6 +32,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from collections import namedtuple
+import copy
 import json
 import multiprocessing
 import zmq
@@ -66,8 +67,8 @@ def get_ipc_addresses(config):
     if utils.is_windows():
         addrs = None
     else:
-        ipc_ip = "{}/{}".format(config["ipc_dir"],
-                                config["main_pid"])
+        ipc_ip = "{}/{}".format(config["network"]["ipc_dir"],
+                                config["network"]["main_pid"])
 
         out = "{}_{}".format(ipc_ip, "out")
         mon = "{}_{}".format(ipc_ip, "mon")
@@ -89,10 +90,10 @@ def get_endpoints(config, ipc_addresses):
         An Endpoints object containing the bind and connection endpoints.
     """
 
-    ext_ip = config["ext_ip"]
-    con_ip = config["con_ip"]
+    ext_ip = config["network"]["ext_ip"]
+    con_ip = config["network"]["con_ip"]
 
-    port = config["ext_data_port"]
+    port = config["eventdetector"]["hidra_events"]["ext_data_port"]
     in_bind = "tcp://{}:{}".format(ext_ip, port)
     in_con = "tcp://{}:{}".format(con_ip, port)
 
@@ -189,9 +190,13 @@ class EventDetector(EventDetectorBase):
                                    config,
                                    log_queue,
                                    "hidra_events")
-
-        self.config = config
-        self.log_queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_ed - the config of the event detector
+        #   self.config - the module specific config
+        #   self.ed_type -  the name of the eventdetector module
+        #   self.log_queue
+        #   self.log
 
         self.ipc_addresses = None
         self.endpoints = None
@@ -212,18 +217,30 @@ class EventDetector(EventDetectorBase):
         Depending if on Linux or Windows other parameters are required.
         """
 
-        self.required_params = ["context", "ext_ip", "con_ip", "ext_data_port"]
+#        self.required_params = ["context", "ext_ip", "con_ip", "ext_data_port"]
+#        if utils.is_windows():
+#            self.required_params += ["event_det_port", "data_fetch_port"]
+#        else:
+#            self.required_params += ["ipc_dir", "main_pid"]
+
+
+        self.required_params = {
+            "eventdetector": {self.ed_type: ["ext_data_port"]},
+            "network": ["ext_ip", "con_ip", "context"]
+        }
+
         if utils.is_windows():
-            self.required_params += ["event_det_port", "data_fetch_port"]
+            ed_params = self.required_params["eventdetector"][self.ed_type]
+            ed_params += ["event_det_port", "data_fetch_port"]
         else:
-            self.required_params += ["ipc_dir", "main_pid"]
+            self.required_params["network"] += ["ipc_dir", "main_pid"]
 
     def setup(self):
         """Configures ZMQ sockets and starts monitoring device.
         """
 
-        self.ipc_addresses = get_ipc_addresses(config=self.config)
-        self.endpoints = get_endpoints(config=self.config,
+        self.ipc_addresses = get_ipc_addresses(config=self.config_all)
+        self.endpoints = get_endpoints(config=self.config_all,
                                        ipc_addresses=self.ipc_addresses)
 
         # Set up monitored queue to get notification when new data is sent to
@@ -254,8 +271,8 @@ class EventDetector(EventDetectorBase):
                       self.endpoints.out_bind, self.endpoints.mon_bind)
 
         # set up monitoring socket where the events are sent to
-        if self.config["context"] is not None:
-            self.context = self.config["context"]
+        if self.config_all["network"]["context"] is not None:
+            self.context = self.config_all["network"]["context"]
             self.ext_context = True
         else:
             self.log.info("Registering ZMQ context")

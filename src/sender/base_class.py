@@ -31,6 +31,7 @@ from __future__ import unicode_literals
 
 import _environment  # noqa F401 # pylint: disable=unused-import
 import hidra.utils as utils
+from hidra.utils import WrongConfiguration
 
 
 # ------------------------------ #
@@ -45,6 +46,53 @@ class Base(object):
     def __init__(self):
         self.log = None
         self.context = None
+
+    def _check_config_base(self, config, required_params):
+        """
+        Check a list of required parameters (in order) and if successful
+        combines the results.
+
+        Args:
+            config (dict): The configuration dictionary to test.
+            required_params (dict or list): The parameters that should be
+                                            contained.
+
+        Returns:
+            A dictionary containing the values for the necessary parameters
+            only.
+
+        Raises:
+            WrongConfiguration: The configuration has missing or
+                                wrong parameters.
+        """
+
+        error_msg = "The configuration has missing or wrong parameters."
+
+        config_reduced = {}
+
+        if isinstance(required_params, dict):
+            required_params = [required_params]
+        elif not isinstance(required_params, list):
+            raise WrongConfiguration("Wrong input, required_params has to "
+                                     "be list or dict.")
+
+        for params in required_params:
+            check_passed, config_part = utils.check_config(
+                required_params=params,
+                config=config,
+                log=self.log,
+                serialize=False
+            )
+
+            if check_passed:
+                config_reduced.update(config_part)
+            else:
+                raise WrongConfiguration(error_msg)
+
+        return config_reduced
+
+
+
 
     def start_socket(self, name, sock_type, sock_con, endpoint, message=None):
         """Wrapper of start_socket
@@ -85,8 +133,12 @@ class Base(object):
 
         # use the class attribute
         if socket is None:
-            socket = getattr(self, name)
-            use_class_attribute = True
+            try:
+                socket = getattr(self, name)
+                use_class_attribute = True
+            except AttributeError:
+                # socket does not exist thus cannot be removed
+                return None
         else:
             use_class_attribute = False
 

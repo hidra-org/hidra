@@ -64,7 +64,9 @@ class DataDispatcher(Base):
         self.endpoints = endpoints
         self.chunksize = chunksize
         self.fixed_stream_addr = fixed_stream_addr
-        self.config = config
+        self.config_all = config
+        self.config = self.config_all["general"]
+        self.config_df = self.config_all["datafetcher"]
         self.log_queue = log_queue
         self.local_target = local_target
 
@@ -128,10 +130,10 @@ class DataDispatcher(Base):
                 self.config["context"] = self.context
 
         self.log.info("Loading data fetcher: %s",
-                      self.config["data_fetcher_type"])
-        datafetcher_m = __import__(self.config["data_fetcher_type"])
+                      self.config_df["data_fetcher_type"])
+        datafetcher_m = __import__(self.config_df["data_fetcher_type"])
 
-        self.datafetcher = datafetcher_m.DataFetcher(self.config,
+        self.datafetcher = datafetcher_m.DataFetcher(self.config_all,
                                                      self.log_queue,
                                                      self.dispatcher_id,
                                                      self.context)

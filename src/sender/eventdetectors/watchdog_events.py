@@ -448,8 +448,13 @@ class EventDetector(EventDetectorBase):
                                    log_queue,
                                    "watchdog_events")
 
-        self.config = config
-        self.log_queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_ed - the config of the event detector
+        #   self.config - the module specific config
+        #   self.ed_type -  the name of the eventdetector module
+        #   self.log_queue
+        #   self.log
 
         self.mon_dir = None
         self.mon_subdirs = None
@@ -464,6 +469,9 @@ class EventDetector(EventDetectorBase):
                                 ["monitored_events", dict],
                                 "time_till_closed",
                                 "action_time"]
+
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
         self.setup()
 

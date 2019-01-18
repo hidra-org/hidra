@@ -829,7 +829,7 @@ class SignalHandler(Base):
         elif signal == b"START_STREAM_METADATA":
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
-            if not self.config["store_data"]:
+            if not self.config["datafetcher"]["store_data"]:
                 self.log.debug("Send notification that store_data is disabled")
                 self.send_response([b"STORING_DISABLED", __version__])
             else:
@@ -892,7 +892,7 @@ class SignalHandler(Base):
             self.log.info("Received signal: {} for hosts {}"
                           .format(signal, socket_ids))
 
-            if not self.config["store_data"]:
+            if not self.config["datafetcher"]["store_data"]:
                 self.log.debug("Send notification that store_data is disabled")
                 self.send_response([b"STORING_DISABLED", __version__])
             else:

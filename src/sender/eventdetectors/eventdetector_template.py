@@ -47,15 +47,22 @@ class EventDetector(EventDetectorBase):
                                    log_queue,
                                    "eventdetector_template")
 
-        self.config = config
-        self.log_queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_ed - the config of the event detector
+        #   self.config - the module specific config
+        #   self.ed_type -  the name of the eventdetector module
+        #   self.log_queue
+        #   self.log
 
         self.required_params = []
 
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
-        self.setup()
+        self._setup()
 
-    def setup(self):
+    def _setup(self):
         """Sets static configuration parameters.
         """
         pass

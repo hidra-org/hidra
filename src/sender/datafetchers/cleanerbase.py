@@ -120,7 +120,7 @@ class CleanerBase(Base, ABC):
             endpoint=self.endpoints.confirm_con
         )
 
-        topic = utils.generate_sender_id(self.config["main_pid"])
+        topic = utils.generate_sender_id(self.config["network"]["main_pid"])
         # topic = b"test"
         self.confirmation_socket.setsockopt(zmq.SUBSCRIBE, topic)
 

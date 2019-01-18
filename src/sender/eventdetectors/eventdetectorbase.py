@@ -68,11 +68,34 @@ class EventDetectorBase(Base):
 
         super(EventDetectorBase, self).__init__()
 
-        self.config = config
         self.log_queue = log_queue
-
         self.log = utils.get_logger(logger_name, log_queue)
 
+        self.config_all = config
+
+        # base_barameters
+        self.required_params_base = {"eventdetector": ["event_detector_type"]}
+
+        # Check format of base config
+        self.config_reduced = self._check_config_base(
+            config=self.config_all,
+            required_params=self.required_params_base
+        )
+
+        # Check format of dependent config
+        self.config_ed = self.config_all["eventdetector"]
+        self.ed_type = self.config_ed["event_detector_type"]
+        self.required_params_dep = {"eventdetector": [self.ed_type]}
+
+        config_reduced_dep = self._check_config_base(
+            config=self.config_all,
+            required_params=[self.required_params_base,
+                             self.required_params_dep],
+        )
+
+        self.config_reduced.update(config_reduced_dep)
+
+        self.config = self.config_ed[self.ed_type]
         self.required_params = []
 
     def check_config(self):
@@ -83,19 +106,25 @@ class EventDetectorBase(Base):
                                 wrong parameteres.
         """
 
-        # Check format of config
-        check_passed, config_reduced = utils.check_config(self.required_params,
-                                                          self.config,
-                                                          self.log)
+        if isinstance(self.required_params, list):
+            self.required_params = {
+                "eventdetector": {self.ed_type: self.required_params}
+            }
+
+        config_reduced = self._check_config_base(
+            config=self.config_all,
+            required_params=[
+                self.required_params_base,
+                self.required_params_dep,
+                self.required_params
+            ],
+        )
+
+        self.config_reduced.update(config_reduced)
 
         # Only proceed if the configuration was correct
-        if check_passed:
-            self.log.info("Configuration for event detector: %s",
-                          config_reduced)
-        else:
-            # self.log.debug("config={}".format(self.config))
-            msg = "The configuration has missing or wrong parameteres."
-            raise WrongConfiguration(msg)
+        self.log.info("Configuration for event detector %s: %s",
+                      self.ed_type, self.config_reduced)
 
     @abc.abstractmethod
     def get_new_event(self):

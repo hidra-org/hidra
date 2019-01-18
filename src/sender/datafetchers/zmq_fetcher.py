@@ -146,8 +146,14 @@ class DataFetcher(DataFetcherBase):
                                  "zmq_fetcher-{}".format(fetcher_id),
                                  context)
 
-        self.config = config
-        self.log_queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_df - the config of the datafetcher
+        #   self.config - the module specific config
+        #   self.df_type -  the name of the datafetcher module
+        #   self.log_queue
+        #   self.log
+
         self.context = context
 
         self.ipc_addresses = None
@@ -158,10 +164,13 @@ class DataFetcher(DataFetcherBase):
         else:
             self.required_params = ["ipc_dir"]
 
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
-        self.setup()
 
-    def setup(self):
+        self._setup()
+
+    def _setup(self):
         """
         Sets ZMQ endpoints and addresses and creates the ZMQ socket.
         """

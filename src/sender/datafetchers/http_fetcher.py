@@ -61,11 +61,21 @@ class DataFetcher(DataFetcherBase):
                                  "http_fetcher-{}".format(fetcher_id),
                                  context)
 
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_df - the config of the datafetcher
+        #   self.config - the module specific config
+        #   self.df_type -  the name of the datafetcher module
+        #   self.log_queue
+        #   self.log
+
         self.required_params = ["session",
                                 "store_data",
                                 "remove_data",
                                 "fix_subdirs"]
 
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
         self.setup()
 

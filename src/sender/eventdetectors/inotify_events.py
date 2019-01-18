@@ -72,9 +72,13 @@ class EventDetector(EventDetectorBase):
                                    config,
                                    log_queue,
                                    "inotify_events")
-
-        self.config = config
-        self.log_queue = log_queue
+        # sets
+        #   self.config_all - all configurations
+        #   self.config_ed - the config of the event detector
+        #   self.config - the module specific config
+        #   self.eventdetector_type
+        #   self.log_queue
+        #   self.log
 
         self.paths = None
         self.mon_subdirs = None
@@ -94,6 +98,8 @@ class EventDetector(EventDetectorBase):
 
         self._set_required_params()
 
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
         self._setup()
 

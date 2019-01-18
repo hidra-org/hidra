@@ -52,6 +52,7 @@ from .utils_config import (check_config,
                            parse_parameters,
                            set_parameters,
                            update_dict,
+                           map_conf_format,
                            WrongConfiguration)
 
 from .utils_logging import (CustomQueueListener,

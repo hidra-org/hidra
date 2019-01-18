@@ -57,8 +57,13 @@ class DataFetcher(DataFetcherBase):
                                  "file_fetcher-{}".format(fetcher_id),
                                  context)
 
-        self.config = config
-        self.log_queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_df - the config of the datafetcher
+        #   self.config - the module specific config
+        #   self.df_type -  the name of the datafetcher module
+        #   self.log_queue
+        #   self.log
 
         self.source_file = None
         self.target_file = None
@@ -67,10 +72,13 @@ class DataFetcher(DataFetcherBase):
 
         self.required_params = ["fix_subdirs", "store_data"]
 
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
-        self.setup()
 
-    def setup(self):
+        self._setup()
+
+    def _setup(self):
         """
         Sets static configuration parameters and which finish method to use.
         """
@@ -80,8 +88,8 @@ class DataFetcher(DataFetcherBase):
 
         self.is_windows = utils.is_windows()
 
-        if (self.config["remove_data"] == "with_confirmation"
-                and self.config["use_data_stream"]):
+        if (self.config_df["remove_data"] == "with_confirmation"
+                and self.config_df["use_data_stream"]):
             self.log.debug("Set finish to finish_with_cleaner")
             self.finish = self.finish_with_cleaner
         else:
@@ -100,7 +108,7 @@ class DataFetcher(DataFetcherBase):
                                              metadata)
         # Build target file
         # if local_target is not set (== None) generate_filepath returns None
-        self.target_file = generate_filepath(self.config["local_target"],
+        self.target_file = generate_filepath(self.config_df["local_target"],
                                              metadata)
 
         if targets:
@@ -140,8 +148,8 @@ class DataFetcher(DataFetcherBase):
                 metadata["filesize"] = filesize
                 metadata["file_mod_time"] = file_mod_time
                 metadata["file_create_time"] = file_create_time
-                metadata["chunksize"] = self.config["chunksize"]
-                if self.config["remove_data"] == "with_confirmation":
+                metadata["chunksize"] = self.config_df["chunksize"]
+                if self.config_df["remove_data"] == "with_confirmation":
                     metadata["confirmation_required"] = self.confirmation_topic
                 else:
                     metadata["confirmation_required"] = False
@@ -266,13 +274,13 @@ class DataFetcher(DataFetcherBase):
                     self.target_file.split(subdir + os.sep)[0], subdir
                 )
 
-                if metadata["relative_path"] in self.config["fix_subdirs"]:
+                if metadata["relative_path"] in self.config_all["event_detector"]["fix_subdirs"]:
                     self.log.error("Unable to copy/move file '%s' to '%s': "
                                    "Directory %s is not available",
                                    self.source_file, self.target_file,
                                    metadata["relative_path"])
                     raise
-                elif (subdir in self.config["fix_subdirs"]
+                elif (subdir in self.config_all["event_detector"]["fix_subdirs"]
                       and not os.path.isdir(target_base_path)):
                     self.log.error("Unable to copy/move file '%s' to '%s': "
                                    "Directory %s is not available",
@@ -338,7 +346,7 @@ class DataFetcher(DataFetcherBase):
 
         # copy file
         # (does not preserve file owner, group or ACLs)
-        if self.config["store_data"]:
+        if self.config_df["store_data"]:
             try:
                 self._datahandling(shutil.copy, metadata)
                 self.log.info("Copying file '%s' ...success.",
@@ -352,7 +360,7 @@ class DataFetcher(DataFetcherBase):
         # remove file
         # can be set/done in addition to copy -> no elif
         # (e.g. store_data = True and remove_data = with_confirmation)
-        if self.config["remove_data"]:
+        if self.config_df["remove_data"]:
 
             file_id = self.generate_file_id(metadata)
             try:
@@ -361,7 +369,7 @@ class DataFetcher(DataFetcherBase):
             except KeyError:
                 filesize = os.path.getsize(self.source_file)
                 # round up the division result
-                n_chunks = -(-filesize // self.config["chunksize"])
+                n_chunks = -(-filesize // self.config_df["chunksize"])
 
             self.cleaner_job_socket.send_multipart(
                 [metadata["source_path"].encode("utf-8"),
@@ -400,8 +408,8 @@ class DataFetcher(DataFetcherBase):
         targets_metadata = [i for i in targets if i[2] == "metadata"]
 
         # move file
-        if (self.config["store_data"]
-                and self.config["remove_data"]
+        if (self.config_df["store_data"]
+                and self.config_df["remove_data"]
                 and self.config["remove_flag"]):
 
             try:
@@ -416,7 +424,7 @@ class DataFetcher(DataFetcherBase):
 
         # copy file
         # (does not preserve file owner, group or ACLs)
-        elif self.config["store_data"]:
+        elif self.config_df["store_data"]:
             try:
                 self._datahandling(shutil.copy, metadata)
                 self.log.info("Copying file '%s' ...success.",
@@ -428,7 +436,7 @@ class DataFetcher(DataFetcherBase):
                 return
 
         # remove file
-        elif self.config["remove_data"] and self.config["remove_flag"]:
+        elif self.config_df["remove_data"] and self.config["remove_flag"]:
             try:
                 os.remove(self.source_file)
                 self.log.info("Removing file '%s' ...success.",

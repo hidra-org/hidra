@@ -81,29 +81,40 @@ class DataFetcherBase(Base, ABC):
         """
         super(DataFetcherBase, self).__init__()
 
+        self.config_all = config
+        self.config_df = self.config_all["datafetcher"]
+        self.df_type = self.config_df["data_fetcher_type"]
+        self.config = self.config_df[self.df_type]
+
         self.fetcher_id = fetcher_id
-        self.config = config
         self.context = context
         self.cleaner_job_socket = None
 
-        self.log = utils.get_logger(logger_name, log_queue)
+        self.log_queue = log_queue
+        self.log = utils.get_logger(logger_name, self.log_queue)
 
         self.source_file = None
         self.target_file = None
 
         self.required_params = []
 
-        self.required_base_params = [
-            "chunksize",
-            "local_target",
-            ["remove_data", [True,
-                             False,
-                             "stop_on_error",
-                             "with_confirmation"]],
-            "endpoints",
-            "main_pid"
-        ]
+        self.required_base_params = {
+            "network": [
+                "endpoints",
+                "main_pid"
+            ],
+            "datafetcher": [
+                "chunksize",
+                "local_target",
+                ["remove_data", [True,
+                                 False,
+                                 "stop_on_error",
+                                 "with_confirmation"]]
+            ]
+        }
 
+        # to make sure the base parameters are checked even if the module does
+        # not call the check_config method
         self.check_config(print_log=False)
         self.base_setup()
 
@@ -111,8 +122,8 @@ class DataFetcherBase(Base, ABC):
         """Check that the configuration containes the nessessary parameters.
 
         Args:
-            print_log (boolean): If a summary of the configured parameters
-                                 should be logged.
+            print_log (boolean, optional): If a summary of the configured
+                                           parameters should be logged.
         Raises:
             WrongConfiguration: The configuration has missing or
                                 wrong parameteres.
@@ -120,16 +131,28 @@ class DataFetcherBase(Base, ABC):
 
         # combine paramerters which aare needed for all datafetchers with the
         # specific ones for this fetcher
-        required_params = self.required_base_params + self.required_params
+#        required_params = self.required_base_params + self.required_params
 
         # Check format of config
-        check_passed, config_reduced = utils.check_config(
-            required_params,
+        check_passed_base, config_reduced_base = utils.check_config(
+            self.required_base_params,
+            self.config_all,
+            self.log
+        )
+
+        check_passed_module, config_reduced_module = utils.check_config(
+            self.required_params,
             self.config,
             self.log
         )
 
+        check_passed = check_passed_base and check_passed_module
+
         if check_passed:
+            config_reduced = (
+                config_reduced_base[:-1] + config_reduced_module[1:]
+            )
+
             if print_log:
                 self.log.info("Configuration for data fetcher: %s",
                               config_reduced)
@@ -145,17 +168,20 @@ class DataFetcherBase(Base, ABC):
         Created a socket to communicate with the cleaner and sets the topic.
         """
 
-        if self.config["remove_data"] == "with_confirmation":
+        if self.config_df["remove_data"] == "with_confirmation":
+
+            config_net = self.config_all["network"]
+
             # create socket
             self.cleaner_job_socket = self.start_socket(
                 name="cleaner_job_socket",
                 sock_type=zmq.PUSH,
                 sock_con="connect",
-                endpoint=self.config["endpoints"].cleaner_job_con
+                endpoint=config_net["endpoints"].cleaner_job_con
             )
 
             self.confirmation_topic = (
-                utils.generate_sender_id(self.config["main_pid"])
+                utils.generate_sender_id(config_net["main_pid"])
             )
 
     def send_to_targets(self,

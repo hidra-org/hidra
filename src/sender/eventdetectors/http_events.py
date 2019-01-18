@@ -57,8 +57,13 @@ class EventDetector(EventDetectorBase):
                                    log_queue,
                                    "http_events")
 
-        self.config = config
-        self.log.queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_ed - the config of the event detector
+        #   self.config - the module specific config
+        #   self.ed_type -  the name of the eventdetector module
+        #   self.log_queue
+        #   self.log
 
         self.session = None
         self.det_ip = None
@@ -74,6 +79,8 @@ class EventDetector(EventDetectorBase):
                                 "history_size",
                                 "fix_subdirs"]
 
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
         self.setup()
 
