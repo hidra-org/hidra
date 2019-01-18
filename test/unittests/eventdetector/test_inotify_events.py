@@ -56,7 +56,8 @@ class TestEventDetector(EventDetectorTestBase):
         # self.con_ip
         # self.ext_ip
 
-        self.event_detector_config = {
+        self.module_name = "inotify_events"
+        config_module = {
             "monitored_dir": os.path.join(self.base_dir, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
             "monitored_events": {
@@ -69,6 +70,15 @@ class TestEventDetector(EventDetectorTestBase):
             "time_till_closed": 5,
             "action_time": 120
         }
+
+        self.eventdetector_config = {
+            "eventdetector": {
+                "event_detector_type": self.module_name,
+                self.module_name: config_module
+            }
+        }
+
+
 
         self.start = 100
         self.stop = 110
@@ -92,7 +102,7 @@ class TestEventDetector(EventDetectorTestBase):
         """Sets up the event detector.
         """
 
-        self.eventdetector = EventDetector(self.event_detector_config,
+        self.eventdetector = EventDetector(self.eventdetector_config,
                                            self.log_queue)
 
     def test_setup(self):
@@ -108,8 +118,9 @@ class TestEventDetector(EventDetectorTestBase):
             "IN_MOVED_TO": [".log"]
         }
 
-        config = copy.deepcopy(self.event_detector_config)
-        config["monitored_events"] = monitored_events
+        config = copy.deepcopy(self.eventdetector_config)
+        config_module = config["eventdetector"][self.module_name]
+        config_module["monitored_events"] = monitored_events
 
         with mock.patch("inotify_events.EventDetector._setup"):
             with mock.patch("inotify_events.EventDetector.check_config"):
@@ -134,8 +145,9 @@ class TestEventDetector(EventDetectorTestBase):
         # use cleanup
         # --------------------------------------------------------------------
 
-        config = copy.deepcopy(self.event_detector_config)
-        config["use_cleanup"] = True
+        config = copy.deepcopy(self.eventdetector_config)
+        config_module = config["eventdetector"][self.module_name]
+        config_module["use_cleanup"] = True
 
         with mock.patch("inotify_events.EventDetector._setup"):
             with mock.patch("inotify_events.EventDetector.check_config"):

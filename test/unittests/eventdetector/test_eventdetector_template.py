@@ -45,7 +45,14 @@ class TestEventDetector(EventDetectorTestBase):
         # self.con_ip
         # self.ext_ip
 
-        self.event_detector_config = {}
+        self.module_name = "eventdetector_template"
+
+        self.event_detector_config = {
+            "eventdetector": {
+                "event_detector_type": self.module_name,
+                self.module_name: {}
+            }
+        }
 
         self.start = 100
         self.stop = 101

@@ -54,7 +54,8 @@ class TestEventDetector(EventDetectorTestBase):
         # self.con_ip
         # self.ext_ip
 
-        self.event_detector_config = {
+        self.module_name = "watchdog_events"
+        self.config_module = {
             # TODO normpath to make insensitive to "/" at the end
             "monitored_dir": os.path.join(self.base_dir, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
@@ -67,6 +68,13 @@ class TestEventDetector(EventDetectorTestBase):
             "use_cleanup": False,
             "time_till_closed": 0.5,  # in s
             "action_time": 1  # in s
+        }
+
+        self.event_detector_config = {
+            "eventdetector": {
+                "event_detector_type": self.module_name,
+                self.module_name: self.config_module
+            }
         }
 
         self.start = 100
@@ -86,8 +94,8 @@ class TestEventDetector(EventDetectorTestBase):
         self.eventdetector = None
 
         self.time_all_events_detected = (
-            self.event_detector_config["action_time"]
-            + self.event_detector_config["time_till_closed"]
+            self.config_module["action_time"]
+            + self.config_module["time_till_closed"]
         )
 
     def _start_eventdetector(self):
@@ -159,8 +167,8 @@ class TestEventDetector(EventDetectorTestBase):
             }
             expected_result.append(expected_result_dict)
 
-        time.sleep(self.event_detector_config["action_time"]
-                   + self.event_detector_config["time_till_closed"])
+        time.sleep(self.config_module["action_time"]
+                   + self.config_module["time_till_closed"])
 
         # get all detected events
         event_list = self.eventdetector.get_new_event()

@@ -54,7 +54,9 @@ class TestEventDetector(EventDetectorTestBase):
         # self.con_ip
         # self.ext_ip
 
-        self.event_detector_config = {
+        self.module_name = "inotifyx_events"
+
+        config_module = {
             "monitored_dir": os.path.join(self.base_dir, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
             "monitored_events": {
@@ -66,6 +68,13 @@ class TestEventDetector(EventDetectorTestBase):
             "use_cleanup": False,
             "time_till_closed": 5,
             "action_time": 120
+        }
+
+        self.eventdetector_config = {
+            "eventdetector": {
+                "event_detector_type": self.module_name,
+                self.module_name: config_module
+            }
         }
 
         self.start = 100
@@ -90,7 +99,7 @@ class TestEventDetector(EventDetectorTestBase):
         """Sets up the event detector.
         """
 
-        self.eventdetector = EventDetector(self.event_detector_config,
+        self.eventdetector = EventDetector(self.eventdetector_config,
                                            self.log_queue)
 
     def test_eventdetector(self):
@@ -141,12 +150,12 @@ class TestEventDetector(EventDetectorTestBase):
         create_dir(self.target_file_base)
         self._start_eventdetector()
 
-#        self.event_detector_config["use_cleanup"] = True
-#        self.event_detector_config["monitored_events"] = {
+#        self.eventdetector_config["use_cleanup"] = True
+#        self.eventdetector_config["monitored_events"] = {
 #            "Some_supid_event": [".tif", ".cbf", ".file"]
 #        }
-#        self.event_detector_config["time_till_closed"] = 0.2
-#        self.event_detector_config["action_time"] = 0.5
+#        self.eventdetector_config["time_till_closed"] = 0.2
+#        self.eventdetector_config["action_time"] = 0.5
 
         self.start = 100
         self.stop = 30000
@@ -189,7 +198,7 @@ class TestEventDetector(EventDetectorTestBase):
         except KeyboardInterrupt:
             pass
         finally:
-            if self.event_detector_config["use_cleanup"]:
+            if self.eventdetector_config["use_cleanup"]:
                 time.sleep(4)
                 event_list = self.eventdetector.get_new_event()
                 self.log.debug("len of event_list=%s", len(event_list))

@@ -37,13 +37,21 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.context = zmq.Context()
 
+        self.module_name = "hidra_events"
         self.eventdetector_config = {
-            "context": self.context,
-            "ipc_dir": ipc_dir,
-            "ext_ip": self.ext_ip,
-            "con_ip": self.con_ip,
-            "main_pid": self.config["main_pid"],
-            "ext_data_port": "50100"
+            "network": {
+                "context": self.context,
+                "ipc_dir": ipc_dir,
+                "main_pid": self.config["main_pid"],
+                "ext_ip": self.ext_ip,
+                "con_ip": self.con_ip,
+            },
+            "eventdetector": {
+                "event_detector_type": self.module_name,
+                self.module_name: {
+                    "ext_data_port": "50100"
+                }
+            }
         }
 
         self.start = 100

@@ -53,15 +53,23 @@ class TestEventDetector(EventDetectorTestBase):
 #        filewriterDevice = "haspp06:10000/p06/eigerfilewriter/exp.01"
 #        det_ip          = "192.168.138.52"  # haspp11e1m
 
-        self.event_detector_config = {
+        self.module_name = "http_events"
+        self.config_module = {
             "det_ip": "asap3-mon",
             "det_api_version": "1.6.0",
             "history_size": 1000,
             "fix_subdirs": ["local"],
+            }
+
+        self.event_detector_config = {
+            "eventdetector": {
+                "event_detector_type": self.module_name,
+                self.module_name: self.config_module
+            }
         }
 
         self.target_base_path = "http://{}/data".format(
-            socket.gethostbyname(self.event_detector_config["det_ip"]))
+            socket.gethostbyname(self.config_module["det_ip"]))
 
         self.eventdetector = EventDetector(self.event_detector_config,
                                            self.log_queue)
