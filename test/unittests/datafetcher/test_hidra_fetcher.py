@@ -51,25 +51,35 @@ class TestDataFetcher(DataFetcherTestBase):
         super(TestDataFetcher, self).setUp()
 
         # Set up config
+        self.module_name = "hidra_fetcher"
         self.data_fetcher_config = {
-            "fix_subdirs": ["commissioning", "current", "local"],
-            "context": self.context,
-            "store_data": False,
-            "remove_data": False,
-            "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
-            # "local_target": None,
-            "local_target": os.path.join(self.base_dir, "data", "zmq_target"),
-            # "local_target": os.path.join(self.base_dir, "data", "target"),
-            "ipc_dir": self.config["ipc_dir"],
-            "main_pid": self.config["main_pid"],
-            "endpoints": self.config["endpoints"],
-            "ext_ip": self.ext_ip,
-            "status_check_resp_port": "50011",
-            "confirmation_resp_port": "50012",
+            "network": {
+                "ipc_dir": self.config["ipc_dir"],
+                "main_pid": self.config["main_pid"],
+                "endpoints": self.config["endpoints"],
+                "ext_ip": self.ext_ip,
+            },
+            "datafetcher": {
+                "data_fetcher_type": self.module_name,
+                "store_data": False,
+                "remove_data": False,
+                "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
+                # "local_target": None,
+                "local_target": os.path.join(self.base_dir, "data", "zmq_target"),
+                # "local_target": os.path.join(self.base_dir, "data", "target"),
+                self.module_name: {
+#                    "fix_subdirs": ["commissioning", "current", "local"],
+                    "context": self.context,
+                    "status_check_resp_port": "50011",
+                    "confirmation_resp_port": "50012",
+                }
+            }
         }
 
         self.cleaner_config = {
-            "main_pid": self.config["main_pid"]
+            "network": {
+                "main_pid": self.config["main_pid"]
+            }
         }
 
         self.receiving_ports = ["50102", "50103"]
@@ -84,14 +94,14 @@ class TestDataFetcher(DataFetcherTestBase):
         """
         # mock check_config to be able to enable print_log
         with mock.patch("hidra_fetcher.DataFetcher.check_config"):
-            with mock.patch("hidra_fetcher.DataFetcher.setup"):
+            with mock.patch("hidra_fetcher.DataFetcher._setup"):
                 self.datafetcher = DataFetcher(config=self.data_fetcher_config,
                                                log_queue=self.log_queue,
                                                fetcher_id=0,
                                                context=self.context)
 
         self.datafetcher.check_config(print_log=True)
-        self.datafetcher.setup()
+        self.datafetcher._setup()
 
         # Set up receiver simulator
         self.receiving_sockets = []
@@ -118,6 +128,7 @@ class TestDataFetcher(DataFetcherTestBase):
                                            "test_files",
                                            "test_file.cbf")
 
+        config_df = self.data_fetcher_config["datafetcher"]
         metadata = {
             "source_path": os.path.join(self.base_dir, "data", "source"),
             "relative_path": os.sep + "local",
@@ -125,7 +136,7 @@ class TestDataFetcher(DataFetcherTestBase):
             "filesize": os.stat(prework_source_file).st_size,
             "file_mod_time": time.time(),
             "file_create_time": time.time(),
-            "chunksize": self.data_fetcher_config["chunksize"],
+            "chunksize": config_df["chunksize"],
             "chunk_number": 0,
         }
 
@@ -142,7 +153,7 @@ class TestDataFetcher(DataFetcherTestBase):
         if self.data_input:
 
             # simulatate data input sent by an other HiDRA instance
-            chunksize = self.data_fetcher_config["chunksize"]
+            chunksize = config_df["chunksize"]
             with open(prework_source_file, 'rb') as file_descriptor:
                 file_content = file_descriptor.read(chunksize)
 

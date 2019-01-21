@@ -48,17 +48,23 @@ class TestDataFetcher(DataFetcherTestBase):
     def setUp(self):
         super(TestDataFetcher, self).setUp()
 
-        # Set up config
-#        local_target = os.path.join(self.base_dir, "data", "target")
-
         self.datafetcher = None
 
+        # Set up config
+        self.module_name = "datafetcher_template"
         self.datafetcher_config = {
-            "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
-            "local_target": None,
-            "remove_data": False,
-            "endpoints": None,
-            "main_pid": self.config["main_pid"]
+            "network": {
+                "endpoints": None,
+                "main_pid": self.config["main_pid"]
+            },
+            "datafetcher": {
+                "data_fetcher_type": self.module_name,
+                "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
+                "local_target": None,
+                "remove_data": False,
+                self.module_name: {
+                }
+            }
         }
 
         self.cleaner_config = {

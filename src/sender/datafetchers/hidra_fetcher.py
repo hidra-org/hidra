@@ -53,6 +53,9 @@ class DataFetcher(DataFetcherBase):
         Checks if all required parameters are set in the configuration
         """
 
+        self.f_descriptors = dict()
+        self.transfer = None
+
         DataFetcherBase.__init__(self,
                                  config,
                                  log_queue,
@@ -69,8 +72,6 @@ class DataFetcher(DataFetcherBase):
         #   self.log_queue
         #   self.log
 
-        self.f_descriptors = dict()
-        self.transfer = None
         self.metadata_r = None
         self.data_r = None
 
@@ -88,36 +89,40 @@ class DataFetcher(DataFetcherBase):
         Depending if on Linux or Windows other parameters are required.
         """
 
-        self.required_params = ["context",
-                                "store_data",
-                                "ext_ip",
-                                "status_check_resp_port",
-                                "confirmation_resp_port"]
+        self.required_params = {
+            "network": ["ext_ip"],
+        }
+
+        df_params = ["status_check_resp_port",
+                     "confirmation_resp_port",
+                     "context"]
 
         if utils.is_windows():
-            self.required_params += ["data_fetch_port"]
+            df_params += ["data_fetcher_port"]
         else:
-            self.required_params += ["ipc_dir", "main_pid"]
+            self.required_params["network"] += ["ipc_dir", "main_pid"]
+
+        self.required_params["datafetcher"] = ["store_data", {self.df_type: df_params}]
 
     def _setup(self):
         """Sets up and configures the transfer.
         """
         self.transfer = Transfer("STREAM", use_log=self.log_queue)
 
-        endpoint = "{}_{}".format(self.config["main_pid"], "out")
-        self.transfer.start([self.config["ipc_dir"], endpoint],
+        endpoint = "{}_{}".format(self.config_all["network"]["main_pid"], "out")
+        self.transfer.start([self.config_all["network"]["ipc_dir"], endpoint],
                             protocol="ipc",
                             data_con_style="connect")
 
         # enable status check requests from any sender
         self.transfer.setopt(option="status_check",
-                             value=[self.config["ext_ip"],
+                             value=[self.config_all["network"]["ext_ip"],
                                     self.config["status_check_resp_port"]])
 
         # enable confirmation reply if this is requested in a received data
         # packet
         self.transfer.setopt(option="confirmation",
-                             value=[self.config["ext_ip"],
+                             value=[self.config_all["network"]["ext_ip"],
                                     self.config["confirmation_resp_port"]])
 
     def get_metadata(self, targets, metadata):
@@ -147,7 +152,7 @@ class DataFetcher(DataFetcherBase):
 
         # Build target file
         # if local_target is not set (== None) generate_filepath returns None
-        self.target_file = generate_filepath(self.config["local_target"],
+        self.target_file = generate_filepath(self.config_df["local_target"],
                                              self.metadata_r)
 
         # Extends metadata
@@ -169,7 +174,7 @@ class DataFetcher(DataFetcherBase):
             if "chunksize" not in self.metadata_r:
                 self.log.error("Received metadata do not contain 'chunksize'. "
                                "Setting it to locally configured one")
-                self.metadata_r["chunksize"] = self.config["chunksize"]
+                self.metadata_r["chunksize"] = self.config_df["chunksize"]
 
     def send_data(self, targets, metadata, open_connections):
         """Implementation of the abstract method send_data.
@@ -258,14 +263,14 @@ class DataFetcher(DataFetcherBase):
                 )
 
         # store data
-        if self.config["store_data"]:
+        if self.config_df["store_data"]:
             try:
                 # TODO: save message to file using a thread (avoids blocking)
                 self.transfer.store_chunk(
                     descriptors=self.f_descriptors,
                     filepath=self.target_file,
                     payload=self.data_r,
-                    base_path=self.config["local_target"],
+                    base_path=self.config_df["local_target"],
                     metadata=self.metadata_r
                 )
             except Exception:

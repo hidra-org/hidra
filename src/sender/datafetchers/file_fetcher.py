@@ -70,7 +70,7 @@ class DataFetcher(DataFetcherBase):
         self.is_windows = None
         self.finish = None
 
-        self.required_params = ["fix_subdirs", "store_data", "remove_data"]
+        self.required_params = ["fix_subdirs"]
 
         # check that the required_params are set inside of module specific
         # config
@@ -255,7 +255,7 @@ class DataFetcher(DataFetcherBase):
 
         # do not remove data until a confirmation is sent back from the
         # priority target
-        if self.config["remove_data"] == "with_confirmation":
+        if self.config_df["remove_data"] == "with_confirmation":
             self.config["remove_flag"] = False
 
         # the data was successfully sent -> mark it as removable

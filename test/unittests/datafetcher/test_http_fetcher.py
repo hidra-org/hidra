@@ -20,7 +20,7 @@
 #     Manuela Kuhn <manuela.kuhn@desy.de>
 #
 
-"""Testing the file_fetcher data fetcher.
+"""Testing the http_fetcher data fetcher.
 """
 
 from __future__ import absolute_import
@@ -31,7 +31,7 @@ import json
 import os
 import subprocess
 
-from file_fetcher import DataFetcher
+from http_fetcher import DataFetcher
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -48,16 +48,24 @@ class TestDataFetcher(DataFetcherTestBase):
         super(TestDataFetcher, self).setUp()
 
         # Set up config
+        self.module_name = "http_fetcher"
         self.data_fetcher_config = {
-            "session": None,
-            "fix_subdirs": ["commissioning", "current", "local"],
-            "store_data": True,
-            "remove_data": False,
-            "ipc_dir": self.config["ipc_dir"],
-            "main_pid": self.config["main_pid"],
-            "endpoints": self.config["endpoints"],
-            "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
-            "local_target": os.path.join(self.base_dir, "data", "target")
+            "network": {
+                "ipc_dir": self.config["ipc_dir"],
+                "main_pid": self.config["main_pid"],
+                "endpoints": self.config["endpoints"],
+            },
+            "datafetcher": {
+                "store_data": True,
+                "remove_data": False,
+                "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
+                "local_target": os.path.join(self.base_dir, "data", "target"),
+                "data_fetcher_type": self.module_name,
+                self.module_name: {
+                    "session": None,
+                    "fix_subdirs": ["commissioning", "current", "local"],
+                }
+            }
         }
 
         self.cleaner_config = {

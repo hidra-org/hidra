@@ -51,19 +51,29 @@ class TestDataFetcher(DataFetcherTestBase):
         super(TestDataFetcher, self).setUp()
 
         # Set up config
+        self.module_name = "file_fetcher"
         self.data_fetcher_config = {
-            "fix_subdirs": ["commissioning", "current", "local"],
-            "store_data": False,
-            "remove_data": False,
-            "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
-            "local_target": None,
-            # "local_target": os.path.join(self.base_dir, "data", "target"),
-            "main_pid": self.config["main_pid"],
-            "endpoints": self.config["endpoints"]
+            "network": {
+                "main_pid": self.config["main_pid"],
+                "endpoints": self.config["endpoints"]
+            },
+            "datafetcher": {
+                "data_fetcher_type": self.module_name,
+                "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
+                "store_data": False,
+                "remove_data": False,
+                "local_target": None,
+                # "local_target": os.path.join(self.base_dir, "data", "target"),
+                self.module_name: {
+                    "fix_subdirs": ["commissioning", "current", "local"],
+                }
+            }
         }
 
         self.cleaner_config = {
-            "main_pid": self.config["main_pid"]
+            "network": {
+                "main_pid": self.config["main_pid"]
+            }
         }
 
         self.receiving_ports = ["6005", "6006"]

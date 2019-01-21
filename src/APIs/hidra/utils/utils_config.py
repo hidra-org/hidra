@@ -323,6 +323,12 @@ def check_config(required_params, config, log, serialize=True):
 
         for param in param_list:
 
+            if isinstance(param, dict):
+                check_passed, config_reduced = _check_params_dict(
+                    param, config, error_msg
+                )
+                continue
+
             # if the type of the parameter should be checked as well the entry
             # is a list instead of a string
             if isinstance(param, list):

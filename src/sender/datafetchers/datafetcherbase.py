@@ -81,29 +81,19 @@ class DataFetcherBase(Base, ABC):
         """
         super(DataFetcherBase, self).__init__()
 
-        self.config_all = config
-        self.config_df = self.config_all["datafetcher"]
-        self.df_type = self.config_df["data_fetcher_type"]
-        self.config = self.config_df[self.df_type]
-
-        self.fetcher_id = fetcher_id
-        self.context = context
-        self.cleaner_job_socket = None
-
         self.log_queue = log_queue
         self.log = utils.get_logger(logger_name, self.log_queue)
 
-        self.source_file = None
-        self.target_file = None
+        self.config_all = config
 
-        self.required_params = []
-
-        self.required_base_params = {
+        # base_barameters
+        self.required_params_base = {
             "network": [
                 "endpoints",
                 "main_pid"
             ],
             "datafetcher": [
+                "data_fetcher_type",
                 "chunksize",
                 "local_target",
                 ["remove_data", [True,
@@ -112,6 +102,37 @@ class DataFetcherBase(Base, ABC):
                                  "with_confirmation"]]
             ]
         }
+
+
+        # Check format of base config
+        self.config_reduced = self._check_config_base(
+            config=self.config_all,
+            required_params=self.required_params_base
+        )
+
+        # Check format of dependent config
+        self.config_df = self.config_all["datafetcher"]
+        self.df_type = self.config_df["data_fetcher_type"]
+        self.required_params_dep = {"datafetcher": [self.df_type]}
+
+        config_reduced_dep = self._check_config_base(
+            config=self.config_all,
+            required_params=[self.required_params_base,
+                             self.required_params_dep],
+        )
+
+        self.config_reduced.update(config_reduced_dep)
+
+        self.config = self.config_df[self.df_type]
+
+        self.fetcher_id = fetcher_id
+        self.context = context
+        self.cleaner_job_socket = None
+
+        self.source_file = None
+        self.target_file = None
+
+        self.required_params = []
 
         # to make sure the base parameters are checked even if the module does
         # not call the check_config method
@@ -129,38 +150,25 @@ class DataFetcherBase(Base, ABC):
                                 wrong parameteres.
         """
 
-        # combine paramerters which aare needed for all datafetchers with the
-        # specific ones for this fetcher
-#        required_params = self.required_base_params + self.required_params
+        if isinstance(self.required_params, list):
+            self.required_params = {
+                "datafetcher": {self.df_type: self.required_params}
+            }
 
-        # Check format of config
-        check_passed_base, config_reduced_base = utils.check_config(
-            self.required_base_params,
-            self.config_all,
-            self.log
+        config_reduced = self._check_config_base(
+            config=self.config_all,
+            required_params=[
+                self.required_params_base,
+                self.required_params_dep,
+                self.required_params
+            ],
         )
 
-        check_passed_module, config_reduced_module = utils.check_config(
-            self.required_params,
-            self.config,
-            self.log
-        )
+        self.config_reduced.update(config_reduced)
 
-        check_passed = check_passed_base and check_passed_module
-
-        if check_passed:
-            config_reduced = (
-                config_reduced_base[:-1] + config_reduced_module[1:]
-            )
-
-            if print_log:
-                self.log.info("Configuration for data fetcher: %s",
-                              config_reduced)
-
-        else:
-            # self.log.debug("config={}".format(self.config))
-            msg = "The configuration has missing or wrong parameters."
-            raise WrongConfiguration(msg)
+        if print_log:
+            self.log.info("Configuration for data fetcher %s: %s",
+                          self.df_type, self.config_reduced)
 
     def base_setup(self):
         """Sets up the shared components needed by all datafetchers.

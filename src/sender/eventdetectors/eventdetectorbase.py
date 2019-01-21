@@ -122,7 +122,6 @@ class EventDetectorBase(Base):
 
         self.config_reduced.update(config_reduced)
 
-        # Only proceed if the configuration was correct
         self.log.info("Configuration for event detector %s: %s",
                       self.ed_type, self.config_reduced)
 

@@ -54,7 +54,9 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Set up config
         self.cleaner_config = {
-            "main_pid": self.config["main_pid"]
+            "network": {
+                "main_pid": self.config["main_pid"]
+            }
         }
 
     def test_cleaner(self):

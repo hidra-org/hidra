@@ -52,18 +52,25 @@ class TestDataFetcher(DataFetcherTestBase):
         super(TestDataFetcher, self).setUp()
 
         # Set up config
-#        local_target = os.path.join(self.base_dir, "data", "target")
-
+        self.module_name = "file_fetcher"
         self.datafetcher_config = {
-            "context": self.context,
-            "remove_data": False,
-            "ipc_dir": self.config["ipc_dir"],
-            "main_pid": self.config["main_pid"],
-            "ext_ip": self.ext_ip,
-            "con_ip": self.con_ip,
-            "endpoints": self.config["endpoints"],
-            "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
-            "local_target": None
+            "network": {
+                "ipc_dir": self.config["ipc_dir"],
+                "main_pid": self.config["main_pid"],
+                "ext_ip": self.ext_ip,
+                "con_ip": self.con_ip,
+                "endpoints": self.config["endpoints"]
+            },
+            "datafetcher": {
+                "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
+                "store_data": False,
+                "remove_data": False,
+                "local_target": None,
+                "data_fetcher_type": self.module_name,
+                self.module_name: {
+                    "context": self.context,
+                }
+            }
         }
 
         self.cleaner_config = {

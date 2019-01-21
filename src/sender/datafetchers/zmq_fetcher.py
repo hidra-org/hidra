@@ -62,10 +62,11 @@ def get_tcp_addresses(config):
     """
 
     if utils.is_windows():
-        ext_ip = config["ext_ip"]
-        con_ip = config["con_ip"]
+        ext_ip = config["network"]["ext_ip"]
+        con_ip = config["network"]["con_ip"]
 
-        port = config["data_fetcher_port"]
+        df_type = config["datafetcher"]["data_fetcher_type"]
+        port = config["datafetcher"][df_type]["data_fetcher_port"]
         datafetch_bind = "{}:{}".format(ext_ip, port)
         datafetch_con = "{}:{}".format(con_ip, port)
 
@@ -95,7 +96,8 @@ def get_ipc_addresses(config):
     if utils.is_windows():
         addrs = None
     else:
-        ipc_ip = "{}/{}".format(config["ipc_dir"], config["main_pid"])
+        ipc_ip = "{}/{}".format(config["network"]["ipc_dir"],
+                                config["network"]["main_pid"])
 
         datafetch = "{}_{}".format(ipc_ip, "datafetch")
 
@@ -160,9 +162,12 @@ class DataFetcher(DataFetcherBase):
         self.endpoints = None
 
         if utils.is_windows():
-            self.required_params = ["ext_ip", "data_fetcher_port"]
+            self.required_params = {
+                "network": ["ext_ip"],
+                "datafetcher": {self.df_type: ["data_fetcher_port"]}
+            }
         else:
-            self.required_params = ["ipc_dir"]
+            self.required_params = {"network": ["ipc_dir"]}
 
         # check that the required_params are set inside of module specific
         # config
@@ -175,8 +180,8 @@ class DataFetcher(DataFetcherBase):
         Sets ZMQ endpoints and addresses and creates the ZMQ socket.
         """
 
-        self.ipc_addresses = get_ipc_addresses(config=self.config)
-        self.tcp_addresses = get_tcp_addresses(config=self.config)
+        self.ipc_addresses = get_ipc_addresses(config=self.config_all)
+        self.tcp_addresses = get_tcp_addresses(config=self.config_all)
         self.endpoints = get_endpoints(ipc_addresses=self.ipc_addresses,
                                        tcp_addresses=self.tcp_addresses)
 
@@ -204,8 +209,8 @@ class DataFetcher(DataFetcherBase):
             raise
 
         # TODO combine better with source_file... (for efficiency)
-        if self.config["local_target"]:
-            self.target_file = os.path.join(self.config["local_target"],
+        if self.config_df["local_target"]:
+            self.target_file = os.path.join(self.config_df["local_target"],
                                             self.source_file)
         else:
             self.target_file = None

@@ -69,10 +69,18 @@ class DataFetcher(DataFetcherBase):
         #   self.log_queue
         #   self.log
 
-        self.required_params = ["session",
-                                "store_data",
-                                "remove_data",
-                                "fix_subdirs"]
+        self.required_params = {
+            "datafetcher": [
+                "store_data",
+                "remove_data",
+                {
+                    self.df_type: {
+                        "session",
+                        "fix_subdirs"
+                    }
+                }
+            ]
+        }
 
         # check that the required_params are set inside of module specific
         # config
@@ -87,7 +95,7 @@ class DataFetcher(DataFetcherBase):
         self.config["session"] = requests.session()
         self.config["remove_flag"] = False
 
-        if self.config["remove_data"] == "with_confirmation":
+        if self.config_df["remove_data"] == "with_confirmation":
             self.finish = self.finish_with_cleaner
         else:
             self.finish = self.finish_without_cleaner
@@ -108,10 +116,10 @@ class DataFetcher(DataFetcherBase):
 
         # Build target file
         # if local_target is not set (== None) generate_filepath returns None
-        self.target_file = generate_filepath(self.config["local_target"],
+        self.target_file = generate_filepath(self.config_df["local_target"],
                                              metadata)
 
-        metadata["chunksize"] = self.config["chunksize"]
+        metadata["chunksize"] = self.config_df["chunksize"]
 
         if targets:
             try:
@@ -128,7 +136,7 @@ class DataFetcher(DataFetcherBase):
                 metadata["file_mod_time"] = time.time()
                 metadata["file_create_time"] = time.time()
                 metadata["confirmation_required"] = (
-                    self.config["remove_data"] == "with_confirmation"
+                    self.config_df["remove_data"] == "with_confirmation"
                 )
 
                 self.log.debug("metadata = %s", metadata)
@@ -164,7 +172,7 @@ class DataFetcher(DataFetcherBase):
                 if metadata["relative_path"].startswith(prefix):
                     fix_subdir_found = True
 
-                    prefix_dir = os.path.join(self.config["local_target"],
+                    prefix_dir = os.path.join(self.config_df["local_target"],
                                               prefix)
                     if not os.path.exists(prefix_dir):
                         msg = (
@@ -225,7 +233,7 @@ class DataFetcher(DataFetcherBase):
         file_closed = False
         file_send = True
 
-        if self.config["store_data"]:
+        if self.config_df["store_data"]:
             try:
                 self.log.debug("Opening '%s'...", self.target_file)
                 file_descriptor = open(self.target_file, "wb")
@@ -275,7 +283,7 @@ class DataFetcher(DataFetcherBase):
                                "'%s'", self.source_file,
                                exc_info=True)
 
-            if self.config["store_data"] and file_opened:
+            if self.config_df["store_data"] and file_opened:
                 try:
                     file_descriptor.write(data)
                     self.log.debug("Writing data for file '%s' (chunk %s)",
@@ -304,7 +312,7 @@ class DataFetcher(DataFetcherBase):
 
             chunk_number += 1
 
-        if self.config["store_data"] and file_opened:
+        if self.config_df["store_data"] and file_opened:
             try:
                 self.log.debug("Closing '%s'...", self.target_file)
                 file_descriptor.close()
@@ -385,7 +393,7 @@ class DataFetcher(DataFetcherBase):
         """
         # pylint: disable=unused-argument
 
-        if self.config["remove_data"] and self.config["remove_flag"]:
+        if self.config_df["remove_data"] and self.config["remove_flag"]:
             responce = requests.delete(self.source_file)
 
             try:

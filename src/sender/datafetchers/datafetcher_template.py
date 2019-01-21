@@ -87,7 +87,7 @@ class DataFetcher(DataFetcherBase):
 
         # Build target file
         # if local_target is not set (== None) generate_filepath returns None
-        self.target_file = generate_filepath(self.config["local_target"],
+        self.target_file = generate_filepath(self.config_df["local_target"],
                                              metadata)
 
         # Extends metadata
@@ -95,7 +95,7 @@ class DataFetcher(DataFetcherBase):
             metadata["filesize"] = 0
             metadata["file_mod_time"] = 1481734310.6207027
             metadata["file_create_time"] = 1481734310.6207028
-            metadata["chunksize"] = self.config["chunksize"]
+            metadata["chunksize"] = self.config_df["chunksize"]
 
     def send_data(self, targets, metadata, open_connections):
         """Implementation of the abstract method send_data.

@@ -187,7 +187,6 @@ def get_testing_suites():
 #    from datafetcher.test_file_fetcher import TestDataFetcher as TestFileFetcher  # noqa F401
 #    from datafetcher.test_http_fetcher import TestDataFetcher as TestHttpFetcher  # noqa F401
 #    from datafetcher.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
-#    from datafetcher.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
 #    from datafetcher.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
 #    from datafetcher.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
 #
