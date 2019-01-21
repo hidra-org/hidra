@@ -352,8 +352,7 @@ def change_user(config):
         # on windows (user change is not possible)
         user_info = start_user
     except Exception:
-        logging.error("Failed to set user to %s (uid %s)",
-                       self.params["username"], user_info.pw_uid)
+        logging.error("Failed to set user to %s", config["username"])
         raise
 
     return user_info, True

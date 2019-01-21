@@ -68,19 +68,28 @@ class TestDataDispatcher(TestBase):
         self.chunksize = 10485760  # = 1024*1024*10 = 10 MiB
 
         self.datadispatcher_config = {
-            "data_fetcher_type": "file_fetcher",
-            "fix_subdirs": ["commissioning", "current", "local"],
-            "store_data": False,
-            "remove_data": False,
-            "chunksize": self.chunksize,
-            "local_target": self.local_target,
-            "endpoints": self.config["endpoints"],
-            "main_pid": self.config["main_pid"],
+            "datafetcher": {
+                "data_fetcher_type": "file_fetcher",
+                "local_target": self.local_target,
+                "store_data": False,
+                "remove_data": False,
+                "chunksize": self.chunksize,
+                "file_fetcher": {
+                    "fix_subdirs": ["commissioning", "current", "local"],
+                    "store_data": False,
+                    "remove_data": False,
+                }
+            },
+            "network": {
+                "main_pid": self.config["main_pid"],
+                "endpoints": self.config["endpoints"],
+            },
+            "general": {}
         }
 
         self.receiving_ports = ["6005", "6006"]
 
-    def test_taskprovider(self):
+    def test_datadispatcher(self):
         """Simulate incoming data and check if received events are correct.
         """
 

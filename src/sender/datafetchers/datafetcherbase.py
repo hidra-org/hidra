@@ -159,7 +159,7 @@ class DataFetcherBase(Base, ABC):
 
         else:
             # self.log.debug("config={}".format(self.config))
-            msg = "The configuration has missing or wrong parameteres."
+            msg = "The configuration has missing or wrong parameters."
             raise WrongConfiguration(msg)
 
     def base_setup(self):

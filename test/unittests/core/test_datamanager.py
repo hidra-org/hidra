@@ -32,6 +32,7 @@ from __future__ import unicode_literals
 import json
 from multiprocessing import Process, freeze_support
 import os
+import pwd
 import time
 from shutil import copyfile
 import zmq
@@ -77,57 +78,67 @@ class TestDataManager(TestBase):
         self.config["fixed_recv"] = 50100
         self.config["receiving_ports"] = [50102, 50103]
 
+        fix_subdirs = ["commissioning/raw",
+                       "commissioning/scratch_bl",
+                       "current/raw",
+                       "current/scratch_bl",
+                       "local"]
         self.datamanager_config = {
-            'action_time': 10,
-            'chunksize': self.chunksize,
-            'cleaner_port': self.config["ports"]["cleaner"],
-            'cleaner_trigger_port': self.config["ports"]["cleaner_trigger"],
-            'com_port': self.config["ports"]["com"],
-            'config_file': '/home/kuhnm/projects/hidra/conf/datamanager.conf',
-            'confirmation_port': self.config["ports"]["confirmation"],
-            'confirmation_resp_port': 50012,
-            'control_pub_port': self.config["ports"]["control_pub"],
-            'control_sub_port': self.config["ports"]["control_sub"],
-            'create_fix_subdirs': False,
-            'data_fetcher_port': 50010,
-            'data_fetcher_type': 'file_fetcher',
-            'data_stream_targets': [[self.con_ip, self.config["fixed_recv"]]],
-            'det_api_version': '1.6.0',
-            'det_ip': 'asap3-mon',
-            'event_det_port': 50003,
-            'event_detector_type': 'inotifyx_events',
-            'ext_data_port': 50101,
-            'ext_ip': self.ext_ip,
-            'fix_subdirs': ['commissioning/raw',
-                            'commissioning/scratch_bl',
-                            'current/raw',
-                            'current/scratch_bl',
-                            'local'],
-            'history_size': 0,
-            'ldapuri': 'it-ldap-slave.desy.de:1389',
-            'local_target': '/home/kuhnm/projects/hidra/data/target',
-            'log_file': '/home/kuhnm/projects/hidra/logs/datamanager.log',
-            'log_name': 'datamanager.log',
-            'log_path': '/home/kuhnm/projects/hidra/logs',
-            'log_size': 10485760,
-            'monitored_dir': '/home/kuhnm/projects/hidra/data/source',
-            'monitored_events': {'IN_CLOSE_WRITE': ['']},
-            'number_of_streams': 1,
-            'onscreen': False,
-            'procname': 'hidra',
-            'remove_data': False,
-            'request_fw_port': self.config["ports"]["request_fw"],
-            'request_port': 50001,
-            'router_port': self.config["ports"]["router"],
-            'status_check_port': 50050,
-            'status_check_resp_port': 50011,
-            'store_data': False,
-            'time_till_closed': 2,
-            'use_cleanup': False,
-            'use_data_stream': True,
-            'username': 'hidrauser',
-            'verbose': False,
-            'whitelist': None
+            "general": {
+                "com_port": self.config["ports"]["com"],
+                "control_pub_port": self.config["ports"]["control_pub"],
+                "control_sub_port": self.config["ports"]["control_sub"],
+                "request_fw_port": self.config["ports"]["request_fw"],
+                "request_port": 50001,
+                "ext_ip": self.ext_ip,
+                "ldapuri": "it-ldap-slave.desy.de:1389",
+                "log_name": "datamanager.log",
+                "log_path": "/home/kuhnm/projects/hidra/logs",
+                "log_size": 10485760,
+                "onscreen": False,
+                "procname": "hidra",
+                "username": pwd.getpwuid(os.geteuid()).pw_name,
+                "verbose": False,
+                "whitelist": None
+            },
+            "eventdetector": {
+                "event_detector_type": "inotifyx_events",
+                "event_det_port": 50003,
+                "ext_data_port": 50101,
+                "inotifyx_events": {
+                    "monitored_dir": "/home/kuhnm/projects/hidra/data/source",
+                    "fix_subdirs": fix_subdirs,
+                    "create_fix_subdirs": False,
+                    "monitored_events": {"IN_CLOSE_WRITE": [""]},
+                    "use_cleanup": False,
+                    "history_size": 0,
+                    "action_time": 10,
+                    "time_till_closed": 2,
+                },
+            },
+            "datafetcher": {
+                "data_fetcher_type": "file_fetcher",
+                "chunksize": self.chunksize,
+                "data_stream_targets": [[self.con_ip, self.config["fixed_recv"]]],
+                "local_target": "/home/kuhnm/projects/hidra/data/target",
+                "use_data_stream": True,
+                "number_of_streams": 1,
+                "store_data": False,
+                "remove_data": False,
+                "cleaner_port": self.config["ports"]["cleaner"],
+                "cleaner_trigger_port": self.config["ports"]["cleaner_trigger"],
+                "confirmation_port": self.config["ports"]["confirmation"],
+                "confirmation_resp_port": 50012,
+                "data_fetcher_port": 50010,
+                "router_port": self.config["ports"]["router"],
+                "status_check_port": 50050,
+                "status_check_resp_port": 50011,
+                "file_fetcher": {
+                    "store_data": False,
+                    "remove_data": False,
+                    "fix_subdirs": fix_subdirs,
+                }
+            },
         }
 
         self.start = 100

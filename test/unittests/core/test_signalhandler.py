@@ -137,7 +137,9 @@ class TestSignalHandler(TestBase):
         self.chunksize = 10485760  # = 1024*1024*10 = 10 MiB
 
         general_config = {
-            "store_data": False
+            "datafetcher": {
+                "store_data": False
+            }
         }
 
         self.receiving_ports = [6005, 6006]
@@ -1751,7 +1753,7 @@ class TestSignalHandler(TestBase):
         for key, value in iteritems(self.signalhandler_config):
             config[key] = value
 
-        config["config"]["store_data"] = False
+        config["config"]["datafetcher"]["store_data"] = False
 
         # resetting QueueHandlers
         sighandler.log.handlers = []
@@ -1789,7 +1791,7 @@ class TestSignalHandler(TestBase):
         for key, value in iteritems(self.signalhandler_config):
             config[key] = value
 
-        config["config"]["store_data"] = True
+        config["config"]["datafetcher"]["store_data"] = True
 
         # resetting QueueHandlers
         sighandler.log.handlers = []
@@ -1891,7 +1893,7 @@ class TestSignalHandler(TestBase):
         for key, value in iteritems(self.signalhandler_config):
             config[key] = value
 
-        config["config"]["store_data"] = False
+        config["config"]["datafetcher"]["store_data"] = False
 
         # resetting QueueHandlers
         sighandler.log.handlers = []
@@ -1929,7 +1931,7 @@ class TestSignalHandler(TestBase):
         for key, value in iteritems(self.signalhandler_config):
             config[key] = value
 
-        config["config"]["store_data"] = True
+        config["config"]["datafetcher"]["store_data"] = True
 
         # resetting QueueHandlers
         sighandler.log.handlers = []

@@ -126,18 +126,22 @@ class TestTaskProvider(TestBase):
         create_dir(directory=ipc_dir, chmod=0o777)
 
         self.taskprovider_config = {
-            "event_detector_type": "inotifyx_events",
-            "monitored_dir": os.path.join(self.base_dir, "data", "source"),
-            "fix_subdirs": ["commissioning", "current", "local"],
-            "monitored_events": {
-                "IN_CLOSE_WRITE": [".tif", ".cbf"],
-                "IN_MOVED_TO": [".log"]
-            },
-            "timeout": 0.1,
-            "history_size": 0,
-            "use_cleanup": False,
-            "time_till_closed": 5,
-            "action_time": 120
+            "eventdetector": {
+                "event_detector_type": "inotifyx_events",
+                "inotifyx_events": {
+                    "monitored_dir": os.path.join(self.base_dir, "data", "source"),
+                    "fix_subdirs": ["commissioning", "current", "local"],
+                    "monitored_events": {
+                        "IN_CLOSE_WRITE": [".tif", ".cbf"],
+                        "IN_MOVED_TO": [".log"]
+                    },
+                    "timeout": 0.1,
+                    "history_size": 0,
+                    "use_cleanup": False,
+                    "time_till_closed": 5,
+                    "action_time": 120
+                }
+            }
         }
 
         self.start = 100

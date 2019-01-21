@@ -70,7 +70,7 @@ class DataFetcher(DataFetcherBase):
         self.is_windows = None
         self.finish = None
 
-        self.required_params = ["fix_subdirs", "store_data"]
+        self.required_params = ["fix_subdirs", "store_data", "remove_data"]
 
         # check that the required_params are set inside of module specific
         # config
