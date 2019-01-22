@@ -110,8 +110,8 @@ class TaskProvider(Base):
             self.ext_context = False
 
         self.log.info("Loading event detector: {}"
-                      .format(self.config["eventdetector"]["event_detector_type"]))
-        eventdetector_m = __import__(self.config["eventdetector"]["event_detector_type"])
+                      .format(self.config["eventdetector"]["eventdetector_type"]))
+        eventdetector_m = __import__(self.config["eventdetector"]["eventdetector_type"])
 
         self.eventdetector = eventdetector_m.EventDetector(self.config,
                                                            self.log_queue)

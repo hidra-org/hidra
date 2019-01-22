@@ -61,9 +61,9 @@ class TestEventDetector(EventDetectorTestBase):
             "fix_subdirs": ["local"],
             }
 
-        self.event_detector_config = {
+        self.eventdetector_config = {
             "eventdetector": {
-                "event_detector_type": self.module_name,
+                "eventdetector_type": self.module_name,
                 self.module_name: self.config_module
             }
         }
@@ -71,7 +71,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.target_base_path = "http://{}/data".format(
             socket.gethostbyname(self.config_module["det_ip"]))
 
-        self.eventdetector = EventDetector(self.event_detector_config,
+        self.eventdetector = EventDetector(self.eventdetector_config,
                                            self.log_queue)
 
     def test_eventdetector(self):

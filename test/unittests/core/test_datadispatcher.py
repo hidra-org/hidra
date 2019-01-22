@@ -69,7 +69,7 @@ class TestDataDispatcher(TestBase):
 
         self.datadispatcher_config = {
             "datafetcher": {
-                "data_fetcher_type": "file_fetcher",
+                "datafetcher_type": "file_fetcher",
                 "local_target": self.local_target,
                 "store_data": False,
                 "remove_data": False,

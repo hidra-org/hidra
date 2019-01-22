@@ -98,7 +98,7 @@ def get_endpoints(config, ipc_addresses):
     in_con = "tcp://{}:{}".format(con_ip, port)
 
     if utils.is_windows():
-        port = config["data_fetcher_port"]
+        port = config["datafetcher_port"]
         out_bind = "tcp://{}:{}".format(ext_ip, port)
         out_con = "tcp://{}:{}".format(con_ip, port)
 

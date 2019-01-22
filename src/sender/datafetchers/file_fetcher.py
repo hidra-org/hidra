@@ -274,13 +274,13 @@ class DataFetcher(DataFetcherBase):
                     self.target_file.split(subdir + os.sep)[0], subdir
                 )
 
-                if metadata["relative_path"] in self.config_all["event_detector"]["fix_subdirs"]:
+                if metadata["relative_path"] in self.config["fix_subdirs"]:
                     self.log.error("Unable to copy/move file '%s' to '%s': "
                                    "Directory %s is not available",
                                    self.source_file, self.target_file,
                                    metadata["relative_path"])
                     raise
-                elif (subdir in self.config_all["event_detector"]["fix_subdirs"]
+                elif (subdir in self.config["fix_subdirs"]
                       and not os.path.isdir(target_base_path)):
                     self.log.error("Unable to copy/move file '%s' to '%s': "
                                    "Directory %s is not available",

@@ -52,13 +52,13 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Set up config
         self.module_name = "file_fetcher"
-        self.data_fetcher_config = {
+        self.datafetcher_config = {
             "network": {
                 "main_pid": self.config["main_pid"],
                 "endpoints": self.config["endpoints"]
             },
             "datafetcher": {
-                "data_fetcher_type": self.module_name,
+                "datafetcher_type": self.module_name,
                 "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
                 "store_data": False,
                 "remove_data": False,
@@ -86,7 +86,7 @@ class TestDataFetcher(DataFetcherTestBase):
         """Simulate file fetching without taking care of confirmation signals.
         """
 
-        self.datafetcher = DataFetcher(config=self.data_fetcher_config,
+        self.datafetcher = DataFetcher(config=self.datafetcher_config,
                                        log_queue=self.log_queue,
                                        fetcher_id=0,
                                        context=self.context)
@@ -144,7 +144,7 @@ class TestDataFetcher(DataFetcherTestBase):
         """Simulate file fetching while taking care of confirmation signals.
         """
 
-        self.datafetcher = DataFetcher(config=self.data_fetcher_config,
+        self.datafetcher = DataFetcher(config=self.datafetcher_config,
                                        log_queue=self.log_queue,
                                        fetcher_id=0,
                                        context=self.context)

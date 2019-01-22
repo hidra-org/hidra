@@ -20,8 +20,8 @@ python $BASEDIR/src/sender/datamanager.py \
     --monitored_dir $BASEDIR/data/source \
     --local_target $BASEDIR/data/target/local \
     --ext_ip 0.0.0.0 \
-    --event_detector_type http_events \
-    --data_fetcher_type http_fetcher \
+    --eventdetector_type http_events \
+    --datafetcher_type http_fetcher \
     --det_ip 131.169.55.170 \
     --det_api_version 1.5.0 \
     --history_size 2\

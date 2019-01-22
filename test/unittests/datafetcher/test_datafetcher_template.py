@@ -58,7 +58,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "main_pid": self.config["main_pid"]
             },
             "datafetcher": {
-                "data_fetcher_type": self.module_name,
+                "datafetcher_type": self.module_name,
                 "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
                 "local_target": None,
                 "remove_data": False,

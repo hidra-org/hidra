@@ -70,9 +70,9 @@ class TestEventDetector(EventDetectorTestBase):
             "action_time": 1  # in s
         }
 
-        self.event_detector_config = {
+        self.eventdetector_config = {
             "eventdetector": {
-                "event_detector_type": self.module_name,
+                "eventdetector_type": self.module_name,
                 self.module_name: self.config_module
             }
         }
@@ -101,7 +101,7 @@ class TestEventDetector(EventDetectorTestBase):
     def _start_eventdetector(self):
         """Sets up the event detector.
         """
-        self.eventdetector = EventDetector(self.event_detector_config,
+        self.eventdetector = EventDetector(self.eventdetector_config,
                                            self.log_queue)
 
     def test_single_file(self):

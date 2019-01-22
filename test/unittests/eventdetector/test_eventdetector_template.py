@@ -47,9 +47,9 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.module_name = "eventdetector_template"
 
-        self.event_detector_config = {
+        self.eventdetector_config = {
             "eventdetector": {
-                "event_detector_type": self.module_name,
+                "eventdetector_type": self.module_name,
                 self.module_name: {}
             }
         }
@@ -57,7 +57,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.start = 100
         self.stop = 101
 
-        self.eventdetector = EventDetector(self.event_detector_config,
+        self.eventdetector = EventDetector(self.eventdetector_config,
                                            self.log_queue)
 
     def test_eventdetector(self):

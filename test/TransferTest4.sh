@@ -19,8 +19,8 @@ python $BASEDIR/src/sender/datamanager.py \
     --monitored_dir $BASEDIR/data/source \
     --local_target $BASEDIR/data/target \
     --ext_ip 0.0.0.0 \
-    --event_detector_type inotifyx_events \
-    --data_fetcher_type file_fetcher \
+    --eventdetector_type inotifyx_events \
+    --datafetcher_type file_fetcher \
     --use_data_stream False \
     --store_data True \
     --remove_data True \

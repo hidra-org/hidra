@@ -167,7 +167,7 @@ def map_conf_format(flat_config, is_namespace=False):
             "onscreen": "onscreen"
         },
         "eventdetector": {
-            "event_detector_type": "event_detector_type",
+            "eventdetector_type": "eventdetector_type",
             "ext_data_port": "ext_data_port",
             "event_det_port": "event_det_port",
             "dirs_not_to_create": "dirs_not_to_create",
@@ -214,8 +214,8 @@ def map_conf_format(flat_config, is_namespace=False):
             }
         },
         "datafetcher": {
-            "data_fetcher_type": "data_fetcher_type",
-            "data_fetcher_port": "data_fetcher_port",
+            "datafetcher_type": "datafetcher_type",
+            "datafetcher_port": "datafetcher_port",
             "status_check_port": "status_check_port",
             "status_check_resp_port": "status_check_resp_port",
             "confirmation_port": "confirmation_port",

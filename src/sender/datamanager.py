@@ -156,7 +156,7 @@ def argument_parsing():
 
     # EventDetector config
 
-    parser.add_argument("--event_detector_type",
+    parser.add_argument("--eventdetector_type",
                         type=str,
                         help="Type of event detector to use")
     parser.add_argument("--fix_subdirs",
@@ -202,41 +202,41 @@ def argument_parsing():
     parser.add_argument("--action_time",
                         type=float,
                         help="Intervall time (in seconds) used for clea nup "
-                             "(only needed if event_detector_type is "
+                             "(only needed if eventdetector_type is "
                              "inotifyx_events)")
 
     parser.add_argument("--time_till_closed",
                         type=float,
                         help="Time (in seconds) since last modification after "
                              "which a file will be seen as closed (only "
-                             "needed if event_detector_type is "
+                             "needed if eventdetector_type is "
                              "inotifyx_events (for clean up) or "
                              "watchdog_events)")
 
     parser.add_argument("--event_det_port",
                         type=str,
                         help="ZMQ port to get events from (only needed if "
-                             "event_detector_type is zmq_events)")
+                             "eventdetector_type is zmq_events)")
 
     parser.add_argument("--det_ip",
                         type=str,
                         help="IP of the detector (only needed if "
-                             "event_detector_type is http_events)")
+                             "eventdetector_type is http_events)")
     parser.add_argument("--det_api_version",
                         type=str,
                         help="API version of the detector (only needed "
-                             "if event_detector_type is http_events)")
+                             "if eventdetector_type is http_events)")
 
     # DataFetcher config
 
-    parser.add_argument("--data_fetcher_type",
+    parser.add_argument("--datafetcher_type",
                         type=str,
                         help="Module with methods specifying how to get the "
                              "data)")
-    parser.add_argument("--data_fetcher_port",
+    parser.add_argument("--datafetcher_port",
                         type=str,
                         help="If 'zmq_fetcher' is specified as "
-                             "data_fetcher_type it needs a port to listen to)")
+                             "datafetcher_type it needs a port to listen to)")
 
     parser.add_argument("--use_data_stream",
                         help="Enable ZMQ pipe into storage system (if set to "
@@ -266,12 +266,12 @@ def argument_parsing():
 
     parser.add_argument("--store_data",
                         help="Flag describing if the data should be stored in "
-                             "local_target (needed if data_fetcher_type is "
+                             "local_target (needed if datafetcher_type is "
                              "file_fetcher or http_fetcher)",
                         choices=["True", "False"])
     parser.add_argument("--remove_data",
                         help="Flag describing if the files should be removed "
-                             "from the source (needed if data_fetcher_type is "
+                             "from the source (needed if datafetcher_type is "
                              "file_fetcher or http_fetcher)",
                         choices=["True",
                                  "False",
@@ -318,10 +318,10 @@ def argument_parsing():
             "ext_ip"
         ],
         "eventdetector": [
-            "event_detector_type",
+            "eventdetector_type",
         ],
         "datafetcher": [
-            "data_fetcher_type",
+            "datafetcher_type",
             "chunksize",
             "use_data_stream",
             "store_data",
@@ -342,20 +342,20 @@ def argument_parsing():
     config_gen = config["general"]
     config_ed = config["eventdetector"]
     config_df = config["datafetcher"]
-    eventdetector_type = config_ed["event_detector_type"]
-    datafetcher_type = config_df["data_fetcher_type"]
+    eventdetector_type = config_ed["eventdetector_type"]
+    datafetcher_type = config_df["datafetcher_type"]
 
     # check if logfile is writable
     config_gen["log_file"] = os.path.join(config_gen["log_path"],
                                           config_gen["log_name"])
     utils.check_writable(config_gen["log_file"])
 
-    # check if the event_detector_type is supported
+    # check if the eventdetector_type is supported
     utils.check_type(eventdetector_type,
                      supported_ed_types,
                      "Event detector")
 
-    # check if the data_fetcher_type is supported
+    # check if the datafetcher_type is supported
     utils.check_type(datafetcher_type,
                      supported_df_types,
                      "Data fetcher")
@@ -1014,8 +1014,8 @@ class DataManager(Base):
         # Cleaner
         if self.use_cleaner:
             self.log.info("Loading cleaner from data fetcher module: {}"
-                          .format(self.config["datafetcher"]["data_fetcher_type"]))
-            self.cleaner_m = __import__(self.config["datafetcher"]["data_fetcher_type"])
+                          .format(self.config["datafetcher"]["datafetcher_type"]))
+            self.cleaner_m = __import__(self.config["datafetcher"]["datafetcher_type"])
 
             self.cleaner_pr = Process(
                 target=self.cleaner_m.Cleaner,
@@ -1026,7 +1026,7 @@ class DataManager(Base):
             self.cleaner_pr.start()
 
         self.log.info("Configured Type of data fetcher: {}"
-                      .format(self.config["datafetcher"]["data_fetcher_type"]))
+                      .format(self.config["datafetcher"]["datafetcher_type"]))
 
         # DataDispatcher
         for i in range(self.number_of_streams):

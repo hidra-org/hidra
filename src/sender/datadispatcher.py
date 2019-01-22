@@ -130,8 +130,8 @@ class DataDispatcher(Base):
                 self.config["context"] = self.context
 
         self.log.info("Loading data fetcher: %s",
-                      self.config_df["data_fetcher_type"])
-        datafetcher_m = __import__(self.config_df["data_fetcher_type"])
+                      self.config_df["datafetcher_type"])
+        datafetcher_m = __import__(self.config_df["datafetcher_type"])
 
         self.datafetcher = datafetcher_m.DataFetcher(self.config_all,
                                                      self.log_queue,

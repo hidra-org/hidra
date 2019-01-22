@@ -47,7 +47,7 @@ class TestEventDetector(EventDetectorTestBase):
                 "con_ip": self.con_ip,
             },
             "eventdetector": {
-                "event_detector_type": self.module_name,
+                "eventdetector_type": self.module_name,
                 self.module_name: {
                     "ext_data_port": "50100"
                 }

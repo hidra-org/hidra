@@ -66,7 +66,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "store_data": False,
                 "remove_data": False,
                 "local_target": None,
-                "data_fetcher_type": self.module_name,
+                "datafetcher_type": self.module_name,
                 self.module_name: {
                     "context": self.context,
                 }

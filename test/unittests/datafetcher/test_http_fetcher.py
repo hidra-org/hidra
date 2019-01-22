@@ -49,7 +49,7 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Set up config
         self.module_name = "http_fetcher"
-        self.data_fetcher_config = {
+        self.datafetcher_config = {
             "network": {
                 "ipc_dir": self.config["ipc_dir"],
                 "main_pid": self.config["main_pid"],
@@ -60,7 +60,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "remove_data": False,
                 "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
                 "local_target": os.path.join(self.base_dir, "data", "target"),
-                "data_fetcher_type": self.module_name,
+                "datafetcher_type": self.module_name,
                 self.module_name: {
                     "session": None,
                     "fix_subdirs": ["commissioning", "current", "local"],
@@ -78,7 +78,7 @@ class TestDataFetcher(DataFetcherTestBase):
         """Simulate file fetching without taking care of confirmation signals.
         """
 
-        datafetcher = DataFetcher(config=self.data_fetcher_config,
+        datafetcher = DataFetcher(config=self.datafetcher_config,
                                   log_queue=self.log_queue,
                                   fetcher_id=0,
                                   context=self.context)

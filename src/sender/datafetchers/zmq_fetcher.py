@@ -65,8 +65,8 @@ def get_tcp_addresses(config):
         ext_ip = config["network"]["ext_ip"]
         con_ip = config["network"]["con_ip"]
 
-        df_type = config["datafetcher"]["data_fetcher_type"]
-        port = config["datafetcher"][df_type]["data_fetcher_port"]
+        df_type = config["datafetcher"]["datafetcher_type"]
+        port = config["datafetcher"][df_type]["datafetcher_port"]
         datafetch_bind = "{}:{}".format(ext_ip, port)
         datafetch_con = "{}:{}".format(con_ip, port)
 
@@ -164,7 +164,7 @@ class DataFetcher(DataFetcherBase):
         if utils.is_windows():
             self.required_params = {
                 "network": ["ext_ip"],
-                "datafetcher": {self.df_type: ["data_fetcher_port"]}
+                "datafetcher": {self.df_type: ["datafetcher_port"]}
             }
         else:
             self.required_params = {"network": ["ipc_dir"]}

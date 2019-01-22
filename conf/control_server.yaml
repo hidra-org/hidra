@@ -31,11 +31,11 @@ hidraconfig_static:
     use_data_stream: False
     chunksize: 10485760
 
-    event_detector_type: http_events
-    data_fetcher_type: http_fetcher
+    eventdetector_type: http_events
+    datafetcher_type: http_fetcher
 
-    # event_detector_type: inotifyx_events
-    # data_fetcher_type: file_fetcher
+    # eventdetector_type: inotifyx_events
+    # datafetcher_type: file_fetcher
     # monitored_dir: /home/kuhnm/projects/hidra/data/source
     # monitored_events:
     #     IN_CLOSE_WRITE :

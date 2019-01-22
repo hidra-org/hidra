@@ -461,8 +461,8 @@ class HidraController(object):
                     f.write("{} = {}\n".format(key, value))
 
             config_static = self.config["hidraconfig_static"]
-            eventdetector = config_static["event_detector_type"]
-            datafetcher = config_static["data_fetcher_type"]
+            eventdetector = config_static["eventdetector_type"]
+            datafetcher = config_static["datafetcher_type"]
             self.log.info(
                 "Started withdd ext_ip: %s, event detector: %s, "
                 "data fetcher: %s",

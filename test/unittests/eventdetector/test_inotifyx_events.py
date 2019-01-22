@@ -72,7 +72,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.eventdetector_config = {
             "eventdetector": {
-                "event_detector_type": self.module_name,
+                "eventdetector_type": self.module_name,
                 self.module_name: config_module
             }
         }

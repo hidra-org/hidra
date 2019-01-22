@@ -74,7 +74,7 @@ class EventDetectorBase(Base):
         self.config_all = config
 
         # base_barameters
-        self.required_params_base = {"eventdetector": ["event_detector_type"]}
+        self.required_params_base = {"eventdetector": ["eventdetector_type"]}
 
         # Check format of base config
         self.config_reduced = self._check_config_base(
@@ -84,7 +84,7 @@ class EventDetectorBase(Base):
 
         # Check format of dependent config
         self.config_ed = self.config_all["eventdetector"]
-        self.ed_type = self.config_ed["event_detector_type"]
+        self.ed_type = self.config_ed["eventdetector_type"]
         self.required_params_dep = {"eventdetector": [self.ed_type]}
 
         config_reduced_dep = self._check_config_base(

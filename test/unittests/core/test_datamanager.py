@@ -102,7 +102,7 @@ class TestDataManager(TestBase):
                 "whitelist": None
             },
             "eventdetector": {
-                "event_detector_type": "inotifyx_events",
+                "eventdetector_type": "inotifyx_events",
                 "event_det_port": 50003,
                 "ext_data_port": 50101,
                 "inotifyx_events": {
@@ -117,7 +117,7 @@ class TestDataManager(TestBase):
                 },
             },
             "datafetcher": {
-                "data_fetcher_type": "file_fetcher",
+                "datafetcher_type": "file_fetcher",
                 "chunksize": self.chunksize,
                 "data_stream_targets": [[self.con_ip, self.config["fixed_recv"]]],
                 "local_target": "/home/kuhnm/projects/hidra/data/target",
@@ -129,7 +129,7 @@ class TestDataManager(TestBase):
                 "cleaner_trigger_port": self.config["ports"]["cleaner_trigger"],
                 "confirmation_port": self.config["ports"]["confirmation"],
                 "confirmation_resp_port": 50012,
-                "data_fetcher_port": 50010,
+                "datafetcher_port": 50010,
                 "router_port": self.config["ports"]["router"],
                 "status_check_port": 50050,
                 "status_check_resp_port": 50011,

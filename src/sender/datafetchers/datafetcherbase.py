@@ -93,7 +93,7 @@ class DataFetcherBase(Base, ABC):
                 "main_pid"
             ],
             "datafetcher": [
-                "data_fetcher_type",
+                "datafetcher_type",
                 "chunksize",
                 "local_target",
                 ["remove_data", [True,
@@ -112,7 +112,7 @@ class DataFetcherBase(Base, ABC):
 
         # Check format of dependent config
         self.config_df = self.config_all["datafetcher"]
-        self.df_type = self.config_df["data_fetcher_type"]
+        self.df_type = self.config_df["datafetcher_type"]
         self.required_params_dep = {"datafetcher": [self.df_type]}
 
         config_reduced_dep = self._check_config_base(

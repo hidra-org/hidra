@@ -52,7 +52,7 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Set up config
         self.module_name = "hidra_fetcher"
-        self.data_fetcher_config = {
+        self.datafetcher_config = {
             "network": {
                 "ipc_dir": self.config["ipc_dir"],
                 "main_pid": self.config["main_pid"],
@@ -60,7 +60,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "ext_ip": self.ext_ip,
             },
             "datafetcher": {
-                "data_fetcher_type": self.module_name,
+                "datafetcher_type": self.module_name,
                 "store_data": False,
                 "remove_data": False,
                 "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
@@ -95,7 +95,7 @@ class TestDataFetcher(DataFetcherTestBase):
         # mock check_config to be able to enable print_log
         with mock.patch("hidra_fetcher.DataFetcher.check_config"):
             with mock.patch("hidra_fetcher.DataFetcher._setup"):
-                self.datafetcher = DataFetcher(config=self.data_fetcher_config,
+                self.datafetcher = DataFetcher(config=self.datafetcher_config,
                                                log_queue=self.log_queue,
                                                fetcher_id=0,
                                                context=self.context)
@@ -128,7 +128,7 @@ class TestDataFetcher(DataFetcherTestBase):
                                            "test_files",
                                            "test_file.cbf")
 
-        config_df = self.data_fetcher_config["datafetcher"]
+        config_df = self.datafetcher_config["datafetcher"]
         metadata = {
             "source_path": os.path.join(self.base_dir, "data", "source"),
             "relative_path": os.sep + "local",

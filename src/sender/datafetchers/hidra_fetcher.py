@@ -98,7 +98,7 @@ class DataFetcher(DataFetcherBase):
                      "context"]
 
         if utils.is_windows():
-            df_params += ["data_fetcher_port"]
+            df_params += ["datafetcher_port"]
         else:
             self.required_params["network"] += ["ipc_dir", "main_pid"]
 

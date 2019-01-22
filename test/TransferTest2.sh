@@ -18,8 +18,8 @@ python $BASEDIR/src/sender/datamanager.py \
     --monitored_dir $BASEDIR/data/source \
     --local_target $BASEDIR/data/target \
     --ext_ip 0.0.0.0 \
-    --event_detector_type watchdog_events \
-    --data_fetcher_type file_fetcher \
+    --eventdetector_type watchdog_events \
+    --datafetcher_type file_fetcher \
     --action_time 2 \
     --time_till_closed 1 \
     --use_data_stream False \
