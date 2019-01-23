@@ -169,7 +169,7 @@ def map_conf_format(flat_config, is_namespace=False):
         "eventdetector": {
             "eventdetector_type": "eventdetector_type",
             "ext_data_port": "ext_data_port",
-            "event_det_port": "event_det_port",
+            "eventdetector_port": "eventdetector_port",
             "dirs_not_to_create": "dirs_not_to_create",
             "inotify_events": {
                 "monitored_dir": "monitored_dir",

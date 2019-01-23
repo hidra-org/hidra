@@ -102,7 +102,7 @@ def get_endpoints(config, ipc_addresses):
         out_bind = "tcp://{}:{}".format(ext_ip, port)
         out_con = "tcp://{}:{}".format(con_ip, port)
 
-        port = config["event_det_port"]
+        port = config["eventdetector_port"]
         mon_bind = "tcp://{}:{}".format(ext_ip, port)
         mon_con = "tcp://{}:{}".format(con_ip, port)
     else:
@@ -219,7 +219,7 @@ class EventDetector(EventDetectorBase):
 
 #        self.required_params = ["context", "ext_ip", "con_ip", "ext_data_port"]
 #        if utils.is_windows():
-#            self.required_params += ["event_det_port", "data_fetch_port"]
+#            self.required_params += ["eventdetector_port", "datafetcher_port"]
 #        else:
 #            self.required_params += ["ipc_dir", "main_pid"]
 
@@ -231,7 +231,7 @@ class EventDetector(EventDetectorBase):
 
         if utils.is_windows():
             ed_params = self.required_params["eventdetector"][self.ed_type]
-            ed_params += ["event_det_port", "data_fetch_port"]
+            ed_params += ["eventdetector_port", "datafetcher_port"]
         else:
             self.required_params["network"] += ["ipc_dir", "main_pid"]
 

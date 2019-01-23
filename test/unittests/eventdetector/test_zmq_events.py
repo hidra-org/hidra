@@ -69,7 +69,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.module_name = "zmq_events"
         self.config_module = {
             "number_of_streams": 1,
-            "event_det_port": 50003,
+            "eventdetector_port": 50003,
         }
         # needed for later reuse
         self.conf_structure = {
@@ -175,7 +175,7 @@ class TestEventDetector(EventDetectorTestBase):
             ref_config = {
                 "general": {
                     "ext_ip": None,
-                    "event_det_port": None,
+                    "eventdetector_port": None,
                 },
                 "eventdetector": {
                     "zmq_events": {
@@ -198,7 +198,7 @@ class TestEventDetector(EventDetectorTestBase):
                 "ext_ip": self.ext_ip,
             },
             "eventdetector": {
-                self.module_name: {"event_det_port": 50003}
+                self.module_name: {"eventdetector_port": 50003}
             }
         }
 
@@ -214,7 +214,7 @@ class TestEventDetector(EventDetectorTestBase):
             mock_is_windows.return_value = True
 
             addrs = zmq_events.get_tcp_addresses(config)
-            port = config["eventdetector"][self.module_name]["event_det_port"]
+            port = config["eventdetector"][self.module_name]["eventdetector_port"]
 
             self.assertIsInstance(addrs, zmq_events.TcpAddresses)
             self.assertEqual(addrs.eventdet_bind,
@@ -290,7 +290,7 @@ class TestEventDetector(EventDetectorTestBase):
             "ipc_dir": self.config["ipc_dir"],
             "con_ip": self.con_ip,
             "ext_ip": self.ext_ip,
-            "event_det_port": 50003,
+            "eventdetector_port": 50003,
             "main_pid": self.config["main_pid"]
         }
 

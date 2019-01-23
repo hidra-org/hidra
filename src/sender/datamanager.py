@@ -213,7 +213,7 @@ def argument_parsing():
                              "inotifyx_events (for clean up) or "
                              "watchdog_events)")
 
-    parser.add_argument("--event_det_port",
+    parser.add_argument("--eventdetector_port",
                         type=str,
                         help="ZMQ port to get events from (only needed if "
                              "eventdetector_type is zmq_events)")

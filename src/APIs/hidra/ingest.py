@@ -62,8 +62,8 @@ class Ingest(Base):
 
         self.signal_host = None
         self.signal_port = None
-        self.event_det_port = None
-        self.data_fetch_port = None
+        self.eventdetector_port = None
+        self.datafetcher_port = None
 
         self.signal_endpoint = None
         self.eventdet_endpoint = None
@@ -133,11 +133,11 @@ class Ingest(Base):
         self.signal_port = "50050"
 
         # has to be the same port as configured in the configuration file
-        # as event_det_port
-        self.event_det_port = "50003"
+        # as eventdetector_port
+        self.eventdetector_port = "50003"
         # has to be the same port as configured in the configuration file
         # as ...
-        self.data_fetch_port = "50010"
+        self.datafetcher_port = "50010"
 
         self.signal_endpoint = "tcp://{}:{}".format(self.signal_host,
                                                     self.signal_port)
@@ -145,10 +145,10 @@ class Ingest(Base):
         if is_windows():
             self.log.info("Using tcp for internal communication.")
             self.eventdet_endpoint = "tcp://{}:{}".format(self.localhost,
-                                                          self.event_det_port)
+                                                          self.eventdetector_port)
             self.datafetch_endpoint = ("tcp://{}:{}"
                                        .format(self.localhost,
-                                               self.data_fetch_port))
+                                               self.datafetcher_port))
         else:
             self.log.info("Using ipc for internal communication.")
             self.eventdet_endpoint = "ipc://{}/{}".format(self.ipc_dir,

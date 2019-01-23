@@ -103,7 +103,7 @@ class TestDataManager(TestBase):
             },
             "eventdetector": {
                 "eventdetector_type": "inotifyx_events",
-                "event_det_port": 50003,
+                "eventdetector_port": 50003,
                 "ext_data_port": 50101,
                 "inotifyx_events": {
                     "monitored_dir": "/home/kuhnm/projects/hidra/data/source",

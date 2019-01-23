@@ -63,7 +63,7 @@ def get_tcp_addresses(config):
         ext_ip = config["network"]["ext_ip"]
         con_ip = config["network"]["con_ip"]
 
-        port = config["eventdetector"]["zmq_events"]["event_det_port"]
+        port = config["eventdetector"]["zmq_events"]["eventdetector_port"]
         eventdet_bind = "{}:{}".format(ext_ip, port)
         eventdet_con = "{}:{}".format(con_ip, port)
 
@@ -136,9 +136,9 @@ def get_endpoints(ipc_addresses, tcp_addresses):
 # def get_addresses(config):
 #    if not utils.is_windows():
 #        eventdet_bind = "{}:{}".format(config["ext_ip"],
-#                                       config["event_det_port"]),
+#                                       config["eventdetector_port"]),
 #        eventdet_con = "{}:{}".formau(config["con_ip"],
-#                                      config["event_det_port"]),
+#                                      config["eventdetector_port"]),
 #    else:
 #        ipc_ip = "{}/{}".format(config["ipc_dir"],
 #                                config["main_pid"])
@@ -228,7 +228,7 @@ class EventDetector(EventDetectorBase):
             self.required_params["network"] += ["ext_ip"]
 
             ed_params = self.required_params["eventdetector"][self.ed_type]
-            ed_params += ["event_det_port"]
+            ed_params += ["eventdetector_port"]
         else:
             self.required_params["network"] += ["ipc_dir", "main_pid"]
 
