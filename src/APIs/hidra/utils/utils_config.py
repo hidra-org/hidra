@@ -282,6 +282,22 @@ def map_conf_format(flat_config, is_namespace=False):
         is_flat = "general" not in flat_config
 
         if is_flat:
+
+            # fix backwards compatibility to version 4.0.16
+            attr_to_change = [
+                ("event_detector", "eventdetector"),
+                ("event_detector_type", "eventdetector_type"),
+                ("event_det_port", "eventdetector_port"),
+                ("data_fetcher", "datafetcher"),
+                ("data_fetcher_type", "datafetcher_type"),
+                ("data_fetcher_port", "datafetcher_port")
+            ]
+
+            for old, new in attr_to_change:
+                if old in flat_config:
+                    flat_config[new] = copy.deepcopy(flat_config[old])
+                    del flat_config[new]
+
             config = copy.deepcopy(mapping)
             _traverse_dict(config)
         else:
