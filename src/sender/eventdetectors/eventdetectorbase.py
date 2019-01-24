@@ -73,8 +73,28 @@ class EventDetectorBase(Base):
 
         self.config_all = config
 
-        # base_barameters
+        # base_parameters
         self.required_params_base = {"eventdetector": ["eventdetector_type"]}
+
+        self.required_params_dep = {}
+        self.config_reduced = {}
+        self._base_check(module_class="eventdetector",
+                         module_type="eventdetector_type")
+
+        self.config_ed = self.config_all["eventdetector"]
+        self.ed_type = self.config_ed["eventdetector_type"]
+        self.config = self.config_ed[self.ed_type]
+
+        self.required_params = []
+
+    def _base_check(self, module_class, module_type):
+        """
+        eg. module_class is eventdetector and module_type is
+            eventdetector_type
+        """
+
+        # base_parameters
+        self.required_params_base = {module_class: [module_type]}
 
         # Check format of base config
         self.config_reduced = self._check_config_base(
@@ -83,9 +103,9 @@ class EventDetectorBase(Base):
         )
 
         # Check format of dependent config
-        self.config_ed = self.config_all["eventdetector"]
-        self.ed_type = self.config_ed["eventdetector_type"]
-        self.required_params_dep = {"eventdetector": [self.ed_type]}
+        self.required_params_dep = {
+            module_class: [self.config_all[module_class][module_type]]
+        }
 
         config_reduced_dep = self._check_config_base(
             config=self.config_all,
@@ -94,9 +114,6 @@ class EventDetectorBase(Base):
         )
 
         self.config_reduced.update(config_reduced_dep)
-
-        self.config = self.config_ed[self.ed_type]
-        self.required_params = []
 
     def check_config(self):
         """Check that the configuration containes the nessessary parameters.

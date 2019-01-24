@@ -47,6 +47,35 @@ class Base(object):
         self.log = None
         self.context = None
 
+        self.required_params_base = {}
+        self.required_params_dep = {}
+        self.config_reduced = {}
+
+    def _base_check(self, module_class, module_type):
+        """
+        eg. module_class is eventdetector and module_type is
+            eventdetector_type
+        """
+
+        # Check format of base config
+        self.config_reduced = self._check_config_base(
+            config=self.config_all,
+            required_params=self.required_params_base
+        )
+
+        # Check format of dependent config
+        self.required_params_dep = {
+            module_class: [self.config_all[module_class][module_type]]
+        }
+
+        config_reduced_dep = self._check_config_base(
+            config=self.config_all,
+            required_params=[self.required_params_base,
+                             self.required_params_dep],
+        )
+
+        self.config_reduced.update(config_reduced_dep)
+
     def _check_config_base(self, config, required_params):
         """
         Check a list of required parameters (in order) and if successful

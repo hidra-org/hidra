@@ -86,7 +86,7 @@ class DataFetcherBase(Base, ABC):
 
         self.config_all = config
 
-        # base_barameters
+        # base_parameters
         self.required_params_base = {
             "network": [
                 "endpoints",
@@ -103,26 +103,13 @@ class DataFetcherBase(Base, ABC):
             ]
         }
 
+        self.required_params_dep = {}
+        self.config_reduced = {}
+        self._base_check(module_class="datafetcher",
+                         module_type="datafetcher_type")
 
-        # Check format of base config
-        self.config_reduced = self._check_config_base(
-            config=self.config_all,
-            required_params=self.required_params_base
-        )
-
-        # Check format of dependent config
         self.config_df = self.config_all["datafetcher"]
         self.df_type = self.config_df["datafetcher_type"]
-        self.required_params_dep = {"datafetcher": [self.df_type]}
-
-        config_reduced_dep = self._check_config_base(
-            config=self.config_all,
-            required_params=[self.required_params_base,
-                             self.required_params_dep],
-        )
-
-        self.config_reduced.update(config_reduced_dep)
-
         self.config = self.config_df[self.df_type]
 
         self.fetcher_id = fetcher_id
