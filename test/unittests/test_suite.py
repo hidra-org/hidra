@@ -99,7 +99,7 @@ def get_datafetcher_suites():
     for _, modname, _ in pkgutil.iter_modules(datafetcher.__path__):
         # the base class not a test module
         # TODO exclude test_http_fetcher only temporarily till bug is fixed
-        if modname in ["test_http_fetcher"] and not modname.startswith("test"):
+        if modname in ["test_http_fetcher"] or not modname.startswith("test"):
             continue
 
         # load the test suite
