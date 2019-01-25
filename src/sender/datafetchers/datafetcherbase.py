@@ -110,7 +110,10 @@ class DataFetcherBase(Base, ABC):
 
         self.config_df = self.config_all["datafetcher"]
         self.df_type = self.config_df["datafetcher_type"]
-        self.config = self.config_df[self.df_type]
+        if self.required_params_dep:
+            self.config = self.config_df[self.df_type]
+        else:
+            self.config = {}
 
         self.fetcher_id = fetcher_id
         self.context = context
@@ -121,12 +124,9 @@ class DataFetcherBase(Base, ABC):
 
         self.required_params = []
 
-        # to make sure the base parameters are checked even if the module does
-        # not call the check_config method
-        self.check_config(print_log=False)
         self.base_setup()
 
-    def check_config(self, print_log=False):
+    def check_config(self, print_log=False, check_module_config=True):
         """Check that the configuration containes the nessessary parameters.
 
         Args:
@@ -142,13 +142,20 @@ class DataFetcherBase(Base, ABC):
                 "datafetcher": {self.df_type: self.required_params}
             }
 
-        config_reduced = self._check_config_base(
-            config=self.config_all,
+        if check_module_config:
             required_params=[
                 self.required_params_base,
                 self.required_params_dep,
                 self.required_params
-            ],
+            ]
+        else:
+            required_params=[
+                self.required_params_base,
+            ]
+
+        config_reduced = self._check_config_base(
+            config=self.config_all,
+            required_params=required_params
         )
 
         self.config_reduced.update(config_reduced)

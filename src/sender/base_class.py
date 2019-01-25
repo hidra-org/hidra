@@ -51,7 +51,7 @@ class Base(object):
         self.required_params_dep = {}
         self.config_reduced = {}
 
-    def _base_check(self, module_class, module_type):
+    def _base_check(self, module_class, module_type, check_dep=True):
         """
         eg. module_class is eventdetector and module_type is
             eventdetector_type
@@ -64,17 +64,20 @@ class Base(object):
         )
 
         # Check format of dependent config
-        self.required_params_dep = {
-            module_class: [self.config_all[module_class][module_type]]
-        }
+        if check_dep:
+            self.required_params_dep = {
+                module_class: [self.config_all[module_class][module_type]]
+            }
 
-        config_reduced_dep = self._check_config_base(
-            config=self.config_all,
-            required_params=[self.required_params_base,
-                             self.required_params_dep],
-        )
+            config_reduced_dep = self._check_config_base(
+                config=self.config_all,
+                required_params=[self.required_params_base,
+                                 self.required_params_dep],
+            )
 
-        self.config_reduced.update(config_reduced_dep)
+            self.config_reduced.update(config_reduced_dep)
+        else:
+            self.required_params_dep = {}
 
     def _check_config_base(self, config, required_params):
         """
