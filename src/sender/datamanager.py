@@ -397,7 +397,7 @@ def argument_parsing():
         # set process name
         check_passed, _ = utils.check_config(["local_target"],
                                              config_df,
-                                             self.log)
+                                             logging)
         if not check_passed:
             raise Exception("Wrong configuration")
 
@@ -415,7 +415,7 @@ def argument_parsing():
 
         check_passed, _ = utils.check_config(["data_stream_targets"],
                                              config_df,
-                                             self.log)
+                                             logging)
         if not check_passed:
             raise Exception("Wrong configuration")
 
