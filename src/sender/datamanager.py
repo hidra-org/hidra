@@ -289,15 +289,16 @@ def argument_parsing():
     # Get arguments from config file and comand line
     # ------------------------------------------------------------------------
 
-    from pprint import pprint
-
     config = utils.load_config(base_config_file)
     config_detailed = utils.load_config(arguments.config_file)
 
     # if config and yaml is mixed mapping has to take place before merging them
-    config = utils.map_conf_format(config)
-    config_detailed = utils.map_conf_format(config_detailed)
-    arguments_dict = utils.map_conf_format(arguments, is_namespace=True)
+    config_type = "sender"
+    config = utils.map_conf_format(config, config_type)
+    config_detailed = utils.map_conf_format(config_detailed, config_type)
+    arguments_dict = utils.map_conf_format(arguments,
+                                           config_type,
+                                           is_namespace=True)
 
     utils.update_dict(config_detailed, config)
     utils.update_dict(arguments_dict, config)
@@ -330,12 +331,11 @@ def argument_parsing():
     }
 
     # Check format of config
-    check_passed, _ = utils.check_config(required_params,
-                                         config,
-                                         logging)
+    check_passed, _ = utils.check_config(required_params, config, logging)
     if not check_passed:
-        logging.error("Wrong configuration")
-        sys.exit(1)
+        msg = "Wrong configuration"
+        logging.error(msg)
+        raise Exception(msg)
 
 
     # for convenience

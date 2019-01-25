@@ -125,22 +125,62 @@ def argument_parsing():
     # Get arguments from config file
     # ------------------------------------------------------------------------
 
-    params = utils.set_parameters(base_config_file=base_config_file,
-                                  config_file=arguments.config_file,
-                                  arguments=arguments)
+    config = utils.load_config(base_config_file)
+    config_detailed = utils.load_config(arguments.config_file)
+
+    # if config and yaml is mixed mapping has to take place before merging them
+    config_type = "receiver"
+    config = utils.map_conf_format(config, config_type)
+    config_detailed = utils.map_conf_format(config_detailed, config_type)
+    arguments_dict = utils.map_conf_format(arguments,
+                                           config_type,
+                                           is_namespace=True)
+
+    utils.update_dict(config_detailed, config)
+
+    utils.update_dict(arguments_dict, config)
+
+#    params = utils.set_parameters(base_config_file=base_config_file,
+#                                  config_file=arguments.config_file,
+#                                  arguments=arguments)
 
     # ------------------------------------------------------------------------
     # Check given arguments
     # ------------------------------------------------------------------------
 
+    required_params = {
+        "general": [
+            "log_path",
+            "log_name",
+            "procname",
+            "procname",
+            "ldapuri",
+            "dirs_not_to_create",
+            "whitelist"
+        ],
+        "datareceiver": [
+            "target_dir",
+            "data_stream_ip",
+            "data_stream_port",
+        ]
+    }
+
+    # Check format of config
+    check_passed, _ = utils.check_config(required_params, config, logging)
+    if not check_passed:
+        msg = "Configuration check failed"
+        logging.error(msg)
+        raise Exception(msg)
+
     # check target directory for existance
-    utils.check_existance(params["target_dir"])
+    utils.check_existance(config["datareceiver"]["target_dir"])
 
     # check if logfile is writable
-    params["log_file"] = os.path.join(params["log_path"], params["log_name"])
-    utils.check_writable(params["log_file"])
+    config["general"]["log_file"] = os.path.join(config["general"]["log_path"],
+                                                 config["general"]["log_name"])
+    utils.check_writable(config["general"]["log_file"])
 
-    return params
+    return config
 
 
 def reset_changed_netgroup():
@@ -259,22 +299,25 @@ class DataReceiver(object):
         global _whitelist
 
         try:
-            params = argument_parsing()
+            config = argument_parsing()
         except:
             self.log = logging.getLogger("DataReceiver")
             raise
 
+        config_gen = config["general"]
+        config_recv = config["datareceiver"]
+
         # change user
-        user_info, user_was_changed = utils.change_user(params)
+        user_info, user_was_changed = utils.change_user(config)
 
         # enable logging
         root = logging.getLogger()
         root.setLevel(logging.DEBUG)
 
-        handlers = utils.get_log_handlers(params["log_file"],
-                                          params["log_size"],
-                                          params["verbose"],
-                                          params["onscreen"])
+        handlers = utils.get_log_handlers(config_gen["log_file"],
+                                          config_gen["log_size"],
+                                          config_gen["verbose"],
+                                          config_gen["onscreen"])
 
         if isinstance(handlers, tuple):
             for hdl in handlers:
@@ -287,16 +330,12 @@ class DataReceiver(object):
         utils.log_user_change(self.log, user_was_changed, user_info)
 
         # set process name
-        check_passed, _ = utils.check_config(["procname"], params, self.log)
-        if not check_passed:
-            raise Exception("Configuration check failed")
-
         # pylint: disable=no-member
-        setproctitle.setproctitle(params["procname"])
+        setproctitle.setproctitle(config_gen["procname"])
 
         self.log.info("Version: %s", __version__)
 
-        self.dirs_not_to_create = params["dirs_not_to_create"]
+        self.dirs_not_to_create = config_gen["dirs_not_to_create"]
 
         # for proper clean up if kill is called
         signal.signal(signal.SIGTERM, self.signal_term_handler)
@@ -305,43 +344,43 @@ class DataReceiver(object):
         self.lock = threading.Lock()
 
         try:
-            ldap_retry_time = params["ldap_retry_time"]
+            ldap_retry_time = config_gen["ldap_retry_time"]
         except KeyError:
             ldap_retry_time = 10
 
         try:
-            check_time = params["netgroup_check_time"]
+            check_time = config_gen["netgroup_check_time"]
         except KeyError:
             check_time = 2
 
-        if params["whitelist"] is not None:
-            self.log.debug("params['whitelist']=%s", params["whitelist"])
+        if config_gen["whitelist"] is not None:
+            self.log.debug("config_gen['whitelist']=%s", config_gen["whitelist"])
 
             with self.lock:
-                _whitelist = utils.extend_whitelist(params["whitelist"],
-                                                    params["ldapuri"],
+                _whitelist = utils.extend_whitelist(config_gen["whitelist"],
+                                                    config_gen["ldapuri"],
                                                     self.log)
             self.log.info("Configured whitelist: %s", _whitelist)
         else:
             _whitelist = None
 
         # only start the thread if a netgroup was configured
-        if (params["whitelist"] is not None
-                and isinstance(params["whitelist"], str)):
+        if (config_gen["whitelist"] is not None
+                and isinstance(config_gen["whitelist"], str)):
             self.log.debug("Starting checking thread")
-            self.checking_thread = CheckNetgroup(params["whitelist"],
+            self.checking_thread = CheckNetgroup(config_gen["whitelist"],
                                                  self.lock,
-                                                 params["ldapuri"],
+                                                 config_gen["ldapuri"],
                                                  ldap_retry_time,
                                                  check_time)
             self.checking_thread.start()
         else:
             self.log.debug("Checking thread not started: %s",
-                           params["whitelist"])
+                           config_gen["whitelist"])
 
-        self.target_dir = os.path.normpath(params["target_dir"])
-        self.data_ip = params["data_stream_ip"]
-        self.data_port = params["data_stream_port"]
+        self.target_dir = os.path.normpath(config_recv["target_dir"])
+        self.data_ip = config_recv["data_stream_ip"]
+        self.data_port = config_recv["data_stream_port"]
 
         self.log.info("Writing to directory '%s'", self.target_dir)
 

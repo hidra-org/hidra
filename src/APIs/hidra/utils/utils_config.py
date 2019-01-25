@@ -135,7 +135,7 @@ def update_dict(dictionary, dict_to_update):
             dict_to_update[key] = value
 
 
-def map_conf_format(flat_config, is_namespace=False):
+def map_conf_format(flat_config, config_type, is_namespace=False):
     """
     A temporary workaround to keep backwards compatibility to config file
     format.
@@ -146,100 +146,125 @@ def map_conf_format(flat_config, is_namespace=False):
     Returns:
 
     """
-
-    mapping = {
-        "general": {
-            "log_path": "log_path",
-            "log_name": "log_name",
-            "log_size": "log_size",
-            "username": "username",
-            "procname": "procname",
-            "ext_ip": "ext_ip",
-            "whitelist": "whitelist",
-            "com_port": "com_port",
-            "ldapuri": "ldapuri",
-            "request_port": "request_port",
-            "request_fw_port": "request_fw_port",
-            "control_pub_port": "control_pub_port",
-            "control_sub_port": "control_sub_port",
-            "config_file": "config_file",
-            "verbose": "verbose",
-            "onscreen": "onscreen"
-        },
-        "eventdetector": {
-            "eventdetector_type": "eventdetector_type",
-            "ext_data_port": "ext_data_port",
-            "eventdetector_port": "eventdetector_port",
-            "dirs_not_to_create": "dirs_not_to_create",
-            "inotify_events": {
-                "monitored_dir": "monitored_dir",
-                "fix_subdirs": "fix_subdirs",
-                "create_fix_subdirs": "create_fix_subdirs",
-                "monitored_events": "monitored_events",
-                "history_size": "history_size",
-                "use_cleanup": "use_cleanup",
-                "action_time": "action_time",
-                "time_till_closed": "time_till_closed"
+    if config_type =="sender":
+        mapping = {
+            "general": {
+                "log_path": "log_path",
+                "log_name": "log_name",
+                "log_size": "log_size",
+                "username": "username",
+                "procname": "procname",
+                "ext_ip": "ext_ip",
+                "whitelist": "whitelist",
+                "com_port": "com_port",
+                "ldapuri": "ldapuri",
+                "request_port": "request_port",
+                "request_fw_port": "request_fw_port",
+                "control_pub_port": "control_pub_port",
+                "control_sub_port": "control_sub_port",
+                "config_file": "config_file",
+                "verbose": "verbose",
+                "onscreen": "onscreen"
             },
-            "inotifyx_events": {
-                "monitored_dir": "monitored_dir",
-                "fix_subdirs": "fix_subdirs",
-                "create_fix_subdirs": "create_fix_subdirs",
-                "monitored_events": "monitored_events",
-                "history_size": "history_size",
-                "use_cleanup": "use_cleanup",
-                "action_time": "action_time",
-                "time_till_closed": "time_till_closed"
+            "eventdetector": {
+                "eventdetector_type": "eventdetector_type",
+                "ext_data_port": "ext_data_port",
+                "eventdetector_port": "eventdetector_port",
+                "dirs_not_to_create": "dirs_not_to_create",
+                "inotify_events": {
+                    "monitored_dir": "monitored_dir",
+                    "fix_subdirs": "fix_subdirs",
+                    "create_fix_subdirs": "create_fix_subdirs",
+                    "monitored_events": "monitored_events",
+                    "history_size": "history_size",
+                    "use_cleanup": "use_cleanup",
+                    "action_time": "action_time",
+                    "time_till_closed": "time_till_closed"
+                },
+                "inotifyx_events": {
+                    "monitored_dir": "monitored_dir",
+                    "fix_subdirs": "fix_subdirs",
+                    "create_fix_subdirs": "create_fix_subdirs",
+                    "monitored_events": "monitored_events",
+                    "history_size": "history_size",
+                    "use_cleanup": "use_cleanup",
+                    "action_time": "action_time",
+                    "time_till_closed": "time_till_closed"
+                },
+                "watchdog_events": {
+                    "monitored_dir": "monitored_dir",
+                    "fix_subdirs": "fix_subdirs",
+                    "create_fix_subdirs": "create_fix_subdirs",
+                    "monitored_events": "monitored_events",
+                    "action_time": "action_time",
+                    "time_till_closed": "time_till_closed"
+                },
+                "http_events": {
+                    "fix_subdirs": "fix_subdirs",
+                    "history_size": "history_size",
+                    "det_ip": "det_ip",
+                    "det_api_version": "det_api_version"
+                },
+                "zmq_events": {
+                    "number_of_streams": "number_of_streams",
+                    "ext_data_port": "ext_data_port"
+                },
+                "hidra_events": {
+                    "ext_data_port": "ext_data_port"
+                }
             },
-            "watchdog_events": {
-                "monitored_dir": "monitored_dir",
-                "fix_subdirs": "fix_subdirs",
-                "create_fix_subdirs": "create_fix_subdirs",
-                "monitored_events": "monitored_events",
-                "action_time": "action_time",
-                "time_till_closed": "time_till_closed"
-            },
-            "http_events": {
-                "fix_subdirs": "fix_subdirs",
-                "history_size": "history_size",
-                "det_ip": "det_ip",
-                "det_api_version": "det_api_version"
-            },
-            "zmq_events": {
+            "datafetcher": {
+                "datafetcher_type": "datafetcher_type",
+                "datafetcher_port": "datafetcher_port",
+                "status_check_port": "status_check_port",
+                "status_check_resp_port": "status_check_resp_port",
+                "confirmation_port": "confirmation_port",
+                "confirmation_resp_port": "confirmation_resp_port",
+                "chunksize": "chunksize",
+                "router_port": "router_port",
+                "cleaner_port": "cleaner_port",
+                "cleaner_trigger_port": "cleaner_trigger_port",
+                "use_data_stream": "use_data_stream",
+                "data_stream_targets": "data_stream_targets",
                 "number_of_streams": "number_of_streams",
-                "ext_data_port": "ext_data_port"
-            },
-            "hidra_events": {
-                "ext_data_port": "ext_data_port"
-            }
-        },
-        "datafetcher": {
-            "datafetcher_type": "datafetcher_type",
-            "datafetcher_port": "datafetcher_port",
-            "status_check_port": "status_check_port",
-            "status_check_resp_port": "status_check_resp_port",
-            "confirmation_port": "confirmation_port",
-            "confirmation_resp_port": "confirmation_resp_port",
-            "chunksize": "chunksize",
-            "router_port": "router_port",
-            "cleaner_port": "cleaner_port",
-            "cleaner_trigger_port": "cleaner_trigger_port",
-            "use_data_stream": "use_data_stream",
-            "data_stream_targets": "data_stream_targets",
-            "number_of_streams": "number_of_streams",
-            "remove_data": "remove_data",
-            "store_data": "store_data",
-            "local_target": "local_target",
-            "file_fetcher": {
+                "remove_data": "remove_data",
                 "store_data": "store_data",
-                "local_target": "local_target"
-            },
-            "http_fetcher": {
-                "store_data": "store_data",
-                "local_target": "local_target"
+                "local_target": "local_target",
+                "file_fetcher": {
+                    "store_data": "store_data",
+                    "local_target": "local_target"
+                },
+                "http_fetcher": {
+                    "store_data": "store_data",
+                    "local_target": "local_target"
+                }
             }
         }
-    }
+
+    elif config_type == "receiver":
+        mapping = {
+            "general": {
+                "log_size": "log_size",
+                "log_path": "log_path",
+                "log_name": "log_name",
+                "username": "username",
+                "procname": "procname",
+                "ldapuri": "ldapuri",
+                "ldap_retry_time": "ldap_retry_time",
+                "netgroup_check_time": "netgroup_check_time",
+                "dirs_not_to_create": "dirs_not_to_create",
+                "whitelist": "whitelist",
+                "verbose": "verbose",
+                "onscreen": "onscreen"
+            },
+            "datareceiver": {
+                "target_dir": "target_dir",
+                "data_stream_ip": "data_stream_ip",
+                "data_stream_port": "data_stream_port"
+            }
+        }
+    else:
+        raise Exception("Config type is not supported")
 
     def _traverse_dict(config):
         for key, value in config.items():
