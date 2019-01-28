@@ -528,31 +528,17 @@ class DataManager(Base):
             # Get queue
             self.log_queue = Queue(-1)
 
-            # Get the log Configuration for the lisener
-            if config_gen["onscreen"]:
-                handler1, handler2 = utils.get_log_handlers(
-                    config_gen["log_file"],
-                    config_gen["log_size"],
-                    config_gen["verbose"],
-                    config_gen["onscreen"]
-                )
+            handler = utils.get_log_handlers(
+                config_gen["log_file"],
+                config_gen["log_size"],
+                config_gen["verbose"],
+                config_gen["onscreen"]
+            )
 
-                # Start queue listener using the stream handler above.
-                self.log_queue_listener = utils.CustomQueueListener(
-                    self.log_queue, handler1, handler2
-                )
-            else:
-                handler1 = utils.get_log_handlers(
-                    config_gen["log_file"],
-                    config_gen["log_size"],
-                    config_gen["verbose"],
-                    config_gen["onscreen"]
-                )
-
-                # Start queue listener using the stream handler above
-                self.log_queue_listener = utils.CustomQueueListener(
-                    self.log_queue, handler1
-                )
+            # Start queue listener using the stream handler above.
+            self.log_queue_listener = utils.CustomQueueListener(
+                self.log_queue, *handler
+            )
 
             self.log_queue_listener.start()
 

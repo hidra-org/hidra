@@ -251,9 +251,9 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_loglevel=False):
                               "(Fallback to INFO).")
 
         screen_handler = get_stream_log_handler(loglevel=screen_loglevel)
-        return file_handler, screen_handler
+        return (file_handler, screen_handler)
     else:
-        return file_handler
+        return (file_handler,)
 
 
 def get_logger(logger_name, queue=False, log_level="debug"):
