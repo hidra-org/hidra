@@ -333,9 +333,8 @@ def argument_parsing():
     # Check format of config
     check_passed, _ = utils.check_config(required_params, config, logging)
     if not check_passed:
-        msg = "Wrong configuration"
-        logging.error(msg)
-        raise Exception(msg)
+        logging.error("Wrong configuration")
+        raise utils.WrongConfiguration
 
 
     # for convenience
@@ -399,7 +398,7 @@ def argument_parsing():
                                              config_df,
                                              logging)
         if not check_passed:
-            raise Exception("Wrong configuration")
+            raise utils.WrongConfiguration
 
         utils.check_existance(config_df["local_target"])
         # check if local_target contains fixed_subdirs
@@ -417,7 +416,7 @@ def argument_parsing():
                                              config_df,
                                              logging)
         if not check_passed:
-            raise Exception("Wrong configuration")
+            raise utils.WrongConfiguration
 
         utils.check_ping(config_df["data_stream_targets"][0][0])
 

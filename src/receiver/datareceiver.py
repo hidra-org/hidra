@@ -168,9 +168,8 @@ def argument_parsing():
     # Check format of config
     check_passed, _ = utils.check_config(required_params, config, logging)
     if not check_passed:
-        msg = "Configuration check failed"
-        logging.error(msg)
-        raise Exception(msg)
+        logging.error("Configuration check failed")
+        raise utils.WrongConfiguration
 
     # check target directory for existance
     utils.check_existance(config["datareceiver"]["target_dir"])
