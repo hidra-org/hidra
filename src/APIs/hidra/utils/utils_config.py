@@ -39,6 +39,7 @@ import logging
 import yaml
 
 from .utils_datatypes import Endpoints
+from .utils_api import NotSupported
 
 try:
     import ConfigParser
@@ -69,10 +70,7 @@ def load_config(config_file, config_type=None, log=logging):
 
     # Auto-detection
     if config_type is None:
-        if config_file.endswith(".conf"):
-            file_type = "conf"
-        elif config_file.endswith(".yaml"):
-            file_type = "yaml"
+        file_type = _detect_config_type(config_file)
     else:
         file_type = config_type
 
@@ -91,15 +89,66 @@ def load_config(config_file, config_type=None, log=logging):
 
         elif file_type == "yaml":
             with open(config_file) as f:
-                config = yaml.load(f)
+                config = yaml.safe_load(f)
 
             # check for "None" entries
             _fix_none_entries(dictionary=config)
+
     except Exception:
         log.error("Could not load config file %s", config_file)
         raise
 
     return config
+
+def _detect_config_type(config_file):
+    if config_file.endswith(".conf"):
+        file_type = "conf"
+    elif config_file.endswith(".yaml"):
+        file_type = "yaml"
+
+    return file_type
+
+
+def write_config(config_file, config, config_type=None):
+    """Write configuration data info a file.
+
+    Args:
+        config_file (str): Absolute path to the configuration file.
+        config (dict): The configuration data.
+        config_type (str, optional): The type the configuration is in
+                                     (config or yaml). If not set (or set to
+                                     None) the file extenstion is used for
+                                     automatic detection.
+
+    Raises:
+        NotSupported if the defined config_type (or when autodetecting the
+        file extention) is not supported.
+    """
+
+    # Auto-detection
+    if config_type is None:
+        file_type = _detect_config_type(config_file)
+    else:
+        file_type = config_type
+
+    try:
+        if file_type == "conf":
+            for key, value in iteritems(config_to_write):
+                f.write("{} = {}\n".format(key, value))
+
+        if file_type == "yaml":
+            with open(config_file, 'w') as outfile:
+                yaml.safe_dump(config,
+                          outfile,
+                          default_flow_style=False,
+                )
+
+        else:
+            log.debug("config_file=%s", config_file)
+            raise NotSupported("Config file type not supported.")
+    except Exception:
+        log.error("Could not write config file %s", config_file)
+        raise
 
 
 def _fix_none_entries(dictionary):
@@ -134,142 +183,153 @@ def update_dict(dictionary, dict_to_update):
         else:
             dict_to_update[key] = value
 
+CONFIG_MAPPING_SENDER = {
+    "general": {
+        "log_path": "log_path",
+        "log_name": "log_name",
+        "log_size": "log_size",
+        "username": "username",
+        "procname": "procname",
+        "ext_ip": "ext_ip",
+        "whitelist": "whitelist",
+        "com_port": "com_port",
+        "ldapuri": "ldapuri",
+        "request_port": "request_port",
+        "request_fw_port": "request_fw_port",
+        "control_pub_port": "control_pub_port",
+        "control_sub_port": "control_sub_port",
+        "config_file": "config_file",
+        "verbose": "verbose",
+        "onscreen": "onscreen"
+    },
+    "eventdetector": {
+        "eventdetector_type": "eventdetector_type",
+        "ext_data_port": "ext_data_port",
+        "eventdetector_port": "eventdetector_port",
+        "dirs_not_to_create": "dirs_not_to_create",
+        "inotify_events": {
+            "monitored_dir": "monitored_dir",
+            "fix_subdirs": "fix_subdirs",
+            "create_fix_subdirs": "create_fix_subdirs",
+            "monitored_events": "monitored_events",
+            "history_size": "history_size",
+            "use_cleanup": "use_cleanup",
+            "action_time": "action_time",
+            "time_till_closed": "time_till_closed"
+        },
+        "inotifyx_events": {
+            "monitored_dir": "monitored_dir",
+            "fix_subdirs": "fix_subdirs",
+            "create_fix_subdirs": "create_fix_subdirs",
+            "monitored_events": "monitored_events",
+            "history_size": "history_size",
+            "use_cleanup": "use_cleanup",
+            "action_time": "action_time",
+            "time_till_closed": "time_till_closed"
+        },
+        "watchdog_events": {
+            "monitored_dir": "monitored_dir",
+            "fix_subdirs": "fix_subdirs",
+            "create_fix_subdirs": "create_fix_subdirs",
+            "monitored_events": "monitored_events",
+            "action_time": "action_time",
+            "time_till_closed": "time_till_closed"
+        },
+        "http_events": {
+            "fix_subdirs": "fix_subdirs",
+            "history_size": "history_size",
+            "det_ip": "det_ip",
+            "det_api_version": "det_api_version"
+        },
+        "zmq_events": {
+            "number_of_streams": "number_of_streams",
+            "ext_data_port": "ext_data_port"
+        },
+        "hidra_events": {
+            "ext_data_port": "ext_data_port"
+        }
+    },
+    "datafetcher": {
+        "datafetcher_type": "datafetcher_type",
+        "datafetcher_port": "datafetcher_port",
+        "status_check_port": "status_check_port",
+        "status_check_resp_port": "status_check_resp_port",
+        "confirmation_port": "confirmation_port",
+        "confirmation_resp_port": "confirmation_resp_port",
+        "chunksize": "chunksize",
+        "router_port": "router_port",
+        "cleaner_port": "cleaner_port",
+        "cleaner_trigger_port": "cleaner_trigger_port",
+        "use_data_stream": "use_data_stream",
+        "data_stream_targets": "data_stream_targets",
+        "number_of_streams": "number_of_streams",
+        "remove_data": "remove_data",
+        "store_data": "store_data",
+        "local_target": "local_target",
+        "file_fetcher": {
+            "store_data": "store_data",
+            "local_target": "local_target"
+        },
+        "http_fetcher": {
+            "store_data": "store_data",
+            "local_target": "local_target"
+        }
+    }
+}
+
+CONFIG_MAPPING_RECEIVER = {
+    "general": {
+        "log_size": "log_size",
+        "log_path": "log_path",
+        "log_name": "log_name",
+        "username": "username",
+        "procname": "procname",
+        "ldapuri": "ldapuri",
+        "ldap_retry_time": "ldap_retry_time",
+        "netgroup_check_time": "netgroup_check_time",
+        "dirs_not_to_create": "dirs_not_to_create",
+        "whitelist": "whitelist",
+        "verbose": "verbose",
+        "onscreen": "onscreen"
+    },
+    "datareceiver": {
+        "target_dir": "target_dir",
+        "data_stream_ip": "data_stream_ip",
+        "data_stream_port": "data_stream_port"
+    }
+}
+
 
 def map_conf_format(flat_config, config_type, is_namespace=False):
     """
-    A temporary workaround to keep backwards compatibility to config file
+    A workaround to keep backwards compatibility to config file
     format.
 
     Args:
         flat_config: A flat dictionary containing the configuration parameters.
+        config_type: What type of mapping should be used
+        is_namespace: flat_config is not a dictionary but a namespace object.
 
     Returns:
+        The configuration as dictionary in the correct hierarchy.
 
     """
     if config_type =="sender":
-        mapping = {
-            "general": {
-                "log_path": "log_path",
-                "log_name": "log_name",
-                "log_size": "log_size",
-                "username": "username",
-                "procname": "procname",
-                "ext_ip": "ext_ip",
-                "whitelist": "whitelist",
-                "com_port": "com_port",
-                "ldapuri": "ldapuri",
-                "request_port": "request_port",
-                "request_fw_port": "request_fw_port",
-                "control_pub_port": "control_pub_port",
-                "control_sub_port": "control_sub_port",
-                "config_file": "config_file",
-                "verbose": "verbose",
-                "onscreen": "onscreen"
-            },
-            "eventdetector": {
-                "eventdetector_type": "eventdetector_type",
-                "ext_data_port": "ext_data_port",
-                "eventdetector_port": "eventdetector_port",
-                "dirs_not_to_create": "dirs_not_to_create",
-                "inotify_events": {
-                    "monitored_dir": "monitored_dir",
-                    "fix_subdirs": "fix_subdirs",
-                    "create_fix_subdirs": "create_fix_subdirs",
-                    "monitored_events": "monitored_events",
-                    "history_size": "history_size",
-                    "use_cleanup": "use_cleanup",
-                    "action_time": "action_time",
-                    "time_till_closed": "time_till_closed"
-                },
-                "inotifyx_events": {
-                    "monitored_dir": "monitored_dir",
-                    "fix_subdirs": "fix_subdirs",
-                    "create_fix_subdirs": "create_fix_subdirs",
-                    "monitored_events": "monitored_events",
-                    "history_size": "history_size",
-                    "use_cleanup": "use_cleanup",
-                    "action_time": "action_time",
-                    "time_till_closed": "time_till_closed"
-                },
-                "watchdog_events": {
-                    "monitored_dir": "monitored_dir",
-                    "fix_subdirs": "fix_subdirs",
-                    "create_fix_subdirs": "create_fix_subdirs",
-                    "monitored_events": "monitored_events",
-                    "action_time": "action_time",
-                    "time_till_closed": "time_till_closed"
-                },
-                "http_events": {
-                    "fix_subdirs": "fix_subdirs",
-                    "history_size": "history_size",
-                    "det_ip": "det_ip",
-                    "det_api_version": "det_api_version"
-                },
-                "zmq_events": {
-                    "number_of_streams": "number_of_streams",
-                    "ext_data_port": "ext_data_port"
-                },
-                "hidra_events": {
-                    "ext_data_port": "ext_data_port"
-                }
-            },
-            "datafetcher": {
-                "datafetcher_type": "datafetcher_type",
-                "datafetcher_port": "datafetcher_port",
-                "status_check_port": "status_check_port",
-                "status_check_resp_port": "status_check_resp_port",
-                "confirmation_port": "confirmation_port",
-                "confirmation_resp_port": "confirmation_resp_port",
-                "chunksize": "chunksize",
-                "router_port": "router_port",
-                "cleaner_port": "cleaner_port",
-                "cleaner_trigger_port": "cleaner_trigger_port",
-                "use_data_stream": "use_data_stream",
-                "data_stream_targets": "data_stream_targets",
-                "number_of_streams": "number_of_streams",
-                "remove_data": "remove_data",
-                "store_data": "store_data",
-                "local_target": "local_target",
-                "file_fetcher": {
-                    "store_data": "store_data",
-                    "local_target": "local_target"
-                },
-                "http_fetcher": {
-                    "store_data": "store_data",
-                    "local_target": "local_target"
-                }
-            }
-        }
-
+        mapping = CONFIG_MAPPING_SENDER
     elif config_type == "receiver":
-        mapping = {
-            "general": {
-                "log_size": "log_size",
-                "log_path": "log_path",
-                "log_name": "log_name",
-                "username": "username",
-                "procname": "procname",
-                "ldapuri": "ldapuri",
-                "ldap_retry_time": "ldap_retry_time",
-                "netgroup_check_time": "netgroup_check_time",
-                "dirs_not_to_create": "dirs_not_to_create",
-                "whitelist": "whitelist",
-                "verbose": "verbose",
-                "onscreen": "onscreen"
-            },
-            "datareceiver": {
-                "target_dir": "target_dir",
-                "data_stream_ip": "data_stream_ip",
-                "data_stream_port": "data_stream_port"
-            }
-        }
+        mapping = CONFIG_MAPPING_RECEIVER
+    elif config_type is not None:
+        mapping = config_type
     else:
-        raise Exception("Config type is not supported")
+        raise NotSupported("Config type is not supported")
 
     def _traverse_dict(config):
         for key, value in config.items():
             if isinstance(value, dict):
-                _traverse_dict(value)
+                if value:
+                    _traverse_dict(value)
+                    if not value:
+                        del config[key]
             else:
                 try:
                     config[key] = flat_config[key]
@@ -329,6 +389,101 @@ def map_conf_format(flat_config, config_type, is_namespace=False):
             config = flat_config
 
     return config
+
+
+def set_flat_param(param, param_value, config, config_type, log=logging):
+    """
+    A workaround to keep backwards compatibility to config file
+    format and control api (v4.0.x).
+
+    Args:
+        param: The parameter to set.
+        param_value: The value to set the parameter to.
+        config: A dictionary in hierarchical structure.
+        config_type: What type of mapping should be used
+
+    """
+
+    if config_type == "sender":
+        mapping = CONFIG_MAPPING_SENDER
+    elif config_type == "receiver":
+        mapping = CONFIG_MAPPING_RECEIVER
+    elif config_type is not None:
+        mapping = config_type
+    else:
+        raise NotSupported("Config type is not supported")
+
+    def _traverse_dict(config, mapping):
+        found = False
+
+        for key, value in mapping.items():
+            try:
+                if isinstance(value, dict):
+                    found = _traverse_dict(config[key], value)
+                    if found:
+                        return found
+                else:
+                    if value == param:
+                        config[key] = param_value
+                        found = True
+                        return found
+            except KeyError:
+                pass
+
+        return False
+
+    found = _traverse_dict(config, mapping)
+    if not found:
+        log.debug("config=%s", config)
+        raise Exception("Could not map flat parameter %s", param)
+
+
+def get_flat_param(param, config, config_type, log=logging):
+    """
+    A workaround to keep backwards compatibility to config file
+    format and control api (v4.0.x).
+
+    Args:
+        param: The parameter to get.
+        config: A dictionary in hierarchical structure.
+        config_type: What type of mapping should be used
+
+    Returns:
+        The value corresponding to the key
+    """
+
+    if config_type == "sender":
+        mapping = CONFIG_MAPPING_SENDER
+    elif config_type == "receiver":
+        mapping = CONFIG_MAPPING_RECEIVER
+    elif config_type is not None:
+        mapping = config_type
+    else:
+        raise NotSupported("Config type is not supported")
+
+    def _traverse_dict(config, mapping):
+        found = False
+
+        for key, value in mapping.items():
+            try:
+                if isinstance(value, dict):
+                    found, param_value = _traverse_dict(config[key], value)
+                    if found:
+                        return found, param_value
+                else:
+                    if value == param:
+                        return True, config[key]
+            except KeyError:
+                pass
+
+        return False, None
+
+    found, param_value = _traverse_dict(config, mapping)
+    if found:
+        return param_value
+    else:
+        log.debug("config=%s", config)
+        raise Exception("Could not map flat parameter %s", param)
 
 
 def check_config(required_params, config, log, serialize=True):
@@ -595,7 +750,7 @@ def _parsing_error(section, option):
     )
 
 
-def parse_parameters(config):
+def parse_parameters(config, log=logging):
     """Parses the parameters into a dictionary and fixes the types.
 
     Args:
@@ -607,11 +762,16 @@ def parse_parameters(config):
 
     config_dict = {}
 
-    for sect in config.sections():
-        config_dict[sect] = {}
+    try:
+        for sect in config.sections():
+            config_dict[sect] = {}
 
-        for opt in config.options(sect):
-            config_dict[sect][opt] = config.get(sect, opt)
+            for opt in config.options(sect):
+                config_dict[sect][opt] = config.get(sect, opt)
+    except Exception:
+        log.debug("config=%s", config)
+        log.error("Could not parse parameters du to wrong format of config file")
+        raise
 
     return _convert_parameters(config_dict)
 

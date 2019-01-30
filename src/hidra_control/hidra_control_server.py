@@ -58,6 +58,7 @@ del API_DIR
 
 import hidra  # noqa E402
 import hidra.utils  as utils # noqa E402
+from hidra.utils import FormatError
 
 CONFIG_PREFIX = "datamanager_"
 
@@ -166,13 +167,16 @@ class HidraController(object):
         # Beamline is read-only, determined by portNo
         self.beamline = beamline
         self.config = config
+        self.config_static = self.config["hidraconfig_static"]
+        self.config_variable = self.config["hidraconfig_variable"]
+        backup_file = self.config["controlserver"]["backup_file"]
 
         # Set log handler
         self.log = log
+        self.config_ending = ".yaml"
 
         self.master_config = dict()
 
-        backup_file = self.config["general"]["backup_file"]
         self.instances = InstanceTracking(self.beamline, backup_file, self.log)
         self.instances.restart_instances()
 
@@ -182,24 +186,66 @@ class HidraController(object):
         # overwritten with these parameters when start is executed
         self.all_configs = dict()
 
+        ed_type = "http_events"
         self.ctemplate = {
             "active": False,
             "beamline": self.beamline,
-            "det_ip": None,
-            "det_api_version": None,
-            "history_size": None,
-            "store_data": None,
-            "remove_data": None,
-            "whitelist": None,
-            "ldapuri": None
+            "general": {
+                "ldapuri": None,
+                "whitelist": None,
+            },
+            "eventdetector": {
+                "eventdetector_type": ed_type,
+                ed_type: {
+                    "det_ip": None,
+                    "det_api_version": None,
+                    "history_size": None,
+                }
+            },
+            "datafetcher": {
+                "store_data": None,
+                "remove_data": None,
+            }
         }
+
+        self.mapping = {
+            "general": {
+                "ldapuri": "ldapuri",
+                "whitelist": "whitelist",
+            },
+            "eventdetector": {
+                "eventdetector_type": ed_type,
+                ed_type: {
+                    "det_ip": "det_ip",
+                    "det_api_version": "det_api_version",
+                    "history_size": "history_size",
+                }
+            },
+            "datafetcher": {
+                "store_data": "store_data",
+                "remove_data": "remove_data",
+            }
+        }
+
+        self.supported_keys = [
+            "ldapuri",
+            "whitelist",
+            "det_ip",
+            "det_api_version",
+            "history_size",
+            "store_data",
+            "remove_data",
+            "fix_subdirs"
+        ]
+#        self.supported_keys = [k for k in list(self.ctemplate.keys())
+#                               if k not in ["active", "beamline"]]
 
     def __read_config(self):
 
         # write configfile
         # /etc/hidra/P01.conf
         joined_path = os.path.join(CONFIG_DIR, CONFIG_PREFIX + self.beamline)
-        config_files = glob.glob(joined_path + "_*.conf")
+        config_files = glob.glob(joined_path + "_*" + self.config_ending)
         self.log.info("Reading config files: %s", config_files)
 
         for cfile in config_files:
@@ -207,12 +253,13 @@ class HidraController(object):
             # prefix, beamline and ending)
             det_id = cfile.replace(joined_path + "_", "")[:-5]
             try:
-                config = utils.load_config(cfile)
-                self.master_config[det_id] = (
-                    utils.parse_parameters(config)["asection"])
+                self.master_config[det_id] = utils.load_config(cfile,
+                                                               log=self.log)
             except IOError:
                 self.log.debug("Configuration file not readable: %s", cfile)
-        self.log.debug("master_config=%s", self.master_config)
+        self.log.debug("master_config=%s", json.dumps(self.master_config,
+                                                      sort_keys=True,
+                                                      indent=4))
 
     def exec_msg(self, msg):
         """
@@ -222,31 +269,20 @@ class HidraController(object):
             return "DONE"
         [b"bye", host_id, detector]
         """
-        if len(msg) == 0:
+        try:
+            action, host_id, det_id, param, value = self._decode_message(msg)
+        except FormatError:
             return b"ERROR"
 
-        if msg[0] == b"IS_ALIVE":
+        if action == b"IS_ALIVE":
             return b"OK"
 
-        elif msg[0] == b"set":
-            if len(msg) < 4:
-                return b"ERROR"
-            _, host_id, det_id, param, value = msg
+        elif action == b"set":
+            return self.set(host_id, det_id, param, value)
 
-            return self.set(host_id,
-                            socket.getfqdn(det_id),
-                            param,
-                            json.loads(value))
-
-        elif msg[0] == b"get":
-            if len(msg) != 4:
-                return b"ERROR"
-            _, host_id, det_id, param = msg
-
+        elif action == b"get":
             reply = json.dumps(
-                self.get(host_id,
-                         socket.getfqdn(det_id),
-                         param)
+                self.get(host_id, det_id, param)
             ).encode("utf-8")
             self.log.debug("reply is %s", reply)
 
@@ -256,20 +292,10 @@ class HidraController(object):
 
             return reply
 
-        elif msg[0] == b"do":
-            if len(msg) != 4:
-                return b"ERROR"
+        elif action == b"do":
+            return self.do(host_id, det_id, param)
 
-            _, host_id, det_id, cmd = msg
-            return self.do(host_id, socket.getfqdn(det_id), cmd)
-
-        elif msg[0] == b"bye":
-            if len(msg) != 3:
-                return b"ERROR"
-
-            _, host_id, det_id = msg
-            det_id = socket.getfqdn(det_id)
-
+        elif action == b"bye":
             self.log.debug("Received 'bye' from host %s for detector %s",
                            host_id, det_id)
 
@@ -287,6 +313,46 @@ class HidraController(object):
         else:
             return b"ERROR"
 
+    def _decode_message(self, msg):
+        """
+        """
+
+        try:
+            action = msg[0]
+        except IndexError:
+            raise FormatError
+
+        if action == b"IS_ALIVE":
+            return action, None, None, None, None
+
+        try:
+            action, host_id, det_id = msg[:3]
+        except ValueError:
+            raise FormatError
+
+        det_ip = socket.getfqdn(det_id)
+
+        if action == b"set":
+
+            if len(msg) < 4:
+                raise FormatError
+
+            param, value = msg[3:]
+            param = param.lower()
+            value = json.loads(value)
+
+        elif action in [b"get", b"do"]:
+            if len(msg) != 4:
+                raise FormatError
+
+            param, value = msg[3], None
+            param = param.lower()
+
+        else:
+            raise FormatError
+
+        return action, host_id, det_id, param, value
+
     def set(self, host_id, det_id, param, value):
         """
         set a parameter
@@ -300,31 +366,18 @@ class HidraController(object):
         # This is a pointer
         current_config = self.all_configs[host_id][det_id]
 
-        key = param.lower()
-
-        supported_keys = [
-            # IP of the detector
-            "det_ip",
-            # API version of the detector
-            "det_api_version",
-            # Number of events stored to look for doubles
-            "history_size",
-            # Flag describing if the data should be stored in local_target
-            "store_data",
-            # Flag describing if the files should be removed from the source
-            "remove_data",
-            # List of hosts allowed to connect to the data distribution
-            "whitelist",
-            # Ldap node and port
-            "ldapuri"
-        ]
-
-        if key in supported_keys:
-            current_config[key] = value
+        if param in self.supported_keys:
+            print("before set", param, value, current_config)
+            utils.set_flat_param(param, value,
+                                 current_config,
+                                 "sender",
+                                 log=self.log)
+            print("after set", current_config)
+            print()
             return_val = b"DONE"
 
         else:
-            self.log.debug("key=%s; value=%s", key, value)
+            self.log.debug("param=%s; value=%s", param, value)
             return_val = b"ERROR"
 
         if return_val != b"ERROR":
@@ -342,52 +395,46 @@ class HidraController(object):
         # on the other hand if it is a client coming up to check with which
         # parameters the current hidra instance is running, these should be
         # shown
-        if host_id in self.all_configs \
-                and det_id in self.all_configs[host_id] \
-                and self.all_configs[host_id][det_id]["active"]:
-            # This is a pointer
-            current_config = self.all_configs[host_id][det_id]
-        else:
+        try:
+            if self.all_configs[host_id][det_id]["active"]:
+                # This is a pointer
+                current_config = self.all_configs[host_id][det_id]
+            else:
+                raise KeyError
+        except KeyError:
             current_config = self.master_config[det_id]
 
-        key = param.lower()
-
-        supported_keys = ["det_ip",
-                          "det_api_version",
-                          "history_size",
-                          "store_data",
-                          "remove_data",
-                          "whitelist",
-                          "ldapuri"]
-
-        if key == "fix_subdirs":
-            return str(self.config["hidraconfig_static"]["fix_subdirs"])
-
-        elif key in supported_keys:
-            return current_config[key]
+        if param in self.supported_keys:
+            value = utils.get_flat_param(param,
+                                         current_config,
+                                         "sender",
+                                         log=self.log)
+            if isinstance(value, list):
+                return str(value)
+            else:
+                return value
 
         else:
+            self.log.debug("param=%s", param)
             return b"ERROR"
 
     def do(self, host_id, det_id, cmd):  # pylint: disable=invalid-name
         """
         executes commands
         """
-        key = cmd.lower()
-
-        if key == "start":
+        if cmd == "start":
             ret_val = self.start(host_id, det_id)
             return ret_val
-        elif key == "stop":
+        elif cmd == "stop":
             return self.stop(det_id)
 
-        elif key == "restart":
+        elif cmd == "restart":
             return self.restart(host_id, det_id)
 
-        elif key == "status":
+        elif cmd == "status":
             return hidra_status(self.beamline, det_id, self.log)
 
-        elif key == "get_instances":
+        elif cmd == "get_instances":
             return self.get_instances()
 
         else:
@@ -417,61 +464,71 @@ class HidraController(object):
         #
         # see, if all required params are there.
         #
-        if (current_config["det_ip"]
-                and current_config["det_api_version"]
-                and current_config["history_size"]
-                and current_config["store_data"] is not None
-                and current_config["remove_data"] is not None
-                and current_config["whitelist"]
-                and current_config["ldapuri"]):
+        ed_type = "http_events"
+        required_params = {
+            "general": ["ldapuri", "whitelist"],
+            "eventdetector": [
+                ["eventdetector_type", [ed_type]],
+                {ed_type: ["det_ip", "det_api_version", "history_size"]}
+            ],
+            "datafetcher": ["store_data", "remove_data"]
+        }
+        config_complete, reduced_config = utils.check_config(required_params, current_config, self.log)
 
+        if config_complete:
             # static config
-            config_to_write = self.config["hidraconfig_static"]
+            config_to_write = self.config_static
 
             # add variable config
-            config_var = self.config["hidraconfig_variable"]
-            username = config_var["username"].format(bl=self.beamline)
-            procname_prefix = config_var["procname"].format(bl=self.beamline)
+            config_g = self.config_variable["general"]
+            config_df = self.config_variable["datafetcher"]
+
+            username = config_g["username"].format(bl=self.beamline)
+            procname_prefix = config_g["procname"].format(bl=self.beamline)
             procname = "{}_{}".format(procname_prefix, det_id)
-            log_name_prefix = config_var["log_name"].format(bl=self.beamline)
+            log_name_prefix = config_g["log_name"].format(bl=self.beamline)
             log_name = "{}_{}.log".format(log_name_prefix, det_id)
-            local_target = config_var["local_target"].format(bl=self.beamline)
+            local_target = config_df["local_target"].format(bl=self.beamline)
             external_ip = hidra.CONNECTION_LIST[self.beamline]["host"]
 
-            config_to_write["log_name"] = log_name
-            config_to_write["procname"] = procname
-            config_to_write["username"] = username
-            config_to_write["ext_ip"] = external_ip
-            config_to_write["local_target"] = local_target
+            config_to_write["general"]["log_name"] = log_name
+            config_to_write["general"]["procname"] = procname
+            config_to_write["general"]["username"] = username
+            config_to_write["general"]["ext_ip"] = external_ip
+            df_type = config_to_write["datafetcher"]["datafetcher_type"]
+            try:
+                config_to_write["datafetcher"][df_type]["local_target"] = (
+                    local_target
+                )
+            except KeyError:
+                config_to_write["datafetcher"][df_type] = {
+                    "local_target": local_target
+                }
 
             # dynamic config
-            config_to_write.update(current_config)
+            utils.update_dict(current_config, config_to_write)
 
             # write configfile
             # /etc/hidra/P01_eiger01.conf
             config_file = os.path.join(
                 CONFIG_DIR,
-                self.config["general"]["hidra_config_name"]
+                self.config["controlserver"]["hidra_config_name"]
                 .format(bl=self.beamline, det=det_id)
             )
             self.log.info("Writing config file: {}".format(config_file))
+            utils.write_config(config_file, config_to_write)
 
-            with open(config_file, 'w') as f:
-                for key, value in iteritems(config_to_write):
-                    f.write("{} = {}\n".format(key, value))
-
-            config_static = self.config["hidraconfig_static"]
-            eventdetector = config_static["eventdetector_type"]
-            datafetcher = config_static["datafetcher_type"]
+            ed_type = self.config_static["eventdetector"]["eventdetector_type"]
+            df_type = self.config_static["datafetcher"]["datafetcher_type"]
             self.log.info(
-                "Started withdd ext_ip: %s, event detector: %s, "
+                "Started with ext_ip: %s, event detector: %s, "
                 "data fetcher: %s",
-                external_ip, eventdetector, datafetcher
+                external_ip, ed_type, df_type
             )
 
             # store the dynamic config globally
-            self.log.debug("config = {}", current_config)
-            self.master_config[det_id] = copy.deepcopy(current_config)
+            self.log.debug("config = {}", config_to_write)
+            self.master_config[det_id] = copy.deepcopy(config_to_write)
             # this information shout not go into the master config
             del self.master_config[det_id]["active"]
 
@@ -479,8 +536,9 @@ class HidraController(object):
             current_config["active"] = False
 
         else:
-            for key in current_config:
-                self.log.debug(key + ":" + current_config[key])
+            self.log.debug(
+                json.dumps(current_config, sort_keys=True, indent=4)
+            )
             raise Exception("Not all required parameters are specified")
 
     def start(self, host_id, det_id):
@@ -522,7 +580,12 @@ class HidraController(object):
             List of detectors started for this beamline as json dump.
         """
 
-        bl_instances = self.instances.get_instances()[self.beamline]
+        try:
+            bl_instances = self.instances.get_instances()[self.beamline]
+        except KeyError:
+            # something went wrong when trying to start the instance
+            bl_instances = {}
+
         return json.dumps(list(bl_instances.keys())).encode("utf-8")
 
     def stop(self, det_id):
@@ -656,7 +719,7 @@ def argument_parsing():
     arguments = parser.parse_args()
 
     # convert to dict and map to config section
-    arguments = {"general": vars(arguments)}
+    arguments = {"controlserver": vars(arguments)}
 
     # ------------------------------------------------------------------------
     # Get arguments from config file and comand line
@@ -665,6 +728,15 @@ def argument_parsing():
 
     config = utils.load_config(config_file)
     utils.update_dict(arguments, config)
+
+    # the configuration is now of the form:
+    # {
+    #   "controlserver": {...}
+    #   "hidraconfig_static" : {...}
+    #   "hidraconfig_variable" : {...}
+    # }
+
+    #TODO check config for required params
 
     return config
 
@@ -693,16 +765,16 @@ class ControlServer(object):
         config = argument_parsing()
 
         # shortcut for simpler use
-        config_g = config["general"]
+        config_ctrl = config["controlserver"]
 
-        self.beamline = config_g["beamline"]
+        self.beamline = config_ctrl["beamline"]
 
-        setproctitle.setproctitle(config_g["procname"]
+        setproctitle.setproctitle(config_ctrl["procname"]
                                   .format(bl=self.beamline))
 
         logfile = os.path.join(
-            config_g["log_path"],
-            config_g["log_name"].format(bl=self.beamline)
+            config_ctrl["log_path"],
+            config_ctrl["log_name"].format(bl=self.beamline)
         )
 
         # Get queue
@@ -710,9 +782,9 @@ class ControlServer(object):
 
         handler = utils.get_log_handlers(
             logfile,
-            config_g["log_size"],
-            config_g["verbose"],
-            config_g["onscreen"]
+            config_ctrl["log_size"],
+            config_ctrl["verbose"],
+            config_ctrl["onscreen"]
         )
 
         # Start queue listener using the stream handler above

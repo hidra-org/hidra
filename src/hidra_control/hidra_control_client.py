@@ -107,8 +107,12 @@ def argument_parsing():
     # hidra config
     arguments = {
         "hidra": {
-            "det_ip": args_dict["det"],
-            "det_api_version": args_dict["detapi"]
+            "eventdetector": {
+                "http_events": {
+                    "det_ip": args_dict["det"],
+                    "det_api_version": args_dict["detapi"]
+                }
+            }
         }
     }
     del args_dict["det"]
@@ -148,7 +152,12 @@ def check_config(config):
         )
 
     # hidra section
-    required_params = ["history_size", "store_data", "remove_data"]
+    required_params = {
+        "eventdetector": [
+            {"http_events": ["history_size"]}
+        ],
+        "datafetcher": ["store_data", "remove_data"]
+    }
     check_passed, config_reduced = utils.check_config(
         required_params,
         config["hidra"],
@@ -161,12 +170,21 @@ def check_config(config):
             "parameteres."
         )
 
-    if "whitelist" not in config["hidra"]:
-        config["hidra"]["whitelist"] = (
-            config["general"]["netgroup_template"]
-            .format(bl=config["general"]["beamline"])
-        )
+    potential_whitelist = (
+        config["general"]["netgroup_template"]
+        .format(bl=config["general"]["beamline"])
+    )
 
+    try:
+        whitelist = (config["hidra"]["general"]["whitelist"]
+                     or potential_whitelist)
+    except KeyError:
+        if "general" in config["hidra"]:
+            config["hidra"]["general"]["whitelist"] = whitelist
+        else:
+            config["hidra"]["general"] = {
+                "whitelist": potential_whitelist
+            }
 
 def client():
     """The hidra control client.
@@ -174,8 +192,11 @@ def client():
 
     config = argument_parsing()
 
+    # for convenience
     config_g = config["general"]
     config_hidra = config["hidra"]
+    config_ed = config_hidra["eventdetector"]["http_events"]
+    config_df = config_hidra["datafetcher"]
 
     if config_g["version"]:
         print("Hidra version: {}".format(hidra.__version__))
@@ -186,7 +207,7 @@ def client():
     netgroup_template = config_g["netgroup_template"]
 
     obj = hidra.Control(beamline,
-                        config_hidra["det_ip"],
+                        config_ed["det_ip"],
                         ldapuri,
                         netgroup_template,
                         use_log="warning")
@@ -194,18 +215,19 @@ def client():
     try:
         if config_g["start"]:
             # check if beamline is allowed to get data from this detector
-            hidra.check_netgroup(config_hidra["det_ip"],
+            hidra.check_netgroup(config_ed["det_ip"],
                                  beamline,
                                  ldapuri,
                                  netgroup_template.format(bl=beamline),
                                  log=hidra.LoggingFunction())
 
-            obj.set("det_ip", config_hidra["det_ip"])
-            obj.set("det_api_version", config_hidra["det_api_version"])
-            obj.set("history_size", config_hidra["history_size"])
-            obj.set("store_data", config_hidra["store_data"])
-            obj.set("remove_data", config_hidra["remove_data"])
-            obj.set("whitelist", config_hidra["whitelist"])
+
+            obj.set("det_ip", config_ed["det_ip"])
+            obj.set("det_api_version", config_ed["det_api_version"])
+            obj.set("history_size", config_ed["history_size"])
+            obj.set("store_data", config_df["store_data"])
+            obj.set("remove_data", config_df["remove_data"])
+            obj.set("whitelist", config_hidra["general"]["whitelist"])
             obj.set("ldapuri", ldapuri)
 
             res_start = obj.do("start")

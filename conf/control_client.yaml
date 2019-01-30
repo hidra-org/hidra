@@ -4,9 +4,12 @@ general:
     netgroup_template: "a3{bl}-hosts"
 
 hidra:
-    det_api_version: 1.6.0
-    history_size: 2000
-    store_data: False
-    remove_data: False
+    eventdetector:
+        http_events:
+            det_api_version: 1.6.0
+            history_size: 2000
+    datafetcher:
+        store_data: False
+        remove_data: False
     # default whitelist: all hosts contained in the beamline netgroup
     # to change that set whitelist here
