@@ -29,49 +29,16 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from .utils_network import start_socket, stop_socket
-
-
-class NotSupported(Exception):
-    """Raised when a parameter is not supported."""
-    pass
-
-
-class UsageError(Exception):
-    """Raised when API was used in a wrong way."""
-    pass
-
-
-class FormatError(Exception):
-    """Raised when a parameter is of the wrong format."""
-    pass
-
-
-class ConnectionFailed(Exception):
-    """Raised when the connection to hidra could not be established."""
-    pass
-
-
-class VersionError(Exception):
-    """Raised when the api and the hidra version do not match."""
-    pass
-
-
-class AuthenticationFailed(Exception):
-    """Raised when the connection to hidra is not allowed."""
-    pass
-
-
-class CommunicationFailed(Exception):
-    """
-    Raised when a the connection to hidra is established but something was
-    wrong with the communication.
-    """
-    pass
-
-
-class DataSavingError(Exception):
-    """Raised when an error occured while the data was saved."""
-    pass
+from .utils_datatypes import (
+    NotSupported,
+    UsageError,
+    FormatError,
+    ConnectionFailed,
+    VersionError,
+    AuthenticationFailed,
+    CommunicationFailed,
+    DataSavingError
+)
 
 
 class Base(object):

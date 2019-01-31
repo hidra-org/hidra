@@ -45,7 +45,16 @@ from .utils_general import (is_windows,
 
 from .utils_datatypes import (IpcAddresses,
                               Endpoints,
-                              MAPPING_ZMQ_CONSTANTS_TO_STR)
+                              MAPPING_ZMQ_CONSTANTS_TO_STR,
+                              NotSupported,
+                              UsageError,
+                              FormatError,
+                              ConnectionFailed,
+                              VersionError,
+                              AuthenticationFailed,
+                              CommunicationFailed,
+                              DataSavingError,
+                              WrongConfiguration)
 
 from .utils_config import (check_config,
                            load_config,
@@ -55,8 +64,7 @@ from .utils_config import (check_config,
                            update_dict,
                            map_conf_format,
                            set_flat_param,
-                           get_flat_param,
-                           WrongConfiguration)
+                           get_flat_param)
 
 from .utils_logging import (CustomQueueListener,
                             get_stream_log_handler,
@@ -77,15 +85,7 @@ from .utils_network import (execute_ldapsearch,
                             start_socket,
                             stop_socket)
 
-from .utils_api import (NotSupported,
-                        UsageError,
-                        FormatError,
-                        ConnectionFailed,
-                        VersionError,
-                        AuthenticationFailed,
-                        CommunicationFailed,
-                        DataSavingError,
-                        Base)
+from .utils_api import Base
 
 __all__ = [
     "is_windows",
@@ -104,6 +104,15 @@ __all__ = [
     "IpcAddresses",
     "Endpoints",
     "MAPPING_ZMQ_CONSTANTS_TO_STR",
+    "NotSupported",
+    "UsageError",
+    "FormatError",
+    "ConnectionFailed",
+    "VersionError",
+    "AuthenticationFailed",
+    "CommunicationFailed",
+    "DataSavingError",
+    "WrongConfiguration",
     "check_config",
     "load_config",
     "write_config",
@@ -113,7 +122,6 @@ __all__ = [
     "map_conf_format",
     "set_flat_param",
     "get_flat_param",
-    "WrongConfiguration",
     "CustomQueueListener",
     "get_stream_log_handler",
     "get_file_log_handler",
@@ -131,13 +139,5 @@ __all__ = [
     "set_endpoints",
     "start_socket",
     "stop_socket",
-    "NotSupported",
-    "UsageError",
-    "FormatError",
-    "ConnectionFailed",
-    "VersionError",
-    "AuthenticationFailed",
-    "CommunicationFailed",
-    "DataSavingError",
     "Base"
 ]

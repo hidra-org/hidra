@@ -38,20 +38,13 @@ import json
 import logging
 import yaml
 
-from .utils_datatypes import Endpoints
-from .utils_api import NotSupported
+from .utils_datatypes import (Endpoints, NotSupported, WrongConfiguration)
 
 try:
     import ConfigParser
 except ImportError:
     # The ConfigParser module has been renamed to configparser in Python 3
     import configparser as ConfigParser
-
-
-class WrongConfiguration(Exception):
-    """Raised when something is wrong with the configuration.
-    """
-    pass
 
 
 def load_config(config_file, config_type=None, log=logging):

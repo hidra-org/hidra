@@ -95,3 +95,57 @@ MAPPING_ZMQ_CONSTANTS_TO_STR = [
     "XPUB",  # zmq.XPUB = 9
     "XSUB",  # zmq.XSUB = 10
 ]
+
+# ------------------------------ #
+#           Exceptions           #
+# ------------------------------ #
+
+class NotSupported(Exception):
+    """Raised when a parameter is not supported."""
+    pass
+
+
+class UsageError(Exception):
+    """Raised when API was used in a wrong way."""
+    pass
+
+
+class FormatError(Exception):
+    """Raised when a parameter is of the wrong format."""
+    pass
+
+
+class ConnectionFailed(Exception):
+    """Raised when the connection to hidra could not be established."""
+    pass
+
+
+class VersionError(Exception):
+    """Raised when the api and the hidra version do not match."""
+    pass
+
+
+class AuthenticationFailed(Exception):
+    """Raised when the connection to hidra is not allowed."""
+    pass
+
+
+class CommunicationFailed(Exception):
+    """
+    Raised when a the connection to hidra is established but something was
+    wrong with the communication.
+    """
+    pass
+
+
+class DataSavingError(Exception):
+    """Raised when an error occured while the data was saved."""
+    pass
+
+
+class WrongConfiguration(Exception):
+    """Raised when something is wrong with the configuration.
+    """
+    pass
+
+
