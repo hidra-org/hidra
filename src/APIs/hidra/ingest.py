@@ -144,8 +144,9 @@ class Ingest(Base):
 
         if is_windows():
             self.log.info("Using tcp for internal communication.")
-            self.eventdet_endpoint = "tcp://{}:{}".format(self.localhost,
-                                                          self.eventdetector_port)
+            self.eventdet_endpoint = ("tcp://{}:{}"
+                                      .format(self.localhost,
+                                              self.eventdetector_port))
             self.datafetch_endpoint = ("tcp://{}:{}"
                                        .format(self.localhost,
                                                self.datafetcher_port))

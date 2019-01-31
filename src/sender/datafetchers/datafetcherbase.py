@@ -40,7 +40,6 @@ import zmq
 #import __init__ as init  # noqa F401 # pylint: disable=unused-import
 from base_class import Base
 import hidra.utils as utils
-from hidra.utils import WrongConfiguration
 
 # source:
 # pylint: disable=line-too-long
@@ -142,13 +141,13 @@ class DataFetcherBase(Base, ABC):
             }
 
         if check_module_config:
-            required_params=[
+            required_params = [
                 self.required_params_base,
                 self.required_params_dep,
                 self.required_params
             ]
         else:
-            required_params=[
+            required_params = [
                 self.required_params_base,
             ]
 

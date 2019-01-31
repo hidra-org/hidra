@@ -307,7 +307,7 @@ class DataReceiver(object):
         config_recv = config["datareceiver"]
 
         # change user
-        user_info, user_was_changed = utils.change_user(config)
+        user_info, user_was_changed = utils.change_user(config_gen)
 
         # enable logging
         root = logging.getLogger()
@@ -353,7 +353,8 @@ class DataReceiver(object):
             check_time = 2
 
         if config_gen["whitelist"] is not None:
-            self.log.debug("config_gen['whitelist']=%s", config_gen["whitelist"])
+            self.log.debug("config_gen['whitelist']=%s",
+                           config_gen["whitelist"])
 
             with self.lock:
                 _whitelist = utils.extend_whitelist(config_gen["whitelist"],

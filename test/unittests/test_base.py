@@ -89,7 +89,7 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
             exc_info (optional): Append a traceback.
         """
 
-        msg = unicode(message)
+        msg = unicode(message)  # noqa F821
         if args:
             msg = msg % args
 

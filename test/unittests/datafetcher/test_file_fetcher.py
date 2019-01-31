@@ -51,6 +51,8 @@ class TestDataFetcher(DataFetcherTestBase):
         super(TestDataFetcher, self).setUp()
 
         # Set up config
+        local_target = None,
+        # local_target = os.path.join(self.base_dir, "data", "target")
         self.module_name = "file_fetcher"
         self.datafetcher_config = {
             "network": {
@@ -62,8 +64,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
                 "store_data": False,
                 "remove_data": False,
-                "local_target": None,
-                # "local_target": os.path.join(self.base_dir, "data", "target"),
+                "local_target": local_target,
                 self.module_name: {
                     "fix_subdirs": ["commissioning", "current", "local"],
                 }

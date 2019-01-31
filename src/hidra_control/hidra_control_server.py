@@ -42,7 +42,6 @@ import time
 from multiprocessing import Queue
 
 import setproctitle
-from six import iteritems
 import zmq
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -57,8 +56,8 @@ del API_DIR
 # pylint: disable=wrong-import-position
 
 import hidra  # noqa E402
-import hidra.utils  as utils # noqa E402
-from hidra.utils import FormatError
+import hidra.utils as utils  # noqa E402
+from hidra.utils import FormatError  # noqa E402
 
 CONFIG_PREFIX = "datamanager_"
 
@@ -154,6 +153,47 @@ class InstanceTracking(object):
             else:
                 self.log.error("Could not start hidra for %s_%s",
                                self.beamline, det_id)
+
+
+def _decode_message(msg):
+    """Decode the message
+    """
+
+    try:
+        action = msg[0]
+    except IndexError:
+        raise FormatError
+
+    if action == b"IS_ALIVE":
+        return action, None, None, None, None
+
+    try:
+        action, host_id, det_id = msg[:3]
+    except ValueError:
+        raise FormatError
+
+    det_id = socket.getfqdn(det_id)
+
+    if action == b"set":
+
+        if len(msg) < 4:
+            raise FormatError
+
+        param, value = msg[3:]
+        param = param.lower()
+        value = json.loads(value)
+
+    elif action in [b"get", b"do"]:
+        if len(msg) != 4:
+            raise FormatError
+
+        param, value = msg[3], None
+        param = param.lower()
+
+    else:
+        raise FormatError
+
+    return action, host_id, det_id, param, value
 
 
 class HidraController(object):
@@ -270,7 +310,7 @@ class HidraController(object):
         [b"bye", host_id, detector]
         """
         try:
-            action, host_id, det_id, param, value = self._decode_message(msg)
+            action, host_id, det_id, param, value = _decode_message(msg)
         except FormatError:
             return b"ERROR"
 
@@ -312,46 +352,6 @@ class HidraController(object):
             return b"DONE"
         else:
             return b"ERROR"
-
-    def _decode_message(self, msg):
-        """
-        """
-
-        try:
-            action = msg[0]
-        except IndexError:
-            raise FormatError
-
-        if action == b"IS_ALIVE":
-            return action, None, None, None, None
-
-        try:
-            action, host_id, det_id = msg[:3]
-        except ValueError:
-            raise FormatError
-
-        det_ip = socket.getfqdn(det_id)
-
-        if action == b"set":
-
-            if len(msg) < 4:
-                raise FormatError
-
-            param, value = msg[3:]
-            param = param.lower()
-            value = json.loads(value)
-
-        elif action in [b"get", b"do"]:
-            if len(msg) != 4:
-                raise FormatError
-
-            param, value = msg[3], None
-            param = param.lower()
-
-        else:
-            raise FormatError
-
-        return action, host_id, det_id, param, value
 
     def set(self, host_id, det_id, param, value):
         """
@@ -473,7 +473,9 @@ class HidraController(object):
             ],
             "datafetcher": ["store_data", "remove_data"]
         }
-        config_complete, reduced_config = utils.check_config(required_params, current_config, self.log)
+        config_complete, _ = utils.check_config(required_params,
+                                                current_config,
+                                                self.log)
 
         if config_complete:
             # static config
@@ -516,7 +518,7 @@ class HidraController(object):
                 .format(bl=self.beamline, det=det_id)
             )
             self.log.info("Writing config file: {}".format(config_file))
-            utils.write_config(config_file, config_to_write)
+            utils.write_config(config_file, config_to_write, log=self.log)
 
             ed_type = self.config_static["eventdetector"]["type"]
             df_type = self.config_static["datafetcher"]["type"]
@@ -736,7 +738,7 @@ def argument_parsing():
     #   "hidraconfig_variable" : {...}
     # }
 
-    #TODO check config for required params
+    # TODO check config for required params
 
     return config
 

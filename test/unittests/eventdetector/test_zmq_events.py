@@ -65,7 +65,6 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.context = zmq.Context()
 
-
         self.module_name = "zmq_events"
         self.config_module = {
             "number_of_streams": 1,
@@ -86,8 +85,8 @@ class TestEventDetector(EventDetectorTestBase):
             }
         }
 
-        self.eventdetector_config = copy.deepcopy(self.conf_structure)
-        self.eventdetector_config["eventdetector"][self.module_name] = (
+        self.ed_config = copy.deepcopy(self.conf_structure)
+        self.ed_config["eventdetector"][self.module_name] = (
             self.config_module
         )
 
@@ -99,8 +98,8 @@ class TestEventDetector(EventDetectorTestBase):
         self.target_dir = os.path.join(target_base_dir,
                                        target_relative_dir)
 
-        self.ipc_addresses = zmq_events.get_ipc_addresses(config=self.eventdetector_config)
-        self.tcp_addresses = zmq_events.get_tcp_addresses(config=self.eventdetector_config)
+        self.ipc_addresses = zmq_events.get_ipc_addresses(self.ed_config)
+        self.tcp_addresses = zmq_events.get_tcp_addresses(self.ed_config)
         self.endpoints = zmq_events.get_endpoints(
             ipc_addresses=self.ipc_addresses,
             tcp_addresses=self.tcp_addresses
@@ -171,7 +170,6 @@ class TestEventDetector(EventDetectorTestBase):
                 eventdetector = zmq_events.EventDetector(self.conf_structure,
                                                          self.log_queue)
 
-
             ref_config = {
                 "general": {
                     "ext_ip": None,
@@ -214,7 +212,8 @@ class TestEventDetector(EventDetectorTestBase):
             mock_is_windows.return_value = True
 
             addrs = zmq_events.get_tcp_addresses(config)
-            port = config["eventdetector"][self.module_name]["eventdetector_port"]
+            module_config = config["eventdetector"][self.module_name]
+            port = module_config["eventdetector_port"]
 
             self.assertIsInstance(addrs, zmq_events.TcpAddresses)
             self.assertEqual(addrs.eventdet_bind,
@@ -315,14 +314,14 @@ class TestEventDetector(EventDetectorTestBase):
 #        with mock.patch("utils.get_logger"):
 #        with mock.patch.object(utils, "get_logger", mock_get_logger):
 #            with mock.patch("zmq_events.EventDetector.setup"):
-#                self.eventdetector = EventDetector(self.eventdetector_config,
+#                self.eventdetector = EventDetector(self.ed_config,
 #                                                   self.log_queue)
 #
 #        with mock.patch.object(zmq, "Context", MockZmqContext):
 #            self.eventdetector.setup()
 
         self.eventdetector = zmq_events.EventDetector(
-            self.eventdetector_config,
+            self.ed_config,
             self.log_queue
         )
 

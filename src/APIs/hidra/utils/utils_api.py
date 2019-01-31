@@ -29,16 +29,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from .utils_network import start_socket, stop_socket
-from .utils_datatypes import (
-    NotSupported,
-    UsageError,
-    FormatError,
-    ConnectionFailed,
-    VersionError,
-    AuthenticationFailed,
-    CommunicationFailed,
-    DataSavingError
-)
 
 
 class Base(object):

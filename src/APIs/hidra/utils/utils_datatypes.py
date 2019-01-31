@@ -96,6 +96,7 @@ MAPPING_ZMQ_CONSTANTS_TO_STR = [
     "XSUB",  # zmq.XSUB = 10
 ]
 
+
 # ------------------------------ #
 #           Exceptions           #
 # ------------------------------ #
@@ -147,5 +148,3 @@ class WrongConfiguration(Exception):
     """Raised when something is wrong with the configuration.
     """
     pass
-
-

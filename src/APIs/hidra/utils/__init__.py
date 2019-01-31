@@ -101,6 +101,8 @@ __all__ = [
     "check_ping",
     "create_dir",
     "create_sub_dirs",
+    "change_user",
+    "log_user_change",
     "IpcAddresses",
     "Endpoints",
     "MAPPING_ZMQ_CONSTANTS_TO_STR",

@@ -83,12 +83,13 @@ class TestDataManager(TestBase):
                        "current/raw",
                        "current/scratch_bl",
                        "local"]
+        ports = self.config["ports"]
         self.datamanager_config = {
             "general": {
-                "com_port": self.config["ports"]["com"],
-                "control_pub_port": self.config["ports"]["control_pub"],
-                "control_sub_port": self.config["ports"]["control_sub"],
-                "request_fw_port": self.config["ports"]["request_fw"],
+                "com_port": ports["com"],
+                "control_pub_port": ports["control_pub"],
+                "control_sub_port": ports["control_sub"],
+                "request_fw_port": ports["request_fw"],
                 "request_port": 50001,
                 "ext_ip": self.ext_ip,
                 "ldapuri": "it-ldap-slave.desy.de:1389",
@@ -119,18 +120,19 @@ class TestDataManager(TestBase):
             "datafetcher": {
                 "type": "file_fetcher",
                 "chunksize": self.chunksize,
-                "data_stream_targets": [[self.con_ip, self.config["fixed_recv"]]],
+                "data_stream_targets": [[self.con_ip,
+                                         self.config["fixed_recv"]]],
                 "local_target": "/home/kuhnm/projects/hidra/data/target",
                 "use_data_stream": True,
                 "number_of_streams": 1,
                 "store_data": False,
                 "remove_data": False,
-                "cleaner_port": self.config["ports"]["cleaner"],
-                "cleaner_trigger_port": self.config["ports"]["cleaner_trigger"],
-                "confirmation_port": self.config["ports"]["confirmation"],
+                "cleaner_port": ports["cleaner"],
+                "cleaner_trigger_port": ports["cleaner_trigger"],
+                "confirmation_port": ports["confirmation"],
                 "confirmation_resp_port": 50012,
                 "datafetcher_port": 50010,
-                "router_port": self.config["ports"]["router"],
+                "router_port": ports["router"],
                 "status_check_port": 50050,
                 "status_check_resp_port": 50011,
                 "file_fetcher": {

@@ -329,8 +329,9 @@ def change_user(config):
                        entry "username".
 
     Returns:
-        A tuple containing the password database entry of the effective user and
-        a boolean if the user was changed or just stayed as is (True: was changed).
+        A tuple containing the password database entry of the effective user
+        and a boolean if the user was changed or just stayed as is
+        (True: was changed).
     """
 
     start_user = pwd.getpwuid(os.geteuid())
@@ -370,7 +371,7 @@ def log_user_change(log, user_was_changed, user_info):
     if user_was_changed:
         log.info("Running as user %s (uid %s)",
                  user_info.pw_name, user_info.pw_uid)
-    elif is_windows:
+    elif is_windows():
         log.info("No user change performed (windows), "
                  "running as user %s, (uid %s)",
                  user_info.pw_name, user_info.pw_uid)

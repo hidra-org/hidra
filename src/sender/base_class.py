@@ -47,6 +47,7 @@ class Base(object):
         self.log = None
         self.context = None
 
+        self.config_all = {}
         self.required_params_base = {}
         self.required_params_dep = {}
         self.config_reduced = {}
@@ -121,9 +122,6 @@ class Base(object):
                 raise WrongConfiguration(error_msg)
 
         return config_reduced
-
-
-
 
     def start_socket(self, name, sock_type, sock_con, endpoint, message=None):
         """Wrapper of start_socket

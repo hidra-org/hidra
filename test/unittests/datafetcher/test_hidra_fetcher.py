@@ -51,6 +51,9 @@ class TestDataFetcher(DataFetcherTestBase):
         super(TestDataFetcher, self).setUp()
 
         # Set up config
+        # local_target = None
+        local_target = os.path.join(self.base_dir, "data", "zmq_target")
+        # local_target = os.path.join(self.base_dir, "data", "target")
         self.module_name = "hidra_fetcher"
         self.datafetcher_config = {
             "network": {
@@ -64,11 +67,9 @@ class TestDataFetcher(DataFetcherTestBase):
                 "store_data": False,
                 "remove_data": False,
                 "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
-                # "local_target": None,
-                "local_target": os.path.join(self.base_dir, "data", "zmq_target"),
-                # "local_target": os.path.join(self.base_dir, "data", "target"),
+                "local_target": local_target,
                 self.module_name: {
-#                    "fix_subdirs": ["commissioning", "current", "local"],
+                    # "fix_subdirs": ["commissioning", "current", "local"],
                     "context": self.context,
                     "status_check_resp_port": "50011",
                     "confirmation_resp_port": "50012",

@@ -63,7 +63,6 @@ class DataFetcher(DataFetcherBase):
                                  "hidra_fetcher-{}".format(fetcher_id),
                                  context)
 
-
         # base class sets
         #   self.config_all - all configurations
         #   self.config_df - the config of the datafetcher
@@ -102,27 +101,30 @@ class DataFetcher(DataFetcherBase):
         else:
             self.required_params["network"] += ["ipc_dir", "main_pid"]
 
-        self.required_params["datafetcher"] = ["store_data", {self.df_type: df_params}]
+        self.required_params["datafetcher"] = ["store_data",
+                                               {self.df_type: df_params}]
 
     def _setup(self):
         """Sets up and configures the transfer.
         """
         self.transfer = Transfer("STREAM", use_log=self.log_queue)
 
-        endpoint = "{}_{}".format(self.config_all["network"]["main_pid"], "out")
-        self.transfer.start([self.config_all["network"]["ipc_dir"], endpoint],
+        config_net = self.config_all["network"]
+
+        endpoint = "{}_{}".format(config_net["main_pid"], "out")
+        self.transfer.start([config_net["ipc_dir"], endpoint],
                             protocol="ipc",
                             data_con_style="connect")
 
         # enable status check requests from any sender
         self.transfer.setopt(option="status_check",
-                             value=[self.config_all["network"]["ext_ip"],
+                             value=[config_net["ext_ip"],
                                     self.config["status_check_resp_port"]])
 
         # enable confirmation reply if this is requested in a received data
         # packet
         self.transfer.setopt(option="confirmation",
-                             value=[self.config_all["network"]["ext_ip"],
+                             value=[config_net["ext_ip"],
                                     self.config["confirmation_resp_port"]])
 
     def get_metadata(self, targets, metadata):

@@ -135,11 +135,17 @@ def argument_parsing():
 
 
 def check_config(config):
+    """Check if the configuration has the required structure.
+
+    Args:
+        config (dict): The configuration dictionary.
+    """
+
     log = utils.LoggingFunction("debug")
 
     # general section
     required_params = ["beamline", "ldapuri", "netgroup_template"]
-    check_passed, config_reduced = utils.check_config(
+    check_passed, _ = utils.check_config(
         required_params,
         config["general"],
         log
@@ -152,14 +158,14 @@ def check_config(config):
         )
 
     # hidra section
-    required_params = {
+    required_params_hidra = {
         "eventdetector": [
             {"http_events": ["history_size"]}
         ],
         "datafetcher": ["store_data", "remove_data"]
     }
-    check_passed, config_reduced = utils.check_config(
-        required_params,
+    check_passed, _ = utils.check_config(
+        required_params_hidra,
         config["hidra"],
         log
     )
@@ -185,6 +191,7 @@ def check_config(config):
             config["hidra"]["general"] = {
                 "whitelist": potential_whitelist
             }
+
 
 def client():
     """The hidra control client.
@@ -220,7 +227,6 @@ def client():
                                  ldapuri,
                                  netgroup_template.format(bl=beamline),
                                  log=hidra.LoggingFunction())
-
 
             obj.set("det_ip", config_ed["det_ip"])
             obj.set("det_api_version", config_ed["det_api_version"])

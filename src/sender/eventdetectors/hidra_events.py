@@ -32,7 +32,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from collections import namedtuple
-import copy
 import json
 import multiprocessing
 import zmq
@@ -217,12 +216,12 @@ class EventDetector(EventDetectorBase):
         Depending if on Linux or Windows other parameters are required.
         """
 
-#        self.required_params = ["context", "ext_ip", "con_ip", "ext_data_port"]
+#        self.required_params = ["context", "ext_ip",
+#                                "con_ip", "ext_data_port"]
 #        if utils.is_windows():
 #            self.required_params += ["eventdetector_port", "datafetcher_port"]
 #        else:
 #            self.required_params += ["ipc_dir", "main_pid"]
-
 
         self.required_params = {
             "eventdetector": {self.ed_type: ["ext_data_port"]},

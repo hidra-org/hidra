@@ -38,7 +38,7 @@ import json
 import logging
 import yaml
 
-from .utils_datatypes import (Endpoints, NotSupported, WrongConfiguration)
+from .utils_datatypes import (Endpoints, NotSupported)
 
 try:
     import ConfigParser
@@ -93,6 +93,7 @@ def load_config(config_file, config_type=None, log=logging):
 
     return config
 
+
 def _detect_config_type(config_file):
     if config_file.endswith(".conf"):
         file_type = "conf"
@@ -102,7 +103,7 @@ def _detect_config_type(config_file):
     return file_type
 
 
-def write_config(config_file, config, config_type=None):
+def write_config(config_file, config, config_type=None, log=logging):
     """Write configuration data info a file.
 
     Args:
@@ -126,14 +127,16 @@ def write_config(config_file, config, config_type=None):
 
     try:
         if file_type == "conf":
-            for key, value in iteritems(config_to_write):
-                f.write("{} = {}\n".format(key, value))
+            with open(config_file, 'w') as f:
+                for key, value in config.items():
+                    f.write("{} = {}\n".format(key, value))
 
         if file_type == "yaml":
             with open(config_file, 'w') as outfile:
-                yaml.safe_dump(config,
-                          outfile,
-                          default_flow_style=False,
+                yaml.safe_dump(
+                    config,
+                    outfile,
+                    default_flow_style=False,
                 )
 
         else:
@@ -175,6 +178,7 @@ def update_dict(dictionary, dict_to_update):
                 dict_to_update[key] = value
         else:
             dict_to_update[key] = value
+
 
 CONFIG_MAPPING_SENDER = {
     "general": {
@@ -270,6 +274,7 @@ CONFIG_MAPPING_SENDER = {
     }
 }
 
+
 CONFIG_MAPPING_RECEIVER = {
     "general": {
         "log_size": "log_size",
@@ -305,9 +310,9 @@ def map_conf_format(flat_config, config_type, is_namespace=False):
 
     Returns:
         The configuration as dictionary in the correct hierarchy.
-
     """
-    if config_type =="sender":
+
+    if config_type == "sender":
         mapping = CONFIG_MAPPING_SENDER
     elif config_type == "receiver":
         mapping = CONFIG_MAPPING_RECEIVER
@@ -355,10 +360,10 @@ def map_conf_format(flat_config, config_type, is_namespace=False):
             _traverse_dict(config)
 
     else:
+        is_flat = "general" not in flat_config
 #        is_flat = all(not isinstance(value, dict)
 #                      for key, value in flat_config.items()
 #                      if key not in ["fix_subdirs", "monitored_events"])
-        is_flat = "general" not in flat_config
 
         if is_flat:
 
@@ -764,7 +769,8 @@ def parse_parameters(config, log=logging):
                 config_dict[sect][opt] = config.get(sect, opt)
     except Exception:
         log.debug("config=%s", config)
-        log.error("Could not parse parameters du to wrong format of config file")
+        log.error("Could not parse parameters du to wrong format of "
+                  "config file")
         raise
 
     return _convert_parameters(config_dict)

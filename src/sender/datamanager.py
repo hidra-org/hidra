@@ -326,7 +326,7 @@ def argument_parsing():
             "chunksize",
             "use_data_stream",
             "store_data",
-#            "local_target"
+            # "local_target"
         ]
     }
 
@@ -359,7 +359,7 @@ def argument_parsing():
 
     # TODO move this into eventdetector directly
     if (ed_type in config_ed
-        and "monitored_dir" in config_ed[ed_type]):
+            and "monitored_dir" in config_ed[ed_type]):
         # for convenience
         config_ed_type = config_ed[ed_type]
 
@@ -370,7 +370,7 @@ def argument_parsing():
 
         utils.check_existance(config_ed_type["monitored_dir"])
         if ("create_fix_subdirs" in config_ed_type
-            and config_ed_type["create_fix_subdirs"]):
+                and config_ed_type["create_fix_subdirs"]):
             # create the subdirectories which do not exist already
             utils.create_sub_dirs(
                 dir_path=config_ed_type["monitored_dir"],
@@ -506,7 +506,7 @@ class DataManager(Base):
             raise
 
         config_gen = self.config["general"]
-        config_ed = self.config["eventdetector"]
+#        config_ed = self.config["eventdetector"]
         config_df = self.config["datafetcher"]
 
         # change user
@@ -624,7 +624,6 @@ class DataManager(Base):
             "context": None,
             "session": None
         }
-
 
         self.whitelist = config_gen["whitelist"]
         self.ldapuri = config_gen["ldapuri"]
