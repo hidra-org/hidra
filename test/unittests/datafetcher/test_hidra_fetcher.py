@@ -60,7 +60,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "ext_ip": self.ext_ip,
             },
             "datafetcher": {
-                "datafetcher_type": self.module_name,
+                "type": self.module_name,
                 "store_data": False,
                 "remove_data": False,
                 "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB

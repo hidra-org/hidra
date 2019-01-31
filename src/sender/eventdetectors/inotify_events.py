@@ -76,7 +76,7 @@ class EventDetector(EventDetectorBase):
         #   self.config_all - all configurations
         #   self.config_ed - the config of the event detector
         #   self.config - the module specific config
-        #   self.eventdetector_type
+        #   self.ed_type -  the name of the eventdetector module
         #   self.log_queue
         #   self.log
 

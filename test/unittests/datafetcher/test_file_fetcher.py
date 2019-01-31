@@ -58,7 +58,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "endpoints": self.config["endpoints"]
             },
             "datafetcher": {
-                "datafetcher_type": self.module_name,
+                "type": self.module_name,
                 "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
                 "store_data": False,
                 "remove_data": False,

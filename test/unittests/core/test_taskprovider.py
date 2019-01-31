@@ -127,7 +127,7 @@ class TestTaskProvider(TestBase):
 
         self.taskprovider_config = {
             "eventdetector": {
-                "eventdetector_type": "inotifyx_events",
+                "type": "inotifyx_events",
                 "inotifyx_events": {
                     "monitored_dir": os.path.join(self.base_dir, "data", "source"),
                     "fix_subdirs": ["commissioning", "current", "local"],

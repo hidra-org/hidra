@@ -102,7 +102,7 @@ class TestDataManager(TestBase):
                 "whitelist": None
             },
             "eventdetector": {
-                "eventdetector_type": "inotifyx_events",
+                "type": "inotifyx_events",
                 "eventdetector_port": 50003,
                 "ext_data_port": 50101,
                 "inotifyx_events": {
@@ -117,7 +117,7 @@ class TestDataManager(TestBase):
                 },
             },
             "datafetcher": {
-                "datafetcher_type": "file_fetcher",
+                "type": "file_fetcher",
                 "chunksize": self.chunksize,
                 "data_stream_targets": [[self.con_ip, self.config["fixed_recv"]]],
                 "local_target": "/home/kuhnm/projects/hidra/data/target",

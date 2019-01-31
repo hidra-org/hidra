@@ -74,23 +74,22 @@ class EventDetectorBase(Base):
         self.config_all = config
 
         # base_parameters
-        self.required_params_base = {"eventdetector": ["eventdetector_type"]}
+        self.required_params_base = {"eventdetector": ["type"]}
 
         self.required_params_dep = {}
         self.config_reduced = {}
         self._base_check(module_class="eventdetector",
-                         module_type="eventdetector_type")
+                         module_type="type")
 
         self.config_ed = self.config_all["eventdetector"]
-        self.ed_type = self.config_ed["eventdetector_type"]
+        self.ed_type = self.config_ed["type"]
         self.config = self.config_ed[self.ed_type]
 
         self.required_params = []
 
     def _base_check(self, module_class, module_type):
         """
-        eg. module_class is eventdetector and module_type is
-            eventdetector_type
+        eg. module_class is eventdetector and module_type is type
         """
 
         # base_parameters

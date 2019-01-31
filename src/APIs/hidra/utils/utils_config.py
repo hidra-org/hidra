@@ -203,7 +203,7 @@ CONFIG_MAPPING_SENDER = {
         "onscreen": "onscreen"
     },
     "eventdetector": {
-        "eventdetector_type": "eventdetector_type",
+        "type": "eventdetector_type",
         "ext_data_port": "ext_data_port",
         "eventdetector_port": "eventdetector_port",
         "dirs_not_to_create": "dirs_not_to_create",
@@ -250,7 +250,7 @@ CONFIG_MAPPING_SENDER = {
         }
     },
     "datafetcher": {
-        "datafetcher_type": "datafetcher_type",
+        "type": "datafetcher_type",
         "datafetcher_port": "datafetcher_port",
         "status_check_port": "status_check_port",
         "status_check_resp_port": "status_check_resp_port",
@@ -332,7 +332,8 @@ def map_conf_format(flat_config, config_type, is_namespace=False):
                         del config[key]
             else:
                 try:
-                    config[key] = flat_config[key]
+                    # value of the mapping is the actual key of the flat
+                    config[key] = flat_config[value]
                 except KeyError:
                     del config[key]
 

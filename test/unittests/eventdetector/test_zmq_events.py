@@ -81,7 +81,7 @@ class TestEventDetector(EventDetectorTestBase):
                 "con_ip": self.con_ip,
             },
             "eventdetector": {
-                "eventdetector_type": self.module_name,
+                "type": self.module_name,
                 self.module_name: None
             }
         }

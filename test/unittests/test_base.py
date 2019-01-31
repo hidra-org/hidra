@@ -285,7 +285,7 @@ class TestBase(unittest.TestCase):
 
         # Start queue listener using the stream handler above
         self.log_queue = Queue(-1)
-        self.listener = utils.CustomQueueListener(self.log_queue, *handler)
+        self.listener = utils.CustomQueueListener(self.log_queue, handler)
         self.listener.start()
 
         # Create log and set handler to queue handle

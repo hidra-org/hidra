@@ -195,7 +195,7 @@ class HidraController(object):
                 "whitelist": None,
             },
             "eventdetector": {
-                "eventdetector_type": ed_type,
+                "type": ed_type,
                 ed_type: {
                     "det_ip": None,
                     "det_api_version": None,
@@ -214,7 +214,7 @@ class HidraController(object):
                 "whitelist": "whitelist",
             },
             "eventdetector": {
-                "eventdetector_type": ed_type,
+                "type": ed_type,
                 ed_type: {
                     "det_ip": "det_ip",
                     "det_api_version": "det_api_version",
@@ -468,7 +468,7 @@ class HidraController(object):
         required_params = {
             "general": ["ldapuri", "whitelist"],
             "eventdetector": [
-                ["eventdetector_type", [ed_type]],
+                ["type", [ed_type]],
                 {ed_type: ["det_ip", "det_api_version", "history_size"]}
             ],
             "datafetcher": ["store_data", "remove_data"]
@@ -495,7 +495,7 @@ class HidraController(object):
             config_to_write["general"]["procname"] = procname
             config_to_write["general"]["username"] = username
             config_to_write["general"]["ext_ip"] = external_ip
-            df_type = config_to_write["datafetcher"]["datafetcher_type"]
+            df_type = config_to_write["datafetcher"]["type"]
             try:
                 config_to_write["datafetcher"][df_type]["local_target"] = (
                     local_target
@@ -518,8 +518,8 @@ class HidraController(object):
             self.log.info("Writing config file: {}".format(config_file))
             utils.write_config(config_file, config_to_write)
 
-            ed_type = self.config_static["eventdetector"]["eventdetector_type"]
-            df_type = self.config_static["datafetcher"]["datafetcher_type"]
+            ed_type = self.config_static["eventdetector"]["type"]
+            df_type = self.config_static["datafetcher"]["type"]
             self.log.info(
                 "Started with ext_ip: %s, event detector: %s, "
                 "data fetcher: %s",

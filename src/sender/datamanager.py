@@ -319,10 +319,10 @@ def argument_parsing():
             "ext_ip"
         ],
         "eventdetector": [
-            "eventdetector_type",
+            "type",
         ],
         "datafetcher": [
-            "datafetcher_type",
+            "type",
             "chunksize",
             "use_data_stream",
             "store_data",
@@ -336,37 +336,32 @@ def argument_parsing():
         logging.error("Wrong configuration")
         raise utils.WrongConfiguration
 
-
     # for convenience
     config_gen = config["general"]
     config_ed = config["eventdetector"]
     config_df = config["datafetcher"]
-    eventdetector_type = config_ed["eventdetector_type"]
-    datafetcher_type = config_df["datafetcher_type"]
+    ed_type = config_ed["type"]
+    df_type = config_df["type"]
 
     # check if logfile is writable
     config_gen["log_file"] = os.path.join(config_gen["log_path"],
                                           config_gen["log_name"])
     utils.check_writable(config_gen["log_file"])
 
-    # check if the eventdetector_type is supported
-    utils.check_type(eventdetector_type,
-                     supported_ed_types,
-                     "Event detector")
+    # check if the eventdetector type is supported
+    utils.check_type(ed_type, supported_ed_types, "Event detector")
 
-    # check if the datafetcher_type is supported
-    utils.check_type(datafetcher_type,
-                     supported_df_types,
-                     "Data fetcher")
+    # check if the datafetcher type is supported
+    utils.check_type(df_type, supported_df_types, "Data fetcher")
 
     # check if directories exist
     utils.check_existance(config_gen["log_path"])
 
     # TODO move this into eventdetector directly
-    if (eventdetector_type in config_ed
-        and "monitored_dir" in config_ed[eventdetector_type]):
+    if (ed_type in config_ed
+        and "monitored_dir" in config_ed[ed_type]):
         # for convenience
-        config_ed_type = config_ed[eventdetector_type]
+        config_ed_type = config_ed[ed_type]
 
         # get rid of formating errors
         config_ed_type["monitored_dir"] = os.path.normpath(
@@ -999,8 +994,8 @@ class DataManager(Base):
         # Cleaner
         if self.use_cleaner:
             self.log.info("Loading cleaner from data fetcher module: {}"
-                          .format(self.config["datafetcher"]["datafetcher_type"]))
-            self.cleaner_m = __import__(self.config["datafetcher"]["datafetcher_type"])
+                          .format(self.config["datafetcher"]["type"]))
+            self.cleaner_m = __import__(self.config["datafetcher"]["type"])
 
             self.cleaner_pr = Process(
                 target=self.cleaner_m.Cleaner,
@@ -1011,7 +1006,7 @@ class DataManager(Base):
             self.cleaner_pr.start()
 
         self.log.info("Configured Type of data fetcher: {}"
-                      .format(self.config["datafetcher"]["datafetcher_type"]))
+                      .format(self.config["datafetcher"]["type"]))
 
         # DataDispatcher
         for i in range(self.number_of_streams):

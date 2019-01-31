@@ -65,7 +65,7 @@ def get_tcp_addresses(config):
         ext_ip = config["network"]["ext_ip"]
         con_ip = config["network"]["con_ip"]
 
-        df_type = config["datafetcher"]["datafetcher_type"]
+        df_type = config["datafetcher"]["type"]
         port = config["datafetcher"][df_type]["datafetcher_port"]
         datafetch_bind = "{}:{}".format(ext_ip, port)
         datafetch_con = "{}:{}".format(con_ip, port)

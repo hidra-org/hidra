@@ -60,7 +60,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "remove_data": False,
                 "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
                 "local_target": os.path.join(self.base_dir, "data", "target"),
-                "datafetcher_type": self.module_name,
+                "type": self.module_name,
                 self.module_name: {
                     "session": None,
                     "fix_subdirs": ["commissioning", "current", "local"],

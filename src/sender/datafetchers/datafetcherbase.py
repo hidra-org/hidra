@@ -93,7 +93,7 @@ class DataFetcherBase(Base, ABC):
                 "main_pid"
             ],
             "datafetcher": [
-                "datafetcher_type",
+                "type",
                 "chunksize",
                 "local_target",
                 ["remove_data", [True,
@@ -106,10 +106,10 @@ class DataFetcherBase(Base, ABC):
         self.required_params_dep = {}
         self.config_reduced = {}
         self._base_check(module_class="datafetcher",
-                         module_type="datafetcher_type")
+                         module_type="type")
 
         self.config_df = self.config_all["datafetcher"]
-        self.df_type = self.config_df["datafetcher_type"]
+        self.df_type = self.config_df["type"]
         if self.required_params_dep:
             self.config = self.config_df[self.df_type]
         else:

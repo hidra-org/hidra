@@ -21,8 +21,8 @@ hidraconfig_static:
         com_port: 50000
         request_port: 50001
     eventdetector:
-        eventdetector_type: http_events
-        # eventdetector_type: inotifyx_events
+        type: http_events
+        # type: inotifyx_events
         inotifyx_events:
             # monitored_dir: /home/kuhnm/projects/hidra/data/source
             fix_subdirs: &fix_subdirs
@@ -42,8 +42,8 @@ hidraconfig_static:
         http_events:
             fix_subdirs: *fix_subdirs
     datafetcher:
-        datafetcher_type: http_fetcher
-        # datafetcher_type: file_fetcher
+        type: http_fetcher
+        # type: file_fetcher
         use_data_stream: False
         number_of_streams: 32
         chunksize: 10485760

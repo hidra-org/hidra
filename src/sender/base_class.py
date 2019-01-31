@@ -53,8 +53,7 @@ class Base(object):
 
     def _base_check(self, module_class, module_type, check_dep=True):
         """
-        eg. module_class is eventdetector and module_type is
-            eventdetector_type
+        eg. module_class is "eventdetector" and module_type is "type"
         """
 
         # Check format of base config
