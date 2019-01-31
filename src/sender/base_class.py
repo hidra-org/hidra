@@ -51,9 +51,9 @@ class Base(object):
         self.required_params_dep = {}
         self.config_reduced = {}
 
-    def _base_check(self, module_class, module_type, check_dep=True):
+    def _base_check(self, module_class, check_dep=True):
         """
-        eg. module_class is "eventdetector" and module_type is "type"
+        eg. module_class is "eventdetector"
         """
 
         # Check format of base config
@@ -65,7 +65,7 @@ class Base(object):
         # Check format of dependent config
         if check_dep:
             self.required_params_dep = {
-                module_class: [self.config_all[module_class][module_type]]
+                module_class: [self.config_all[module_class]["type"]]
             }
 
             config_reduced_dep = self._check_config_base(

@@ -105,8 +105,7 @@ class DataFetcherBase(Base, ABC):
 
         self.required_params_dep = {}
         self.config_reduced = {}
-        self._base_check(module_class="datafetcher",
-                         module_type="type")
+        self._base_check(module_class="datafetcher")
 
         self.config_df = self.config_all["datafetcher"]
         self.df_type = self.config_df["type"]
