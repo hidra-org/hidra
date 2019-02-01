@@ -51,7 +51,7 @@ class TestDataFetcher(DataFetcherTestBase):
         super(TestDataFetcher, self).setUp()
 
         # Set up config
-        local_target = None,
+        local_target = None
         # local_target = os.path.join(self.base_dir, "data", "target")
         self.module_name = "file_fetcher"
         self.datafetcher_config = {
