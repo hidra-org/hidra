@@ -325,21 +325,27 @@ class DataDispatcher(Base):
 
                         elif message[0] == b"WAKEUP":
                             self.log.debug("Received wakeup signal")
+
                             if len(message) == 2 and message[1] == "RECONNECT":
                                 # Reestablish all open data connections
                                 for socket_id in self.open_connections:
-                                    sckt = self.open_connections[socket_id]
+
                                     # close the connection
-                                    self.close_socket(name="connection",
-                                                      socket=sckt)
+                                    self.stop_socket(
+                                        name="connection",
+                                        socket=self.open_connections[socket_id]
+                                    )
+
                                     # reopen it
                                     endpoint = "tcp://" + socket_id
-                                    sckt = self.start_socket(
-                                        name="connection",
-                                        sock_type=zmq.PUSH,
-                                        sock_con="connect",
-                                        endpoint=endpoint,
-                                        message="Restart"
+                                    self.open_connections[socket_id] = (
+                                        self.start_socket(
+                                            name="connection",
+                                            sock_type=zmq.PUSH,
+                                            sock_con="connect",
+                                            endpoint=endpoint,
+                                            message="Restart"
+                                        )
                                     )
 
                             # Wake up from sleeping

@@ -208,11 +208,12 @@ class DataFetcher(DataFetcherBase):
 
         # do not remove data until a confirmation is sent back from the
         # priority target
-        if self.config["remove_data"] == "with_confirmation":
-            self.config["remove_flag"] = False
-
-        # the data was successfully sent -> mark it as removable
-        elif not send_error:
+#        if self.config["remove_data"] == "with_confirmation":
+#            self.config["remove_flag"] = False
+#
+#        # the data was successfully sent -> mark it as removable
+#        elif not send_error:
+        if not send_error:
             self.config["remove_flag"] = True
 
     def _datahandling(self, action_function, metadata):
@@ -297,7 +298,7 @@ class DataFetcher(DataFetcherBase):
         # remove file
         # can be set/done in addition to copy -> no elif
         # (e.g. store_data = True and remove_data = with_confirmation)
-        if self.config["remove_data"]:
+        if self.config["remove_data"] and self.config["remove_flag"]:
 
             file_id = self.generate_file_id(metadata)
             try:
