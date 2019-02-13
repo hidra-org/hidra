@@ -1500,6 +1500,29 @@ class Transfer(Base):
         """
 
         # --------------------------------------------------------------------
+        # check chunk_number
+        # --------------------------------------------------------------------
+        # if chunk_number == 0 open file
+        # if not, and file is not open thow datasavingerror
+        # if file is open,
+        #      - and chun_number did not change compared to last one -> ignore
+        #      - and chunk_number < last chunk number -> either reopen (if 0)
+        #                                                or throw error
+
+        try:
+            # check if file is open
+            desc = descriptors[filepath]
+        except KeyError:
+            # no
+            if metadata["chunk_number"] != 0:
+                self.log.debug("File not open but chunk_number not 0")
+                raise DataSavingError(
+                    "Missing beginning of file. Do not open file."
+                )
+
+        write_chunk = True
+
+        # --------------------------------------------------------------------
         # open file
         # --------------------------------------------------------------------
         try:
@@ -1557,7 +1580,13 @@ class Transfer(Base):
         # --------------------------------------------------------------------
         # check chunk_number
         # --------------------------------------------------------------------
-        if metadata["chunk_number"] <= desc["last_chunk_number"]:
+        if metadata["chunk_number"] == desc["last_chunk_number"]:
+            # ignore chunk, was already written
+            self.log.info("Ignore identical chunk %s for file %s",
+                          metadata["chunk_number"], filepath)
+            write_chunk = False
+
+        elif metadata["chunk_number"] < desc["last_chunk_number"]:
 
             if metadata["chunk_number"] == 0:
                 self.log.debug("Reopen file {}".format(filepath))
@@ -1577,9 +1606,10 @@ class Transfer(Base):
         # write data
         # --------------------------------------------------------------------
         try:
-            desc["file"].write(payload)
-            # TODO what todo when chunk_number is not 0?
-            desc["last_chunk_number"] = metadata["chunk_number"]
+            if write_chunk:
+                desc["file"].write(payload)
+                # TODO what todo when chunk_number is not 0?
+                desc["last_chunk_number"] = metadata["chunk_number"]
         except KeyboardInterrupt:
             # save the data in the file before quitting
             self.log.debug("KeyboardInterrupt received while writing data")
