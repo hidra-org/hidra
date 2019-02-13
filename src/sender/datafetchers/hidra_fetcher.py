@@ -13,7 +13,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 class DataFetcher(DataFetcherBase):
 
-    def __init__(self, config, log_queue, fetcher_id, context):
+    def __init__(self, config, log_queue, fetcher_id, context, lock):
         """Initial setup
 
         Checks if all required parameters are set in the configuration
@@ -24,7 +24,8 @@ class DataFetcher(DataFetcherBase):
                                  log_queue,
                                  fetcher_id,
                                  "hidra_fetcher-{}".format(fetcher_id),
-                                 context)
+                                 context,
+                                 lock)
 
         self.config = config
         self.log_queue = log_queue
@@ -159,7 +160,8 @@ class DataFetcher(DataFetcherBase):
                 targets=targets_data,
                 open_connections=open_connections,
                 metadata=None,
-                payload=chunk_payload
+                payload=chunk_payload,
+                chunk_number=chunk_number
             )
         except DataHandlingError:
             self.log.error(
@@ -189,6 +191,7 @@ class DataFetcher(DataFetcherBase):
                     open_connections=open_connections,
                     metadata=metadata,
                     payload=None,
+                    chunk_number=None,
                     timeout=self.config["send_timeout"]
                 )
                 self.log.debug("Passing metadata multipart-message for file "

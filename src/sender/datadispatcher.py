@@ -7,6 +7,7 @@ import os
 import time
 import json
 import signal
+import threading
 
 from base_class import Base
 import utils
@@ -15,8 +16,7 @@ from _version import __version__
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class DataDispatcher(Base):
-
+class DataHandler(Base, threading.Thread):
     def __init__(self,
                  dispatcher_id,
                  endpoints,
@@ -24,69 +24,38 @@ class DataDispatcher(Base):
                  fixed_stream_addr,
                  config,
                  log_queue,
-                 local_target=None,
-                 context=None):
+                 context):
 
-        self.dispatcher_id = dispatcher_id
         self.endpoints = endpoints
-        self.chunksize = chunksize
-        self.fixed_stream_addr = fixed_stream_addr
+        self.context = context
         self.config = config
+        self.dispatcher_id = dispatcher_id
+        self.fixed_stream_addr = fixed_stream_addr
         self.log_queue = log_queue
-        self.local_target = local_target
+        self.lock = threading.Lock()
+
+        self.log = None
+        self.datafetcher = None
+        self.keep_running = True
+        self.open_connections = None
 
         self.poller = None
         self.control_socket = None
         self.router_socket = None
-        self.context = None
-        self.ext_context = None
-        self.open_connections = None
-        self.datafetcher = None
-        self.continue_run = None
+        self.stopped = False
 
-        self.setup(context)
+        threading.Thread.__init__(self)
 
-        try:
-            self.run()
-        except zmq.ZMQError:
-            pass
-        except KeyboardInterrupt:
-            pass
-        except:
-            self.log.error("Stopping DataDispatcher-{} due to unknown "
-                           "error condition.".format(self.dispatcher_id),
-                           exc_info=True)
-        finally:
-            self.stop()
+        self._setup()
 
-    def setup(self, context):
-        log_name = "DataDispatcher-{}".format(self.dispatcher_id)
+    def _setup(self):
+
+        log_name = "DataHander-{}".format(self.dispatcher_id)
         self.log = utils.get_logger(log_name, self.log_queue)
-
-        signal.signal(signal.SIGTERM, self.signal_term_handler)
-
-        self.log.debug("DataDispatcher-{} started (PID {})."
-                       .format(self.dispatcher_id, os.getpid()))
-
-        formated_config = str(json.dumps(self.config,
-                                         sort_keys=True,
-                                         indent=4))
-        self.log.info("Configuration for data dispatcher: {}"
-                      .format(formated_config))
 
         # dict with information of all open sockets to which a data stream is
         # opened (host, port,...)
         self.open_connections = dict()
-
-        if context is not None:
-            self.context = context
-            self.ext_context = True
-        else:
-            self.context = zmq.Context()
-            self.ext_context = False
-            if ("context" in self.config
-                    and not self.config["context"]):
-                self.config["context"] = self.context
 
         self.log.info("Loading data fetcher: {}"
                       .format(self.config["data_fetcher_type"]))
@@ -95,9 +64,8 @@ class DataDispatcher(Base):
         self.datafetcher = datafetcher_m.DataFetcher(self.config,
                                                      self.log_queue,
                                                      self.dispatcher_id,
-                                                     self.context)
-
-        self.continue_run = True
+                                                     self.context,
+                                                     self.lock)
 
         try:
             self.create_sockets()
@@ -130,13 +98,21 @@ class DataDispatcher(Base):
         self.poller.register(self.control_socket, zmq.POLLIN)
         self.poller.register(self.router_socket, zmq.POLLIN)
 
+    def set_control_signal(self, message):
+        self.lock.acquire()
+        try:
+            self.control_signal = message
+            self.datafetcher.control_signal = message
+        finally:
+            self.lock.release()
+
     def run(self):
 
         fixed_stream_addr = [self.fixed_stream_addr, 0, "data"]
+        self.stopped = False
 
-        while self.continue_run:
-            self.log.debug("DataDispatcher-{}: waiting for new job"
-                           .format(self.dispatcher_id))
+        while self.keep_running:
+            self.log.debug("Waiting for new job")
             socks = dict(self.poller.poll())
 
             # ----------------------------------------------------------------
@@ -147,12 +123,10 @@ class DataDispatcher(Base):
 
                 try:
                     message = self.router_socket.recv_multipart()
-                    self.log.debug("DataDispatcher-{}: new job received"
-                                   .format(self.dispatcher_id))
-                    self.log.debug("message = {}".format(message))
+                    self.log.debug("New job received")
+                    self.log.debug("message = %s", message)
                 except:
-                    self.log.error("DataDispatcher-{}: waiting for new job"
-                                   "...failed".format(self.dispatcher_id),
+                    self.log.error("Waiting for new job...failed",
                                    exc_info=True)
                     continue
 
@@ -163,8 +137,8 @@ class DataDispatcher(Base):
 
                     if self.fixed_stream_addr:
                         targets.insert(0, fixed_stream_addr)
-                        self.log.debug("Added fixed_stream_addr {} to targets "
-                                       "{}".format(fixed_stream_addr, targets))
+                        self.log.debug("Added fixed_stream_addr %s to targets"
+                                       " %s", fixed_stream_addr, targets)
 
                     # sort the target list by the priority
                     targets = sorted(targets, key=lambda target: target[1])
@@ -212,8 +186,8 @@ class DataDispatcher(Base):
                         tracker = sckt.send_multipart(metadata,
                                                       copy=False,
                                                       track=True)
-                        self.log.info("Sending close file signal to '{}' with "
-                                      "priority 0".format(fixed_stream_addr))
+                        self.log.info("Sending close file signal to '%s' with "
+                                      "priority 0", fixed_stream_addr)
 
                         # socket not known
                         if not tracker.done:
@@ -229,8 +203,8 @@ class DataDispatcher(Base):
 
                     elif self.fixed_stream_addr:
                         targets = [fixed_stream_addr]
-                        self.log.debug("Added fixed_stream_addr to targets {}."
-                                       .format(targets))
+                        self.log.debug("Added fixed_stream_addr to targets "
+                                       "%s.", targets)
 
                     else:
                         targets = []
@@ -247,8 +221,7 @@ class DataDispatcher(Base):
                     break
                 except:
                     self.log.error("Building of metadata dictionary failed "
-                                   "for metadata: {}".format(metadata),
-                                   exc_info=True)
+                                   "for metadata: %s", metadata, exc_info=True)
                     # skip all further instructions and
                     # continue with next iteration
                     continue
@@ -258,14 +231,17 @@ class DataDispatcher(Base):
                     self.datafetcher.send_data(targets, metadata,
                                                self.open_connections)
                 except:
-                    self.log.error("DataDispatcher-{}: Passing new file to "
-                                   "data stream...failed"
-                                   .format(self.dispatcher_id),
+                    self.log.error("Passing new file to data stream...failed",
                                    exc_info=True)
 
                 # finish data handling
-                self.datafetcher.finish(targets, metadata,
-                                        self.open_connections)
+                try:
+                    self.datafetcher.finish(targets, metadata,
+                                            self.open_connections)
+                except Exception:
+                    # datafetcher/datahandler was not stopped in the meantime
+                    if self.datafetcher is not None:
+                        self.log.error("Finishing file failed.", exc_info=True)
 
             # ----------------------------------------------------------------
             # control commands
@@ -275,13 +251,10 @@ class DataDispatcher(Base):
 
                 try:
                     message = self.control_socket.recv_multipart()
-                    self.log.debug("DataDispatcher-{}: control signal "
-                                   "received".format(self.dispatcher_id))
-                    self.log.debug("message = {}".format(message))
+                    self.log.debug("Control signal received")
+                    self.log.debug("message = %s", message)
                 except:
-                    self.log.error("DataDispatcher-{}: reiceiving control "
-                                   "signal...failed"
-                                   .format(self.dispatcher_id),
+                    self.log.error("Reiceiving control signal...failed",
                                    exc_info=True)
                     continue
 
@@ -298,8 +271,7 @@ class DataDispatcher(Base):
                     continue
 
                 elif message[0] == b"SLEEP":
-                    self.log.debug("Router requested DataDispatcher-{} to "
-                                   "wait.".format(self.dispatcher_id))
+                    self.log.debug("Router requested to wait.")
                     break_outer_loop = False
 
                     # if there are problems on the receiving side no data
@@ -352,6 +324,7 @@ class DataDispatcher(Base):
                             break
 
                         elif message[0] == b"EXIT":
+                            self.log.debug("Received exit signal while sleeping.")
                             self.react_to_exit_signal()
                             break_outer_loop = True
                             break
@@ -362,7 +335,7 @@ class DataDispatcher(Base):
 
                         else:
                             self.log.error("Unhandled control signal received:"
-                                           " {}".format(message))
+                                           " %s", message)
 
                     # the exit signal should become effective
                     if break_outer_loop:
@@ -376,12 +349,14 @@ class DataDispatcher(Base):
                     continue
 
                 else:
-                    self.log.error("Unhandled control signal received: {}"
-                                   .format(message))
+                    self.log.error("Unhandled control signal received: %s",
+                                   message)
+
+        self.stopped = True
 
     def react_to_exit_signal(self):
-        self.log.debug("Router requested to shutdown DataDispatcher-{}."
-                       .format(self.dispatcher_id))
+        self.log.debug("Router requested to shutdown.")
+        self.keep_running = False
 
     def react_to_close_sockets_signal(self, message):
         targets = json.loads(message[1].decode("utf-8"))
@@ -396,12 +371,18 @@ class DataDispatcher(Base):
                            exc_info=True)
 
     def stop(self):
-        self.continue_run = False
+        self.keep_running = False
 
-        # to prevent the message two be logged multiple times
-        if self.continue_run:
-            self.log.debug("Closing sockets for DataDispatcher-{}"
-                           .format(self.dispatcher_id))
+        self.stop_socket(name="router_socket")
+        if not self.stopped:
+            # if the socket is closed to early the thread will hang.
+            self.log.debug("Waiting for run loop to stop")
+            time.sleep(1)
+        self.stop_socket(name="control_socket")
+
+        if self.datafetcher is not None:
+            self.datafetcher.stop()
+            self.datafetcher = None
 
         for connection in self.open_connections:
             self.stop_socket(
@@ -410,14 +391,170 @@ class DataDispatcher(Base):
             )
         self.open_connections = {}
 
+        # context is destroyed in outer process.
+
+    def signal_term_handler(self, signal, frame):
+        self.log.debug('got SIGTERM')
+        self.stop()
+
+    def __exit__(self):
+        self.stop()
+
+    def __del__(self):
+        self.stop()
+
+
+class DataDispatcher(Base):
+
+    def __init__(self,
+                 dispatcher_id,
+                 endpoints,
+                 chunksize,
+                 fixed_stream_addr,
+                 config,
+                 log_queue):
+
+        self.dispatcher_id = dispatcher_id
+        self.endpoints = endpoints
+        self.chunksize = chunksize
+        self.fixed_stream_addr = fixed_stream_addr
+        self.config = config
+        self.log_queue = log_queue
+
+        self.poller = None
+        self.control_socket = None
+        self.context = None
+        self.datahandler = None
+        self.continue_run = None
+
+        self._setup()
+
+        try:
+            self.run()
+        except zmq.ZMQError:
+            pass
+        except KeyboardInterrupt:
+            pass
+        except:
+            self.log.error("Stopping DataDispatcher-{} due to unknown "
+                           "error condition.".format(self.dispatcher_id),
+                           exc_info=True)
+        finally:
+            self.stop()
+
+    def _setup(self):
+        log_name = "DataDispatcher-{}".format(self.dispatcher_id)
+        self.log = utils.get_logger(log_name, self.log_queue)
+
+        signal.signal(signal.SIGTERM, self.signal_term_handler)
+
+        self.log.debug("DataDispatcher-{} started (PID {})."
+                       .format(self.dispatcher_id, os.getpid()))
+
+        formated_config = str(json.dumps(self.config,
+                                         sort_keys=True,
+                                         indent=4))
+        self.log.info("Configuration for data dispatcher: {}"
+                      .format(formated_config))
+
+        self.context = zmq.Context()
+        if ("context" in self.config
+                and not self.config["context"]):
+            self.config["context"] = self.context
+
+        self.continue_run = True
+
+        try:
+            self.create_sockets()
+        except:
+            self.log.error("Cannot create sockets", ext_info=True)
+            self.stop()
+
+        self.datahandler = DataHandler(self.dispatcher_id,
+                                       self.endpoints,
+                                       self.chunksize,
+                                       self.fixed_stream_addr,
+                                       self.config,
+                                       self.log_queue,
+                                       self.context)
+
+        self.datahandler.start()
+
+    def create_sockets(self):
+
+        # socket for control signals
+        self.control_socket = self.start_socket(
+            name="control_socket",
+            sock_type=zmq.SUB,
+            sock_con="connect",
+            endpoint=self.endpoints.control_sub_con
+        )
+
+        self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
+        self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "signal")
+
+        self.poller = zmq.Poller()
+        self.poller.register(self.control_socket, zmq.POLLIN)
+
+    def run(self):
+
+        fixed_stream_addr = [self.fixed_stream_addr, 0, "data"]
+
+        while self.continue_run:
+            socks = dict(self.poller.poll())
+
+            # ----------------------------------------------------------------
+            # control commands
+            # ----------------------------------------------------------------
+            if (self.control_socket in socks
+                    and socks[self.control_socket] == zmq.POLLIN):
+
+                try:
+                    message = self.control_socket.recv_multipart()
+                    self.log.debug("Control signal received")
+                    self.log.debug("message = %s", message)
+                except:
+                    self.log.error("Reiceiving control signal...failed.",
+                                   exc_info=True)
+                    continue
+
+                # remove subsription topic
+                del message[0]
+
+                self.log.debug("Setting control signal for data handler.")
+                self.datahandler.set_control_signal(message)
+
+                if message[0] == b"EXIT":
+                    self.log.debug("Received EXIT signal")
+                    self.log.debug("Router requested to shutdown.")
+                    break
+
+                elif message[0] in [b"CLOSE_SOCKETS", b"SLEEP", b"WAKEUP"]:
+                    self.log.debug("Received %s signal. Do nothing.",
+                                   message[0])
+                    continue
+
+                else:
+                    self.log.error("Unhandled control signal received: %s",
+                                   message)
+
+    def stop(self):
+        self.continue_run = False
+
+        # to prevent the message two be logged multiple times
+        if self.continue_run:
+            self.log.debug("Closing sockets.")
+
         self.stop_socket(name="control_socket")
-        self.stop_socket(name="router_socket")
 
-        if self.datafetcher is not None:
-            self.datafetcher.stop()
-            self.datafetcher = None
+        if self.datahandler is not None:
+            self.datahandler.stop()
+            self.log.debug("Waiting for datahandler to join.")
+            self.datahandler.join()
+            self.log.debug("Datahandler joined.")
+            self.datahandler = None
 
-        if not self.ext_context and self.context is not None:
+        if self.context is not None:
             self.log.info("Destroying context")
             self.context.destroy(0)
             self.context = None

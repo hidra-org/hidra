@@ -16,14 +16,15 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 class DataFetcher(DataFetcherBase):
 
-    def __init__(self, config, log_queue, fetcher_id, context):
+    def __init__(self, config, log_queue, fetcher_id, context, lock):
 
         DataFetcherBase.__init__(self,
                                  config,
                                  log_queue,
                                  fetcher_id,
                                  "file_fetcher-{}".format(fetcher_id),
-                                 context)
+                                 context,
+                                 lock)
 
         self.config = config
         self.log_queue = log_queue
@@ -32,6 +33,8 @@ class DataFetcher(DataFetcherBase):
         self.target_file = None
         self.is_windows = None
         self.finish = None
+
+        self.keep_running = True
 
         self.required_params = ["fix_subdirs", "store_data"]
 
@@ -153,7 +156,7 @@ class DataFetcher(DataFetcherBase):
         self.log.debug("Passing multipart-message for file '{}'..."
                        .format(self.source_file))
         # sending data divided into chunks
-        while True:
+        while self.keep_running:
 
             # read next chunk from file
             file_content = file_descriptor.read(chunksize)
@@ -182,7 +185,8 @@ class DataFetcher(DataFetcherBase):
                 self.send_to_targets(targets=targets_data,
                                      open_connections=open_connections,
                                      metadata=None,
-                                     payload=chunk_payload)
+                                     payload=chunk_payload,
+                                     chunk_number=chunk_number)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
                                "'{}' (chunk {})".format(self.source_file,
@@ -397,6 +401,12 @@ class DataFetcher(DataFetcherBase):
     def stop(self):
         """Implementation of the abstract method stop.
         """
+
+        self.keep_running = False
+
+        # stop everything started in the base class
+        self.stop_base()
+
         # cloes base class zmq sockets
         self.close_socket()
 

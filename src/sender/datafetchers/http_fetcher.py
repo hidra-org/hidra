@@ -17,14 +17,15 @@ __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
 
 class DataFetcher(DataFetcherBase):
 
-    def __init__(self, config, log_queue, fetcher_id, context):
+    def __init__(self, config, log_queue, fetcher_id, context, lock):
 
         DataFetcherBase.__init__(self,
                                  config,
                                  log_queue,
                                  fetcher_id,
                                  "http_fetcher-{}".format(fetcher_id),
-                                 context)
+                                 context,
+                                 lock)
 
         self.required_params = ["session",
                                 "store_data",
@@ -241,10 +242,11 @@ class DataFetcher(DataFetcherBase):
             if targets_data != []:
                 # send message to data targets
                 try:
-                    self.send_to_targets(targets_data,
-                                         open_connections,
-                                         metadata_extended,
-                                         payload)
+                    self.send_to_targets(targets=targets_data,
+                                         open_connections=open_connections,
+                                         metadata=metadata_extended,
+                                         payload=payload,
+                                         chunk_number=chunk_number)
                     msg = ("Passing multipart-message for file {}...done."
                            .format(self.source_file))
                     self.log.debug(msg)
@@ -276,10 +278,11 @@ class DataFetcher(DataFetcherBase):
             if targets_metadata != []:
                 # send message to metadata targets
                 try:
-                    self.send_to_targets(targets_metadata,
-                                         open_connections,
-                                         metadata_extended,
-                                         payload)
+                    self.send_to_targets(targts=targets_metadata,
+                                         open_connections=open_connections,
+                                         metadata=metadata_extended,
+                                         payload=payload,
+                                         chunk_number=None)
                     self.log.debug("Passing metadata multipart-message for "
                                    "file '{}'...done."
                                    .format(self.source_file))

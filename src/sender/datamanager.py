@@ -882,8 +882,7 @@ class DataManager(Base):
                              self.chunksize,
                              self.fixed_stream_addr,
                              self.params,
-                             self.log_queue,
-                             self.local_target)
+                             self.log_queue)
                          )
             pr.start()
             self.datadispatcher_pr.append(pr)
