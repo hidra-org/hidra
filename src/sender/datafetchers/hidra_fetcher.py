@@ -161,7 +161,7 @@ class DataFetcher(DataFetcherBase):
                 open_connections=open_connections,
                 metadata=None,
                 payload=chunk_payload,
-                chunk_number=chunk_number
+                chunk_number=self.metadata_r["chunk_number"]
             )
         except DataHandlingError:
             self.log.error(

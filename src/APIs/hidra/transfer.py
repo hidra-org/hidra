@@ -1713,12 +1713,15 @@ class Transfer(Base):
                 # self.log.debug("No data received. Break loop")
                 break
 
-            chunk_number = metadata["chunk_number"]
+            try:
+                chunk_number = metadata["chunk_number"]
+            except KeyError:
+                chunk_number = None
 
             # generate target filepath
             target_filepath = generate_filepath(target_base_path, metadata)
-            self.log.debug("New chunk (%s) for file %s received.",
-                           chunk_number, target_filepath)
+            self.log.debug("New chunk ({}) for file {} received."
+                           .format(chunk_number, target_filepath))
 
             # TODO: save message to file using a thread (avoids blocking)
             try:
