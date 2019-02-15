@@ -30,7 +30,13 @@ class DataHandlingError(Exception):
 
 class DataFetcherBase(Base, ABC):
 
-    def __init__(self, config, log_queue, fetcher_id, logger_name, context, lock):
+    def __init__(self,
+                 config,
+                 log_queue,
+                 fetcher_id,
+                 logger_name,
+                 context,
+                 lock):
         """Initial setup
 
         Checks if the required parameters are set in the configuration for
@@ -43,7 +49,7 @@ class DataFetcherBase(Base, ABC):
             fetcher_id (int): The ID of this datafetcher instance.
             logger_name (str): The name to be used for the logger.
             context: The ZMQ context to be used.
-
+            lock: A threading lock object to handle control signal access.
         """
 
         self.fetcher_id = fetcher_id
@@ -208,8 +214,8 @@ class DataFetcherBase(Base, ABC):
                                 copy=False,
                                 track=True
                             )
-                            self.log.info("Sending metadata of message part %s "
-                                          "from file '%s' to '%s' with "
+                            self.log.info("Sending metadata of message part "
+                                          "%s from file '%s' to '%s' with "
                                           "priority %s", chunk_number,
                                           self.source_file, target, prio)
                             self.log.debug("metadata={}".format(metadata))
@@ -225,7 +231,7 @@ class DataFetcherBase(Base, ABC):
                                 except zmq.error.NotDone:
                                     pass
 
-                                # check for control signals set from the outside
+                                # check for control signals set from outside
                                 if (self.control_signal is not None
                                         and self._react_to_signal()):
                                     self.log.info("Retry sending message part "

@@ -324,7 +324,8 @@ class DataHandler(Base, threading.Thread):
                             break
 
                         elif message[0] == b"EXIT":
-                            self.log.debug("Received exit signal while sleeping.")
+                            self.log.debug("Received exit signal while "
+                                           "sleeping.")
                             self.react_to_exit_signal()
                             break_outer_loop = True
                             break
@@ -497,8 +498,6 @@ class DataDispatcher(Base):
         self.poller.register(self.control_socket, zmq.POLLIN)
 
     def run(self):
-
-        fixed_stream_addr = [self.fixed_stream_addr, 0, "data"]
 
         while self.continue_run:
             socks = dict(self.poller.poll())

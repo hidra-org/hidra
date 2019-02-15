@@ -129,7 +129,6 @@ class InstanceTracking(object):
 
         self._update_instances()
 
-
     def restart_instances(self):
         """Restarts instances if needed.
         """

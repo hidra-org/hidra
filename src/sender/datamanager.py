@@ -896,8 +896,8 @@ class DataManager(Base):
             if self.check_target_host():
                 if sleep_was_sent:
                     msg = [b"control", b"WAKEUP"]
-                    #if self.socket_reconnected:
-                    #    msg += [b"RECONNECT"]
+#                    if self.socket_reconnected:
+#                        msg += [b"RECONNECT"]
                     msg += [b"RECONNECT"]
 
                     self.log.info("Sending 'WAKEUP' signal")

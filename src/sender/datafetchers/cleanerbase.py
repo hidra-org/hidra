@@ -252,7 +252,8 @@ class CleanerBase(Base, ABC):
                         )
 
                         # register sockets at poller
-                        self.poller.register(self.confirmation_socket, zmq.POLLIN)
+                        self.poller.register(self.confirmation_socket,
+                                             zmq.POLLIN)
 
                     # Wake up from sleeping
                     continue
