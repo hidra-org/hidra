@@ -1,5 +1,11 @@
 # develop
 # 4.0.16
+
+- Fixed control signal reaction during data handling
+- Fixed confirmation socket reconnect after wakeup
+- Control-server: Fixed file handle exception handling
+- Fixed debian package build
+
 # 4.0.15
 
 - Restart hidra instances on control_server start
