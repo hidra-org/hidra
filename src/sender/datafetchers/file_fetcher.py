@@ -327,6 +327,7 @@ class DataFetcher(DataFetcherBase):
                                      open_connections=open_connections,
                                      metadata=metadata,
                                      payload=None,
+                                     chunk_number=None,
                                      timeout=self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
                                "{}...done.".format(self.source_file))
@@ -388,6 +389,7 @@ class DataFetcher(DataFetcherBase):
                                      open_connections=open_connections,
                                      metadata=metadata,
                                      payload=None,
+                                     chunk_number=None,
                                      timeout=self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
                                "{}...done.".format(self.source_file))
