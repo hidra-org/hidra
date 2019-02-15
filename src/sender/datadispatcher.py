@@ -374,11 +374,11 @@ class DataHandler(Base, threading.Thread):
     def stop(self):
         self.keep_running = False
 
-        self.stop_socket(name="router_socket")
         if not self.stopped:
             # if the socket is closed to early the thread will hang.
             self.log.debug("Waiting for run loop to stop")
             time.sleep(1)
+        self.stop_socket(name="router_socket")
         self.stop_socket(name="control_socket")
 
         if self.datafetcher is not None:
