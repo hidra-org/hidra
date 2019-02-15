@@ -552,11 +552,11 @@ class HidraController():
         restart ...
         """
         # stop service
-        reval = self.stop(det_ip)
+        reval = self.stop(det_id)
 
         if reval == "DONE":
             # start service
-            return self.start(host_id, det_ip)
+            return self.start(host_id, det_id)
         else:
             return "ERROR"
 
