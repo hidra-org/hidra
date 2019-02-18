@@ -90,7 +90,8 @@ class TestDataFetcher(DataFetcherTestBase):
         self.datafetcher = DataFetcher(config=self.datafetcher_config,
                                        log_queue=self.log_queue,
                                        fetcher_id=0,
-                                       context=self.context)
+                                       context=self.context,
+                                       lock=self.lock)
 
         ipc_addresses = get_ipc_addresses(config=self.datafetcher_config)
         tcp_addresses = get_tcp_addresses(config=self.datafetcher_config)

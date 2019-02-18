@@ -218,12 +218,12 @@ class CheckNetgroup(threading.Thread):
         if self.ldap_retry_time < sec_to_sleep:
             ldap_sleep_intervalls = 1
         else:
-            ldap_sleep_intervalls = self.ldap_retry_time // sec_to_sleep
+            ldap_sleep_intervalls = int(self.ldap_retry_time // sec_to_sleep)
 
         if self.check_time < sec_to_sleep:
             check_sleep_intervalls = 1
         else:
-            check_sleep_intervalls = self.check_time // sec_to_sleep
+            check_sleep_intervalls = int(self.check_time // sec_to_sleep)
 
         while self.run_loop:
             new_whitelist = utils.execute_ldapsearch(self.log,

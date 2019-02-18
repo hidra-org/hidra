@@ -47,7 +47,8 @@ else
 fi
 
 VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/APIs/utils/_version.py?at=refs%2Fheads%2Fmaster")
-VERSION=${VERSION:15}
+# cut of the first 16 characters
+VERSION=${VERSION:16}
 VERSION=${VERSION%?}
 
 MAPPED_DIR=/tmp/hidra_builds/${VERSION}/debian${DEBIAN_VERSION}

@@ -139,14 +139,15 @@ class DataFetcher(DataFetcherBase):
     Implementation of the data fetcher to be used with the ingest API.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context):
+    def __init__(self, config, log_queue, fetcher_id, context, lock):
 
         DataFetcherBase.__init__(self,
                                  config,
                                  log_queue,
                                  fetcher_id,
                                  "zmq_fetcher-{}".format(fetcher_id),
-                                 context)
+                                 context,
+                                 lock)
 
         # base class sets
         #   self.config_all - all configurations
@@ -275,8 +276,11 @@ class DataFetcher(DataFetcherBase):
 
         # send message
         try:
-            self.send_to_targets(targets, open_connections, metadata_extended,
-                                 payload)
+            self.send_to_targets(tagets=targets,
+                                 open_connections=open_connections,
+                                 metadta=metadata_extended,
+                                 payload=payload,
+                                 chunk_number=chunk_number)
             self.log.debug("Passing multipart-message for file '%s'...done.",
                            self.source_file)
         except Exception:

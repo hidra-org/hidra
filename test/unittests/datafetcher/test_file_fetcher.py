@@ -90,7 +90,8 @@ class TestDataFetcher(DataFetcherTestBase):
         self.datafetcher = DataFetcher(config=self.datafetcher_config,
                                        log_queue=self.log_queue,
                                        fetcher_id=0,
-                                       context=self.context)
+                                       context=self.context,
+                                       lock=self.lock)
 
         # Set up receiver simulator
         self.receiving_sockets = []
@@ -148,7 +149,8 @@ class TestDataFetcher(DataFetcherTestBase):
         self.datafetcher = DataFetcher(config=self.datafetcher_config,
                                        log_queue=self.log_queue,
                                        fetcher_id=0,
-                                       context=self.context)
+                                       context=self.context,
+                                       lock=self.lock)
 
         self.config["remove_data"] = "with_confirmation"
         endpoints = self.config["endpoints"]

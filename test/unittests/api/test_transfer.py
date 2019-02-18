@@ -2607,8 +2607,9 @@ class TestTransfer(TestBase):
                 "file": mock_file
             }
         }
+        chunk_number = 1
         metadata = {
-            "chunk_number": 1,
+            "chunk_number": chunk_number,
             "confirmation_required": "test_topic",
             "version": __version__
         }
@@ -2629,7 +2630,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            ["test_topic", "test_file_id", "1"]
+            ["test_topic", "test_file_id", str(chunk_number)]
         )
 
         # cleanup
@@ -2698,7 +2699,8 @@ class TestTransfer(TestBase):
         }
         metadata = {
             "chunk_number": 1,
-            "file_mod_time": "now"
+            "file_mod_time": "now",
+            "version": __version__
         }
 
         mock_check_file_closed.side_effect = [True]
@@ -2736,7 +2738,8 @@ class TestTransfer(TestBase):
         }
         metadata = {
             "chunk_number": 1,
-            "file_mod_time": "now"
+            "file_mod_time": "now",
+            "version": __version__
         }
 
         transfer.log = mock.MagicMock()

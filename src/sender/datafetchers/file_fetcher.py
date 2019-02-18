@@ -48,14 +48,15 @@ class DataFetcher(DataFetcherBase):
     Implementation of the data fetcher to handle files.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context):
+    def __init__(self, config, log_queue, fetcher_id, context, lock):
 
         DataFetcherBase.__init__(self,
                                  config,
                                  log_queue,
                                  fetcher_id,
                                  "file_fetcher-{}".format(fetcher_id),
-                                 context)
+                                 context,
+                                 lock)
 
         # base class sets
         #   self.config_all - all configurations
@@ -69,6 +70,8 @@ class DataFetcher(DataFetcherBase):
         self.target_file = None
         self.is_windows = None
         self.finish = None
+
+        self.keep_running = True
 
         self.required_params = ["fix_subdirs"]
 
@@ -202,7 +205,7 @@ class DataFetcher(DataFetcherBase):
         self.log.debug("Passing multipart-message for file '%s'...",
                        self.source_file)
         # sending data divided into chunks
-        while True:
+        while self.keep_running:
 
             # read next chunk from file
             file_content = file_descriptor.read(chunksize)
@@ -231,7 +234,8 @@ class DataFetcher(DataFetcherBase):
                 self.send_to_targets(targets=targets_data,
                                      open_connections=open_connections,
                                      metadata=None,
-                                     payload=chunk_payload)
+                                     payload=chunk_payload,
+                                     chunk_number=chunk_number)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
                                "'%s' (chunk %s)", self.source_file,
@@ -255,11 +259,12 @@ class DataFetcher(DataFetcherBase):
 
         # do not remove data until a confirmation is sent back from the
         # priority target
-        if self.config_df["remove_data"] == "with_confirmation":
-            self.config["remove_flag"] = False
-
-        # the data was successfully sent -> mark it as removable
-        elif not send_error:
+#        if self.config_df["remove_data"] == "with_confirmation":
+#            self.config["remove_flag"] = False
+#
+#        # the data was successfully sent -> mark it as removable
+#        elif not send_error:
+        if not send_error:
             self.config["remove_flag"] = True
 
     def _datahandling(self, action_function, metadata):
@@ -360,7 +365,7 @@ class DataFetcher(DataFetcherBase):
         # remove file
         # can be set/done in addition to copy -> no elif
         # (e.g. store_data = True and remove_data = with_confirmation)
-        if self.config_df["remove_data"]:
+        if self.config_df["remove_data"] and self.config["remove_flag"]:
 
             file_id = self.generate_file_id(metadata)
             try:
@@ -385,6 +390,7 @@ class DataFetcher(DataFetcherBase):
                                      open_connections=open_connections,
                                      metadata=metadata,
                                      payload=None,
+                                     chunk_number=None,
                                      timeout=self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
                                "%s...done.", self.source_file)
@@ -454,6 +460,7 @@ class DataFetcher(DataFetcherBase):
                                      open_connections=open_connections,
                                      metadata=metadata,
                                      payload=None,
+                                     chunk_number=None,
                                      timeout=self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
                                "%s...done.", self.source_file)
@@ -466,6 +473,12 @@ class DataFetcher(DataFetcherBase):
     def stop(self):
         """Implementation of the abstract method stop.
         """
+
+        self.keep_running = False
+
+        # stop everything started in the base class
+        self.stop_base()
+
         # cloes base class zmq sockets
         self.close_socket()
 

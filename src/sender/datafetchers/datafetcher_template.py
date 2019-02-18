@@ -43,14 +43,15 @@ class DataFetcher(DataFetcherBase):
     Implementation of the data fetcher.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context):
+    def __init__(self, config, log_queue, fetcher_id, context, lock):
 
         DataFetcherBase.__init__(self,
                                  config,
                                  log_queue,
                                  fetcher_id,
                                  "datafetcher_template-{}".format(fetcher_id),
-                                 context)
+                                 context,
+                                 lock)
 
         # base class sets
         #   self.config_all - all configurations
@@ -142,7 +143,8 @@ class DataFetcher(DataFetcherBase):
                 self.send_to_targets(targets=targets_data,
                                      open_connections=open_connections,
                                      metadata=None,
-                                     payload=chunk_payload)
+                                     payload=chunk_payload,
+                                     chunk_number=chunk_number)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
                                "'%s' (chunk %s)", self.source_file,
@@ -171,7 +173,8 @@ class DataFetcher(DataFetcherBase):
                 self.send_to_targets(targets=targets_metadata,
                                      open_connections=open_connections,
                                      metadata=metadata,
-                                     payload=None)
+                                     payload=None,
+                                     chunk_number=None)
                 self.log.debug("Passing metadata multipart-message for file "
                                "%s...done.", self.source_file)
 
