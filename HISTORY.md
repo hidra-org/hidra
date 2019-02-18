@@ -1,4 +1,17 @@
 # develop
+
+- Extracted control server config into config file
+- Extracted control client config into config file
+- Control: Fix unicode compatibility
+- Moved utils location
+- Extract datatype definition in separate utils module
+- Control client: show already running instances when start fails
+- Changed effective user id inside of datamanager and datareceiver directly
+- Sender: Use config hierachy
+- Receiver: Use config hierachy
+- Renamed event_det_port und data_fetch_port
+- Simplify log setup (no separated calls for with or without onscreen)
+
 # 4.0.16
 
 - Fixed control signal reaction during data handling
