@@ -456,7 +456,6 @@ class DataManager(Base):
         self.check_target_host = None
 
         self.number_of_streams = None
-        self.chunksize = None
 
         self.endpoints = None
 
@@ -659,7 +658,6 @@ class DataManager(Base):
             self.status_check_id = None
 
         self.number_of_streams = config_df["number_of_streams"]
-        self.chunksize = config_df["chunksize"]
 
         try:
             self.local_target = config_df["local_target"]
@@ -1016,7 +1014,6 @@ class DataManager(Base):
                            args=(
                                dispatcher_id,
                                self.endpoints,
-                               self.chunksize,
                                self.fixed_stream_addr,
                                self.config,
                                self.log_queue

@@ -51,7 +51,6 @@ class DataHandler(Base, threading.Thread):
     def __init__(self,
                  dispatcher_id,
                  endpoints,
-                 chunksize,
                  fixed_stream_addr,
                  config,
                  log_queue,
@@ -62,7 +61,6 @@ class DataHandler(Base, threading.Thread):
         self.dispatcher_id = dispatcher_id
         self.endpoints = endpoints
         self.context = context
-        self.chunksize = chunksize
         self.fixed_stream_addr = fixed_stream_addr
         self.config_all = config
         self.config = self.config_all["general"]
@@ -467,14 +465,12 @@ class DataDispatcher(Base):
     def __init__(self,
                  dispatcher_id,
                  endpoints,
-                 chunksize,
                  fixed_stream_addr,
                  config,
                  log_queue):
 
         self.dispatcher_id = dispatcher_id
         self.endpoints = endpoints
-        self.chunksize = chunksize
         self.fixed_stream_addr = fixed_stream_addr
         self.config = config
         self.log_queue = log_queue
@@ -530,7 +526,6 @@ class DataDispatcher(Base):
 
         self.datahandler = DataHandler(self.dispatcher_id,
                                        self.endpoints,
-                                       self.chunksize,
                                        self.fixed_stream_addr,
                                        self.config,
                                        self.log_queue,
