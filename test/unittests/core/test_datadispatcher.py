@@ -95,7 +95,6 @@ class TestDataDispatcher(TestBase):
             fixed_stream_addr=fixed_stream_addr,
             config=self.datadispatcher_config,
             log_queue=self.log_queue,
-            local_target=self.local_target,
         )
         datadispatcher_pr = Process(target=DataDispatcher, kwargs=kwargs)
         datadispatcher_pr.start()

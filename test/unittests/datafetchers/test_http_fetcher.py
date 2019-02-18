@@ -52,7 +52,8 @@ class TestDataFetcher(DataFetcherTestBase):
         datafetcher = DataFetcher(config=self.data_fetcher_config,
                                   log_queue=self.log_queue,
                                   fetcher_id=0,
-                                  context=self.context)
+                                  context=self.context,
+                                  lock=self.lock)
 
         # Set up receiver simulator
         receiving_socket = []

@@ -726,6 +726,7 @@ class DataManager(Base):
                         pass
 
                     self.zmq_again_occured = 0
+                    self.socket_reconnected = True
 
                 # send test message
                 try:
@@ -881,8 +882,7 @@ class DataManager(Base):
                              self.chunksize,
                              self.fixed_stream_addr,
                              self.params,
-                             self.log_queue,
-                             self.local_target)
+                             self.log_queue)
                          )
             pr.start()
             self.datadispatcher_pr.append(pr)
@@ -896,8 +896,9 @@ class DataManager(Base):
             if self.check_target_host():
                 if sleep_was_sent:
                     msg = [b"control", b"WAKEUP"]
-                    if self.socket_reconnected:
-                        msg += [b"RECONNECT"]
+#                    if self.socket_reconnected:
+#                        msg += [b"RECONNECT"]
+                    msg += [b"RECONNECT"]
 
                     self.log.info("Sending 'WAKEUP' signal")
                     self.control_pub_socket.send_multipart(msg)

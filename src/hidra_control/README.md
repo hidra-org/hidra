@@ -26,7 +26,6 @@ cd /opt/hidra/src/hidra_control
 * For starting hidra the detector IP or DNS name is mandatory and the API
   version of the filewriter may be set (default is 1.5.0). The detector
   specified has to be registered for the beamline.
-* By default all data is written into current/raw in the beamline file system.
 
 ## Stop
 

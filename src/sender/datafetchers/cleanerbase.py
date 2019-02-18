@@ -80,9 +80,8 @@ class CleanerBase(Base, ABC):
             endpoint=self.endpoints.confirm_con
         )
 
-        topic = utils.generate_sender_id(self.config["main_pid"])
-        # topic = b"test"
-        self.confirmation_socket.setsockopt(zmq.SUBSCRIBE, topic)
+        self.confirm_topic = utils.generate_sender_id(self.config["main_pid"])
+        self.confirmation_socket.setsockopt(zmq.SUBSCRIBE, self.confirm_topic)
 
         # socket for control signals
         self.control_socket = self.start_socket(
@@ -234,6 +233,28 @@ class CleanerBase(Base, ABC):
                     continue
                 elif message[0] == b"WAKEUP":
                     self.log.debug("Received wakeup signal")
+
+                    if len(message) == 2 and message[1] == "RECONNECT":
+                        # close the connection
+                        self.poller.unregister(self.confirmation_socket)
+                        self.stop_socket(name="confirmation_socket")
+
+                        # reopen it
+                        self.confirmation_socket = self.start_socket(
+                            name="confirmation_socket",
+                            sock_type=zmq.SUB,
+                            sock_con="connect",
+                            endpoint=self.endpoints.confirm_con
+                        )
+
+                        self.confirmation_socket.setsockopt(
+                            zmq.SUBSCRIBE, self.confirm_topic
+                        )
+
+                        # register sockets at poller
+                        self.poller.register(self.confirmation_socket,
+                                             zmq.POLLIN)
+
                     # Wake up from sleeping
                     continue
                 elif message[0] == b"EXIT":

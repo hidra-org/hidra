@@ -82,14 +82,24 @@ class InstanceTracking(object):
             with open(BACKUP_FILE, 'r') as f:
                 self.instances = json.loads(f.read())
         except IOError:
+            # file does not exist
+            self.instances = {}
+        except Exception:
+            # file content ist not as expected
+            self.log.error("File containing instances existed but error "
+                           "occured when reading it", exc_info=True)
             self.instances = {}
 
     def _update_instances(self):
         """Updates the instances file
         """
 
-        with open(BACKUP_FILE, "w") as f:
-            f.write(json.dumps(self.instances, sort_keys=True, indent=4))
+        try:
+            with open(BACKUP_FILE, "w") as f:
+                f.write(json.dumps(self.instances, sort_keys=True, indent=4))
+        except Exception:
+            self.log.error("File containing instances could not be written",
+                           sys_info=True)
 
     def add(self, det_id):
         """Mark instance as started.
@@ -118,7 +128,6 @@ class InstanceTracking(object):
                              .format(self.beamline))
 
         self._update_instances()
-
 
     def restart_instances(self):
         """Restarts instances if needed.
@@ -543,11 +552,11 @@ class HidraController():
         restart ...
         """
         # stop service
-        reval = self.stop(det_ip)
+        reval = self.stop(det_id)
 
         if reval == "DONE":
             # start service
-            return self.start(host_id, det_ip)
+            return self.start(host_id, det_id)
         else:
             return "ERROR"
 

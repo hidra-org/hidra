@@ -6,6 +6,7 @@ import abc
 import json
 import os
 import sys
+import time
 import zmq
 
 import __init__ as init  # noqa F401
@@ -29,7 +30,13 @@ class DataHandlingError(Exception):
 
 class DataFetcherBase(Base, ABC):
 
-    def __init__(self, config, log_queue, fetcher_id, logger_name, context):
+    def __init__(self,
+                 config,
+                 log_queue,
+                 fetcher_id,
+                 logger_name,
+                 context,
+                 lock):
         """Initial setup
 
         Checks if the required parameters are set in the configuration for
@@ -42,18 +49,22 @@ class DataFetcherBase(Base, ABC):
             fetcher_id (int): The ID of this datafetcher instance.
             logger_name (str): The name to be used for the logger.
             context: The ZMQ context to be used.
-
+            lock: A threading lock object to handle control signal access.
         """
 
         self.fetcher_id = fetcher_id
         self.config = config
         self.context = context
+        self.lock = lock
         self.cleaner_job_socket = None
 
         self.log = utils.get_logger(logger_name, log_queue)
 
         self.source_file = None
         self.target_file = None
+
+        self.control_signal = None
+        self.keep_running = True
 
         self.required_params = []
 
@@ -127,6 +138,7 @@ class DataFetcherBase(Base, ABC):
                         open_connections,
                         metadata,
                         payload,
+                        chunk_number,
                         timeout=-1):
         """Send the data to targets.
 
@@ -147,9 +159,11 @@ class DataFetcherBase(Base, ABC):
                                      kept open till the target disconnects.
             metadata: The metadata of this data block.
             payload: The data block to be sent.
+            chunk_number: The chunk number of the payload to be processed.
             timeout (optional): How long to wait for the message to be received
-                                (default: -1, means wait forever)
+                                in s (default: -1, means wait forever)
         """
+        timeout = 1
 
         for target, prio, send_type in targets:
 
@@ -176,43 +190,68 @@ class DataFetcherBase(Base, ABC):
 
                 # send data
                 try:
-                    if send_type == "data":
-                        tracker = open_connections[target].send_multipart(
-                            payload,
-                            copy=False,
-                            track=True
-                        )
-                        self.log.info("Sending message part from file '{}' "
-                                      "to '{}' with priority {}"
-                                      .format(self.source_file, target, prio))
+                    # retry sending if anything goes wrong
+                    retry_sending = True
+                    while retry_sending:
+                        retry_sending = False
 
-                    elif send_type == "metadata":
-                        # json.dumps(None) is 'N.'
-                        tracker = open_connections[target].send_multipart(
-                            [json.dumps(metadata).encode("utf-8"),
-                             json.dumps(None).encode("utf-8")],
-                            copy=False,
-                            track=True
-                        )
-                        self.log.info("Sending metadata of message part from "
-                                      "file '{}' to '{}' with priority {}"
-                                      .format(self.source_file, target, prio))
-                        self.log.debug("metadata={}".format(metadata))
+                        if send_type == "data":
+                            tracker = open_connections[target].send_multipart(
+                                payload,
+                                copy=False,
+                                track=True
+                            )
+                            self.log.info("Sending message part %s from file "
+                                          "'%s' to '%s' with priority %s",
+                                          chunk_number, self.source_file,
+                                          target, prio)
 
-                    if not tracker.done:
-                        self.log.debug("Message part from file '{}' has not "
-                                       "been sent yet, waiting..."
-                                       .format(self.source_file))
-                        tracker.wait(timeout)
-                        self.log.debug("Message part from file '{}' has not "
-                                       "been sent yet, waiting...done"
-                                       .format(self.source_file))
+                        elif send_type == "metadata":
+                            # json.dumps(None) is 'N.'
+                            tracker = open_connections[target].send_multipart(
+                                [json.dumps(metadata).encode("utf-8"),
+                                 json.dumps(None).encode("utf-8")],
+                                copy=False,
+                                track=True
+                            )
+                            self.log.info("Sending metadata of message part "
+                                          "%s from file '%s' to '%s' with "
+                                          "priority %s", chunk_number,
+                                          self.source_file, target, prio)
+                            self.log.debug("metadata={}".format(metadata))
+
+                        if not tracker.done:
+                            self.log.debug("Message part %s from file '%s' "
+                                           "has not been sent yet, waiting...",
+                                           chunk_number, self.source_file)
+
+                            while not tracker.done and self.keep_running:
+                                try:
+                                    tracker.wait(timeout)
+                                except zmq.error.NotDone:
+                                    pass
+
+                                # check for control signals set from outside
+                                if (self.control_signal is not None
+                                        and self._react_to_signal()):
+                                    self.log.info("Retry sending message part "
+                                                  "%s from file '%s'.",
+                                                  chunk_number,
+                                                  self.source_file)
+                                    retry_sending = True
+                                    break
+
+                            if not retry_sending:
+                                self.log.debug("Message part %s from file '%s'"
+                                               " has not been sent yet, "
+                                               "waiting...done",
+                                               chunk_number, self.source_file)
 
                 except:
                     self.log.debug("Raising DataHandling error", exc_info=True)
-                    msg = ("Sending (metadata of) message part from file '{}' "
-                           "to '{}' with priority {} failed."
-                           .format(self.source_file, target, prio))
+                    msg = ("Sending (metadata of) message part %s from file "
+                           "'%s' to '%s' with priority %s failed.",
+                           chunk_number, self.source_file, target, prio)
                     raise DataHandlingError(msg)
 
             else:
@@ -229,9 +268,9 @@ class DataFetcherBase(Base, ABC):
                 if send_type == "data":
                     open_connections[target].send_multipart(payload,
                                                             zmq.NOBLOCK)
-                    self.log.info("Sending message part from file '{}' to "
-                                  "'{}' with priority {}"
-                                  .format(self.source_file, target, prio))
+                    self.log.info("Sending message part %s from file '%s' to "
+                                  "'%s' with priority %s", chunk_number,
+                                  self.source_file, target, prio)
 
                 elif send_type == "metadata":
                     open_connections[target].send_multipart(
@@ -239,10 +278,64 @@ class DataFetcherBase(Base, ABC):
                          json.dumps(None).encode("utf-8")],
                         zmq.NOBLOCK
                     )
-                    self.log.info("Sending metadata of message part from file "
-                                  "'{}' to '{}' with priority {}"
-                                  .format(self.source_file, target, prio))
-                    self.log.debug("metadata={}".format(metadata))
+                    self.log.info("Sending metadata of message part %s from "
+                                  "file '%s' to '%s' with priority %s",
+                                  chunk_number, self.source_file, target, prio)
+                    self.log.debug("metadata=%s", metadata)
+
+    def _react_to_signal(self):
+
+        retry_sending = False
+        sleep_time = 0.2
+
+        self.log.debug("Received control signal '%s'", self.control_signal)
+
+        asleep = False
+        keep_checking_signal = True
+        while keep_checking_signal and self.keep_running:
+            self.lock.acquire()
+            try:
+                if (self.control_signal is None
+                        or self.control_signal[0] == "SLEEP"):
+                    # None: after sending sleep no other control signal has
+                    # been set yet
+
+                    if not asleep:
+                        self.log.debug("Received sleep signal. Going to "
+                                       "sleep.")
+                        asleep = True
+
+                    # go to sleep, but check every once in
+                    # a while for new signals
+                    time.sleep(sleep_time)
+
+                elif self.control_signal[0] == "WAKEUP":
+                    if asleep:
+                        self.log.debug("Waking up after sleeping. Retry "
+                                       "sending data.")
+                        # TODO reschedule file (part?)
+                        asleep = False
+                    else:
+                        self.log.debug("Wakup signal received without being "
+                                       "asleep.")
+
+                    keep_checking_signal = False
+                    retry_sending = True
+
+                elif self.control_signal[0] == "EXIT":
+                    self.log.debug("Received Exit signal.")
+                    self.keep_running = False
+
+                else:
+                    self.log.debug("Received unknown control signal. "
+                                   "Ignoring it.")
+                    keep_checking_signal = False
+
+                self.control_signal = None
+            finally:
+                self.lock.release()
+
+        return retry_sending
 
     def generate_file_id(self, metadata):
         """Generates a file id consisting of relative path and file name
@@ -341,6 +434,10 @@ class DataFetcherBase(Base, ABC):
     def close_socket(self):
         self.stop_socket("cleaner_job_socket")
 
+    def stop_base(self):
+        self.close_socket()
+        self.keep_running = False
+
     @abc.abstractmethod
     def stop(self):
         """Stop and clean up.
@@ -348,9 +445,9 @@ class DataFetcherBase(Base, ABC):
         pass
 
     def __exit__(self, type, value, traceback):
-        self.close_socket()
+        self.stop_base()
         self.stop()
 
     def __del__(self):
-        self.close_socket()
+        self.stop_base()
         self.stop()

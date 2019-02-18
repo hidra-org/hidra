@@ -67,7 +67,8 @@ class TestDataFetcher(DataFetcherTestBase):
                 self.datafetcher = DataFetcher(config=self.data_fetcher_config,
                                                log_queue=self.log_queue,
                                                fetcher_id=0,
-                                               context=self.context)
+                                               context=self.context,
+                                               lock=self.lock)
 
         self.datafetcher.check_config(print_log=True)
         self.datafetcher.setup()

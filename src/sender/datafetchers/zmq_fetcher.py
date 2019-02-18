@@ -105,14 +105,15 @@ def get_endpoints(ipc_addresses, tcp_addresses):
 
 class DataFetcher(DataFetcherBase):
 
-    def __init__(self, config, log_queue, fetcher_id, context):
+    def __init__(self, config, log_queue, fetcher_id, context, lock):
 
         DataFetcherBase.__init__(self,
                                  config,
                                  log_queue,
                                  fetcher_id,
                                  "zmq_fetcher-{}".format(fetcher_id),
-                                 context)
+                                 context,
+                                 lock)
 
         self.config = config
         self.log_queue = log_queue
@@ -229,8 +230,11 @@ class DataFetcher(DataFetcherBase):
 
         # send message
         try:
-            self.send_to_targets(targets, open_connections, metadata_extended,
-                                 payload)
+            self.send_to_targets(targets,
+                                 open_connections,
+                                 metadata_extended,
+                                 payload,
+                                 chunk_number)
             self.log.debug("Passing multipart-message for file '{}'...done."
                            .format(self.source_file))
         except:
