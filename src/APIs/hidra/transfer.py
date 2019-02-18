@@ -1788,7 +1788,7 @@ class Transfer(Base):
 
             # generate target filepath
             target_filepath = generate_filepath(target_base_path, metadata)
-            self.log.debug("New chunk (%s) for file %s received."
+            self.log.debug("New chunk (%s) for file %s received.",
                            chunk_number, target_filepath)
 
             # TODO: save message to file using a thread (avoids blocking)
