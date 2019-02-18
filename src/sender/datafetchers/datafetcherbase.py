@@ -311,10 +311,11 @@ class DataFetcherBase(Base, ABC):
 
                 except:
                     self.log.debug("Raising DataHandling error", exc_info=True)
-                    msg = ("Sending (metadata of) message part %s from file "
-                           "'%s' to '%s' with priority %s failed.",
-                           chunk_number, self.source_file, target, prio)
-                    raise DataHandlingError(msg)
+                    raise DataHandlingError(
+                        "Sending (metadata of) message part %s from file '%s' "
+                        "to '%s' with priority %s failed.",
+                        chunk_number, self.source_file, target, prio
+                    )
 
             else:
                 # socket not known
@@ -503,6 +504,8 @@ class DataFetcherBase(Base, ABC):
         self.stop_socket("cleaner_job_socket")
 
     def stop_base(self):
+        """Stop datafetcher run loop and clean up sockets.
+        """
         self.close_socket()
         self.keep_running = False
 

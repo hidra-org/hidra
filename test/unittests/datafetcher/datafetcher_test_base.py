@@ -27,6 +27,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import threading
 import zmq
 
 from test_base import TestBase, create_dir
@@ -50,6 +51,7 @@ class DataFetcherTestBase(TestBase):
         create_dir(directory=ipc_dir, chmod=0o777)
 
         self.context = zmq.Context()
+        self.lock = threading.Lock()
 
     def tearDown(self):
         super(DataFetcherTestBase, self).tearDown()

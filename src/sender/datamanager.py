@@ -303,10 +303,6 @@ def argument_parsing():
     utils.update_dict(config_detailed, config)
     utils.update_dict(arguments_dict, config)
 
-#    config = utils.set_parameters(base_config_file=base_config_file,
-#                                  config_file=arguments.config_file,
-#                                  arguments=arguments)
-
     # ------------------------------------------------------------------------
     # Check given arguments
     # ------------------------------------------------------------------------
@@ -541,15 +537,14 @@ class DataManager(Base):
         utils.log_user_change(self.log, user_was_changed, user_info)
 
         self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
-        self.log.info("Configured ipc_dir: {}".format(self.ipc_dir))
+        self.log.info("Configured ipc_dir: %s", self.ipc_dir)
 
         # set process name
         # pylint: disable=no-member
         setproctitle.setproctitle(config_gen["procname"])
-        self.log.info("Running as {}".format(config_gen["procname"]))
+        self.log.info("Running as %s", config_gen["procname"])
 
-        self.log.info("DataManager started (PID {})."
-                      .format(self.current_pid))
+        self.log.info("DataManager started (PID %s).", self.current_pid)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -558,8 +553,8 @@ class DataManager(Base):
             # the permission have to changed explicitly because
             # on some platform they are ignored when called within mkdir
             os.chmod(self.ipc_dir, 0o777)
-            self.log.info("Creating directory for IPC communication: {}"
-                          .format(self.ipc_dir))
+            self.log.info("Creating directory for IPC communication: %s",
+                          self.ipc_dir)
 
         # Enable specification via IP and DNS name
         # TODO make this IPv6 compatible
@@ -701,15 +696,14 @@ class DataManager(Base):
             self.device.setsockopt_in(zmq.SUBSCRIBE, b"")
             self.device.start()
             self.log.info("Start thead device forwarding messages "
-                          "from '{}' to '{}'"
-                          .format(self.endpoints.control_pub_bind,
-                                  self.endpoints.control_sub_bind))
+                          "from '%s' to '%s'",
+                          self.endpoints.control_pub_bind,
+                          self.endpoints.control_sub_bind)
         except:
             self.log.error("Failed to start thead device forwarding messages "
-                           "from '{}' to '{}'"
-                           .format(self.endpoints.control_pub_bind,
-                                   self.endpoints.control_sub_bind),
-                           exc_info=True)
+                           "from '%s' to '%s'",
+                           self.endpoints.control_pub_bind,
+                           self.endpoints.control_sub_bind, exc_info=True)
             raise
 
         # socket for control signals

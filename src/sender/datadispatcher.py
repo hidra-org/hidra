@@ -72,6 +72,7 @@ class DataHandler(Base, threading.Thread):
         self.datafetcher = None
         self.keep_running = True
         self.open_connections = None
+        self.control_signal = None
 
         self.poller = None
         self.control_socket = None
@@ -138,6 +139,12 @@ class DataHandler(Base, threading.Thread):
         self.poller.register(self.router_socket, zmq.POLLIN)
 
     def set_control_signal(self, message):
+        """Sets control signal attribute.
+
+        Args:
+            message: The value to set the attribute to.
+        """
+
         self.lock.acquire()
         try:
             self.control_signal = message
@@ -449,11 +456,7 @@ class DataHandler(Base, threading.Thread):
 
         # context is destroyed in outer process.
 
-    def signal_term_handler(self, signal, frame):
-        self.log.debug('got SIGTERM')
-        self.stop()
-
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):
@@ -461,6 +464,8 @@ class DataHandler(Base, threading.Thread):
 
 
 class DataDispatcher(Base):
+    """ Starts a data handling thread while listening to control signals.
+    """
 
     def __init__(self,
                  dispatcher_id,
@@ -468,6 +473,8 @@ class DataDispatcher(Base):
                  fixed_stream_addr,
                  config,
                  log_queue):
+
+        super(DataDispatcher, self).__init__()
 
         self.dispatcher_id = dispatcher_id
         self.endpoints = endpoints
@@ -489,27 +496,30 @@ class DataDispatcher(Base):
             pass
         except KeyboardInterrupt:
             pass
-        except:
-            self.log.error("Stopping DataDispatcher-{} due to unknown "
-                           "error condition.".format(self.dispatcher_id),
+        except Exception:
+            self.log.error("Stopping DataDispatcher-%s due to unknown "
+                           "error condition.", self.dispatcher_id,
                            exc_info=True)
         finally:
             self.stop()
 
     def _setup(self):
+        """Initializes parameters and creates sockets.
+        """
+
         log_name = "DataDispatcher-{}".format(self.dispatcher_id)
         self.log = utils.get_logger(log_name, self.log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
-        self.log.debug("DataDispatcher-{} started (PID {})."
-                       .format(self.dispatcher_id, os.getpid()))
+        self.log.debug("DataDispatcher-%s started (PID %s).",
+                       self.dispatcher_id, os.getpid())
 
         formated_config = str(json.dumps(self.config,
                                          sort_keys=True,
                                          indent=4))
-        self.log.info("Configuration for data dispatcher: {}"
-                      .format(formated_config))
+        self.log.info("Configuration for data dispatcher: %s",
+                      formated_config)
 
         self.context = zmq.Context()
         if ("context" in self.config
@@ -520,7 +530,7 @@ class DataDispatcher(Base):
 
         try:
             self.create_sockets()
-        except:
+        except Exception:
             self.log.error("Cannot create sockets", ext_info=True)
             self.stop()
 
@@ -534,6 +544,8 @@ class DataDispatcher(Base):
         self.datahandler.start()
 
     def create_sockets(self):
+        """Create ZMQ sockets.
+        """
 
         # socket for control signals
         self.control_socket = self.start_socket(
@@ -550,6 +562,8 @@ class DataDispatcher(Base):
         self.poller.register(self.control_socket, zmq.POLLIN)
 
     def run(self):
+        """React on control signals and inform DataHandler thread.
+        """
 
         while self.continue_run:
             socks = dict(self.poller.poll())
@@ -564,7 +578,7 @@ class DataDispatcher(Base):
                     message = self.control_socket.recv_multipart()
                     self.log.debug("Control signal received")
                     self.log.debug("message = %s", message)
-                except:
+                except Exception:
                     self.log.error("Reiceiving control signal...failed.",
                                    exc_info=True)
                     continue
@@ -590,6 +604,9 @@ class DataDispatcher(Base):
                                    message)
 
     def stop(self):
+        """Stopping, closing sockets and clean up.
+        """
+
         self.continue_run = False
 
         # to prevent the message two be logged multiple times

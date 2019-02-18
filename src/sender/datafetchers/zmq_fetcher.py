@@ -276,9 +276,9 @@ class DataFetcher(DataFetcherBase):
 
         # send message
         try:
-            self.send_to_targets(tagets=targets,
+            self.send_to_targets(targets=targets,
                                  open_connections=open_connections,
-                                 metadta=metadata_extended,
+                                 metadata=metadata_extended,
                                  payload=payload,
                                  chunk_number=chunk_number)
             self.log.debug("Passing multipart-message for file '%s'...done.",
