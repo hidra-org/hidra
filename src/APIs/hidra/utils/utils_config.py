@@ -264,6 +264,7 @@ CONFIG_MAPPING_SENDER = {
         "store_data": "store_data",
         "local_target": "local_target",
         "file_fetcher": {
+            "fix_subdirs": "fix_subdirs",
             "store_data": "store_data",
             "local_target": "local_target"
         },
@@ -380,7 +381,7 @@ def map_conf_format(flat_config, config_type, is_namespace=False):
             for old, new in attr_to_change:
                 if old in flat_config:
                     flat_config[new] = copy.deepcopy(flat_config[old])
-                    del flat_config[new]
+                    del flat_config[old]
 
             config = copy.deepcopy(mapping)
             _traverse_dict(config)
