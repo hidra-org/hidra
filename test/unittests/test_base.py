@@ -48,9 +48,9 @@ import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-# LOGLEVEL = "error"
+LOGLEVEL = "error"
 # LOGLEVEL = "info"
-LOGLEVEL = "debug"
+#LOGLEVEL = "debug"
 
 
 def create_dir(directory, chmod=None, log=logging):
@@ -64,7 +64,7 @@ def create_dir(directory, chmod=None, log=logging):
 
     if not os.path.isdir(directory):
         os.mkdir(directory)
-        log.info("Creating directory: {}".format(directory))
+        log.info("Creating directory: %s", directory)
 
     if chmod is not None:
         # the permission have to changed explicitly because
@@ -76,9 +76,11 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
     """ Mock the logging module.
     """
 
+    loglevel = LOGLEVEL
+
     def __init__(self, **kwargs):
         mock.MagicMock.__init__(self, **kwargs)
-        utils.LoggingFunction.__init__(self, level="debug")
+        utils.LoggingFunction.__init__(self, level=self.loglevel)
 
     def out(self, message, *args, **kwargs):
         """Forward the output to stdout.
@@ -103,7 +105,7 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
             print(msg)
 
 
-def mock_get_logger(logger_name, queue=False, log_level="debug"):
+def mock_get_logger(logger_name, queue=False, log_level=LOGLEVEL):
     """Wrapper for the get_logger function
     """
     # pylint: disable=unused-argument
@@ -218,8 +220,10 @@ class TestBase(unittest.TestCase):
     """The Base class from which all data fetchers should inherit from.
     """
 
+    loglevel = "error"
+    #loglevel = "debug"
+
     def setUp(self):
-        global LOGLEVEL
 
         self.log_queue = False
         self.listener = None
@@ -263,7 +267,8 @@ class TestBase(unittest.TestCase):
             "endpoints": endpoints,
         }
 
-        self._init_logging(loglevel=LOGLEVEL)
+        MockLogging.loglevel = self.loglevel
+        self._init_logging(loglevel=self.loglevel)
 
 #        self.log.debug("%s pid %s", self.__class__.__name__, main_pid)
 
@@ -271,7 +276,7 @@ class TestBase(unittest.TestCase):
         for attr, value in self.__dict__.iteritems():
             yield attr, value
 
-    def _init_logging(self, loglevel="debug"):
+    def _init_logging(self, loglevel=LOGLEVEL):
         """Initialize log listener and log queue.
 
         Args:

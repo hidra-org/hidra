@@ -35,6 +35,7 @@ import pkgutil
 import _environment  # noqa F401 # pylint: disable=unused-import
 import eventdetector
 import datafetcher
+from test_base import TestBase
 from core.test_taskprovider import TestTaskProvider
 from core.test_datadispatcher import TestDataDispatcher
 from core.test_signalhandler import TestSignalHandler
@@ -236,6 +237,10 @@ def argument_parsing():
                         required=True,
                         help="Which test suites to test")
 
+    parser.add_argument("--debug",
+                        action="store_true",
+                        help="Start in debug mode")
+
     arguments = parser.parse_args()
 
     return arguments
@@ -248,6 +253,9 @@ def main():
     args = argument_parsing()
 
     suite_args = args.suite
+
+    if args.debug:
+        TestBase.loglevel = "debug"
 
     all_suites = []
 
