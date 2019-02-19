@@ -161,7 +161,12 @@ class DataHandler(Base, threading.Thread):
 
         while self.keep_running:
             self.log.debug("Waiting for new job")
-            socks = dict(self.poller.poll())
+            try:
+                socks = dict(self.poller.poll())
+            except zmq.ZMQError:
+                # when stop is called without a control signal -> suppress error message
+                self.log.error("Error when polling", exc_info=True)
+                break
 
             # ----------------------------------------------------------------
             # messages from TaskProvider
@@ -440,6 +445,7 @@ class DataHandler(Base, threading.Thread):
             # if the socket is closed to early the thread will hang.
             self.log.debug("Waiting for run loop to stop")
             time.sleep(1)
+
         self.stop_socket(name="router_socket")
         self.stop_socket(name="control_socket")
 
@@ -487,6 +493,7 @@ class DataDispatcher(Base):
         self.context = None
         self.datahandler = None
         self.continue_run = None
+        self.stopped = False
 
         self._setup()
 
@@ -602,6 +609,7 @@ class DataDispatcher(Base):
                 else:
                     self.log.error("Unhandled control signal received: %s",
                                    message)
+        self.stopped = True
 
     def stop(self):
         """Stopping, closing sockets and clean up.
@@ -612,6 +620,11 @@ class DataDispatcher(Base):
         # to prevent the message two be logged multiple times
         if self.continue_run:
             self.log.debug("Closing sockets.")
+
+        if not self.stopped:
+            # if the socket is closed to early the thread will hang.
+            self.log.debug("Waiting for run loop to stop")
+            time.sleep(1)
 
         self.stop_socket(name="control_socket")
 

@@ -121,7 +121,6 @@ class TestDataDispatcher(TestBase):
         kwargs = dict(
             dispatcher_id=1,
             endpoints=endpoints,
-            chunksize=self.chunksize,
             fixed_stream_addr=fixed_stream_addr,
             config=self.datadispatcher_config,
             log_queue=self.log_queue,
