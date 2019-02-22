@@ -333,7 +333,7 @@ class DataFetcher(DataFetcherBase):
             if targets_metadata != []:
                 # send message to metadata targets
                 try:
-                    self.send_to_targets(targts=targets_metadata,
+                    self.send_to_targets(targets=targets_metadata,
                                          open_connections=open_connections,
                                          metadata=metadata_extended,
                                          payload=payload,
