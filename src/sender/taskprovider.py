@@ -315,6 +315,8 @@ class TaskProvider(Base):
         self.stop_socket(name="request_fw_socket")
         self.stop_socket(name="control_socket")
 
+        self.eventdetector.stop()
+
         if not self.ext_context and self.context:
             self.log.info("Destroying context")
             self.context.destroy(0)

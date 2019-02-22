@@ -41,7 +41,8 @@ from .utils_general import (is_windows,
                             create_dir,
                             create_sub_dirs,
                             change_user,
-                            log_user_change)
+                            log_user_change,
+                            show_files_in_dir)
 
 from .utils_datatypes import (IpcAddresses,
                               Endpoints,
@@ -103,6 +104,7 @@ __all__ = [
     "create_sub_dirs",
     "change_user",
     "log_user_change",
+    "show_files_in_dir",
     "IpcAddresses",
     "Endpoints",
     "MAPPING_ZMQ_CONSTANTS_TO_STR",

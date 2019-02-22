@@ -49,8 +49,6 @@ import hidra.utils as utils
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 LOGLEVEL = "error"
-# LOGLEVEL = "info"
-#LOGLEVEL = "debug"
 
 
 def create_dir(directory, chmod=None, log=logging):
@@ -221,7 +219,6 @@ class TestBase(unittest.TestCase):
     """
 
     loglevel = "error"
-    #loglevel = "debug"
 
     def setUp(self):
 

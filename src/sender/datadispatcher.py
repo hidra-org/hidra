@@ -164,7 +164,8 @@ class DataHandler(Base, threading.Thread):
             try:
                 socks = dict(self.poller.poll())
             except zmq.ZMQError:
-                # when stop is called without a control signal -> suppress error message
+                # when stop is called without a control signal
+                # -> suppress error message
                 self.log.error("Error when polling", exc_info=True)
                 break
 

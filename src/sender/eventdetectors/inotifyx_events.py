@@ -41,7 +41,7 @@ from six import iteritems
 
 from eventdetectorbase import EventDetectorBase
 from hidra import convert_suffix_list_to_regex
-from inotify_utils import get_event_message, CleanUp
+from inotify_utils import get_event_message, CleanUp, common_stop
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -532,3 +532,5 @@ class EventDetector(EventDetectorBase):
                                    watch_descriptor, exc_info=True)
         finally:
             os.close(self.file_descriptor)
+
+        common_stop(self.config, self.log)

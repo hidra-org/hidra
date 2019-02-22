@@ -87,6 +87,23 @@ def get_event_message(parent_dir, filename, paths):
     raise Exception("Building event message failed")
 
 
+def common_stop(config, log):
+    """
+    Execution of stopping operations common to all inotify event detector type:
+    - Check if the monitored dir is empty and if not display the remaining
+      file.
+
+    Args:
+        config (dict): The event detector configuration dictionary.
+        log: log handler
+    """
+
+    log.info("Checking for left over files in monitored_dir")
+    dirs = [os.path.join(config["monitored_dir"], d)
+            for d in config["fix_subdirs"]]
+    utils.show_files_in_dir(log, dirs)
+
+
 class CleanUp(threading.Thread):
     """
     A threading finding left over files and generate events form them.

@@ -378,3 +378,26 @@ def log_user_change(log, user_was_changed, user_info):
     else:
         log.info("No user change needed, running as user %s (uid %s)",
                  user_info.pw_name, user_info.pw_uid)
+
+
+def show_files_in_dir(log, dirs):
+    """Checks if a directory is empty or if not, shows all contained files.
+
+    Args:
+        log: log handler
+        dirs (list): The directories to check.
+    """
+
+    files = []
+
+    for i in dirs:
+        files += [
+            os.path.join(root, f)
+            for root, _, files in os.walk(i)
+            for f in files
+        ]
+
+    if files:
+        log.debug("Files remaining: %s", files)
+    else:
+        log.debug("No files remaining.")
