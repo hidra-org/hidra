@@ -74,7 +74,7 @@ class TestTransfer(TestBase):
         self.transfer_conf = dict(
             connection_type="STREAM",
             signal_host=None,
-            use_log=False,
+            use_log=self.loglevel,
             context="fake_context",
             dirs_not_to_create=None
         )

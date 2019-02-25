@@ -531,6 +531,9 @@ class EventDetector(EventDetectorBase):
                     self.log.error("Unable to remove watch: %s",
                                    watch_descriptor, exc_info=True)
         finally:
-            os.close(self.file_descriptor)
+            try:
+                os.close(self.file_descriptor)
+            except OSError:
+                self.log.error("Unable to close file descriptor")
 
         common_stop(self.config, self.log)

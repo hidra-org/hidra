@@ -91,7 +91,10 @@ class RequestPuller(threading.Thread):
                 self.log.info("Requests: %s", requests)
                 time.sleep(0.25)
             except Exception:
-                raise
+                # if the thread is stopped it might cause exceptions which
+                # should not be raised.
+                if self.continue_run:
+                    raise
 
     def stop(self):
         if self.continue_run:
