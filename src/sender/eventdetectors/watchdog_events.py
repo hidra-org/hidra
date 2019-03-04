@@ -55,7 +55,8 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         self.detect_create = False
         self.detect_modify = False
         self.detect_delete = False
-        self.detect_move = False
+        self.detect_move_from = False
+        self.detect_move_to = False
         self.detect_close = False
 
         regexes = []
@@ -79,9 +80,12 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
             elif "delete" in event.lower():
                 self.log.info("Activate on delete event types")
                 self.detect_delete = regex
-            elif "move" in event.lower():
-                self.log.info("Activate on move event types")
-                self.detect_move = regex
+            elif "move_from" in event.lower():
+                self.log.info("Activate on move from event types")
+                self.detect_move_from = regex
+            elif "move_to" in event.lower():
+                self.log.info("Activate on move to event types")
+                self.detect_move_to = regex
             elif "close" in event.lower():
                 self.log.info("Activate on close event types")
                 self.detect_close = regex
@@ -91,9 +95,6 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         self.log.debug("init: super")
         super(WatchdogEventHandler, self,).__init__()
 
-        self.log.debug("self.detect_close={}, self.detect_move={}"
-                       .format(self.detect_close, self.detect_move))
-
     def process(self, event):
         self.log.debug("process")
 
@@ -102,7 +103,10 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         # Directories will be skipped
         if not event.is_directory:
 
-            event_message = split_file_path(event.src_path, self.paths)
+            if self.detect_move_to:
+                event_message = split_file_path(event.dest_path, self.paths)
+            else:
+                event_message = split_file_path(event.src_path, self.paths)
 
             event_message_list.append(event_message)
 
@@ -145,8 +149,14 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
             self.process(event)
 
     def on_moved(self, event):
-        if self.detect_move and self.detect_move.match(event.src_path):
-            self.log.debug("On move event detected")
+        if (self.detect_move_from
+                and self.detect_move_from.match(event.src_path)):
+            self.log.debug("On move from event detected")
+            self.process(event)
+
+        if (self.detect_move_to
+                and self.detect_move_to.match(event.dest_path)):
+            self.log.debug("On move to event detected")
             self.process(event)
 
 
