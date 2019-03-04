@@ -103,7 +103,7 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         # Directories will be skipped
         if not event.is_directory:
 
-            if self.detect_move_to:
+            if self.detect_move_from or self.detect_move_to:
                 event_message = split_file_path(event.dest_path, self.paths)
             else:
                 event_message = split_file_path(event.src_path, self.paths)
