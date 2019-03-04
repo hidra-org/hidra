@@ -38,6 +38,7 @@ import socket as socket_m
 import sys
 
 from ._version import __version__
+from .utils_datatypes import WrongConfiguration
 
 
 def is_windows():
@@ -149,11 +150,14 @@ def check_existance(path):
 
     Args:
         path (str): Absolute path of the directory or file.
+
+    Raises:
+        WrongConfigruation: when file or dir is not set or does not exist.
     """
 
     if path is None:
-        logging.error("No path to check found (path=%s). Abort.", path)
-        sys.exit(1)
+        raise WrongConfiguration("No path to check found (path={}). Abort."
+                                 .format(path))
 
     # Check path for existance.
     # Exits if it does not exist
@@ -163,8 +167,8 @@ def check_existance(path):
         obj_type = "File"
 
     if not os.path.exists(path):
-        logging.error("%s '%s' does not exist. Abort.", obj_type, path)
-        sys.exit(1)
+        raise WrongConfiguration("{} '{}' does not exist. Abort."
+                                 .format(obj_type, path))
 
 
 def check_writable(file_to_check):
