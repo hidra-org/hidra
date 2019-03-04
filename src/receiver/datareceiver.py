@@ -61,8 +61,8 @@ def argument_parsing():
     """Parses and checks the command line arguments used.
     """
 
-    base_config_file = os.path.join(CONFIG_DIR, "base_receiver.conf")
-    default_config_file = os.path.join(CONFIG_DIR, "datareceiver.conf")
+    base_config_file = utils.determine_config_file(fname_base="base_receiver",
+                                                   config_dir=CONFIG_DIR)
 
     # ------------------------------------------------------------------------
     # Get command line arguments
@@ -116,7 +116,11 @@ def argument_parsing():
                              "files from")
 
     arguments = parser.parse_args()
-    arguments.config_file = arguments.config_file or default_config_file
+    arguments.config_file = (
+        arguments.config_file
+        or utils.determine_config_file(fname_base="datareceiver",
+                                       config_dir=CONFIG_DIR)
+    )
 
     # check if config_file exist
     utils.check_existance(arguments.config_file)

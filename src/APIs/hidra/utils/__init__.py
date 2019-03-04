@@ -58,6 +58,7 @@ from .utils_datatypes import (IpcAddresses,
                               WrongConfiguration)
 
 from .utils_config import (check_config,
+                           determine_config_file,
                            load_config,
                            write_config,
                            parse_parameters,
@@ -118,6 +119,7 @@ __all__ = [
     "DataSavingError",
     "WrongConfiguration",
     "check_config",
+    "determine_config_file",
     "load_config",
     "write_config",
     "parse_parameters",

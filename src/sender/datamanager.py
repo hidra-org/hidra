@@ -74,61 +74,13 @@ CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-def determine_base_config_file():
-    """
-    Determines if the base config file is of the old type (conf) or the new
-    one (yaml).
-
-    Returns:
-        The base config file (full path).
-
-    Raises:
-        utils.WrongConfiguration: if no base config was found.
-    """
-
-    base_config_file = os.path.join(CONFIG_DIR, "base_sender.yaml")
-    try:
-        utils.check_existance(base_config_file)
-    except utils.WrongConfiguration:
-        base_config_file = os.path.join(CONFIG_DIR, "base_sender.conf")
-        try:
-            utils.check_existance(base_config_file)
-        except utils.WrongConfiguration:
-            raise utils.WrongConfiguration("Missing base config file")
-
-    return base_config_file
-
-
-def determine_default_config_file():
-    """
-    Determines if the default config file is of the old type (conf) or the new
-    one (yaml).
-
-    Returns:
-        The default config file (full path)
-
-    Raises:
-        utils.WrongConfiguration: if no default config was found.
-    """
-
-    default_config_file = os.path.join(CONFIG_DIR, "datamanager.yaml")
-    try:
-        utils.check_existance(default_config_file)
-    except utils.WrongConfiguration:
-        default_config_file = os.path.join(CONFIG_DIR, "datamanager.conf")
-        try:
-            utils.check_existance(default_config_file)
-        except utils.WrongConfiguration:
-            raise utils.WrongConfiguration("Missing default config file")
-
-    return default_config_file
-
 
 def argument_parsing():
     """Parses and checks the command line arguments used.
     """
 
-    base_config_file = determine_base_config_file()
+    base_config_file = utils.determine_config_file(fname_base="base_sender",
+                                                   config_dir=CONFIG_DIR)
 
     supported_ed_types = ["inotifyx_events",
                           "inotify_events",
@@ -327,8 +279,11 @@ def argument_parsing():
                                  "with_confirmation"])
 
     arguments = parser.parse_args()
-    arguments.config_file = (arguments.config_file
-                             or determine_default_config_file())
+    arguments.config_file = (
+        arguments.config_file
+        or utils.determine_config_file(fname_base="datamanager",
+                                       config_dir=CONFIG_DIR)
+    )
 
     # check if config_file exist
     utils.check_existance(base_config_file)

@@ -37,14 +37,46 @@ import copy
 import json
 import logging
 import yaml
+import os
 
-from .utils_datatypes import (Endpoints, NotSupported)
+from .utils_datatypes import (Endpoints, NotSupported, WrongConfiguration)
+from .utils_general import check_existance
 
 try:
     import ConfigParser
 except ImportError:
     # The ConfigParser module has been renamed to configparser in Python 3
     import configparser as ConfigParser
+
+
+def determine_config_file(fname_base, config_dir):
+    """
+    Determines if the config file is of the old type (conf) or the new
+    one (yaml).
+
+    Args:
+        fname_base: the file name base of the config file
+                    e.g. fname_base for base_sender.conf would be base_sender
+        config_dir: the directory where the config files can be found
+    Returns:
+        The base config file (full path).
+
+    Raises:
+        WrongConfiguration: if no config was found.
+    """
+
+    config_file = os.path.join(config_dir, "{}.yaml".format(fname_base))
+    try:
+        check_existance(config_file)
+    except WrongConfiguration:
+        config_file = os.path.join(config_dir, "{}.conf".format(fname_base))
+        try:
+            check_existance(config_file)
+        except WrongConfiguration:
+            raise WrongConfiguration("Missing base config file ('{}')"
+                                     .format(fname_base))
+
+    return config_file
 
 
 def load_config(config_file, config_type=None, log=logging):
