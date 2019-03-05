@@ -122,6 +122,7 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
             # TODO only fire for file-event. skip directory-events.
             self.log.debug("On move event detected")
             self.process(event)
+
         if self.detect_close and self.detect_close.match(event.src_path):
             self.log.debug("On close event detected (from create)")
             if not event.is_directory:
@@ -136,6 +137,7 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         if self.detect_modify and self.detect_modify.match(event.src_path):
             self.log.debug("On modify event detected")
             self.process(event)
+
         if self.detect_close and self.detect_close.match(event.src_path):
             if (not event.is_directory
                     and event.src_path not in event_list_to_observe):
