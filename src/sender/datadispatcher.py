@@ -50,7 +50,7 @@ class DataHandler(Base, threading.Thread):
 
     def _setup(self):
 
-        log_name = "DataHander-{}".format(self.dispatcher_id)
+        log_name = "DataHandler-{}".format(self.dispatcher_id)
         self.log = utils.get_logger(log_name, self.log_queue)
 
         # dict with information of all open sockets to which a data stream is
