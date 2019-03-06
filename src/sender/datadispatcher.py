@@ -89,7 +89,7 @@ class DataHandler(Base, threading.Thread):
         """Initializes parameters and creates sockets.
         """
 
-        log_name = "DataHander-{}".format(self.dispatcher_id)
+        log_name = "DataHandler-{}".format(self.dispatcher_id)
         self.log = utils.get_logger(log_name, self.log_queue)
 
         # dict with information of all open sockets to which a data stream is
@@ -442,10 +442,12 @@ class DataHandler(Base, threading.Thread):
 
         self.keep_running = False
 
-        if not self.stopped:
+        i = 0
+        while not self.stopped:
             # if the socket is closed to early the thread will hang.
-            self.log.debug("Waiting for run loop to stop")
-            time.sleep(1)
+            self.log.debug("Waiting for run loop to stop (iter %s)", i)
+            time.sleep(0.1)
+            i += 1
 
         self.stop_socket(name="router_socket")
         self.stop_socket(name="control_socket")

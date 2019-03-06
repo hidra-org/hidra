@@ -69,8 +69,9 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
     Implementation of the watchdog event handle according to the API
     """
 
-    def __init__(self, handler_id, config, log_queue):
+    def __init__(self, handler_id, config, lock, log_queue):
         self.handler_id = handler_id
+        self.lock = lock
 
         # Suppress logging messages of watchdog observer
         logging.getLogger("watchdog.observers.inotify_buffer").setLevel(
@@ -89,7 +90,8 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         self.detect_create = False
         self.detect_modify = False
         self.detect_delete = False
-        self.detect_move = False
+        self.detect_move_from = False
+        self.detect_move_to = False
         self.detect_close = False
 
         regexes = []
@@ -113,9 +115,12 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
             elif "delete" in event.lower():
                 self.log.info("Activate on delete event types")
                 self.detect_delete = regex
-            elif "move" in event.lower():
-                self.log.info("Activate on move event types")
-                self.detect_move = regex
+            elif "move_from" in event.lower():
+                self.log.info("Activate on move from event types")
+                self.detect_move_from = regex
+            elif "move_to" in event.lower():
+                self.log.info("Activate on move to event types")
+                self.detect_move_to = regex
             elif "close" in event.lower():
                 self.log.info("Activate on close event types")
                 self.detect_close = regex
@@ -124,9 +129,6 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
 
         self.log.debug("init: super")
         super(WatchdogEventHandler, self,).__init__()
-
-        self.log.debug("self.detect_close=%s, self.detect_move=%s",
-                       self.detect_close, self.detect_move)
 
     def process(self, event):
         """
@@ -144,9 +146,13 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         # Directories will be skipped
         if not event.is_directory:
 
-            event_message = get_event_message(event.src_path, self.paths)
+            if self.detect_move_from or self.detect_move_to:
+                event_message = split_file_path(event.dest_path, self.paths)
+            else:
+                event_message = split_file_path(event.src_path, self.paths)
 
-            _event_message_list.append(event_message)
+            with self.lock:
+                _event_message_list.append(event_message)
 
     def on_any_event(self, event):
         # pylint: disable=no-member
@@ -196,8 +202,14 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
 
     def on_moved(self, event):
         # pylint: disable=no-member
-        if self.detect_move and self.detect_move.match(event.src_path):
-            self.log.debug("On move event detected")
+        if (self.detect_move_from
+                and self.detect_move_from.match(event.src_path)):
+            self.log.debug("On move from event detected")
+            self.process(event)
+
+        if (self.detect_move_to
+                and self.detect_move_to.match(event.dest_path)):
+            self.log.debug("On move to event detected")
             self.process(event)
 
 
@@ -495,7 +507,10 @@ class EventDetector(EventDetectorBase):
         for observer_id, path in enumerate(self.paths):
             observer = Observer()
             observer.schedule(
-                WatchdogEventHandler(observer_id, self.config, self.log_queue),
+                WatchdogEventHandler(observer_id,
+                                     self.config,
+                                     self.lock,
+                                     self.log_queue),
                 path,
                 recursive=True
             )
