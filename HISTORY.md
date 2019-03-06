@@ -1,4 +1,10 @@
 # develop
+# 4.0.17
+
+- Fixed MOVE_TO events in watchdog event detector
+- Fixed hangin of datadispatcher
+- Fixed missing events in watchdog event detector
+
 # 4.0.16
 
 - Fixed control signal reaction during data handling
