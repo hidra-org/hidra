@@ -35,8 +35,9 @@ event_list_to_observe_tmp = []
 
 # documentation of watchdog: https://pythonhosted.org/watchdog/api.html
 class WatchdogEventHandler(RegexMatchingEventHandler):
-    def __init__(self, handler_id, config, log_queue):
+    def __init__(self, handler_id, config, lock, log_queue):
         self.handler_id = handler_id
+        self.lock = lock
 
         # Suppress logging messages of watchdog observer
         logging.getLogger("watchdog.observers.inotify_buffer").setLevel(
@@ -108,7 +109,8 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
             else:
                 event_message = split_file_path(event.src_path, self.paths)
 
-            event_message_list.append(event_message)
+            with self.lock:
+                event_message_list.append(event_message)
 
     def on_any_event(self, event):
         if self.detect_all and self.detect_all.match(event.src_path):
@@ -401,7 +403,10 @@ class EventDetector(EventDetectorBase):
         for observer_id, path in enumerate(self.paths):
             observer = Observer()
             observer.schedule(
-                WatchdogEventHandler(observer_id, self.config, self.log_queue),
+                WatchdogEventHandler(observer_id,
+                                     self.config,
+                                     self.lock,
+                                     self.log_queue),
                 path,
                 recursive=True
             )
