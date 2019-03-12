@@ -35,8 +35,7 @@ import os
 import re
 import threading
 
-from inotifyx import binding
-# from inotifyx.distinfo import version as __version__
+import inotifyx
 from six import iteritems
 
 from eventdetectorbase import EventDetectorBase
@@ -44,92 +43,6 @@ from hidra import convert_suffix_list_to_regex
 from inotify_utils import get_event_message, CleanUp, common_stop
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
-
-
-CONSTANTS = {}
-_file_event_list = []  # pylint: disable=invalid-name
-
-for name in dir(binding):
-    if name.startswith("IN_"):
-        globals()[name] = CONSTANTS[name] = getattr(binding, name)
-
-
-# Source: inotifyx library code example
-class InotifyEvent(object):
-    """
-    InotifyEvent(wd, mask, cookie, name)
-
-    A representation of the inotify_event structure.  See the inotify
-    documentation for a description of these fields.
-    """
-
-    # pylint: disable=invalid-name
-    # pylint: disable=redefined-outer-name
-    # pylint: disable=too-few-public-methods
-
-    wd = None
-    mask = None
-    cookie = None
-    name = None
-
-    def __init__(self, wd, mask, cookie, name):
-        self.wd = wd
-        self.mask = mask
-        self.cookie = cookie
-        self.name = name
-
-    def __str__(self):
-        return "%s: %s" % (self.wd, self.get_mask_description())
-
-    def __repr__(self):
-        return "%s(%s, %s, %s, %s)" % (
-            self.__class__.__name__,
-            repr(self.wd),
-            repr(self.mask),
-            repr(self.cookie),
-            repr(self.name),
-        )
-
-    def get_mask_description(self):
-        """
-        Return an ASCII string describing the mask field in terms of
-        bitwise-or'd IN_* CONSTANTS, or 0.  The result is valid Python code
-        that could be eval'd to get the value of the mask field.  In other
-        words, for a given event:
-
-        >>> from inotifyx import *
-        >>> assert (event.mask == eval(event.get_mask_description()))
-        """
-
-        parts = []
-        for name, value in CONSTANTS.items():
-            if self.mask & value:
-                parts.append(name)
-        if parts:
-            return "|".join(parts)
-        return "0"
-
-
-# Modification of the inotifyx example found inside inotifyx library
-# Copyright (c) 2005 Manuel Amador
-# Copyright (c) 2009-2011 Forest Bond
-def get_events(fd, *args):  # pylint: disable=invalid-name
-    '''
-    get_events(fd[, timeout])
-
-    Return a list of InotifyEvent instances representing events read from
-    inotify. If timeout is None, this will block forever until at least one
-    event can be read.  Otherwise, timeout should be an integer or float
-    specifying a timeout in seconds.  If get_events times out waiting for
-    events, an empty list will be returned.  If timeout is zero, get_events
-    will not block.
-    '''
-    return [
-        InotifyEvent(wd, mask, cookie, name)
-        # pylint: disable=redefined-outer-name
-        for wd, mask, cookie, name in binding.get_events(fd, *args)
-    ]
-
 
 class EventDetector(EventDetectorBase):
     """
@@ -200,7 +113,7 @@ class EventDetector(EventDetectorBase):
         cleanup thread.
         """
 
-        self.file_descriptor = binding.init()  # pylint: disable=no-member
+        self.file_descriptor = inotifyx.init()
 
         # TODO why is this necessary
         self.paths = [self.config["monitored_dir"]]
@@ -263,8 +176,7 @@ class EventDetector(EventDetectorBase):
 
         try:
             for path in self._get_directory_structure():
-                # pylint: disable=no-member
-                watch_descriptor = binding.add_watch(
+                watch_descriptor = inotifyx.add_watch(
                     self.file_descriptor,
                     path
                 )
@@ -360,7 +272,7 @@ class EventDetector(EventDetectorBase):
         # event_message_list = self.get_remaining_events()
         event_message = {}
 
-        events = get_events(self.file_descriptor, self.timeout)
+        events = inotifyx.get_events(self.file_descriptor, self.timeout)
         removed_wd = None
 
         for event in events:
@@ -413,7 +325,7 @@ class EventDetector(EventDetectorBase):
                     self.log.debug("Directory already contained in path list:"
                                    " %s", dirname)
                 else:
-                    watch_descriptor = binding.add_watch(   # noqa E501 # pylint: disable=no-member
+                    watch_descriptor = inotifyx.add_watch(   # noqa E501
                         self.file_descriptor,
                         dirname
                     )
@@ -432,7 +344,7 @@ class EventDetector(EventDetectorBase):
                             traversed_path = os.path.join(traversed_path,
                                                           dname)
                             # pylint: disable=no-member
-                            watch_descriptor = binding.add_watch(
+                            watch_descriptor = inotifyx.add_watch(
                                 self.file_descriptor,
                                 traversed_path
                             )
@@ -473,7 +385,7 @@ class EventDetector(EventDetectorBase):
                         found_watch = watch
                         break
                 # pylint: disable=no-member
-                binding.rm_watch(self.file_descriptor, found_watch)
+                inotifyx.rm_watch(self.file_descriptor, found_watch)
                 self.log.info("Removed directory from watch: %s", dirname)
                 # the IN_MOVE_FROM event always apears before the IN_MOVE_TO
                 # (+ additional) events and thus has to be stored till loop
@@ -523,7 +435,7 @@ class EventDetector(EventDetectorBase):
         try:
             for watch_descriptor in self.wd_to_path:
                 try:
-                    binding.rm_watch(  # pylint: disable=no-member
+                    inotifyx.rm_watch(
                         self.file_descriptor,
                         watch_descriptor
                     )

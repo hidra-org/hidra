@@ -20,85 +20,10 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import os, select
+import os
+import select
 
-from inotifyx import binding
-from inotifyx.distinfo import version as __version__
-
-
-constants = {}
-
-for name in dir(binding):
-    if name.startswith('IN_'):
-        globals()[name] = constants[name] = getattr(binding, name)
-
-
-class InotifyEvent(object):
-    '''
-    InotifyEvent(wd, mask, cookie, name)
-
-    A representation of the inotify_event structure.  See the inotify
-    documentation for a description of these fields.
-    '''
-
-    wd = None
-    mask = None
-    cookie = None
-    name = None
-
-    def __init__(self, wd, mask, cookie, name):
-        self.wd = wd
-        self.mask = mask
-        self.cookie = cookie
-        self.name = name
-
-    def __str__(self):
-        return '%s: %s' % (self.wd, self.get_mask_description())
-
-    def __repr__(self):
-        return '%s(%s, %s, %s, %s)' % (
-          self.__class__.__name__,
-          repr(self.wd),
-          repr(self.mask),
-          repr(self.cookie),
-          repr(self.name),
-        )
-
-    def get_mask_description(self):
-        '''
-        Return an ASCII string describing the mask field in terms of
-        bitwise-or'd IN_* constants, or 0.  The result is valid Python code
-        that could be eval'd to get the value of the mask field.  In other
-        words, for a given event:
-
-        >>> from inotifyx import *
-        >>> assert (event.mask == eval(event.get_mask_description()))
-        '''
-
-        parts = []
-        for name, value in constants.items():
-            if self.mask & value:
-                parts.append(name)
-        if parts:
-            return '|'.join(parts)
-        return '0'
-
-
-def get_events(fd, *args):
-    '''
-    get_events(fd[, timeout])
-
-    Return a list of InotifyEvent instances representing events read from
-    inotify.  If timeout is None, this will block forever until at least one
-    event can be read.  Otherwise, timeout should be an integer or float
-    specifying a timeout in seconds.  If get_events times out waiting for
-    events, an empty list will be returned.  If timeout is zero, get_events
-    will not block.
-    '''
-    return [
-      InotifyEvent(wd, mask, cookie, name)
-      for wd, mask, cookie, name in binding.get_events(fd, *args)
-    ]
+import inotifyx
 
 
 if __name__ == '__main__':
@@ -111,20 +36,20 @@ if __name__ == '__main__':
     paths = sys.argv[1:]
     print "paths: ", paths
 
-    fd = binding.init()
+    fd = inotifyx.init()
 
     wd_to_path = {}
 
     try:
         for path in paths:
-            wd = binding.add_watch(fd, path)
+            wd = inotifyx.add_watch(fd, path)
             wd_to_path[wd] = path
 
         print "wd_to_path: ", wd_to_path
 
         try:
             while True:
-                events = get_events(fd)
+                events = inotifyx.get_events(fd)
                 for event in events:
                     path = wd_to_path[event.wd]
                     parts = [event.get_mask_description()]
@@ -145,7 +70,7 @@ if __name__ == '__main__':
                         if dirname in paths:
                             print "already contained in path list"
                         else:
-                            wd = binding.add_watch(fd, dirname)
+                            wd = inotifyx.add_watch(fd, dirname)
                             wd_to_path[wd] = dirname
                             print "added path to watch", wd_to_path
 
