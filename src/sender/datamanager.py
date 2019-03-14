@@ -474,6 +474,8 @@ class DataManager(Base):
             self.ext_ip = socket.gethostbyaddr(self.params["ext_ip"])[2][0]
         self.con_ip = socket.getfqdn()
 
+        # cleaner cannot be coupled to use_data_stream because this would
+        # break the http fetcher
         self.use_cleaner = (self.params["remove_data"] == "with_confirmation")
 
         ports = {
@@ -869,7 +871,7 @@ class DataManager(Base):
                       self.endpoints))
             self.cleaner_pr.start()
 
-        self.log.info("Configured Type of data fetcher: {}"
+        self.log.info("Configured type of data fetcher: {}"
                       .format(self.params["data_fetcher_type"]))
 
         # DataDispatcher

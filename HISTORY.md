@@ -1,8 +1,13 @@
 # develop
+# 4.0.18
+
+- Undo ignoring of accumulated events during sleeping
+- Fix control server crash when backup dir missing
+
 # 4.0.17
 
 - Fixed MOVE_TO events in watchdog event detector
-- Fixed hangin of datadispatcher
+- Fixed hanging of datadispatcher
 - Fixed missing events in watchdog event detector
 
 # 4.0.16
