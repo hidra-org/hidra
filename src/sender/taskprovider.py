@@ -73,6 +73,7 @@ class TaskProvider(Base):
         self.ext_context = None
         self.eventdetector = None
         self.continue_run = None
+        self.ignore_accumulated_events = None
 
         self.setup(context)
 
@@ -99,6 +100,11 @@ class TaskProvider(Base):
         self.log.debug("TaskProvider started (PID {}).".format(os.getpid()))
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
+
+        try:
+            self.ignore_accumulated_events = self.config["ignore_accumulated_events"]
+        except KeyError:
+            self.ignore_accumulated_events = False
 
         # remember if the context was created outside this class or not
         if context:
@@ -268,17 +274,18 @@ class TaskProvider(Base):
                             self.log.debug("Received wakeup signal")
 
                             # cleanup accumulated events
-                            try:
-                                acc_events = self.eventdetector.get_new_event()
-                                self.log.debug("Ignore accumulated workload:"
-                                               " {}".format(acc_events))
-                            except KeyboardInterrupt:
-                                break
-                            except Exception:
-                                self.log.error("Invalid workload message "
-                                               "received.", exc_info=True)
+                            if self.ignore_accumulated_events:
+                                try:
+                                    acc_events = self.eventdetector.get_new_event()
+                                    self.log.debug("Ignore accumulated workload:"
+                                                   " {}".format(acc_events))
+                                except KeyboardInterrupt:
+                                    break
+                                except Exception:
+                                    self.log.error("Invalid workload message "
+                                                   "received.", exc_info=True)
 
-                                # Wake up from sleeping
+                            # Wake up from sleeping
                             break
                         elif message[0] == b"EXIT":
                             self.log.debug("Received exit signal")

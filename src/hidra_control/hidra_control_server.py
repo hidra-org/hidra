@@ -99,7 +99,7 @@ class InstanceTracking(object):
                 f.write(json.dumps(self.instances, sort_keys=True, indent=4))
         except Exception:
             self.log.error("File containing instances could not be written",
-                           sys_info=True)
+                           exc_info=True)
 
     def get_instances(self):
         """Get all previously started instances
