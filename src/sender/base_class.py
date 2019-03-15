@@ -52,6 +52,8 @@ class Base(object):
         self.required_params_dep = {}
         self.config_reduced = {}
 
+        self.control_socket = None
+
     def _base_check(self, module_class, check_dep=True):
         """
         eg. module_class is "eventdetector"
@@ -180,3 +182,140 @@ class Base(object):
             setattr(self, name, return_socket)
         else:
             return return_socket
+
+    def check_control_signal(self):
+        """Check the control socket for signals and react accordingly.
+
+        Returns:
+            A boolean indicating if the class should be stopped or not
+            (True means stop).
+        """
+
+        stop_flag = False
+
+        try:
+            message = self.control_socket.recv_multipart()
+            self.log.debug("Control signal received: message = %s", message)
+        except Exception:
+            self.log.error("Receiving control signal...failed",
+                           exc_info=True)
+            return stop_flag
+
+        # remove subsription topic
+        del message[0]
+
+        self._forward_control_signal(message)
+
+        if message[0] == b"EXIT":
+            self.log.debug("Received %s signal.", message[0])
+            self._react_to_exit_signal()
+            stop_flag = True
+
+        elif message[0] == b"CLOSE_SOCKETS":
+            self.log.debug("Received %s signal", message[0])
+            self._react_to_close_sockets_signal(message)
+
+        elif message[0] == b"SLEEP":
+            self.log.debug("Received %s signal", message[0])
+            self._react_to_sleep_signal(message)
+
+        elif message[0] == b"WAKEUP":
+            self.log.debug("Received %s signal without sleeping", message[0])
+            self._react_to_wakeup_signal(message)
+        else:
+            self.log.error("Unhandled control signal received: %s",
+                           message)
+
+        return stop_flag
+
+    def _forward_control_signal(self, message):
+        """If the control signal has to trigger additional action.
+
+        For some child classes additional action has to take place when a
+        control signal is received. (They override this method then)
+        """
+        pass
+
+    def _react_to_close_sockets_signal(self, message):
+        """Action to take place when close sockets signal received.
+
+        For some child classes action has to take place when the close socket
+        signal is received. (They override this method then)
+        """
+        pass
+
+    def _react_to_sleep_signal(self, message):
+        """Action to take place when sleep signal received.
+
+        By default processes go to sleep when the sleep signal is received till
+        they are requested to wakeup or shut down.
+        For some child classes another action has to take place. (They
+        override this method then)
+        """
+        stop_flag = False
+
+        # if there are problems on the receiving side no data
+        # should be processed till the problem is solved
+        while True:
+
+            try:
+                message = self.control_socket.recv_multipart()
+            except KeyboardInterrupt:
+                self.log.error("Receiving control signal..."
+                               "failed due to KeyboardInterrupt")
+                stop_flag = True
+                break
+
+            except Exception:
+                self.log.error("Receiving control signal...failed",
+                               exc_info=True)
+                continue
+
+            # remove subsription topic
+            del message[0]
+
+            if message[0] == b"SLEEP":
+                self.log.debug("Received %s signal while sleeping.",
+                               message[0])
+                continue
+
+            elif message[0] == b"WAKEUP":
+                self.log.debug("Received %s signal", message[0])
+                self._react_to_wakeup_signal(message)
+
+                # Wake up from sleeping
+                break
+
+            elif message[0] == b"EXIT":
+                self.log.debug("Received %s signal while sleeping.",
+                               message[0])
+                stop_flag = True
+                break
+
+            elif message[0] == b"CLOSE_SOCKETS":
+                self.log.debug("Received %s signal while sleeping",
+                               message[0])
+                self._react_to_close_sockets_signal(message)
+                continue
+
+            else:
+                self.log.error("Unhandled control signal received: %s",
+                               message)
+
+        return stop_flag
+
+    def _react_to_wakeup_signal(self, message):
+        """Action to take place when waking up.
+
+        For some child classes action has to take place when a wakeup call is
+        received. (They override this method then)
+        """
+        pass
+
+    def _react_to_exit_signal(self):
+        """Action to take place when exit signal received.
+
+        For some child classes action has to take place when an exit signal is
+        received. (They override this method then)
+        """
+        pass

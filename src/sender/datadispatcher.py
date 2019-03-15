@@ -305,120 +305,50 @@ class DataHandler(Base, threading.Thread):
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
 
-                try:
-                    message = self.control_socket.recv_multipart()
-                    self.log.debug("Control signal received")
-                    self.log.debug("message = %s", message)
-                except Exception:
-                    self.log.error("Reiceiving control signal...failed",
-                                   exc_info=True)
-                    continue
-
-                # remove subsription topic
-                del message[0]
-
-                if message[0] == b"EXIT":
-                    self.log.debug("Received EXIT signal")
-                    self.react_to_exit_signal()
+                # the exit signal should become effective
+                if self.check_control_signal():
                     break
-
-                elif message[0] == b"CLOSE_SOCKETS":
-                    self.react_to_close_sockets_signal(message)
-                    continue
-
-                elif message[0] == b"SLEEP":
-                    self.log.debug("Router requested to wait.")
-                    break_outer_loop = False
-
-                    # if there are problems on the receiving side no data
-                    # should be processed till the problem is solved
-                    while True:
-                        try:
-                            message = self.control_socket.recv_multipart()
-                        except KeyboardInterrupt:
-                            self.log.error("Receiving control signal..."
-                                           "failed due to KeyboardInterrupt")
-                            break_outer_loop = True
-                            break
-                        except Exception:
-                            self.log.error("Receiving control signal...failed",
-                                           exc_info=True)
-                            continue
-
-                        # remove subsription topic
-                        del message[0]
-
-                        if message[0] == b"SLEEP":
-                            continue
-
-                        elif message[0] == b"WAKEUP":
-                            self.log.debug("Received wakeup signal")
-
-                            if len(message) == 2 and message[1] == "RECONNECT":
-
-                                # Reestablish all open data connections
-                                for socket_id in self.open_connections:
-                                    # close the connection
-                                    self.stop_socket(
-                                        name="connection",
-                                        socket=self.open_connections[socket_id]
-                                    )
-
-                                    # reopen it
-                                    endpoint = "tcp://" + socket_id
-                                    self.open_connections[socket_id] = (
-                                        self.start_socket(
-                                            name="connection",
-                                            sock_type=zmq.PUSH,
-                                            sock_con="connect",
-                                            endpoint=endpoint,
-                                            message="Restart"
-                                        )
-                                    )
-
-                            # Wake up from sleeping
-                            break
-
-                        elif message[0] == b"EXIT":
-                            self.log.debug("Received exit signal while "
-                                           "sleeping.")
-                            self.react_to_exit_signal()
-                            break_outer_loop = True
-                            break
-
-                        elif message[0] == b"CLOSE_SOCKETS":
-                            self.react_to_close_sockets_signal(message)
-                            continue
-
-                        else:
-                            self.log.error("Unhandled control signal received:"
-                                           " %s", message)
-
-                    # the exit signal should become effective
-                    if break_outer_loop:
-                        break
-                    else:
-                        continue
-
-                elif message[0] == b"WAKEUP":
-                    self.log.debug("Received wakeup signal without sleeping. "
-                                   "Do nothing.")
-                    continue
-
-                else:
-                    self.log.error("Unhandled control signal received: %s",
-                                   message)
 
         self.stopped = True
 
-    def react_to_exit_signal(self):
-        """Reaction to exit signal from control socket.
+    def _react_to_wakeup_signal(self, message):
+        """Overwrite the base class reaction method to wakeup signal.
+        """
+
+        if len(message) == 2 and message[1] == "RECONNECT":
+
+            # Reestablish all open data connections
+            for socket_id in self.open_connections:
+                # close the connection
+                self.stop_socket(
+                    name="connection",
+                    socket=self.open_connections[socket_id]
+                )
+
+                # reopen it
+                endpoint = "tcp://" + socket_id
+                self.open_connections[socket_id] = (
+                    self.start_socket(
+                        name="connection",
+                        sock_type=zmq.PUSH,
+                        sock_con="connect",
+                        endpoint=endpoint,
+                        message="Restart"
+                    )
+                )
+
+    def _react_to_exit_signal(self):
+        """Overwrite the base class reaction method to exit signal.
+
+        Reaction to exit signal from control socket.
         """
         self.log.debug("Router requested to shutdown.")
         self.keep_running = False
 
-    def react_to_close_sockets_signal(self, message):
-        """Closing socket specified.
+    def _react_to_close_sockets_signal(self, message):
+        """Overwrite the base class reaction method to close_socket signal.
+
+        Closing socket specified.
 
         Args:
             message: JSON decoded message of the form:
@@ -432,9 +362,11 @@ class DataHandler(Base, threading.Thread):
                     self.stop_socket(name="socket{}".format(socket_id),
                                      socket=self.open_connections[socket_id])
                     del self.open_connections[socket_id]
+
         except Exception:
             self.log.error("Request for closing sockets of wrong format",
                            exc_info=True)
+
 
     def stop(self):
         """Stopping, closing sockets and clean up.
@@ -584,35 +516,26 @@ class DataDispatcher(Base):
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
 
-                try:
-                    message = self.control_socket.recv_multipart()
-                    self.log.debug("Control signal received")
-                    self.log.debug("message = %s", message)
-                except Exception:
-                    self.log.error("Reiceiving control signal...failed.",
-                                   exc_info=True)
-                    continue
-
-                # remove subsription topic
-                del message[0]
-
-                self.log.debug("Setting control signal for data handler.")
-                self.datahandler.set_control_signal(message)
-
-                if message[0] == b"EXIT":
-                    self.log.debug("Received EXIT signal")
-                    self.log.debug("Router requested to shutdown.")
+                # the exit signal should become effective
+                if self.check_control_signal():
                     break
 
-                elif message[0] in [b"CLOSE_SOCKETS", b"SLEEP", b"WAKEUP"]:
-                    self.log.debug("Received %s signal. Do nothing.",
-                                   message[0])
-                    continue
-
-                else:
-                    self.log.error("Unhandled control signal received: %s",
-                                   message)
         self.stopped = True
+
+    def _forward_control_signal(self, message):
+        """
+        Overwrite the base class method and forward the control signal to the
+        data handler.
+        """
+        self.log.debug("Setting control signal for data handler.")
+        self.datahandler.set_control_signal(message)
+
+    def _react_to_sleep_signal(self, message):
+        """Overwrite the base class reaction method to sleep signal.
+        """
+
+        # Do not react on sleep signals.
+        pass
 
     def stop(self):
         """Stopping, closing sockets and clean up.

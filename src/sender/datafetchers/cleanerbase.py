@@ -259,53 +259,42 @@ class CleanerBase(Base, ABC):
             # ----------------------------------------------------------------
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
-                try:
-                    message = self.control_socket.recv_multipart()
-                    self.log.debug("Control signal received")
-                    self.log.debug("message = %s", message)
-                except Exception:
-                    self.log.error("Receiving control signal...failed",
-                                   exc_info=True)
-                    continue
 
-                # remove subsription topic
-                del message[0]
-
-                if message[0] == b"SLEEP":
-                    self.log.debug("Received sleep signal")
-                    continue
-                elif message[0] == b"WAKEUP":
-                    self.log.debug("Received wakeup signal")
-
-                    if len(message) == 2 and message[1] == "RECONNECT":
-                        # close the connection
-                        self.poller.unregister(self.confirmation_socket)
-                        self.stop_socket(name="confirmation_socket")
-
-                        # reopen it
-                        self.confirmation_socket = self.start_socket(
-                            name="confirmation_socket",
-                            sock_type=zmq.SUB,
-                            sock_con="connect",
-                            endpoint=self.endpoints.confirm_con
-                        )
-
-                        self.confirmation_socket.setsockopt(
-                            zmq.SUBSCRIBE, self.confirm_topic
-                        )
-
-                        # register sockets at poller
-                        self.poller.register(self.confirmation_socket,
-                                             zmq.POLLIN)
-
-                    # Wake up from sleeping
-                    continue
-                elif message[0] == b"EXIT":
-                    self.log.debug("Received exit signal")
+                # the exit signal should become effective
+                if self.check_control_signal():
                     break
-                else:
-                    self.log.error("Unhandled control signal received: %s",
-                                   message)
+
+    def _react_to_sleep_signal(self, message):
+        """Overwrite the base class reaction method to sleep signal.
+        """
+
+        # Do not react on sleep signals.
+        pass
+
+    def _react_to_wakeup_signal(self, message):
+        """Overwrite the base class reaction method to wakeup signal.
+        """
+
+        if len(message) == 2 and message[1] == "RECONNECT":
+            # close the connection
+            self.poller.unregister(self.confirmation_socket)
+            self.stop_socket(name="confirmation_socket")
+
+            # reopen it
+            self.confirmation_socket = self.start_socket(
+                name="confirmation_socket",
+                sock_type=zmq.SUB,
+                sock_con="connect",
+                endpoint=self.endpoints.confirm_con
+            )
+
+            self.confirmation_socket.setsockopt(
+                zmq.SUBSCRIBE, self.confirm_topic
+            )
+
+            # register sockets at poller
+            self.poller.register(self.confirmation_socket,
+                                 zmq.POLLIN)
 
     @abc.abstractmethod
     def remove_element(self, base_path, source_file_id):

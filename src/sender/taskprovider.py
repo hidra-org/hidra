@@ -232,83 +232,32 @@ class TaskProvider(Base):
 
             socks = dict(self.poller.poll(0))
 
+            # ----------------------------------------------------------------
+            # control commands
+            # ----------------------------------------------------------------
+
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
 
-                try:
-                    message = self.control_socket.recv_multipart()
-                    self.log.debug("Control signal received: message = {}"
-                                   .format(message))
-                except Exception:
-                    self.log.error("Waiting for control signal...failed",
-                                   exc_info=True)
-                    continue
-
-                # remove subsription topic
-                del message[0]
-
-                if message[0] == b"EXIT":
-                    self.log.debug("Requested to shutdown.")
+                # the exit signal should become effective
+                if self.check_control_signal():
                     break
 
-                elif message[0] == b"SLEEP":
-                    self.log.debug("Received sleep signal")
-                    break_outer_loop = False
+    def _react_to_wakeup_signal(self, message):
+        """Overwrite the base class reaction method to wakeup signal.
+        """
 
-                    # if there are problems on the receiving side no data
-                    # should be processed till the problem is solved
-                    while True:
-                        try:
-                            message = self.control_socket.recv_multipart()
-                        except Exception:
-                            self.log.error("Receiving control signal...failed")
-                            continue
-
-                        # remove subsription topic
-                        del message[0]
-
-                        if message[0] == b"SLEEP":
-                            self.log.debug("Received sleep signal")
-                            continue
-                        elif message[0] == b"WAKEUP":
-                            self.log.debug("Received wakeup signal")
-
-                            # cleanup accumulated events
-                            if self.ignore_accumulated_events:
-                                try:
-                                    acc_events = self.eventdetector.get_new_event()
-                                    self.log.debug("Ignore accumulated workload:"
-                                                   " {}".format(acc_events))
-                                except KeyboardInterrupt:
-                                    break
-                                except Exception:
-                                    self.log.error("Invalid workload message "
-                                                   "received.", exc_info=True)
-
-                            # Wake up from sleeping
-                            break
-                        elif message[0] == b"EXIT":
-                            self.log.debug("Received exit signal")
-                            break_outer_loop = True
-                            break
-                        else:
-                            self.log.error("Unhandled control signal received:"
-                                           " {}".format(message))
-
-                    # the exit signal should become effective
-                    if break_outer_loop:
-                        break
-                    else:
-                        continue
-
-                elif message[0] == b"WAKEUP":
-                    self.log.debug("Received wakeup signal without sleeping. "
-                                   "Do nothing.")
-                    continue
-
-                else:
-                    self.log.error("Unhandled control signal received: {}"
-                                   .format(message))
+        # cleanup accumulated events
+        if self.ignore_accumulated_events:
+            try:
+                acc_events = self.eventdetector.get_new_event()
+                self.log.debug("Ignore accumulated workload:"
+                               " {}".format(acc_events))
+#            except KeyboardInterrupt:
+#                break
+            except Exception:
+                self.log.error("Invalid workload message "
+                               "received.", exc_info=True)
 
     def stop(self):
         """close sockets and clean up

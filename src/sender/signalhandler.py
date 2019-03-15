@@ -171,6 +171,10 @@ class SignalHandler(Base):
 
         self.control_sub_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
 
+        # just anther name for the same socket to be able to use the base
+        # class check_control_socket method
+        self.control_socket = self.control_sub_socket
+
         # socket to forward requests
         self.request_fw_socket = self.start_socket(
             name="request_fw_socket",
@@ -413,29 +417,16 @@ class SignalHandler(Base):
             if (self.control_sub_socket in socks
                     and socks[self.control_sub_socket] == zmq.POLLIN):
 
-                try:
-                    message = self.control_sub_socket.recv_multipart()
-                    # self.log.debug("Control signal received.")
-                except Exception:
-                    self.log.error("Waiting for control signal...failed",
-                                   exc_info=True)
-                    continue
-
-                # remove subscription topic
-                del message[0]
-
-                if message[0] == b"EXIT":
-                    self.log.info("Requested to shutdown.")
+                # the exit signal should become effective
+                if self.check_control_signal():
                     break
-                elif message[0] == b"SLEEP":
-                    # self.log.debug("Received sleep signal. Do nothing.")
-                    continue
-                elif message[0] == b"WAKEUP":
-                    self.log.debug("Received wakeup signal. Do nothing.")
-                    continue
-                else:
-                    self.log.error("Unhandled control signal received: {}"
-                                   .format(message[0]))
+
+    def _react_to_sleep_signal(self, message):
+        """Overwrite the base class reaction method to sleep signal.
+        """
+
+        # Do not react on sleep signals.
+        pass
 
     def check_signal(self, in_message):
         """Unpack and check incoming message.
