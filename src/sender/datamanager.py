@@ -570,7 +570,6 @@ class DataManager(Base):
 
         # cleaner cannot be coupled to use_data_stream because this would
         # break the http fetcher
-        self.use_cleaner = (self.params["remove_data"] == "with_confirmation")
         self.use_cleaner = (config_df["remove_data"] == "with_confirmation")
 
         ports = {
