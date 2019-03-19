@@ -164,6 +164,7 @@ class DataFetcherBase(Base, ABC):
                                 in s (default: -1, means wait forever)
         """
         timeout = 1
+        self._check_control_signal()
 
         for target, prio, send_type in targets:
 
@@ -232,8 +233,7 @@ class DataFetcherBase(Base, ABC):
                                     pass
 
                                 # check for control signals set from outside
-                                if (self.control_signal is not None
-                                        and self._react_to_signal()):
+                                if self._check_control_signal():
                                     self.log.info("Retry sending message part "
                                                   "%s from file '%s'.",
                                                   chunk_number,
@@ -283,59 +283,88 @@ class DataFetcherBase(Base, ABC):
                                   chunk_number, self.source_file, target, prio)
                     self.log.debug("metadata=%s", metadata)
 
-    def _react_to_signal(self):
+    def _check_control_signal(self):
+        """Check for control signal and react accordingly.
+        """
 
-        retry_sending = False
+        woke_up = False
+
+        if self.control_signal is None:
+            return
+
+        if  self.control_signal[0] == b"EXIT":
+            self.log.debug("Received %s signal.",  self.control_signal[0])
+            self.keep_running = False
+
+        elif  self.control_signal[0] == b"CLOSE_SOCKETS":
+            # do nothing
+            pass
+
+        elif  self.control_signal[0] == b"SLEEP":
+            self.log.debug("Received %s signal",  self.control_signal[0])
+            self._react_to_sleep_signal()
+            # TODO reschedule file (part?)
+            woke_up = True
+
+        elif  self.control_signal[0] == b"WAKEUP":
+            self.log.debug("Received %s signal without sleeping",
+                           self.control_signal[0])
+
+        else:
+            self.log.error("Unhandled control signal received: %s",
+                            self.control_signal)
+
+        try:
+            self.lock.acquire()
+            self.control_signal = None
+        finally:
+            self.lock.release()
+
+        return woke_up
+
+    def _react_to_sleep_signal(self):
+        self.log.debug("Received sleep signal. Going to sleep.")
+
         sleep_time = 0.2
 
-        self.log.debug("Received control signal '%s'", self.control_signal)
-
-        asleep = False
+        # controle loop with variable instead of break/continue commands to be
+        # able to reset control_signal
         keep_checking_signal = True
+
         while keep_checking_signal and self.keep_running:
-            self.lock.acquire()
+
+            if self.control_signal[0] == "SLEEP":
+                # go to sleep, but check every once in
+                # a while for new signals
+                time.sleep(sleep_time)
+
+                # do not reset control_signal to be able to check on it
+                # reseting it woul mean "no signal set -> sleep"
+                continue
+
+            elif self.control_signal[0] == "WAKEUP":
+                self.log.debug("Waking up after sleeping.")
+                keep_checking_signal = False
+
+            elif self.control_signal[0] == "EXIT":
+                self.log.debug("Received %s signal.", self.control_signal[0])
+                self.keep_running = False
+                keep_checking_signal = False
+
+            elif  self.control_signal[0] == b"CLOSE_SOCKETS":
+                # do nothing
+                pass
+
+            else:
+                self.log.debug("Received unknown control signal. "
+                               "Ignoring it.")
+                keep_checking_signal = False
+
             try:
-                if (self.control_signal is None
-                        or self.control_signal[0] == "SLEEP"):
-                    # None: after sending sleep no other control signal has
-                    # been set yet
-
-                    if not asleep:
-                        self.log.debug("Received sleep signal. Going to "
-                                       "sleep.")
-                        asleep = True
-
-                    # go to sleep, but check every once in
-                    # a while for new signals
-                    time.sleep(sleep_time)
-
-                elif self.control_signal[0] == "WAKEUP":
-                    if asleep:
-                        self.log.debug("Waking up after sleeping. Retry "
-                                       "sending data.")
-                        # TODO reschedule file (part?)
-                        asleep = False
-                    else:
-                        self.log.debug("Wakup signal received without being "
-                                       "asleep.")
-
-                    keep_checking_signal = False
-                    retry_sending = True
-
-                elif self.control_signal[0] == "EXIT":
-                    self.log.debug("Received Exit signal.")
-                    self.keep_running = False
-
-                else:
-                    self.log.debug("Received unknown control signal. "
-                                   "Ignoring it.")
-                    keep_checking_signal = False
-
+                self.lock.acquire()
                 self.control_signal = None
             finally:
                 self.lock.release()
-
-        return retry_sending
 
     def generate_file_id(self, metadata):
         """Generates a file id consisting of relative path and file name
