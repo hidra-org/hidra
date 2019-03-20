@@ -12,6 +12,11 @@
 - Renamed event_det_port und data_fetch_port
 - Simplify log setup (no separated calls for with or without onscreen)
 
+# 4.0.19
+
+- Fix double sending after wake up
+- Ensure that stop of datadispatcher is communicated
+
 # 4.0.18
 
 - Undo ignoring of accumulated events during sleeping

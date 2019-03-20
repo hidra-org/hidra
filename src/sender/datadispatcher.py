@@ -153,11 +153,19 @@ class DataHandler(Base, threading.Thread):
             self.lock.release()
 
     def run(self):
+        self.stopped = False
+        try:
+            self._run()
+        finally:
+            # ensure that the stop method always knows that the run method
+            # actually stopped.
+            self.stopped = True
+
+    def _run(self):
         """Reacting on jobs
         """
 
         fixed_stream_addr = [self.fixed_stream_addr, 0, "data"]
-        self.stopped = False
 
         while self.keep_running:
             self.log.debug("Waiting for new job")
@@ -308,8 +316,6 @@ class DataHandler(Base, threading.Thread):
                 # the exit signal should become effective
                 if self.check_control_signal():
                     break
-
-        self.stopped = True
 
     def _react_to_wakeup_signal(self, message):
         """Overwrite the base class reaction method to wakeup signal.
@@ -504,6 +510,15 @@ class DataDispatcher(Base):
         self.poller.register(self.control_socket, zmq.POLLIN)
 
     def run(self):
+        self.stopped = False
+        try:
+            self._run()
+        finally:
+            # ensure that the stop method always knows that the run method
+            # actually stopped.
+            self.stopped = True
+
+    def _run(self):
         """React on control signals and inform DataHandler thread.
         """
 
@@ -547,10 +562,12 @@ class DataDispatcher(Base):
         if self.continue_run:
             self.log.debug("Closing sockets.")
 
-        if not self.stopped:
+        i = 0
+        while not self.stopped:
             # if the socket is closed to early the thread will hang.
-            self.log.debug("Waiting for run loop to stop")
-            time.sleep(1)
+            self.log.debug("Waiting for run loop to stop (iter %s)", i)
+            time.sleep(0.1)
+            i += 1
 
         self.stop_socket(name="control_socket")
 
