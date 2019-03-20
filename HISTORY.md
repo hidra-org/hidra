@@ -1,4 +1,9 @@
 # develop
+# 4.0.19
+
+- Fix double sending after wake up
+- Ensure that stop of datadispatcher is communicated
+
 # 4.0.18
 
 - Undo ignoring of accumulated events during sleeping
