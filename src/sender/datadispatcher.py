@@ -107,9 +107,17 @@ class DataHandler(Base, threading.Thread):
             self.lock.release()
 
     def run(self):
+        self.stopped = False
+        try:
+            self._run()
+        finally:
+            # ensure that the stop method always knows that the run method
+            # actually stopped.
+            self.stopped = True
+
+    def _run(self):
 
         fixed_stream_addr = [self.fixed_stream_addr, 0, "data"]
-        self.stopped = False
 
         while self.keep_running:
             self.log.debug("Waiting for new job")
@@ -353,8 +361,6 @@ class DataHandler(Base, threading.Thread):
                     self.log.error("Unhandled control signal received: %s",
                                    message)
 
-        self.stopped = True
-
     def react_to_exit_signal(self):
         self.log.debug("Router requested to shutdown.")
         self.keep_running = False
@@ -502,7 +508,15 @@ class DataDispatcher(Base):
         self.poller.register(self.control_socket, zmq.POLLIN)
 
     def run(self):
+        self.stopped = False
+        try:
+            self._run()
+        finally:
+            # ensure that the stop method always knows that the run method
+            # actually stopped.
+            self.stopped = True
 
+    def _run(self):
         while self.continue_run:
             socks = dict(self.poller.poll())
 
@@ -540,9 +554,6 @@ class DataDispatcher(Base):
                 else:
                     self.log.error("Unhandled control signal received: %s",
                                    message)
-
-        self.stopped = True
-
 
     def stop(self):
         self.continue_run = False
