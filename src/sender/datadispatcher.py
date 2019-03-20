@@ -430,6 +430,7 @@ class DataDispatcher(Base):
         self.context = None
         self.datahandler = None
         self.continue_run = None
+        self.stopped = False
 
         self._setup()
 
@@ -540,12 +541,22 @@ class DataDispatcher(Base):
                     self.log.error("Unhandled control signal received: %s",
                                    message)
 
+        self.stopped = True
+
+
     def stop(self):
         self.continue_run = False
 
         # to prevent the message two be logged multiple times
         if self.continue_run:
             self.log.debug("Closing sockets.")
+
+        i = 0
+        while not self.stopped:
+            # if the socket is closed to early the thread will hang.
+            self.log.debug("Waiting for run loop to stop (iter %s)", i)
+            time.sleep(0.1)
+            i += 1
 
         self.stop_socket(name="control_socket")
 
