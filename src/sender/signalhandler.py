@@ -30,6 +30,7 @@ from __future__ import unicode_literals
 
 from collections import namedtuple
 import copy
+import datetime
 import json
 import os
 import re
@@ -69,7 +70,8 @@ UnpackedMessage = namedtuple(
 TargetProperties = namedtuple(
     "TargetProperties", [
         "targets",
-        "appid"
+        "appid",
+        "time_registered"
     ]
 )
 
@@ -382,32 +384,93 @@ class SignalHandler(Base):
 
                 if in_message[0] == b"NEXT":
                     incoming_socket_id = utils.convert_socket_to_fqdn(
-                        in_message[1].decode("utf-8"), self.log)
+                        in_message[1].decode("utf-8"), self.log
+                    )
 
-                    for i, trgt_prop in enumerate(self.registered_queries):
-                        query_set = trgt_prop.targets
-                        for query in query_set:
-                            if incoming_socket_id == query[0]:
-                                self.vari_requests[i].append(query)
-                                self.log.info("Add to open requests: {}"
-                                              .format(query))
+                    # determine if the socket id is contained in the
+                    # TargetProperties
+                    # -> True is so, False otherwise (each TargetProperty
+                    #    checked independently
+                    m = [map(lambda x: x[0] == incoming_socket_id, query_set.targets)
+                         for query_set in self.registered_queries]
+
+                    # determine the registered queries where the socket id is
+                    # contained
+                    possible_queries = [
+                        # (time, target set index, target index)
+                        (self.registered_queries[i].time_registered, i, j)
+                        for i, tset in enumerate(m)
+                        for j, trgt in enumerate(tset)
+                        if trgt
+                    ]
+
+                    # only add the request to the newest one
+                    # (others might be left overs)
+
+                    # identify which one is the newest
+                    try:
+                        idx_newest = possible_queries.index(max(possible_queries))
+                    except ValueError:
+                        # target not found in possible_queries
+                        self.log.debug("No registration found for query")
+                        continue
+
+                    newest = possible_queries[idx_newest]
+
+                    # Add request
+                    self.vari_requests[newest[1]] += (
+                        self.registered_queries[newest[1]][newest[2]]
+                    )
+                    self.log.info(
+                        "Add to open requests: %s",
+                        self.registered_queries[newest[1]][newest[2]]
+                    )
+
+                    # avoid duplicates -> remove old registered queries
+                    # this cannot be done when the START signal arrives
+                    # because putting it in there would e.g. break in the
+                    # following case:
+                    # - app1 connects and gets data normally
+                    # - app2 (duplicate of app1, i.e. same host + port to receive
+                    #   data on) tries to connect but fails when establishing
+                    #   the sockets
+                    # -> putting the cleanup in the start would break app1 once
+                    #    app2 is started
+                    if len(possible_queries) > 1:
+
+                        # only the left overs
+                        del possible_queries[idx_newest]
+
+                        # left overs found
+                        for query in possible_queries:
+                            self.log.debug(
+                                "Remove leftover/dublicate registered query %s ",
+                                self.registered_queries[query[1]]
+                            )
+                            del self.vari_requests[query[1]]
+                            del self.registered_queries[query[1]]
 
                 elif in_message[0] == b"CANCEL":
                     incoming_socket_id = utils.convert_socket_to_fqdn(
                         in_message[1].decode("utf-8"), self.log
                     )
 
+#                    self.vari_requests.remove(newest[1])
+
+                    # socket_conf is of the form
+                    # [<host>:<port>, <prio>, <regex>, data|metadata]
                     self.vari_requests = [
-                        [socket_conf
-                         for socket_conf in request_set
-                         if incoming_socket_id != socket_conf[0]]
+                        [
+                            socket_conf
+                            for socket_conf in request_set
+                            if incoming_socket_id != socket_conf[0]
+                        ]
                         for request_set in self.vari_requests
                     ]
 
                     self.log.info("Remove all occurences from {} from "
                                   "variable request list."
                                   .format(incoming_socket_id))
-
                 else:
                     self.log.info("Request not supported.")
 
@@ -575,7 +638,10 @@ class SignalHandler(Base):
         for socket_conf in targets:
             socket_conf[2] = re.compile(socket_conf[2])
 
-        targetset = TargetProperties(targets=targets, appid=appid)
+        current_time = datetime.datetime.now().isoformat()
+        targetset = TargetProperties(targets=targets,
+                                     appid=appid,
+                                     time_registered=current_time)
 
         overwrite_index = None
         for i, target_properties in enumerate(registered_ids):
@@ -787,7 +853,7 @@ class SignalHandler(Base):
         socket_ids = unpacked_message.targets
 
         # --------------------------------------------------------------------
-        # START_STREAM
+        # GET_VERSION
         # --------------------------------------------------------------------
         if signal == b"GET_VERSION":
             self.log.info("Received signal: {}".format(signal))

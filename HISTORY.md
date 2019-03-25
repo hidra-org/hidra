@@ -12,9 +12,14 @@
 - Renamed event_det_port und data_fetch_port
 - Simplify log setup (no separated calls for with or without onscreen)
 
+# 4.0.20
+
+- Fix sending of data multiple times (after crash+restart of application)
+- Fix watchdog on_move events
+
 # 4.0.19
 
-- Fix double sending after wake up
+- Fix double sending after wake up
 - Ensure that stop of datadispatcher is communicated
 
 # 4.0.18
