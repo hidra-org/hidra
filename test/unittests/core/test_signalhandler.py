@@ -5,6 +5,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
+import datetime
 import inspect
 import json
 import logging
@@ -433,6 +434,7 @@ class TestSignalHandler(TestBase):
         host = self.con_ip
         port = 1234
         send_type = "data"
+        current_time = datetime.datetime.now().isoformat()
 
         # --------------------------------------------------------------------
         # control_sub_socket: exit
@@ -569,7 +571,9 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         sighandler.registered_streams = [
-            TargetProperties(targets=targets, appid=None)
+            TargetProperties(targets=targets,
+                             appid=None,
+                             time_registered=current_time)
         ]
         sighandler.vari_requests = []
         sighandler.perm_requests = [0]
@@ -585,7 +589,9 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         expected = [
-            TargetProperties(targets=targets, appid=None)
+            TargetProperties(targets=targets,
+                             appid=None,
+                             time_registered=current_time)
         ]
         self.assertEqual(sighandler.registered_streams, expected)
         self.assertEqual(sighandler.vari_requests, [])
@@ -609,7 +615,9 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".py"), send_type]
         ]
         sighandler.registered_streams = [
-            TargetProperties(targets=targets, appid=None)
+            TargetProperties(targets=targets,
+                             appid=None,
+                             time_registered=current_time)
         ]
 
         sighandler.vari_requests = []
@@ -626,7 +634,9 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".py"), send_type]
         ]
         expected = [
-            TargetProperties(targets=targets, appid=None)
+            TargetProperties(targets=targets,
+                             appid=None,
+                             time_registered=current_time)
         ]
         self.assertEqual(sighandler.registered_streams, expected)
         self.assertEqual(sighandler.vari_requests, [])
@@ -787,7 +797,9 @@ class TestSignalHandler(TestBase):
             [socket_id, 0, re.compile(".*"), send_type]
         ]
         sighandler.registered_queries = [
-            TargetProperties(targets=targets, appid=None)
+            TargetProperties(targets=targets,
+                             appid=None,
+                             time_registered=current_time)
         ]
         sighandler.vari_requests = [[]]
 
@@ -1093,6 +1105,7 @@ class TestSignalHandler(TestBase):
         host = self.con_ip
         port = 1234
         appid = 1234567890
+        current_time = datetime.datetime.now().isoformat()
 
         # --------------------------------------------------------------------
         # check that socket_id is added
@@ -1119,7 +1132,11 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        expected_result = [TargetProperties(targets=targets, appid=appid)]
+        # the registered time cannot be forseen
+        time_registered=registered_ids[0].time_registered
+        expected_result = [TargetProperties(targets=targets,
+                                            appid=appid,
+                                            time_registered=time_registered)]
 
         self.assertListEqual(registered_ids, expected_result)
         self.assertListEqual(vari_requests, [[]])
@@ -1137,7 +1154,9 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        registered_ids = [TargetProperties(targets=targets,
+                                           appid=appid,
+                                           time_registered=current_time)]
         # there have to be entries in these two lists as well because len of
         # registered_ids, vari_requests and perm_requests should be the same
         vari_requests = [[]]
@@ -1156,9 +1175,14 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        expected_result = [TargetProperties(targets=targets, appid=appid)]
+        # the registered time cannot be forseen
+        time_registered=registered_ids[0].time_registered
+        expected_result = [TargetProperties(targets=targets,
+                                            appid=appid,
+                                            time_registered=time_registered)]
 
         self.assertListEqual(registered_ids, expected_result)
+        self.assertNotEqual(current_time, time_registered)
         self.assertListEqual(vari_requests, [[]])
         self.assertListEqual(perm_requests, [0])
 
@@ -1176,7 +1200,9 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host2, port), 0, re.compile(".*"), send_type]
         ]
-        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        registered_ids = [TargetProperties(targets=targets,
+                                           appid=appid,
+                                           time_registered=current_time)]
         vari_requests = [[]]
         perm_requests = [0]
 
@@ -1197,9 +1223,15 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ])
+        # the registered time cannot be forseen
+        time_registered=registered_ids[1].time_registered
         expected_result = [
-            TargetProperties(targets=targets, appid=appid),
-            TargetProperties(targets=targets2, appid=appid)
+            TargetProperties(targets=targets,
+                             appid=appid,
+                             time_registered=current_time),
+            TargetProperties(targets=targets2,
+                             appid=appid,
+                             time_registered=time_registered)
         ]
 
         self.assertListEqual(registered_ids, expected_result)
@@ -1218,7 +1250,9 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        registered_ids = [TargetProperties(targets=targets,
+                                           appid=appid,
+                                           time_registered=current_time)]
         vari_requests = [[]]
         perm_requests = [0]
 
@@ -1236,9 +1270,14 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ])
-        expected_result = [TargetProperties(targets=targets, appid=appid)]
+        # the registered time cannot be forseen
+        time_registered=registered_ids[0].time_registered
+        expected_result = [TargetProperties(targets=targets,
+                                            appid=appid,
+                                            time_registered=time_registered)]
 
         self.assertListEqual(registered_ids, expected_result)
+        self.assertNotEqual(current_time, time_registered)
         self.assertListEqual(vari_requests, [[]])
         self.assertListEqual(perm_requests, [0])
 
@@ -1254,7 +1293,9 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ])
-        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        registered_ids = [TargetProperties(targets=targets,
+                                           appid=appid,
+                                           time_registered=current_time)]
         vari_requests = [[]]
         perm_requests = [0]
 
@@ -1271,9 +1312,14 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        expected_result = [TargetProperties(targets=targets, appid=appid)]
+        # the registered time cannot be forseen
+        time_registered=registered_ids[0].time_registered
+        expected_result = [TargetProperties(targets=targets,
+                                            appid=appid,
+                                            time_registered=time_registered)]
 
         self.assertListEqual(registered_ids, expected_result)
+        self.assertNotEqual(current_time, time_registered)
         self.assertListEqual(vari_requests, [[]])
         self.assertListEqual(perm_requests, [0])
 
@@ -1302,9 +1348,14 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        expected_result = [TargetProperties(targets=targets, appid=appid)]
+        # the registered time cannot be forseen
+        time_registered=registered_ids[0].time_registered
+        expected_result = [TargetProperties(targets=targets,
+                                            appid=appid,
+                                            time_registered=time_registered)]
 
         self.assertListEqual(registered_ids, expected_result)
+        self.assertNotEqual(current_time, time_registered)
         self.assertIsNone(vari_requests)
         self.assertListEqual(perm_requests, [0])
 
@@ -1333,9 +1384,14 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        expected_result = [TargetProperties(targets=targets, appid=appid)]
+        # the registered time cannot be forseen
+        time_registered=registered_ids[0].time_registered
+        expected_result = [TargetProperties(targets=targets,
+                                            appid=appid,
+                                            time_registered=time_registered)]
 
         self.assertListEqual(registered_ids, expected_result)
+        self.assertNotEqual(current_time, time_registered)
         self.assertListEqual(vari_requests, [[]])
         self.assertIsNone(perm_requests)
 
@@ -1353,7 +1409,9 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        registered_ids = [TargetProperties(targets=targets,
+                                           appid=appid,
+                                           time_registered=current_time)]
         # there have to be entries in these two lists as well because len of
         # registered_ids, vari_requests and perm_requests should be the same
         vari_requests = [[]]
@@ -1372,9 +1430,15 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
+        # the registered time cannot be forseen
+        time_registered=registered_ids[1].time_registered
         expected_result = [
-            TargetProperties(targets=targets, appid=appid),
-            TargetProperties(targets=targets, appid=appid2)
+            TargetProperties(targets=targets,
+                             appid=appid,
+                             time_registered=current_time),
+            TargetProperties(targets=targets,
+                             appid=appid2,
+                             time_registered=time_registered)
         ]
 
         self.assertListEqual(registered_ids, expected_result)
@@ -1398,6 +1462,7 @@ class TestSignalHandler(TestBase):
         port = 1234
         send_type = "metadata"
         appid = 1234567890
+        current_time = datetime.datetime.now().isoformat()
 
         mocked_func = sighandler.send_response
         mocked_socket = sighandler.control_pub_socket.send_multipart
@@ -1443,7 +1508,9 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        registered_ids = [TargetProperties(targets=targets,
+                                           appid=appid,
+                                           time_registered=current_time)]
         vari_requests = [
             [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
         ]
@@ -1476,7 +1543,9 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        registered_ids = [TargetProperties(targets=targets,
+                                           appid=appid,
+                                           time_registered=current_time)]
         vari_requests = None
         perm_requests = [0]
 
@@ -1510,7 +1579,9 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
-        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        registered_ids = [TargetProperties(targets=targets,
+                                           appid=appid,
+                                           time_registered=current_time)]
         vari_requests = [
             [["{}:{}".format(host, port), 0, re.compile(".*"), send_type]]
         ]
@@ -1529,7 +1600,9 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
-        expected_result = [TargetProperties(targets=targets, appid=appid)]
+        expected_result = [TargetProperties(targets=targets,
+                                            appid=appid,
+                                            time_registered=current_time)]
         self.assertListEqual(new_registered_ids, expected_result)
         self.assertListEqual(new_vari_requests, [[]])
         self.assertIsNone(new_perm_requests)
@@ -1550,7 +1623,9 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
-        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        registered_ids = [TargetProperties(targets=targets,
+                                           appid=appid,
+                                           time_registered=current_time)]
         vari_requests = [
             [["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]]
         ]
@@ -1569,7 +1644,9 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
-        expected_result = [TargetProperties(targets=targets, appid=appid)]
+        expected_result = [TargetProperties(targets=targets,
+                                            appid=appid,
+                                            time_registered=current_time)]
         self.assertListEqual(new_registered_ids, expected_result)
         self.assertListEqual(new_vari_requests, [targets])
         self.assertIsNone(new_perm_requests)
@@ -1590,7 +1667,9 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
-        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        registered_ids = [TargetProperties(targets=targets,
+                                           appid=appid,
+                                           time_registered=current_time)]
         vari_requests = None
         perm_requests = [1]
 
@@ -1607,7 +1686,9 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ]
-        expected_result = [TargetProperties(targets=targets, appid=appid)]
+        expected_result = [TargetProperties(targets=targets,
+                                            appid=appid,
+                                            time_registered=current_time)]
         self.assertListEqual(new_registered_ids, expected_result)
         self.assertIsNone(new_vari_requests)
         self.assertListEqual(new_perm_requests, [0])
@@ -1624,7 +1705,9 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        registered_ids = [TargetProperties(targets=targets, appid=appid)]
+        registered_ids = [TargetProperties(targets=targets,
+                                           appid=appid,
+                                           time_registered=current_time)]
         vari_requests = None
         perm_requests = None
 
