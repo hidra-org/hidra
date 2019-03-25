@@ -362,10 +362,14 @@ class SignalHandler(Base):
                     # (others might be left overs)
 
                     # identify which one is the newest
-                    idx_newest = possible_queries.index(max(possible_queries))
-                    newest = possible_queries[
-                        possible_queries.index(max(possible_queries))
-                    ]
+                    try:
+                        idx_newest = possible_queries.index(max(possible_queries))
+                    except ValueError:
+                        # target not found in possible_queries
+                        self.log.debug("No registration found for query")
+                        continue
+
+                    newest = possible_queries[idx_newest]
 
                     # Add request
                     self.vari_requests[newest[1]] += (
