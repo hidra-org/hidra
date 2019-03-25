@@ -1,7 +1,8 @@
 # develop
 # 4.0.20
 
-Fix watchdog on_move events
+- Fix sending of data multiple times (after crash+restart of application)
+- Fix watchdog on_move events
 
 # 4.0.19
 
