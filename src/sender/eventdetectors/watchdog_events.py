@@ -13,6 +13,7 @@ import threading
 import time
 from multiprocessing.dummy import Pool as ThreadPool
 from watchdog.observers import Observer
+import watchdog.events
 from watchdog.events import RegexMatchingEventHandler
 
 from eventdetectorbase import EventDetectorBase
@@ -104,7 +105,7 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         # Directories will be skipped
         if not event.is_directory:
 
-            if self.detect_move_from or self.detect_move_to:
+            if isinstance(event, watchdog.events.FileMovedEvent):
                 event_message = split_file_path(event.dest_path, self.paths)
             else:
                 event_message = split_file_path(event.src_path, self.paths)
