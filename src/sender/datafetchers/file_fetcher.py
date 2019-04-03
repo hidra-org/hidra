@@ -1,10 +1,12 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
-import json
-import shutil
 import errno
+import json
+import os
+import shutil
+import subprocess
+import time
 
 from datafetcherbase import DataFetcherBase, DataHandlingError
 from cleanerbase import CleanerBase
@@ -12,6 +14,11 @@ from hidra import generate_filepath
 import utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
+# for platform-independency
+# WindowsError only exists on Windows machines
+if not getattr(__builtins__, "WindowsError", None):
+    class WindowsError(OSError): pass
 
 
 class DataFetcher(DataFetcherBase):
@@ -34,6 +41,8 @@ class DataFetcher(DataFetcherBase):
         self.is_windows = None
         self.finish = None
 
+        self.windows_handle_path = None
+
         self.keep_running = True
 
         self.required_params = ["fix_subdirs", "store_data"]
@@ -48,6 +57,11 @@ class DataFetcher(DataFetcherBase):
 
         self.config["send_timeout"] = -1  # 10
         self.config["remove_flag"] = False
+
+        try:
+            self.windows_handle_path = self.config["windows_handle_path"]
+        except KeyError:
+            pass
 
         self.is_windows = utils.is_windows()
 
@@ -374,13 +388,23 @@ class DataFetcher(DataFetcherBase):
         elif self.config["remove_data"] and self.config["remove_flag"]:
             try:
                 os.remove(self.source_file)
-                self.log.info("Removing file '{}' ...success."
-                              .format(self.source_file))
-            except:
-                self.log.error("Unable to remove file {}"
-                               .format(self.source_file), exc_info=True)
+                self.log.info("Removing file '%s' ...success.",
+                              self.source_file)
+            except OSError as err:
+                if type(err).__name__ == "WindowsError":
+                    self.log.error("Windows Error occured.")
 
-            self.config["remove_flag"] = False
+                    self._get_file_handle_info()
+                    self._retry_remove()
+                else:
+                    self.log.error("Unable to remove file %s",
+                                   self.source_file, exc_info=True)
+
+            except Exception as err:
+                self.log.error("Unable to remove file %s", self.source_file,
+                               exc_info=True)
+            finally:
+                self.config["remove_flag"] = False
 
         # send message to metadata targets
         if targets_metadata:
@@ -399,6 +423,45 @@ class DataFetcher(DataFetcherBase):
                                "file '{}' to '{}'"
                                .format(self.source_file, targets_metadata),
                                exc_info=True)
+
+    def _get_file_handle_info(self):
+
+        if self.windows_handle_path is None:
+            self.log.info("No windows handle path specified.")
+            return
+
+        self.log.debug("Check open file handles for %s", self.source_file)
+
+        try:
+            self.log.debug("current pid: %s", os.getpid())
+
+            # source file is an absolute path which windows handle cannot find
+            file_to_check = os.path.basename(self.source_file)
+            self.log.debug("checking for %s", file_to_check)
+
+            self.log.debug("current processes accessing the file: %s",
+                           subprocess.check_output([self.windows_handle_path,
+                                                    file_to_check]))
+
+        except Exception:
+            self.log.error("Collecting debug information failed.", exc_info=True)
+
+    def _retry_remove(self):
+
+        self.log.debug("Try to wait till the system lock disappears and try "
+                       "again.")
+
+        n_iter = 5
+        for i in range(n_iter):
+            time.sleep(0.2)
+            try:
+                os.remove(self.source_file)
+                self.log.info("Removing file '%s' ...success (%s\%s).",
+                              self.source_file, i, n_iter)
+                break
+            except Exception:
+                self.log.error("Unable to remove file %s (%s\%s)",
+                               self.source_file, i, n_iter, exc_info=True)
 
     def stop(self):
         """Implementation of the abstract method stop.
