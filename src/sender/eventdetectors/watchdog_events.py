@@ -128,7 +128,8 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
 
         if self.detect_close and self.detect_close.match(event.src_path):
             self.log.debug("On close event detected (from create)")
-            if not event.is_directory:
+            if (not event.is_directory
+                    and event.src_path not in event_list_to_observe):
                 self.log.debug("Append event to event_list_to_observe: {}"
                                .format(event.src_path))
 #                event_list_to_observe.append(event.src_path)
