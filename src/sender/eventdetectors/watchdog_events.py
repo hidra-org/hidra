@@ -16,6 +16,12 @@ from watchdog.observers import Observer
 import watchdog.events
 from watchdog.events import RegexMatchingEventHandler
 
+try:
+    from pathlib2 import Path
+except ImportError:
+    # only available for Python3
+    from pathlib import Path
+
 from eventdetectorbase import EventDetectorBase
 import utils
 from hidra import convert_suffix_list_to_regex
@@ -206,8 +212,8 @@ def split_file_path(filepath, paths):
     #   "filename"   : "file1.tif"
     # }
     event_message = {
-        "source_path": os.path.normpath(parent_dir),
-        "relative_path": os.path.normpath(relative_path),
+        "source_path": Path(os.path.normpath(parent_dir)).as_posix(),
+        "relative_path": Path(os.path.normpath(relative_path)).as_posix(),
         "filename": filename
     }
 

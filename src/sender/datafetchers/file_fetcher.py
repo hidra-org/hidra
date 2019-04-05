@@ -6,6 +6,11 @@ import json
 import shutil
 import errno
 
+try:
+    from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
+
 from datafetcherbase import DataFetcherBase, DataHandlingError
 from cleanerbase import CleanerBase
 from hidra import generate_filepath
@@ -417,7 +422,7 @@ class Cleaner(CleanerBase):
     def remove_element(self, base_path, file_id):
 
         # generate file path
-        source_file = os.path.join(base_path, file_id)
+        source_file = Path(os.path.join(base_path, file_id)).as_posix()
 
         # remove file
         try:

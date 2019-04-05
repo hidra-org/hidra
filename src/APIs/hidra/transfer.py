@@ -20,6 +20,11 @@ import time
 import zmq
 from zmq.auth.thread import ThreadAuthenticator
 
+try:
+    from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
+
 from ._version import __version__
 from ._shared_utils import LoggingFunction, Base, stop_socket
 
@@ -113,10 +118,11 @@ def generate_filepath(base_path, config_dict, add_filename=True):
         else:
             rel_path = config_dict["relative_path"]
 
-        target_path = os.path.normpath(os.path.join(base_path, rel_path))
+        target_path = Path(os.path.join(base_path, rel_path)).as_posix()
 
     if add_filename:
-        filepath = os.path.join(target_path, config_dict["filename"])
+        filepath = Path(os.path.join(target_path,
+                                     config_dict["filename"])).as_posix()
 
         return filepath
     else:
