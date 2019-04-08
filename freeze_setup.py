@@ -65,7 +65,7 @@ else:
 if sys.version_info >= (3, 0):
     version_specific_packages = ["configparser"]
 else:
-    version_specific_packages = ["ConfigParser"]
+    version_specific_packages = ["ConfigParser", "pathlib2"]
 
 # reuse the init file for installed HiDRA to reduce amount of maintenance
 initscript = os.path.join(basepath, "initscripts", "hidra.sh")
