@@ -876,7 +876,8 @@ class DataManager(Base):
 
         # DataDispatcher
         for i in range(self.number_of_streams):
-            dispatcher_id = b"{}/{}".format(i, self.number_of_streams)
+            dispatcher_id = "{}/{}".format(i, self.number_of_streams).encode("ascii")
+            #dispatcher_id = b"{}/{}".format(i, self.number_of_streams)
             pr = Process(target=DataDispatcher,
                          args=(
                              dispatcher_id,
