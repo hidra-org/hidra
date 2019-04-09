@@ -282,7 +282,9 @@ def argument_parsing():
         sys.exit(1)
 
     # check if logfile is writable
-    params["log_file"] = os.path.join(params["log_path"], params["log_name"])
+    params["log_file"] = utils.format_log_filename(
+        os.path.join(params["log_path"], params["log_name"])
+    )
     utils.check_writable(params["log_file"])
 
     # check if the event_detector_type is supported
