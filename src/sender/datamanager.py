@@ -282,7 +282,9 @@ def argument_parsing():
         sys.exit(1)
 
     # check if logfile is writable
-    params["log_file"] = os.path.join(params["log_path"], params["log_name"])
+    params["log_file"] = utils.format_log_filename(
+        os.path.join(params["log_path"], params["log_name"])
+    )
     utils.check_writable(params["log_file"])
 
     # check if the event_detector_type is supported
@@ -876,7 +878,8 @@ class DataManager(Base):
 
         # DataDispatcher
         for i in range(self.number_of_streams):
-            dispatcher_id = b"{}/{}".format(i, self.number_of_streams)
+            dispatcher_id = "{}/{}".format(i, self.number_of_streams).encode("ascii")
+            #dispatcher_id = b"{}/{}".format(i, self.number_of_streams)
             pr = Process(target=DataDispatcher,
                          args=(
                              dispatcher_id,

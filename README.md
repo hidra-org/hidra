@@ -23,6 +23,7 @@ The project is licensed under __AGPL v3__.
 * inotifyx (for inotifyx event detector: file transfer on Linux), version 0.2.2 or newer
 * watchdog (for watchdog event detector: file transfer on Windows)
 * requests (for HTTP event detector, used for Eiger)
+* pathlib2 (when using python 2)
 
 ### Installation and Usage
 * Download and unpack or clone HiDRA from [Stash](https://stash.desy.de/projects/HIDRA/repos/hidra/browse)
@@ -38,6 +39,7 @@ The project is licensed under __AGPL v3__.
 * pyzmq, version 14.5.0 or newer
 * setproctitle
 * six
+* pathlib2 (when using python 2)
 
 ### Installation and Usage
 * Download and unpack or clone HiDRA from [Stash](https://stash.desy.de/projects/HIDRA/repos/hidra/browse)

@@ -9,6 +9,12 @@ import sys
 import time
 import zmq
 
+try:
+    from pathlib2 import Path
+except ImportError:
+    # only avaliable for Python3
+    from pathlib import Path
+
 import __init__ as init  # noqa F401
 from base_class import Base
 import utils
@@ -381,6 +387,8 @@ class DataFetcherBase(Base, ABC):
         else:
             file_id = os.path.join(metadata["relative_path"],
                                    metadata["filename"])
+        # convert Windows paths
+        file_id = Path(file_id).as_posix()
         return file_id
 
     @abc.abstractmethod

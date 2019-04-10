@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import datetime
 import errno
 import json
 import logging
@@ -1040,6 +1041,15 @@ def get_file_log_handler(logfile,
     handler.setLevel(loglevel)
 
     return handler
+
+def format_log_filename(logfile):
+
+    date = datetime.date.today()
+    # if the logfile name has a date placeholder it is filled,
+    # otherwise nothing happens
+    logfile = logfile.format(date=date)
+
+    return logfile
 
 
 def get_log_handlers(logfile, logsize, verbose, onscreen_loglevel=False):
