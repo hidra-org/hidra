@@ -46,6 +46,12 @@ from watchdog.observers import Observer
 import watchdog.events
 from watchdog.events import RegexMatchingEventHandler
 
+try:
+    from pathlib2 import Path
+except ImportError:
+    # only available for Python3
+    from pathlib import Path
+
 from eventdetectorbase import EventDetectorBase
 import hidra.utils as utils
 from hidra import convert_suffix_list_to_regex
@@ -173,7 +179,8 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         # pylint: disable=no-member
         if self.detect_close and self.detect_close.match(event.src_path):
             self.log.debug("On close event detected (from create)")
-            if not event.is_directory:
+            if (not event.is_directory
+                    and event.src_path not in _event_list_to_observe):
                 self.log.debug("Append event to _event_list_to_observe: %s",
                                event.src_path)
 #                _event_list_to_observe.append(event.src_path)
@@ -280,8 +287,8 @@ def get_event_message(filepath, paths):
     #   "filename"   : "file1.tif"
     # }
     event_message = {
-        "source_path": os.path.normpath(parent_dir),
-        "relative_path": os.path.normpath(relative_path),
+        "source_path": Path(os.path.normpath(parent_dir)).as_posix(),
+        "relative_path": Path(os.path.normpath(relative_path)).as_posix(),
         "filename": filename
     }
 

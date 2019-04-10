@@ -38,6 +38,12 @@ import sys
 import time
 import zmq
 
+try:
+    from pathlib2 import Path
+except ImportError:
+    # only avaliable for Python3
+    from pathlib import Path
+
 #import __init__ as init  # noqa F401 # pylint: disable=unused-import
 from base_class import Base
 import hidra.utils as utils
@@ -448,6 +454,8 @@ class DataFetcherBase(Base, ABC):
         else:
             file_id = os.path.join(metadata["relative_path"],
                                    metadata["filename"])
+        # convert Windows paths
+        file_id = Path(file_id).as_posix()
         return file_id
 
     @abc.abstractmethod

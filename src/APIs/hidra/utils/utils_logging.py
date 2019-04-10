@@ -29,6 +29,7 @@ from __future__ import (absolute_import,
                         print_function,
                         unicode_literals)
 
+import datetime
 import logging
 import logging.handlers
 import platform
@@ -209,6 +210,16 @@ def get_file_log_handler(logfile,
     handler.setLevel(loglevel)
 
     return handler
+
+
+def format_log_filename(logfile):
+
+    date = datetime.date.today()
+    # if the logfile name has a date placeholder it is filled,
+    # otherwise nothing happens
+    logfile = logfile.format(date=date)
+
+    return logfile
 
 
 def get_log_handlers(logfile, logsize, verbose, onscreen_loglevel=False):

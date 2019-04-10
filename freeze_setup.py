@@ -168,7 +168,7 @@ else:
 if sys.version_info >= (3, 0):
     VERSION_SPECIFIC_PACKAGES = ["configparser"]
 else:
-    VERSION_SPECIFIC_PACKAGES = ["ConfigParser"]
+    VERSION_SPECIFIC_PACKAGES = ["ConfigParser", "pathlib2"]
 
 # Dependencies are automatically detected, but it might need fine tuning.
 BUILD_EXE_OPTIONS = {
@@ -244,7 +244,7 @@ EXECUTABLES = [
 ]
 
 setup(name='HiDRA',
-      version='4.0.20',
+      version='4.0.21',
       description='',
       options={"build_exe": BUILD_EXE_OPTIONS,
                "bdist_msi": BDIS_MSI_OPTIONS},

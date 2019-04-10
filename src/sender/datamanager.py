@@ -344,8 +344,10 @@ def argument_parsing():
     df_type = config_df["type"]
 
     # check if logfile is writable
-    config_gen["log_file"] = os.path.join(config_gen["log_path"],
-                                          config_gen["log_name"])
+    config_gen["log_file"] = utils.format_log_filename(
+        os.path.join(config_gen["log_path"],
+                     config_gen["log_name"])
+    )
     utils.check_writable(config_gen["log_file"])
 
     # check if the eventdetector type is supported
@@ -1008,7 +1010,7 @@ class DataManager(Base):
 
         # DataDispatcher
         for i in range(self.number_of_streams):
-            dispatcher_id = b"{}/{}".format(i, self.number_of_streams)
+            dispatcher_id = "{}/{}".format(i, self.number_of_streams).encode("ascii")
             # "bug in pylint # pylint: disable=bad-continuation
             proc = Process(target=DataDispatcher,
                            args=(
