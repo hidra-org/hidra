@@ -17,7 +17,9 @@ sharedpath = os.path.join(basepath, "src", "shared")
 apipath = os.path.join(basepath, "src", "APIs", "hidra")
 confpath = os.path.join(basepath, "conf")
 libzmq_path = os.path.join(get_python_lib(), "zmq")
+python_path = os.path.dirname(get_python_lib())
 platform_specific_files = []
+workaround_files = []
 
 # Windows specific packages and config
 if platform.system() == "Windows":
@@ -94,6 +96,12 @@ with open(sender_env, "r") as f:
             else:
                 f_exe.write(line)
 
+workaround_files += [
+    # needed to make pathlib2 work, cx_Freeze does not imclude ntpath
+    # although it is a standard builtin module
+    (os.path.join(python_path, "ntpath.py"), "ntpath.py")
+]
+
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
     # zmq.backend.cython seems to be left out by default
@@ -147,7 +155,7 @@ build_exe_options = {
             os.path.join("datafetchers", "cleanerbase.py")),
         # apis
         (apipath, "hidra"),
-    ] + platform_specific_files,
+    ] + platform_specific_files + workaround_files,
 }
 
 bdist_msi_options = {
