@@ -167,9 +167,9 @@ class TestSignalHandler(TestBase):
         targets = []
         if isinstance(ports, list):
             for port in ports:
-                targets.append(["{}:{}".format(self.con_ip, port), prio, [""]])
+                targets.append(["{}:{}".format(self.con_ip, port), prio, ".*"])
         else:
-            targets.append(["{}:{}".format(self.con_ip, ports), prio, [""]])
+            targets.append(["{}:{}".format(self.con_ip, ports), prio, ".*"])
 
         targets_json = json.dumps(targets).encode("utf-8")
         send_message.append(targets_json)
@@ -429,7 +429,8 @@ class TestSignalHandler(TestBase):
         ]
         check_registered(sighandler, sockets_to_test, self)
 
-    def test_run(self):
+    @mock.patch("signalhandler.SignalHandler.check_control_signal")
+    def test_run(self, mock_check):
         current_func_name = inspect.currentframe().f_code.co_name
 
         # with all nodes allowed to connect
@@ -455,9 +456,10 @@ class TestSignalHandler(TestBase):
             socket.recv_multipart.side_effect = [signal]
             # either use side_effect or recreate mock object and use
             # return_value
-            sighandler.control_sub_socket.recv_multipart.side_effect = [
-                ["", "EXIT"]
-            ]
+
+            # always stop via control channel
+            mock_check.reset_mock()
+            mock_check.return_value = True
 
         def reset(sighandler):
             sighandler.com_socket.reset_mock()
@@ -475,21 +477,16 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # control_sub_socket: exit
         # --------------------------------------------------------------------
-        self.log.info("%s: CONTROL_SUB_SOCKET: EXIT", current_func_name)
+        self.log.info("%s: CONTROL_SOCKET call", current_func_name)
 
         sighandler.log = mock.MagicMock()
 
         sighandler.poller.poll.side_effect = [
             {sighandler.control_sub_socket: zmq.POLLIN}
         ]
-        sighandler.control_sub_socket.recv_multipart.return_value = ["",
-                                                                     "EXIT"]
 
         sighandler.run()
-
-        calls = sighandler.log.method_calls
-        expected = mock.call.info("Requested to shutdown.")
-        self.assertIn(expected, calls)
+        mock_check.assert_called()
 
         # reset
         sighandler.log = MockLogging()
@@ -506,15 +503,11 @@ class TestSignalHandler(TestBase):
             # for stopping the run loop
             {sighandler.control_sub_socket: zmq.POLLIN}
         ]
-        sighandler.control_sub_socket.recv_multipart.side_effect = [
-            ["", "SLEEP"],
-            # for stopping the run loop
-            ["", "EXIT"],
-        ]
 
         sighandler.run()
+        mock_check.assert_called()
 
-        # if the code run till here without throwing an exception if passed
+        # if the code run till here without throwing an exception it passed
         # if StopIteration is thrown by mock that means that poll was called
         # more often than 2 times
 

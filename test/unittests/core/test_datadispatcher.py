@@ -118,6 +118,15 @@ class TestDataDispatcher(TestBase):
             endpoint=endpoints.router_bind
         )
 
+        control_socket = self.start_socket(
+            name="control_socket",
+            sock_type=zmq.PUB,
+            sock_con="bind",
+            # it is the sub endpoint because originally this is handled with
+            # a zmq thread device
+            endpoint=endpoints.control_sub_bind
+        )
+
         kwargs = dict(
             dispatcher_id=1,
             endpoints=endpoints,
@@ -162,9 +171,12 @@ class TestDataDispatcher(TestBase):
         except KeyboardInterrupt:
             pass
         finally:
-            datadispatcher_pr.terminate()
+            self.log.info("send exit signal")
+            control_socket.send_multipart([b"control", b"EXIT"])
+            datadispatcher_pr.join()
 
             self.stop_socket(name="router_socket", socket=router_socket)
+            self.stop_socket(name="control_socket", socket=router_socket)
 
             for i, sckt in enumerate(receiving_sockets):
                 self.stop_socket(name="receiving_socket{}".format(i),
