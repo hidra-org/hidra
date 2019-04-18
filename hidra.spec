@@ -19,6 +19,7 @@ Requires:	python-inotifyx >= 0.2.2
 Requires:	python-requests
 Requires:	python-setproctitle
 Requires:	python-six
+Requires:	python-pathlib
 Requires:	python-hidra = %{version}
 
 %description
