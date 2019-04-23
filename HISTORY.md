@@ -5,6 +5,7 @@
 - Fix requests with target groups
 - Fix stop command for redhat init script
 - Remove default config loading in hidra.sh
+- Fix debian package building via docker
 
 # 4.0.21
 

@@ -55,10 +55,6 @@ MAPPED_DIR=/tmp/hidra_builds/${VERSION}/debian${DEBIAN_VERSION}
 IN_DOCKER_DIR=/external
 DOCKER_DIR=$(pwd)
 
-MY_UID=$(id -u $USER)
-MY_GID=$(id -g $USER)
-MY_GROUP=$(id -g --name $USER)
-
 if [ ! -d "$MAPPED_DIR" ]; then
     mkdir -p $MAPPED_DIR
 fi
@@ -96,11 +92,30 @@ fi
 
 cmd="cd /external/hidra; dpkg-buildpackage -us -uc"
 
-docker create -it -v ${MAPPED_DIR}:$IN_DOCKER_DIR --user=$MY_UID:$MY_GID --name ${DOCKER_CONTAINER}  ${DOCKER_IMAGE} bash
+PASSWD_FILE=/tmp/passwd_x
+GROUP_FILE=/tmp/group_x
+
+getent passwd $USER > $PASSWD_FILE
+echo "$(id -gn):*:$(id -g):$USER" > $GROUP_FILE
+docker create -it \
+    -v $PASSWD_FILE:/etc/passwd \
+    -v $GROUP_FILE:/etc/group \
+    --userns=host \
+    --net=host \
+    --security-opt no-new-privileges \
+    --privileged \
+    -v ${MAPPED_DIR}:$IN_DOCKER_DIR \
+    --user=$(id -u $USER):$(id -g $USER) \
+    --name ${DOCKER_CONTAINER} \
+    ${DOCKER_IMAGE} \
+    bash
 docker start ${DOCKER_CONTAINER}
-docker exec ${DOCKER_CONTAINER} sh -c "$cmd"
+docker exec --user=$(id -u $USER):$(id -g $USER) ${DOCKER_CONTAINER} sh -c "$cmd"
 docker stop ${DOCKER_CONTAINER}
 docker rm ${DOCKER_CONTAINER}
+
+rm $PASSWD_FILE
+rm $GROUP_FILE
 
 #docker rmi ${DOCKER_IMAGE}
 #rm -rf ${MAPPED_DIR}/hidra
