@@ -180,8 +180,16 @@ do
     shift
 done
 
-if [ -z ${action+x} ]
+if [ -z ${action+x} -o "${action}" = "" ]
 then
+    echo "Missing or misspelled command"
+    usage
+    exit 1
+fi
+
+if [ -z ${beamline+x} -o  "${beamline}" = "" ]
+then
+    echo "Missing or misspelled beamline."
     usage
     exit 1
 fi
@@ -303,10 +311,6 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 
         if checkpid $HIDRA_PID ; then
             killall -KILL $NAME
-
-            SOCKETID=`cat $PIDFILE`
-
-            rm -f "${IPCDIR}/${SOCKETID}"*
         fi
 
         status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"

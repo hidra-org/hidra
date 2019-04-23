@@ -12,6 +12,14 @@
 - Renamed event_det_port und data_fetch_port
 - Simplify log setup (no separated calls for with or without onscreen)
 
+# 4.0.22
+
+- Fix pathlib2 dependency in freeze_setup, rpm and deb packages
+- Fix requests with target groups
+- Fix stop command for redhat init script
+- Remove default config loading in hidra.sh
+- Fix debian package building via docker
+
 # 4.0.21
 
 - Fix readding of events for watchdog event detector

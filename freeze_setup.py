@@ -50,6 +50,9 @@ SENDERPATH = os.path.join(BASEPATH, "src", "sender")
 APIPATH = os.path.join(BASEPATH, "src", "APIs", "hidra")
 UTILSPATH = os.path.join(APIPATH, "utils")
 CONFPATH = os.path.join(BASEPATH, "conf")
+PYTHON_PATH = os.path.dirname(get_python_lib())
+
+WORKAROUND_FILES = []
 
 
 def get_zmq_path():
@@ -170,6 +173,12 @@ if sys.version_info >= (3, 0):
 else:
     VERSION_SPECIFIC_PACKAGES = ["ConfigParser", "pathlib2"]
 
+WORKAROUND_FILES += [
+    # needed to make pathlib2 work, cx_Freeze does not imclude ntpath
+    # although it is a standard builtin module
+    (os.path.join(PYTHON_PATH, "ntpath.py"), "ntpath.py")
+]
+
 # Dependencies are automatically detected, but it might need fine tuning.
 BUILD_EXE_OPTIONS = {
     "packages": (
@@ -227,7 +236,7 @@ BUILD_EXE_OPTIONS = {
          os.path.join("datafetchers", "cleanerbase.py")),
         # apis
         (APIPATH, "hidra"),
-    ] + PLATFORM_SPECIFIC_FILES,
+    ] + PLATFORM_SPECIFIC_FILES + WORKAROUND_FILES,
 }
 
 BDIS_MSI_OPTIONS = {
@@ -244,7 +253,7 @@ EXECUTABLES = [
 ]
 
 setup(name='HiDRA',
-      version='4.0.21',
+      version='4.0.22',
       description='',
       options={"build_exe": BUILD_EXE_OPTIONS,
                "bdist_msi": BDIS_MSI_OPTIONS},
