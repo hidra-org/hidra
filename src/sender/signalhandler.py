@@ -372,12 +372,12 @@ class SignalHandler(Base):
                     newest = possible_queries[idx_newest]
 
                     # Add request
-                    self.vari_requests[newest[1]] += (
-                        self.registered_queries[newest[1]][newest[2]]
+                    self.vari_requests[newest[1]].append(
+                        self.registered_queries[newest[1]].targets[newest[2]]
                     )
                     self.log.info(
                         "Add to open requests: %s",
-                        self.registered_queries[newest[1]][newest[2]]
+                        self.registered_queries[newest[1]].targets[newest[2]]
                     )
 
                     # avoid duplicates -> remove old registered queries
