@@ -1010,7 +1010,8 @@ class DataManager(Base):
 
         # DataDispatcher
         for i in range(self.number_of_streams):
-            dispatcher_id = "{}/{}".format(i, self.number_of_streams).encode("ascii")
+            dispatcher_id = "{}/{}".format(i, self.number_of_streams)
+            dispatcher_id = dispatcher_id.encode("ascii")
             # "bug in pylint # pylint: disable=bad-continuation
             proc = Process(target=DataDispatcher,
                            args=(

@@ -24,8 +24,6 @@
 This module implements a data fetcher for handling files.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -52,7 +50,8 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 # for platform-independency
 # WindowsError only exists on Windows machines
 if not getattr(__builtins__, "WindowsError", None):
-    class WindowsError(OSError): pass
+    class WindowsError(OSError):
+        pass
 
 
 class DataFetcher(DataFetcherBase):
@@ -519,7 +518,8 @@ class DataFetcher(DataFetcherBase):
                                                     file_to_check]))
 
         except Exception:
-            self.log.error("Collecting debug information failed.", exc_info=True)
+            self.log.error("Collecting debug information failed.",
+                           exc_info=True)
 
     def _retry_remove(self):
 
@@ -531,11 +531,11 @@ class DataFetcher(DataFetcherBase):
             time.sleep(0.2)
             try:
                 os.remove(self.source_file)
-                self.log.info("Removing file '%s' ...success (%s\%s).",
+                self.log.info("Removing file '%s' ...success (%s/%s).",
                               self.source_file, i, n_iter)
                 break
             except Exception:
-                self.log.error("Unable to remove file %s (%s\%s)",
+                self.log.error("Unable to remove file %s (%s/%s)",
                                self.source_file, i, n_iter, exc_info=True)
 
     def stop(self):

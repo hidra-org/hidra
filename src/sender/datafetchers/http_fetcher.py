@@ -109,6 +109,8 @@ class DataFetcher(DataFetcherBase):
             metadata (dict): The dictionary with the metedata to extend.
         """
 
+        # pylint: disable=attribute-defined-outside-init
+
         # no normpath used because that would transform http://...
         # into http:/...
         self.source_file = os.path.join(metadata["source_path"],

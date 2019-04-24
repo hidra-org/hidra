@@ -167,6 +167,7 @@ class EventDetector(EventDetectorBase):
 
         self.lock = threading.Lock()
 
+        # pylint: disable=redefined-variable-type
         if self.config["use_cleanup"]:
             self.cleanup_time = self.config["time_till_closed"]
             self.action_time = self.config["action_time"]

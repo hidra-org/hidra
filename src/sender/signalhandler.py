@@ -383,7 +383,7 @@ class SignalHandler(Base):
                 self.log.debug("Received request: {}".format(in_message))
 
                 if in_message[0] == b"NEXT":
-                    incoming_socket_id = utils.convert_socket_to_fqdn(
+                    socket_id = utils.convert_socket_to_fqdn(
                         in_message[1].decode("utf-8"), self.log
                     )
 
@@ -391,15 +391,15 @@ class SignalHandler(Base):
                     # TargetProperties
                     # -> True is so, False otherwise (each TargetProperty
                     #    checked independently
-                    m = [map(lambda x: x[0] == incoming_socket_id, query_set.targets)
-                         for query_set in self.registered_queries]
+                    res = [[i[0] == socket_id for i in query_set.targets]
+                           for query_set in self.registered_queries]
 
                     # determine the registered queries where the socket id is
                     # contained
                     possible_queries = [
                         # (time, target set index, target index)
                         (self.registered_queries[i].time_registered, i, j)
-                        for i, tset in enumerate(m)
+                        for i, tset in enumerate(res)
                         for j, trgt in enumerate(tset)
                         if trgt
                     ]
@@ -409,7 +409,9 @@ class SignalHandler(Base):
 
                     # identify which one is the newest
                     try:
-                        idx_newest = possible_queries.index(max(possible_queries))
+                        idx_newest = possible_queries.index(
+                            max(possible_queries)
+                        )
                     except ValueError:
                         # target not found in possible_queries
                         self.log.debug("No registration found for query")
@@ -431,9 +433,9 @@ class SignalHandler(Base):
                     # because putting it in there would e.g. break in the
                     # following case:
                     # - app1 connects and gets data normally
-                    # - app2 (duplicate of app1, i.e. same host + port to receive
-                    #   data on) tries to connect but fails when establishing
-                    #   the sockets
+                    # - app2 (duplicate of app1, i.e. same host + port to
+                    #   receive data on) tries to connect but fails when
+                    #   establishing the sockets
                     # -> putting the cleanup in the start would break app1 once
                     #    app2 is started
                     if len(possible_queries) > 1:
@@ -443,15 +445,14 @@ class SignalHandler(Base):
 
                         # left overs found
                         for query in possible_queries:
-                            self.log.debug(
-                                "Remove leftover/dublicate registered query %s ",
-                                self.registered_queries[query[1]]
-                            )
+                            self.log.debug("Remove leftover/dublicate "
+                                           "registered query %s",
+                                           self.registered_queries[query[1]])
                             del self.vari_requests[query[1]]
                             del self.registered_queries[query[1]]
 
                 elif in_message[0] == b"CANCEL":
-                    incoming_socket_id = utils.convert_socket_to_fqdn(
+                    socket_id = utils.convert_socket_to_fqdn(
                         in_message[1].decode("utf-8"), self.log
                     )
 
@@ -463,14 +464,13 @@ class SignalHandler(Base):
                         [
                             socket_conf
                             for socket_conf in request_set
-                            if incoming_socket_id != socket_conf[0]
+                            if socket_id != socket_conf[0]
                         ]
                         for request_set in self.vari_requests
                     ]
 
-                    self.log.info("Remove all occurences from {} from "
-                                  "variable request list."
-                                  .format(incoming_socket_id))
+                    self.log.info("Remove all occurences from %s from "
+                                  "variable request list.", socket_id)
                 else:
                     self.log.info("Request not supported.")
 

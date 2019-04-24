@@ -96,7 +96,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.time_all_events_detected = (
             self.config_module["action_time"]
             + self.config_module["time_till_closed"]
-            + 0.01 # reaction time
+            + 0.01  # reaction time
         )
 
     def _start_eventdetector(self):

@@ -24,8 +24,6 @@
 This is a template module for implementing a data fetchers.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -81,6 +79,7 @@ class DataFetcher(DataFetcherBase):
             targets (list): The target list this file is supposed to go.
             metadata (dict): The dictionary with the metedata to extend.
         """
+        # pylint: disable=attribute-defined-outside-init
 
         # Build source file
         self.source_file = generate_filepath(metadata["source_path"],

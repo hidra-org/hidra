@@ -373,7 +373,6 @@ class DataHandler(Base, threading.Thread):
             self.log.error("Request for closing sockets of wrong format",
                            exc_info=True)
 
-
     def stop(self):
         """Stopping, closing sockets and clean up.
         """
@@ -510,6 +509,9 @@ class DataDispatcher(Base):
         self.poller.register(self.control_socket, zmq.POLLIN)
 
     def run(self):
+        """ Wrapper around the _run method to detect if it has stopped.
+        """
+
         self.stopped = False
         try:
             self._run()

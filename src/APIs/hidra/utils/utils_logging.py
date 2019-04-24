@@ -213,6 +213,7 @@ def get_file_log_handler(logfile,
 
 
 def format_log_filename(logfile):
+    """Adds the date to the log file name."""
 
     date = datetime.date.today()
     # if the logfile name has a date placeholder it is filled,

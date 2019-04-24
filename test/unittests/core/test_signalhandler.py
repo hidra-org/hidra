@@ -114,7 +114,7 @@ class RequestPuller(threading.Thread):
 
 
 class TestSignalHandler(TestBase):
-    """Specification of tests to be performed for the TaskProvider.
+    """Specification of tests to be performed for the SignalHandler.
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -1158,7 +1158,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1201,7 +1201,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1248,7 +1248,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ])
         # the registered time cannot be forseen
-        time_registered=registered_ids[1].time_registered
+        time_registered = registered_ids[1].time_registered
         expected_result = [
             TargetProperties(targets=targets,
                              appid=appid,
@@ -1295,7 +1295,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ])
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1337,7 +1337,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1373,7 +1373,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1409,7 +1409,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1455,7 +1455,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[1].time_registered
+        time_registered = registered_ids[1].time_registered
         expected_result = [
             TargetProperties(targets=targets,
                              appid=appid,

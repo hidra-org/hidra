@@ -149,6 +149,8 @@ class DataFetcher(DataFetcherBase):
         # Use received data to prevent missmatch of metadata and data
         # TODO handle case if file type requesed by target does not match
 
+        # pylint: disable=attribute-defined-outside-init
+
         # Build source file
         self.source_file = generate_filepath(self.metadata_r["source_path"],
                                              self.metadata_r)
@@ -188,6 +190,7 @@ class DataFetcher(DataFetcherBase):
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
+        # pylint: disable=unused-argument
 
         if not targets:
             return

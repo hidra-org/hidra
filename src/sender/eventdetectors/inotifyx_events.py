@@ -44,6 +44,9 @@ from inotify_utils import get_event_message, CleanUp, common_stop
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+_file_event_list = []  # pylint: disable=invalid-name
+
+
 class EventDetector(EventDetectorBase):
     """
     Implementation of the event detector for inotify based systems using the
@@ -282,7 +285,7 @@ class EventDetector(EventDetectorBase):
 
             try:
                 path = self.wd_to_path[event.wd]
-            except:
+            except Exception:
                 path = removed_wd
             parts = event.get_mask_description()
             parts_array = parts.split("|")

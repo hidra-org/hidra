@@ -36,8 +36,8 @@ import ast
 import copy
 import json
 import logging
-import yaml
 import os
+import yaml
 
 from .utils_datatypes import (Endpoints, NotSupported, WrongConfiguration)
 from .utils_general import check_existance

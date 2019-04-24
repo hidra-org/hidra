@@ -102,7 +102,9 @@ class TaskProvider(Base):
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         try:
-            self.ignore_accumulated_events = self.config["ignore_accumulated_events"]
+            self.ignore_accumulated_events = (
+                self.config["ignore_accumulated_events"]
+            )
         except KeyError:
             self.ignore_accumulated_events = False
 

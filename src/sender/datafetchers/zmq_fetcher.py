@@ -198,6 +198,8 @@ class DataFetcher(DataFetcherBase):
         """Implementation of the abstract method get_metadata.
         """
 
+        # pylint: disable=attribute-defined-outside-init
+
         # extract event metadata
         try:
             # TODO validate metadata dict

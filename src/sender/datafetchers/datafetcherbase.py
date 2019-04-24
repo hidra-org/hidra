@@ -361,27 +361,27 @@ class DataFetcherBase(Base, ABC):
         if self.control_signal is None:
             return
 
-        if  self.control_signal[0] == b"EXIT":
-            self.log.debug("Received %s signal.",  self.control_signal[0])
+        if self.control_signal[0] == b"EXIT":
+            self.log.debug("Received %s signal.", self.control_signal[0])
             self.keep_running = False
 
-        elif  self.control_signal[0] == b"CLOSE_SOCKETS":
+        elif self.control_signal[0] == b"CLOSE_SOCKETS":
             # do nothing
             pass
 
-        elif  self.control_signal[0] == b"SLEEP":
-            self.log.debug("Received %s signal",  self.control_signal[0])
-            self._react_to_sleep_signal()
+        elif self.control_signal[0] == b"SLEEP":
+            self.log.debug("Received %s signal", self.control_signal[0])
+            self._react_to_sleep_signal(message=None)
             # TODO reschedule file (part?)
             woke_up = True
 
-        elif  self.control_signal[0] == b"WAKEUP":
+        elif self.control_signal[0] == b"WAKEUP":
             self.log.debug("Received %s signal without sleeping",
                            self.control_signal[0])
 
         else:
             self.log.error("Unhandled control signal received: %s",
-                            self.control_signal)
+                           self.control_signal)
 
         try:
             self.lock.acquire()
@@ -420,7 +420,7 @@ class DataFetcherBase(Base, ABC):
                 self.keep_running = False
                 keep_checking_signal = False
 
-            elif  self.control_signal[0] == b"CLOSE_SOCKETS":
+            elif self.control_signal[0] == b"CLOSE_SOCKETS":
                 # do nothing
                 pass
 
