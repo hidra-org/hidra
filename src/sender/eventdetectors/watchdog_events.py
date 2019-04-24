@@ -154,9 +154,9 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         if not event.is_directory:
 
             if isinstance(event, watchdog.events.FileMovedEvent):
-                event_message = split_file_path(event.dest_path, self.paths)
+                event_message = get_event_message(event.dest_path, self.paths)
             else:
-                event_message = split_file_path(event.src_path, self.paths)
+                event_message = get_event_message(event.src_path, self.paths)
 
             with self.lock:
                 _event_message_list.append(event_message)

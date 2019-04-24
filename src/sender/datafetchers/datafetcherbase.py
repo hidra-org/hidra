@@ -391,7 +391,7 @@ class DataFetcherBase(Base, ABC):
 
         return woke_up
 
-    def _react_to_sleep_signal(self):
+    def _react_to_sleep_signal(self, message):
         self.log.debug("Received sleep signal. Going to sleep.")
 
         sleep_time = 0.2
