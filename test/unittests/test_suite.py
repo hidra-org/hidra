@@ -58,7 +58,8 @@ PACKAGES = {
             "test_taskprovider": "TestTaskProvider",
             "test_datadispatcher": "TestDataDispatcher",
             "test_signalhandler": "TestSignalHandler",
-            "test_datamanager": "TestDataManager"
+            "test_datamanager": "TestDataManager",
+            "test_base_class": "TestBaseClass"
         },
         "exclude": []
     },
@@ -176,6 +177,11 @@ def get_suite(package_name, name):
     if name in PACKAGES[package_name]["special"]:
         modclass = getattr(module, PACKAGES[package_name]["special"][name])
     else:
+        if PACKAGES[package_name]["default"] is None:
+            print("ERROR: Could not get suite. Maybe PACKAGES wrong "
+                  "configuration?")
+            return []
+
         modclass = getattr(module, PACKAGES[package_name]["default"])
 
     # load the test suite
