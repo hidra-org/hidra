@@ -596,7 +596,6 @@ def check_config(required_params, config, log, serialize=True):
                     continue
 
             config_reduced[param_name] = config[param_name]
-            check_passed = True
 
         return check_passed, config_reduced
 
