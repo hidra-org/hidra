@@ -106,9 +106,10 @@ class Synchronizing(threading.Thread):
                     )
 
                     # set full?
+                    # remember position in sync_buffer for easier removal later
                     file_set = tuple(
-                        i for i in self.sync_buffer
-                        if i["path_tmpl"] == path_tmpl
+                        (i, f) for i, f  in enumerate(self.sync_buffer)
+                        if f["path_tmpl"] == path_tmpl
                     )
 
                     if len(file_set) == self.n_detectors:
@@ -116,6 +117,10 @@ class Synchronizing(threading.Thread):
 
                         with self.lock:
                             synced_data.append(path_tmpl)
+
+                        # remove elements backwards to keep indices correct
+                        for i in sorted(file_set, reverse=True):
+                            del(self.sync_buffer[i[0]])
 
             except KeyboardInterrupt:
                 self.log.info("KeyboardInterrupt detected.")
@@ -208,7 +213,7 @@ class EventDetector(EventDetectorBase):
 
                     event_message_list.append(event_message)
 
-                synced_data = None
+                synced_data = []
         else:
             event_message_list = []
 
