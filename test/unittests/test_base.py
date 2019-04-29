@@ -41,7 +41,10 @@ import unittest
 import zmq
 
 from logutils.queue import QueueHandler
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    import mock
 
 import _environment
 import hidra.utils as utils
@@ -89,7 +92,12 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
             exc_info (optional): Append a traceback.
         """
 
-        msg = unicode(message)  # noqa F821
+        try:
+            msg = unicode(message)  # noqa F821
+        except NameError:
+            # Literal strings are unicode by default in Python3
+            msg = str(message)
+
         if args:
             msg = msg % args
 
@@ -270,7 +278,7 @@ class TestBase(unittest.TestCase):
 #        self.log.debug("%s pid %s", self.__class__.__name__, main_pid)
 
     def __iter__(self):
-        for attr, value in self.__dict__.iteritems():
+        for attr, value in self.__dict__.items():
             yield attr, value
 
     def _init_logging(self, loglevel=LOGLEVEL):
@@ -348,7 +356,8 @@ class TestBase(unittest.TestCase):
             return return_socket
 
     def tearDown(self):
-        for _, endpoint in vars(self.ipc_addresses).iteritems():
+
+        for _, endpoint in self.ipc_addresses._asdict().items():
             try:
                 os.remove(endpoint)
                 self.log.debug("Removed ipc socket: %s", endpoint)
