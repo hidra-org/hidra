@@ -1,4 +1,4 @@
-# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+# Copyright (C) DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
 #
 # HiDRA is a generic tool set for high performance data multiplexing with
 # different qualities of service and based on Python and ZeroMQ.
@@ -29,11 +29,50 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import json
+from kafka import KafkaProducer
+import threading
 import time
 import sync_ewmscp_events as events
 from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
+class LambdaSimulator(threading.Thread):
+
+    def __init__(self, server, topic, detid, n_files):
+        super(LambdaSimulator, self).__init__()
+
+        self.topic = topic
+        self.detid = detid
+        self.n_files = n_files
+
+        self.producer = KafkaProducer(
+            bootstrap_servers=server,
+            value_serializer=lambda v: json.dumps(v).encode('utf-8')
+        )
+
+    def run(self):
+
+        filename = "{}_{:03}.h5"
+
+        message = {
+            "finishTime": 1556031799.7914205,
+            "inotifyTime": 1556031799.791173,
+            "md5sum": "",
+            "operation":"copy",
+            "path": "/my_dir/my_subdir/",
+            "retries":1,
+            "size":43008,
+            "source":"./my_subdir/"
+        }
+
+        for i in range(self.n_files):
+            message["path"] += filename.format(self.detid, i)
+            message["source"] += filename.format(self.detid, i)
+            future = self.producer.send(self.topic, message)
+            future.get(timeout=60)
+
 
 
 class TestEventDetector(EventDetectorTestBase):
@@ -49,18 +88,19 @@ class TestEventDetector(EventDetectorTestBase):
         # self.ext_ip
 
         self.module_name = "sync_ewmscp_events"
+        self.module_config = {
+            "buffer_size": 50,
+            "source_path": "/my_dir",
+            "kafka_server": "asap3-events-01",
+            "kafka_topic": "kuhnm_test",
+            "detids": ["DET0", "DET1", "DET2"],
+            "n_detectors": 3
+        }
 
         self.ed_config = {
             "eventdetector": {
-                "type": "sync_ewmscp_events",
-                "sync_ewmscp_events": {
-                    "buffer_size": 50,
-                    "source_path": "/my_dir",
-                    "kafka_server": "asap3-events-01",
-                    "kafka_topic": "kuhnm_test",
-                    "detids": ["DET0", "DET1", "DET2"],
-                    "n_detectors": 3
-                }
+                "type": self.module_name,
+                self.module_name: self.module_config
             }
         }
 
@@ -78,12 +118,29 @@ class TestEventDetector(EventDetectorTestBase):
             self.log_queue
         )
 
+        server = self.module_config["kafka_server"]
+        topic = self.module_config["kafka_topic"]
+        n_det = self.module_config["n_detectors"]
+        n_files = 1
+
+        # produce kafka data
+        dets = []
+        for i in range(n_det):
+            dets.append(
+                LambdaSimulator(server, topic, "DET{}".format(i), n_files)
+            )
+        for i in dets:
+            i.start()
+
+        # get synchronized events
         for i in range(3):
             self.log.debug("run")
             event_list = self.eventdetector.get_new_event()
             self.log.debug("event_list: %s", event_list)
 
-            time.sleep(2)
+        # shut down producer
+        for i in dets:
+            i.join()
 
     def tearDown(self):
 
