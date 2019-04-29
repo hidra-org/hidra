@@ -205,9 +205,10 @@ class EventDetector(EventDetectorBase):
                 for i in synced_data:
                     path = pathlib.Path(i)
 
+                    rel_path = path.parent.relative_to(self.source_path)
                     event_message = {
                         "source_path": self.source_path,
-                        "relative_path": path.relative_to(self.source_path),
+                        "relative_path": rel_path.as_posix(),
                         "filename": path.name
                     }
 
