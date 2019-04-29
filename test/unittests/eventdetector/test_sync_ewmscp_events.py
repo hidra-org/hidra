@@ -30,7 +30,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import time
-import synchronize_ewmscp_events as events
+import sync_ewmscp_events as events
 from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -48,7 +48,7 @@ class TestEventDetector(EventDetectorTestBase):
         # self.con_ip
         # self.ext_ip
 
-        self.module_name = "synchronize_ewmscp_events"
+        self.module_name = "sync_ewmscp_events"
 
         self.ed_config = {
             "eventdetector": {
