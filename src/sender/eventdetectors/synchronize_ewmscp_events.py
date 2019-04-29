@@ -175,9 +175,9 @@ class EventDetector(EventDetectorBase):
             }
         }
 
-        self.setup(config)
+        self.setup(config, log_queue)
 
-    def setup(self, config):
+    def setup(self, config, log_queue):
 
         # check that the required_params are set inside of module specific
         # config
@@ -229,64 +229,3 @@ class EventDetector(EventDetectorBase):
 
     def __del__(self):
         self.stop()
-
-
-if __name__ == '__main__':
-    log_config = {
-        "log_file": os.path.join(BASE_DIR, "logs", "sync_ewmscp_events.log"),
-        "log_size": 10485760,
-        "verbose": True,
-        "onscreen": "debug"
-    }
-
-    log_queue = multiprocessing.Queue(-1)
-
-    handler = utils.get_log_handlers(
-        log_config["log_file"],
-        log_config["log_size"],
-        log_config["verbose"],
-        log_config["onscreen"]
-    )
-
-    # Start queue listener using the stream handler above.
-    log_queue_listener = utils.CustomQueueListener(
-        log_queue, *handler
-    )
-
-    log_queue_listener.start()
-
-    log = utils.get_logger("main", log_queue)
-    log.debug("START")
-
-    config = {
-        "buffer_size": 50,
-        "eventdetector": {
-            "type": "sync_ewmscp_events",
-            "sync_ewmscp_events": {
-                "buffer_size": 50,
-                "source_path": "/my_dir",
-                "kafka_server": "asap3-events-01",
-                "kafka_topic": "kuhnm_test",
-                "detids": ["DET0", "DET1", "DET2"],
-                "n_detectors": 3
-            }
-        }
-    }
-    try:
-        # getting events
-        eventdetector = EventDetector(config, log_queue)
-
-        try:
-            for i in range(100):
-                log.debug("run")
-                event_list = eventdetector.get_new_event()
-                log.debug("event_list: %s", event_list)
-
-                time.sleep(3)
-        finally:
-            eventdetector.stop()
-    finally:
-        # shut down the listener cleanly if the Eventdetector stopps
-        # (e.g. WrongConfiguration)
-        log_queue.put_nowait(None)
-        log_queue_listener.stop()
