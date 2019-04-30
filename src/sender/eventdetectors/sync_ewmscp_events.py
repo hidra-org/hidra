@@ -15,7 +15,7 @@ import threading
 try:
     import pathlib
 except ImportError:
-    import pathlib2
+    import pathlib2 as pathlib
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))
