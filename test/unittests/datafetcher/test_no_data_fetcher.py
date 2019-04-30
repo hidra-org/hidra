@@ -20,7 +20,7 @@
 #     Manuela Kuhn <manuela.kuhn@desy.de>
 #
 
-"""Testing the file_fetcher data fetcher.
+"""Testing the no_data_fetcher.
 """
 
 from __future__ import absolute_import
@@ -59,8 +59,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "remove_data": False,
                 "local_target": None,
                 "type": self.module_name,
-                self.module_name: {
-                }
+                self.module_name: {}
             }
         }
 
@@ -70,7 +69,7 @@ class TestDataFetcher(DataFetcherTestBase):
         self.datafetcher = None
 
     def test_general(self):
-        """Simulate file fetching without taking care of confirmation signals.
+        """Simulate fetching.
         """
 
         self.datafetcher = DataFetcher(config=self.datafetcher_config,
