@@ -68,7 +68,8 @@ def main():
         try:
             [metadata, _] = query.get()
         except Exception:
-            break
+            query.stop()
+            raise
 
         print()
         print(generate_filepath(base_target_path, metadata))

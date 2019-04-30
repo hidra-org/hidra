@@ -64,13 +64,17 @@ def main():
 
     query.initiate(targets)
 
-    query.start()
+    try:
+        query.start()
+    except Exception:
+        query.stop()
+        return
 
     use_md5sum = False
     timeout = None
 #    timeout = 2000  # in ms
-#    while True:
-    for _ in range(2):
+
+    while True:
         try:
             [metadata, data] = query.get(timeout)
         except Exception:
