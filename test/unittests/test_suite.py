@@ -78,6 +78,13 @@ PACKAGES = {
             "test_datareceiver": "TestCheckNetgroup"
         },
         "exclude": []
+    },
+    "utils": {
+        "default": None,
+        "special": {
+            "test_utils_config": "TestUtilsConfig"
+        },
+        "exclude": []
     }
 }
 
@@ -244,8 +251,11 @@ def main():
         print("No tests found.")
         matches = find_matches(args.case)
         for key in matches:
-            print("possible options for {} are: {}"
-                  .format(key, ", ".join(matches[key])))
+            options = ", ".join(matches[key])
+            if options:
+                print("possible options for {} are: {}".format(key, options))
+            else:
+                print("No possible options found for {}".format(key))
 
     suite = unittest.TestSuite(all_suites)
 

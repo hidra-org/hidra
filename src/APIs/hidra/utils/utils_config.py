@@ -355,19 +355,24 @@ def map_conf_format(flat_config, config_type, is_namespace=False):
         raise NotSupported("Config type is not supported")
 
     def _traverse_dict(config):
+        to_delete = []
         for key, value in config.items():
             if isinstance(value, dict):
                 if value:
                     _traverse_dict(value)
                     if not value:
-                        del config[key]
+                        to_delete.append(key)
             else:
                 try:
                     # value of the mapping is the actual key of the flat
                     config[key] = flat_config[value]
                 except KeyError:
-                    del config[key]
+                    to_delete.append(key)
 
+        for key in to_delete:
+            del config[key]
+
+    # coming from command line arguments
     if is_namespace:
         arguments = copy.deepcopy(flat_config)
         flat_config = {}
