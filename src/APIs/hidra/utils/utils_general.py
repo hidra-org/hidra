@@ -193,12 +193,15 @@ def check_version(version, log):
                        <major release>.<minor release>.<patch level>
         log: logging handler
     """
+
+    v_remote = version.rsplit(".", 1)[0]
+    v_local = __version__.rsplit(".", 1)[0]
     log.debug("remote version: %s, local version: %s", version, __version__)
 
-    if version.rsplit(".", 1)[0] < __version__.rsplit(".", 1)[0]:
+    if v_remote < v_local:
         log.info("Version of receiver is lower. Please update receiver.")
         return False
-    elif version.rsplit(".", 1)[0] > __version__.rsplit(".", 1)[0]:
+    elif v_remote > v_local:
         log.info("Version of receiver is higher. Please update sender.")
         return False
     else:

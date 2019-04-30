@@ -851,22 +851,25 @@ class SignalHandler(Base):
         signal = unpacked_message.signal
         appid = unpacked_message.appid
         socket_ids = unpacked_message.targets
+        version = __version__.encode("utf-8")
+
 
         # --------------------------------------------------------------------
         # GET_VERSION
         # --------------------------------------------------------------------
         if signal == b"GET_VERSION":
-            self.log.info("Received signal: {}".format(signal))
+            self.log.info("Received signal: %s", signal)
 
-            self.send_response([signal, __version__])
+            self.send_response([signal, version])
             return
+        else:
+            self.log.info("Received signal: %s for hosts %s",
+                          signal, socket_ids)
 
         # --------------------------------------------------------------------
         # START_STREAM
         # --------------------------------------------------------------------
-        elif signal == b"START_STREAM":
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
+        if signal == b"START_STREAM":
 
             self._start_signal(
                 signal=signal,
@@ -884,11 +887,10 @@ class SignalHandler(Base):
         # START_STREAM_METADATA
         # --------------------------------------------------------------------
         elif signal == b"START_STREAM_METADATA":
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
+
             if not self.config["datafetcher"]["store_data"]:
                 self.log.debug("Send notification that store_data is disabled")
-                self.send_response([b"STORING_DISABLED", __version__])
+                self.send_response([b"STORING_DISABLED", version])
             else:
                 self._start_signal(
                     signal=signal,
@@ -907,8 +909,6 @@ class SignalHandler(Base):
         # STOP_STREAM_METADATA
         # --------------------------------------------------------------------
         elif signal == b"STOP_STREAM" or signal == b"STOP_STREAM_METADATA":
-            self.log.info("Received signal: {} for host {}"
-                          .format(signal, socket_ids))
 
             ret_val = self._stop_signal(
                 signal=signal,
@@ -927,8 +927,6 @@ class SignalHandler(Base):
         # START_QUERY_NEXT
         # --------------------------------------------------------------------
         elif signal == b"START_QUERY_NEXT":
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
 
             self._start_signal(
                 signal=signal,
@@ -946,12 +944,10 @@ class SignalHandler(Base):
         # START_QUERY_NEXT_METADATA
         # --------------------------------------------------------------------
         elif signal == b"START_QUERY_NEXT_METADATA":
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
 
             if not self.config["datafetcher"]["store_data"]:
                 self.log.debug("Send notification that store_data is disabled")
-                self.send_response([b"STORING_DISABLED", __version__])
+                self.send_response([b"STORING_DISABLED", version])
             else:
                 self._start_signal(
                     signal=signal,
@@ -971,8 +967,6 @@ class SignalHandler(Base):
         # --------------------------------------------------------------------
         elif (signal == b"STOP_QUERY_NEXT"
               or signal == b"STOP_QUERY_NEXT_METADATA"):
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
 
             ret_val = self._stop_signal(
                 signal=signal,
@@ -993,8 +987,6 @@ class SignalHandler(Base):
         # --------------------------------------------------------------------
         elif (signal == b"FORCE_STOP_STREAM"
               or signal == b"FORCE_STOP_STREAM_METADATA"):
-            self.log.info("Received signal: {} for host {}"
-                          .format(signal, socket_ids))
 
             ret_val = self._stop_signal(
                 signal=signal,
@@ -1016,9 +1008,6 @@ class SignalHandler(Base):
         elif (signal == b"FORCE_STOP_QUERY_NEXT"
               or signal == b"FORCE_STOP_QUERY_NEXT_METADATA"):
 
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
-
             ret_val = self._stop_signal(
                 signal=signal,
                 appid=None,
@@ -1033,8 +1022,6 @@ class SignalHandler(Base):
             return
 
         else:
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
             self.send_response([b"NO_VALID_SIGNAL"])
 
     def stop(self):
