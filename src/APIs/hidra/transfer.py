@@ -1520,6 +1520,9 @@ class Transfer(Base):
                 self.log.info("Reached timeout")
                 return metadata, payload
 
+            if "METADATA" in self.connection_type:
+                return metadata, payload
+
             file_id = generate_file_identifier(metadata)
 
             # --------------------------------------------------------------------
