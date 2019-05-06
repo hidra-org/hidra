@@ -32,12 +32,18 @@ import difflib
 import unittest
 from importlib import import_module
 import pkgutil
+import sys
 
 import _environment  # noqa F401 # pylint: disable=unused-import
 from test_base import TestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+# some tests only work with python2
+if sys.version_info[0] < 3:
+    EVENTDETECTOR_EXCLUDE = []
+else:
+    EVENTDETECTOR_EXCLUDE = ["test_inotifyx_events"]
 
 PACKAGES = {
     "eventdetector": {
@@ -45,7 +51,7 @@ PACKAGES = {
         "special": {
             "test_inotify_utils": "TestInotifyUtils"
         },
-        "exclude": []
+        "exclude": EVENTDETECTOR_EXCLUDE
     },
     "datafetcher": {
         "default": "TestDataFetcher",
