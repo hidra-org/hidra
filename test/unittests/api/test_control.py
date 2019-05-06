@@ -27,7 +27,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
 import zmq
 
 from test_base import TestBase, MockZmqSocket, MockZmqPoller

@@ -28,7 +28,7 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 
 try:
-    import unittest.mock
+    import unittest.mock as mock
 except ImportError:
     # for python2
     import mock

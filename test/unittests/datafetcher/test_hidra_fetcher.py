@@ -31,7 +31,11 @@ import json
 import os
 import time
 
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
 import zmq
 
 from hidra_fetcher import DataFetcher

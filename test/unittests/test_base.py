@@ -44,6 +44,7 @@ from logutils.queue import QueueHandler
 try:
     import unittest.mock as mock
 except ImportError:
+    # for python2
     import mock
 
 import _environment

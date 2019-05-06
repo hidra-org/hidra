@@ -42,7 +42,11 @@ import threading
 import time
 import zmq
 
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
 from six import iteritems
 
 from test_base import (TestBase,

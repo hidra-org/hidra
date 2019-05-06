@@ -35,7 +35,11 @@ import os
 import time
 import zmq
 
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
 
 from test_base import (create_dir,
                        MockZmqContext)

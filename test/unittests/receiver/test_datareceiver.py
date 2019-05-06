@@ -33,7 +33,11 @@ from __future__ import unicode_literals
 import inspect
 import threading
 
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
 
 from test_base import TestBase
 import datareceiver

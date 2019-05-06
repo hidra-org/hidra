@@ -31,7 +31,11 @@ import copy
 import os
 import re
 
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
 
 from inotify_events import EventDetector
 from .eventdetector_test_base import EventDetectorTestBase
