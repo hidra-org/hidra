@@ -91,7 +91,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.module_config = {
             "buffer_size": 50,
             "source_path": "/my_dir",
-            "kafka_server": "asap3-events-01",
+            "kafka_server": ["asap3-events-01", "asap3-events-02"],
             "kafka_topic": "kuhnm_test",
             "detids": ["DET0", "DET1", "DET2"],
             "n_detectors": 3

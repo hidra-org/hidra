@@ -6,7 +6,7 @@ from kafka import KafkaConsumer
 import json
 
 topic = "kuhnm_test"
-server = "asap3-events-01"
+server = ["asap3-events-01", "asap3-events-02"]
 
 consumer = KafkaConsumer(topic, bootstrap_servers=server)
 
