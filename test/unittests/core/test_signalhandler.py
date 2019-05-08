@@ -490,7 +490,8 @@ class TestSignalHandler(TestBase):
         ]
 
         sighandler.run()
-        mock_check.assert_called()
+        # assert_called() only works version >3.5
+        self.assertTrue(mock_check.called)
 
         # reset
         sighandler.log = MockLogging()
@@ -509,7 +510,8 @@ class TestSignalHandler(TestBase):
         ]
 
         sighandler.run()
-        mock_check.assert_called()
+        # assert_called() only works version >3.5
+        self.assertTrue(mock_check.called)
 
         # if the code run till here without throwing an exception it passed
         # if StopIteration is thrown by mock that means that poll was called

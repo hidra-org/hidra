@@ -85,7 +85,8 @@ class TestBaseClass(TestBase):
         self.assertEqual(obj.required_params_dep, {})
         self.assertEqual(obj.config_reduced, expected_result)
 
-        mock_check.assert_called()
+        # assert_called() only works version >3.5
+        self.assertTrue(mock_check.called)
 
         # --------------------------------------------------------------------
         # checking dependend parameter
@@ -133,7 +134,8 @@ class TestBaseClass(TestBase):
 
             ret_val = obj._check_config_base(config={}, required_params=["test_param"])
 
-            mock_check.assert_called()
+            # assert_called() only works version >3.5
+            self.assertTrue(mock_check.called)
             self.assertEqual(ret_val, expected_result)
 
         # --------------------------------------------------------------------
@@ -171,7 +173,8 @@ class TestBaseClass(TestBase):
 
             ret_val = obj.stop_socket(name="test_socket_tmp", socket=None)
 
-            mock_stop.assert_called()
+            # assert_called() only works version >3.5
+            self.assertTrue(mock_stop.called)
             self.assertIsNone(ret_val)
             self.assertEqual(obj.test_socket_tmp, expected_result)
 
@@ -186,7 +189,8 @@ class TestBaseClass(TestBase):
 
             ret_val = obj.stop_socket(name="test_sckt", socket="some_socket")
 
-            mock_stop.assert_called()
+            # assert_called() only works version >3.5
+            self.assertTrue(mock_stop.called)
             self.assertEqual(ret_val, expected_result)
 
     @mock.patch("base_class.Base._forward_control_signal")
@@ -217,7 +221,8 @@ class TestBaseClass(TestBase):
         obj.control_socket.recv_multipart.side_effect = [Exception()]
         ret_val = obj.check_control_signal()
         self.assertFalse(ret_val)
-        obj.log.error.assert_called()
+        # assert_called() only works version >3.5
+        self.assertTrue(obj.log.error.called)
 
         obj.control_socket.reset_mock()
 
@@ -229,8 +234,9 @@ class TestBaseClass(TestBase):
 
         ret_val = obj.check_control_signal()
 
-        mock_forward.assert_called()
-        mock_exit.assert_called()
+        # assert_called() only works version >3.5
+        self.assertTrue(mock_forward.called)
+        self.assertTrue(mock_exit.called)
         self.assertFalse(mock_close.called)
         self.assertFalse(mock_sleep.called)
         self.assertFalse(mock_wakeup.called)
@@ -245,9 +251,10 @@ class TestBaseClass(TestBase):
 
         ret_val = obj.check_control_signal()
 
-        mock_forward.assert_called()
+        # assert_called() only works version >3.5
+        self.assertTrue(mock_forward.called)
         self.assertFalse(mock_exit.called)
-        mock_close.assert_called()
+        self.assertTrue(mock_close.called)
         self.assertFalse(mock_sleep.called)
         self.assertFalse(mock_wakeup.called)
         self.assertFalse(ret_val)
@@ -260,10 +267,11 @@ class TestBaseClass(TestBase):
 
         ret_val = obj.check_control_signal()
 
-        mock_forward.assert_called()
+        # assert_called() only works version >3.5
+        self.assertTrue(mock_forward.called)
         self.assertFalse(mock_exit.called)
         self.assertFalse(mock_close.called)
-        mock_sleep.assert_called()
+        self.assertTrue(mock_sleep.called)
         self.assertFalse(mock_wakeup.called)
         self.assertFalse(ret_val)
 
@@ -275,11 +283,12 @@ class TestBaseClass(TestBase):
 
         ret_val = obj.check_control_signal()
 
-        mock_forward.assert_called()
+        # assert_called() only works version >3.5
+        self.assertTrue(mock_forward.called)
         self.assertFalse(mock_exit.called)
         self.assertFalse(mock_close.called)
         self.assertFalse(mock_sleep.called)
-        mock_wakeup.assert_called()
+        self.assertTrue(mock_wakeup.called)
         self.assertFalse(ret_val)
 
         # --------------------------------------------------------------------
@@ -290,7 +299,8 @@ class TestBaseClass(TestBase):
         ret_val = obj.check_control_signal()
 
         self.assertFalse(ret_val)
-        obj.log.error.assert_called()
+        # assert_called() only works version >3.5
+        self.assertTrue(obj.log.error.called)
 
     def test__react_to_sleep_signal(self):  # pylint: disable=no-self-use
         pass
