@@ -165,8 +165,9 @@ class TestSignalHandler(TestBase):
         self.log.info("send_signal : %s, %s", signal, ports)
 
         app_id = str(self.config["main_pid"]).encode("utf-8")
+        version = __version__.encode("utf-8")
 
-        send_message = [__version__, app_id, signal]
+        send_message = [version, app_id, signal]
 
         targets = []
         if isinstance(ports, list):
@@ -269,14 +270,14 @@ class TestSignalHandler(TestBase):
                              prio=2)
 
             self.send_request(socket=request_socket,
-                              socket_id=receiving_endpoints[1].encode())
+                              socket_id=receiving_endpoints[1])
             self.send_request(socket=request_socket,
-                              socket_id=receiving_endpoints[1].encode())
+                              socket_id=receiving_endpoints[1])
             self.send_request(socket=request_socket,
-                              socket_id=receiving_endpoints[0].encode())
+                              socket_id=receiving_endpoints[0])
 
             self.cancel_request(socket=request_socket,
-                                socket_id=receiving_endpoints[1].encode())
+                                socket_id=receiving_endpoints[1])
 
             time.sleep(0.5)
 
@@ -821,7 +822,7 @@ class TestSignalHandler(TestBase):
         self.log.info("%s: REQUEST_SOCKET: NEXT (ALLOWED)", current_func_name)
 
         socket_id = "{}:{}".format(host, port)
-        signal = ["NEXT", socket_id]
+        signal = [b"NEXT", socket_id.encode("utf-8")]
         init_sighandler(sighandler, sighandler.request_socket, signal)
 
         targets = [
@@ -853,7 +854,7 @@ class TestSignalHandler(TestBase):
                       current_func_name)
 
         socket_id = "{}:{}".format(host, port)
-        signal = ["NEXT", socket_id]
+        signal = [b"NEXT", socket_id.encode("utf-8")]
         init_sighandler(sighandler, sighandler.request_socket, signal)
 
         sighandler.registered_queries = []
@@ -875,7 +876,7 @@ class TestSignalHandler(TestBase):
                       current_func_name)
 
         socket_id = "{}:{}".format(host, port)
-        signal = ["CANCEL", socket_id]
+        signal = [b"CANCEL", socket_id.encode("utf-8")]
         init_sighandler(sighandler, sighandler.request_socket, signal)
 
         sighandler.registered_queries = []
@@ -897,7 +898,7 @@ class TestSignalHandler(TestBase):
                       current_func_name)
 
         socket_id = "{}:{}".format(host, port)
-        signal = ["CANCEL", socket_id]
+        signal = [b"CANCEL", socket_id.encode("utf-8")]
         init_sighandler(sighandler, sighandler.request_socket, signal)
 
         sighandler.registered_queries = []
@@ -921,7 +922,7 @@ class TestSignalHandler(TestBase):
                       current_func_name)
 
         socket_id = "{}:{}".format(host, port)
-        signal = ["CANCEL", socket_id]
+        signal = [b"CANCEL", socket_id.encode("utf-8")]
         init_sighandler(sighandler, sighandler.request_socket, signal)
 
         port2 = 9876
@@ -961,6 +962,7 @@ class TestSignalHandler(TestBase):
         appid = str(appid).encode("utf-8")
         in_targets_list = [["{}:{}".format(host, port), 0, [""]]]
         in_targets = json.dumps(in_targets_list).encode("utf-8")
+        version = __version__.encode("utf-8")
 
         # --------------------------------------------------------------------
         # no valid message
@@ -984,7 +986,7 @@ class TestSignalHandler(TestBase):
         fake_in_targets = [["{}".format(host), 0, [""]]]
         fake_in_targets = json.dumps(fake_in_targets).encode("utf-8")
 
-        in_message = [__version__, appid, "START_STREAM", fake_in_targets]
+        in_message = [version, appid, "START_STREAM", fake_in_targets]
         unpacked_message = sighandler.check_signal(in_message)
         self.assertFalse(unpacked_message.check_successful)
         self.assertEqual(unpacked_message.response, [b"NO_VALID_SIGNAL"])
@@ -1011,13 +1013,13 @@ class TestSignalHandler(TestBase):
         self.log.info("%s: VALID MESSAGE BUT VERSION CONFLICT",
                       current_func_name)
 
-        version = "0.0.0"
+        version = b"0.0.0"
         #             version, application id, signal, targets
         in_message = [version, appid, "START_STREAM", in_targets]
         unpacked_message = sighandler.check_signal(in_message)
         self.assertFalse(unpacked_message.check_successful)
         self.assertEqual(unpacked_message.response,
-                         ["VERSION_CONFLICT", __version__])
+                         [b"VERSION_CONFLICT", __version__])
         self.assertIsNone(unpacked_message.appid)
         self.assertIsNone(unpacked_message.signal)
         self.assertIsNone(unpacked_message.targets)
@@ -1028,11 +1030,11 @@ class TestSignalHandler(TestBase):
         self.log.info("%s: NO VERSION SET (EMPTY STRING)",
                       current_func_name)
 
-        in_message = ["", appid, "START_STREAM", in_targets]
+        in_message = [b"", appid, "START_STREAM", in_targets]
         unpacked_message = sighandler.check_signal(in_message)
         self.assertTrue(unpacked_message.check_successful)
         self.assertIsNone(unpacked_message.response)
-        self.assertEqual(unpacked_message.appid, appid)
+        self.assertEqual(unpacked_message.appid, appid.decode("utf-8"))
         self.assertEqual(unpacked_message.signal, "START_STREAM")
         self.assertEqual(unpacked_message.targets, in_targets_list)
 
@@ -1043,11 +1045,12 @@ class TestSignalHandler(TestBase):
                       current_func_name)
 
         #             version, application id, signal, targets
-        in_message = [__version__, appid, "START_STREAM", in_targets]
+        in_message = [__version__.encode("utf-8"), appid,
+                      "START_STREAM", in_targets]
         unpacked_message = sighandler.check_signal(in_message)
         self.assertTrue(unpacked_message.check_successful)
         self.assertIsNone(unpacked_message.response)
-        self.assertEqual(unpacked_message.appid, appid)
+        self.assertEqual(unpacked_message.appid, appid.decode("utf-8"))
         self.assertEqual(unpacked_message.signal, "START_STREAM")
         self.assertEqual(unpacked_message.targets, in_targets_list)
 
@@ -1069,7 +1072,8 @@ class TestSignalHandler(TestBase):
                       "ALLOWED TO CONNTECT", current_func_name)
 
         #             version, application id, signal, targets
-        in_message = [__version__, appid, "START_STREAM", in_targets]
+        in_message = [__version__.encode("utf-8"), appid,
+                      "START_STREAM", in_targets]
         unpacked_message = sighandler.check_signal(in_message)
         self.assertFalse(unpacked_message.check_successful)
         self.assertEqual(unpacked_message.response, [b"NO_VALID_HOST"])
@@ -1769,6 +1773,8 @@ class TestSignalHandler(TestBase):
         sighandler._start_signal = mock.MagicMock()
         sighandler._stop_signal = mock.MagicMock()
 
+        version = __version__.encode("utf-8")
+
         unpacked_message_dict = dict(
             check_successful=True,
             response=None,
@@ -1788,7 +1794,7 @@ class TestSignalHandler(TestBase):
 
         sighandler.react_to_signal(unpacked_message)
 
-        expected_args = [signal, __version__]
+        expected_args = [signal, version]
         sighandler.send_response.assert_called_once_with(expected_args)
 
         sighandler.send_response.reset_mock()
@@ -1853,7 +1859,7 @@ class TestSignalHandler(TestBase):
 
         sighandler.react_to_signal(unpacked_message)
 
-        expected_args = [b"STORING_DISABLED", __version__]
+        expected_args = [b"STORING_DISABLED", version]
         sighandler.send_response.assert_called_once_with(expected_args)
 
         sighandler.send_response.reset_mock()
@@ -1993,7 +1999,7 @@ class TestSignalHandler(TestBase):
 
         sighandler.react_to_signal(unpacked_message)
 
-        expected_args = [b"STORING_DISABLED", __version__]
+        expected_args = [b"STORING_DISABLED", version]
         sighandler.send_response.assert_called_once_with(expected_args)
 
         sighandler.send_response.reset_mock()

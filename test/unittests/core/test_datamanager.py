@@ -151,7 +151,7 @@ class TestDataManager(TestBase):
     def send_signal(self, signal, ports, prio=None):
         self.log.info("send_signal : %s, %s", signal, ports)
 
-        send_message = [__version__, self.appid, signal]
+        send_message = [__version__.encode("utf-8"), self.appid, signal]
 
         targets = []
         if isinstance(ports, list):
