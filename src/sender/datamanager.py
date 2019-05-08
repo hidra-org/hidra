@@ -1120,16 +1120,16 @@ class DataManager(Base):
         self.stop_socket(name="control_pub_socket")
         self.stop_socket(name="test_socket")
 
-        # cleanup hanging processes
-#        if self.signalhandler_thr.is_alive():
-#            self.log.info("SignalHandler hangs. Terminated.")
-#        if self.taskprovider_pr.is_alive():
-#            self.log.info("TaskProvider hangs. Terminated.")
-#        if self.use_cleaner and self.cleaner_pr.is_alive():
-#            self.log.info("Cleaner hangs. Terminated.")
-#        for datadispatcher in self.datadispatcher_pr:
-#            if datadispatcher.is_alive():
-#                self.log.info("DataDispatcher hangs. Terminated.")
+        # detecting hanging processes
+        if self.signalhandler_thr.is_alive():
+            self.log.error("SignalHandler hangs.")
+        if self.taskprovider_pr.is_alive():
+            self.log.error("TaskProvider hangs.")
+        if self.use_cleaner and self.cleaner_pr.is_alive():
+            self.log.error("Cleaner hangs.")
+        for datadispatcher in self.datadispatcher_pr:
+            if datadispatcher.is_alive():
+                self.log.error("DataDispatcher hangs.")
 
         if self.context is not None:
             self.log.info("Destroying context")
