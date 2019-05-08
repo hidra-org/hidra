@@ -150,8 +150,8 @@ class TestDataDispatcher(TestBase):
 
         recv_ports = self.receiving_ports
         targets = [
-            ["{}:{}".format(self.con_ip, recv_ports[0]), [".cbf"], "data"],
-            ["{}:{}".format(self.con_ip, recv_ports[1]), [".cbf"], "data"]
+            ["{}:{}".format(self.con_ip, recv_ports[0]), 1, "data"],
+            ["{}:{}".format(self.con_ip, recv_ports[1]), 1, "data"]
         ]
 
         message = [json.dumps(metadata).encode("utf-8"),

@@ -34,6 +34,7 @@ import time
 import threading
 from shutil import copyfile
 import socket
+import sys
 import zmq
 
 from test_base import TestBase, create_dir
@@ -126,9 +127,28 @@ class TestTaskProvider(TestBase):
         create_dir(directory=ipc_dir, chmod=0o777)
 
         monitored_dir = os.path.join(self.base_dir, "data", "source")
+
+        if sys.version_info[0] < 3:
+            used_eventdetector = "inotifyx_events"
+        else:
+            used_eventdetector = "inotify_events"
+
         self.taskprovider_config = {
             "eventdetector": {
-                "type": "inotifyx_events",
+                "type": used_eventdetector,
+                "inotify_events": {
+                    "monitored_dir": monitored_dir,
+                    "fix_subdirs": ["commissioning", "current", "local"],
+                    "monitored_events": {
+                        "IN_CLOSE_WRITE": [".tif", ".cbf"],
+                        "IN_MOVED_TO": [".log"]
+                    },
+                    "timeout": 0.1,
+                    "history_size": 0,
+                    "use_cleanup": False,
+                    "time_till_closed": 5,
+                    "action_time": 120
+                },
                 "inotifyx_events": {
                     "monitored_dir": monitored_dir,
                     "fix_subdirs": ["commissioning", "current", "local"],
@@ -172,6 +192,15 @@ class TestTaskProvider(TestBase):
             endpoint=endpoints.router_con
         )
 
+        control_socket = self.start_socket(
+            name="control_socket",
+            sock_type=zmq.PUB,
+            sock_con="bind",
+            # it is the sub endpoint because originally this is handled with
+            # a zmq thread device
+            endpoint=endpoints.control_sub_bind
+        )
+
         source_file = os.path.join(self.base_dir,
                                    "test",
                                    "test_files",
@@ -199,11 +228,13 @@ class TestTaskProvider(TestBase):
         except KeyboardInterrupt:
             pass
         finally:
+            self.log.info("send exit signal")
+            control_socket.send_multipart([b"control", b"EXIT"])
 
             request_responder_pr.stop()
-            taskprovider_pr.terminate()
 
             self.stop_socket(name="router_socket", socket=router_socket)
+            self.stop_socket(name="control_socket", socket=control_socket)
 
             for number in range(self.start, self.stop):
                 target_file = os.path.join(target_file_base,

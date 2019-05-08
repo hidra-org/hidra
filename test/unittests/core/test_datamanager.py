@@ -35,6 +35,7 @@ import os
 import pwd
 import time
 from shutil import copyfile
+import sys
 import zmq
 
 from test_base import TestBase, create_dir
@@ -84,6 +85,12 @@ class TestDataManager(TestBase):
                        "current/scratch_bl",
                        "local"]
         ports = self.config["ports"]
+
+        if sys.version_info[0] < 3:
+            used_eventdetector = "inotifyx_events"
+        else:
+            used_eventdetector = "inotify_events"
+
         self.datamanager_config = {
             "general": {
                 "com_port": ports["com"],
@@ -103,9 +110,19 @@ class TestDataManager(TestBase):
                 "whitelist": None
             },
             "eventdetector": {
-                "type": "inotifyx_events",
+                "type": used_eventdetector,
                 "eventdetector_port": 50003,
                 "ext_data_port": 50101,
+                "inotify_events": {
+                    "monitored_dir": "/home/kuhnm/projects/hidra/data/source",
+                    "fix_subdirs": fix_subdirs,
+                    "create_fix_subdirs": False,
+                    "monitored_events": {"IN_CLOSE_WRITE": [""]},
+                    "use_cleanup": False,
+                    "history_size": 0,
+                    "action_time": 10,
+                    "time_till_closed": 2,
+                },
                 "inotifyx_events": {
                     "monitored_dir": "/home/kuhnm/projects/hidra/data/source",
                     "fix_subdirs": fix_subdirs,
@@ -237,25 +254,36 @@ class TestDataManager(TestBase):
 
         time.sleep(0.5)
         try:
-            for i in range(self.start, self.stop):
-                target_file = os.path.join(target_file_base,
-                                           "{}.cbf".format(i))
-                self.log.debug("copy to %s", target_file)
-                copyfile(source_file, target_file)
+            n_iter = self.stop - self.start
+            i = 0
+            create_new_file = True
 
-                time.sleep(1)
+            while i < n_iter:
+                if create_new_file:
+                    target_file = os.path.join(target_file_base,
+                                               "{}.cbf".format(i))
+                    self.log.debug("copy to %s", target_file)
+                    copyfile(source_file, target_file)
+
+                    time.sleep(1)
 
                 recv_message = self.fixed_recv_socket.recv_multipart()
 
-                if recv_message == ["ALIVE_TEST"]:
+                if recv_message == [b"ALIVE_TEST"]:
+                    self.log.info("received: %s", recv_message[0])
+                    create_new_file = False
                     continue
 
+                i += 1
+                create_new_file = True
+
                 self.log.info("received fixed: %s",
-                              json.loads(recv_message[0]))
+                              json.loads(recv_message[0].decode("utf-8")))
 
                 for sckt in self.receiving_sockets:
                     recv_message = sckt.recv_multipart()
-                    self.log.info("received: %s", json.loads(recv_message[0]))
+                    self.log.info("received: %s",
+                                  json.loads(recv_message[0].decode("utf-8")))
 
         except Exception as excp:
             self.log.error("Exception detected: %s", excp,
