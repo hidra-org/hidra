@@ -38,6 +38,7 @@ import logging
 from multiprocessing import Queue
 import re
 import socket
+import sys
 import zmq
 
 try:
@@ -82,6 +83,12 @@ class TestTransfer(TestBase):
             context="fake_context",
             dirs_not_to_create=None
         )
+
+        if sys.version_info[0] < 3:
+            self.builtins_open_mock = "__builtin__.open"
+        else:
+            # python3: __builtin__ was renamed to builtins
+            self.builtins_open_mock = "builtins.open"
 
     def test_get_logger(self):
 
@@ -462,9 +469,9 @@ class TestTransfer(TestBase):
             with mock.patch(m_set_targets) as mock_set_targets:
                 with mock.patch(m_send_signal) as mock_send_signal:
                     mock_send_signal.return_value = [
-                        b"START_{}".format(
+                        "START_{}".format(
                             self.transfer_conf["connection_type"]
-                        )
+                        ).encode("ascii")
                     ]
 
                     transfer.initiate(targets)
@@ -489,7 +496,7 @@ class TestTransfer(TestBase):
             with mock.patch(m_set_targets) as mock_set_targets:
                 with mock.patch(m_send_signal) as mock_send_signal:
                     mock_send_signal.return_value = [
-                        "something_wrong"
+                        b"something_wrong"
                     ]
 
                     with self.assertRaises(m_transfer.CommunicationFailed):
@@ -631,7 +638,7 @@ class TestTransfer(TestBase):
             }
 
             with self.assertRaises(exception):
-                transfer._send_signal("foo")
+                transfer._send_signal(b"foo")
 
             self.assertTrue(transfer.stop.called)
 
@@ -658,7 +665,7 @@ class TestTransfer(TestBase):
         transfer.signal_socket.send_multipart.side_effect = TestException()
 
         with self.assertRaises(TestException):
-            transfer._send_signal("foo")
+            transfer._send_signal(b"foo")
 
         # cleanup
         transfer.signal_socket = None
@@ -673,7 +680,7 @@ class TestTransfer(TestBase):
         transfer.poller.poll.side_effect = TestException()
 
         with self.assertRaises(TestException):
-            transfer._send_signal("foo")
+            transfer._send_signal(b"foo")
 
         # cleanup
         transfer.signal_socket = None
@@ -693,7 +700,7 @@ class TestTransfer(TestBase):
         }
 
         with self.assertRaises(TestException):
-            transfer._send_signal("foo")
+            transfer._send_signal(b"foo")
 
         # cleanup
         transfer.signal_socket = None
@@ -763,8 +770,8 @@ class TestTransfer(TestBase):
             transfer.signal_socket: zmq.POLLIN
         }
 
-        ret_val = transfer._send_signal("foo")
-        self.assertEqual(ret_val, ["something not supported", ""])
+        ret_val = transfer._send_signal(b"foo")
+        self.assertEqual(ret_val, [b"something not supported", ""])
 
         # cleanup
         transfer.signal_socket = None
@@ -865,8 +872,10 @@ class TestTransfer(TestBase):
         data_socket_prop = [ipc_dir, ipc_file]
         ret_val = transfer._get_data_endpoint(data_socket_prop)
 
-        self.assertEqual(ret_val,
-                         (ipc_socket_id, "ipc://{}".format(ipc_socket_id)))
+        self.assertEqual(
+            ret_val,
+            (ipc_socket_id.encode("utf-8"), "ipc://{}".format(ipc_socket_id))
+        )
 
         # cleanup
         transfer.zmq_protocol = None
@@ -1694,7 +1703,7 @@ class TestTransfer(TestBase):
         transfer.log = mock.MagicMock()
         transfer.started_connections = {"STREAM": None}
         transfer.data_socket = MockZmqSocket()
-        transfer.data_socket.recv_multipart.return_value = ["foo"]
+        transfer.data_socket.recv_multipart.return_value = [b"foo"]
         transfer.poller = MockZmqPollerAllFake()
         transfer.poller.poll.return_value = {
             transfer.data_socket: zmq.POLLIN
@@ -1890,7 +1899,7 @@ class TestTransfer(TestBase):
             "file_mod_time": "now",
             "chunk_number": 0
         }
-        mock_get_chunk.side_effect = [[metadata, ""]]
+        mock_get_chunk.side_effect = [[metadata, b""]]
         mock_check_file_closed.side_effect = [True]
 
         ret_metadata, ret_data = transfer.get()
@@ -1902,7 +1911,7 @@ class TestTransfer(TestBase):
             "chunk_number": None
         }
         self.assertDictEqual(ret_metadata, expected)
-        self.assertEqual(ret_data, "")
+        self.assertEqual(ret_data, b"")
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -1928,8 +1937,8 @@ class TestTransfer(TestBase):
             "file_mod_time": "now1",
             "chunk_number": 1
         }
-        mock_get_chunk.side_effect = [[metadata0, "part0"],
-                                      [metadata1, "part1"]]
+        mock_get_chunk.side_effect = [[metadata0, b"part0"],
+                                      [metadata1, b"part1"]]
         mock_check_file_closed.side_effect = [False, True]
 
         ret_metadata, ret_data = transfer.get()
@@ -1941,7 +1950,7 @@ class TestTransfer(TestBase):
             "chunk_number": None
         }
         self.assertDictEqual(ret_metadata, expected)
-        self.assertEqual(ret_data, "part0part1")
+        self.assertEqual(ret_data, b"part0part1")
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2077,9 +2086,9 @@ class TestTransfer(TestBase):
             "file_mod_time": "now2",
             "chunk_number": 0
         }
-        mock_get_chunk.side_effect = [[metadata0, "part0"],
-                                      [metadata_extra_chunk, "extra_part0"],
-                                      [metadata1, "part1"]]
+        mock_get_chunk.side_effect = [[metadata0, b"part0"],
+                                      [metadata_extra_chunk, b"extra_part0"],
+                                      [metadata1, b"part1"]]
         mock_check_file_closed.side_effect = [False, False, True]
 
         ret_metadata, ret_data = transfer.get()
@@ -2091,7 +2100,7 @@ class TestTransfer(TestBase):
             "chunk_number": None
         }
         self.assertDictEqual(ret_metadata, expected)
-        self.assertEqual(ret_data, "part0part1")
+        self.assertEqual(ret_data, b"part0part1")
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2182,7 +2191,7 @@ class TestTransfer(TestBase):
 
         mock_check_file_closed.side_effect = [False]
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             ret_val = transfer.store_chunk(descriptors,
                                            filepath,
                                            payload,
@@ -2209,7 +2218,7 @@ class TestTransfer(TestBase):
 
         mock_check_file_closed.side_effect = [False]
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             ret_val = transfer.store_chunk(descriptors,
                                            filepath,
                                            payload,
@@ -2251,7 +2260,7 @@ class TestTransfer(TestBase):
 
         transfer.log = mock.MagicMock()
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             # errno.ENOENT == "No such file or directory"
             mock_open.side_effect = TestIOError()
 
@@ -2287,7 +2296,7 @@ class TestTransfer(TestBase):
         vars_calls = ["raise", ""]
 
         with mock.patch("os.makedirs") as mock_makedirs:
-            with mock.patch("__builtin__.open") as mock_open:
+            with mock.patch(self.builtins_open_mock) as mock_open:
                 # errno.ENOENT == "No such file or directory"
                 mock_open.side_effect = mock_two_calls
 
@@ -2342,7 +2351,7 @@ class TestTransfer(TestBase):
         transfer.dirs_not_to_create = "test_rel_path"
 
         with mock.patch("os.makedirs") as mock_makedirs:
-            with mock.patch("__builtin__.open") as mock_open:
+            with mock.patch(self.builtins_open_mock) as mock_open:
                 # errno.ENOENT == "No such file or directory"
                 mock_open.side_effect = mock_two_calls
 
@@ -2375,7 +2384,7 @@ class TestTransfer(TestBase):
 
         transfer.log = mock.MagicMock()
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             mock_open.side_effect = IOError()
 
             with self.assertRaises(IOError):
@@ -2404,7 +2413,7 @@ class TestTransfer(TestBase):
 
         transfer.log = mock.MagicMock()
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             mock_open.side_effect = TestException()
 
             with self.assertRaises(TestException):
@@ -2496,7 +2505,7 @@ class TestTransfer(TestBase):
 
         mock_check_file_closed.side_effect = [False]
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             transfer.store_chunk(descriptors,
                                  filepath,
                                  payload,
@@ -2590,7 +2599,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            ["test_topic", "test_file_id"]
+            [b"test_topic", b"test_file_id"]
         )
 
         # cleanup
@@ -2634,7 +2643,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            ["test_topic", "test_file_id", str(chunk_number)]
+            [b"test_topic", b"test_file_id", str(chunk_number)]
         )
 
         # cleanup
@@ -2680,7 +2689,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            ["test_topic", "test_file_id", "1"]
+            [b"test_topic", b"test_file_id", "1"]
         )
 
         # cleanup
@@ -3062,7 +3071,7 @@ class TestTransfer(TestBase):
 
         def stop_started_connections(transfer, connection):
             transfer.signal_socket = mock.MagicMock()
-            transfer.signal_exchanged = b"{}".format(connection)
+            transfer.signal_exchanged = str(connection).encode("ascii")
             transfer.started_connections = {
                 connection: None
             }
@@ -3073,7 +3082,9 @@ class TestTransfer(TestBase):
                     transfer.stop()
 
                 self.assertTrue(mock_send_signal.called)
-                mock_send_signal.assert_called_once_with("STOP_" + connection)
+                mock_send_signal.assert_called_once_with(
+                    "STOP_{}".format(connection).encode("ascii")
+                )
 
             self.assertDictEqual(transfer.started_connections, {})
 
@@ -3082,7 +3093,7 @@ class TestTransfer(TestBase):
 
         def stop_signal_exchanged(transfer, connection):
             transfer.signal_socket = mock.MagicMock()
-            transfer.signal_exchanged = connection
+            transfer.signal_exchanged = str(connection).encode("ascii")
             transfer.started_connections = {}
 
             m_mock_send_signal = "hidra.transfer.Transfer._send_signal"
@@ -3091,15 +3102,17 @@ class TestTransfer(TestBase):
                     transfer.stop()
 
                 self.assertTrue(mock_send_signal.called)
-                mock_send_signal.assert_called_once_with("STOP_" + connection)
+                mock_send_signal.assert_called_once_with(
+                    "STOP_{}".format(connection).encode("ascii")
+                )
 
             # cleanup
             transfer.signal_socket = None
 
         stop_started_connections(transfer, "STREAM")
-        stop_signal_exchanged(transfer, b"STREAM")
+        stop_signal_exchanged(transfer, "STREAM")
         stop_started_connections(transfer, "QUERY_NEXT")
-        stop_signal_exchanged(transfer, b"QUERY_NEXT")
+        stop_signal_exchanged(transfer, "QUERY_NEXT")
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -3271,7 +3284,7 @@ class TestTransfer(TestBase):
 
         def call_force_stop(transfer, connection):
             transfer.connection_type = connection
-            signal = b"FORCE_STOP_{}".format(connection)
+            signal = "FORCE_STOP_{}".format(connection).encode("ascii")
 
             mock_send_signal.side_effect = [[signal]]
             transfer.log = mock.MagicMock()
@@ -3298,7 +3311,7 @@ class TestTransfer(TestBase):
 
         transfer.connection_type = "STREAM"
 
-        mock_send_signal.side_effect = [["foo"]]
+        mock_send_signal.side_effect = [[b"foo"]]
         transfer.log = mock.MagicMock()
 
         transfer.force_stop(targets=[])

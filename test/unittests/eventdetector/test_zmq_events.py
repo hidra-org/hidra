@@ -71,8 +71,9 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.module_name = "zmq_events"
         self.config_module = {
+            "context": self.context,
             "number_of_streams": 1,
-            "eventdetector_port": 50003,
+            "eventdetector_port": 50003
         }
         # needed for later reuse
         self.conf_structure = {
@@ -200,7 +201,10 @@ class TestEventDetector(EventDetectorTestBase):
                 "ext_ip": self.ext_ip,
             },
             "eventdetector": {
-                self.module_name: {"eventdetector_port": 50003}
+                self.module_name: {
+                    "context": self.context,
+                    "eventdetector_port": 50003
+                }
             }
         }
 

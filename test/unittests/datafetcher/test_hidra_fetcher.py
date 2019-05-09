@@ -164,7 +164,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 file_content = file_descriptor.read(chunksize)
 
             self.data_fw_socket.send_multipart(
-                [json.dumps(metadata), file_content]
+                [json.dumps(metadata).encode("utf-8"), file_content]
             )
             self.log.debug("Incoming data sent")
 

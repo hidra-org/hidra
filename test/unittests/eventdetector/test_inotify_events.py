@@ -136,10 +136,16 @@ class TestEventDetector(EventDetectorTestBase):
             "IN_MOVED_TO": re.compile(".*(.log)$")
         }
         expected_result2 = re.compile("(.*(.log)$|.*(.tif|.cbf|.file)$)$")
+        expected_result2b = re.compile("(.*(.tif|.cbf|.file)$|.*(.log)$)$")
 
         self.assertDictEqual(self.eventdetector.mon_regex_per_event,
                              expected_result1)
-        self.assertEqual(self.eventdetector.mon_regex, expected_result2)
+        try:
+            self.assertEqual(self.eventdetector.mon_regex, expected_result2)
+        except AssertionError:
+            # depending on the order the dictionary is evaluted the regex
+            # also changes
+            self.assertEqual(self.eventdetector.mon_regex, expected_result2b)
 
         self.assertIsNone(self.eventdetector.cleanup_thread)
 

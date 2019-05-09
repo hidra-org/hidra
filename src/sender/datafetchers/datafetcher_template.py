@@ -122,7 +122,7 @@ class DataFetcher(DataFetcherBase):
         for i in range(5):
 
             chunk_number = i
-            file_content = b"test_data_{}".format(chunk_number)
+            file_content = "test_data_{}".format(chunk_number).encode("ascii")
 
             try:
                 # assemble metadata for zmq-message

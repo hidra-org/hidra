@@ -140,7 +140,12 @@ def convert_socket_to_fqdn(socketids, log):
             # socketids had the format
             # [["cfeld-pcx27533:50101", 1, ".*(tif|cbf)$"], ...]
             if isinstance(target, list):
-                host, port = target[0].split(":")
+                try:
+                    host, port = target[0].split(":")
+                except ValueError:
+                    log.error("Target is of wrong format, either host or port"
+                              "is missing")
+                    raise
                 new_target = "{}:{}".format(socket_m.getfqdn(host), port)
                 target[0] = new_target
     else:
@@ -210,7 +215,8 @@ def generate_sender_id(main_pid):
         A byte string containing the identifier
     """
 
-    return b"{}_{}".format(socket_m.getfqdn(), main_pid)
+    sender_id = "{}_{}".format(socket_m.getfqdn(), main_pid).encode("ascii")
+    return sender_id
 
 
 # ------------------------------ #

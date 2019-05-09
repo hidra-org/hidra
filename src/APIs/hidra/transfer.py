@@ -608,7 +608,7 @@ class Transfer(Base):
         # established
         self.log.info("Sending Signal")
 
-        send_message = [__version__, self.appid.encode('utf-8'), signal]
+        send_message = [__version__.encode("utf-8"), self.appid.encode('utf-8'), signal]
 
         trg = json.dumps(self.targets).encode('utf-8')
         send_message.append(trg)
@@ -708,7 +708,7 @@ class Transfer(Base):
 
         elif self.targets:
             if len(self.targets) == 1:
-                host, port = self.targets[0][0].split(":")
+                host, port = self.targets[0][0].decode("utf-8").split(":")
             else:
                 raise FormatError("Multiple possible ports. "
                                   "Please choose which one to use.")
@@ -1555,7 +1555,7 @@ class Transfer(Base):
 
                     # merge the data again
                     received["data"] = b"".join(received["data"])
-                except:
+                except Exception:
                     self.log.error("Something went wrong when merging chunks",
                                    exc_info=True)
                     raise
@@ -1659,7 +1659,10 @@ class Transfer(Base):
         # --------------------------------------------------------------------
         # check chunk_number
         # --------------------------------------------------------------------
-        if metadata["chunk_number"] == desc["last_chunk_number"]:
+        if desc["last_chunk_number"] is None:
+            pass
+
+        elif metadata["chunk_number"] == desc["last_chunk_number"]:
             # ignore chunk, was already written
             self.log.info("Ignore identical chunk %s for file %s",
                           metadata["chunk_number"], filepath)
@@ -1709,7 +1712,7 @@ class Transfer(Base):
                 topic = metadata["confirmation_required"].encode()
 
                 try:
-                    remote_version = b"{}".format(metadata["version"])
+                    remote_version = metadata["version"]
                 except KeyError:
                     remote_version = None
 

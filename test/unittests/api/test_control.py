@@ -141,7 +141,7 @@ class TestReceiverControl(TestBase):
 
         self.assertEqual(ret_val, ["test_response"])
         self.control.status_socket.send_multipart.assert_called_once_with(
-            ["STATUS_CHECK"]
+            [b"STATUS_CHECK"]
         )
         self.control._get_response.assert_called_once_with()
 
@@ -162,7 +162,7 @@ class TestReceiverControl(TestBase):
         self.control.reset_status()
 
         self.control.status_socket.send_multipart.assert_called_once_with(
-            ["RESET_STATUS"]
+            [b"RESET_STATUS"]
         )
         self.control._get_response.assert_called_once_with()
 
