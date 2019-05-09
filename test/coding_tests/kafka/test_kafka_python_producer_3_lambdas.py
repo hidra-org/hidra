@@ -8,7 +8,7 @@ import threading
 import time
 
 topic = "kuhnm_test"
-server = "asap3-events-01"
+server = ["asap3-events-01", "asap3-events-02"]
 
 class LambdaSimulator(threading.Thread):
 
