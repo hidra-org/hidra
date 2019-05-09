@@ -35,6 +35,7 @@ eventdetector:
     #type: http_events
     #type: hidra_events
     #type: zmq_events
+    #type: sync_ewmscp_events
 
     inotifyx_events:
         # Directory to be monitor for changes
@@ -154,6 +155,26 @@ eventdetector:
         # API version of the detector
         det_api_version: 1.6.0
 
+    sync_ewmscp_events:
+        # Size of the ring buffer to store received events
+        buffer_size: 50
+
+        # Base directory the files are located
+        monitored_dir: "/my_dir"
+
+        # Kafka server to register for events
+        kafka_server: ["asap3-events-01", "asap3-events-02"]
+
+        # Kafka topic to register for events
+        kafka_topic: "kuhnm_test"
+
+        # Detector identifers used to distinguished from which detector a file
+        # comes from
+        detids: ["DET0", "DET1", "DET2"]
+
+        # Number of detectors to synchronize
+        n_detectors: 3
+
 datafetcher:
     # Module with methods specifying how to get the data
     # (options are "file_fetcher", "zmq_fetcher", "http_fetcher")
@@ -161,6 +182,7 @@ datafetcher:
     #type: http_fetcher
     #type: hidra_fetcher
     #type: zmq_fetcher
+    #type: no_data_fetcher
 
     # Enable ZMQ pipe into storage system
     #use_data_stream: True
@@ -209,3 +231,6 @@ datafetcher:
         # Subdirectories to be monitored and to store data to. These directory have to
         # exist when HiDRA is started and should not be removed during the run.
         fix_subdirs: *fix_subdirs
+
+    no_data_fetcher:
+        not_needed: True
