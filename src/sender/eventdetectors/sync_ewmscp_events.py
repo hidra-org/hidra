@@ -160,12 +160,12 @@ class EventDetector(EventDetectorBase):
 
         self.sync_thread = None
         self.lock = None
-        self.source_path = None
+        self.monitored_dir = None
 
         self.required_params = {
             "eventdetector": {
                 self.ed_type: [
-                    "source_path",
+                    "monitored_dir",
                     "buffer_size",
                     "kafka_server",
                     "kafka_topic",
@@ -184,7 +184,7 @@ class EventDetector(EventDetectorBase):
         self.check_config()
 
         self.lock = threading.Lock()
-        self.source_path = self.config["source_path"]
+        self.monitored_dir = self.config["monitored_dir"]
 
         self.sync_thread = Synchronizing(
             log_queue=log_queue,
@@ -205,9 +205,9 @@ class EventDetector(EventDetectorBase):
                 for i in synced_data:
                     path = pathlib.Path(i)
 
-                    rel_path = path.parent.relative_to(self.source_path)
+                    rel_path = path.parent.relative_to(self.monitored_dir)
                     event_message = {
-                        "source_path": self.source_path,
+                        "source_path": self.monitored_dir,
                         "relative_path": rel_path.as_posix(),
                         "filename": path.name
                     }
