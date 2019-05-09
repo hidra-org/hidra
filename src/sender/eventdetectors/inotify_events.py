@@ -102,6 +102,7 @@ class EventDetector(EventDetectorBase):
         # check that the required_params are set inside of module specific
         # config
         self.check_config()
+        self.check_monitored_dir()
         self._setup()
 
     def _set_required_params(self):

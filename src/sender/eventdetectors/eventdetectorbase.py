@@ -112,6 +112,37 @@ class EventDetectorBase(Base):
         self.log.info("Configuration for event detector %s: %s",
                       self.ed_type, self.config_reduced)
 
+    def check_monitored_dir(self):
+        """Check that the monitored exists and creates subdirs if needed.
+        """
+
+        if "monitored_dir" not in config_ed[ed_type]:
+            return
+
+        # get rid of formating errors
+        self.config["monitored_dir"] = os.path.normpath(
+            self.config["monitored_dir"]
+        )
+
+        utils.check_existance(self.config["monitored_dir"])
+        if ("create_fix_subdirs" in self.config
+                and self.config["create_fix_subdirs"]):
+            # create the subdirectories which do not exist already
+            utils.create_sub_dirs(
+                dir_path=self.config["monitored_dir"],
+                subdirs=self.config["fix_subdirs"],
+                dirs_not_to_create=self.config["dirs_not_to_create"]
+            )
+        else:
+            # the subdirs have to exist because handles can only be added to
+            # directories inside a directory in which a handle was already set,
+            # e.g. handlers set to current/raw, local:
+            # - all subdirs created are detected + handlers are set
+            # - new directory on the same as monitored dir
+            #   (e.g. current/scratch_bl) cannot be detected
+            utils.check_all_sub_dir_exist(self.config["monitored_dir"],
+                                          self.config["fix_subdirs"])
+
     @abc.abstractmethod
     def get_new_event(self):
         """Get the events that happened since the last request.

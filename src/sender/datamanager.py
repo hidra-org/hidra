@@ -359,36 +359,6 @@ def argument_parsing():
     # check if directories exist
     utils.check_existance(config_gen["log_path"])
 
-    # TODO move this into eventdetector directly
-    if (ed_type in config_ed
-            and "monitored_dir" in config_ed[ed_type]):
-        # for convenience
-        config_ed_type = config_ed[ed_type]
-
-        # get rid of formating errors
-        config_ed_type["monitored_dir"] = os.path.normpath(
-            config_ed_type["monitored_dir"]
-        )
-
-        utils.check_existance(config_ed_type["monitored_dir"])
-        if ("create_fix_subdirs" in config_ed_type
-                and config_ed_type["create_fix_subdirs"]):
-            # create the subdirectories which do not exist already
-            utils.create_sub_dirs(
-                dir_path=config_ed_type["monitored_dir"],
-                subdirs=config_ed_type["fix_subdirs"],
-                dirs_not_to_create=config_ed_type["dirs_not_to_create"]
-            )
-        else:
-            # the subdirs have to exist because handles can only be added to
-            # directories inside a directory in which a handle was already set,
-            # e.g. handlers set to current/raw, local:
-            # - all subdirs created are detected + handlers are set
-            # - new directory on the same as monitored dir
-            #   (e.g. current/scratch_bl) cannot be detected
-            utils.check_all_sub_dir_exist(config_ed_type["monitored_dir"],
-                                          config_ed_type["fix_subdirs"])
-
     if config_df["store_data"]:
         # set process name
         check_passed, _ = utils.check_config(["local_target"],
