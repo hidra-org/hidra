@@ -97,7 +97,7 @@ class TaskProvider(Base):
         """
 
         self.log = utils.get_logger("TaskProvider", self.log_queue)
-        self.log.debug("TaskProvider started (PID {}).".format(os.getpid()))
+        self.log.debug("TaskProvider started (PID %s).", os.getpid())
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
@@ -117,8 +117,8 @@ class TaskProvider(Base):
             self.context = zmq.Context()
             self.ext_context = False
 
-        self.log.info("Loading event detector: {}"
-                      .format(self.config["eventdetector"]["type"]))
+        self.log.info("Loading event detector: %s",
+                      self.config["eventdetector"]["type"])
         eventdetector_m = __import__(self.config["eventdetector"]["type"])
 
         self.eventdetector = eventdetector_m.EventDetector(self.config,
@@ -203,7 +203,7 @@ class TaskProvider(Base):
                          json.dumps(workload["filename"]).encode("utf-8")])
 
                     requests = json.loads(self.request_fw_socket.recv_string())
-                    self.log.debug("Requests: {}".format(requests))
+                    self.log.debug("Requests: %s", requests)
                 except TypeError:
                     # This happens when CLOSE_FILE is sent as workload
                     requests = ["None"]

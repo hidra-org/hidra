@@ -346,7 +346,6 @@ class EventDetector(EventDetectorBase):
                         for dname in directories:
                             traversed_path = os.path.join(traversed_path,
                                                           dname)
-                            # pylint: disable=no-member
                             watch_descriptor = inotifyx.add_watch(
                                 self.file_descriptor,
                                 traversed_path
@@ -387,7 +386,6 @@ class EventDetector(EventDetectorBase):
                     if watch_path == dirname:
                         found_watch = watch
                         break
-                # pylint: disable=no-member
                 inotifyx.rm_watch(self.file_descriptor, found_watch)
                 self.log.info("Removed directory from watch: %s", dirname)
                 # the IN_MOVE_FROM event always apears before the IN_MOVE_TO

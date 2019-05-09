@@ -608,7 +608,9 @@ class Transfer(Base):
         # established
         self.log.info("Sending Signal")
 
-        send_message = [__version__.encode("utf-8"), self.appid.encode('utf-8'), signal]
+        send_message = [__version__.encode("utf-8"),
+                        self.appid.encode('utf-8'),
+                        signal]
 
         trg = json.dumps(self.targets).encode('utf-8')
         send_message.append(trg)

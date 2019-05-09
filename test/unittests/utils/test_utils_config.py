@@ -27,12 +27,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-try:
-    import unittest.mock as mock
-except ImportError:
-    # for python2
-    import mock
-
 from test_base import TestBase
 import hidra.utils as utils
 

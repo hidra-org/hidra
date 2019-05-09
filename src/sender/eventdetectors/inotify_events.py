@@ -86,7 +86,8 @@ class EventDetector(EventDetectorBase):
         self.mon_regex = None
         # TODO decide if this should go into config
 #        self.timeout = self.config["event_timeout"]
-        self.timeout = 1.1  # gives problems when set to 1 because of inotify module
+        # gives problems when set to 1 because of inotify module
+        self.timeout = 1.1
         self.history = None
         self.lock = None
 

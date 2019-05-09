@@ -42,6 +42,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 _file_event_list = []  # pylint: disable=invalid-name
 
+
 def get_event_message(parent_dir, filename, paths):
     """
     Generates an event messages following the overall event detector schema

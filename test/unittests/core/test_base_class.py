@@ -114,7 +114,6 @@ class TestBaseClass(TestBase):
         # config ok, no param
         # --------------------------------------------------------------------
         with mock.patch("hidra.utils.check_config") as mock_check:
-                                     # (check_passed, config_part)
 
             expected_result = {"test": "successfull"}
             mock_check.return_value = (True, expected_result)
@@ -128,11 +127,11 @@ class TestBaseClass(TestBase):
         # config ok
         # --------------------------------------------------------------------
         with mock.patch("hidra.utils.check_config") as mock_check:
-                                     # (check_passed, config_part)
             expected_result = {"test": "successfull"}
             mock_check.return_value = (True, expected_result)
 
-            ret_val = obj._check_config_base(config={}, required_params=["test_param"])
+            ret_val = obj._check_config_base(config={},
+                                             required_params=["test_param"])
 
             # assert_called() only works version >3.5
             self.assertTrue(mock_check.called)
@@ -142,11 +141,11 @@ class TestBaseClass(TestBase):
         # wrong config
         # --------------------------------------------------------------------
         with mock.patch("hidra.utils.check_config") as mock_check:
-                                     # (check_passed, config_part)
             mock_check.return_value = (False, {})
 
             with self.assertRaises(utils.WrongConfiguration):
-                obj._check_config_base(config={}, required_params=["test_param"])
+                obj._check_config_base(config={},
+                                       required_params=["test_param"])
 
     def test_start_socket(self):  # pylint: disable=no-self-use
         # TODO

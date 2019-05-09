@@ -328,32 +328,27 @@ class SignalHandler(Base):
                         if open_requests:
                             self.request_fw_socket.send_string(
                                 json.dumps(open_requests))
-                            self.log.debug("Answered to request: {}"
-                                           .format(open_requests))
-                            self.log.debug("vari_requests: {}"
-                                           .format(self.vari_requests))
-                            self.log.debug("registered_queries: {}"
-                                           .format(self.registered_queries))
                         else:
                             open_requests = ["None"]
                             self.request_fw_socket.send_string(
                                 json.dumps(open_requests)
                             )
-                            self.log.debug("Answered to request: {}"
-                                           .format(open_requests))
-                            self.log.debug("vari_requests: {}"
-                                           .format(self.vari_requests))
-                            self.log.debug("registered_queries: {}"
-                                           .format(self.registered_queries))
+
+                        self.log.debug("Answered to request: %s",
+                                       open_requests)
+                        self.log.debug("vari_requests: %s",
+                                       self.vari_requests)
+                        self.log.debug("registered_queries: %s",
+                                       self.registered_queries)
 
                     else:
-                        self.log.debug("in_message={}".format(in_message))
+                        self.log.debug("in_message=%s", in_message)
                         self.log.error("Failed to receive/answer new signal "
                                        "requests: incoming message not "
                                        "supported")
 
                 except Exception:
-                    self.log.debug("in_message={}".format(in_message))
+                    self.log.debug("in_message=%s", in_message)
                     self.log.error("Failed to receive/answer new signal "
                                    "requests", exc_info=True)
 
@@ -364,7 +359,7 @@ class SignalHandler(Base):
                     and socks[self.com_socket] == zmq.POLLIN):
 
                 in_message = self.com_socket.recv_multipart()
-                self.log.debug("Received signal: {}".format(in_message))
+                self.log.debug("Received signal: %s", in_message)
 
                 unpacked_message = self.check_signal(in_message)
 
@@ -380,7 +375,7 @@ class SignalHandler(Base):
                     and socks[self.request_socket] == zmq.POLLIN):
 
                 in_message = self.request_socket.recv_multipart()
-                self.log.debug("Received request: {}".format(in_message))
+                self.log.debug("Received request: %s", in_message)
 
                 if in_message[0] == b"NEXT":
                     socket_id = utils.convert_socket_to_fqdn(
@@ -535,7 +530,7 @@ class SignalHandler(Base):
             host = [t[0].split(":")[0] for t in targets]
             self.log.debug("host {}".format(host))
         except Exception:
-            self.log.debug("no valid signal received", exc_info=True)
+            self.log.debug("No valid signal received", exc_info=True)
             return UnpackedMessage(
                 check_successful=False,
                 response=[b"NO_VALID_SIGNAL"],
@@ -852,7 +847,6 @@ class SignalHandler(Base):
         appid = unpacked_message.appid
         socket_ids = unpacked_message.targets
         version = __version__.encode("utf-8")
-
 
         # --------------------------------------------------------------------
         # GET_VERSION
