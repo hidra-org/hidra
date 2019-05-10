@@ -24,7 +24,6 @@ SENDER_DIR = os.path.join(BASE_DIR, "src", "sender")
 if SENDER_DIR not in sys.path:
     sys.path.insert(0, SENDER_DIR)
 
-
 from eventdetectorbase import EventDetectorBase
 import hidra.utils as utils
 
@@ -95,13 +94,24 @@ class Synchronizing(threading.Thread):
                     msg_path = pathlib.Path(msg.value["path"])
 
                     # determine to which detector the message belongs to
+                    found_detector = None
                     for detid in self.detids:
                         if msg_path.match("*{}*".format(detid)):
                             found_detector = detid
                             break
 
-                    path_tmpl = str(msg_path).replace(found_detector, "{}")
+                    if found_detector is None:
+                        self.log.debug("No match found for %s", msg_path)
+                        continue
 
+                    if str(msg_path).count(found_detector) == 1:
+                        path_tmpl = str(msg_path).replace(found_detector, "{}")
+                    else:
+                        self.log.error("Multiple occurences of detector id "
+                                       "inside path is not supported.")
+                        self.log.debug("msg_path=%s", msg_path)
+
+                    # TODO check for (duplicate)
                     self.sync_buffer.append(
                         {"path_tmpl": path_tmpl, "detid": found_detector}
                     )
