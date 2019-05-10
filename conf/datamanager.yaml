@@ -169,8 +169,22 @@ eventdetector:
         kafka_topic: "kuhnm_test"
 
         # Detector identifers used to distinguished from which detector a file
-        # comes from
+        # comes from. There are 2 variants:
+        # - list of the detector ids as strings
+        #   e.g. ["DET0", "DET1", "DET2"]
+        # - list of dictionaries containing the detector id and the pattern in
+        #   glob-style to look for this detector in the file name
+        #   e.g. [{id: "DET0", pattern:"*DET0.nxs"},
+        #         {id: "DET1", pattern:"*DET1.nxs"},
+        #         {id: "DET2", pattern:"*DET0.nxs"}]
         detids: ["DET0", "DET1", "DET2"]
+        # detids: # if the search pattern is not enough
+        #    - id: "DET0"
+        #      pattern: "*{}*.h5"
+        #    - id: "DET1"
+        #      pattern: "*{}*.h5"
+        #    - id: "DET2"
+        #      pattern: "*{}*.h5"
 
         # Number of detectors to synchronize
         n_detectors: 3

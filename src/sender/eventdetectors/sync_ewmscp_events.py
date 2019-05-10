@@ -96,8 +96,15 @@ class Synchronizing(threading.Thread):
                     # determine to which detector the message belongs to
                     found_detector = None
                     for detid in self.detids:
-                        if msg_path.match("*{}*".format(detid)):
-                            found_detector = detid
+                        if isinstance(detid, dict):
+                            d_id = detid["id"]
+                            pattern = detid["pattern"].format(d_id)
+                        else:
+                            pattern = "*{}*".format(detid)
+                            d_id = detid
+
+                        if msg_path.match(pattern):
+                            found_detector = d_id
                             break
 
                     if found_detector is None:
