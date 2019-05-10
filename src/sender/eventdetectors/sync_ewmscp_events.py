@@ -113,7 +113,12 @@ class Synchronizing(threading.Thread):
 
                     # TODO check for (duplicate)
                     self.sync_buffer.append(
-                        {"path_tmpl": path_tmpl, "detid": found_detector}
+                        {
+                            "path_tmpl": path_tmpl,
+                            "detid": found_detector,
+                            "file_path": str(msg_path),
+                            "ewmscp_info": copy.deepcopy(msg.value)
+                        }
                     )
 
                     # set full?
@@ -126,8 +131,10 @@ class Synchronizing(threading.Thread):
                     if len(file_set) == self.n_detectors:
                         self.log.debug("Full image detected: %s", path_tmpl)
 
+                        msg_data = [i for _, i in file_set]
+
                         with self.lock:
-                            synced_data.append(path_tmpl)
+                            synced_data.append((path_tmpl, msg_data))
 
                         # remove elements backwards to keep indices correct
                         for i in sorted(file_set, reverse=True):
@@ -213,14 +220,15 @@ class EventDetector(EventDetectorBase):
             event_message_list = []
 
             with self.lock:
-                for i in synced_data:
+                for i, msg_data in synced_data:
                     path = pathlib.Path(i)
 
                     rel_path = path.parent.relative_to(self.monitored_dir)
                     event_message = {
                         "source_path": self.monitored_dir,
                         "relative_path": rel_path.as_posix(),
-                        "filename": path.name
+                        "filename": path.name,
+                        "additional_info": msg_data
                     }
 
                     event_message_list.append(event_message)
