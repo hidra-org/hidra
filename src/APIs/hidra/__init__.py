@@ -28,7 +28,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from .transfer import Transfer  # noqa F401
-from .transfer import generate_filepath
+from .transfer import generate_filepath, generate_filepath_synced
 from .transfer import convert_suffix_list_to_regex
 from .ingest import Ingest  # noqa F401
 from .control import Control  # noqa F401
@@ -57,6 +57,7 @@ __all__ = [
     "LoggingFunction",
     "execute_ldapsearch",
     "generate_filepath",
+    "generate_filepath_synced",
     "convert_suffix_list_to_regex",
     "NotSupported",
     "UsageError",

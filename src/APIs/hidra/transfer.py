@@ -138,6 +138,24 @@ def generate_filepath(base_path, config_dict, add_filename=True):
         return target_path
 
 
+def generate_filepath_synced(config_dict):
+    """
+    Generates all full paths (including file names) where file will be saved to.
+
+    Returns:
+        A list of the file paths as strings.
+    """
+
+    if not config_dict or "additional_info" not in config_dict:
+        return None
+
+    file_paths = []
+    for info in config_dict["additional_info"]:
+        file_paths.append(info["file_path"])
+
+    return file_paths
+
+
 def generate_file_identifier(config_dict):
     """
     Generates file identifier assembled out of relative path and file name.
