@@ -89,8 +89,9 @@ class Synchronizing(threading.Thread):
                 if not message:
                     continue
 
-                for msg in message[TopicPartition(topic=self.topic,
-                                                  partition=0)]:
+                topic_partition = list(message.keys())[0]
+
+                for msg in message[topic_partition]:
                     msg_path = pathlib.Path(msg.value["path"])
 
                     # determine to which detector the message belongs to
