@@ -1091,14 +1091,16 @@ class DataManager(Base):
         self.stop_socket(name="test_socket")
 
         # detecting hanging processes
-        if self.signalhandler_thr.is_alive():
+        if (self.signalhandler_thr is not None
+                and self.signalhandler_thr.is_alive()):
             self.log.error("SignalHandler hangs.")
-        if self.taskprovider_pr.is_alive():
+        if (self.taskprovider_pr is not None
+                and self.taskprovider_pr.is_alive()):
             self.log.error("TaskProvider hangs.")
         if self.use_cleaner and self.cleaner_pr.is_alive():
             self.log.error("Cleaner hangs.")
         for datadispatcher in self.datadispatcher_pr:
-            if datadispatcher.is_alive():
+            if datadispatcher is not None and datadispatcher.is_alive():
                 self.log.error("DataDispatcher hangs.")
 
         if self.context is not None:
