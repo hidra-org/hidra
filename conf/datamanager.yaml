@@ -168,7 +168,7 @@ datafetcher:
 
     # Fixed host and port to send the data to with highest priority
     # (only needed if use_data_stream is enabled)
-    data_stream_targets = [["asap3-p00", 50100]]
+    data_stream_targets: [["asap3-p00", 50100]]
 
     # Number of parallel data streams
     number_of_streams: 8
