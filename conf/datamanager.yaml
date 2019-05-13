@@ -162,6 +162,10 @@ eventdetector:
         # Base directory the files are located
         monitored_dir: "/my_dir"
 
+        # Subdirectories to be monitored and to store data to. These directory have to
+        # exist when HiDRA is started and should not be removed during the run.
+        fix_subdirs: *fix_subdirs
+
         # Kafka server to register for events
         kafka_server: ["asap3-events-01", "asap3-events-02"]
 

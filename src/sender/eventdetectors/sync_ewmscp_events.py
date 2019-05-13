@@ -48,6 +48,10 @@ class Synchronizing(threading.Thread):
         self.detids = config["detids"]
         self.n_detectors = config["n_detectors"]
 
+        self.monitored_dir = pathlib.Path(config["monitored_dir"])
+        self.fix_subdirs = config["fix_subdirs"]
+        self.paths = None
+
         self.consumer = None
 
         self.sync_buffer = collections.deque(maxlen=config["buffer_size"])
@@ -57,6 +61,9 @@ class Synchronizing(threading.Thread):
         self._setup()
 
     def _setup(self):
+
+        self.paths = [self.monitored_dir.joinpath(i) for i in self.fix_subdirs]
+
         self.consumer = KafkaConsumer(
             self.topic,
             bootstrap_servers=self.server,
@@ -92,6 +99,19 @@ class Synchronizing(threading.Thread):
 
                 for msg in message[topic_partition]:
                     msg_path = pathlib.Path(msg.value["path"])
+
+                    # check if in one of the fix_subdirs
+                    path_found = None
+                    for i in self.paths:
+                        try:
+                            msg_path.relative_to(i)
+                            path_found = i
+                        except ValueError:
+                            pass
+
+                    if path_found is None:
+                        # not located in fix_subdirs
+                        continue
 
                     # determine to which detector the message belongs to
                     found_detector = None
@@ -191,6 +211,7 @@ class EventDetector(EventDetectorBase):
             "eventdetector": {
                 self.ed_type: [
                     "monitored_dir",
+                    "fix_subdirs",
                     "buffer_size",
                     "kafka_server",
                     "kafka_topic",

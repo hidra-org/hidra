@@ -31,10 +31,10 @@ class LambdaSimulator(threading.Thread):
             "inotifyTime": 1556031799.791173,
             "md5sum": "",
             "operation":"copy",
-            "path": "/my_dir/my_subdir/",
+            "path": "/my_dir/current/raw/my_subdir/",
             "retries":1,
             "size":43008,
-            "source":"./my_subdir/"
+            "source":"./current/raw/my_subdir/"
         }
 
         for i in range(1):
