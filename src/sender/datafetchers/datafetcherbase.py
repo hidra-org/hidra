@@ -176,8 +176,11 @@ class DataFetcherBase(Base, ABC):
         self.config_reduced.update(config_reduced)
 
         if print_log:
+            formated_config = str(json.dumps(self.config_reduced,
+                                 sort_keys=True,
+                                 indent=4))
             self.log.info("Configuration for data fetcher %s: %s",
-                          self.df_type, self.config_reduced)
+                          self.df_type, formated_config)
 
     def base_setup(self):
         """Sets up the shared components needed by all datafetchers.

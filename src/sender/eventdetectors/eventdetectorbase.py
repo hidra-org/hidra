@@ -111,8 +111,11 @@ class EventDetectorBase(Base):
 
         self.config_reduced.update(config_reduced)
 
+        formated_config = str(json.dumps(self.config_reduced,
+                                         sort_keys=True,
+                                         indent=4))
         self.log.info("Configuration for event detector %s: %s",
-                      self.ed_type, self.config_reduced)
+                      self.ed_type, formated_config)
 
     def check_monitored_dir(self):
         """Check that the monitored exists and creates subdirs if needed.
