@@ -31,6 +31,8 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import json
+import os
 import sys
 
 import abc
@@ -116,7 +118,7 @@ class EventDetectorBase(Base):
         """Check that the monitored exists and creates subdirs if needed.
         """
 
-        if "monitored_dir" not in config_ed[ed_type]:
+        if "monitored_dir" not in self.config_ed[self.ed_type]:
             return
 
         # get rid of formating errors
@@ -131,7 +133,7 @@ class EventDetectorBase(Base):
             utils.create_sub_dirs(
                 dir_path=self.config["monitored_dir"],
                 subdirs=self.config["fix_subdirs"],
-                dirs_not_to_create=self.config["dirs_not_to_create"]
+                dirs_not_to_create=self.config_ed["dirs_not_to_create"]
             )
         else:
             # the subdirs have to exist because handles can only be added to
