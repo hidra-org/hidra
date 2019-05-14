@@ -1,0 +1,30 @@
+general:
+
+    # Path where logfile will be created
+    log_path: /opt/hidra/logs
+
+    # Filename used for logging
+    log_name: datareceiver.log
+
+    # User as which the service should be running
+    #username: hidrauser
+
+    # Name with which the service should be running
+    procname: hidra-receiver
+
+    # List of hosts allowed to receive data from
+    #whitelist: a3p00-hosts
+    whitelist: None
+    #whitelist: ["localhost"]
+    #whitelist: []
+
+datareceiver:
+    # Where incoming data will be stored to
+    target_dir: /target
+
+    # Local IP to connect dataStream to
+    #data_stream_ip: localhost
+    data_stream_ip: haso111k
+
+    # TCP port of data pipe
+    data_stream_port: 50100
