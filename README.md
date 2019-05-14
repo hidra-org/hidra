@@ -20,6 +20,7 @@ The project is licensed under __AGPL v3__.
 * setproctitle
 * six
 * logutils
+* pyyaml
 * inotifyx (for inotifyx event detector: file transfer on Linux), version 0.2.2 or newer
 * watchdog (for watchdog event detector: file transfer on Windows)
 * requests (for HTTP event detector, used for Eiger)
@@ -38,7 +39,9 @@ The project is licensed under __AGPL v3__.
 ### Requirements
 * pyzmq, version 14.5.0 or newer
 * setproctitle
+* pyyaml
 * six
+* logutils
 * pathlib2 (when using python 2)
 
 ### Installation and Usage
