@@ -74,8 +74,8 @@ def windows_specific():
 
     files = [
         # config
-        (os.path.join(CONFPATH, "datamanager_windows.conf"),
-         os.path.join("conf", "datamanager.conf"))
+        (os.path.join(CONFPATH, "datamanager_windows.yaml"),
+         os.path.join("conf", "datamanager.yaml"))
     ]
 
     return packages, files
@@ -89,8 +89,8 @@ def linux_specific():
 
     files = [
         # config
-        (os.path.join(CONFPATH, "datamanager_pilatus.conf"),
-         os.path.join("conf", "datamanager.conf"))
+        (os.path.join(CONFPATH, "datamanager_pilatus.yaml"),
+         os.path.join("conf", "datamanager.yaml"))
     ]
 
     # Workaround for including setproctitle when building on SuSE 10
@@ -202,8 +202,8 @@ BUILD_EXE_OPTIONS = {
         (os.path.join(BASEPATH, "logs/.gitignore"),
          os.path.join("logs", ".gitignore")),
         (get_init(), "hidra.sh"),
-        (os.path.join(CONFPATH, "base_sender.conf"),
-         os.path.join("conf", "base_sender.conf")),
+        (os.path.join(CONFPATH, "base_sender.yaml"),
+         os.path.join("conf", "base_sender.yaml")),
         (os.path.join(SENDERPATH, "__init__.py"), "__init__.py"),
         (get_environment(), "_environment.py"),
         (os.path.join(SENDERPATH, "base_class.py"), "base_class.py"),
