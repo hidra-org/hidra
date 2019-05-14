@@ -710,7 +710,7 @@ class Transfer(Base):
 
         elif self.targets:
             if len(self.targets) == 1:
-                host, port = self.targets[0][0].decode("utf-8").split(":")
+                host, port = self.targets[0][0].split(":")
             else:
                 raise FormatError("Multiple possible ports. "
                                   "Please choose which one to use.")
