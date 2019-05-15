@@ -7,7 +7,7 @@ from kafka import KafkaProducer
 import threading
 import time
 
-topic = "kuhnm_test"
+topic = "kuhnm_test2"
 server = ["asap3-events-01", "asap3-events-02"]
 
 class LambdaSimulator(threading.Thread):
