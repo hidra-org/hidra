@@ -29,6 +29,7 @@ from __future__ import unicode_literals
 
 from .utils_general import (is_windows,
                             is_linux,
+                            check_module_exist,
                             check_type,
                             check_any_sub_dir_exists,
                             check_sub_dir_contained,
@@ -93,6 +94,7 @@ from .utils_api import Base
 __all__ = [
     "is_windows",
     "is_linux",
+    "check_module_exist",
     "check_type",
     "check_any_sub_dir_exists",
     "check_sub_dir_contained",

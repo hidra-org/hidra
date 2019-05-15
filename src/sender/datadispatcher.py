@@ -30,6 +30,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from importlib import import_module
 import json
 import os
 import signal
@@ -97,7 +98,7 @@ class DataHandler(Base, threading.Thread):
         self.open_connections = dict()
 
         self.log.info("Loading data fetcher: %s", self.config_df["type"])
-        datafetcher_m = __import__(self.config_df["type"])
+        datafetcher_m = import_module(self.config_df["type"])
 
         self.datafetcher = datafetcher_m.DataFetcher(self.config_all,
                                                      self.log_queue,

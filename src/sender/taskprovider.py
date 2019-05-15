@@ -31,6 +31,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import errno
+from importlib import import_module
 import json
 import os
 import signal
@@ -119,7 +120,7 @@ class TaskProvider(Base):
 
         self.log.info("Loading event detector: %s",
                       self.config["eventdetector"]["type"])
-        eventdetector_m = __import__(self.config["eventdetector"]["type"])
+        eventdetector_m = import_module(self.config["eventdetector"]["type"])
 
         self.eventdetector = eventdetector_m.EventDetector(self.config,
                                                            self.log_queue)

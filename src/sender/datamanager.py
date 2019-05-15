@@ -82,18 +82,6 @@ def argument_parsing():
     base_config_file = utils.determine_config_file(fname_base="base_sender",
                                                    config_dir=CONFIG_DIR)
 
-    supported_ed_types = ["inotifyx_events",
-                          "inotify_events",
-                          "watchdog_events",
-                          "zmq_events",
-                          "http_events",
-                          "hidra_events"]
-
-    supported_df_types = ["file_fetcher",
-                          "zmq_fetcher",
-                          "http_fetcher",
-                          "hidra_fetcher"]
-
     # ------------------------------------------------------------------------
     # Get command line arguments
     # ------------------------------------------------------------------------
@@ -350,11 +338,9 @@ def argument_parsing():
     )
     utils.check_writable(config_gen["log_file"])
 
-    # check if the eventdetector type is supported
-    utils.check_type(ed_type, supported_ed_types, "Event detector")
-
-    # check if the datafetcher type is supported
-    utils.check_type(df_type, supported_df_types, "Data fetcher")
+    # check if configured eventdetector and datafetcher modules really exist
+    utils.check_module_exist(ed_type)
+    utils.check_module_exist(df_type)
 
     # check if directories exist
     utils.check_existance(config_gen["log_path"])

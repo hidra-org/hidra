@@ -30,6 +30,7 @@ from __future__ import (absolute_import,
                         unicode_literals)
 
 import errno
+from importlib import import_module
 import logging
 import os
 import platform
@@ -60,13 +61,27 @@ def is_linux():
 
     return platform.system() == "Linux"
 
+def check_module_exist(m_type):
+    """Checks if the module is available. Exits program if not.
+
+    Args:
+        m_type (str): the module to check for existence.
+    """
+
+    try:
+        imported_module = import_module(m_type)
+        logging.debug("Module '%s' is ok.", m_type)
+    except ModuleNotFoundError:
+        logging.error("Module '%s' could not be loaded.", m_type)
+        sys.exit(1)
+
 
 def check_type(specified_type, supported_types, log_string):
     """Checks if type is of the correct form. Exits program if not.
 
     Args:
-        specified_type: The type to check.
-        supported_types: The supported types to check against.
+        specified_type (str): The type to check.
+        supported_types (list): The supported types to check against.
         log_string (str): String to start the log message with.
     """
 
