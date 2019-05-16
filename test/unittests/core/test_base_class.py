@@ -100,8 +100,7 @@ class TestBaseClass(TestBase):
                          {"eventdetector": ["my_module"]})
         self.assertEqual(obj.config_reduced, expected_result)
 
-    @mock.patch("hidra.utils.check_config")
-    def test_check_config_base(self, mock_check):
+    def test_check_config_base(self):
         obj = Base()
 
         # --------------------------------------------------------------------
@@ -304,6 +303,3 @@ class TestBaseClass(TestBase):
     def test__react_to_sleep_signal(self):  # pylint: disable=no-self-use
         pass
         # TODO
-
-    def tearDown(self):
-        super(TestBaseClass, self).tearDown()

@@ -132,6 +132,3 @@ class TestCheckNetgroup(TestBase):
             self.assertEqual(datareceiver._whitelist, whitelist)
 
         self.assertFalse(datareceiver._changed_netgroup)
-
-    def tearDown(self):
-        super(TestCheckNetgroup, self).tearDown()

@@ -549,8 +549,7 @@ class DataManager(Base):
         )
 
         self.use_data_stream = config_df["use_data_stream"]
-        self.log.info("Usage of data stream set to '{}'"
-                      .format(self.use_data_stream))
+        self.log.info("Usage of data stream set to '%s'", self.use_data_stream)
 
         if self.use_data_stream:
             data_stream_target = config_df["data_stream_targets"][0][0]
@@ -590,8 +589,8 @@ class DataManager(Base):
             if len(config_df["data_stream_targets"]) > 1:
                 self.log.error("Targets to send data stream to have more than "
                                "one entry which is not supported")
-                self.log.debug("data_stream_targets: {}"
-                               .format(config_df["data_stream_targets"]))
+                self.log.debug("data_stream_targets: %s",
+                               config_df["data_stream_targets"])
                 sys.exit(1)
 
             self.fixed_stream_addr = (
@@ -620,8 +619,8 @@ class DataManager(Base):
 
         try:
             self.local_target = config_df["local_target"]
-            self.log.info("Configured local_target: {}"
-                          .format(self.local_target))
+            self.log.info("Configured local_target: %s",
+                          self.local_target)
         except KeyError:
             config_df["local_target"] = None
             self.local_target = None
@@ -631,7 +630,7 @@ class DataManager(Base):
         self.cleaner_pr = None
         self.datadispatcher_pr = []
 
-        self.log.info("Version: {}".format(__version__))
+        self.log.info("Version: %s", __version__)
 
         # IP and DNS name should be both in the whitelist
         self.whitelist = utils.extend_whitelist(self.whitelist,
@@ -757,7 +756,7 @@ class DataManager(Base):
                 return False
 
         if use_log:
-            self.log.debug("ZMQ version used: {}".format(zmq.__version__))
+            self.log.debug("ZMQ version used: %s", zmq.__version__)
 
         # --------------------------------------------------------------------
         # old zmq version
@@ -769,21 +768,20 @@ class DataManager(Base):
             try:
                 self.test_socket.send_multipart([test_signal])
                 if use_log:
-                    self.log.info("Sending {} to fixed streaming host {}..."
-                                  "success".format(action_name, addr))
+                    self.log.info("Sending %s to fixed streaming host %s..."
+                                  "success", action_name, addr)
 
                 if is_req:
                     status = self.test_socket.recv_multipart()
                     if use_log:
-                        self.log.info("Received responce for {} of fixed "
-                                      "streaming host {}"
-                                      .format(action_name, addr))
+                        self.log.info("Received responce for %s of fixed "
+                                      "streaming host %s", action_name, addr)
             except KeyboardInterrupt:
                 # nothing to log
                 raise
             except Exception:
-                self.log.error("Failed to {} of fixed streaming host {}"
-                               .format(action_name, addr), exc_info=True)
+                self.log.error("Failed to %s of fixed streaming host %s",
+                               action_name, addr, exc_info=True)
                 return False
 
         # --------------------------------------------------------------------
@@ -822,8 +820,8 @@ class DataManager(Base):
                     )
 
                     if is_req and use_log:
-                        self.log.info("Sent {} to fixed streaming host {}"
-                                      .format(action_name, addr))
+                        self.log.info("Sent %s to fixed streaming host %s",
+                                      action_name, addr)
 
                 # The receiver may have dropped authentication or
                 # previous status check was not answered
@@ -833,10 +831,10 @@ class DataManager(Base):
                     exc_type, exc_value, _ = sys.exc_info()
 
                     if self.zmq_again_occured == 0:
-                        self.log.error("Failed to send {} to fixed streaming "
-                                       "host {}".format(action_name, addr))
-                        self.log.debug("Error was: {}: {}"
-                                       .format(exc_type, exc_value))
+                        self.log.error("Failed to send %s to fixed streaming "
+                                       "host %s", action_name, addr)
+                        self.log.debug("Error was: %s: %s",
+                                       exc_type, exc_value)
 
                     self.zmq_again_occured += 1
                     self.socket_reconnected = False
@@ -850,15 +848,14 @@ class DataManager(Base):
 
                 # no one picked up the test message
                 if not tracker.done:
-                    self.log.error("Failed to send {} of fixed streaming host "
-                                   "{}".format(action_name, addr),
-                                   exc_info=True)
+                    self.log.error("Failed to send %s of fixed streaming host "
+                                   "%s", action_name, addr, exc_info=True)
                     return False
 
                 # test message was successfully sent
                 if use_log:
-                    self.log.info("Sending {} to fixed streaming host {}..."
-                                  "success".format(action_name, addr))
+                    self.log.info("Sending %s to fixed streaming host %s..."
+                                  "success", action_name, addr)
                     self.zmq_again_occured = 0
 
                 if is_req:
@@ -868,27 +865,26 @@ class DataManager(Base):
                     status = self.test_socket.recv_multipart()
 
                     if use_log:
-                        self.log.debug("Received response: {}".format(status))
+                        self.log.debug("Received response: %s", status)
 
                     # responce to test message was successfully received
                     # TODO check status + react
                     if status[0] == b"ERROR":
                         self.log.error("Fixed streaming host is in error "
-                                       "state: {}"
-                                       .format(status[1].decode("utf-8")))
+                                       "state: %s", status[1].decode("utf-8"))
                         return False
 
                     elif use_log:
-                        self.log.info("Responce for {} of fixed streaming "
-                                      "host {}: {}"
-                                      .format(action_name, addr, status))
+                        self.log.info("Responce for %s of fixed streaming "
+                                      "host %s: %s",
+                                      action_name, addr, status)
 
             except KeyboardInterrupt:
                 # nothing to log
                 raise
             except Exception:
-                self.log.error("Failed to send {} of fixed streaming host {}"
-                               .format(action_name, addr), exc_info=True)
+                self.log.error("Failed to send %s of fixed streaming host %s",
+                               action_name, addr, exc_info=True)
                 return False
 
         return True
@@ -949,8 +945,8 @@ class DataManager(Base):
 
         # Cleaner
         if self.use_cleaner:
-            self.log.info("Loading cleaner from data fetcher module: {}"
-                          .format(self.config["datafetcher"]["type"]))
+            self.log.info("Loading cleaner from data fetcher module: %s",
+                          self.config["datafetcher"]["type"])
             self.cleaner_m = __import__(self.config["datafetcher"]["type"])
 
             self.cleaner_pr = Process(
@@ -961,8 +957,8 @@ class DataManager(Base):
             )
             self.cleaner_pr.start()
 
-        self.log.info("Configured type of data fetcher: {}"
-                      .format(self.config["datafetcher"]["type"]))
+        self.log.info("Configured type of data fetcher: %s",
+                      self.config["datafetcher"]["type"])
 
         # DataDispatcher
         for i in range(self.number_of_streams):
@@ -1105,23 +1101,23 @@ class DataManager(Base):
 
                 try:
                     os.remove(path)
-                    self.log.debug("Removed ipc socket: {}".format(path))
+                    self.log.debug("Removed ipc socket: %s", path)
                 except OSError:
                     pass
                 except Exception:
-                    self.log.warning("Could not remove ipc socket: {}"
-                                     .format(path), exc_info=True)
+                    self.log.warning("Could not remove ipc socket: %s",
+                                     path, exc_info=True)
 
             # Remove temp directory (if empty)
             try:
                 os.rmdir(self.ipc_dir)
-                self.log.debug("Removed IPC direcory: {}".format(self.ipc_dir))
+                self.log.debug("Removed IPC direcory: %s", self.ipc_dir)
             except OSError:
-                self.log.debug("Could not remove IPC directory: {}"
-                               .format(self.ipc_dir))
+                self.log.debug("Could not remove IPC directory: %s",
+                               self.ipc_dir)
             except Exception:
-                self.log.warning("Could not remove IPC directory: {}"
-                                 .format(self.ipc_dir), exc_info=True)
+                self.log.warning("Could not remove IPC directory: %s",
+                                 self.ipc_dir, exc_info=True)
 
         if not self.ext_log_queue and self.log_queue_listener:
             self.log.info("Stopping log_queue")

@@ -84,7 +84,7 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
         mock.MagicMock.__init__(self, **kwargs)
         utils.LoggingFunction.__init__(self, level=self.loglevel)
 
-    def out(self, message, *args, **kwargs):
+    def out(self, msg, *args, **kwargs):
         """Forward the output to stdout.
 
         Args:
@@ -94,10 +94,10 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
         """
 
         try:
-            msg = unicode(message)  # noqa F821
+            msg = unicode(msg)  # noqa F821
         except NameError:
             # Literal strings are unicode by default in Python3
-            msg = str(message)
+            msg = str(msg)
 
         if args:
             msg = msg % args

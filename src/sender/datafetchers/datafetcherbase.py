@@ -177,8 +177,8 @@ class DataFetcherBase(Base, ABC):
 
         if print_log:
             formated_config = str(json.dumps(self.config_reduced,
-                                 sort_keys=True,
-                                 indent=4))
+                                             sort_keys=True,
+                                             indent=4))
             self.log.info("Configuration for data fetcher %s: %s",
                           self.df_type, formated_config)
 

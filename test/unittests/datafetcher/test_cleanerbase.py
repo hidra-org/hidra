@@ -71,12 +71,12 @@ class TestDataFetcher(DataFetcherTestBase):
             # pylint: disable=too-few-public-methods
             # Is reasonable in this case.
 
-            def remove_element(self, base_path, source_file_id):
+            def remove_element(self, base_path, file_id):
                 """Removes the source file.
                 """
 
                 # generate file pat
-                source_file = os.path.join(base_path, source_file_id)
+                source_file = os.path.join(base_path, file_id)
 
                 # remove file
                 try:
@@ -164,6 +164,3 @@ class TestDataFetcher(DataFetcherTestBase):
                                                    socket=confirmation_socket)
             control_pub_socket = self.stop_socket(name="control_pub_socket",
                                                   socket=control_pub_socket)
-
-    def tearDown(self):
-        super(TestDataFetcher, self).tearDown()

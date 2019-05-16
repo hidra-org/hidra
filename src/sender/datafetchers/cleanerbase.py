@@ -297,7 +297,7 @@ class CleanerBase(Base, ABC):
                                  zmq.POLLIN)
 
     @abc.abstractmethod
-    def remove_element(self, base_path, source_file_id):
+    def remove_element(self, base_path, file_id):
         """How to remove a file fro the source.
 
         Args:

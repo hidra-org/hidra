@@ -51,6 +51,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 # WindowsError only exists on Windows machines
 if not getattr(__builtins__, "WindowsError", None):
     class WindowsError(OSError):
+        """ Define WindowsError on Unix systems """
         pass
 
 

@@ -853,7 +853,7 @@ class ControlServer(object):
             except KeyboardInterrupt:
                 break
 
-            if len(msg) == 0:
+            if not msg:
                 self.log.debug("Received empty msg")
                 break
 

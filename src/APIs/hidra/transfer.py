@@ -223,7 +223,7 @@ def convert_suffix_list_to_regex(pattern,
         regex = pattern
 
     if log:
-        log.debug("converted regex={}".format(regex))
+        log.debug("converted regex=%s", regex)
 
     if compile_regex:
         return re.compile(regex)
@@ -1565,8 +1565,8 @@ class Transfer(Base):
                 received = all_received[file_id]
 
                 # indicates end of file. Leave loop
-                self.log.info("New file with modification time {} received "
-                              .format(received["metadata"]["file_mod_time"]))
+                self.log.info("New file with modification time %s received",
+                              received["metadata"]["file_mod_time"])
 
                 try:
                     # highlight that the metadata does not correspond to only

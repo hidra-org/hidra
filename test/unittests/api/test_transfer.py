@@ -3353,6 +3353,3 @@ class TestTransfer(TestBase):
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
-
-    def tearDown(self):
-        super(TestTransfer, self).tearDown()

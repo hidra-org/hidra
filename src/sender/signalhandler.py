@@ -131,7 +131,7 @@ class SignalHandler(Base):
 
         # Send all logs to the main process
         self.log = utils.get_logger("SignalHandler", log_queue)
-        self.log.debug("SignalHandler started (PID {}).".format(os.getpid()))
+        self.log.debug("SignalHandler started (PID %s).", os.getpid())
 
         self.whitelist = utils.extend_whitelist(whitelist, ldapuri, self.log)
 
@@ -506,8 +506,8 @@ class SignalHandler(Base):
 
         if len(in_message) != 4:
             self.log.warning("Received signal is of the wrong format")
-            self.log.debug("Received signal is too short or too long: {}"
-                           .format(in_message))
+            self.log.debug("Received signal is too short or too long: %s",
+                           in_message)
             return UnpackedMessage(
                 check_successful=False,
                 response=[b"NO_VALID_SIGNAL"],
@@ -528,7 +528,7 @@ class SignalHandler(Base):
             targets = utils.convert_socket_to_fqdn(targets, self.log)
 
             host = [t[0].split(":")[0] for t in targets]
-            self.log.debug("host {}".format(host))
+            self.log.debug("host %s", host)
         except Exception:
             self.log.debug("No valid signal received", exc_info=True)
             return UnpackedMessage(
@@ -557,11 +557,11 @@ class SignalHandler(Base):
             self.log.debug("Check if host to send data to are in whitelist...")
             if utils.check_host(host, self.whitelist, self.log):
                 self.log.info("Hosts are allowed to connect.")
-                self.log.debug("hosts: {}".format(host))
+                self.log.debug("hosts: %s", host)
             else:
                 self.log.warning("One of the hosts is not allowed to connect.")
-                self.log.debug("hosts: {}".format(host))
-                self.log.debug("whitelist: {}".format(self.whitelist))
+                self.log.debug("hosts: %s", host)
+                self.log.debug("whitelist: %s", self.whitelist)
                 return UnpackedMessage(
                     check_successful=False,
                     response=[b"NO_VALID_HOST"],
@@ -585,7 +585,7 @@ class SignalHandler(Base):
         if not isinstance(signal, list):
             signal = [signal]
 
-        self.log.debug("Send response back: {}".format(signal))
+        self.log.debug("Send response back: %s", signal)
         self.com_socket.send_multipart(signal, zmq.NOBLOCK)
 
     def _start_signal(self,
@@ -618,7 +618,7 @@ class SignalHandler(Base):
         # for compatibility with API versions 3.1.2 or older
         # socket_ids is of the format [[<host>, <prio>, <suffix>], ...]
         for socket_conf in socket_ids:
-            self.log.debug("suffix={}".format(socket_conf[2]))
+            self.log.debug("suffix=%s", socket_conf[2])
             socket_conf[2] = convert_suffix_list_to_regex(socket_conf[2],
                                                           suffix=True,
                                                           compile_regex=False,
@@ -679,9 +679,8 @@ class SignalHandler(Base):
                 self.log.error("socket_ids is neither a subset nor "
                                "superset of already contained set")
                 self.log.debug("Currently: no idea what to do with this.")
-                self.log.debug("socket_ids={}".format(socket_ids_flatlist))
-                self.log.debug("registered_socketids={}"
-                               .format(targets_flatlist))
+                self.log.debug("socket_ids=%s", socket_ids_flatlist)
+                self.log.debug("registered_socketids=%s", targets_flatlist)
 
         if overwrite_index is None:
             registered_ids.append(targetset)
@@ -697,7 +696,7 @@ class SignalHandler(Base):
             # different parameters like monitored file suffix, priority or
             # connection type also this means the old socket_id set should be
             # replaced in total and not only partially
-            self.log.debug("overwrite_index={}".format(overwrite_index))
+            self.log.debug("overwrite_index=%s", overwrite_index)
 
             registered_ids[overwrite_index] = targetset
 
@@ -707,8 +706,8 @@ class SignalHandler(Base):
             if vari_requests is not None:
                 vari_requests[overwrite_index] = []
 
-        self.log.debug("after start handling: registered_ids={}"
-                       .format(registered_ids))
+        self.log.debug("after start handling: registered_ids=%s",
+                       registered_ids)
 
         # send signal back to receiver
         self.send_response([signal])
@@ -756,22 +755,21 @@ class SignalHandler(Base):
                      for sublist in reg_to_check
                      for reg_id in sublist[1].targets
                      if socket_conf[0] == reg_id[0]]
-        self.log.debug("to_remove {}".format(to_remove))
+        self.log.debug("to_remove %s", to_remove)
 
         if not to_remove:
             self.send_response([b"NO_OPEN_CONNECTION_FOUND"])
-            self.log.info("No connection to close was found for {}"
-                          .format(socket_ids))
+            self.log.info("No connection to close was found for %s",
+                          socket_ids)
         else:
             # send signal back to receiver
             self.send_response([signal])
 
-            self.log.debug("registered_ids {}".format(registered_ids))
-            self.log.debug("vari_requests {}".format(vari_requests))
-            self.log.debug("perm_requests {}".format(perm_requests))
+            self.log.debug("registered_ids %s", registered_ids)
+            self.log.debug("vari_requests %s", vari_requests)
+            self.log.debug("perm_requests %s", perm_requests)
             for i, target_properties in reg_to_check:
-                self.log.debug("target_properties {}"
-                               .format(target_properties))
+                self.log.debug("target_properties %s", target_properties)
 
                 targets = target_properties.targets
 
@@ -780,7 +778,7 @@ class SignalHandler(Base):
 
                     try:
                         targets.remove(reg_id)
-                        self.log.debug("Deregister {}".format(socket_id))
+                        self.log.debug("Deregister %s", socket_id)
                     except ValueError:
                         # reg_id is not contained in targets
                         # -> nothing to remove
@@ -808,9 +806,9 @@ class SignalHandler(Base):
                                 if socket_id != socket_conf[0]
                             ]
 
-                            self.log.debug("Remove all occurences from {} "
-                                           "from variable request list."
-                                           .format(socket_id))
+                            self.log.debug("Remove all occurences from %s "
+                                           "from variable request list.",
+                                           socket_id)
 
                         # perm_requests is a list of node numbers to feed
                         # next i.e. index of the node inside of the node

@@ -167,6 +167,3 @@ class TestEventDetector(EventDetectorTestBase):
 
             self.assertIsInstance(self.eventdetector.cleanup_thread,
                                   mock.MagicMock)
-
-    def tearDown(self):
-        super(TestEventDetector, self).tearDown()

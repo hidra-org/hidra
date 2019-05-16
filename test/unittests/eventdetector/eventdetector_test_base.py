@@ -35,9 +35,4 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 class EventDetectorTestBase(TestBase):
     """The Base class from which all event detectors should inherit from.
     """
-
-    def setUp(self):
-        super(EventDetectorTestBase, self).setUp()
-
-    def tearDown(self):
-        super(EventDetectorTestBase, self).tearDown()
+    pass

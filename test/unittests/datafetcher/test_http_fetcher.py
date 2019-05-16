@@ -149,6 +149,3 @@ class TestDataFetcher(DataFetcherTestBase):
         """Simulate file fetching while taking care of confirmation signals.
         """
         pass
-
-    def tearDown(self):
-        super(TestDataFetcher, self).tearDown()

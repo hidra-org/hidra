@@ -124,6 +124,3 @@ class TestInotifyUtils(EventDetectorTestBase):
 
         with self.assertRaises(Exception):
             get_event_message(abs_file_path, filename, paths)
-
-    def tearDown(self):
-        super(TestInotifyUtils, self).tearDown()

@@ -254,8 +254,7 @@ class TaskProvider(Base):
         if self.ignore_accumulated_events:
             try:
                 acc_events = self.eventdetector.get_new_event()
-                self.log.debug("Ignore accumulated workload:"
-                               " {}".format(acc_events))
+                self.log.debug("Ignore accumulated workload: %s", acc_events)
 #            except KeyboardInterrupt:
 #                break
             except Exception:

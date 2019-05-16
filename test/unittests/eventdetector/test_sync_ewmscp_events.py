@@ -30,10 +30,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import json
-from kafka import KafkaProducer
 import threading
-import time
-import sync_ewmscp_events as events
+
+from kafka import KafkaProducer
+import experimental.sync_ewmscp_events as events
 from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

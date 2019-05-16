@@ -28,7 +28,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import json
-import os
 
 from no_data_fetcher import DataFetcher
 from .datafetcher_test_base import DataFetcherTestBase

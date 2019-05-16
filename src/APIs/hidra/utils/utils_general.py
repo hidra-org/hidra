@@ -69,7 +69,7 @@ def check_module_exist(m_type):
     """
 
     try:
-        imported_module = import_module(m_type)
+        import_module(m_type)
         logging.debug("Module '%s' is ok.", m_type)
     except ModuleNotFoundError:
         logging.error("Module '%s' could not be loaded.", m_type)

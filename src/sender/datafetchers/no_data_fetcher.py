@@ -20,35 +20,39 @@
 #     Manuela Kuhn <manuela.kuhn@desy.de>
 #
 
+"""
+This module implementa a data fetcher which does not get data but only
+distribute the metadata of the files it sees.
+"""
+
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
-import logging
 import json
 import time
-import sys
 
 from datafetcherbase import DataFetcherBase
 from hidra import generate_filepath
-import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class DataFetcher(DataFetcherBase):
+    """
+    Implementation of data fetcher to only distibute file metadata.
+    """
 
     def __init__(self, config, log_queue, fetcher_id, context, lock):
 
 
         DataFetcherBase.__init__(self,
-                         config,
-                         log_queue,
-                         fetcher_id,
-                         "no_data_fetcher-{}".format(fetcher_id),
-                         context,
-                         lock)
+                                 config,
+                                 log_queue,
+                                 fetcher_id,
+                                 "no_data_fetcher-{}".format(fetcher_id),
+                                 context,
+                                 lock)
 
         # base class sets
         #   self.config_all - all configurations
