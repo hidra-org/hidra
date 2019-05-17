@@ -46,8 +46,10 @@ else
     exit 1
 fi
 
-VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/APIs/utils/_version.py?at=refs%2Fheads%2Fmaster")
-# cut of the first 16 characters
+#VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/APIs/hidra/utils/_version.py?at=refs%2Fheads%2Fmaster")
+VERSION=$(curl -l "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/APIs/hidra/_version.py?at=refs%2Fheads%2Fmaster")
+# cut of the first characters
+#VERSION=${VERSION:15}
 VERSION=${VERSION:16}
 VERSION=${VERSION%?}
 
