@@ -44,6 +44,7 @@ class Synchronizing(threading.Thread):
         self.lock = lock
         self.server = config["kafka_server"]
         self.topic = config["kafka_topic"]
+        self.operation = config["operation"]
 
         self.detids = config["detids"]
         self.n_detectors = config["n_detectors"]
@@ -98,8 +99,12 @@ class Synchronizing(threading.Thread):
                 topic_partition = list(message.keys())[0]
 
                 for msg in message[topic_partition]:
-                    msg_path = pathlib.Path(msg.value["path"])
 
+                    if msg["operation"] != self.operation:
+                        self.log.debug("Event %s is not supported")
+                        continue
+
+                    msg_path = pathlib.Path(msg.value["path"])
                     self.log.debug("msg_path=%s", msg_path)
 
                     # check if in one of the fix_subdirs
@@ -221,6 +226,7 @@ class EventDetector(EventDetectorBase):
                     "buffer_size",
                     "kafka_server",
                     "kafka_topic",
+                    "operation",
                     "detids",
                     "n_detectors"
                 ]
