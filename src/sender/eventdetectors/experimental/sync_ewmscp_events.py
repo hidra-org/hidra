@@ -100,6 +100,8 @@ class Synchronizing(threading.Thread):
                 for msg in message[topic_partition]:
                     msg_path = pathlib.Path(msg.value["path"])
 
+                    self.log.debug("msg_path=%s", msg_path)
+
                     # check if in one of the fix_subdirs
                     path_found = None
                     for i in self.paths:
@@ -138,15 +140,19 @@ class Synchronizing(threading.Thread):
                                        "inside path is not supported.")
                         self.log.debug("msg_path=%s", msg_path)
 
-                    # TODO check for (duplicate)
-                    self.sync_buffer.append(
-                        {
-                            "path_tmpl": path_tmpl,
-                            "detid": found_detector,
-                            "file_path": str(msg_path),
-                            "ewmscp_info": copy.deepcopy(msg.value)
-                        }
-                    )
+                    # check for duplicates
+                    if any([i["detid"] == found_detector and i["path_tmpl"] == path_tmpl
+                            for i in self.sync_buffer]):
+                        self.log.debug("Detid already found in sync buffer")
+                    else:
+                        self.sync_buffer.append(
+                            {
+                                "path_tmpl": path_tmpl,
+                                "detid": found_detector,
+                                "file_path": str(msg_path),
+                                "ewmscp_info": copy.deepcopy(msg.value)
+                            }
+                        )
 
                     # set full?
                     # remember position in sync_buffer for easier removal later
