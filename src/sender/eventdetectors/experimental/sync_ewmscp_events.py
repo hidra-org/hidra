@@ -100,7 +100,7 @@ class Synchronizing(threading.Thread):
 
                 for msg in message[topic_partition]:
 
-                    if msg["operation"] != self.operation:
+                    if msg.value["operation"] != self.operation:
                         self.log.debug("Event %s is not supported")
                         continue
 
