@@ -50,32 +50,16 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class EventDetector(object):
-    """
-    Implementation of the event detector for inotify based systems using the
-    inotifyx library.
-    """
 
     def __init__(self, watch_dir):
 
         self.watch_dir = watch_dir
-        self.log = logging
 
         self.inotify = inotify.adapters.InotifyTree(self.watch_dir)
-        self.inotify_event_gen = self.inotify.event_gen(yield_nones=False)
 
     def get_new_event(self):
-        """Implementation of the abstract method get_new_event.
+        return next(self.inotify.event_gen(yield_nones=False))
 
-        Returns:
-            A list of event messages generated from inotify events.
-        """
-
-        return next(self.inotify_event_gen)
-
-    def stop(self):
-        """Implementation of the abstract method stop.
-        """
-        pass
 
 def call_class():
     watch_dir = os.path.join(BASE_DIR, "data", "source")

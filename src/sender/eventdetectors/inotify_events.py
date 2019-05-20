@@ -86,8 +86,7 @@ class EventDetector(EventDetectorBase):
         self.mon_regex = None
         # TODO decide if this should go into config
 #        self.timeout = self.config["event_timeout"]
-        # gives problems when set to 1 because of inotify module
-        self.timeout = 1.1
+        self.timeout = 1
         self.history = None
         self.lock = None
 
@@ -135,8 +134,10 @@ class EventDetector(EventDetectorBase):
             for directory in self.config["fix_subdirs"]
         ]
         self.inotify = inotify.adapters.InotifyTrees(watch_dirs)
-        self.inotify_event_gen = self.inotify.event_gen(yield_nones=False,
-                                                        timeout_s=self.timeout)
+        self.inotify_conf = {
+            "yield_nones": False,
+            "timeout_s": self.timeout
+        }
 
         # TODO why is this necessary
         self.paths = [self.config["monitored_dir"]]
@@ -235,7 +236,7 @@ class EventDetector(EventDetectorBase):
             for event in remaining_events
         ]
 
-        for event in self.inotify_event_gen:
+        for event in self.inotify.event_gen(**self.inotify_conf):
 
             # should only happen if yield_nones is enabled
             if event is None:

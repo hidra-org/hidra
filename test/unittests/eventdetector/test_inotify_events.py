@@ -28,8 +28,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import copy
+import logging
 import os
 import re
+from shutil import copyfile
+import time
 
 try:
     import unittest.mock as mock
@@ -38,7 +41,7 @@ except ImportError:
     import mock
 
 from inotify_events import EventDetector
-from .eventdetector_test_base import EventDetectorTestBase
+from .eventdetector_test_base import EventDetectorTestBase, create_dir
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -68,7 +71,7 @@ class TestEventDetector(EventDetectorTestBase):
                 "IN_CLOSE_WRITE": [".tif", ".cbf", ".file"],
                 "IN_MOVED_TO": [".log"]
             },
-            # "event_timeout": 0.1,
+            # "event_timeout": 0.5,
             "history_size": 0,
             "use_cleanup": False,
             "time_till_closed": 5,
@@ -108,7 +111,7 @@ class TestEventDetector(EventDetectorTestBase):
                                            self.log_queue)
 
     def test_setup(self):
-        """Simulate incoming data and check if received events are correct.
+        """Simulate setup of event detector.
         """
 
         # --------------------------------------------------------------------
@@ -167,3 +170,58 @@ class TestEventDetector(EventDetectorTestBase):
 
             self.assertIsInstance(self.eventdetector.cleanup_thread,
                                   mock.MagicMock)
+
+    def test_module_functionality(self):
+        """Tests the module without simulating anything.
+        """
+
+        create_dir(self.target_file_base)
+        self._start_eventdetector()
+
+        for i in range(self.start, self.stop):
+
+            filename = "{}.cbf".format(i)
+            target_file = "{}{}".format(self.target_file_base, filename)
+            self.log.debug("copy %s", target_file)
+            copyfile(self.source_file, target_file)
+            time.sleep(0.1)
+
+            event_list = self.eventdetector.get_new_event()
+            expected_result_dict = {
+                u'filename': filename,
+                u'source_path': self.target_base_path,
+                u'relative_path': self.target_relative_path
+            }
+
+            try:
+                self.assertEqual(len(event_list), 1)
+                self.assertDictEqual(event_list[0],
+                                     expected_result_dict)
+            except AssertionError:
+                self.log.debug("event_list %s", event_list)
+                raise
+
+    def manual_testing_test_run(self):
+        """Starting an event detector for manual testing.
+        """
+        self._start_eventdetector()
+
+        for i in range(self.start, self.stop):
+            event_list = self.eventdetector.get_new_event()
+            print("event_list", event_list)
+
+    def tearDown(self):
+        if self.eventdetector is not None:
+            self.eventdetector.stop()
+            self.eventdetector = None
+
+        # clean up the created files
+        for number in range(self.start, self.stop):
+            try:
+                target_file = "{}{}.cbf".format(self.target_file_base, number)
+                os.remove(target_file)
+                logging.debug("remove %s", target_file)
+            except OSError:
+                pass
+
+        super(TestEventDetector, self).tearDown()
