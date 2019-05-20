@@ -56,7 +56,8 @@ from .utils_datatypes import (IpcAddresses,
                               AuthenticationFailed,
                               CommunicationFailed,
                               DataSavingError,
-                              WrongConfiguration)
+                              WrongConfiguration,
+                              ModuleNotFoundError)
 
 from .utils_config import (check_config,
                            determine_config_file,
@@ -121,6 +122,7 @@ __all__ = [
     "CommunicationFailed",
     "DataSavingError",
     "WrongConfiguration",
+    "ModuleNotFoundError",
     "check_config",
     "determine_config_file",
     "load_config",

@@ -145,6 +145,10 @@ class DataSavingError(Exception):
 
 
 class WrongConfiguration(Exception):
-    """Raised when something is wrong with the configuration.
-    """
+    """Raised when something is wrong with the configuration."""
+    pass
+
+
+class ModuleNotFoundError(Exception):
+    """Raised when a configured module is not available."""
     pass

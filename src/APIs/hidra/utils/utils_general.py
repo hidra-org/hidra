@@ -39,7 +39,7 @@ import socket as socket_m
 import sys
 
 from ._version import __version__
-from .utils_datatypes import WrongConfiguration
+from .utils_datatypes import WrongConfiguration, ModuleNotFoundError
 
 
 def is_windows():
@@ -60,6 +60,7 @@ def is_linux():
     """
 
     return platform.system() == "Linux"
+
 
 def check_module_exist(m_type):
     """Checks if the module is available. Exits program if not.
