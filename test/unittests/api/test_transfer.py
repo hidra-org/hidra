@@ -627,7 +627,7 @@ class TestTransfer(TestBase):
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
         def check_message(transfer, signal, exception):
-            transfer.stop = MockZmqSocket()
+            transfer.stop = mock.MagicMock()
 
             transfer.signal_socket = MockZmqSocket()
             transfer.signal_socket.recv_multipart.return_value = [signal, ""]
@@ -645,7 +645,7 @@ class TestTransfer(TestBase):
             # cleanup
             transfer.signal_socket = None
             transfer.poller = None
-            transfer.stop = None
+            transfer.stop.reset_mock()
 
         # --------------------------------------------------------------------
         # no signal
@@ -757,7 +757,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         self.log.info("%s: RECEIVED NOT SUPPORTED MESSAGE", current_func_name)
 
-        transfer.stop = MockZmqSocket()
+        transfer.stop = mock.MagicMock()
 
         transfer.signal_socket = MockZmqSocket()
         transfer.signal_socket.recv_multipart.return_value = [
@@ -776,7 +776,7 @@ class TestTransfer(TestBase):
         # cleanup
         transfer.signal_socket = None
         transfer.poller = None
-        transfer.stop = None
+        transfer.stop.reset_mock()
 
     @mock.patch("socket.getfqdn")
     def test__get_data_endpoint(self, mock_getfqdn):
@@ -788,7 +788,8 @@ class TestTransfer(TestBase):
 
         host = self.con_ip
         port = 1234
-        socket_id = "{}:{}".format(host, port).encode("utf-8")
+        socket_id = "{}:{}".format(host, port)
+        socket_id_enc = socket_id.encode("utf-8")
 
         ipc_dir = "test_dir"
         ipc_file = "test_file"
@@ -814,7 +815,7 @@ class TestTransfer(TestBase):
         data_socket_prop = [host, port]
         ret_val = transfer._get_data_endpoint(data_socket_prop)
 
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
         # --------------------------------------------------------------------
         # data_socket_prop: port only
@@ -824,7 +825,7 @@ class TestTransfer(TestBase):
         data_socket_prop = port
         ret_val = transfer._get_data_endpoint(data_socket_prop)
 
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
         # --------------------------------------------------------------------
         # no data_socket_prop but correct targets
@@ -835,7 +836,7 @@ class TestTransfer(TestBase):
         transfer.targets = [[socket_id, 1, ".*"]]
         ret_val = transfer._get_data_endpoint(data_socket_prop=None)
 
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
         # cleanup
         transfer.targets = None
@@ -891,7 +892,7 @@ class TestTransfer(TestBase):
             ret_val = transfer._get_data_endpoint(data_socket_prop)
 
         self.assertEqual(transfer.ip, "my_ip")
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
         # --------------------------------------------------------------------
         # multiple possible IPs
@@ -917,7 +918,7 @@ class TestTransfer(TestBase):
             ret_val = transfer._get_data_endpoint(data_socket_prop)
 
         self.assertFalse(transfer.is_ipv6)
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
         # --------------------------------------------------------------------
         # IPv6
@@ -930,7 +931,7 @@ class TestTransfer(TestBase):
             ret_val = transfer._get_data_endpoint(data_socket_prop)
 
         self.assertTrue(transfer.is_ipv6)
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
     def test__update_ip(self):
         transfer = m_transfer.Transfer(**self.transfer_conf)

@@ -90,9 +90,11 @@ class TestEventDetector(EventDetectorTestBase):
         self.module_name = "sync_ewmscp_events"
         self.module_config = {
             "buffer_size": 50,
-            "source_path": "/my_dir",
+            "monitored_dir": "/my_dir",
+            "fix_subdirs": ["my_subdir"],
             "kafka_server": ["asap3-events-01", "asap3-events-02"],
             "kafka_topic": "kuhnm_test",
+            "operation": "copy",
             "detids": ["DET0", "DET1", "DET2"],
             "n_detectors": 3
         }

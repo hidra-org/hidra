@@ -111,9 +111,15 @@ class EventDetectorBase(Base):
 
         self.config_reduced.update(config_reduced)
 
-        formated_config = str(json.dumps(self.config_reduced,
-                                         sort_keys=True,
-                                         indent=4))
+        try:
+            formated_config = str(json.dumps(self.config_reduced,
+                                             sort_keys=True,
+                                             indent=4))
+        except TypeError:
+            # is thrown if one of the entries is not json serializable,
+            # e.g happens for zmq context
+            formated_config = self.config_reduced
+
         self.log.info("Configuration for event detector %s: %s",
                       self.ed_type, formated_config)
 
