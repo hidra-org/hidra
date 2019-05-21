@@ -100,8 +100,6 @@ class Base(object):
                                 wrong parameters.
         """
 
-        error_msg = "The configuration has missing or wrong parameters."
-
         config_reduced = {}
 
         if isinstance(required_params, dict):
@@ -121,7 +119,9 @@ class Base(object):
             if check_passed:
                 config_reduced.update(config_part)
             else:
-                raise WrongConfiguration(error_msg)
+                raise WrongConfiguration(
+                    "The configuration has missing or wrong parameters."
+                )
 
         return config_reduced
 

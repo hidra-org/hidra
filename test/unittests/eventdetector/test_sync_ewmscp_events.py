@@ -38,6 +38,7 @@ from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+
 class LambdaSimulator(threading.Thread):
 
     def __init__(self, server, topic, detid, n_files):
@@ -60,11 +61,11 @@ class LambdaSimulator(threading.Thread):
             "finishTime": 1556031799.7914205,
             "inotifyTime": 1556031799.791173,
             "md5sum": "",
-            "operation":"copy",
+            "operation": "copy",
             "path": "/my_dir/my_subdir/",
-            "retries":1,
-            "size":43008,
-            "source":"./my_subdir/"
+            "retries": 1,
+            "size": 43008,
+            "source": "./my_subdir/"
         }
 
         for i in range(self.n_files):
@@ -72,7 +73,6 @@ class LambdaSimulator(threading.Thread):
             message["source"] += filename.format(self.detid, i)
             future = self.producer.send(self.topic, message)
             future.get(timeout=60)
-
 
 
 class TestEventDetector(EventDetectorTestBase):

@@ -5,11 +5,9 @@ from __future__ import unicode_literals
 import collections
 import copy
 import json
-from kafka import KafkaConsumer, TopicPartition
-import multiprocessing
+from kafka import KafkaConsumer
 import os
 import sys
-import time
 import threading
 
 try:
@@ -24,12 +22,13 @@ SENDER_DIR = os.path.join(BASE_DIR, "src", "sender")
 if SENDER_DIR not in sys.path:
     sys.path.insert(0, SENDER_DIR)
 
-from eventdetectorbase import EventDetectorBase
-import hidra.utils as utils
+from eventdetectorbase import EventDetectorBase  # noqa E402
+import hidra.utils as utils  # noqa E402
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 synced_data = []
+
 
 class Synchronizing(threading.Thread):
     def __init__(self,
@@ -69,8 +68,6 @@ class Synchronizing(threading.Thread):
             self.topic,
             bootstrap_servers=self.server,
             value_deserializer=lambda m: json.loads(m.decode('utf-8'))
-#            auto_offset_reset='earliest',
-#            enable_auto_commit=True,
         )
 
     def run(self):
@@ -146,7 +143,8 @@ class Synchronizing(threading.Thread):
                         self.log.debug("msg_path=%s", msg_path)
 
                     # check for duplicates
-                    if any([i["detid"] == found_detector and i["path_tmpl"] == path_tmpl
+                    if any([i["detid"] == found_detector
+                            and i["path_tmpl"] == path_tmpl
                             for i in self.sync_buffer]):
                         self.log.debug("Detid already found in sync buffer")
                     else:
@@ -162,7 +160,7 @@ class Synchronizing(threading.Thread):
                     # set full?
                     # remember position in sync_buffer for easier removal later
                     file_set = tuple(
-                        (i, f) for i, f  in enumerate(self.sync_buffer)
+                        (i, f) for i, f in enumerate(self.sync_buffer)
                         if f["path_tmpl"] == path_tmpl
                     )
 

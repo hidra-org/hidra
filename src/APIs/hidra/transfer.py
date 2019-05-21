@@ -140,7 +140,8 @@ def generate_filepath(base_path, config_dict, add_filename=True):
 
 def generate_filepath_synced(config_dict):
     """
-    Generates all full paths (including file names) where file will be saved to.
+    Generates all full paths (including file names) where file will be saved
+    to.
 
     Returns:
         A list of the file paths as strings.
