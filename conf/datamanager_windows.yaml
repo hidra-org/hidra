@@ -30,12 +30,13 @@ eventdetector:
 
     watchdog_events:
         # Directory to be monitor for changes
-        # Inside this directory only the subdirectories "commissioning", "current"
-        # and "local" are monitored
+        # Inside this directory only the subdirectories "commissioning",
+        # "current" and "local" are monitored
         monitored_dir: D:\hidra\data\source
 
-        # Subdirectories to be monitored and to store data to. These directory have to
-        # exist when HiDRA is started and should not be removed during the run.
+        # Subdirectories to be monitored and to store data to. These directory
+        # have to exist when HiDRA is started and should not be removed during
+        # the run.
         fix_subdirs: &fix_subdirs
             - "commissioning/raw"
             - "commissioning/scratch_bl"
@@ -43,18 +44,20 @@ eventdetector:
             - "current/scratch_bl"
             - "local"
 
-        # Flag describing if the subdirectories should be created if they do not exist.
+        # Flag describing if the subdirectories should be created if they do
+        # not exist.
         create_fix_subdirs: False
 
-        # Event type of files (options are: IN_CLOSE_WRITE, IN_MOVED_TO, ...) and
-        # the formats to be monitored, files in an other format will be be neglected
+        # Event type of files (options are: IN_CLOSE_WRITE, IN_MOVED_TO, ...)
+        # and the formats to be monitored, files in an other format will be be
+        # neglected
         monitored_events: {"IN_CLOSE_WRITE": ["tif", "metadata"]}
 
         # Interval time (in seconds) used for clean up resp. checking of events
         action_time: 4
 
-        # Time (in seconds) since last modification after which a file
-        # will be seen as closed
+        # Time (in seconds) since last modification after which a file will be
+        # seen as closed
         time_till_closed: 1
 
 datafetcher:
@@ -77,16 +80,17 @@ datafetcher:
     # stop_on_error - only supported if use_data_stream is enabled;
     #                 datamanager gets a feedback if the data writing was
     #                 successful.
-    #                 When an error occurs the datamanager goes into error state
-    #                 till it gets a notification that the error on the data
-    #                 receiving side was handled.
+    #                 When an error occurs the datamanager goes into error
+    #                 state till it gets a notification that the error on the
+    #                 data receiving side was handled.
     # with_confirmation - only supported if use_data_stream is enabled and
     #                     datafetcher_type is file_fetcher or http_fetcher;
     #                     data is removed from the source only after the target
     #                     sent a verification.
-    #                     In case that a file could not be transfered, it is not
-    #                     removed from the source. Here the datamanager does not go
-    #                     in error state and new files are transfered if possible.
+    #                     In case that a file could not be transfered, it is
+    #                     not removed from the source. Here the datamanager
+    #                     does not go in error state and new files are
+    #                     transfered if possible.
     remove_data: False
 
     # Flag describing if the data should be stored in local_target
