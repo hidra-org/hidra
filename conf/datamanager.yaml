@@ -292,6 +292,3 @@ datafetcher:
         # have to exist when HiDRA is started and should not be removed during
         # the run.
         fix_subdirs: *fix_subdirs
-
-    no_data_fetcher:
-        not_needed: True

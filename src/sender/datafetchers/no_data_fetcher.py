@@ -45,14 +45,14 @@ class DataFetcher(DataFetcherBase):
 
     def __init__(self, config, log_queue, fetcher_id, context, lock):
 
-
         DataFetcherBase.__init__(self,
                                  config,
                                  log_queue,
                                  fetcher_id,
                                  "no_data_fetcher-{}".format(fetcher_id),
                                  context,
-                                 lock)
+                                 lock,
+                                 check_dep=False)
 
         # base class sets
         #   self.config_all - all configurations

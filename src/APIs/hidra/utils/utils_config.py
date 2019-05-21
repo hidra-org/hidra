@@ -635,6 +635,9 @@ def check_config(required_params, config, log, serialize=True):
 
     error_msg = "Configuration of wrong format."
 
+    if not required_params:
+        return check_passed, config_reduced
+
     if isinstance(required_params, list):
         check_passed, config_reduced = _check_param(
             required_params, config, error_msg

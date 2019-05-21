@@ -57,7 +57,7 @@ class EventDetectorBase(Base):
     Implementation of the event detector base class.
     """
 
-    def __init__(self, config, log_queue, logger_name):  # noqa F811
+    def __init__(self, config, log_queue, logger_name, check_dep=True):
         """Initial setup
 
         Args:
@@ -79,11 +79,14 @@ class EventDetectorBase(Base):
 
         self.required_params_dep = {}
         self.config_reduced = {}
-        self._base_check(module_class="eventdetector")
+        self._base_check(module_class="eventdetector", check_dep=check_dep)
 
         self.config_ed = self.config_all["eventdetector"]
         self.ed_type = self.config_ed["type"]
-        self.config = self.config_ed[self.ed_type]
+        if self.required_params_dep:
+            self.config = self.config_ed[self.ed_type]
+        else:
+            self.config = {}
 
         self.required_params = []
 
@@ -95,7 +98,7 @@ class EventDetectorBase(Base):
                                 wrong parameteres.
         """
 
-        if isinstance(self.required_params, list):
+        if self.required_params and isinstance(self.required_params, list):
             self.required_params = {
                 "eventdetector": {self.ed_type: self.required_params}
             }

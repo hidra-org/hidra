@@ -76,7 +76,8 @@ class DataFetcherBase(Base, ABC):
                  fetcher_id,
                  logger_name,
                  context,
-                 lock):
+                 lock,
+                 check_dep=True):
         """Initial setup
 
         Checks if the required parameters are set in the configuration for
@@ -117,7 +118,7 @@ class DataFetcherBase(Base, ABC):
 
         self.required_params_dep = {}
         self.config_reduced = {}
-        self._base_check(module_class="datafetcher")
+        self._base_check(module_class="datafetcher", check_dep=check_dep)
 
         self.config_df = self.config_all["datafetcher"]
         self.df_type = self.config_df["type"]
@@ -152,7 +153,7 @@ class DataFetcherBase(Base, ABC):
                                 wrong parameteres.
         """
 
-        if isinstance(self.required_params, list):
+        if self.required_params and isinstance(self.required_params, list):
             self.required_params = {
                 "datafetcher": {self.df_type: self.required_params}
             }
