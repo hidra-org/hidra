@@ -74,9 +74,7 @@ class EventDetector(EventDetectorBase):
         self.mon_subdirs = None
         self.mon_regex_per_event = None
         self.mon_regex = None
-        # TODO decide if this should go into config
-#            self.timeout = self.config["event_timeout"]
-        self.timeout = 1
+        self.timeout = None
         self.history = None
         self.lock = None
 
@@ -103,7 +101,7 @@ class EventDetector(EventDetectorBase):
         self.required_params = ["monitored_dir",
                                 "fix_subdirs",
                                 ["monitored_events", dict],
-                                # "event_timeout",
+                                "event_timeout",
                                 "history_size",
                                 "use_cleanup"]
 
@@ -116,6 +114,7 @@ class EventDetector(EventDetectorBase):
         Sets static configuration parameters creates ring buffer and starts
         cleanup thread.
         """
+        self.timeout = self.config["event_timeout"]
 
         self.file_descriptor = inotifyx.init()
 

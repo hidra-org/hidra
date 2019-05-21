@@ -143,7 +143,7 @@ class TestTaskProvider(TestBase):
                         "IN_CLOSE_WRITE": [".tif", ".cbf"],
                         "IN_MOVED_TO": [".log"]
                     },
-                    "timeout": 0.1,
+                    "event_timeout": 0.1,
                     "history_size": 0,
                     "use_cleanup": False,
                     "time_till_closed": 5,
@@ -156,7 +156,7 @@ class TestTaskProvider(TestBase):
                         "IN_CLOSE_WRITE": [".tif", ".cbf"],
                         "IN_MOVED_TO": [".log"]
                     },
-                    "timeout": 0.1,
+                    "event_timeout": 0.1,
                     "history_size": 0,
                     "use_cleanup": False,
                     "time_till_closed": 5,

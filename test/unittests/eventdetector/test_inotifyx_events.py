@@ -63,7 +63,7 @@ class TestEventDetector(EventDetectorTestBase):
                 "IN_CLOSE_WRITE": [".tif", ".cbf", ".file"],
                 "IN_MOVED_TO": [".log"]
             },
-            # "event_timeout": 0.1,
+            "event_timeout": 0.1,
             "history_size": 0,
             "use_cleanup": False,
             "time_till_closed": 5,

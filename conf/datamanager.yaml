@@ -90,6 +90,10 @@ eventdetector:
 #            NO_EVENT_MONITORED:
 #                - ".cbf"
 
+        # Timeout after which the event generator should return if no events
+        # where detected.
+        event_timeout: 1
+
         # Number of events stored to look for doubles
         # (needed if eventdetector is inotifyx_events or http_events)
         #history_size: 2000
