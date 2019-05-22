@@ -50,6 +50,9 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
         A list of hosts contained in the netgroup.
     """
 
+    if ldap_cn is None or not ldap_cn:
+        return []
+
     # if there were problems with ldapsearch these information are needed
     try:
         ldap_host = ldapuri.split(":")[0]
@@ -67,17 +70,21 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
     lines = proc.stdout.readlines()
     error = proc.stderr.read()
 
-    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
-                            re.M | re.I)
-    netgroup = []
-
-    for line in lines:
-        line = line.decode()  # for python3 compatibility
-        if match_host.match(line):
-            if match_host.match(line).group(1) not in netgroup:
-                netgroup.append(match_host.match(line).group(1))
+    if not lines and not error:
+        log.debug("%s is not a netgroup, considering it as hostname", ldap_cn)
+        return [socket_m.getfqdn(ldap_cn)]
 
     try:
+        match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+                                re.M | re.I)
+        netgroup = []
+
+        for line in lines:
+            line = line.decode()  # for python3 compatibility
+            if match_host.match(line):
+                if match_host.match(line).group(1) not in netgroup:
+                    netgroup.append(match_host.match(line).group(1))
+
         if error or not netgroup:
             log.error("Problem when using ldapsearch.")
             log.debug("stderr=%s", error)
@@ -96,7 +103,8 @@ def extend_whitelist(whitelist, ldapuri, log):
     """Only fully qualified domain named should be in the whitlist.
 
     Args:
-        whitelist (list): List with host names
+        whitelist (list or str): List with host names, netgroup str
+                                 or list of mixture of both.
         ldapuri (str): Ldap node and port needed to check whitelist.
         log: log handler
 
@@ -107,15 +115,19 @@ def extend_whitelist(whitelist, ldapuri, log):
 
     log.info("Configured whitelist: %s", whitelist)
 
-    if whitelist is not None:
-        if isinstance(whitelist, str):
-            whitelist = execute_ldapsearch(log, whitelist, ldapuri)
-            log.info("Whitelist after ldapsearch: %s", whitelist)
-        else:
-            whitelist = [socket_m.getfqdn(host) for host in whitelist]
-            log.debug("Converted whitelist: %s", whitelist)
+    if whitelist is None:
+        return whitelist
 
-    return whitelist
+    if isinstance(whitelist, str):
+        whitelist = [whitelist]
+
+    ext_whitelist = []
+    for i in whitelist:
+        ext_whitelist += execute_ldapsearch(log, i, ldapuri)
+
+    log.debug("Converted whitelist: %s", ext_whitelist)
+
+    return ext_whitelist
 
 
 def convert_socket_to_fqdn(socketids, log):
