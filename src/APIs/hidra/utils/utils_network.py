@@ -72,6 +72,7 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
     netgroup = []
 
     for line in lines:
+        line = line.decode()  # for python3 compatibility
         if match_host.match(line):
             if match_host.match(line).group(1) not in netgroup:
                 netgroup.append(match_host.match(line).group(1))
@@ -79,9 +80,9 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
     try:
         if error or not netgroup:
             log.error("Problem when using ldapsearch.")
-            log.debug("stderr={}".format(error))
-            log.debug("stdout={}".format("".join(lines)))
-            log.debug("{} has the IP {}".format(ldap_host, ldap_server_ip))
+            log.debug("stderr=%s", error)
+            log.debug("stdout=%s", "".join(lines))
+            log.debug("%s has the IP %s", ldap_host, ldap_server_ip)
     except Exception:
         # the code inside the try statement could not be tested properly so do
         # not stop if something was wrong.
@@ -104,7 +105,7 @@ def extend_whitelist(whitelist, ldapuri, log):
         contained is added.
     """
 
-    log.info("Configured whitelist: {}".format(whitelist))
+    log.info("Configured whitelist: %s", whitelist)
 
     if whitelist is not None:
         if isinstance(whitelist, str):
@@ -171,7 +172,7 @@ def is_ipv6_address(log, ip):  # pylint: disable=invalid-name
 
     try:
         socket_m.inet_aton(ip)
-        log.info("IPv4 address detected: {}.".format(ip))
+        log.info("IPv4 address detected: %s.", ip)
         return False
     except socket_m.error:
         log.info("Address '%s' is not an IPv4 address, asume it is an IPv6 "
