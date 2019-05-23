@@ -98,6 +98,9 @@ def argument_parsing():
                         help="Displays the settings of the HiDRA Server "
                              "(detector mode)",
                         action="store_true")
+    parser.add_argument("--getinstances",
+                        help="Displays the HiDRA instances",
+                        action="store_true")
 
     args = parser.parse_args()
 
@@ -251,6 +254,9 @@ class Client():
         elif self.config_g["getsettings"]:
             self._getsettings()
 
+        elif self.config_g["getinstances"]:
+            self._getinstances()
+
     def _start(self):
         self.control.set("det_ip", self.config_ed["det_ip"])
         self.control.set("det_api_version", self.config_ed["det_api_version"])
@@ -294,6 +300,15 @@ class Client():
                   .format(self.control.get("fix_subdirs")))
         else:
             print("HiDRA is not running")
+
+    def _getinstances(self):
+        instances = self.control.do("get_instances")
+        if instances:
+            print("Beamline {} has running instances for the following "
+                  "detectors: \n{}".format(self.beamline,
+                                           "\n".join(instances)))
+        else:
+            print("No running hidra instances")
 
     def stop(self):
         try:
