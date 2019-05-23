@@ -165,47 +165,6 @@ class InstanceTracking(object):
                                self.beamline, det_id)
 
 
-def _decode_message(msg):
-    """Decode the message
-    """
-
-    try:
-        action = msg[0]
-    except IndexError:
-        raise FormatError
-
-    if action == b"IS_ALIVE":
-        return action, None, None, None, None
-
-    try:
-        action, host_id, det_id = msg[:3]
-    except ValueError:
-        raise FormatError
-
-    det_id = socket.getfqdn(det_id)
-
-    if action == b"set":
-
-        if len(msg) < 4:
-            raise FormatError
-
-        param, value = msg[3:]
-        param = param.lower()
-        value = json.loads(value)
-
-    elif action in [b"get", b"do"]:
-        if len(msg) != 4:
-            raise FormatError
-
-        param, value = msg[3], None
-        param = param.lower()
-
-    else:
-        raise FormatError
-
-    return action, host_id, det_id, param, value
-
-
 class HidraController(object):
     """
     This class holds getter/setter for all parameters
@@ -219,6 +178,9 @@ class HidraController(object):
         self.config = config
         self.config_static = self.config["hidraconfig_static"]
         self.config_variable = self.config["hidraconfig_variable"]
+        self.ldapuri = self.config["controlserver"]["ldapuri"]
+        self.netgroup_template = (self.config["controlserver"]
+                                             ["netgroup_template"])
         backup_file = self.config["controlserver"]["backup_file"]
 
         # Set log handler
@@ -311,6 +273,52 @@ class HidraController(object):
                                                       sort_keys=True,
                                                       indent=4))
 
+    def _decode_message(self, msg):
+        """Decode the message
+        """
+
+        try:
+            action = msg[0]
+        except IndexError:
+            raise FormatError
+
+        if action == b"IS_ALIVE":
+            return action, None, None, None, None
+
+        try:
+            action, host_id, det_id = msg[:3]
+        except ValueError:
+            self.log.error("No host_id and det_id defined")
+            raise FormatError
+
+        det_id = socket.getfqdn(det_id)
+
+        if action == b"set":
+
+            if len(msg) < 4:
+                self.log.error("Not enough arguments")
+                raise FormatError
+
+            param, value = msg[3:]
+            param = param.lower()
+            value = json.loads(value)
+
+        elif action in [b"get", b"do"]:
+            if len(msg) != 4:
+                self.log.error("Not enough arguments")
+                raise FormatError
+
+            param, value = msg[3].lower(), None
+
+        elif action == b"bye":
+            param, value = None, None
+
+        else:
+            self.log.error("Unknown action")
+            raise FormatError
+
+        return action, host_id, det_id, param, value
+
     def exec_msg(self, msg):
         """
         [b"IS_ALIVE"]
@@ -319,15 +327,35 @@ class HidraController(object):
             return "DONE"
         [b"bye", host_id, detector]
         """
+
         try:
-            action, host_id, det_id, param, value = _decode_message(msg)
+            action, host_id, det_id, param, value = self._decode_message(msg)
         except FormatError:
+            self.log.error("Message of wrong format")
             return b"ERROR"
 
         if action == b"IS_ALIVE":
             return b"OK"
 
-        elif action == b"set":
+        try:
+            # check if host is allowed to execute commands
+            check_res = hidra.check_netgroup(
+                host_id,
+                self.beamline,
+                self.ldapuri,
+                self.netgroup_template.format(bl=self.beamline),
+                log=self.log,
+                exit=False
+            )
+        except Exception:
+            self.log.error("Error when checking netgroup", exc_info=True)
+            self.log.debug("msg=%s", msg)
+            return b"ERROR"
+
+        if not check_res:
+            return b"ERROR"
+
+        if action == b"set":
             return self.set(host_id, det_id, param, value)
 
         elif action == b"get":
@@ -346,20 +374,7 @@ class HidraController(object):
             return self.do(host_id, det_id, param)
 
         elif action == b"bye":
-            self.log.debug("Received 'bye' from host %s for detector %s",
-                           host_id, det_id)
-
-            if host_id in self.all_configs:
-                try:
-                    del self.all_configs[host_id][det_id]
-                except KeyError:
-                    pass
-
-                # no configs for this host left
-                if not self.all_configs[host_id]:
-                    del self.all_configs[host_id]
-
-            return b"DONE"
+            return self.bye(host_id, det_id)
         else:
             return b"ERROR"
 
@@ -449,6 +464,22 @@ class HidraController(object):
 
         else:
             return b"ERROR"
+
+    def bye(self, host_id, det_id):
+        self.log.debug("Received 'bye' from host %s for detector %s",
+                       host_id, det_id)
+
+        if host_id in self.all_configs:
+            try:
+                del self.all_configs[host_id][det_id]
+            except KeyError:
+                pass
+
+            # no configs for this host left
+            if not self.all_configs[host_id]:
+                del self.all_configs[host_id]
+
+        return b"DONE"
 
     def __write_config(self, host_id, det_id):
         # pylint: disable=global-variable-not-assigned
@@ -631,7 +662,7 @@ class HidraController(object):
 
 
 def call_hidra_service(cmd, beamline, det_id, log):
-    """Command hidra (e.g. start, stop, statu,...).
+    """Command hidra (e.g. start, stop, status,...).
 
     Args:
         beamline: For which beamline to command hidra.

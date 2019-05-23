@@ -152,3 +152,11 @@ class WrongConfiguration(Exception):
 class ModuleNotFoundError(Exception):
     """Raised when a configured module is not available."""
     pass
+
+
+class NotAllowed(Exception):
+    """
+    Raised when an action is performed which is not allowed with the
+    configurated parameters.
+    """
+    pass
