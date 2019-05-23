@@ -119,7 +119,7 @@ class Control(Base):
         super(Control, self).__init__()
 
         self.beamline = beamline
-        self.detector = detector
+        self.detector = socket.getfqdn(detector)
         self.ldapuri = ldapuri
         self.netgroup_template = netgroup_template
         self.use_log = use_log
@@ -129,6 +129,7 @@ class Control(Base):
         self.host = None
         self.context = None
         self.socket = None
+        self.stop_only = False
 
         self._setup()
 
@@ -161,12 +162,6 @@ class Control(Base):
                        self.ldapuri,
                        self.netgroup_template,
                        self.log)
-        # check detector
-        check_netgroup(self.detector,
-                       self.beamline,
-                       self.ldapuri,
-                       self.netgroup_template,
-                       self.log)
 
         try:
             endpoint = "tcp://{}:{}".format(
@@ -191,6 +186,26 @@ class Control(Base):
         )
 
         self._check_responding()
+
+        # check detector
+        check_res =  check_netgroup(
+            self.detector,
+            self.beamline,
+            self.ldapuri,
+            self.netgroup_template,
+            self.log,
+            exit=False
+        )
+
+        if not check_res:
+            # beamline is only allowed to stop its own istance nothing else
+            if self.detector in self.do("get_instances"):
+                self.stop_only = True
+            else:
+                raise NotAllowed(
+                    "Host {} is not contained in netgroup of beamline {}"
+                    .format(self.detector, self.beamline)
+                )
 
     def _check_responding(self):
         """ Check if the control server is responding.
@@ -235,6 +250,10 @@ class Control(Base):
             Value of the attribute.
         """
 
+        if self.stop_only:
+            self.log.error("Action not allowed (detector is not in netgroup)")
+            return
+
         # pylint: disable=unused-argument
 
         msg = [
@@ -264,18 +283,15 @@ class Control(Base):
             Received "DONE" if setting was successful and "ERROR" if not.
         """
 
+        if self.stop_only:
+            self.log.error("Action not allowed (detector is not in netgroup)")
+            return
+
         # flatten list if entry was a list (result: list of lists)
         if isinstance(value[0], list):
             value = [item for sublist in value for item in sublist]
         else:
             value = value[0]
-
-        if attribute == "det_ip":
-            check_netgroup(value,
-                           self.beamline,
-                           self.ldapuri,
-                           self.netgroup_template,
-                           self.log)
 
         msg = [
             b"set",
@@ -308,6 +324,10 @@ class Control(Base):
             - status: "RUNNING", "NOT RUNNING"
         """
 
+        if self.stop_only and command not in ["stop", "get_instances"]:
+            print("do raise")
+            raise NotAllowed("Action not allowed (detector is not in netgroup)")
+
         # pylint: disable=unused-argument
 
         msg = [b"do", self.host, self.detector, b"{}".format(command)]
@@ -318,7 +338,7 @@ class Control(Base):
         # TODO implement timeout
         reply = self.socket.recv()
 
-        if command == "get_settings":
+        if command in ["get_settings", "get_instances"]:
             reply = json.loads(reply)
 
         self.log.debug("recv: %s", reply)

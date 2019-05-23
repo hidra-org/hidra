@@ -193,92 +193,120 @@ def check_config(config):
             }
 
 
-def client():
+class Client():
     """The hidra control client.
     """
 
-    config = argument_parsing()
+    def __init__(self):
 
-    # for convenience
-    config_g = config["general"]
-    config_hidra = config["hidra"]
-    config_ed = config_hidra["eventdetector"]["http_events"]
-    config_df = config_hidra["datafetcher"]
+        self.config = argument_parsing()
 
-    if config_g["version"]:
-        print("Hidra version: {}".format(hidra.__version__))
-        sys.exit(0)
+        # for convenience
+        self.config_g = self.config["general"]
+        self.config_hidra = self.config["hidra"]
+        self.config_ed = self.config_hidra["eventdetector"]["http_events"]
+        self.config_df = self.config_hidra["datafetcher"]
 
-    beamline = config_g["beamline"]
-    ldapuri = config_g["ldapuri"]
-    netgroup_template = config_g["netgroup_template"]
 
-    obj = hidra.Control(beamline,
-                        config_ed["det_ip"],
-                        ldapuri,
-                        netgroup_template,
-                        use_log="warning")
+        if self.config_g["version"]:
+            print("Hidra version:", hidra.__version__)
+            sys.exit(0)
 
-    try:
-        if config_g["start"]:
-            # check if beamline is allowed to get data from this detector
-            hidra.check_netgroup(config_ed["det_ip"],
-                                 beamline,
-                                 ldapuri,
-                                 netgroup_template.format(bl=beamline),
-                                 log=hidra.LoggingFunction())
+        self.beamline = self.config_g["beamline"]
+        self.ldapuri = self.config_g["ldapuri"]
+        self.netgroup_template = self.config_g["netgroup_template"]
 
-            obj.set("det_ip", config_ed["det_ip"])
-            obj.set("det_api_version", config_ed["det_api_version"])
-            obj.set("history_size", config_ed["history_size"])
-            obj.set("store_data", config_df["store_data"])
-            obj.set("remove_data", config_df["remove_data"])
-            obj.set("whitelist", config_hidra["general"]["whitelist"])
-            obj.set("ldapuri", ldapuri)
+        try:
+            self.control = hidra.Control(self.beamline,
+                                         self.config_ed["det_ip"],
+                                         self.ldapuri,
+                                         self.netgroup_template,
+                                         use_log="warning")
+        except utils.NotAllowed as excp:
+            print(excp)
+            sys.exit(1)
 
-            res_start = obj.do("start")
-            print("Starting HiDRA (detector mode):", res_start)
-
-            if res_start == b"ERROR":
-                instances = obj.do("get_instances")
-                if instances:
-                    print("Instances already running for:", instances)
+    def run(self):
+        if self.config_g["start"]:
+            self._start()
 
 #        elif config_g["restart"]:
-#            print ("Restarting HiDRA (detector mode):", obj.do("restart"))
+#            print ("Restarting HiDRA (detector mode):",
+#                   self.control.do("restart"))
 
-        elif config_g["status"]:
-            print("Status of HiDRA (detector mode):", obj.do("status"))
+        elif self.config_g["status"]:
+            try:
+                res_start = self.control.do("status")
+                print("Status of HiDRA (detector mode):", res_start)
+            except utils.NotAllowed:
+                print("except")
 
-        elif config_g["stop"]:
-            print("Stopping HiDRA (detector mode):", obj.do("stop"))
+        elif self.config_g["stop"]:
+            try:
+                res_start = self.control.do("stop")
+                print("Stopping HiDRA (detector mode):", res_start)
+            except utils.NotAllowed:
+                print("except")
 
-        elif config_g["getsettings"]:
+        elif self.config_g["getsettings"]:
+            self._getsettings()
 
-            if obj.do("status") == b"RUNNING":
-                print("Configured settings:")
-                print("Detector IP:                   {}"
-                      .format(obj.get("det_ip")))
-                print("Detector API version:          {}"
-                      .format(obj.get("det_api_version")))
-                print("History size:                  {}"
-                      .format(obj.get("history_size")))
-                print("Store data:                    {}"
-                      .format(obj.get("store_data")))
-                print("Remove data from the detector: {}"
-                      .format(obj.get("remove_data")))
-                print("Whitelist:                     {}"
-                      .format(obj.get("whitelist")))
-                print("Ldapuri:                       {}"
-                      .format(obj.get("ldapuri")))
-                print("fix_subdirs:                   {}"
-                      .format(obj.get("fix_subdirs")))
-            else:
-                print("HiDRA is not running")
+    def _start(self):
+        self.control.set("det_ip", self.config_ed["det_ip"])
+        self.control.set("det_api_version", self.config_ed["det_api_version"])
+        self.control.set("history_size", self.config_ed["history_size"])
+        self.control.set("store_data", self.config_df["store_data"])
+        self.control.set("remove_data", self.config_df["remove_data"])
+        self.control.set("ldapuri", self.ldapuri)
+        self.control.set("whitelist",
+                         self.config_hidra["general"]["whitelist"])
 
-    finally:
-        obj.stop()
+        try:
+            res_start = self.control.do("start")
+            print("Starting HiDRA (detector mode):", res_start)
+        except utils.NotAllowed:
+            print("except")
 
+        if res_start == b"ERROR":
+            instances = self.control.do("get_instances")
+            if instances:
+                print("Instances already running for:", instances)
+
+    def _getsettings(self):
+        if self.control.do("status") == b"RUNNING":
+
+            print("Configured settings:")
+            print("Detector IP:                   {}"
+                  .format(self.control.get("det_ip")))
+            print("Detector API version:          {}"
+                  .format(self.control.get("det_api_version")))
+            print("History size:                  {}"
+                  .format(self.control.get("history_size")))
+            print("Store data:                    {}"
+                  .format(self.control.get("store_data")))
+            print("Remove data from the detector: {}"
+                  .format(self.control.get("remove_data")))
+            print("Whitelist:                     {}"
+                  .format(self.control.get("whitelist")))
+            print("Ldapuri:                       {}"
+                  .format(self.control.get("ldapuri")))
+            print("fix_subdirs:                   {}"
+                  .format(self.control.get("fix_subdirs")))
+        else:
+            print("HiDRA is not running")
+
+    def stop(self):
+        try:
+            self.control.stop()
+        except AttributeError:
+            pass
+
+    def __del__(self):
+        self.stop()
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.stop()
 
 if __name__ == "__main__":
-    client()
+    client = Client()
+    client.run()
