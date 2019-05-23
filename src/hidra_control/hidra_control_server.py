@@ -287,6 +287,8 @@ class HidraController(object):
 
         try:
             action, host_id, det_id = msg[:3]
+            host_id = host_id.decode()
+            det_id = det_id.decode()
         except ValueError:
             self.log.error("No host_id and det_id defined")
             raise FormatError
@@ -300,15 +302,15 @@ class HidraController(object):
                 raise FormatError
 
             param, value = msg[3:]
-            param = param.lower()
-            value = json.loads(value)
+            param = param.decode().lower()
+            value = json.loads(value.decode())
 
         elif action in [b"get", b"do"]:
             if len(msg) != 4:
                 self.log.error("Not enough arguments")
                 raise FormatError
 
-            param, value = msg[3].lower(), None
+            param, value = msg[3].decode().lower(), None
 
         elif action == b"bye":
             param, value = None, None
@@ -361,7 +363,7 @@ class HidraController(object):
         elif action == b"get":
             reply = json.dumps(
                 self.get(host_id, det_id, param)
-            ).encode("utf-8")
+            ).encode()
             self.log.debug("reply is %s", reply)
 
             if reply is None:
@@ -629,7 +631,7 @@ class HidraController(object):
             # something went wrong when trying to start the instance
             bl_instances = {}
 
-        return json.dumps(list(bl_instances.keys())).encode("utf-8")
+        return json.dumps(list(bl_instances.keys())).encode()
 
     def stop(self, det_id):
         """

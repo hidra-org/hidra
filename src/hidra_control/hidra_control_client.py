@@ -273,13 +273,13 @@ class Client():
         except utils.NotAllowed:
             print("except")
 
-        if res_start == b"ERROR":
+        if res_start == "ERROR":
             instances = self.control.do("get_instances")
             if instances:
                 print("Instances already running for:", instances)
 
     def _getsettings(self):
-        if self.control.do("status") == b"RUNNING":
+        if self.control.do("status") == "RUNNING":
 
             print("Configured settings:")
             print("Detector IP:                   {}"

@@ -258,16 +258,16 @@ class Control(Base):
 
         msg = [
             b"get",
-            self.host,
-            self.detector,
-            b"{}".format(attribute)
+            self.host.encode(),
+            self.detector.encode(),
+            attribute.encode()
         ]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: %s", msg)
 
         # TODO implement timeout
-        reply = self.socket.recv()
+        reply = self.socket.recv().decode()
         self.log.debug("recv: %s", reply)
 
         return json.loads(reply)
@@ -295,16 +295,16 @@ class Control(Base):
 
         msg = [
             b"set",
-            self.host,
-            self.detector,
-            b"{}".format(attribute),
-            json.dumps(value)
+            self.host.encode(),
+            self.detector.encode(),
+            attribute.encode(),
+            json.dumps(value).encode()
         ]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: %s", msg)
 
-        reply = self.socket.recv()
+        reply = self.socket.recv().decode()
         self.log.debug("recv: %s", reply)
 
         return reply
@@ -325,18 +325,24 @@ class Control(Base):
         """
 
         if self.stop_only and command not in ["stop", "get_instances"]:
-            print("do raise")
-            raise NotAllowed("Action not allowed (detector is not in netgroup)")
+            raise NotAllowed(
+                "Action not allowed (detector is not in netgroup)"
+            )
 
         # pylint: disable=unused-argument
 
-        msg = [b"do", self.host, self.detector, b"{}".format(command)]
+        msg = [
+            b"do",
+            self.host.encode(),
+            self.detector.encode(),
+            command.encode()
+        ]
 
         self.socket.send_multipart(msg)
         self.log.debug("sent: %s", msg)
 
         # TODO implement timeout
-        reply = self.socket.recv()
+        reply = self.socket.recv().decode()
 
         if command in ["get_settings", "get_instances"]:
             reply = json.loads(reply)
@@ -356,12 +362,12 @@ class Control(Base):
         if self.socket is not None:
             if unregister:
                 self.log.info("Sending close signal")
-                msg = [b"bye", self.host, self.detector]
+                msg = [b"bye", self.host.encode(), self.detector.encode()]
 
                 self.socket.send_multipart(msg)
                 self.log.debug("sent: %s", msg)
 
-                reply = self.socket.recv()
+                reply = self.socket.recv().decode()
                 self.log.debug("recv: %s", reply)
 
             try:
