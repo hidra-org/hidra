@@ -43,50 +43,8 @@ from .utils import (
     NotAllowed,
     LoggingFunction,
     Base,
-    execute_ldapsearch
+    check_netgroup
 )
-
-
-def check_netgroup(hostname,
-                   beamline,
-                   ldapuri,
-                   netgroup_template,
-                   log=None,
-                   exit=True):
-    """Check if a host is in a netgroup belonging to a certain beamline.
-
-    Args:
-        hostname: The host to check.
-        beamline: The beamline to which the host should belong to.
-        ldapuri: Ldap node and port needed to check whitelist.
-        netgroup_template: A template of the netgroup.
-        log (optional): If the result should be logged.
-                        None: no logging
-                        False: use print
-                        anything else: use the standard logging module
-        exit (optional): Call sys exit if the check fails.
-    """
-
-    if log is None:
-        log = LoggingFunction(None)
-    elif log:
-        pass
-    else:
-        log = LoggingFunction("debug")
-
-    netgroup_name = netgroup_template.format(bl=beamline)
-    netgroup = execute_ldapsearch(log, netgroup_name, ldapuri)
-
-    # convert host to fully qualified DNS name
-    hostname = socket.getfqdn(hostname)
-
-    if hostname in netgroup:
-        return True
-    elif exit:
-        raise NotAllowed("Host {} is not contained in netgroup of beamline {}"
-                         .format(hostname, beamline))
-    else:
-        return False
 
 
 class Control(Base):

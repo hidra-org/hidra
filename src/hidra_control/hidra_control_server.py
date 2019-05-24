@@ -341,7 +341,7 @@ class HidraController(object):
 
         try:
             # check if host is allowed to execute commands
-            check_res = hidra.check_netgroup(
+            check_res = utils.check_netgroup(
                 host_id,
                 self.beamline,
                 self.ldapuri,

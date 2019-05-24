@@ -27,69 +27,80 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from .utils_general import (is_windows,
-                            is_linux,
-                            check_module_exist,
-                            check_type,
-                            check_any_sub_dir_exists,
-                            check_sub_dir_contained,
-                            check_all_sub_dir_exist,
-                            check_existance,
-                            check_writable,
-                            check_version,
-                            check_host,
-                            check_ping,
-                            create_dir,
-                            create_sub_dirs,
-                            change_user,
-                            log_user_change,
-                            show_files_in_dir)
+from .utils_general import (
+    is_windows,
+    is_linux,
+    check_module_exist,
+    check_type,
+    check_any_sub_dir_exists,
+    check_sub_dir_contained,
+    check_all_sub_dir_exist,
+    check_existance,
+    check_writable,
+    check_version,
+    check_host,
+    check_ping,
+    create_dir,
+    create_sub_dirs,
+    change_user,
+    log_user_change,
+    show_files_in_dir
+)
 
-from .utils_datatypes import (IpcAddresses,
-                              Endpoints,
-                              MAPPING_ZMQ_CONSTANTS_TO_STR,
-                              NotSupported,
-                              UsageError,
-                              FormatError,
-                              ConnectionFailed,
-                              VersionError,
-                              AuthenticationFailed,
-                              CommunicationFailed,
-                              DataSavingError,
-                              WrongConfiguration,
-                              ModuleNotFoundError,
-                              NotAllowed)
+from .utils_datatypes import (
+    IpcAddresses,
+    Endpoints,
+    MAPPING_ZMQ_CONSTANTS_TO_STR,
+    NotSupported,
+    UsageError,
+    FormatError,
+    ConnectionFailed,
+    VersionError,
+    AuthenticationFailed,
+    CommunicationFailed,
+    DataSavingError,
+    WrongConfiguration,
+    ModuleNotFoundError,
+    NotAllowed
+)
 
-from .utils_config import (check_config,
-                           determine_config_file,
-                           load_config,
-                           write_config,
-                           parse_parameters,
-                           set_parameters,
-                           update_dict,
-                           map_conf_format,
-                           set_flat_param,
-                           get_flat_param)
+from .utils_config import (
+    check_config,
+    determine_config_file,
+    load_config,
+    write_config,
+    parse_parameters,
+    set_parameters,
+    update_dict,
+    map_conf_format,
+    set_flat_param,
+    get_flat_param
+)
 
-from .utils_logging import (CustomQueueListener,
-                            get_stream_log_handler,
-                            get_file_log_handler,
-                            format_log_filename,
-                            get_log_handlers,
-                            get_logger,
-                            init_logging,
-                            LoggingFunction)
+from .utils_logging import (
+    CustomQueueListener,
+    get_stream_log_handler,
+    get_file_log_handler,
+    format_log_filename,
+    get_log_handlers,
+    get_logger,
+    init_logging,
+    LoggingFunction
+)
 
-from .utils_network import (execute_ldapsearch,
-                            extend_whitelist,
-                            convert_socket_to_fqdn,
-                            is_ipv6_address,
-                            get_socket_id,
-                            generate_sender_id,
-                            set_ipc_addresses,
-                            set_endpoints,
-                            start_socket,
-                            stop_socket)
+from .utils_network import (
+    check_netgroup,
+    execute_ldapsearch,
+    extend_whitelist,
+    convert_socket_to_fqdn,
+    is_ipv6_address,
+    get_socket_id,
+    generate_sender_id,
+    set_ipc_addresses,
+    set_endpoints,
+    start_socket,
+    stop_socket
+)
 
 from .utils_api import Base
 
@@ -143,6 +154,7 @@ __all__ = [
     "get_logger",
     "init_logging",
     "LoggingFunction",
+    "check_netgroup",
     "execute_ldapsearch",
     "extend_whitelist",
     "convert_socket_to_fqdn",
