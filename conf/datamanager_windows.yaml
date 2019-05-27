@@ -7,7 +7,7 @@ general:
     log_name: datamanager_{date}.log
 
     # User as which the service should be running
-    username: hidrauser
+    #username: hidrauser
 
     # Name with which the service should be running
     procname: hidra
