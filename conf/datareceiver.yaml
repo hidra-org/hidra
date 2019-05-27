@@ -1,8 +1,8 @@
 general:
 
     # Path where logfile will be created
-    #log_path = /opt/hidra/logs
-    log_path = /var/log/hidra
+    #log_path: /opt/hidra/logs
+    log_path: /var/log/hidra
 
     # Filename used for logging
     log_name: datareceiver.log
