@@ -43,7 +43,9 @@ class Base(object):
     Implementation of the sender base class.
     """
 
-    def __init__(self):
+    def __init__(self, queue=None):
+        self.queue = queue
+
         self.log = None
         self.context = None
 

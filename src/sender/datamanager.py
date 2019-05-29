@@ -380,7 +380,7 @@ class DataManager(Base):
     """The main class.
     """
 
-    def __init__(self, log_queue=None, config=None):
+    def __init__(self, config=None):
 
         super(DataManager, self).__init__()
 
@@ -391,7 +391,6 @@ class DataManager(Base):
 
         self.log = None
         self.log_queue = None
-        self.ext_log_queue = None
         self.log_queue_listener = None
 
         self.localhost = None
@@ -431,17 +430,14 @@ class DataManager(Base):
 
         self.context = None
 
-        self.setup(config, log_queue)
+        self.setup(config)
 
-#        self.run()
-
-    def setup(self, config, log_queue):
+    def setup(self, config):
         """Initializes parameters and creates sockets.
 
         Args:
             config (dict): All the configuration set either via config file or
                            command line parameter.
-            log_queue: Logging queue used to synchronize log messages.
         """
 
         self.localhost = "127.0.0.1"
@@ -470,28 +466,22 @@ class DataManager(Base):
         user_info, user_was_changed = utils.change_user(config_gen)
 
         # set up logging
-        if log_queue is not None:
-            self.log_queue = log_queue
-            self.ext_log_queue = True
-        else:
-            self.ext_log_queue = False
+        # Get queue
+        self.log_queue = Queue(-1)
 
-            # Get queue
-            self.log_queue = Queue(-1)
+        handler = utils.get_log_handlers(
+            config_gen["log_file"],
+            config_gen["log_size"],
+            config_gen["verbose"],
+            config_gen["onscreen"]
+        )
 
-            handler = utils.get_log_handlers(
-                config_gen["log_file"],
-                config_gen["log_size"],
-                config_gen["verbose"],
-                config_gen["onscreen"]
-            )
+        # Start queue listener using the stream handler above.
+        self.log_queue_listener = utils.CustomQueueListener(
+            self.log_queue, *handler
+        )
 
-            # Start queue listener using the stream handler above.
-            self.log_queue_listener = utils.CustomQueueListener(
-                self.log_queue, *handler
-            )
-
-            self.log_queue_listener.start()
+        self.log_queue_listener.start()
 
         # Create log and set handler to queue handle
         self.log = utils.get_logger("DataManager", self.log_queue)
@@ -1119,7 +1109,7 @@ class DataManager(Base):
                 self.log.warning("Could not remove IPC directory: %s",
                                  self.ipc_dir, exc_info=True)
 
-        if not self.ext_log_queue and self.log_queue_listener:
+        if self.log_queue_listener:
             self.log.info("Stopping log_queue")
             self.log_queue.put_nowait(None)
             self.log_queue_listener.stop()
