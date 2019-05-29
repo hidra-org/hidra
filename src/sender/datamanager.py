@@ -425,8 +425,8 @@ class DataManager(Base):
 
         self.cleaner_m = None
 
-        self.zmq_again_occured = None
-        self.socket_reconnected = None
+        self.zmq_again_occured = 0
+        self.socket_reconnected = False
 
         self.context = None
 
@@ -441,11 +441,8 @@ class DataManager(Base):
         """
 
         self.localhost = "127.0.0.1"
-
         self.current_pid = os.getpid()
-
         self.reestablish_time = 600  # in sec
-
         self.continue_run = True
 
         try:
@@ -459,13 +456,64 @@ class DataManager(Base):
             raise
 
         config_gen = self.config["general"]
-#        config_ed = self.config["eventdetector"]
         config_df = self.config["datafetcher"]
 
         # change user
+        # has to be done before logging is setup because otherwise the logfile
+        # belongs to the wrong user
         user_info, user_was_changed = utils.change_user(config_gen)
 
         # set up logging
+        self._setup_logging()
+
+        utils.log_user_change(self.log, user_was_changed, user_info)
+
+        # set process name
+        # pylint: disable=no-member
+        setproctitle.setproctitle(config_gen["procname"])
+        self.log.info("Running as %s", config_gen["procname"])
+
+        self.log.info("DataManager started (PID %s).", self.current_pid)
+
+        signal.signal(signal.SIGTERM, self.signal_term_handler)
+
+        # cleaner cannot be coupled to use_data_stream because this would
+        # break the http fetcher
+        self.use_cleaner = (config_df["remove_data"] == "with_confirmation")
+
+        self.number_of_streams = config_df["number_of_streams"]
+        self.use_data_stream = config_df["use_data_stream"]
+        self.log.info("Usage of data stream set to '%s'", self.use_data_stream)
+
+        # set up enpoints and network config
+        self._setup_network()
+        self._check_data_stream_targets()
+
+        try:
+            config_df["local_target"]
+            self.log.info("Configured local_target: %s",
+                          config_df["local_target"])
+        except KeyError:
+            config_df["local_target"] = None
+
+        self.log.info("Version: %s", __version__)
+
+        self.whitelist = config_gen["whitelist"]
+        self.ldapuri = config_gen["ldapuri"]
+
+        # IP and DNS name should be both in the whitelist
+        self.whitelist = utils.extend_whitelist(self.whitelist,
+                                                self.ldapuri,
+                                                self.log)
+
+        # Create zmq context
+        # there should be only one context in one process
+        self.context = zmq.Context()
+        self.log.debug("Registering global ZMQ context")
+
+    def _setup_logging(self):
+        config_gen = self.config["general"]
+
         # Get queue
         self.log_queue = Queue(-1)
 
@@ -486,19 +534,12 @@ class DataManager(Base):
         # Create log and set handler to queue handle
         self.log = utils.get_logger("DataManager", self.log_queue)
 
-        utils.log_user_change(self.log, user_was_changed, user_info)
+    def _setup_network(self):
+        config_gen = self.config["general"]
+        config_df = self.config["datafetcher"]
 
         self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
         self.log.info("Configured ipc_dir: %s", self.ipc_dir)
-
-        # set process name
-        # pylint: disable=no-member
-        setproctitle.setproctitle(config_gen["procname"])
-        self.log.info("Running as %s", config_gen["procname"])
-
-        self.log.info("DataManager started (PID %s).", self.current_pid)
-
-        signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         if not os.path.exists(self.ipc_dir):
             os.mkdir(self.ipc_dir)
@@ -515,10 +556,6 @@ class DataManager(Base):
         else:
             self.ext_ip = socket.gethostbyaddr(config_gen["ext_ip"])[2][0]
         self.con_ip = socket.getfqdn()
-
-        # cleaner cannot be coupled to use_data_stream because this would
-        # break the http fetcher
-        self.use_cleaner = (config_df["remove_data"] == "with_confirmation")
 
         ports = {
             "com": config_gen["com_port"],
@@ -537,9 +574,6 @@ class DataManager(Base):
             main_pid=self.current_pid,
             use_cleaner=self.use_cleaner
         )
-
-        self.use_data_stream = config_df["use_data_stream"]
-        self.log.info("Usage of data stream set to '%s'", self.use_data_stream)
 
         if self.use_data_stream:
             data_stream_target = config_df["data_stream_targets"][0][0]
@@ -572,8 +606,8 @@ class DataManager(Base):
             "session": None
         }
 
-        self.whitelist = config_gen["whitelist"]
-        self.ldapuri = config_gen["ldapuri"]
+    def _check_data_stream_targets(self):
+        config_df = self.config["datafetcher"]
 
         if self.use_data_stream:
             if len(config_df["data_stream_targets"]) > 1:
@@ -585,12 +619,14 @@ class DataManager(Base):
 
             self.fixed_stream_addr = (
                 "{}:{}".format(config_df["data_stream_targets"][0][0],
-                               config_df["data_stream_targets"][0][1]))
+                               config_df["data_stream_targets"][0][1])
+            )
 
             if config_df["remove_data"] == "stop_on_error":
                 self.status_check_id = (
                     "{}:{}".format(config_df["data_stream_targets"][0][0],
-                                   config_df["status_check_port"]))
+                                   config_df["status_check_port"])
+                )
 
                 self.log.info("Enabled receiver checking")
                 self.check_target_host = self.check_status_receiver
@@ -604,36 +640,6 @@ class DataManager(Base):
             self.check_target_host = lambda enable_logging=False: True
             self.fixed_stream_addr = None
             self.status_check_id = None
-
-        self.number_of_streams = config_df["number_of_streams"]
-
-        try:
-            self.local_target = config_df["local_target"]
-            self.log.info("Configured local_target: %s",
-                          self.local_target)
-        except KeyError:
-            config_df["local_target"] = None
-            self.local_target = None
-
-        self.signalhandler_thr = None
-        self.taskprovider_pr = None
-        self.cleaner_pr = None
-        self.datadispatcher_pr = []
-
-        self.log.info("Version: %s", __version__)
-
-        # IP and DNS name should be both in the whitelist
-        self.whitelist = utils.extend_whitelist(self.whitelist,
-                                                self.ldapuri,
-                                                self.log)
-
-        self.zmq_again_occured = 0
-        self.socket_reconnected = False
-
-        # Create zmq context
-        # there should be only one context in one process
-        self.context = zmq.Context()
-        self.log.debug("Registering global ZMQ context")
 
     def create_sockets(self):
         """Create ZMQ sockets.
