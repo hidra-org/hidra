@@ -30,10 +30,14 @@ import multiprocessing
 import time
 
 from base_class import Base
+import hidra.utils as utils
+
 
 class StatServer(Base, multiprocessing.Process):
-    def __init__(self):
+    def __init__(self, log_queue):
         super(StatServer, self).__init__()
+        
+        self.log = utils.get_logger("StatsServer", log_queue)
 
         self.keep_running = True
         self.stats = {}
@@ -48,8 +52,16 @@ class StatServer(Base, multiprocessing.Process):
             self._update(*new)
 
     def _update(self, param, value):
-        print("++++received=", param)
-        self.stats[param] = value
+        self.log.debug("Update: %s", param)
+
+        if isinstance(param, list):
+            s = self.stats["config"]
+            for i in param[:-1]:
+                s = s[i]
+            s[param[-1]] = value
+
+        else:
+            self.stats[param] = value
 
     def _get(self, param, value):
         self.stats[param]

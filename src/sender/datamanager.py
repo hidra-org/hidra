@@ -914,7 +914,7 @@ class DataManager(Base):
         """
 
         if self.use_statserver:
-            self.statserver = StatServer()
+            self.statserver = StatServer(self.log_queue)
             self.statserver.start()
 
         # SignalHandler

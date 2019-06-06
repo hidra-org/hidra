@@ -151,6 +151,14 @@ class SignalHandler(Base):
             self.stop()
             raise
 
+    def stats_config(self):
+        "Extend the stats_config function of the Base class"
+        conf = super(SignalHandler, self).stats_config()
+        conf["com_socket"] = ["general", "com_port"]
+        conf["request_socket"] = ["general", "request_port"]
+
+        return conf
+
     def create_sockets(self):
         """Create ZMQ sockets.
         """

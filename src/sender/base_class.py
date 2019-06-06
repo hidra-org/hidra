@@ -132,9 +132,15 @@ class Base(object):
 
         return config_reduced
 
+    def stats_config(self):
+        """Mapping for stats server.
+        """
+        return {}
+
     def update_stats(self, name, value):
+        stat_name = self.stats_config()[name]
         self.log.debug("Update(%s): %s", name, value)
-        self.stats_queue.put((name, value))
+        self.stats_queue.put((stat_name, value))
 
     def start_socket(self,
                      name,
@@ -170,7 +176,7 @@ class Base(object):
         )
 
         if port is not None:
-            self.update_stats("name", name)
+            self.update_stats(name, port)
 
         return socket
 
