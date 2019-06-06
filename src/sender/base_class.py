@@ -25,9 +25,12 @@ This module implements the base class from which all classes of the sender
 inherit from.
 """
 
+
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
+
+import multiprocessing
 
 import _environment  # noqa F401 # pylint: disable=unused-import
 import hidra.utils as utils
@@ -42,9 +45,11 @@ class Base(object):
     """
     Implementation of the sender base class.
     """
+    stats_queue = multiprocessing.Queue()
 
-    def __init__(self, queue=None):
-        self.queue = queue
+    def __init__(self):
+        # make the class cooperative for multiple inheritance
+        super(Base, self).__init__()
 
         self.log = None
         self.context = None
@@ -127,6 +132,10 @@ class Base(object):
 
         return config_reduced
 
+    def update_stats(self, name, value):
+        self.log.debug("Update(%s): %s", name, value)
+        self.stats_queue.put((name, value))
+
     def start_socket(self,
                      name,
                      sock_type,
@@ -161,7 +170,7 @@ class Base(object):
         )
 
         if port is not None:
-            self.update_stats("port", port)
+            self.update_stats("name", name)
 
         return socket
 

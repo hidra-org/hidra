@@ -65,6 +65,8 @@ from signalhandler import SignalHandler  # noqa E402
 from taskprovider import TaskProvider  # noqa E402
 # pylint: disable=wrong-import-position
 from datadispatcher import DataDispatcher  # noqa E402
+# pylint: disable=wrong-import-position
+from statserver import StatServer  # noqa E402
 
 from _environment import BASE_DIR  # noqa E402
 import hidra.utils as utils # noqa E402
@@ -402,7 +404,6 @@ class DataManager(Base):
         self.reestablish_time = None
         self.continue_run = None
         self.config = None
-        self.use_cleaner = None
 
         self.whitelist = None
         self.ldapuri = None
@@ -420,15 +421,18 @@ class DataManager(Base):
 
         self.signalhandler_thr = None
         self.taskprovider_pr = None
-        self.cleaner_pr = None
         self.datadispatcher_pr = []
 
+        self.use_cleaner = None
         self.cleaner_m = None
+        self.cleaner_pr = None
 
-        self.zmq_again_occured = 0
-        self.socket_reconnected = False
+        self.use_statserver = None
+        self.statserver = None
 
         self.context = None
+        self.zmq_again_occured = 0
+        self.socket_reconnected = False
 
         self.setup(config)
 
@@ -481,6 +485,7 @@ class DataManager(Base):
         # break the http fetcher
         self.use_cleaner = (config_df["remove_data"] == "with_confirmation")
 
+        self.use_statserver = config_gen["use_statserver"]
         self.number_of_streams = config_df["number_of_streams"]
         self.use_data_stream = config_df["use_data_stream"]
         self.log.info("Usage of data stream set to '%s'", self.use_data_stream)
@@ -510,6 +515,8 @@ class DataManager(Base):
         # there should be only one context in one process
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
+
+        self.stats_queue.put(("config", self.config))
 
     def _setup_logging(self):
         config_gen = self.config["general"]
@@ -893,7 +900,7 @@ class DataManager(Base):
             if self.check_target_host(enable_logging=True):
                 self.create_sockets()
 
-                self.exec_run()
+                self._exec_run()
         except KeyboardInterrupt:
             pass
         except Exception:
@@ -902,9 +909,13 @@ class DataManager(Base):
         finally:
             self.stop()
 
-    def exec_run(self):
+    def _exec_run(self):
         """Starting all thread and processes and checks if they are running.
         """
+
+        if self.use_statserver:
+            self.statserver = StatServer()
+            self.statserver.start()
 
         # SignalHandler
         # "bug in pylint pylint: disable=bad-continuation
@@ -1050,6 +1061,10 @@ class DataManager(Base):
         """
 
         self.continue_run = False
+
+        if self.statserver is not None:
+            self.statserver.stop()
+            self.statserver = None
 
         if self.log is None:
             self.log = logging

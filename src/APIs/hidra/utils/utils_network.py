@@ -405,7 +405,7 @@ def set_endpoints(ext_ip,
     request_con = "tcp://{}:{}".format(con_ip, ports["request"])
 
     if ports["com"] == "random":
-        com_bind = "tcp://{}:{}".format(ext_ip, ports["com"])
+        com_bind = "tcp://{}".format(ext_ip)
     else:
         com_bind = "tcp://{}:{}".format(ext_ip, ports["com"])
     com_con = "tcp://{}:{}".format(con_ip, ports["com"])
@@ -496,6 +496,7 @@ def start_socket(name,
         message = "Start"
 
     sock_type_as_str = MAPPING_ZMQ_CONSTANTS_TO_STR[sock_type]
+    endpoint_to_print = endpoint
     port = None
 
     try:
@@ -518,15 +519,14 @@ def start_socket(name,
             if random_port is None:
                 socket.bind(endpoint)
             else:
-                # remove the port from the endpoint
-                endpnt = endpoint.rsplit(":")[0]
-                port = socket.bind_to_random_port(endpnt)
+                port = socket.bind_to_random_port(endpoint)
+                endpoint_to_print = "{}:{}".format(endpoint, port)
 
         log.info("%s %s (%s, %s): '%s'", message, name, sock_con,
-                 sock_type_as_str, endpoint)
+                 sock_type_as_str, endpoint_to_print)
     except:
         log.error("Failed to %s %s (%s, %s): '%s'", name, message.lower(),
-                  sock_con, sock_type_as_str, endpoint, exc_info=True)
+                  sock_con, sock_type_as_str, endpoint_to_print, exc_info=True)
         raise
 
     return socket, port

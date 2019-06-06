@@ -191,7 +191,9 @@ class SignalHandler(Base):
                 name="com_socket",
                 sock_type=zmq.REP,
                 sock_con="bind",
-                endpoint=self.endpoints.com_bind
+                endpoint=self.endpoints.com_bind,
+                #TODO this is a hack
+                random_port=(self.endpoints.com_bind.split() == 2)
             )
 
             # create socket to receive requests
@@ -199,7 +201,9 @@ class SignalHandler(Base):
                 name="request_socket",
                 sock_type=zmq.PULL,
                 sock_con="bind",
-                endpoint=self.endpoints.request_bind
+                endpoint=self.endpoints.request_bind,
+                #TODO this is a hack
+                random_port=(self.endpoints.com_bind.split() == 2)
             )
         else:
             self.log.info("Socket com_socket and request_socket not started "
