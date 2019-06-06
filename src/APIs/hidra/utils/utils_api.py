@@ -51,7 +51,7 @@ class Base(object):
         """Wrapper of start_socket.
         """
 
-        return start_socket(
+        socket, _ = start_socket(
             name=name,
             sock_type=sock_type,
             sock_con=sock_con,
@@ -60,8 +60,11 @@ class Base(object):
             log=self.log,
             is_ipv6=is_ipv6,
             zap_domain=zap_domain,
+            random_port=None,
             message=message
         )
+
+        return socket
 
     def _stop_socket(self, name, socket=None):
         """Closes a zmq socket. Wrapper for stop_socket.

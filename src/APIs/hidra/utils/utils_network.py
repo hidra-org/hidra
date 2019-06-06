@@ -398,10 +398,16 @@ def set_endpoints(ext_ip,
         router_bind = "ipc://{}".format(ipc_addresses.router)
         router_con = router_bind
 
-    request_bind = "tcp://{}:{}".format(ext_ip, ports["request"])
+    if ports["request"] == "random":
+        request_bind = "tcp://{}".format(ext_ip)
+    else:
+        request_bind = "tcp://{}:{}".format(ext_ip, ports["request"])
     request_con = "tcp://{}:{}".format(con_ip, ports["request"])
 
-    com_bind = "tcp://{}:{}".format(ext_ip, ports["com"])
+    if ports["com"] == "random":
+        com_bind = "tcp://{}:{}".format(ext_ip, ports["com"])
+    else:
+        com_bind = "tcp://{}:{}".format(ext_ip, ports["com"])
     com_con = "tcp://{}:{}".format(con_ip, ports["com"])
 
     # endpoints needed if cleaner is activated
@@ -467,6 +473,7 @@ def start_socket(name,
                  log,
                  is_ipv6=False,
                  zap_domain=None,
+                 random_port = None,
                  message=None):
     """Creates a zmq socket.
 
@@ -480,6 +487,7 @@ def start_socket(name,
         is_ipv6: Enable IPv6 on socket.
         zap_domain: The RFC 27 authentication domain used for ZMQ
                     communication.
+        random_port (optional): Use zmq bind_to_random_port option.
         message (optional): wording to be used in the message
                             (default: Start).
     """
@@ -488,6 +496,7 @@ def start_socket(name,
         message = "Start"
 
     sock_type_as_str = MAPPING_ZMQ_CONSTANTS_TO_STR[sock_type]
+    port = None
 
     try:
         # create socket
@@ -506,7 +515,12 @@ def start_socket(name,
         if sock_con == "connect":
             socket.connect(endpoint)
         elif sock_con == "bind":
-            socket.bind(endpoint)
+            if random_port is None:
+                socket.bind(endpoint)
+            else:
+                # remove the port from the endpoint
+                endpnt = endpoint.rsplit(":")[0]
+                port = socket.bind_to_random_port(endpnt)
 
         log.info("%s %s (%s, %s): '%s'", message, name, sock_con,
                  sock_type_as_str, endpoint)
@@ -515,7 +529,7 @@ def start_socket(name,
                   sock_con, sock_type_as_str, endpoint, exc_info=True)
         raise
 
-    return socket
+    return socket, port
 
 
 def stop_socket(name, socket, log):

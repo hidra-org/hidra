@@ -127,7 +127,13 @@ class Base(object):
 
         return config_reduced
 
-    def start_socket(self, name, sock_type, sock_con, endpoint, message=None):
+    def start_socket(self,
+                     name,
+                     sock_type,
+                     sock_con,
+                     endpoint,
+                     random_port=None,
+                     message=None):
         """Wrapper of start_socket
 
         Args:
@@ -135,22 +141,29 @@ class Base(object):
             sock_type: ZMQ socket type (e.g. zmq.PULL).
             sock_con: ZMQ binding type (connect or bind).
             endpoint: ZMQ endpoint to connect to.
-            message (optional): wording to be used in the message
+            random_port (optional): Use zmq bind_to_random_port option.
+            message (optional): Wording to be used in the message
                                 (default: Start).
 
         Returns:
             The ZMQ socket with the specified properties.
         """
 
-        return utils.start_socket(
+        socket, port = utils.start_socket(
             name=name,
             sock_type=sock_type,
             sock_con=sock_con,
             endpoint=endpoint,
             context=self.context,
             log=self.log,
+            random_port=random_port,
             message=message,
         )
+
+        if port is not None:
+            self.update_stats("port", port)
+
+        return socket
 
     def stop_socket(self, name, socket=None):
         """Wrapper for stop_socket.
