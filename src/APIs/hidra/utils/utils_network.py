@@ -274,9 +274,9 @@ def generate_sender_id(main_pid):
     return sender_id
 
 
-# ------------------------------ #
-#  Connection paths and strings  #
-# ------------------------------ #
+# ----------------------------------------------------------------------------
+# Connection paths and strings  
+# ----------------------------------------------------------------------------
 
 def set_ipc_addresses(ipc_dir, main_pid, use_cleaner=True):
     """Sets the ipc connection paths.
@@ -288,6 +288,7 @@ def set_ipc_addresses(ipc_dir, main_pid, use_cleaner=True):
         ipc_dir: Directory used for IPC connections
         main_pid: Process ID of the current process. Used to distinguish
                   different IPC connection.
+        use_cleaner (optional): Boolean if the cleaner addresses should be set
     Returns:
         A namedtuple object IpcAddresses with the entries:
             control_pub,
@@ -295,19 +296,23 @@ def set_ipc_addresses(ipc_dir, main_pid, use_cleaner=True):
             request_fw,
             router,
             cleaner_job,
-            cleaner_trigger
+            cleaner_trigger,
+            stats_in,
+            stats_out
     """
 
     # determine socket connection strings
     ipc_ip = "{}/{}".format(ipc_dir, main_pid)
 
-    control_pub = "{}_{}".format(ipc_ip, "controlPub")
-    control_sub = "{}_{}".format(ipc_ip, "controlSub")
+    control_pub = "{}_{}".format(ipc_ip, "control_pub")
+    control_sub = "{}_{}".format(ipc_ip, "control_sub")
 #    control_pub = "{}_{}".format(ipc_ip, "control_pub")
 #    control_sub = "{}_{}".format(ipc_ip, "control_sub")
-    request_fw = "{}_{}".format(ipc_ip, "requestFw")
+    request_fw = "{}_{}".format(ipc_ip, "request_fw")
 #    request_fw = "{}_{}".format(ipc_ip, "request_fw")
     router = "{}_{}".format(ipc_ip, "router")
+    stats_collect = "{}_{}".format(ipc_ip, "stats_collect")
+    stats_expose = "{}_{}".format(ipc_ip, "stats_exposing")
 
     if use_cleaner:
         job = "{}_{}".format(ipc_ip, "cleaner")
@@ -323,6 +328,8 @@ def set_ipc_addresses(ipc_dir, main_pid, use_cleaner=True):
         router=router,
         cleaner_job=job,
         cleaner_trigger=trigger,
+        stats_collect=stats_collect,
+        stats_expose=stats_expose
     )
 
 
@@ -365,6 +372,10 @@ def set_endpoints(ext_ip,
             cleaner_trigger_con
             confirm_bind
             confirm_con
+            stats_collect_bind
+            stats_collect_con
+            stats_expose_bind
+            stats_expose_con
     """
 
     # determine socket connection strings
@@ -385,6 +396,12 @@ def set_endpoints(ext_ip,
         router_bind = "tcp://{}:{}".format(ext_ip, port)
         router_con = "tcp://{}:{}".format(con_ip, port)
 
+        stats_collect_bind = None
+        stats_collect_con = None
+
+        stats_expose_bind = None
+        stats_expose_con = None
+
     else:
         control_pub_bind = "ipc://{}".format(ipc_addresses.control_pub)
         control_pub_con = control_pub_bind
@@ -397,6 +414,13 @@ def set_endpoints(ext_ip,
 
         router_bind = "ipc://{}".format(ipc_addresses.router)
         router_con = router_bind
+
+        stats_collect_bind = "ipc://{}".format(ipc_addresses.stats_collect)
+        stats_collect_con = stats_collect_bind
+
+        stats_expose_bind = "ipc://{}".format(ipc_addresses.stats_expose)
+        stats_expose_con = stats_expose_bind
+
 
     if ports["request"] == "random":
         request_bind = "tcp://{}".format(ext_ip)
@@ -458,12 +482,16 @@ def set_endpoints(ext_ip,
         cleaner_trigger_con=trigger_con,
         confirm_bind=confirm_bind,
         confirm_con=confirm_con,
+        stats_collect_bind=stats_collect_bind,
+        stats_collect_con=stats_collect_con,
+        stats_expose_bind=stats_expose_bind,
+        stats_expose_con=stats_expose_con,
     )
 
 
-# ------------------------------ #
-#         ZMQ functions          #
-# ------------------------------ #
+# ----------------------------------------------------------------------------
+# zmq functions          
+# ----------------------------------------------------------------------------
 
 def start_socket(name,
                  sock_type,

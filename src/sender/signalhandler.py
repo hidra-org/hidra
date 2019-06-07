@@ -144,15 +144,18 @@ class SignalHandler(Base):
             self.context = zmq.Context()
             self.ext_context = False
 
+        self.setup_stats_collection()
+
         try:
             self.create_sockets()
-        except:
+        except Exception:
             self.log.error("Cannot create sockets", exc_info=True)
             self.stop()
             raise
 
     def stats_config(self):
-        "Extend the stats_config function of the Base class"
+        """Extend the stats_config function of the Base class
+        """
         conf = super(SignalHandler, self).stats_config()
         conf["com_socket"] = ["general", "com_port"]
         conf["request_socket"] = ["general", "request_port"]
@@ -288,9 +291,9 @@ class SignalHandler(Base):
         while True:
             socks = dict(self.poller.poll())
 
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             # incoming request from TaskProvider
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             if (self.request_fw_socket in socks
                     and socks[self.request_fw_socket] == zmq.POLLIN):
 
@@ -364,9 +367,9 @@ class SignalHandler(Base):
                     self.log.error("Failed to receive/answer new signal "
                                    "requests", exc_info=True)
 
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             # start/stop command from external
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             if (self.com_socket in socks
                     and socks[self.com_socket] == zmq.POLLIN):
 
@@ -380,9 +383,9 @@ class SignalHandler(Base):
                 else:
                     self.send_response(unpacked_message.response)
 
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             # request from external
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             if (self.request_socket in socks
                     and socks[self.request_socket] == zmq.POLLIN):
 
@@ -481,9 +484,9 @@ class SignalHandler(Base):
                 else:
                     self.log.info("Request not supported.")
 
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             # control commands from internal
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             if (self.control_sub_socket in socks
                     and socks[self.control_sub_socket] == zmq.POLLIN):
 
@@ -1031,6 +1034,7 @@ class SignalHandler(Base):
     def stop(self):
         """Close sockets and clean up.
         """
+        super(SignalHandler, self).stop()
 
         self.log.debug("Closing sockets for SignalHandler")
 

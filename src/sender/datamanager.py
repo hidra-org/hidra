@@ -516,8 +516,6 @@ class DataManager(Base):
         self.context = zmq.Context()
         self.log.debug("Registering global ZMQ context")
 
-        self.stats_queue.put(("config", self.config))
-
     def _setup_logging(self):
         config_gen = self.config["general"]
 
@@ -914,7 +912,12 @@ class DataManager(Base):
         """
 
         if self.use_statserver:
-            self.statserver = StatServer(self.log_queue)
+            self.statserver = Process(target=StatServer,
+                                      args=(
+                                        self.config,
+                                        self.log_queue
+                                        )
+                                      )
             self.statserver.start()
 
         # SignalHandler
@@ -1062,10 +1065,6 @@ class DataManager(Base):
 
         self.continue_run = False
 
-        if self.statserver is not None:
-            self.statserver.stop()
-            self.statserver = None
-
         if self.log is None:
             self.log = logging
 
@@ -1095,6 +1094,9 @@ class DataManager(Base):
         for datadispatcher in self.datadispatcher_pr:
             if datadispatcher is not None and datadispatcher.is_alive():
                 self.log.error("DataDispatcher hangs.")
+        if (self.statserver is not None
+                and self.statserver.is_alive()):
+            self.log.error("StatServer hangs.")
 
         if self.context is not None:
             self.log.info("Destroying context")

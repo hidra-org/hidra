@@ -30,7 +30,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import json
 import multiprocessing
+import zmq
 
 import _environment  # noqa F401 # pylint: disable=unused-import
 import hidra.utils as utils
@@ -45,7 +47,6 @@ class Base(object):
     """
     Implementation of the sender base class.
     """
-    stats_queue = multiprocessing.Queue()
 
     def __init__(self):
         # make the class cooperative for multiple inheritance
@@ -59,6 +60,7 @@ class Base(object):
         self.required_params_dep = {}
         self.config_reduced = {}
 
+        self.stats_collect_socket = None
         self.control_socket = None
 
     def _base_check(self, module_class, check_dep=True):
@@ -132,15 +134,41 @@ class Base(object):
 
         return config_reduced
 
+    def setup_stats_collection(self):
+        """Sets up communication to stats server.
+        """
+        endpoints = self.config["network"]["endpoints"]
+
+        self.stats_collect_socket = self.start_socket(
+            name="stats_collect_socket",
+            sock_type=zmq.PUSH,
+            sock_con="connect",
+            endpoint=endpoints.stats_collect_con
+        )
+
     def stats_config(self):
         """Mapping for stats server.
         """
         return {}
 
     def update_stats(self, name, value):
-        stat_name = self.stats_config()[name]
-        self.log.debug("Update(%s): %s", name, value)
-        self.stats_queue.put((stat_name, value))
+        """Send values to update to stats server
+        """
+
+        if self.stats_collect_socket is None:
+            return
+
+        try:
+            stat_name = self.stats_config()[name]
+            self.log.debug("Update(%s): %s", name, value)
+
+            msg = json.dumps([stat_name, value]).encode()
+            self.stats_collect_socket.send(msg)
+        except Exception:
+            self.log.error("Error when sending stats for %s", name,
+                           exc_info=True)
+            self.log.debug("value=%s", value)
+            self.log.debug("msg=%s", msg)
 
     def start_socket(self,
                      name,
@@ -349,3 +377,9 @@ class Base(object):
         received. (They override this method then)
         """
         pass
+
+    def stop(self):
+        """Stop sockets and clean up.
+        """
+        if self.stats_collect_socket is not None:
+            self.stop_socket(name="stats_collect_socket")

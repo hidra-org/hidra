@@ -26,30 +26,99 @@
 This module implements the data dispatcher.
 """
 
+import json
 import multiprocessing
 import time
+import zmq
 
 from base_class import Base
 import hidra.utils as utils
 
 
-class StatServer(Base, multiprocessing.Process):
-    def __init__(self, log_queue):
+class StatServer(Base):
+    def __init__(self, config, log_queue):
         super(StatServer, self).__init__()
-        
-        self.log = utils.get_logger("StatsServer", log_queue)
 
+        self.config = config
+        self.log_queue = log_queue
+
+        self.log = None
         self.keep_running = True
-        self.stats = {}
+        self.stats = {"config": config}
+
+        self.context = None
+        self.stats_collect_socket = None
+        self.stats_expose_socket = None
+
+        self._setup()
+        self.run()
+
+    def _setup(self):
+        self.log = utils.get_logger("StatsServer", self.log_queue)
+
+        # --------------------------------------------------------------------
+        # zmq setup                      
+        # --------------------------------------------------------------------
+
+        self.context = zmq.Context()
+
+        endpoints = self.config["network"]["endpoints"]
+
+        self.stats_collect_socket = self.start_socket(
+            name="stats_collect_socket",
+            sock_type=zmq.PULL,
+            sock_con="bind",
+            endpoint=endpoints.stats_collect_bind
+        )
+
+        # socket to get control signals from
+        self.control_socket = self.start_socket(
+            name="control_socket",
+            sock_type=zmq.SUB,
+            sock_con="connect",
+            endpoint=endpoints.control_sub_con
+        )
+        self.control_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
+
+#        self.stats_expose_socket = self.start_socket(
+#            name="stats_expose_socket",
+#            sock_type=zmq.REP,
+#            sock_con="connect",
+#            endpoint=endpoints.stats_expose_con
+#        )
+
+        self.poller = zmq.Poller()
+        self.poller.register(self.control_socket, zmq.POLLIN)
+        self.poller.register(self.stats_collect_socket, zmq.POLLIN)
 
     def run(self):
         while self.keep_running:
-            new = self.stats_queue.get()
+            socks = dict(self.poller.poll())
 
-            if new =="STOP":
-                break
+            # ----------------------------------------------------------------
+            # incoming stats
+            # ----------------------------------------------------------------
+            if (self.stats_collect_socket in socks
+                    and socks[self.stats_collect_socket] == zmq.POLLIN):
 
-            self._update(*new)
+                new = self.stats_collect_socket.recv()
+                new = json.loads(new.decode())
+                self.log.debug("received: %s", new)
+
+                if new == [b"STOP"]:
+                    break
+
+                self._update(*new)
+
+            # ----------------------------------------------------------------
+            # control commands from internal
+            # ----------------------------------------------------------------
+            if (self.control_socket in socks
+                    and socks[self.control_socket] == zmq.POLLIN):
+
+                # the exit signal should become effective
+                if self.check_control_signal():
+                    break
 
     def _update(self, param, value):
         self.log.debug("Update: %s", param)
@@ -68,4 +137,13 @@ class StatServer(Base, multiprocessing.Process):
 
     def stop(self):
         self.keep_running = False
-        self.stats_queue.put("STOP")
+
+        self.stop_socket(name="stats_collect_socket")
+        self.stop_socket(name="control_socket")
+#        self.stop_socket(name="stats_expose_socket")
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.stop()
+
+    def __del__(self):
+        self.stop()

@@ -50,6 +50,8 @@ IpcAddresses = namedtuple(
         "router",
         "cleaner_job",
         "cleaner_trigger",
+        "stats_collect",
+        "stats_expose"
     ]
 )
 
@@ -74,6 +76,10 @@ Endpoints = namedtuple(
         "cleaner_trigger_con",
         "confirm_bind",
         "confirm_con",
+        "stats_collect_bind",
+        "stats_collect_con",
+        "stats_expose_bind",
+        "stats_expose_con",
     ]
 )
 

@@ -65,7 +65,8 @@ PACKAGES = {
             "test_datadispatcher": "TestDataDispatcher",
             "test_signalhandler": "TestSignalHandler",
             "test_datamanager": "TestDataManager",
-            "test_base_class": "TestBaseClass"
+            "test_base_class": "TestBaseClass",
+            "test_statserver": "TestStatServer",
         },
         "exclude": []
     },

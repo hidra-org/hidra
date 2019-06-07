@@ -327,7 +327,7 @@ class TestBase(unittest.TestCase):
         """Wrapper of utils.start_socket
         """
 
-        return utils.start_socket(
+        socket, port = utils.start_socket(
             name=name,
             sock_type=sock_type,
             sock_con=sock_con,
@@ -335,6 +335,8 @@ class TestBase(unittest.TestCase):
             context=self.context,
             log=self.log
         )
+
+        return socket
 
     def stop_socket(self, name, socket=None):
         """Wrapper for utils.stop_socket.
