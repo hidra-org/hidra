@@ -80,16 +80,17 @@ class StatServer(Base):
         )
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
 
-#        self.stats_expose_socket = self.start_socket(
-#            name="stats_expose_socket",
-#            sock_type=zmq.REP,
-#            sock_con="connect",
-#            endpoint=endpoints.stats_expose_con
-#        )
+        self.stats_expose_socket = self.start_socket(
+            name="stats_expose_socket",
+            sock_type=zmq.REP,
+            sock_con="bind",
+            endpoint=endpoints.stats_expose_bind
+        )
 
         self.poller = zmq.Poller()
         self.poller.register(self.control_socket, zmq.POLLIN)
         self.poller.register(self.stats_collect_socket, zmq.POLLIN)
+        self.poller.register(self.stats_expose_socket, zmq.POLLIN)
 
     def run(self):
         while self.keep_running:
@@ -109,6 +110,25 @@ class StatServer(Base):
                     break
 
                 self._update(*new)
+
+            # ----------------------------------------------------------------
+            # external requests
+            # ----------------------------------------------------------------
+            if (self.stats_expose_socket in socks
+                    and socks[self.stats_expose_socket] == zmq.POLLIN):
+
+                key = self.stats_expose_socket.recv()
+                key = json.loads(key.decode())
+                self.log.debug("key=%s", key)
+
+                try:
+                    answer = self.stats[key]
+                except KeyError:
+                    self.log.error("Key '%s' not found in stats", key)
+                    answer = "ERROR"
+
+                self.log.debug("Answer to stats_expose_socket: %s", answer)
+                self.stats_expose_socket.send(json.dumps(answer).encode())
 
             # ----------------------------------------------------------------
             # control commands from internal
@@ -140,7 +160,7 @@ class StatServer(Base):
 
         self.stop_socket(name="stats_collect_socket")
         self.stop_socket(name="control_socket")
-#        self.stop_socket(name="stats_expose_socket")
+        self.stop_socket(name="stats_expose_socket")
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.stop()

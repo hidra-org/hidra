@@ -27,6 +27,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import json
 import time
 import zmq
 
@@ -46,6 +47,8 @@ class TestStatServer(TestBase):
 
         control_endpt = "ipc:///tmp/control"
         stats_collect_endpt = "ipc:///tmp/stats_collect"
+        stats_expose_endpt = "ipc:///tmp/stats_expose"
+        com_con = "tcp://abc:123"
         self.endpoints = utils.Endpoints(
             control_pub_bind=None,
             control_pub_con=None,
@@ -58,7 +61,7 @@ class TestStatServer(TestBase):
             router_bind=None,
             router_con=None,
             com_bind=None,
-            com_con=None,
+            com_con=com_con,
             cleaner_job_bind=None,
             cleaner_job_con=None,
             cleaner_trigger_bind=None,
@@ -67,8 +70,8 @@ class TestStatServer(TestBase):
             confirm_con=None,
             stats_collect_bind=stats_collect_endpt,
             stats_collect_con=stats_collect_endpt,
-            stats_expose_bind=None,
-            stats_expose_con=None,
+            stats_expose_bind=stats_expose_endpt,
+            stats_expose_con=stats_expose_endpt,
         )
 
         self.statserver_config = {
@@ -95,8 +98,29 @@ class TestStatServer(TestBase):
         self.server.start()
         time.sleep(0.1)
 
-    def test_statsserver(self):
-        pass
+    def test_statsserver_exposing(self):
+
+        stats_expose_socket = self.start_socket(
+            name="stats_expose_socket",
+            sock_type=zmq.REQ,
+            sock_con="connect",
+            endpoint=self.endpoints.stats_expose_con
+        )
+
+        #key = "test"
+        key = "config"
+        key = json.dumps(key).encode()
+
+        stats_expose_socket.send(key)
+
+        answer = stats_expose_socket.recv()
+        answer = json.loads(answer.decode())
+        self.log.debug("answer=%s", answer)
+
+        endpt = utils.Endpoints(*answer["network"]["endpoints"])
+        self.log.debug("com_con=%s", endpt.com_con)
+
+
 
     def tearDown(self):
         if self.control_socket is not None:
