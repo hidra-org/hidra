@@ -35,7 +35,9 @@ import logging
 import os
 import platform
 import pwd
+import re
 import socket as socket_m
+import subprocess
 import sys
 
 from ._version import __version__
@@ -424,3 +426,108 @@ def show_files_in_dir(log, dirs):
         log.debug("Files remaining: %s", files)
     else:
         log.debug("No files remaining.")
+
+
+def get_service_manager(systemd_prefix, service_name):
+    """
+    Determines which kind of service manager system to use (systemd or init).
+
+    Return:
+        A string if serice manager lookup was successful:
+            "systemd": on a modern linux system using systemd
+            "init": on a older system using init scripts
+        And None if it could not be determined.
+    """
+
+    path_to_check = [
+        "/usr/lib/systemd",
+        "/usr/lib/systemd/system",
+        "/etc/systemd/system",
+        "/lib/systemd/system"
+    ]
+
+    use_systemd = (
+        os.path.exists("/usr/lib/systemd")
+        and any([os.path.exists("{}/{}.service".format(i, systemd_prefix))
+                 for i in path_to_check])
+    )
+
+    use_init_script = (
+        os.path.exists("/etc/init.d") 
+        and os.path.exists("/etc/init.d/" + service_name)
+    )
+
+    if use_systemd:
+        service_manager = "systemd"
+    elif use_init_script:
+        service_manager = "init"
+    else:
+        service_manager = None
+
+    return service_manager
+
+
+def read_status(service, log):
+    """
+    Get more status information. Only available for systems using systemd.
+
+    Args:
+        systemd_prefix: systemd service name prefix (e.g hidra@)
+        service_name: init service name
+        systemd_service_name: the concrete service name
+        log: logging handle
+
+    Returns:
+        A dictionary with the detail information:
+            service
+            status
+            since
+            uptime
+            pid
+            info
+    """
+
+    cmd = ["systemctl", "status", service]
+
+    p =  subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    (output, err) = p.communicate()
+    output = output.decode('utf-8')
+
+    service_regex = r"Loaded:.*\/(.*service);"
+    status_regex = r"Active:(.*) since (.*);(.*)"
+    pid_regex = r"Main PID: ([0-9]*)"
+    message_regex = r".*datamanager.py\[[0-9]*\]:(.*)"
+
+    service_status = {
+        "service": None,
+        "status": None,
+        "since": None,
+        "uptime": None,
+        "pid": None,
+        "info": None,
+    }
+
+    for line in output.splitlines():
+        service_search = re.search(service_regex, line)
+        status_search = re.search(status_regex, line)
+        pid_search = re.search(pid_regex, line)
+        message_search = re.search(message_regex, line)
+
+        if service_search:
+            service_status["service"] = service_search.group(1)
+
+        elif status_search:
+            service_status["status"] = status_search.group(1).strip()
+            service_status["since"] = status_search.group(2).strip()
+            service_status["uptime"] = status_search.group(3).strip()
+
+        elif pid_search:
+            service_status["pid"] = pid_search.group(1)
+
+        elif message_search:
+            if service_status["info"] is None:
+                service_status["info"] = message_search.group(1)
+            else:
+                service_status["info"] += "\n" + message_search.group(1)
+
+    return service_status

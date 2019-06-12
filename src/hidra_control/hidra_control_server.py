@@ -148,16 +148,13 @@ class InstanceTracking(object):
 
         for det_id in self.instances[self.beamline]:
             # check if running
-            if hidra_status(self.beamline, det_id, self.log) == "RUNNING":
+            if self.hidra_status(det_id) == "RUNNING":
                 self.log.info("Started hidra for %s_%s, already running",
                               self.beamline, det_id)
                 continue
 
             # restart
-            if call_hidra_service("start",
-                                  self.beamline,
-                                  det_id,
-                                  self.log) == 0:
+            if self.call_hidra_service("start", det_id) == 0:
                 self.log.info("Started hidra for %s_%s",
                               self.beamline, det_id)
             else:
@@ -249,8 +246,22 @@ class HidraController(object):
             "remove_data",
             "fix_subdirs"
         ]
+
 #        self.supported_keys = [k for k in list(self.ctemplate.keys())
 #                               if k not in ["active", "beamline"]]
+
+        self.systemd_prefix = "hidra@"
+        self.service_name = "hidra"
+
+        self.service_manager = utils.get_service_manager(
+            systemd_prefix=self.systemd_prefix,
+            service_name=self.service_name
+        )
+
+        self.systemd_service_tmpl = ("{}{}".format(self.systemd_prefix,
+                                                   self.beamline)
+                                     + "_{}.service")
+
 
     def __read_config(self):
 
@@ -459,7 +470,7 @@ class HidraController(object):
             return self.restart(host_id, det_id)
 
         elif cmd == "status":
-            return hidra_status(self.beamline, det_id, self.log)
+            return self.hidra_status(det_id)
 
         elif cmd == "get_instances":
             return self.get_instances()
@@ -521,9 +532,6 @@ class HidraController(object):
                                                 self.log)
 
         if config_complete:
-            # static config
-            config_to_write = self.config_static
-
             # add variable config
             config_g = self.config_variable["general"]
             config_df = self.config_variable["datafetcher"]
@@ -536,22 +544,22 @@ class HidraController(object):
             local_target = config_df["local_target"].format(bl=self.beamline)
             external_ip = hidra.CONNECTION_LIST[self.beamline]["host"]
 
-            config_to_write["general"]["log_name"] = log_name
-            config_to_write["general"]["procname"] = procname
-            config_to_write["general"]["username"] = username
-            config_to_write["general"]["ext_ip"] = external_ip
-            df_type = config_to_write["datafetcher"]["type"]
+            self.config_static["general"]["log_name"] = log_name
+            self.config_static["general"]["procname"] = procname
+            self.config_static["general"]["username"] = username
+            self.config_static["general"]["ext_ip"] = external_ip
+            df_type = self.config_static["datafetcher"]["type"]
             try:
-                config_to_write["datafetcher"][df_type]["local_target"] = (
+                self.config_static["datafetcher"][df_type]["local_target"] = (
                     local_target
                 )
             except KeyError:
-                config_to_write["datafetcher"][df_type] = {
+                self.config_static["datafetcher"][df_type] = {
                     "local_target": local_target
                 }
 
             # dynamic config
-            utils.update_dict(current_config, config_to_write)
+            utils.update_dict(current_config, self.config_static)
 
             # write configfile
             # /etc/hidra/P01_eiger01.conf
@@ -561,7 +569,7 @@ class HidraController(object):
                 .format(bl=self.beamline, det=det_id)
             )
             self.log.info("Writing config file: {}".format(config_file))
-            utils.write_config(config_file, config_to_write, log=self.log)
+            utils.write_config(config_file, self.config_static, log=self.log)
 
             ed_type = self.config_static["eventdetector"]["type"]
             df_type = self.config_static["datafetcher"]["type"]
@@ -572,8 +580,8 @@ class HidraController(object):
             )
 
             # store the dynamic config globally
-            self.log.debug("config = {}", config_to_write)
-            self.master_config[det_id] = copy.deepcopy(config_to_write)
+            self.log.debug("config = {}", self.config_static)
+            self.master_config[det_id] = copy.deepcopy(self.config_static)
             # this information shout not go into the master config
             del self.master_config[det_id]["active"]
 
@@ -586,13 +594,77 @@ class HidraController(object):
             )
             raise Exception("Not all required parameters are specified")
 
+    def call_hidra_service(self, cmd, det_id):
+        """Command hidra (e.g. start, stop, status,...).
+
+        Args:
+            cmd: The command to call the service with
+                 (e.g. start, stop, status,...).
+            det_id: Which detector to command hidra for.
+
+        Returns:
+            Return value of the systemd or service call.
+        """
+
+    #    return 0
+
+    #    sys_cmd = ["/home/kuhnm/Arbeit/projects/hidra/initscripts/hidra.sh",
+    #               "--beamline", "p00",
+    #               "--detector", "asap3-mon",
+    #               "--"+cmd]
+    #    return subprocess.call(sys_cmd)
+
+        # system using systemd
+        if self.service_manager == "systemd":
+            svc = self.systemd_service_tmpl.format(det_id)
+            self.log.debug("Call: systemctl %s %s", cmd, svc)
+
+            if cmd == "status":
+                return subprocess.call(["systemctl", "is-active", svc])
+            else:
+                return subprocess.call(["sudo", "-n", "systemctl", cmd, svc])
+
+        # system using init scripts
+        elif self.service_manager == "init":
+            self.log.debug("Call: service %s %s", self.service_name, cmd)
+            return subprocess.call(["service", self.service_name, cmd])
+            # TODO implement beamline and det_id in hisdra.sh
+            # return subprocess.call(["service", self.service_name, "status",
+            #                         beamline, det_id])
+
+        else:
+            self.log.debug("Call: no service to call found")
+
+    def hidra_status(self, det_id):
+        """Request hidra status.
+
+        Args:
+            det_id: Which detector to command hidra for.
+
+        Returns:
+            A string describing the status:
+                'RUNNING'
+                'NOT RUNNING'
+                'ERROR'
+        """
+
+        try:
+            proc = self.call_hidra_service("status", det_id)
+        except Exception:
+            return b"ERROR"
+
+        if proc == 0:
+            return b"RUNNING"
+        else:
+            return b"NOT RUNNING"
+
     def start(self, host_id, det_id):
         """
         start ...
         """
 
         # check if service is running
-        if hidra_status(self.beamline, det_id, self.log) == b"RUNNING":
+        if self.hidra_status(det_id) == b"RUNNING":
             return b"ALREADY_RUNNING"
 
         try:
@@ -602,7 +674,7 @@ class HidraController(object):
             return b"ERROR"
 
         # start service
-        if call_hidra_service("start", self.beamline, det_id, self.log) != 0:
+        if self.call_hidra_service("start", det_id) != 0:
             self.log.error("Could not start the service.")
             return b"ERROR"
 
@@ -610,8 +682,16 @@ class HidraController(object):
         time.sleep(1)
 
         # check if really running before return
-        if hidra_status(self.beamline, det_id, self.log) != b"RUNNING":
+        if self.hidra_status(det_id) != b"RUNNING":
             self.log.error("Service is not running after triggering start.")
+
+            if self.service_manager == "systemd":
+                status = utils.read_status(
+                    service=self.systemd_service_tmpl.format(det_id),
+                    log=self.log
+                )["info"]
+                self.log.debug("systemctl status: \n%s", status)
+
             return b"ERROR"
 
         # remember that the instance was started
@@ -638,11 +718,11 @@ class HidraController(object):
         stop ...
         """
         # check if really running before return
-        if hidra_status(self.beamline, det_id, self.log) != b"RUNNING":
+        if self.hidra_status(det_id) != b"RUNNING":
             return b"ARLEADY_STOPPED"
 
         # stop service
-        if call_hidra_service("stop", self.beamline, det_id, self.log) != 0:
+        if self.call_hidra_service("stop", det_id) != 0:
             self.log.error("Could not stop the service.")
             return b"ERROR"
 
@@ -663,79 +743,11 @@ class HidraController(object):
             return b"ERROR"
 
 
-def call_hidra_service(cmd, beamline, det_id, log):
-    """Command hidra (e.g. start, stop, status,...).
+    def __del__(self):
+        self._stop()
 
-    Args:
-        beamline: For which beamline to command hidra.
-        det_id: Which detector to command hidra for.
-        log: log handler.
-
-    Returns:
-        Return value of the systemd or service call.
-    """
-
-    systemd_prefix = "hidra@"
-    service_name = "hidra"
-
-#    sys_cmd = ["/home/kuhnm/Arbeit/projects/hidra/initscripts/hidra.sh",
-#               "--beamline", "p00",
-#               "--detector", "asap3-mon",
-#               "--"+cmd]
-#    return subprocess.call(sys_cmd)
-
-    # systems using systemd
-    if (os.path.exists("/usr/lib/systemd")
-            and (os.path.exists("/usr/lib/systemd/{}.service"
-                                .format(systemd_prefix))
-                 or os.path.exists("/usr/lib/systemd/system/{}.service"
-                                   .format(systemd_prefix))
-                 or os.path.exists("/etc/systemd/system/{}.service"
-                                   .format(systemd_prefix)))):
-
-        svc = "{}{}_{}.service".format(systemd_prefix, beamline, det_id)
-        log.debug("Call: systemctl %s %s", cmd, svc)
-        if cmd == "status":
-            return subprocess.call(["systemctl", "is-active", svc])
-        else:
-            return subprocess.call(["sudo", "-n", "systemctl", cmd, svc])
-
-    # systems using init scripts
-    elif os.path.exists("/etc/init.d") \
-            and os.path.exists("/etc/init.d/" + service_name):
-        log.debug("Call: service %s %s", cmd, svc)
-        return subprocess.call(["service", service_name, cmd])
-        # TODO implement beamline and det_id in hisdra.sh
-        # return subprocess.call(["service", service_name, "status",
-        #                         beamline, det_id])
-    else:
-        log.debug("Call: no service to call found")
-
-
-def hidra_status(beamline, det_id, log):
-    """Request hidra status.
-
-    Args:
-        beamline: For which beamline to command hidra.
-        det_id: Which detector to command hidra for.
-        log: log handler.
-
-    Returns:
-        A string describing the status:
-            'RUNNING'
-            'NOT RUNNING'
-            'ERROR'
-    """
-
-    try:
-        proc = call_hidra_service("status", beamline, det_id, log)
-    except Exception:
-        return b"ERROR"
-
-    if proc == 0:
-        return b"RUNNING"
-    else:
-        return b"NOT RUNNING"
+    def __exit__(self):
+        self._stop()
 
 
 def argument_parsing():
@@ -841,7 +853,6 @@ class ControlServer(object):
 
         # Create log and set handler to queue handle
         self.log = utils.get_logger("ControlServer", self.log_queue)
-
         self.log.info("Init")
 
         self.controller = HidraController(self.beamline, config, self.log)
