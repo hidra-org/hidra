@@ -338,7 +338,6 @@ def argument_parsing():
         os.path.join(config_gen["log_path"],
                      config_gen["log_name"])
     )
-    utils.check_writable(config_gen["log_file"])
 
     # check if configured eventdetector and datafetcher modules really exist
     utils.check_module_exist(ed_type)
@@ -454,7 +453,7 @@ class DataManager(Base):
                 self.config = argument_parsing()
             else:
                 self.config = config
-        except:
+        except Exception:
             self.log = logging
             self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
             raise
@@ -468,6 +467,7 @@ class DataManager(Base):
         user_info, user_was_changed = utils.change_user(config_gen)
 
         # set up logging
+        utils.check_writable(config_gen["log_file"])
         self._setup_logging()
 
         utils.log_user_change(self.log, user_was_changed, user_info)
