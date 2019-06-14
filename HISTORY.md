@@ -12,6 +12,10 @@
 - Renamed event_det_port und data_fetch_port
 - Simplify log setup (no separated calls for with or without onscreen)
 
+# 4.0.23
+
+- Fix crash of signal handler when removing multiple leftover connections
+
 # 4.0.22
 
 - Fix pathlib2 dependency in freeze_setup, rpm and deb packages
