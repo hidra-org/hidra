@@ -1,4 +1,5 @@
 # develop
+# 4.0.23
 # 4.0.22
 
 - Fix pathlib2 dependency in freeze_setup, rpm and deb packages
