@@ -210,7 +210,7 @@ class ConfigHandling(object):
             "datafetcher": ["store_data", "remove_data"]
         }
 
-        self.__read_config()
+        self._read_config()
 
     def set(self, host_id, det_id, param, value):
 
@@ -266,7 +266,7 @@ class ConfigHandling(object):
             if not self.all_configs[host_id]:
                 del self.all_configs[host_id]
 
-    def __read_config(self):
+    def _read_config(self):
 
         # write configfile
         # /etc/hidra/P01.conf
@@ -318,8 +318,32 @@ class ConfigHandling(object):
                 "Not all required parameters are specified"
             )
 
+    def get_config_file_name(self, det_id):
+        """
+        Get the configuration file name
+
+        Args:
+            det_id: For which detector the config is needed.
+
+        Returns:
+            A absolut configuration file path as string.
+        """
+
+        # /etc/hidra/P01_eiger01.conf
+        return os.path.join(
+            CONFIG_DIR,
+            self.config["controlserver"]["hidra_config_name"]
+            .format(bl=self.beamline, det=det_id)
+        )
 
     def write_config(self, host_id, det_id):
+        """
+        Write the configuration into a file.
+
+        Args:
+            host_id: the host id the config belongs to.
+            det_id: the detector id the config belongs to.
+        """
         # pylint: disable=global-variable-not-assigned
         global CONFIG_DIR
         global CONFIG_PREFIX
@@ -369,21 +393,15 @@ class ConfigHandling(object):
         utils.update_dict(current_config, self.config_static)
 
         # write configfile
-        # /etc/hidra/P01_eiger01.conf
-        config_file = os.path.join(
-            CONFIG_DIR,
-            self.config["controlserver"]["hidra_config_name"]
-            .format(bl=self.beamline, det=det_id)
-        )
+        config_file = self.get_config_file_name(det_id)
         self.log.info("Writing config file: {}".format(config_file))
         utils.write_config(config_file, self.config_static, log=self.log)
 
-        ed_type = self.config_static["eventdetector"]["type"]
-        df_type = self.config_static["datafetcher"]["type"]
         self.log.info(
             "Started with ext_ip: %s, event detector: %s, "
-            "data fetcher: %s",
-            external_ip, ed_type, df_type
+            "data fetcher: %s", external_ip,
+            self.config_static["eventdetector"]["type"],
+            self.config_static["datafetcher"]["type"]
         )
 
         # store the dynamic config globally
@@ -395,6 +413,22 @@ class ConfigHandling(object):
         # mark local_config as inactive
         current_config["active"] = False
 
+    def remove_config(self, det_id):
+        """
+        Remove the config file.
+
+        Args:
+            det_id: The detector id for which the configuration should be
+                    removed.
+        """
+        config_file = self.get_config_file_name(det_id)
+
+        try:
+            self.log.debug("Removing config file '%s'", config_file)
+            os.remove(config_file)
+        except Exception:
+            self.log.error("Could not remove config file %s", config_file,
+                           exc_info=True)
 
 class HidraController(utils.Base):
     """
@@ -768,6 +802,8 @@ class HidraController(utils.Base):
             return b"ERROR"
 
         self.instances.remove(det_id)
+        self.confighandling.remove_config(det_id)
+
         return b"DONE"
 
     def restart(self, host_id, det_id):
