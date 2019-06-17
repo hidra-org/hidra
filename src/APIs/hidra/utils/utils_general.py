@@ -41,7 +41,7 @@ import subprocess
 import sys
 
 from ._version import __version__
-from .utils_datatypes import WrongConfiguration, ModuleNotFoundError
+from .utils_datatypes import WrongConfiguration, NotFoundError
 
 
 def is_windows():
@@ -74,7 +74,7 @@ def check_module_exist(m_type):
     try:
         import_module(m_type)
         logging.debug("Module '%s' is ok.", m_type)
-    except ModuleNotFoundError:
+    except NotFoundError:
         logging.error("Module '%s' could not be loaded.", m_type)
         sys.exit(1)
 

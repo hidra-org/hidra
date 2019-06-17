@@ -62,7 +62,7 @@ from .utils_datatypes import (
     CommunicationFailed,
     DataSavingError,
     WrongConfiguration,
-    ModuleNotFoundError,
+    NotFoundError,
     NotAllowed
 )
 
@@ -136,7 +136,7 @@ __all__ = [
     "CommunicationFailed",
     "DataSavingError",
     "WrongConfiguration",
-    "ModuleNotFoundError",
+    "NotFoundError",
     "NotAllowed",
     "check_config",
     "determine_config_file",

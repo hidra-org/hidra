@@ -155,7 +155,7 @@ class WrongConfiguration(Exception):
     pass
 
 
-class ModuleNotFoundError(Exception):
+class NotFoundError(Exception):
     """Raised when a configured module is not available."""
     pass
 
