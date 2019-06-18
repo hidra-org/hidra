@@ -62,11 +62,149 @@ from hidra.utils import FormatError  # noqa E402
 CONFIG_PREFIX = "datamanager_"
 
 
-class InstanceTracking(object):
+class HidraServiceHandling(object):
+    """
+    Implements service handling.
+    """
+
+    def __init__(self, beamline, log):
+
+        self.beamline = beamline
+        self.log = log
+        self.service_conf = {}
+
+        self.call_hidra_service = None
+
+        self.__setup()
+
+    # prevent overwriting from subclass
+    def __setup(self):
+
+        self.__set_service_conf()
+
+        if self.service_conf["manager"] == "systemd":
+            self.call_hidra_service = self._call_systemd
+
+        elif self.service_conf["manager"] == "init":
+            self.call_hidra_service = self._call_init_script
+
+        else:
+            log.debug("Call: no service to call found")
+
+    def __set_service_conf(self):
+        systemd_prefix = "hidra@"
+        service_name = "hidra"
+        service_manager = utils.get_service_manager(
+            systemd_prefix=systemd_prefix,
+            service_name=service_name
+        )
+
+        self.service_conf["manager"] = service_manager
+        if service_manager == "systemd":
+            self.service_conf["name"] = service_name
+            self.service_conf["prefix"] = systemd_prefix
+            self.service_conf["template"] = (
+                "{}{}".format(self.service_conf["prefix"], self.beamline)
+                + "_{}.service"
+            )
+        else:
+            self.service_conf["name"] = service_name
+            self.service_conf["prefix"] = None
+            self.service_conf["template"] = None
+
+    def hidra_status(self, det_id):
+        """Request hidra status.
+
+        Args:
+            det_id: Which detector to command hidra for.
+
+        Returns:
+            A string describing the status:
+                'RUNNING'
+                'NOT RUNNING'
+                'ERROR'
+        """
+
+        try:
+            proc = self.call_hidra_service("status", det_id)
+        except Exception:
+            return b"ERROR"
+
+        if proc == 0:
+            return b"RUNNING"
+        else:
+            return b"NOT RUNNING"
+
+    def call_hidra_service(self, cmd, det_id):
+        """Command hidra (e.g. start, stop, status,...).
+        Args:
+            cmd: The command to call the service with
+                 (e.g. start, stop, status,...).
+            det_id: Which detector to command hidra for.
+
+        Returns:
+            Return value of the systemd or service call.
+        """
+        pass
+
+    def _call_systemd(self, cmd, det_id):
+        """
+        Args:
+            cmd: The command to call the service with
+                 (e.g. start, stop, status,...).
+            det_id: Which detector to command hidra for.
+
+        Returns:
+            Return value of the systemd call.
+        """
+
+        svc = self.service_conf["template"].format(det_id)
+        status_call = ["/bin/systemctl", "is-active", svc]
+        other_call = ["sudo", "-n", "/bin/systemctl", cmd, svc]
+
+        if cmd == "status":
+            self.log.debug("Call: %s", " ".join(status_call))
+            return subprocess.call(status_call)
+
+        else:
+            self.log.debug("Call: %s", " ".join(other_call))
+            ret_val = subprocess.call(other_call)
+
+            if cmd == "start":
+                # the return value might still be 0 even if start did not work
+                # -> check status again
+                return subprocess.call(status_call)
+            else:
+                return ret_val
+
+    def _call_init_script(self, cmd, det_id):
+        """
+        Args:
+            cmd: The command to call the service with
+                 (e.g. start, stop, status,...).
+            det_id: Which detector to command hidra for.
+
+        Returns:
+            Return value of the service call.
+        """
+
+        call = ["service", service_conf["name"], cmd]
+        # TODO implement beamline and det_id in hisdra.sh
+        # call = ["service", service_conf["name"], "status", beamline, det_id]
+
+        log.debug("Call: %s", " ".join(call))
+        return subprocess.call(call)
+
+
+class InstanceTracking(HidraServiceHandling):
     """Handles instance tracking.
     """
 
     def __init__(self, beamline, backup_file, log):
+
+
+        super(InstanceTracking, self).__init__(beamline, log)
+
         self.beamline = beamline
         self.backup_file = backup_file
         self.log = log
@@ -116,6 +254,7 @@ class InstanceTracking(object):
         """
 
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        # the instances backup file is shared between all control servers
         if self.beamline in self.instances:
             self.instances[self.beamline][det_id] = timestamp
         else:
@@ -162,17 +301,34 @@ class InstanceTracking(object):
                                self.beamline, det_id)
 
 
-class ConfigHandling(object):
-    def __init__(self, beamline, config, log):
+class ConfigHandling(utils.Base):
+    def __init__(self, context, beamline, config, log):
+
+        super(ConfigHandling, self).__init__()
+
+        self.context = context
         self.beamline = beamline
         self.log = log
 
         self.config = config
+        self.config_static = None
+        self.config_variable = None
+        self.config_ending = ".yaml"
+
+        # connection depending hidra configuration, master config one is
+        # overwritten with these parameters when start is executed
+        self.all_configs = {}
+        self.master_config = {}
+        self.ctemplate = {}
+        self.required_params = {}
+
+        self._setup()
+
+    def _setup(self):
         self.config_static = self.config["hidraconfig_static"]
         self.config_variable = self.config["hidraconfig_variable"]
 
         self.config_ending = ".yaml"
-        self.master_config = {}
 
         # connection depending hidra configuration, master config one is
         # overwritten with these parameters when start is executed
@@ -199,8 +355,6 @@ class ConfigHandling(object):
                 "remove_data": None,
             }
         }
-
-        ed_type = "http_events"
         self.required_params = {
             "general": ["ldapuri", "whitelist"],
             "eventdetector": [
@@ -430,14 +584,31 @@ class ConfigHandling(object):
             self.log.error("Could not remove config file %s", config_file,
                            exc_info=True)
 
-class HidraController(utils.Base):
+
+    def _stop(self):
+        """
+        Clean up.
+        """
+        pass
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._stop()
+
+    def __del__(self):
+        self._stop()
+
+
+class HidraController(HidraServiceHandling):
     """
     This class holds getter/setter for all parameters
     and function members that control the operation.
     """
 
-    def __init__(self, beamline, config, log):
+    def __init__(self, context, beamline, config, log):
 
+        super(HidraController, self).__init__(beamline, log)
+
+        self.context = context
         # Beamline is read-only, determined by portNo
         self.beamline = beamline
         self.config = config
@@ -451,13 +622,7 @@ class HidraController(utils.Base):
         self.confighandling = None
         self.instances = None
 
-        self.enable_hidra_connection = None
         self.supported_keys = []
-
-        self.systemd_prefix = None
-        self.service_name = None
-        self.service_manager = None
-        self.systemd_service_tmpl = None,
 
         self._setup()
 
@@ -466,12 +631,14 @@ class HidraController(utils.Base):
         self.ldapuri = self.config_cs["ldapuri"]
         self.netgroup_template = self.config_cs["netgroup_template"]
 
-        self.confighandling = ConfigHandling(self.beamline,
+        self.confighandling = ConfigHandling(self.context,
+                                             self.beamline,
                                              self.config,
                                              self.log)
 
-        backup_file = self.config_cs["backup_file"]
-        self.instances = InstanceTracking(self.beamline, backup_file, self.log)
+        self.instances = InstanceTracking(self.beamline,
+                                          self.config_cs["backup_file"],
+                                          self.log)
         self.instances.restart_instances()
 
         self.supported_keys = [
@@ -487,18 +654,6 @@ class HidraController(utils.Base):
 
 #        self.supported_keys = [k for k in list(self.ctemplate.keys())
 #                               if k not in ["active", "beamline"]]
-
-        self.systemd_prefix = "hidra@"
-        self.service_name = "hidra"
-
-        self.service_manager = utils.get_service_manager(
-            systemd_prefix=self.systemd_prefix,
-            service_name=self.service_name
-        )
-
-        self.systemd_service_tmpl = ("{}{}".format(self.systemd_prefix,
-                                                   self.beamline)
-                                     + "_{}.service")
 
     def _decode_message(self, msg):
         """Decode the message
@@ -669,70 +824,6 @@ class HidraController(utils.Base):
 
         return b"DONE"
 
-    def call_hidra_service(self, cmd, det_id):
-        """Command hidra (e.g. start, stop, status,...).
-
-        Args:
-            cmd: The command to call the service with
-                 (e.g. start, stop, status,...).
-            det_id: Which detector to command hidra for.
-
-        Returns:
-            Return value of the systemd or service call.
-        """
-
-    #    return 0
-
-    #    sys_cmd = ["/home/kuhnm/Arbeit/projects/hidra/initscripts/hidra.sh",
-    #               "--beamline", "p00",
-    #               "--detector", "asap3-mon",
-    #               "--"+cmd]
-    #    return subprocess.call(sys_cmd)
-
-        # system using systemd
-        if self.service_manager == "systemd":
-            svc = self.systemd_service_tmpl.format(det_id)
-            self.log.debug("Call: systemctl %s %s", cmd, svc)
-
-            if cmd == "status":
-                return subprocess.call(["systemctl", "is-active", svc])
-            else:
-                return subprocess.call(["sudo", "-n", "systemctl", cmd, svc])
-
-        # system using init scripts
-        elif self.service_manager == "init":
-            self.log.debug("Call: service %s %s", self.service_name, cmd)
-            return subprocess.call(["service", self.service_name, cmd])
-            # TODO implement beamline and det_id in hisdra.sh
-            # return subprocess.call(["service", self.service_name, "status",
-            #                         beamline, det_id])
-
-        else:
-            self.log.debug("Call: no service to call found")
-
-    def hidra_status(self, det_id):
-        """Request hidra status.
-
-        Args:
-            det_id: Which detector to command hidra for.
-
-        Returns:
-            A string describing the status:
-                'RUNNING'
-                'NOT RUNNING'
-                'ERROR'
-        """
-
-        try:
-            proc = self.call_hidra_service("status", det_id)
-        except Exception:
-            return b"ERROR"
-
-        if proc == 0:
-            return b"RUNNING"
-        else:
-            return b"NOT RUNNING"
-
     def start(self, host_id, det_id):
         """
         start ...
@@ -760,14 +851,19 @@ class HidraController(utils.Base):
         if self.hidra_status(det_id) != b"RUNNING":
             self.log.error("Service is not running after triggering start.")
 
-            if self.service_manager == "systemd":
+            if self.service_conf["manager"] == "systemd":
                 status = utils.read_status(
-                    service=self.systemd_service_tmpl.format(det_id),
+                    service=self.service_conf["template"].format(det_id),
                     log=self.log
                 )["info"]
                 self.log.debug("systemctl status: \n%s", status)
 
             return b"ERROR"
+
+        self.confighandling.acquire_remote_config(
+            det_id,
+            self.service_conf["template"]
+        )
 
         # remember that the instance was started
         self.instances.add(det_id)
@@ -880,11 +976,13 @@ def argument_parsing():
     return config
 
 
-class ControlServer(object):
+class ControlServer(utils.Base):
     """The main server class.
     """
 
     def __init__(self):
+
+        super(ControlServer, self).__init__()
 
         self.beamline = None
         self.context = None
@@ -938,14 +1036,16 @@ class ControlServer(object):
         self.log = utils.get_logger("ControlServer", self.log_queue)
         self.log.info("Init")
 
-        self.controller = HidraController(self.beamline, config, self.log)
-
         host = hidra.CONNECTION_LIST[self.beamline]["host"]
         host = socket.gethostbyaddr(host)[2][0]
         port = hidra.CONNECTION_LIST[self.beamline]["port"]
         self.endpoint = "tcp://{}:{}".format(host, port)
-
         self._create_sockets()
+
+        self.controller = HidraController(self.context,
+                                          self.beamline,
+                                          config,
+                                          self.log)
 
     def _create_sockets(self):
 
