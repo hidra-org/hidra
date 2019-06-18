@@ -166,16 +166,28 @@ class HidraServiceHandling(object):
             self.log.debug("Call: %s", " ".join(status_call))
             return subprocess.call(status_call)
 
-        else:
-            self.log.debug("Call: %s", " ".join(other_call))
-            ret_val = subprocess.call(other_call)
+        self.log.debug("Call: %s", " ".join(other_call))
+        ret_call = subprocess.call(other_call)
 
-            if cmd == "start":
-                # the return value might still be 0 even if start did not work
-                # -> check status again
-                return subprocess.call(status_call)
-            else:
-                return ret_val
+        if cmd != "start":
+            return ret_call
+
+        # Needed because status always returns "RUNNING" in the first
+        # second
+        time.sleep(1)
+
+        # the return value might still be 0 even if start did not work
+        # -> check status again
+        ret_status = subprocess.call(status_call)
+
+        if ret_status != 0:
+            self.log.error("Service is not running after triggering start.")
+
+            status = utils.read_status(service=svc, log=self.log)["info"]
+            self.log.debug("systemctl status: \n%s", status)
+
+        return ret_status
+
 
     def _call_init_script(self, cmd, det_id):
         """
@@ -842,22 +854,6 @@ class HidraController(HidraServiceHandling):
         # start service
         if self.call_hidra_service("start", det_id) != 0:
             self.log.error("Could not start the service.")
-            return b"ERROR"
-
-        # Needed because status always returns "RUNNING" in the first second
-        time.sleep(1)
-
-        # check if really running before return
-        if self.hidra_status(det_id) != b"RUNNING":
-            self.log.error("Service is not running after triggering start.")
-
-            if self.service_conf["manager"] == "systemd":
-                status = utils.read_status(
-                    service=self.service_conf["template"].format(det_id),
-                    log=self.log
-                )["info"]
-                self.log.debug("systemctl status: \n%s", status)
-
             return b"ERROR"
 
         self.confighandling.acquire_remote_config(
