@@ -200,14 +200,14 @@ class InstanceTracking(HidraServiceHandling):
     """Handles instance tracking.
     """
 
-    def __init__(self, beamline, backup_file, log):
+    def __init__(self, beamline, backup_file, log_queue):
 
 
-        super(InstanceTracking, self).__init__(beamline, log)
+        self.log = utils.get_logger(self.__class__.__name__, log_queue)
+        super(InstanceTracking, self).__init__(beamline, self.log)
 
         self.beamline = beamline
         self.backup_file = backup_file
-        self.log = log
 
         self.instances = None
         self._set_instances()
@@ -302,13 +302,13 @@ class InstanceTracking(HidraServiceHandling):
 
 
 class ConfigHandling(utils.Base):
-    def __init__(self, context, beamline, config, log):
+    def __init__(self, context, beamline, config, log_queue):
 
         super(ConfigHandling, self).__init__()
 
         self.context = context
         self.beamline = beamline
-        self.log = log
+        self.log = utils.get_logger(self.__class__.__name__, log_queue)
 
         self.config = config
         self.config_static = None
@@ -604,20 +604,20 @@ class HidraController(HidraServiceHandling):
     and function members that control the operation.
     """
 
-    def __init__(self, context, beamline, config, log):
+    def __init__(self, context, beamline, config, log_queue):
 
-        super(HidraController, self).__init__(beamline, log)
+        self.log = utils.get_logger(self.__class__.__name__, log_queue)
+        super(HidraController, self).__init__(beamline, self.log)
 
         self.context = context
         # Beamline is read-only, determined by portNo
         self.beamline = beamline
         self.config = config
+        self.log_queue = log_queue
+
         self.config_cs = None
         self.ldapuri = None
         self.netgroup_template = None
-
-        # Set log handler
-        self.log = log
 
         self.confighandling = None
         self.instances = None
@@ -634,11 +634,11 @@ class HidraController(HidraServiceHandling):
         self.confighandling = ConfigHandling(self.context,
                                              self.beamline,
                                              self.config,
-                                             self.log)
+                                             self.log_queue)
 
         self.instances = InstanceTracking(self.beamline,
                                           self.config_cs["backup_file"],
-                                          self.log)
+                                          self.log_queue)
         self.instances.restart_instances()
 
         self.supported_keys = [
@@ -1045,7 +1045,7 @@ class ControlServer(utils.Base):
         self.controller = HidraController(self.context,
                                           self.beamline,
                                           config,
-                                          self.log)
+                                          self.log_queue)
 
     def _create_sockets(self):
 
