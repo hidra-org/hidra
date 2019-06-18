@@ -54,10 +54,10 @@ class StatServer(Base):
         self.run()
 
     def _setup(self):
-        self.log = utils.get_logger("StatsServer", self.log_queue)
+        self.log = utils.get_logger(self.__class__.__name__, self.log_queue)
 
         # --------------------------------------------------------------------
-        # zmq setup                      
+        # zmq setup
         # --------------------------------------------------------------------
 
         self.context = zmq.Context()
@@ -161,6 +161,11 @@ class StatServer(Base):
         self.stop_socket(name="stats_collect_socket")
         self.stop_socket(name="control_socket")
         self.stop_socket(name="stats_expose_socket")
+
+        if self.context is not None:
+            self.log.info("Destroying context")
+            self.context.destroy(0)
+            self.context = None
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.stop()

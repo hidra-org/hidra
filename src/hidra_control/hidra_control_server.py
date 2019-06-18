@@ -174,7 +174,7 @@ class HidraServiceHandling(object):
 
         # Needed because status always returns "RUNNING" in the first
         # second
-        time.sleep(1)
+        time.sleep(1.5)
 
         # the return value might still be 0 even if start did not work
         # -> check status again
@@ -334,6 +334,10 @@ class ConfigHandling(utils.Base):
         self.ctemplate = {}
         self.required_params = {}
 
+        self.enable_hidra_connection = None
+        self.stats_expose_sockets = {}
+        self.stats_expose_endpt_tmpl = None
+
         self._setup()
 
     def _setup(self):
@@ -353,6 +357,7 @@ class ConfigHandling(utils.Base):
             "general": {
                 "ldapuri": None,
                 "whitelist": None,
+                "use_statserver": None,
             },
             "eventdetector": {
                 "type": ed_type,
@@ -375,6 +380,16 @@ class ConfigHandling(utils.Base):
             ],
             "datafetcher": ["store_data", "remove_data"]
         }
+
+        try:
+            self.enable_hidra_connection = (
+                self.config["controlserver"]["enable_hidra_connection"]
+            )
+        except KeyError:
+            self.enable_hidra_connection = False
+        self.stats_expose_sockets = {}
+        self.stats_expose_endpt_tmpl = "ipc:///tmp/stats_exposing"
+        #self.stats_expose_endpt_tmpl = "ipc:///tmp/{}_stats_exposing"
 
         self._read_config()
 
@@ -545,6 +560,9 @@ class ConfigHandling(utils.Base):
         self.config_static["general"]["procname"] = procname
         self.config_static["general"]["username"] = username
         self.config_static["general"]["ext_ip"] = external_ip
+        self.config_static["general"]["use_statserver"] = (
+            self.enable_hidra_connection
+        )
         df_type = self.config_static["datafetcher"]["type"]
         try:
             self.config_static["datafetcher"][df_type]["local_target"] = (
@@ -581,12 +599,14 @@ class ConfigHandling(utils.Base):
 
     def remove_config(self, det_id):
         """
-        Remove the config file.
+        Remove the config file and stop stats socket.
 
         Args:
             det_id: The detector id for which the configuration should be
                     removed.
         """
+        self._stop_stats_socket(det_id)
+
         config_file = self.get_config_file_name(det_id)
 
         try:
@@ -596,12 +616,55 @@ class ConfigHandling(utils.Base):
             self.log.error("Could not remove config file %s", config_file,
                            exc_info=True)
 
+    def acquire_remote_config(self, det_id, systemd_service_tmpl):
+
+        if not self.enable_hidra_connection:
+            return
+
+        pid = utils.read_status(
+            service=systemd_service_tmpl.format(det_id),
+            log=self.log
+            )["pid"]
+        self.log.debug("hidra is running with pid %s", pid)
+
+        endpoint = self.stats_expose_endpt_tmpl.format(pid)
+
+        # get hidra config instance
+        socket = self._start_socket(
+            name="stats_expose_socket",
+            sock_type=zmq.REQ,
+            sock_con="connect",
+            endpoint=endpoint
+        )
+
+        self.stats_expose_sockets[det_id] = socket
+
+        socket.send(json.dumps("config").encode())
+        answer = json.loads(socket.recv().decode())
+        self.log.debug("answer=%s", answer)
+
+#        endpt = utils.Endpoints(*answer["network"]["endpoints"])
+#        self.log.debug("com_con=%s", endpt.com_con)
+
+    def _stop_stats_socket(self, det_id):
+        try:
+            self._stop_socket(
+                name="stat_expose_socket_{}".format(det_id),
+                socket=self.stats_expose_sockets[det_id]
+            )
+        except KeyError:
+            self.log.debug("No stat_expose_socket to stop available "
+                           "(det_id=%s)", det_id)
+        except Exception:
+            self.log.error("Could not stop stats_expose_socket for detector "
+                           "%s", det_id)
 
     def _stop(self):
         """
         Clean up.
         """
-        pass
+        for det_id in self.stats_expose_sockets:
+            self._stop_stats_socket(det_id)
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._stop()
@@ -635,6 +698,9 @@ class HidraController(HidraServiceHandling):
         self.instances = None
 
         self.supported_keys = []
+
+        self.stats_expose_sockets = {}
+        self.stats_expose_endpt_tmpl = None
 
         self._setup()
 
@@ -911,18 +977,6 @@ class HidraController(HidraServiceHandling):
         else:
             return b"ERROR"
 
-    def _stop(self):
-        """
-        Clean up.
-        """
-        pass
-
-    def __del__(self):
-        self._stop()
-
-    def __exit__(self):
-        self._stop()
-
 
 def argument_parsing():
     """Parsing of command line arguments.
@@ -1050,18 +1104,12 @@ class ControlServer(utils.Base):
         self.context = zmq.Context()
 
         # socket to get requests
-        try:
-            self.socket = self.context.socket(zmq.REP)
-            self.socket.bind(self.endpoint)
-            self.log.info("Start socket (bind): '%s'", self.endpoint)
-        except zmq.error.ZMQError:
-            self.log.error("Failed to start socket (bind) zmqerror: '%s'",
-                           self.endpoint, exc_info=True)
-            raise
-        except Exception:
-            self.log.error("Failed to start socket (bind): '%s'",
-                           self.endpoint, exc_info=True)
-            raise
+        self.socket = self._start_socket(
+            name="socket",
+            sock_type=zmq.REP,
+            sock_con="bind",
+            endpoint=self.endpoint
+        )
 
     def run(self):
         """Waiting for new control commands and execute them.
@@ -1090,11 +1138,8 @@ class ControlServer(utils.Base):
     def stop(self):
         """Clean up zmq sockets.
         """
+        self._stop_socket(name="socket")
 
-        if self.socket:
-            self.log.info("Closing Socket")
-            self.socket.close()
-            self.socket = None
         if self.context:
             self.log.info("Destroying Context")
             self.context.destroy()

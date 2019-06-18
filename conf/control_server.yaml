@@ -19,6 +19,9 @@ controlserver:
     hidra_config_name: datamanager_{bl}_{det}.yaml
 #    hidra_config_name: datamanager_{bl}_{det}.conf
 
+    # if the started hidra instance should be connected to
+    enable_hidra_connection: False
+
 hidraconfig_static:
     general:
         log_path: *log_path
