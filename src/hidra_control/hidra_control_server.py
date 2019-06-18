@@ -299,7 +299,7 @@ class InstanceTracking(HidraServiceHandling):
 
         for det_id in self.instances[self.beamline]:
             # check if running
-            if self.hidra_status(det_id) == "RUNNING":
+            if self.hidra_status(det_id) == b"RUNNING":
                 self.log.info("Started hidra for %s_%s, already running",
                               self.beamline, det_id)
                 continue
