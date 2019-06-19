@@ -147,13 +147,13 @@ class Control(Base):
         self._check_responding()
 
         # check detector
-        check_res =  check_netgroup(
+        check_res = check_netgroup(
             self.detector,
             self.beamline,
             self.ldapuri,
             self.netgroup_template,
             self.log,
-            exit=False
+            raise_if_failed=False
         )
 
         if not check_res:
@@ -208,12 +208,13 @@ class Control(Base):
         Return:
             Value of the attribute.
         """
+        # pylint: disable=unused-argument
+        # TODO implement timeout
 
         if self.stop_only:
             self.log.error("Action not allowed (detector is not in netgroup)")
             return
 
-        # pylint: disable=unused-argument
 
         msg = [
             b"get",
@@ -282,13 +283,13 @@ class Control(Base):
             - stop: "ARLEADY_STOPPED"
             - status: "RUNNING", "NOT RUNNING"
         """
+        # pylint: disable=unused-argument
+        # TODO implement timeout
 
         if self.stop_only and command not in ["stop", "get_instances"]:
             raise NotAllowed(
                 "Action not allowed (detector is not in netgroup)"
             )
-
-        # pylint: disable=unused-argument
 
         msg = [
             b"do",

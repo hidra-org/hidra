@@ -209,7 +209,7 @@ class TestEventDetector(EventDetectorTestBase):
         """
         self._start_eventdetector()
 
-        for i in range(self.start, self.stop):
+        for _ in range(self.start, self.stop):
             event_list = self.eventdetector.get_new_event()
             print("event_list", event_list)
 

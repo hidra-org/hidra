@@ -34,8 +34,6 @@ from __future__ import unicode_literals
 from builtins import super  # pylint: disable=redefined-builtin
 
 import json
-import multiprocessing
-import time
 import zmq
 
 from base_class import Base
@@ -43,6 +41,11 @@ import hidra.utils as utils
 
 
 class StatServer(Base):
+    """
+    Handler for status, configuration and statistics communication to the
+    outside.
+    """
+
     def __init__(self, config, log_queue):
         super().__init__()
 
@@ -100,6 +103,9 @@ class StatServer(Base):
         self.poller.register(self.stats_expose_socket, zmq.POLLIN)
 
     def run(self):
+        """Collect stats from and exposes them.
+        """
+
         while self.keep_running:
             socks = dict(self.poller.poll())
 
@@ -151,18 +157,20 @@ class StatServer(Base):
         self.log.debug("Update: %s", param)
 
         if isinstance(param, list):
-            s = self.stats["config"]
+            conf = self.stats["config"]
             for i in param[:-1]:
-                s = s[i]
-            s[param[-1]] = value
+                conf = conf[i]
+            conf[param[-1]] = value
 
         else:
             self.stats[param] = value
 
-    def _get(self, param, value):
-        self.stats[param]
+    def _get(self, param):
+        return self.stats[param]
 
     def stop(self):
+        """Stop and clean up.
+        """
         self.keep_running = False
 
         self.stop_socket(name="stats_collect_socket")

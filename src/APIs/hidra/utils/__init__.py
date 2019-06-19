@@ -124,6 +124,8 @@ __all__ = [
     "change_user",
     "log_user_change",
     "show_files_in_dir",
+    "get_service_manager",
+    "read_status",
     "IpcAddresses",
     "Endpoints",
     "MAPPING_ZMQ_CONSTANTS_TO_STR",

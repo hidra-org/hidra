@@ -418,6 +418,7 @@ class DataManager(Base):
         self.number_of_streams = None
 
         self.endpoints = None
+        self.ipc_addresses = None
 
         self.local_target = None
 
@@ -497,11 +498,10 @@ class DataManager(Base):
         self._setup_network()
         self._check_data_stream_targets()
 
-        try:
-            config_df["local_target"]
+        if "local_target" in config_df:
             self.log.info("Configured local_target: %s",
                           config_df["local_target"])
-        except KeyError:
+        else:
             config_df["local_target"] = None
 
         self.log.info("Version: %s", __version__)
@@ -917,10 +917,10 @@ class DataManager(Base):
         if self.use_statserver:
             self.statserver = Process(target=StatServer,
                                       args=(
-                                        self.config,
-                                        self.log_queue
-                                        )
+                                          self.config,
+                                          self.log_queue
                                       )
+                                     )
             self.statserver.start()
 
         # SignalHandler

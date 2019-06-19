@@ -74,7 +74,7 @@ class RequestPuller(threading.Thread):
 
         self.context = zmq.Context()
 
-        self.request_fw_socket = utils.start_socket(
+        self.request_fw_socket, _ = utils.start_socket(
             name="request_fw_socket",
             sock_type=zmq.REQ,
             sock_con="connect",

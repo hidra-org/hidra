@@ -453,7 +453,7 @@ def get_service_manager(systemd_prefix, service_name):
     )
 
     use_init_script = (
-        os.path.exists("/etc/init.d") 
+        os.path.exists("/etc/init.d")
         and os.path.exists("/etc/init.d/" + service_name)
     )
 
@@ -472,10 +472,8 @@ def read_status(service, log):
     Get more status information. Only available for systems using systemd.
 
     Args:
-        systemd_prefix: systemd service name prefix (e.g hidra@)
-        service_name: init service name
-        systemd_service_name: the concrete service name
-        log: logging handle
+        service: The systemd service name prefix (e.g hidra@)
+        log: Logging handle
 
     Returns:
         A dictionary with the detail information:
@@ -489,9 +487,13 @@ def read_status(service, log):
 
     cmd = ["systemctl", "status", service]
 
-    p =  subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    (output, err) = p.communicate()
-    output = output.decode('utf-8')
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        (output, err) = proc.communicate()
+        output = output.decode('utf-8')
+    except Exception:
+        log.debug("systemctl error was: %s", err)
+        raise
 
     service_regex = r"Loaded:.*\/(.*service);"
     status_regex = r"Active:(.*) since (.*);(.*)"

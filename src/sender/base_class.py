@@ -34,7 +34,6 @@ from __future__ import unicode_literals
 from builtins import super  # pylint: disable=redefined-builtin
 
 import json
-import multiprocessing
 import zmq
 
 import _environment  # noqa F401 # pylint: disable=unused-import
@@ -59,6 +58,7 @@ class Base(object):
         self.context = None
 
         self.config_all = {}
+        self.config = {}
         self.required_params_base = {}
         self.required_params_dep = {}
         self.config_reduced = {}

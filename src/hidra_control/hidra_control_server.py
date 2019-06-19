@@ -92,7 +92,7 @@ class HidraServiceHandling(object):
             self.call_hidra_service = self._call_init_script
 
         else:
-            log.debug("Call: no service to call found")
+            self.log.debug("Call: no service to call found")
 
     def __set_service_conf(self):
         systemd_prefix = "hidra@"
@@ -138,20 +138,9 @@ class HidraServiceHandling(object):
         else:
             return b"NOT RUNNING"
 
-    def call_hidra_service(self, cmd, det_id):
-        """Command hidra (e.g. start, stop, status,...).
-        Args:
-            cmd: The command to call the service with
-                 (e.g. start, stop, status,...).
-            det_id: Which detector to command hidra for.
-
-        Returns:
-            Return value of the systemd or service call.
-        """
-        pass
-
     def _call_systemd(self, cmd, det_id):
-        """
+        """Command hidra (e.g. start, stop, status,...).
+
         Args:
             cmd: The command to call the service with
                  (e.g. start, stop, status,...).
@@ -191,9 +180,9 @@ class HidraServiceHandling(object):
 
         return ret_status
 
-
     def _call_init_script(self, cmd, det_id):
-        """
+        """Command hidra (e.g. start, stop, status,...).
+
         Args:
             cmd: The command to call the service with
                  (e.g. start, stop, status,...).
@@ -201,13 +190,15 @@ class HidraServiceHandling(object):
 
         Returns:
             Return value of the service call.
-        """
 
-        call = ["service", service_conf["name"], cmd]
+        """
+        # pylint: disable=unused-argument
+
+        call = ["service", self.service_conf["name"], cmd]
         # TODO implement beamline and det_id in hisdra.sh
         # call = ["service", service_conf["name"], "status", beamline, det_id]
 
-        log.debug("Call: %s", " ".join(call))
+        self.log.debug("Call: %s", " ".join(call))
         return subprocess.call(call)
 
 
@@ -216,7 +207,6 @@ class InstanceTracking(HidraServiceHandling):
     """
 
     def __init__(self, beamline, backup_file, log_queue):
-
 
         self.log = utils.get_logger(self.__class__.__name__, log_queue)
         super().__init__(beamline, self.log)
@@ -317,6 +307,10 @@ class InstanceTracking(HidraServiceHandling):
 
 
 class ConfigHandling(utils.Base):
+    """
+    Handler for all configuration related changed (read, write, modify, ...)
+    """
+
     def __init__(self, context, beamline, config, log_queue):
 
         super().__init__()
@@ -392,11 +386,19 @@ class ConfigHandling(utils.Base):
             self.enable_hidra_connection = False
         self.stats_expose_sockets = {}
         self.stats_expose_endpt_tmpl = "ipc:///tmp/stats_exposing"
-        #self.stats_expose_endpt_tmpl = "ipc:///tmp/{}_stats_exposing"
+#        self.stats_expose_endpt_tmpl = "ipc:///tmp/{}_stats_exposing"
 
         self._read_config()
 
     def set(self, host_id, det_id, param, value):
+        """Set a configuration parameter to certain value.
+
+        Args:
+            host_id: Which host is setting the parameter
+            det_id: For which detector the parameter is set
+            param: The parameter to set
+            value: The value to set the parameter to
+        """
 
         # identify the configuration for this connection
         if host_id not in self.all_configs:
@@ -413,16 +415,32 @@ class ConfigHandling(utils.Base):
         )
 
     def activate(self, host_id, det_id):
+        """Mark the configuration with which the hidra instance is running with
+
+        Args:
+            host_id: The host the configuration belongs to.
+            det_id: The detector the configuration belongs to.
+        """
         self.all_configs[host_id][det_id]["active"] = True
 
-
     def get(self, host_id, det_id, param):
-        # if the requesting client has set parameters before but has not
-        # executed start yet, the previously set parameters should be
-        # displayed (not the ones with which hidra was started the last time)
-        # on the other hand if it is a client coming up to check with which
-        # parameters the current hidra instance is running, these should be
-        # shown
+        """ Get a parameter value
+
+        if the requesting client has set parameters before but has not
+        executed start yet, the previously set parameters should be
+        displayed (not the ones with which hidra was started the last time)
+        on the other hand if it is a client coming up to check with which
+        parameters the current hidra instance is running, these should be
+        shown
+
+        Args:
+            host_id: The host the configuration belongs to.
+            det_id: The detector to get the parameter for.
+            param: The parameter for which the value should be get.
+
+        Returns:
+            The value the parameter is set to.
+        """
         try:
             if self.all_configs[host_id][det_id]["active"]:
                 # This is a pointer
@@ -437,8 +455,13 @@ class ConfigHandling(utils.Base):
                                     "sender",
                                     log=self.log)
 
-
     def clear(self, host_id, det_id):
+        """Clear the configuration.
+
+        Args:
+            host_id: The host for which the configuration should be cleared.
+            det_id: the detector to clear the configuration for.
+        """
 
         if host_id in self.all_configs:
             try:
@@ -483,7 +506,7 @@ class ConfigHandling(utils.Base):
 
         # identify the configuration for this connection
         if (host_id in self.all_configs
-            and det_id in self.all_configs[host_id]):
+                and det_id in self.all_configs[host_id]):
             # This is a pointer
             current_config = self.all_configs[host_id][det_id]
         else:
@@ -581,7 +604,7 @@ class ConfigHandling(utils.Base):
 
         # write configfile
         config_file = self.get_config_file_name(det_id)
-        self.log.info("Writing config file: {}".format(config_file))
+        self.log.info("Writing config file: %s", config_file)
         utils.write_config(config_file, self.config_static, log=self.log)
 
         self.log.info(
@@ -592,7 +615,7 @@ class ConfigHandling(utils.Base):
         )
 
         # store the dynamic config globally
-        self.log.debug("config = {}", self.config_static)
+        self.log.debug("config = %s", self.config_static)
         self.master_config[det_id] = copy.deepcopy(self.config_static)
         # this information shout not go into the master config
         del self.master_config[det_id]["active"]
@@ -620,6 +643,8 @@ class ConfigHandling(utils.Base):
                            exc_info=True)
 
     def acquire_remote_config(self, det_id, systemd_service_tmpl):
+        """Communicate with hidra instance and get its configuration.
+        """
 
         if not self.enable_hidra_connection:
             return
@@ -633,17 +658,17 @@ class ConfigHandling(utils.Base):
         endpoint = self.stats_expose_endpt_tmpl.format(pid)
 
         # get hidra config instance
-        socket = self._start_socket(
+        sckt = self._start_socket(
             name="stats_expose_socket",
             sock_type=zmq.REQ,
             sock_con="connect",
             endpoint=endpoint
         )
 
-        self.stats_expose_sockets[det_id] = socket
+        self.stats_expose_sockets[det_id] = sckt
 
-        socket.send(json.dumps("config").encode())
-        answer = json.loads(socket.recv().decode())
+        sckt.send(json.dumps("config").encode())
+        answer = json.loads(sckt.recv().decode())
         self.log.debug("answer=%s", answer)
 
 #        endpt = utils.Endpoints(*answer["network"]["endpoints"])
@@ -810,7 +835,7 @@ class HidraController(HidraServiceHandling):
                 self.ldapuri,
                 self.netgroup_template.format(bl=self.beamline),
                 log=self.log,
-                exit=False
+                raise_if_failed=False
             )
         except Exception:
             self.log.error("Error when checking netgroup", exc_info=True)
@@ -831,7 +856,7 @@ class HidraController(HidraServiceHandling):
 
             if reply is None:
                 self.log.debug("reply is None")
-                reply = b"None"
+                return b"None"
 
             return reply
 
@@ -898,6 +923,16 @@ class HidraController(HidraServiceHandling):
             return b"ERROR"
 
     def bye(self, host_id, det_id):
+        """Disconnect host and clear config.
+
+        Args:
+            host_id: The host to disconnect.
+            det_id: The detector to disconnect the host for.
+
+        Returns:
+            b"DONE" if everything worked.
+        """
+
         self.log.debug("Received 'bye' from host %s for detector %s",
                        host_id, det_id)
 

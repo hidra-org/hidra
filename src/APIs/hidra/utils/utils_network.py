@@ -35,7 +35,9 @@ import subprocess
 
 from .utils_datatypes import (IpcAddresses, # noqa F401
                               Endpoints,
-                              MAPPING_ZMQ_CONSTANTS_TO_STR)
+                              MAPPING_ZMQ_CONSTANTS_TO_STR,
+                              NotAllowed)
+from .utils_logging import LoggingFunction
 from .utils_general import is_windows
 
 
@@ -44,7 +46,7 @@ def check_netgroup(hostname,
                    ldapuri,
                    netgroup_template,
                    log=None,
-                   exit=True):
+                   raise_if_failed=True):
     """Check if a host is in a netgroup belonging to a certain beamline.
 
     Args:
@@ -56,7 +58,7 @@ def check_netgroup(hostname,
                         None: no logging
                         False: use print
                         anything else: use the standard logging module
-        exit (optional): Call sys exit if the check fails.
+        raise_if_failed (optional): Raise an exeption the check fails.
     """
 
     if log is None:
@@ -74,7 +76,7 @@ def check_netgroup(hostname,
 
     if hostname in netgroup:
         return True
-    elif exit:
+    elif raise_if_failed:
         raise NotAllowed("Host {} is not contained in netgroup of beamline {}"
                          .format(hostname, beamline))
     else:
@@ -421,7 +423,6 @@ def set_endpoints(ext_ip,
         stats_expose_bind = "ipc://{}".format(ipc_addresses.stats_expose)
         stats_expose_con = stats_expose_bind
 
-
     if ports["request"] == "random":
         request_bind = "tcp://{}".format(ext_ip)
     else:
@@ -501,7 +502,7 @@ def start_socket(name,
                  log,
                  is_ipv6=False,
                  zap_domain=None,
-                 random_port = None,
+                 random_port=None,
                  message=None):
     """Creates a zmq socket.
 
@@ -544,7 +545,7 @@ def start_socket(name,
         if sock_con == "connect":
             socket.connect(endpoint)
         elif sock_con == "bind":
-            if random_port is None or random_port == False:
+            if random_port is None or random_port is False:
                 socket.bind(endpoint)
             else:
                 log.debug("Enabling random port usage for %s", name)

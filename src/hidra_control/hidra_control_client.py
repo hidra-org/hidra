@@ -196,7 +196,7 @@ def check_config(config):
             }
 
 
-class Client():
+class Client(object):
     """The hidra control client.
     """
 
@@ -209,7 +209,6 @@ class Client():
         self.config_hidra = self.config["hidra"]
         self.config_ed = self.config_hidra["eventdetector"]["http_events"]
         self.config_df = self.config_hidra["datafetcher"]
-
 
         if self.config_g["version"]:
             print("Hidra version:", hidra.__version__)
@@ -230,6 +229,8 @@ class Client():
             sys.exit(1)
 
     def run(self):
+        """Communicate with hidra instance and send commands.
+        """
         if self.config_g["start"]:
             self._start()
 
@@ -311,17 +312,26 @@ class Client():
             print("No running hidra instances")
 
     def stop(self):
+        """ Stop and clean up.
+        """
         try:
             self.control.stop()
         except AttributeError:
             pass
 
-    def __del__(self):
-        self.stop()
-
     def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
-if __name__ == "__main__":
+    def __del__(self):
+        self.stop()
+
+
+def main():
+    """The main program.
+    """
     client = Client()
     client.run()
+
+
+if __name__ == "__main__":
+    main()

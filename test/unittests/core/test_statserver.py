@@ -31,12 +31,12 @@ from __future__ import unicode_literals
 from builtins import super  # pylint: disable=redefined-builtin
 
 import json
+import multiprocessing
 import time
 import zmq
 
 from test_base import TestBase
 from statserver import StatServer
-import multiprocessing
 
 import hidra.utils as utils
 
@@ -93,15 +93,16 @@ class TestStatServer(TestBase):
             endpoint=self.endpoints.control_sub_bind
         )
 
-        #self.server = StatServer(self.statserver_config, self.log_queue)
         self.server = multiprocessing.Process(
             target=StatServer,
-            args = (self.statserver_config, self.log_queue)
+            args=(self.statserver_config, self.log_queue)
         )
         self.server.start()
         time.sleep(0.1)
 
     def test_statsserver_exposing(self):
+        """functional tests of the stat server.
+        """
 
         stats_expose_socket = self.start_socket(
             name="stats_expose_socket",
@@ -110,7 +111,6 @@ class TestStatServer(TestBase):
             endpoint=self.endpoints.stats_expose_con
         )
 
-        #key = "test"
         key = "config"
         key = json.dumps(key).encode()
 
@@ -122,8 +122,6 @@ class TestStatServer(TestBase):
 
         endpt = utils.Endpoints(*answer["network"]["endpoints"])
         self.log.debug("com_con=%s", endpt.com_con)
-
-
 
     def tearDown(self):
         if self.control_socket is not None:

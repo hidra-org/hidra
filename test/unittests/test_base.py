@@ -330,7 +330,7 @@ class TestBase(unittest.TestCase):
         """Wrapper of utils.start_socket
         """
 
-        socket, port = utils.start_socket(
+        socket, _ = utils.start_socket(
             name=name,
             sock_type=sock_type,
             sock_con=sock_con,
