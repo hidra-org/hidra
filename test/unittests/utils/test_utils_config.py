@@ -27,6 +27,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 from test_base import TestBase
 import hidra.utils as utils
 
@@ -38,7 +41,7 @@ class TestUtilsConfig(TestBase):
     """
 
     def setUp(self):
-        super(TestUtilsConfig, self).setUp()
+        super().setUp()
 
         # attributes inherited from parent class:
         # self.config
@@ -259,4 +262,4 @@ class TestUtilsConfig(TestBase):
         self.assertDictEqual(res, expected_result)
 
     def tearDown(self):
-        super(TestUtilsConfig, self).tearDown()
+        super().tearDown()

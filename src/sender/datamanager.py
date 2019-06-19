@@ -32,6 +32,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import argparse
 from distutils.version import LooseVersion
 import logging
@@ -383,7 +386,7 @@ class DataManager(Base):
 
     def __init__(self, config=None):
 
-        super(DataManager, self).__init__()
+        super().__init__()
 
         self.device = None
         self.control_pub_socket = None

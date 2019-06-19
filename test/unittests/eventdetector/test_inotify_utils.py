@@ -27,6 +27,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import os
 
 from inotify_utils import get_event_message
@@ -43,7 +46,7 @@ class TestInotifyUtils(EventDetectorTestBase):
     # Is reasonable in this case.
 
     def setUp(self):
-        super(TestInotifyUtils, self).setUp()
+        super().setUp()
 
         # attributes inherited from parent class:
         # self.config

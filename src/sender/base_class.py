@@ -30,6 +30,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import json
 import multiprocessing
 import zmq
@@ -50,7 +53,7 @@ class Base(object):
 
     def __init__(self):
         # make the class cooperative for multiple inheritance
-        super(Base, self).__init__()
+        super().__init__()
 
         self.log = None
         self.context = None

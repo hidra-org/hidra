@@ -27,6 +27,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 from eventdetector_template import EventDetector
 from .eventdetector_test_base import EventDetectorTestBase
 
@@ -38,7 +41,7 @@ class TestEventDetector(EventDetectorTestBase):
     """
 
     def setUp(self):
-        super(TestEventDetector, self).setUp()
+        super().setUp()
 
         # attributes inherited from parent class:
         # self.config
@@ -75,4 +78,4 @@ class TestEventDetector(EventDetectorTestBase):
     def tearDown(self):
         self.eventdetector.stop()
 
-        super(TestEventDetector, self).tearDown()
+        super().tearDown()

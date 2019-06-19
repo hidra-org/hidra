@@ -27,6 +27,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import threading
 import zmq
 
@@ -40,7 +43,7 @@ class DataFetcherTestBase(TestBase):
     """
 
     def setUp(self):
-        super(DataFetcherTestBase, self).setUp()
+        super().setUp()
 
         # attributes inherited from parent class:
         # self.config
@@ -54,5 +57,5 @@ class DataFetcherTestBase(TestBase):
         self.lock = threading.Lock()
 
     def tearDown(self):
-        super(DataFetcherTestBase, self).tearDown()
+        super().tearDown()
         self.context.destroy(0)

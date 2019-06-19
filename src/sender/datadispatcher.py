@@ -24,11 +24,12 @@
 This module implements the data dispatcher.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
 
 from importlib import import_module
 import json
@@ -57,7 +58,7 @@ class DataHandler(Base, threading.Thread):
                  log_queue,
                  context):
 
-        super(DataHandler, self).__init__()
+        super().__init__()
 
         self.dispatcher_id = dispatcher_id
         self.endpoints = endpoints
@@ -421,7 +422,7 @@ class DataDispatcher(Base):
                  config,
                  log_queue):
 
-        super(DataDispatcher, self).__init__()
+        super().__init__()
 
         self.dispatcher_id = dispatcher_id
         self.endpoints = endpoints

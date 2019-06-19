@@ -27,6 +27,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import time
 
 import inotify.adapters
@@ -39,7 +42,7 @@ class CreateAndGet(PerformanceBase):
     """
 
     def __init__(self, watch_dir, n_files):
-        super(CreateAndGet, self).__init__(watch_dir, n_files)
+        super().__init__(watch_dir, n_files)
 
         self.inotify = inotify.adapters.InotifyTree(watch_dir)
 

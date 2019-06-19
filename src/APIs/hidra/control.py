@@ -24,11 +24,12 @@
 API to communicate with a hidra control server or with a hidra receiver.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
 
 import json
 import logging
@@ -74,7 +75,7 @@ class Control(Base):
             use_log (optional): Specified the logging type.
         """
 
-        super(Control, self).__init__()
+        super().__init__()
 
         self.beamline = beamline
         self.detector = socket.getfqdn(detector)
@@ -351,7 +352,7 @@ class ReceiverControl(Base):
             port (optional): Port the receiver is listening to.
         """
 
-        super(ReceiverControl, self).__init__()
+        super().__init__()
 
         if port is None:
             port = 50050

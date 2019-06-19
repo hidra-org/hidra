@@ -26,6 +26,13 @@
 This module implements the data dispatcher.
 """
 
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import json
 import multiprocessing
 import time
@@ -37,7 +44,7 @@ import hidra.utils as utils
 
 class StatServer(Base):
     def __init__(self, config, log_queue):
-        super(StatServer, self).__init__()
+        super().__init__()
 
         self.config = config
         self.log_queue = log_queue

@@ -27,6 +27,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import json
 from multiprocessing import Process
 import os
@@ -48,7 +51,7 @@ class TestDataFetcher(DataFetcherTestBase):
     # Is reasonable in this case.
 
     def setUp(self):
-        super(TestDataFetcher, self).setUp()
+        super().setUp()
 
         # Set up config
         local_target = None
@@ -266,4 +269,4 @@ class TestDataFetcher(DataFetcherTestBase):
 
         self.stop_socket(name="control_pub_socket")
 
-        super(TestDataFetcher, self).tearDown()
+        super().tearDown()

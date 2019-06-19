@@ -31,6 +31,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import abc
 import sys
 import zmq
@@ -72,7 +75,7 @@ class CleanerBase(Base, ABC):
              context (optional): The ZMQ context to be used.
 
         """
-        super(CleanerBase, self).__init__()
+        super().__init__()
 
         self.log = utils.get_logger("Cleaner", log_queue)
 

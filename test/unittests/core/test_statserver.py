@@ -27,6 +27,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import json
 import time
 import zmq
@@ -43,7 +46,7 @@ class TestStatServer(TestBase):
     """
 
     def setUp(self):
-        super(TestStatServer, self).setUp()
+        super().setUp()
 
         control_endpt = "ipc:///tmp/control"
         stats_collect_endpt = "ipc:///tmp/stats_collect"
@@ -129,4 +132,4 @@ class TestStatServer(TestBase):
 
         time.sleep(0.1)
 
-        super(TestStatServer, self).tearDown()
+        super().tearDown()

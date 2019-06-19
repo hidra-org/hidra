@@ -27,6 +27,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import json
 
 from no_data_fetcher import DataFetcher
@@ -40,7 +43,7 @@ class TestDataFetcher(DataFetcherTestBase):
     """
 
     def setUp(self):
-        super(TestDataFetcher, self).setUp()
+        super().setUp()
 
         # Set up config
         self.module_name = "no_data_fetcher"
@@ -127,4 +130,4 @@ class TestDataFetcher(DataFetcherTestBase):
             self.datafetcher.stop()
             self.datafetcher = None
 
-        super(TestDataFetcher, self).tearDown()
+        super().tearDown()

@@ -27,10 +27,12 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import json
 import os
 import zmq
-
 
 from zmq_fetcher import (DataFetcher,
                          get_ipc_addresses,
@@ -49,7 +51,7 @@ class TestDataFetcher(DataFetcherTestBase):
     # Is reasonable in this case.
 
     def setUp(self):
-        super(TestDataFetcher, self).setUp()
+        super().setUp()
 
         # Set up config
         self.module_name = "file_fetcher"
@@ -176,4 +178,4 @@ class TestDataFetcher(DataFetcherTestBase):
             self.datafetcher.stop()
             self.datafetcher = None
 
-        super(TestDataFetcher, self).tearDown()
+        super().tearDown()

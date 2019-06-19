@@ -31,6 +31,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import abc
 import json
 import os
@@ -92,7 +95,7 @@ class DataFetcherBase(Base, ABC):
             context: The ZMQ context to be used.
             lock: A threading lock object to handle control signal access.
         """
-        super(DataFetcherBase, self).__init__()
+        super().__init__()
 
         self.log_queue = log_queue
         self.log = utils.get_logger(logger_name, self.log_queue)

@@ -28,6 +28,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 from collections import namedtuple
 import copy
 import datetime
@@ -88,7 +91,7 @@ class SignalHandler(Base):
                  log_queue,
                  context=None):
 
-        super(SignalHandler, self).__init__()
+        super().__init__()
 
         self.config = config
         self.endpoints = endpoints
@@ -156,7 +159,7 @@ class SignalHandler(Base):
     def stats_config(self):
         """Extend the stats_config function of the Base class
         """
-        conf = super(SignalHandler, self).stats_config()
+        conf = super().stats_config()
         conf["com_socket"] = ["general", "com_port"]
         conf["request_socket"] = ["general", "request_port"]
 
@@ -1063,7 +1066,7 @@ class SignalHandler(Base):
     def stop(self):
         """Close sockets and clean up.
         """
-        super(SignalHandler, self).stop()
+        super().stop()
 
         self.log.debug("Closing sockets for SignalHandler")
 

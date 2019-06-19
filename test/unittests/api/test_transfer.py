@@ -31,6 +31,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import errno
 import inspect
 import json
@@ -69,7 +72,7 @@ class TestTransfer(TestBase):
     """
 
     def setUp(self):
-        super(TestTransfer, self).setUp()
+        super().setUp()
 
         # attributes inherited from parent class:
         # self.config
@@ -2155,7 +2158,7 @@ class TestTransfer(TestBase):
 
         class TestIOError(IOError):
             def __init__(self, **kwargs):
-                super(TestIOError, self).__init__(**kwargs)
+                super().__init__(**kwargs)
                 self.errno = errno.ENOENT
 
         # multiple calls of open (one of which is returns an exception)

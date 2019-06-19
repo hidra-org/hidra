@@ -27,6 +27,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import json
 import os
 # import time
@@ -46,7 +49,7 @@ class TestDataFetcher(DataFetcherTestBase):
     # Is reasonable in this case.
 
     def setUp(self):
-        super(TestDataFetcher, self).setUp()
+        super().setUp()
 
         self.datafetcher = None
 
@@ -147,4 +150,4 @@ class TestDataFetcher(DataFetcherTestBase):
                                  socket=sckt)
             self.receiving_sockets = None
 
-        super(TestDataFetcher, self).tearDown()
+        super().tearDown()

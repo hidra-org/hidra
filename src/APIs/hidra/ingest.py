@@ -24,11 +24,12 @@
 API to ingest data into a data transfer unit
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
 
 import json
 import logging
@@ -46,7 +47,7 @@ class Ingest(Base):
 
     def __init__(self, use_log=False, context=None):
 
-        super(Ingest, self).__init__()
+        super().__init__()
 
         self.log = None
         self.context = None

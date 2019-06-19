@@ -27,6 +27,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import unittest
 import os
 import time
@@ -47,7 +50,7 @@ class TestEventDetector(EventDetectorTestBase):
     # Is reasonable in this case.
 
     def setUp(self):
-        super(TestEventDetector, self).setUp()
+        super().setUp()
 
         # attributes inherited from parent class:
         # self.config
@@ -238,4 +241,4 @@ class TestEventDetector(EventDetectorTestBase):
             except OSError:
                 pass
 
-        super(TestEventDetector, self).tearDown()
+        super().tearDown()

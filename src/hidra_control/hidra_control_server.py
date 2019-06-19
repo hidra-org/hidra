@@ -30,6 +30,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import argparse
 import copy
 import glob
@@ -216,7 +219,7 @@ class InstanceTracking(HidraServiceHandling):
 
 
         self.log = utils.get_logger(self.__class__.__name__, log_queue)
-        super(InstanceTracking, self).__init__(beamline, self.log)
+        super().__init__(beamline, self.log)
 
         self.beamline = beamline
         self.backup_file = backup_file
@@ -316,7 +319,7 @@ class InstanceTracking(HidraServiceHandling):
 class ConfigHandling(utils.Base):
     def __init__(self, context, beamline, config, log_queue):
 
-        super(ConfigHandling, self).__init__()
+        super().__init__()
 
         self.context = context
         self.beamline = beamline
@@ -682,7 +685,7 @@ class HidraController(HidraServiceHandling):
     def __init__(self, context, beamline, config, log_queue):
 
         self.log = utils.get_logger(self.__class__.__name__, log_queue)
-        super(HidraController, self).__init__(beamline, self.log)
+        super().__init__(beamline, self.log)
 
         self.context = context
         # Beamline is read-only, determined by portNo
@@ -1032,7 +1035,7 @@ class ControlServer(utils.Base):
 
     def __init__(self):
 
-        super(ControlServer, self).__init__()
+        super().__init__()
 
         self.beamline = None
         self.context = None

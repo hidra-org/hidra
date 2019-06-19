@@ -29,6 +29,9 @@ from __future__ import (absolute_import,
                         print_function,
                         unicode_literals)
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import datetime
 import logging
 import logging.handlers
@@ -66,7 +69,7 @@ class CustomQueueListener(QueueListener):
         """Initialize an instance with the specified queue and handlers.
         """
 
-        super(CustomQueueListener, self).__init__(queue, *handlers)
+        super().__init__(queue, *handlers)
 
         # Changing this to a list from tuple in the parent class
         self.handlers = list(handlers)

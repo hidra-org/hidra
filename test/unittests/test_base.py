@@ -30,6 +30,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import inspect
 import logging
 from multiprocessing import Queue
@@ -125,7 +128,7 @@ class MockZmqSocket(mock.MagicMock):
     """
 
     def __init__(self, **kwargs):
-        super(MockZmqSocket, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._connected = False
 
         self.send_multipart = mock.MagicMock()
@@ -159,7 +162,7 @@ class MockZmqContext(mock.MagicMock):
     """
 
     def __init__(self, **kwargs):
-        super(MockZmqContext, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._destroyed = False
         self.IPV6 = None  # pylint: disable=invalid-name
         self.RCVTIMEO = None  # pylint: disable=invalid-name
@@ -189,7 +192,7 @@ class MockZmqPoller(mock.MagicMock):
     """
 
     def __init__(self, **kwargs):
-        super(MockZmqPoller, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.registered_sockets = []
 
         self.poll = mock.MagicMock()
@@ -207,7 +210,7 @@ class MockZmqPollerAllFake(mock.MagicMock):
     """
 
     def __init__(self, **kwargs):
-        super(MockZmqPollerAllFake, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.poll = mock.MagicMock()
         self.register = mock.MagicMock()
 
@@ -217,7 +220,7 @@ class MockZmqAuthenticator(mock.MagicMock):
     """
 
     def __init__(self, **kwargs):
-        super(MockZmqAuthenticator, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self.start = mock.MagicMock()
         self.allow = mock.MagicMock()

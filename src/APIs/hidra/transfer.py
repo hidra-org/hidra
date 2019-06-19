@@ -24,13 +24,12 @@
 API to communicate with a hidra sender unit.
 """
 
-# pylint: disable=broad-except
-# pylint: disable=too-many-statements
-# pylint: disable=too-many-branches
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
 
 import copy
 from distutils.version import LooseVersion
@@ -243,7 +242,7 @@ class Transfer(Base):
                  context=None,
                  dirs_not_to_create=None):
 
-        super(Transfer, self).__init__()
+        super().__init__()
 
         self.log = None
 

@@ -27,6 +27,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import json
 import os
 from multiprocessing import Process, freeze_support
@@ -48,7 +51,7 @@ class TestDataDispatcher(TestBase):
     # Is reasonable in this case.
 
     def setUp(self):
-        super(TestDataDispatcher, self).setUp()
+        super().setUp()
 
         # see https://docs.python.org/2/library/multiprocessing.html#windows
         freeze_support()
@@ -185,4 +188,4 @@ class TestDataDispatcher(TestBase):
     def tearDown(self):
         self.context.destroy(0)
 
-        super(TestDataDispatcher, self).tearDown()
+        super().tearDown()

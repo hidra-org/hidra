@@ -31,6 +31,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import datetime
 import inspect
 import json
@@ -125,7 +128,7 @@ class TestSignalHandler(TestBase):
     # Is reasonable in this case.
 
     def setUp(self):
-        super(TestSignalHandler, self).setUp()
+        super().setUp()
 
         # see https://docs.python.org/2/library/multiprocessing.html#windows
         freeze_support()
@@ -2153,4 +2156,4 @@ class TestSignalHandler(TestBase):
     def tearDown(self):
         self.context.destroy(0)
 
-        super(TestSignalHandler, self).tearDown()
+        super().tearDown()

@@ -30,6 +30,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import inspect
 import threading
 
@@ -54,7 +57,7 @@ class TestCheckNetgroup(TestBase):
     # Is reasonable in this case.
 
     def setUp(self):
-        super(TestCheckNetgroup, self).setUp()
+        super().setUp()
 
     @mock.patch("hidra.utils.execute_ldapsearch")
     @mock.patch("threading.Thread")

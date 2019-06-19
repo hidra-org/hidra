@@ -28,6 +28,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import argparse
 import multiprocessing
 import socket
@@ -47,7 +50,7 @@ class Worker(multiprocessing.Process):
                  target_host,
                  port):  # noqa F811
 
-        super(Worker, self).__init__()
+        super().__init__()
 
         self.identifier = identifier
         self.port = port

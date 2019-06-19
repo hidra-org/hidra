@@ -32,6 +32,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import bisect
 import copy
 import logging
@@ -135,7 +138,7 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         WatchdogEventHandler.regexes = regexes
 
         self.log.debug("init: super")
-        super(WatchdogEventHandler, self,).__init__()
+        super().__init__()
 
     def process(self, event):
         """

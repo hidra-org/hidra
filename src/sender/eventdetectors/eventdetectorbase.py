@@ -31,6 +31,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import json
 import os
 import sys
@@ -67,7 +70,7 @@ class EventDetectorBase(Base):
             logger_name (str): The name to be used for the logger.
         """
 
-        super(EventDetectorBase, self).__init__()
+        super().__init__()
 
         self.log_queue = log_queue
         self.log = utils.get_logger(logger_name, log_queue)

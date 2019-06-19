@@ -30,6 +30,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import argparse
 import logging
 import multiprocessing
@@ -56,7 +59,7 @@ class Worker(multiprocessing.Process):
                  target_host,
                  port):
 
-        super(Worker, self).__init__()
+        super().__init__()
 
         self.identifier = identifier
         self.port = port

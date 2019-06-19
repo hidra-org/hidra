@@ -2,6 +2,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import json
 from kafka import KafkaProducer
 import threading
@@ -13,7 +16,7 @@ server = ["asap3-events-01", "asap3-events-02"]
 class LambdaSimulator(threading.Thread):
 
     def __init__(self, server, topic, detid):
-        super(LambdaSimulator, self).__init__()
+        super().__init__()
 
         self.detid = detid
 
