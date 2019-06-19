@@ -197,6 +197,16 @@ class SignalHandler(Base):
         )
 
         if self.whitelist != []:
+            com_endpt_split = self.endpoints.com_bind.split(":")
+            use_random_com = len(com_endpt_split) == 2
+            #self.log.debug("split resutl=%s", com_endpt_split)
+            self.log.debug("use random port for request: %s", use_random_com)
+
+            request_endpt_split = self.endpoints.request_bind.split(":")
+            use_random_request = len(request_endpt_split) == 2
+            #self.log.debug("split resutl=%s", request_endpt_split)
+            self.log.debug("use random port for com: %s", use_random_request)
+
             # create zmq socket for signal communication with receiver
             self.com_socket = self.start_socket(
                 name="com_socket",
@@ -204,7 +214,7 @@ class SignalHandler(Base):
                 sock_con="bind",
                 endpoint=self.endpoints.com_bind,
                 #TODO this is a hack
-                random_port=(self.endpoints.com_bind.split() == 2)
+                random_port=use_random_com
             )
 
             # create socket to receive requests
@@ -214,7 +224,7 @@ class SignalHandler(Base):
                 sock_con="bind",
                 endpoint=self.endpoints.request_bind,
                 #TODO this is a hack
-                random_port=(self.endpoints.com_bind.split() == 2)
+                random_port=use_random_request
             )
         else:
             self.log.info("Socket com_socket and request_socket not started "

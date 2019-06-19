@@ -275,7 +275,7 @@ def generate_sender_id(main_pid):
 
 
 # ----------------------------------------------------------------------------
-# Connection paths and strings  
+# Connection paths and strings
 # ----------------------------------------------------------------------------
 
 def set_ipc_addresses(ipc_dir, main_pid, use_cleaner=True):
@@ -490,7 +490,7 @@ def set_endpoints(ext_ip,
 
 
 # ----------------------------------------------------------------------------
-# zmq functions          
+# zmq functions
 # ----------------------------------------------------------------------------
 
 def start_socket(name,
@@ -544,9 +544,10 @@ def start_socket(name,
         if sock_con == "connect":
             socket.connect(endpoint)
         elif sock_con == "bind":
-            if random_port is None:
+            if random_port is None or random_port == False:
                 socket.bind(endpoint)
             else:
+                log.debug("Enabling random port usage for %s", name)
                 port = socket.bind_to_random_port(endpoint)
                 endpoint_to_print = "{}:{}".format(endpoint, port)
 
