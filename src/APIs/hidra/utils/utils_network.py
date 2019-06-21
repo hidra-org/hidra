@@ -503,6 +503,7 @@ def start_socket(name,
                  is_ipv6=False,
                  zap_domain=None,
                  random_port=None,
+                 socket_options=[],
                  message=None):
     """Creates a zmq socket.
 
@@ -517,6 +518,9 @@ def start_socket(name,
         zap_domain: The RFC 27 authentication domain used for ZMQ
                     communication.
         random_port (optional): Use zmq bind_to_random_port option.
+        socket_options (optional): Additional zmq options which should be set
+                                   on the socket
+                                   (as lists wich [key, value] entries).
         message (optional): wording to be used in the message
                             (default: Start).
     """
@@ -541,9 +545,15 @@ def start_socket(name,
             socket.ipv6 = True
             log.debug("Enabling IPv6 socket for %s", name)
 
+        # set socket options
+        socket.linger = 0  # always
+        for param, value in socket_options:
+            socket.setsockopt(param, value)
+
         # connect/bind the socket
         if sock_con == "connect":
             socket.connect(endpoint)
+
         elif sock_con == "bind":
             if random_port is None or random_port is False:
                 socket.bind(endpoint)

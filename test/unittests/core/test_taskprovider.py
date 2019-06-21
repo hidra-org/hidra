@@ -40,6 +40,12 @@ import socket
 import sys
 import zmq
 
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
+
 from test_base import TestBase, create_dir
 from taskprovider import TaskProvider
 import hidra.utils as utils
@@ -170,6 +176,61 @@ class TestTaskProvider(TestBase):
 
         self.start = 100
         self.stop = 105
+
+    def test_taskprovider_terminate(self):
+        """Simulate incoming data and check if received events are correct.
+        """
+
+        endpoints = self.config["endpoints"]
+        event_message_list = [{
+            "filename": "test_file.cbf",
+            "source_path": "my_source_path",
+            "relative_path": "local"
+        }]
+
+        kwargs = dict(
+            config=self.taskprovider_config,
+            endpoints=endpoints,
+            log_queue=self.log_queue
+        )
+
+        mocked_fct = "{}.EventDetector.get_new_event".format(
+            self.taskprovider_config["eventdetector"]["type"]
+        )
+
+        router_socket = self.start_socket(
+            name="router_socket",
+            sock_type=zmq.PULL,
+            sock_con="connect",
+            endpoint=endpoints.router_con
+        )
+
+        control_socket = self.start_socket(
+            name="control_socket",
+            sock_type=zmq.PUB,
+            sock_con="bind",
+            # it is the sub endpoint because originally this is handled with
+            # a zmq thread device
+            endpoint=endpoints.control_sub_bind
+        )
+
+        with mock.patch(mocked_fct) as mock_get_events:
+            #mock_get_events.return_value = [event_message_list]
+            mock_get_events.side_effect = [event_message_list]
+            taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
+            taskprovider_pr.start()
+
+        # wait till everything is set up
+        time.sleep(0.5)
+
+        self.log.info("Sending 'Exit' signal")
+        control_socket.send_multipart([b"control", b"EXIT"])
+
+        # give task provider time to react
+        time.sleep(0.7)
+
+        self.stop_socket(name="router_socket", socket=router_socket)
+        self.stop_socket(name="control_socket", socket=control_socket)
 
     def test_taskprovider(self):
         """Simulate incoming data and check if received events are correct.

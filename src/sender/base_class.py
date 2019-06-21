@@ -179,6 +179,7 @@ class Base(object):
                      sock_con,
                      endpoint,
                      random_port=None,
+                     socket_options=[],
                      message=None):
         """Wrapper of start_socket
 
@@ -203,6 +204,7 @@ class Base(object):
             context=self.context,
             log=self.log,
             random_port=random_port,
+            socket_options=socket_options,
             message=message,
         )
 

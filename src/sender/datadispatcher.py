@@ -79,13 +79,14 @@ class DataHandler(Base, threading.Thread):
         self.poller = None
         self.control_socket = None
         self.router_socket = None
-        log_name = "DataDispatcher-{}".format(self.dispatcher_id)
-        self.log = utils.get_logger(log_name, self.log_queue)
-        self.stopped = False
+        self.stopped = None
 
-        threading.Thread.__init__(self)
-
-        self._setup()
+        try:
+            self._setup()
+        except Exception:
+            # to make sure that all sockets are closed
+            self.stop()
+            raise
 
     def _setup(self):
         """Initializes parameters and creates sockets.
@@ -350,7 +351,7 @@ class DataHandler(Base, threading.Thread):
 
         Reaction to exit signal from control socket.
         """
-        self.log.debug("Router requested to shutdown.")
+        self.log.debug("Requested to shut down.")
         self.keep_running = False
 
     def _react_to_close_sockets_signal(self, message):
@@ -380,20 +381,19 @@ class DataHandler(Base, threading.Thread):
         """
 
         self.keep_running = False
-
         i = 0
-        while not self.stopped:
+        while self.stopped is False:
             # if the socket is closed to early the thread will hang.
             self.log.debug("Waiting for run loop to stop (iter %s)", i)
             time.sleep(0.1)
             i += 1
 
-        self.stop_socket(name="router_socket")
-        self.stop_socket(name="control_socket")
-
         if self.datafetcher is not None:
             self.datafetcher.stop()
             self.datafetcher = None
+
+        self.stop_socket(name="router_socket")
+        self.stop_socket(name="control_socket")
 
         for connection in self.open_connections:
             self.stop_socket(
@@ -430,14 +430,19 @@ class DataDispatcher(Base):
         self.config = config
         self.log_queue = log_queue
 
+        self.context = None
         self.poller = None
         self.control_socket = None
-        self.context = None
         self.datahandler = None
         self.continue_run = None
-        self.stopped = False
+        self.stopped = None
 
-        self._setup()
+        try:
+            self._setup()
+        except Exception:
+            # make sure all sockets are closed
+            self.stop()
+            raise
 
         try:
             self.run()
@@ -532,6 +537,7 @@ class DataDispatcher(Base):
             # ----------------------------------------------------------------
             # control commands
             # ----------------------------------------------------------------
+
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
 
@@ -556,18 +562,22 @@ class DataDispatcher(Base):
         # Do not react on sleep signals.
         pass
 
+    def _react_to_exit_signal(self):
+        """Overwrite the base class reaction method to exit signal.
+
+        Reaction to exit signal from control socket.
+        """
+        self.log.debug("Requested to shut down.")
+        self.keep_running = False
+
     def stop(self):
         """Stopping, closing sockets and clean up.
         """
 
         self.continue_run = False
 
-        # to prevent the message two be logged multiple times
-        if self.continue_run:
-            self.log.debug("Closing sockets.")
-
         i = 0
-        while not self.stopped:
+        while self.stopped is False:
             # if the socket is closed to early the thread will hang.
             self.log.debug("Waiting for run loop to stop (iter %s)", i)
             time.sleep(0.1)
@@ -579,7 +589,7 @@ class DataDispatcher(Base):
             self.datahandler.stop()
             self.log.debug("Waiting for datahandler to join.")
             self.datahandler.join()
-            self.log.debug("Datahandler joined.")
+            self.log.debug("DataHandler joined.")
             self.datahandler = None
 
         if self.context is not None:

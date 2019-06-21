@@ -30,6 +30,7 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 
+import copy
 import json
 import os
 from multiprocessing import Process, freeze_support
@@ -92,7 +93,47 @@ class TestDataDispatcher(TestBase):
 
         self.receiving_ports = ["6005", "6006"]
 
-    def test_datadispatcher(self):
+    def test_datadispatcher_wrong_config(self):
+        """Simulate wrong configuration.
+        """
+
+        config = copy.deepcopy(self.datadispatcher_config)
+        endpoints = self.config["endpoints"]
+
+        control_socket = self.start_socket(
+            name="control_socket",
+            sock_type=zmq.PUB,
+            sock_con="bind",
+            # it is the sub endpoint because originally this is handled with
+            # a zmq thread device
+            endpoint=endpoints.control_sub_bind
+        )
+
+        del config["datafetcher"]["file_fetcher"]["fix_subdirs"]
+
+        kwargs = dict(
+            dispatcher_id=1,
+            endpoints=endpoints,
+            fixed_stream_addr=None,
+            config=config,
+            log_queue=self.log_queue,
+        )
+        dd = DataDispatcher(**kwargs)
+        #datadispatcher_pr = Process(target=DataDispatcher, kwargs=kwargs)
+        #datadispatcher_pr.start()
+
+        # wait till Datadisaptcher is fully started, otherwise control messages
+        # are not reseived
+        time.sleep(0.05)
+
+        self.log.info("send exit signal")
+        control_socket.send_multipart([b"control", b"EXIT"])
+        datadispatcher_pr.join()
+
+        self.stop_socket(name="control_socket", socket=control_socket)
+
+
+    def disabled_test_datadispatcher(self):
         """Simulate incoming data and check if received events are correct.
         """
 
@@ -179,7 +220,7 @@ class TestDataDispatcher(TestBase):
             datadispatcher_pr.join()
 
             self.stop_socket(name="router_socket", socket=router_socket)
-            self.stop_socket(name="control_socket", socket=router_socket)
+            self.stop_socket(name="control_socket", socket=control_socket)
 
             for i, sckt in enumerate(receiving_sockets):
                 self.stop_socket(name="receiving_socket{}".format(i),

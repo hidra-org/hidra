@@ -76,11 +76,11 @@ class DataFetcher(DataFetcherBase):
                 "remove_data",
                 {
                     self.df_type: {
-                        "session",
                         "fix_subdirs"
                     }
                 }
-            ]
+            ],
+            "network": ["session"]
         }
 
         # check that the required_params are set inside of module specific
