@@ -977,7 +977,7 @@ class DataManager(Base):
         for i in range(self.number_of_streams):
             dispatcher_id = "{}/{}".format(i, self.number_of_streams)
             dispatcher_id = dispatcher_id.encode("ascii")
-            # "bug in pylint # pylint: disable=bad-continuation
+            # bug in pylint # pylint: disable=bad-continuation
             proc = Process(target=DataDispatcher,
                            args=(
                                dispatcher_id,

@@ -180,17 +180,7 @@ class DataFetcherBase(Base, ABC):
         self.config_reduced.update(config_reduced)
 
         if print_log:
-            try:
-                formated_config = str(json.dumps(self.config_reduced,
-                                                 sort_keys=True,
-                                                 indent=4))
-            except TypeError:
-                # is thrown if one of the entries is not json serializable,
-                # e.g happens for zmq context
-                formated_config = self.config_reduced
-
-            self.log.info("Configuration for data fetcher %s: %s",
-                          self.df_type, formated_config)
+            super().print_config(self.config_reduced)
 
     def base_setup(self):
         """Sets up the shared components needed by all datafetchers.

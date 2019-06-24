@@ -33,6 +33,7 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 
+import copy
 import json
 import zmq
 
@@ -58,7 +59,6 @@ class Base(object):
         self.context = None
 
         self.config_all = {}
-        self.config = {}
         self.required_params_base = {}
         self.required_params_dep = {}
         self.config_reduced = {}
@@ -172,6 +172,32 @@ class Base(object):
                            exc_info=True)
             self.log.debug("value=%s", value)
             self.log.debug("msg=%s", msg)
+
+    def print_config(self, config):
+        """
+        Print the configuration in a user friendly way
+        """
+
+        formated_config = copy.deepcopy(config)
+        try:
+            # for better readability of named tuples
+            formated_config["network"]["endpoints"] = (
+                formated_config["network"]["endpoints"]._asdict()
+            )
+        except KeyError:
+            pass
+
+        try:
+            formated_config = str(json.dumps(formated_config,
+                                             sort_keys=True,
+                                             indent=4))
+        except TypeError:
+            # is thrown if one of the entries is not json serializable,
+            # e.g happens for zmq context
+            pass
+
+        self.log.info("Configuration for %s: %s",
+                      self.__class__.__name__, formated_config)
 
     def start_socket(self,
                      name,

@@ -469,11 +469,7 @@ class DataDispatcher(Base):
         self.log.debug("DataDispatcher-%s started (PID %s).",
                        self.dispatcher_id, os.getpid())
 
-        formated_config = str(json.dumps(self.config,
-                                         sort_keys=True,
-                                         indent=4))
-        self.log.info("Configuration for data dispatcher: %s",
-                      formated_config)
+        super().print_config(self.config)
 
         self.context = zmq.Context()
         if ("context" in self.config
