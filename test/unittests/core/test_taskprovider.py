@@ -178,7 +178,7 @@ class TestTaskProvider(TestBase):
         self.stop = 105
 
     def test_taskprovider_terminate(self):
-        """Simulate incoming data and check if received events are correct.
+        """Simulate start up with wrong configuration.
         """
 
         endpoints = self.config["endpoints"]
@@ -277,10 +277,11 @@ class TestTaskProvider(TestBase):
 
         create_dir(target_file_base)
 
-    #    time.sleep(5)
+        # give it time to start up
+        time.sleep(0.5)
+
         try:
             for i in range(self.start, self.stop):
-                time.sleep(0.5)
                 target_file = os.path.join(target_file_base,
                                            "{}.cbf".format(i))
                 self.log.debug("copy to %s", target_file)
@@ -288,7 +289,6 @@ class TestTaskProvider(TestBase):
 
                 workload = router_socket.recv_multipart()
                 self.log.info("next workload %s", workload)
-                time.sleep(1)
         except KeyboardInterrupt:
             pass
         finally:
