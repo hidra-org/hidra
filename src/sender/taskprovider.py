@@ -186,14 +186,19 @@ class TaskProvider(Base):
         """
 
         while self.keep_running:
+
+            # ----------------------------------------------------------------
+            # get events
+            # ----------------------------------------------------------------
+
+            # the event for a file /tmp/test/source/local/file1.tif
+            # is of the form:
+            # {
+            #   "source_path": "/tmp/test/source/"
+            #   "relative_path": "local"
+            #   "filename": "file1.tif"
+            # }
             try:
-                # the event for a file /tmp/test/source/local/file1.tif
-                # is of the form:
-                # {
-                #   "source_path": "/tmp/test/source/"
-                #   "relative_path": "local"
-                #   "filename": "file1.tif"
-                # }
                 workload_list = self.eventdetector.get_new_event()
             except KeyboardInterrupt:
                 break
@@ -211,6 +216,9 @@ class TaskProvider(Base):
 
             # TODO validate workload dict
             for workload in workload_list:
+
+                if not self.keep_running:
+                    break
 
                 # ------------------------------------------------------------
                 # get requests for this event
@@ -256,28 +264,43 @@ class TaskProvider(Base):
                         message.append(json.dumps(requests).encode("utf-8"))
                     self.log.debug(str(message))
 
-                    try:
-                        self.router_socket.send_multipart(message)
-                    except zmq.error.Again:
-                        self.log.debug("Sending message failed due to timeout "
-                                       "of router_socket")
-                        break
+                    while True:
+                        try:
+                            self.router_socket.send_multipart(message)
+                            break
+                        except zmq.error.Again:
+                            self.log.warning("Sending message failed due to "
+                                             "timeout of router_socket")
+                            # if there is a control signal in the meantime this
+                            # would otherwise get struck
+                            if self._check_control_socket():
+                                break
                 except Exception:
                     self.log.error("Sending message...failed.", exc_info=True)
                     raise
 
-            socks = dict(self.poller.poll(0))
-
             # ----------------------------------------------------------------
             # control commands
             # ----------------------------------------------------------------
+            self._check_control_socket()
 
-            if (self.control_socket in socks
-                    and socks[self.control_socket] == zmq.POLLIN):
+    def _check_control_socket(self):
+        """Check if any control signal where received over the control socket
 
-                # the exit signal should become effective
-                if self.check_control_signal():
-                    break
+        Returns:
+            A boolean indicating if the class should be stopped or not
+            (True means stop).
+        """
+
+        socks = dict(self.poller.poll(0))
+        if (self.control_socket in socks
+                and socks[self.control_socket] == zmq.POLLIN):
+
+            # the exit signal should become effective
+            if self.check_control_signal():
+                return True
+
+        return False
 
     def _react_to_exit_signal(self):
         """Overwrite the base class reaction method to exit signal.
