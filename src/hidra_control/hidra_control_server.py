@@ -166,7 +166,8 @@ class HidraServiceHandling(object):
 
         # Needed because status always returns "RUNNING" in the first
         # second
-        time.sleep(1.5)
+        # TODO exchange that with proper communication to statserver
+        time.sleep(2)
 
         # the return value might still be 0 even if start did not work
         # -> check status again
@@ -347,6 +348,9 @@ class ConfigHandling(utils.Base):
         # overwritten with these parameters when start is executed
         self.all_configs = dict()
 
+        # ctemplate should only contain the entries which should overwrite the
+        # ones in the control server config file
+        # e.g. fix_subdirs is not added because of that
         ed_type = "http_events"
         self.ctemplate = {
             "active": False,
@@ -373,7 +377,13 @@ class ConfigHandling(utils.Base):
             "general": ["ldapuri", "whitelist"],
             "eventdetector": [
                 ["type", [ed_type]],
-                {ed_type: ["det_ip", "det_api_version", "history_size"]}
+                {
+                    ed_type: [
+                        "det_ip",
+                        "det_api_version",
+                        "history_size",
+                    ]
+                }
             ],
             "datafetcher": ["store_data", "remove_data"]
         }
@@ -755,7 +765,6 @@ class HidraController(HidraServiceHandling):
             "history_size",
             "store_data",
             "remove_data",
-            "fix_subdirs"
         ]
 
 #        self.supported_keys = [k for k in list(self.ctemplate.keys())

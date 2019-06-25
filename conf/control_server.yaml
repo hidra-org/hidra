@@ -55,6 +55,8 @@ hidraconfig_static:
         use_data_stream: False
         number_of_streams: 32
         chunksize: 10485760
+        http_fetcher:
+            fix_subdirs: *fix_subdirs
 
 hidraconfig_variable:
 # use {bl} as placeholder for the beamline
