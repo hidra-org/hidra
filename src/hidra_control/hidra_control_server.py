@@ -332,7 +332,7 @@ class ConfigHandling(utils.Base):
         self.ctemplate = {}
         self.required_params = {}
 
-        self.enable_hidra_connection = None
+        self.use_statserver = None
         self.stats_expose_sockets = {}
         self.stats_expose_endpt_tmpl = None
 
@@ -358,7 +358,6 @@ class ConfigHandling(utils.Base):
             "general": {
                 "ldapuri": None,
                 "whitelist": None,
-                "use_statserver": None,
             },
             "eventdetector": {
                 "type": ed_type,
@@ -389,11 +388,11 @@ class ConfigHandling(utils.Base):
         }
 
         try:
-            self.enable_hidra_connection = (
-                self.config["controlserver"]["enable_hidra_connection"]
+            self.use_statserver = (
+                self.config_static["general"]["use_statserver"]
             )
         except KeyError:
-            self.enable_hidra_connection = False
+            self.use_statserver = False
         self.stats_expose_sockets = {}
         self.stats_expose_endpt_tmpl = "ipc:///tmp/stats_exposing"
 #        self.stats_expose_endpt_tmpl = "ipc:///tmp/{}_stats_exposing"
@@ -596,9 +595,6 @@ class ConfigHandling(utils.Base):
         self.config_static["general"]["procname"] = procname
         self.config_static["general"]["username"] = username
         self.config_static["general"]["ext_ip"] = external_ip
-        self.config_static["general"]["use_statserver"] = (
-            self.enable_hidra_connection
-        )
         df_type = self.config_static["datafetcher"]["type"]
         try:
             self.config_static["datafetcher"][df_type]["local_target"] = (
@@ -656,7 +652,7 @@ class ConfigHandling(utils.Base):
         """Communicate with hidra instance and get its configuration.
         """
 
-        if not self.enable_hidra_connection:
+        if not self.use_statserver:
             return
 
         pid = utils.read_status(
