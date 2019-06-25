@@ -47,6 +47,8 @@ class Base(object):
                       endpoint,
                       is_ipv6=False,
                       zap_domain=None,
+                      random_port=None,
+                      socket_options=[],
                       message=None):
         """Wrapper of start_socket.
         """
@@ -61,6 +63,7 @@ class Base(object):
             is_ipv6=is_ipv6,
             zap_domain=zap_domain,
             random_port=None,
+            socket_options=socket_options,
             message=message
         )
 

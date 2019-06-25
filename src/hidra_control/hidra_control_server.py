@@ -324,6 +324,7 @@ class ConfigHandling(utils.Base):
         self.config_static = None
         self.config_variable = None
         self.config_ending = ".yaml"
+        self.config_remote = {}
 
         # connection depending hidra configuration, master config one is
         # overwritten with these parameters when start is executed
@@ -335,6 +336,8 @@ class ConfigHandling(utils.Base):
         self.use_statserver = None
         self.stats_expose_sockets = {}
         self.stats_expose_endpt_tmpl = None
+
+        self.timeout = 1000
 
         self._setup()
 
@@ -394,8 +397,7 @@ class ConfigHandling(utils.Base):
         except KeyError:
             self.use_statserver = False
         self.stats_expose_sockets = {}
-        self.stats_expose_endpt_tmpl = "ipc:///tmp/stats_exposing"
-#        self.stats_expose_endpt_tmpl = "ipc:///tmp/{}_stats_exposing"
+        self.stats_expose_endpt_tmpl = "ipc:///tmp/hidra/{}_stats_exposing"
 
         self._read_config()
 
@@ -668,17 +670,25 @@ class ConfigHandling(utils.Base):
             name="stats_expose_socket",
             sock_type=zmq.REQ,
             sock_con="connect",
-            endpoint=endpoint
+            endpoint=endpoint,
+            socket_options=[
+                [zmq.SNDTIMEO, self.timeout],
+                [zmq.RCVTIMEO, self.timeout]
+            ]
         )
 
         self.stats_expose_sockets[det_id] = sckt
 
-        sckt.send(json.dumps("config").encode())
-        answer = json.loads(sckt.recv().decode())
-        self.log.debug("answer=%s", answer)
+        try:
+            sckt.send(json.dumps("config").encode())
+            self.config_remote[det_id] = json.loads(sckt.recv().decode())
+        except zmq.error.Again:
+            self.log.error("Getting remote config failed due to timeout",
+                           exc_info=True)
+            return
 
-#        endpt = utils.Endpoints(*answer["network"]["endpoints"])
-#        self.log.debug("com_con=%s", endpt.com_con)
+        #endpt = utils.Endpoints(*answer["network"]["endpoints"])
+        #self.log.debug("com_con=%s", endpt.com_con)
 
     def _stop_stats_socket(self, det_id):
         try:
@@ -732,9 +742,6 @@ class HidraController(HidraServiceHandling):
         self.instances = None
 
         self.supported_keys = []
-
-        self.stats_expose_sockets = {}
-        self.stats_expose_endpt_tmpl = None
 
         self._setup()
 
