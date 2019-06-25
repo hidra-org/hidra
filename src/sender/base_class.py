@@ -35,6 +35,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import copy
 import json
+import time
 import zmq
 
 import _environment  # noqa F401 # pylint: disable=unused-import
@@ -414,3 +415,26 @@ class Base(object):
         """
         if self.stats_collect_socket is not None:
             self.stop_socket(name="stats_collect_socket")
+
+    def wait_for_stopped(self, n_iter=5, sleep_time=0.1):
+        """
+        Checks if the main loop was stopped.
+
+        Args:
+            n_iter (optional): how many loop iteration should be done for the
+                               checking (default: 5)
+            sleep_time (optional): how long to wait beween the iterations
+                                   (default: 0.1 s)
+
+        """
+
+        i = 0
+        while self.stopped is False:
+            # if the socket is closed to early the thread will hang.
+            self.log.debug("Waiting for run loop to stop (iter %s)", i)
+            time.sleep(sleep_time)
+            i += 1
+
+            if i > n_iter:
+                self.log.error("%s hangs", self.__class__.__name__)
+                break

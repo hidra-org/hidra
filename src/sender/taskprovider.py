@@ -282,7 +282,8 @@ class TaskProvider(Base):
             # ----------------------------------------------------------------
             # control commands
             # ----------------------------------------------------------------
-            self._check_control_socket()
+            if self._check_control_socket():
+                break
 
     def _check_control_socket(self):
         """Check if any control signal where received over the control socket
@@ -319,8 +320,6 @@ class TaskProvider(Base):
             try:
                 acc_events = self.eventdetector.get_new_event()
                 self.log.debug("Ignore accumulated workload: %s", acc_events)
-#            except KeyboardInterrupt:
-#                break
             except Exception:
                 self.log.error("Invalid workload message "
                                "received.", exc_info=True)
@@ -330,16 +329,7 @@ class TaskProvider(Base):
         """
 
         self.keep_running = False
-
-        i = 0
-        while self.stopped is False:
-            # if the socket is closed to early the thread will hang.
-            self.log.debug("Waiting for run loop to stop (iter %s)", i)
-            time.sleep(0.1)
-            i += 1
-
-            if i > 5:
-                break
+        self.wait_for_stopped()
 
         if self.eventdetector is not None:
             self.eventdetector.stop()
@@ -360,7 +350,11 @@ class TaskProvider(Base):
         """
 
         self.log.debug('got SIGTERM')
-        self.stop()
+        self.keep_running = False
+        # calling stop here would set keep_running to False but this would not
+        # be propagated to _run because stop would block the thread
+        # by setting keep_running explicitly the main loop is given the
+        # possibility to stop by itself
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.stop()

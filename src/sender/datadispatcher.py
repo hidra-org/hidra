@@ -434,7 +434,7 @@ class DataDispatcher(Base):
         self.poller = None
         self.control_socket = None
         self.datahandler = None
-        self.continue_run = None
+        self.keep_running = None
         self.stopped = None
 
         try:
@@ -476,7 +476,7 @@ class DataDispatcher(Base):
                 and not self.config["context"]):
             self.config["context"] = self.context
 
-        self.continue_run = True
+        self.keep_running = True
 
         try:
             self.create_sockets()
@@ -527,7 +527,7 @@ class DataDispatcher(Base):
         """React on control signals and inform DataHandler thread.
         """
 
-        while self.continue_run:
+        while self.keep_running:
             socks = dict(self.poller.poll())
 
             # ----------------------------------------------------------------
@@ -570,14 +570,8 @@ class DataDispatcher(Base):
         """Stopping, closing sockets and clean up.
         """
 
-        self.continue_run = False
-
-        i = 0
-        while self.stopped is False:
-            # if the socket is closed to early the thread will hang.
-            self.log.debug("Waiting for run loop to stop (iter %s)", i)
-            time.sleep(0.1)
-            i += 1
+        self.keep_running = False
+        self.wait_for_stopped()
 
         self.stop_socket(name="control_socket")
 
@@ -599,7 +593,7 @@ class DataDispatcher(Base):
         """
 
         self.log.debug('got SIGTERM')
-        self.stop()
+        self.keep_running = False
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
