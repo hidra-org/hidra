@@ -50,6 +50,7 @@ from .utils_general import (
 )
 
 from .utils_datatypes import (
+    ReplyCodes,
     IpcAddresses,
     Endpoints,
     MAPPING_ZMQ_CONSTANTS_TO_STR,
@@ -128,6 +129,7 @@ __all__ = [
     "get_service_manager",
     "read_status",
     # utils_datatypes
+    "ReplyCodes",
     "IpcAddresses",
     "Endpoints",
     "MAPPING_ZMQ_CONSTANTS_TO_STR",

@@ -62,6 +62,16 @@ import hidra  # noqa E402
 import hidra.utils as utils  # noqa E402
 from hidra.utils import FormatError  # noqa E402
 
+
+REPLYCODES = utils.ReplyCodes(
+    error=b"ERROR",
+    ok=b"OK",
+    done=b"DONE",
+    running=b"RUNNING",
+    not_running=b"NOT_RUNNING",
+    already_running=b"ALREADY_RUNNING",
+    already_sopped=b"ARLEADY_STOPPED"
+)
 CONFIG_PREFIX = "datamanager_"
 
 
@@ -75,6 +85,7 @@ class HidraServiceHandling(object):
         self.beamline = beamline
         self.log = log
         self.service_conf = {}
+        self.reply_codes = REPLYCODES
 
         self.call_hidra_service = None
 
@@ -131,12 +142,12 @@ class HidraServiceHandling(object):
         try:
             proc = self.call_hidra_service("status", det_id)
         except Exception:
-            return b"ERROR"
+            return self.reply_codes.error
 
         if proc == 0:
-            return b"RUNNING"
+            return self.reply_codes.running
         else:
-            return b"NOT RUNNING"
+            return self.reply_codes.not_running
 
     def _call_systemd(self, cmd, det_id):
         """Command hidra (e.g. start, stop, status,...).
@@ -214,6 +225,8 @@ class InstanceTracking(HidraServiceHandling):
 
         self.beamline = beamline
         self.backup_file = backup_file
+
+        self.reply_codes = REPLYCODES
 
         self.instances = None
         self._set_instances()
@@ -293,7 +306,7 @@ class InstanceTracking(HidraServiceHandling):
 
         for det_id in self.instances[self.beamline]:
             # check if running
-            if self.hidra_status(det_id) == b"RUNNING":
+            if self.hidra_status(det_id) == self.reply_codes.running:
                 self.log.info("Started hidra for %s_%s, already running",
                               self.beamline, det_id)
                 continue
@@ -312,19 +325,20 @@ class ConfigHandling(utils.Base):
     Handler for all configuration related changed (read, write, modify, ...)
     """
 
-    def __init__(self, context, beamline, config, log_queue):
+    def __init__(self, context, beamline, det_id, config, log_queue):
 
         super().__init__()
 
         self.context = context
         self.beamline = beamline
+        self.det_id = det_id
         self.log = utils.get_logger(self.__class__.__name__, log_queue)
 
         self.config = config
         self.config_static = None
         self.config_variable = None
         self.config_ending = ".yaml"
-        self.config_remote = {}
+        self.config_remote = None
 
         # connection depending hidra configuration, master config one is
         # overwritten with these parameters when start is executed
@@ -401,40 +415,36 @@ class ConfigHandling(utils.Base):
 
         self._read_config()
 
-    def set(self, host_id, det_id, param, value):
+    def set(self, host_id, param, value):
         """Set a configuration parameter to certain value.
 
         Args:
             host_id: Which host is setting the parameter
-            det_id: For which detector the parameter is set
             param: The parameter to set
             value: The value to set the parameter to
         """
 
         # identify the configuration for this connection
         if host_id not in self.all_configs:
-            self.all_configs[host_id] = dict()
-        if det_id not in self.all_configs[host_id]:
-            self.all_configs[host_id][det_id] = copy.deepcopy(self.ctemplate)
+            self.all_configs[host_id] = copy.deepcopy(self.ctemplate)
 
         utils.set_flat_param(
             param=param,
             param_value=value,
-            config=self.all_configs[host_id][det_id],
+            config=self.all_configs[host_id],
             config_type="sender",
             log=self.log
         )
 
-    def activate(self, host_id, det_id):
+    def activate(self, host_id):
         """Mark the configuration with which the hidra instance is running with
 
         Args:
             host_id: The host the configuration belongs to.
-            det_id: The detector the configuration belongs to.
         """
-        self.all_configs[host_id][det_id]["active"] = True
+        self.all_configs[host_id]["active"] = True
 
-    def get(self, host_id, det_id, param):
+    def get(self, host_id, param):
         """ Get a parameter value
 
         if the requesting client has set parameters before but has not
@@ -446,27 +456,26 @@ class ConfigHandling(utils.Base):
 
         Args:
             host_id: The host the configuration belongs to.
-            det_id: The detector to get the parameter for.
             param: The parameter for which the value should be get.
 
         Returns:
             The value the parameter is set to.
         """
         try:
-            if self.all_configs[host_id][det_id]["active"]:
+            if self.all_configs[host_id]["active"]:
                 # This is a pointer
-                current_config = self.all_configs[host_id][det_id]
+                current_config = self.all_configs[host_id]
             else:
                 raise KeyError
         except KeyError:
-            current_config = self.master_config[det_id]
+            current_config = self.master_config
 
         return utils.get_flat_param(param,
                                     current_config,
                                     "sender",
                                     log=self.log)
 
-    def clear(self, host_id, det_id):
+    def clear(self, host_id):
         """Clear the configuration.
 
         Args:
@@ -474,15 +483,10 @@ class ConfigHandling(utils.Base):
             det_id: the detector to clear the configuration for.
         """
 
-        if host_id in self.all_configs:
-            try:
-                del self.all_configs[host_id][det_id]
-            except KeyError:
-                pass
-
-            # no configs for this host left
-            if not self.all_configs[host_id]:
-                del self.all_configs[host_id]
+        try:
+            del self.all_configs[host_id]
+        except KeyError:
+            pass
 
     def _read_config(self):
 
@@ -510,17 +514,16 @@ class ConfigHandling(utils.Base):
                                                       sort_keys=True,
                                                       indent=4))
 
-    def _check_config_complete(self, host_id, det_id):
+    def _check_config_complete(self, host_id):
         """
          Check if all required params are there.
         """
 
         # identify the configuration for this connection
-        if (host_id in self.all_configs
-                and det_id in self.all_configs[host_id]):
+        try:
             # This is a pointer
-            current_config = self.all_configs[host_id][det_id]
-        else:
+            current_config = self.all_configs[host_id]
+        except KeyError:
             self.log.debug("No current configuration found")
             raise utils.NotFoundError()
 
@@ -536,25 +539,22 @@ class ConfigHandling(utils.Base):
                 "Not all required parameters are specified"
             )
 
-    def get_config_file_name(self, det_id):
+    def get_config_file_name(self):
         """
         Get the configuration file name
 
-        Args:
-            det_id: For which detector the config is needed.
-
         Returns:
-            A absolut configuration file path as string.
+            A absolute configuration file path as string.
         """
 
         # /etc/hidra/P01_eiger01.conf
         return os.path.join(
             CONFIG_DIR,
             self.config["controlserver"]["hidra_config_name"]
-            .format(bl=self.beamline, det=det_id)
+            .format(bl=self.beamline, det=self.det_id)
         )
 
-    def write_config(self, host_id, det_id):
+    def write_config(self, host_id):
         """
         Write the configuration into a file.
 
@@ -567,11 +567,11 @@ class ConfigHandling(utils.Base):
         global CONFIG_PREFIX
 
         try:
-            self._check_config_complete(host_id, det_id)
+            self._check_config_complete(host_id)
         except utils.NotFoundError:
             return
 
-        current_config = self.all_configs[host_id][det_id]
+        current_config = self.all_configs[host_id]
 
         # if the requesting client has set parameters before these should be
         # taken. If this was not the case use the one from the previous
@@ -587,9 +587,9 @@ class ConfigHandling(utils.Base):
 
         username = config_g["username"].format(bl=self.beamline)
         procname_prefix = config_g["procname"].format(bl=self.beamline)
-        procname = "{}_{}".format(procname_prefix, det_id)
+        procname = "{}_{}".format(procname_prefix, self.det_id)
         log_name_prefix = config_g["log_name"].format(bl=self.beamline)
-        log_name = "{}_{}.log".format(log_name_prefix, det_id)
+        log_name = "{}_{}.log".format(log_name_prefix, self.det_id)
         local_target = config_df["local_target"].format(bl=self.beamline)
         external_ip = hidra.CONNECTION_LIST[self.beamline]["host"]
 
@@ -611,7 +611,7 @@ class ConfigHandling(utils.Base):
         utils.update_dict(current_config, self.config_static)
 
         # write configfile
-        config_file = self.get_config_file_name(det_id)
+        config_file = self.get_config_file_name()
         self.log.info("Writing config file: %s", config_file)
         utils.write_config(config_file, self.config_static, log=self.log)
 
@@ -624,24 +624,20 @@ class ConfigHandling(utils.Base):
 
         # store the dynamic config globally
         self.log.debug("config = %s", self.config_static)
-        self.master_config[det_id] = copy.deepcopy(self.config_static)
+        self.master_config = copy.deepcopy(self.config_static)
         # this information shout not go into the master config
-        del self.master_config[det_id]["active"]
+        del self.master_config["active"]
 
         # mark local_config as inactive
         current_config["active"] = False
 
-    def remove_config(self, det_id):
+    def remove_config(self):
         """
         Remove the config file and stop stats socket.
-
-        Args:
-            det_id: The detector id for which the configuration should be
-                    removed.
         """
-        self._stop_stats_socket(det_id)
+        self._stop_stats_socket()
 
-        config_file = self.get_config_file_name(det_id)
+        config_file = self.get_config_file_name()
 
         try:
             self.log.debug("Removing config file '%s'", config_file)
@@ -650,7 +646,7 @@ class ConfigHandling(utils.Base):
             self.log.error("Could not remove config file %s", config_file,
                            exc_info=True)
 
-    def acquire_remote_config(self, det_id, systemd_service_tmpl):
+    def acquire_remote_config(self, systemd_service_tmpl):
         """Communicate with hidra instance and get its configuration.
         """
 
@@ -658,7 +654,7 @@ class ConfigHandling(utils.Base):
             return
 
         pid = utils.read_status(
-            service=systemd_service_tmpl.format(det_id),
+            service=systemd_service_tmpl.format(self.det_id),
             log=self.log
             )["pid"]
         self.log.debug("hidra is running with pid %s", pid)
@@ -666,7 +662,7 @@ class ConfigHandling(utils.Base):
         endpoint = self.stats_expose_endpt_tmpl.format(pid)
 
         # get hidra config instance
-        sckt = self._start_socket(
+        self.stats_expose_socket = self._start_socket(
             name="stats_expose_socket",
             sock_type=zmq.REQ,
             sock_con="connect",
@@ -677,11 +673,11 @@ class ConfigHandling(utils.Base):
             ]
         )
 
-        self.stats_expose_sockets[det_id] = sckt
-
         try:
-            sckt.send(json.dumps("config").encode())
-            self.config_remote[det_id] = json.loads(sckt.recv().decode())
+            self.stats_expose_socket.send(json.dumps("config").encode())
+            self.config_remote = json.loads(
+                self.stats_expose_socket.recv().decode()
+            )
         except zmq.error.Again:
             self.log.error("Getting remote config failed due to timeout",
                            exc_info=True)
@@ -690,25 +686,24 @@ class ConfigHandling(utils.Base):
         #endpt = utils.Endpoints(*answer["network"]["endpoints"])
         #self.log.debug("com_con=%s", endpt.com_con)
 
-    def _stop_stats_socket(self, det_id):
+    def _stop_stats_socket(self):
         try:
             self._stop_socket(
-                name="stat_expose_socket_{}".format(det_id),
-                socket=self.stats_expose_sockets[det_id]
+                name="stat_expose_socket_{}".format(self.det_id),
+                socket=self.stats_expose_socket
             )
         except KeyError:
-            self.log.debug("No stat_expose_socket to stop available "
-                           "(det_id=%s)", det_id)
+            self.log.debug("No stats_expose_socket to stop available "
+                           "(det_id=%s)", self.det_id)
         except Exception:
-            self.log.error("Could not stop stats_expose_socket for detector "
-                           "%s", det_id)
+            self.log.error("Could not stop stats_expose_socket for %s",
+                           self.det_id)
 
     def _stop(self):
         """
         Clean up.
         """
-        for det_id in self.stats_expose_sockets:
-            self._stop_stats_socket(det_id)
+        self._stop_stats_socket()
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._stop()
@@ -723,7 +718,13 @@ class HidraController(HidraServiceHandling):
     and function members that control the operation.
     """
 
-    def __init__(self, context, beamline, config, log_queue):
+    def __init__(self,
+                 context,
+                 beamline,
+                 det_id,
+                 config,
+                 instances,
+                 log_queue):
 
         self.log = utils.get_logger(self.__class__.__name__, log_queue)
         super().__init__(beamline, self.log)
@@ -731,34 +732,28 @@ class HidraController(HidraServiceHandling):
         self.context = context
         # Beamline is read-only, determined by portNo
         self.beamline = beamline
+        self.det_id = det_id
         self.config = config
         self.log_queue = log_queue
 
-        self.config_cs = None
-        self.ldapuri = None
-        self.netgroup_template = None
+        self.reply_codes = REPLYCODES
 
         self.confighandling = None
-        self.instances = None
+        self.instances = instances
 
         self.supported_keys = []
 
         self._setup()
 
     def _setup(self):
-        self.config_cs = self.config["controlserver"]
-        self.ldapuri = self.config_cs["ldapuri"]
-        self.netgroup_template = self.config_cs["netgroup_template"]
+
+        config_ctrl = self.config["controlserver"]
 
         self.confighandling = ConfigHandling(self.context,
                                              self.beamline,
+                                             self.det_id,
                                              self.config,
                                              self.log_queue)
-
-        self.instances = InstanceTracking(self.beamline,
-                                          self.config_cs["backup_file"],
-                                          self.log_queue)
-        self.instances.restart_instances()
 
         self.supported_keys = [
             "ldapuri",
@@ -773,213 +768,114 @@ class HidraController(HidraServiceHandling):
 #        self.supported_keys = [k for k in list(self.ctemplate.keys())
 #                               if k not in ["active", "beamline"]]
 
-    def _decode_message(self, msg):
-        """Decode the message
-        """
-
-        try:
-            action = msg[0]
-        except IndexError:
-            raise FormatError
-
-        if action == b"IS_ALIVE":
-            return action, None, None, None, None
-
-        try:
-            action, host_id, det_id = msg[:3]
-            host_id = host_id.decode()
-            det_id = det_id.decode()
-        except ValueError:
-            self.log.error("No host_id and det_id defined")
-            raise FormatError
-
-        det_id = socket.getfqdn(det_id)
-
-        if action == b"set":
-
-            if len(msg) < 4:
-                self.log.error("Not enough arguments")
-                raise FormatError
-
-            param, value = msg[3:]
-            param = param.decode().lower()
-            value = json.loads(value.decode())
-
-        elif action in [b"get", b"do"]:
-            if len(msg) != 4:
-                self.log.error("Not enough arguments")
-                raise FormatError
-
-            param, value = msg[3].decode().lower(), None
-
-        elif action == b"bye":
-            param, value = None, None
-
-        else:
-            self.log.error("Unknown action")
-            raise FormatError
-
-        return action, host_id, det_id, param, value
-
-    def exec_msg(self, msg):
-        """
-        [b"IS_ALIVE"]
-            return "OK"
-        [b"do", host_id, det_id, b"start"]
-            return "DONE"
-        [b"bye", host_id, detector]
-        """
-
-        try:
-            action, host_id, det_id, param, value = self._decode_message(msg)
-        except FormatError:
-            self.log.error("Message of wrong format")
-            return b"ERROR"
-
-        if action == b"IS_ALIVE":
-            return b"OK"
-
-        try:
-            # check if host is allowed to execute commands
-            check_res = utils.check_netgroup(
-                host_id,
-                self.beamline,
-                self.ldapuri,
-                self.netgroup_template.format(bl=self.beamline),
-                log=self.log,
-                raise_if_failed=False
-            )
-        except Exception:
-            self.log.error("Error when checking netgroup", exc_info=True)
-            self.log.debug("msg=%s", msg)
-            return b"ERROR"
-
-        if not check_res:
-            return b"ERROR"
-
-        if action == b"set":
-            return self.set(host_id, det_id, param, value)
-
-        elif action == b"get":
-            reply = json.dumps(
-                self.get(host_id, det_id, param)
-            ).encode()
-            self.log.debug("reply is %s", reply)
-
-            if reply is None:
-                self.log.debug("reply is None")
-                return b"None"
-
-            return reply
-
-        elif action == b"do":
-            return self.do(host_id, det_id, param)
-
-        elif action == b"bye":
-            return self.bye(host_id, det_id)
-        else:
-            return b"ERROR"
-
-    def set(self, host_id, det_id, param, value):
+    def set(self, host_id, param, value):
         """
         set a parameter
         """
 
         if param in self.supported_keys:
-            self.confighandling.set(host_id, det_id, param, value)
-            self.confighandling.activate(host_id, det_id)
-            return_val = b"DONE"
+            self.confighandling.set(host_id, param, value)
+            self.confighandling.activate(host_id, )
+            return_val = self.reply_codes.done
         else:
             self.log.debug("param=%s; value=%s", param, value)
-            return_val = b"ERROR"
+            return_val = self.reply_codes.done
 
         return return_val
 
-    def get(self, host_id, det_id, param):
+    def get(self, host_id, param):
         """
         return the value of a parameter
         """
 
         if param in self.supported_keys:
-            value = self.confighandling.get(host_id, det_id, param)
+            value = self.confighandling.get(host_id, param)
 
             if isinstance(value, list):
-                return str(value)
+                reply = str(value)
             else:
-                return value
+                reply = value
 
         else:
             self.log.debug("param=%s", param)
-            return b"ERROR"
+            reply = self.reply_codes.error
 
-    def do(self, host_id, det_id, cmd):  # pylint: disable=invalid-name
+        reply = json.dumps(reply).encode()
+        self.log.debug("reply is %s", reply)
+
+        # TODO is this really necessary?
+        if reply is None:
+            self.log.debug("reply is None")
+            return b"None"
+
+        return reply
+
+    def do(self, host_id, cmd):  # pylint: disable=invalid-name
         """
         executes commands
         """
         if cmd == "start":
-            ret_val = self.start(host_id, det_id)
+            ret_val = self.start(host_id)
             return ret_val
         elif cmd == "stop":
-            return self.stop(det_id)
+            return self.stop()
 
         elif cmd == "restart":
-            return self.restart(host_id, det_id)
+            return self.restart(host_id)
 
         elif cmd == "status":
-            return self.hidra_status(det_id)
+            return self.hidra_status(self.det_id)
 
         elif cmd == "get_instances":
             return self.get_instances()
 
         else:
-            return b"ERROR"
+            return self.reply_codes.error
 
-    def bye(self, host_id, det_id):
+    def bye(self, host_id):
         """Disconnect host and clear config.
 
         Args:
             host_id: The host to disconnect.
-            det_id: The detector to disconnect the host for.
 
         Returns:
             b"DONE" if everything worked.
         """
 
         self.log.debug("Received 'bye' from host %s for detector %s",
-                       host_id, det_id)
+                       host_id, self.det_id)
 
-        self.confighandling.clear(host_id, det_id)
+        self.confighandling.clear(host_id)
 
-        return b"DONE"
+        return self.reply_codes.done
 
-    def start(self, host_id, det_id):
+    def start(self, host_id):
         """
         start ...
         """
 
         # check if service is running
-        if self.hidra_status(det_id) == b"RUNNING":
-            return b"ALREADY_RUNNING"
+        if self.hidra_status(self.det_id) == self.reply_codes.running:
+            return self.reply_codes.already_running
 
         try:
-            self.confighandling.write_config(host_id, det_id)
+            self.confighandling.write_config(host_id)
         except Exception:
             self.log.error("Config file not written", exc_info=True)
-            return b"ERROR"
+            return self.reply_codes.error
 
         # start service
-        if self.call_hidra_service("start", det_id) != 0:
+        if self.call_hidra_service("start", self.det_id) != 0:
             self.log.error("Could not start the service.")
-            return b"ERROR"
+            return self.reply_codes.error
 
         self.confighandling.acquire_remote_config(
-            det_id,
             self.service_conf["template"]
         )
 
         # remember that the instance was started
-        self.instances.add(det_id)
-        return b"DONE"
+        self.instances.add(self.det_id)
+        return self.reply_codes.done
 
     def get_instances(self):
         """Get the started hidra instances
@@ -996,36 +892,36 @@ class HidraController(HidraServiceHandling):
 
         return json.dumps(list(bl_instances.keys())).encode()
 
-    def stop(self, det_id):
+    def stop(self):
         """
         stop ...
         """
         # check if really running before return
-        if self.hidra_status(det_id) != b"RUNNING":
-            return b"ARLEADY_STOPPED"
+        if self.hidra_status(self.det_id) != self.reply_codes.running:
+            return self.reply_codes.already_stopped
 
         # stop service
-        if self.call_hidra_service("stop", det_id) != 0:
+        if self.call_hidra_service("stop", self.det_id) != 0:
             self.log.error("Could not stop the service.")
-            return b"ERROR"
+            return self.reply_codes.error
 
-        self.instances.remove(det_id)
-        self.confighandling.remove_config(det_id)
+        self.instances.remove(self.det_id)
+        self.confighandling.remove_config()
 
-        return b"DONE"
+        return self.reply_codes.done
 
-    def restart(self, host_id, det_id):
+    def restart(self, host_id):
         """
         restart ...
         """
         # stop service
-        reval = self.stop(det_id)
+        reval = self.stop()
 
-        if reval == b"DONE":
+        if reval == self.reply_codes.done:
             # start service
-            return self.start(host_id, det_id)
+            return self.start(host_id)
         else:
-            return b"ERROR"
+            return self.reply_codes.done
 
 
 def argument_parsing():
@@ -1087,12 +983,20 @@ class ControlServer(utils.Base):
         self.beamline = None
         self.context = None
         self.socket = None
+        self.config = None
+        self.ldapuri = None
+        self.netgroup_template = None
 
-        self.controller = None
+        self.controller = {}
         self.endpoint = None
 
         self.log_queue = None
         self.log_queue_listener = None
+
+        self.error = b"ERROR"
+        self.ok = b"OK"
+
+        self.instances = None
 
         self._setup()
 
@@ -1100,15 +1004,32 @@ class ControlServer(utils.Base):
 
     def _setup(self):
 
-        config = argument_parsing()
+        self.config = argument_parsing()
 
-        # shortcut for simpler use
-        config_ctrl = config["controlserver"]
+        config_ctrl = self.config["controlserver"]
 
         self.beamline = config_ctrl["beamline"]
+        self.ldapuri = config_ctrl["ldapuri"]
+        self.netgroup_template = config_ctrl["netgroup_template"]
 
         setproctitle.setproctitle(config_ctrl["procname"]
                                   .format(bl=self.beamline))
+
+        self._setup_logging()
+
+        host = hidra.CONNECTION_LIST[self.beamline]["host"]
+        host = socket.gethostbyaddr(host)[2][0]
+        port = hidra.CONNECTION_LIST[self.beamline]["port"]
+        self.endpoint = "tcp://{}:{}".format(host, port)
+        self._create_sockets()
+
+        self.instances = InstanceTracking(self.beamline,
+                                          config_ctrl["backup_file"],
+                                          self.log_queue)
+        self.instances.restart_instances()
+
+    def _setup_logging(self):
+        config_ctrl = self.config["controlserver"]
 
         logfile = os.path.join(
             config_ctrl["log_path"],
@@ -1135,17 +1056,6 @@ class ControlServer(utils.Base):
         # Create log and set handler to queue handle
         self.log = utils.get_logger("ControlServer", self.log_queue)
         self.log.info("Init")
-
-        host = hidra.CONNECTION_LIST[self.beamline]["host"]
-        host = socket.gethostbyaddr(host)[2][0]
-        port = hidra.CONNECTION_LIST[self.beamline]["port"]
-        self.endpoint = "tcp://{}:{}".format(host, port)
-        self._create_sockets()
-
-        self.controller = HidraController(self.context,
-                                          self.beamline,
-                                          config,
-                                          self.log_queue)
 
     def _create_sockets(self):
 
@@ -1181,9 +1091,142 @@ class ControlServer(utils.Base):
                 self.stop()
                 sys.exit(1)
 
-            reply = self.controller.exec_msg(msg)
+            reply = self.exec_msg(msg)
 
             self.socket.send(reply)
+
+    def _decode_message(self, msg):
+        """Decode the message
+        """
+
+        try:
+            action = msg[0]
+        except IndexError:
+            raise FormatError
+
+        if action == b"IS_ALIVE":
+            return action, None, None, None, None
+
+        try:
+            action, host_id, det_id = msg[:3]
+            host_id = host_id.decode()
+            det_id = det_id.decode()
+        except ValueError:
+            self.log.error("No host_id and det_id defined")
+            raise FormatError
+
+        det_id = socket.getfqdn(det_id)
+
+        if action == b"set":
+
+            if len(msg) < 4:
+                self.log.error("Not enough arguments")
+                raise FormatError
+
+            param, value = msg[3:]
+            param = param.decode().lower()
+            value = json.loads(value.decode())
+
+        elif action in [b"get", b"do"]:
+            if len(msg) != 4:
+                self.log.error("Not enough arguments")
+                raise FormatError
+
+            param, value = msg[3].decode().lower(), None
+
+        elif action == b"bye":
+            param, value = None, None
+
+        else:
+            self.log.error("Unknown action")
+            raise FormatError
+
+        return action, host_id, det_id, param, value
+
+    def exec_msg(self, msg):
+        """
+        [b"IS_ALIVE"]
+            return "OK"
+        [b"do", host_id, det_id, b"start"]
+            return "DONE"
+        [b"bye", host_id, detector]
+        """
+
+        # --------------------------------------------------------------------
+        # decode message
+        # --------------------------------------------------------------------
+        try:
+            action, host_id, det_id, param, value = self._decode_message(msg)
+        except FormatError:
+            self.log.error("Message of wrong format")
+            return self.error
+
+        if action == b"IS_ALIVE":
+            return self.ok
+
+        # --------------------------------------------------------------------
+        # get hidra controller
+        # --------------------------------------------------------------------
+        try:
+            controller = self.controller[det_id]
+        except KeyError:
+            self.controller[det_id] = HidraController(self.context,
+                                                      self.beamline,
+                                                      det_id,
+                                                      self.config,
+                                                      self.instances,
+                                                      self.log_queue)
+            controller = self.controller[det_id]
+
+        # --------------------------------------------------------------------
+        # check_netgroup
+        # --------------------------------------------------------------------
+        try:
+            # check if host is allowed to execute commands
+            check_res = utils.check_netgroup(
+                host_id,
+                self.beamline,
+                self.ldapuri,
+                self.netgroup_template.format(bl=self.beamline),
+                log=self.log,
+                raise_if_failed=False
+            )
+        except Exception:
+            self.log.error("Error when checking netgroup", exc_info=True)
+            self.log.debug("msg=%s", msg)
+            return self.error
+
+        if not check_res:
+            return self.error
+
+        # --------------------------------------------------------------------
+        # react to message
+        # --------------------------------------------------------------------
+        if action == b"set":
+            return controller.set(host_id, param, value)
+
+        elif action == b"get":
+            return self._get(controller, host_id, param)
+
+        elif action == b"do":
+            return controller.do(host_id, param)
+
+        elif action == b"bye":
+            return controller.bye(host_id)
+        else:
+            return self.error
+
+    def _get(self, controller, host_id, param):
+        reply = json.dumps(
+            controller.get(host_id, param)
+        ).encode()
+        self.log.debug("reply is %s", reply)
+
+        if reply is None:
+            self.log.debug("reply is None")
+            return b"None"
+
+        return reply
 
     def stop(self):
         """Clean up zmq sockets.

@@ -32,9 +32,25 @@ from __future__ import (absolute_import,
 from collections import namedtuple
 
 
-# ------------------------------ #
-#  Connection paths and strings  #
-# ------------------------------ #
+# ----------------------------------------------------------------------------
+# control communication
+# ----------------------------------------------------------------------------
+
+ReplyCodes = namedtuple(
+    "ReplyCodes", [
+        "error",
+        "ok",
+        "done",
+        "running",
+        "not_running",
+        "already_running",
+        "already_sopped"
+    ]
+)
+
+# ----------------------------------------------------------------------------
+#  Connection paths and strings
+# ----------------------------------------------------------------------------
 
 # To be pickable these have to be defined at the top level of a module
 # this is needed because multiprocessing on windows needs these pickable.
@@ -84,9 +100,9 @@ Endpoints = namedtuple(
 )
 
 
-# ------------------------------ #
-#         ZMQ functions          #
-# ------------------------------ #
+# ----------------------------------------------------------------------------
+# ZMQ functions
+# ----------------------------------------------------------------------------
 
 MAPPING_ZMQ_CONSTANTS_TO_STR = [
     "PAIR",  # zmq.PAIR = 0
