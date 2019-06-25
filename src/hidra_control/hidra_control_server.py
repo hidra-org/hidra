@@ -1195,6 +1195,12 @@ class ControlServer(utils.Base):
             self.context.destroy()
             self.context = None
 
+        if self.log_queue_listener:
+            self.log.info("Stopping log_queue")
+            self.log_queue.put_nowait(None)
+            self.log_queue_listener.stop()
+            self.log_queue_listener = None
+
     def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
