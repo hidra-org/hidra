@@ -72,7 +72,6 @@ REPLYCODES = utils.ReplyCodes(
     already_running=b"ALREADY_RUNNING",
     already_stopped=b"ARLEADY_STOPPED"
 )
-CONFIG_PREFIX = "datamanager_"
 
 
 class HidraServiceHandling(object):
@@ -334,16 +333,22 @@ class ConfigHandling(utils.Base):
         self.det_id = det_id
         self.log = utils.get_logger(self.__class__.__name__, log_queue)
 
+        self.config_prefix = None
+        # the general config of the control server
         self.config = config
         self.config_static = None
         self.config_variable = None
-        self.config_ending = ".yaml"
+
+        # the configuration hidra is running with (the one it reported back)
         self.config_remote = None
 
-        # connection depending hidra configuration, master config one is
-        # overwritten with these parameters when start is executed
-        self.all_configs = {}
-        self.master_config = {}
+        # the original config read from the config file for this instance
+        self.active_config = {}
+        # hidra configuration depending on the host which set it:
+        # the parameters set via the control client. When a config is marked
+        # as active it means, that this changed in comparison to the one in
+        # the config file (i.e. active_config)
+        self.client_dep_configs = {}
         self.ctemplate = {}
         self.required_params = {}
 
@@ -356,14 +361,15 @@ class ConfigHandling(utils.Base):
         self._setup()
 
     def _setup(self):
+
+        self.config_prefix = "datamanager_"
+        self.hidra_config_file = os.path.join(
+            CONFIG_DIR,
+            "{}{}_{}.yaml".format(self.config_prefix, self.beamline, self.det_id)
+        )
+
         self.config_static = self.config["hidraconfig_static"]
         self.config_variable = self.config["hidraconfig_variable"]
-
-        self.config_ending = ".yaml"
-
-        # connection depending hidra configuration, master config one is
-        # overwritten with these parameters when start is executed
-        self.all_configs = dict()
 
         # ctemplate should only contain the entries which should overwrite the
         # ones in the control server config file
@@ -413,6 +419,39 @@ class ConfigHandling(utils.Base):
         self.stats_expose_sockets = {}
         self.stats_expose_endpt_tmpl = "ipc:///tmp/hidra/{}_stats_exposing"
 
+
+        # add variable config
+        config_g = self.config_variable["general"]
+        config_df = self.config_variable["datafetcher"]
+
+        # fill in beamline into config parameter placeholder
+        for param in ["log_name", "procname", "username"]:
+            config_g[param] = config_g[param].format(bl=self.beamline)
+        config_df["local_target"] = config_df["local_target"].format(bl=self.beamline)
+
+
+        # detemine static parameter
+        self.config_static["general"]["username"] = config_g["username"]
+        self.config_static["general"]["ext_ip"] = (
+            hidra.CONNECTION_LIST[self.beamline]["host"]
+        )
+
+        self.config_static["general"]["log_name"] = (
+            "{}_{}.log".format(config_g["log_name"], self.det_id)
+        )
+        self.config_static["general"]["procname"] = (
+            "{}_{}".format(config_g["procname"], self.det_id)
+        )
+        df_type = self.config_static["datafetcher"]["type"]
+        try:
+            self.config_static["datafetcher"][df_type]["local_target"] = (
+                config_df["local_target"]
+            )
+        except KeyError:
+            self.config_static["datafetcher"][df_type] = {
+                "local_target": config_df["local_target"]
+            }
+
         self._read_config()
 
     def set(self, host_id, param, value):
@@ -425,13 +464,13 @@ class ConfigHandling(utils.Base):
         """
 
         # identify the configuration for this connection
-        if host_id not in self.all_configs:
-            self.all_configs[host_id] = copy.deepcopy(self.ctemplate)
+        if host_id not in self.client_dep_configs:
+            self.client_dep_configs[host_id] = copy.deepcopy(self.ctemplate)
 
         utils.set_flat_param(
             param=param,
             param_value=value,
-            config=self.all_configs[host_id],
+            config=self.client_dep_configs[host_id],
             config_type="sender",
             log=self.log
         )
@@ -442,7 +481,7 @@ class ConfigHandling(utils.Base):
         Args:
             host_id: The host the configuration belongs to.
         """
-        self.all_configs[host_id]["active"] = True
+        self.client_dep_configs[host_id]["active"] = True
 
     def get(self, host_id, param):
         """ Get a parameter value
@@ -462,13 +501,13 @@ class ConfigHandling(utils.Base):
             The value the parameter is set to.
         """
         try:
-            if self.all_configs[host_id]["active"]:
+            if self.client_dep_configs[host_id]["active"]:
                 # This is a pointer
-                current_config = self.all_configs[host_id]
+                current_config = self.client_dep_configs[host_id]
             else:
                 raise KeyError
         except KeyError:
-            current_config = self.master_config
+            current_config = self.active_config
 
         return utils.get_flat_param(param,
                                     current_config,
@@ -484,7 +523,7 @@ class ConfigHandling(utils.Base):
         """
 
         try:
-            del self.all_configs[host_id]
+            del self.client_dep_configs[host_id]
         except KeyError:
             pass
 
@@ -492,25 +531,19 @@ class ConfigHandling(utils.Base):
 
         # write configfile
         # /etc/hidra/P01.conf
-        joined_path = os.path.join(CONFIG_DIR, CONFIG_PREFIX + self.beamline)
-        config_files = glob.glob(joined_path + "_*" + self.config_ending)
-        self.log.info("Reading config files: %s", config_files)
+        config_file = self.get_config_file_name()
+        self.log.info("Reading config files: %s", config_file)
 
-        for cfile in config_files:
-            # extract the detector id from the config file name (remove path,
-            # prefix, beamline and ending)
-            det_id = cfile.replace(joined_path + "_", "")[:-5]
-            try:
-                self.master_config[det_id] = utils.load_config(cfile,
-                                                               log=self.log)
-            except IOError:
-                self.log.debug("Configuration file not readable: %s", cfile)
-            except Exception:
-                self.log.debug("cfile=%s", cfile)
-                self.log.error("Error when trying to load config file",
-                               exc_info=True)
-                raise
-        self.log.debug("master_config=%s", json.dumps(self.master_config,
+        try:
+            self.active_config = utils.load_config(config_file, log=self.log)
+        except IOError:
+            self.log.debug("Configuration file not readable: %s", config_file)
+        except Exception:
+            self.log.debug("cfile=%s", config_file)
+            self.log.error("Error when trying to load config file",
+                           exc_info=True)
+            raise
+        self.log.debug("active_config=%s", json.dumps(self.active_config,
                                                       sort_keys=True,
                                                       indent=4))
 
@@ -522,7 +555,7 @@ class ConfigHandling(utils.Base):
         # identify the configuration for this connection
         try:
             # This is a pointer
-            current_config = self.all_configs[host_id]
+            current_config = self.client_dep_configs[host_id]
         except KeyError:
             self.log.debug("No current configuration found")
             raise utils.NotFoundError()
@@ -571,44 +604,16 @@ class ConfigHandling(utils.Base):
         except utils.NotFoundError:
             return
 
-        current_config = self.all_configs[host_id]
-
         # if the requesting client has set parameters before these should be
         # taken. If this was not the case use the one from the previous
         # executed start
-        if not current_config["active"]:
+        if not self.client_dep_configs[host_id]["active"]:
             self.log.debug("Config parameters did not change since last start")
             self.log.debug("No need to write new config file")
             return
 
-        # add variable config
-        config_g = self.config_variable["general"]
-        config_df = self.config_variable["datafetcher"]
-
-        username = config_g["username"].format(bl=self.beamline)
-        procname_prefix = config_g["procname"].format(bl=self.beamline)
-        procname = "{}_{}".format(procname_prefix, self.det_id)
-        log_name_prefix = config_g["log_name"].format(bl=self.beamline)
-        log_name = "{}_{}.log".format(log_name_prefix, self.det_id)
-        local_target = config_df["local_target"].format(bl=self.beamline)
-        external_ip = hidra.CONNECTION_LIST[self.beamline]["host"]
-
-        self.config_static["general"]["log_name"] = log_name
-        self.config_static["general"]["procname"] = procname
-        self.config_static["general"]["username"] = username
-        self.config_static["general"]["ext_ip"] = external_ip
-        df_type = self.config_static["datafetcher"]["type"]
-        try:
-            self.config_static["datafetcher"][df_type]["local_target"] = (
-                local_target
-            )
-        except KeyError:
-            self.config_static["datafetcher"][df_type] = {
-                "local_target": local_target
-            }
-
-        # dynamic config
-        utils.update_dict(current_config, self.config_static)
+        # overwrites config_static entries
+        utils.update_dict(self.client_dep_configs[host_id], self.config_static)
 
         # write configfile
         config_file = self.get_config_file_name()
@@ -617,19 +622,20 @@ class ConfigHandling(utils.Base):
 
         self.log.info(
             "Started with ext_ip: %s, event detector: %s, "
-            "data fetcher: %s", external_ip,
+            "data fetcher: %s",
+            self.config_static["general"]["ext_ip"],
             self.config_static["eventdetector"]["type"],
             self.config_static["datafetcher"]["type"]
         )
 
         # store the dynamic config globally
         self.log.debug("config = %s", self.config_static)
-        self.master_config = copy.deepcopy(self.config_static)
-        # this information shout not go into the master config
-        del self.master_config["active"]
+        self.active_config = copy.deepcopy(self.config_static)
+        # this information is unnecessary
+        del self.active_config["active"]
 
         # mark local_config as inactive
-        current_config["active"] = False
+        self.client_dep_configs[host_id]["active"] = False
 
     def remove_config(self):
         """
