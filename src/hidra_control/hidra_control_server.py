@@ -340,7 +340,7 @@ class ConfigHandling(utils.Base):
         self.config_variable = None
 
         # the configuration hidra is running with (the one it reported back)
-        self.config_remote = None
+        self.remote_config = None
 
         # the original config read from the config file for this instance
         self.active_config = {}
@@ -351,6 +351,8 @@ class ConfigHandling(utils.Base):
         self.client_dep_configs = {}
         self.ctemplate = {}
         self.required_params = {}
+
+        self.reply_codes = REPLYCODES
 
         self.use_statserver = None
         self.stats_expose_sockets = {}
@@ -652,12 +654,16 @@ class ConfigHandling(utils.Base):
             self.log.error("Could not remove config file %s", config_file,
                            exc_info=True)
 
+        self.remote_config = None
+
     def acquire_remote_config(self, systemd_service_tmpl):
         """Communicate with hidra instance and get its configuration.
         """
 
         if not self.use_statserver:
             return
+
+        self.log.debug("Acquire remote config")
 
         pid = utils.read_status(
             service=systemd_service_tmpl.format(self.det_id),
@@ -681,16 +687,13 @@ class ConfigHandling(utils.Base):
 
         try:
             self.stats_expose_socket.send(json.dumps("config").encode())
-            self.config_remote = json.loads(
+            self.remote_config = json.loads(
                 self.stats_expose_socket.recv().decode()
             )
         except zmq.error.Again:
             self.log.error("Getting remote config failed due to timeout",
                            exc_info=True)
             return
-
-        #endpt = utils.Endpoints(*answer["network"]["endpoints"])
-        #self.log.debug("com_con=%s", endpt.com_con)
 
     def _stop_stats_socket(self):
         try:
@@ -993,8 +996,7 @@ class ControlServer(utils.Base):
         self.log_queue = None
         self.log_queue_listener = None
 
-        self.error = b"ERROR"
-        self.ok = b"OK"
+        self.reply_codes = REPLYCODES
 
         self.instances = None
 
@@ -1159,10 +1161,10 @@ class ControlServer(utils.Base):
             action, host_id, det_id, param, value = self._decode_message(msg)
         except FormatError:
             self.log.error("Message of wrong format")
-            return self.error
+            return self.reply_codes.error
 
         if action == b"IS_ALIVE":
-            return self.ok
+            return self.reply_codes.ok
 
         # --------------------------------------------------------------------
         # get hidra controller
@@ -1194,10 +1196,10 @@ class ControlServer(utils.Base):
         except Exception:
             self.log.error("Error when checking netgroup", exc_info=True)
             self.log.debug("msg=%s", msg)
-            return self.error
+            return self.reply_codes.error
 
         if not check_res:
-            return self.error
+            return self.reply_code.error
 
         # --------------------------------------------------------------------
         # react to message
@@ -1214,7 +1216,7 @@ class ControlServer(utils.Base):
         elif action == b"bye":
             return controller.bye(host_id)
         else:
-            return self.error
+            return self.reply_codes.error
 
     def stop(self):
         """Clean up zmq sockets.
