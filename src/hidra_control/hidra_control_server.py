@@ -736,7 +736,6 @@ class HidraController(HidraServiceHandling):
         super().__init__(beamline, self.log)
 
         self.context = context
-        # Beamline is read-only, determined by portNo
         self.beamline = beamline
         self.det_id = det_id
         self.config = config
@@ -796,24 +795,18 @@ class HidraController(HidraServiceHandling):
         """
 
         if param in self.supported_keys:
-            value = self.confighandling.get(host_id, param)
-
-            if isinstance(value, list):
-                reply = str(value)
-            else:
-                reply = value
+            reply = self.confighandling.get(host_id, param)
 
         else:
             self.log.error("Parameter %s is not supported for 'get'", param)
             reply = self.reply_codes.error
 
         self.log.debug("reply is %s", reply)
-        reply = json.dumps(reply).encode()
-
-        # TODO is this really necessary?
-        if reply is None:
-            self.log.debug("reply is None")
-            return b"None"
+        try:
+            reply = json.dumps(reply).encode()
+        except TypeError:
+            # python 3 does not allow byte objects here
+            pass
 
         return reply
 

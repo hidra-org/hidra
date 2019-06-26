@@ -230,7 +230,11 @@ class Control(Base):
         reply = self.socket.recv().decode()
         self.log.debug("recv: %s", reply)
 
-        return json.loads(reply)
+        try:
+            return json.loads(reply)
+        except json.decoder.JSONDecodeError:
+            # python 3 does not allow byte objects here
+            return reply.encode()
 
     def set(self, attribute, *value):
         """Set the value of an attribute.
@@ -304,7 +308,7 @@ class Control(Base):
         # TODO implement timeout
         reply = self.socket.recv().decode()
 
-        if command in ["get_settings", "get_instances"]:
+        if command in ["get_instances"]:
             reply = json.loads(reply)
 
         self.log.debug("recv: %s", reply)
