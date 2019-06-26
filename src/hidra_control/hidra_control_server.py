@@ -769,6 +769,7 @@ class HidraController(HidraServiceHandling):
             "history_size",
             "store_data",
             "remove_data",
+            "fix_subdirs"
         ]
 
 #        self.supported_keys = [k for k in list(self.ctemplate.keys())
@@ -803,11 +804,11 @@ class HidraController(HidraServiceHandling):
                 reply = value
 
         else:
-            self.log.debug("param=%s", param)
+            self.log.error("Parameter %s is not supported for 'get'", param)
             reply = self.reply_codes.error
 
-        reply = json.dumps(reply).encode()
         self.log.debug("reply is %s", reply)
+        reply = json.dumps(reply).encode()
 
         # TODO is this really necessary?
         if reply is None:
@@ -1212,7 +1213,7 @@ class ControlServer(utils.Base):
             return controller.set(host_id, param, value)
 
         elif action == b"get":
-            return self._get(controller, host_id, param)
+            return controller.get(host_id, param)
 
         elif action == b"do":
             return controller.do(host_id, param)
@@ -1221,18 +1222,6 @@ class ControlServer(utils.Base):
             return controller.bye(host_id)
         else:
             return self.error
-
-    def _get(self, controller, host_id, param):
-        reply = json.dumps(
-            controller.get(host_id, param)
-        ).encode()
-        self.log.debug("reply is %s", reply)
-
-        if reply is None:
-            self.log.debug("reply is None")
-            return b"None"
-
-        return reply
 
     def stop(self):
         """Clean up zmq sockets.
