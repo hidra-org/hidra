@@ -70,7 +70,7 @@ REPLYCODES = utils.ReplyCodes(
     running=b"RUNNING",
     not_running=b"NOT_RUNNING",
     already_running=b"ALREADY_RUNNING",
-    already_sopped=b"ARLEADY_STOPPED"
+    already_stopped=b"ARLEADY_STOPPED"
 )
 CONFIG_PREFIX = "datamanager_"
 

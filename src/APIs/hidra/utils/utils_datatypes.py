@@ -44,7 +44,7 @@ ReplyCodes = namedtuple(
         "running",
         "not_running",
         "already_running",
-        "already_sopped"
+        "already_stopped"
     ]
 )
 
