@@ -354,6 +354,22 @@ class ConfigHandling(utils.Base):
                                     "sender",
                                     log=self.log)
 
+    def get_remote(self, param):
+        """ Get a parameter from the remote configuration
+
+        Args:
+            param: The parameter for which the value should be get.
+
+        Returns:
+            The value the parameter is set to.
+        """
+
+        if self.remote_config is None:
+            return self.reply_codes.error
+
+        if param == "endpoints":
+            return self.remote_config["network"]["endpoints"]
+
     def clear(self, host_id):
         """Clear the configuration.
 
@@ -499,6 +515,10 @@ class ConfigHandling(utils.Base):
         """
 
         if not self.use_statserver:
+            return
+
+        if self.remote_config is not None:
+            self.log.info("Remote configuration already optained. Skip.")
             return
 
         self.log.debug("Acquire remote config")
@@ -728,6 +748,10 @@ class HidraController(HidraServiceHandling):
             "fix_subdirs"
         ]
 
+        self.supported_remote_keys = [
+            "endpoints"
+        ]
+
 #        self.supported_keys = [k for k in list(self.ctemplate.keys())
 #                               if k not in ["active", "beamline"]]
 
@@ -753,6 +777,9 @@ class HidraController(HidraServiceHandling):
 
         if param in self.supported_keys:
             reply = self.confighandling.get(host_id, param)
+
+        elif param in self.supported_remote_keys:
+            reply = self.confighandling.get_remote(param)
 
         else:
             self.log.error("Parameter %s is not supported for 'get'", param)
@@ -813,6 +840,9 @@ class HidraController(HidraServiceHandling):
 
         # check if service is running
         if self.status() == self.reply_codes.running:
+            self.confighandling.acquire_remote_config(
+                self.service_conf["template"]
+            )
             return self.reply_codes.already_running
 
         try:
@@ -1021,14 +1051,11 @@ class ControlServer(utils.Base):
                                                           self.instances,
                                                           self.log_queue)
 
-                # check if running
-                if self.controller[det_id].status() == self.reply_codes.running:
+                # restart
+                ret_val = self.controller[det_id].start("restart")
+                if ret_val == self.reply_codes.running:
                     self.log.info("Started hidra for %s_%s, already running",
                                   self.beamline, det_id)
-                    continue
-
-                # restart
-                self.controller[det_id].start("restart")
 
     def _setup_logging(self):
         config_ctrl = self.config["controlserver"]
