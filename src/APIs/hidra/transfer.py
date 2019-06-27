@@ -252,8 +252,6 @@ class Transfer(Base):
         self.appid = None
 
         self.signal_host = None
-        self.signal_port = None
-        self.request_port = None
 
         self.signal_conf = None
         self.request_conf = None
@@ -365,8 +363,7 @@ class Transfer(Base):
         if signal_host is not None:
             self.signal_host = socket_m.getfqdn(signal_host)
 
-        self.signal_port = 50000
-        self.request_port = 50001
+        ports = self._get_remote_ports()
 
         # TODO use IP of hostname?
         self.ip = "0.0.0.0"  # pylint: disable=invalid-name
@@ -385,20 +382,20 @@ class Transfer(Base):
 
         self.signal_conf = copy.deepcopy(default_conf)
         self.signal_conf["ip"] = self.signal_host
-        self.signal_conf["port"] = self.signal_port
+        self.signal_conf["port"] = ports["signal"]
 
         self.request_conf = copy.deepcopy(default_conf)
         self.request_conf["ip"] = self.signal_host
-        self.request_conf["port"] = self.request_port
+        self.request_conf["port"] = ports["request"]
 
         self.status_check_conf = copy.deepcopy(default_conf)
-        self.status_check_conf["port"] = 50050
+        self.status_check_conf["port"] = ports["status_check"]
 
         self.file_op_conf = copy.deepcopy(default_conf)
-        self.file_op_conf["port"] = 50050
+        self.file_op_conf["port"] = ports["file_op"]
 
         self.confirmation_conf = copy.deepcopy(default_conf)
-        self.confirmation_conf["port"] = 50053
+        self.confirmation_conf["port"] = ports["confirmation"]
 
         # IPC socket configurations
         default_conf["protocol"] = "ipc"
@@ -432,6 +429,17 @@ class Transfer(Base):
             self.connection_type = connection_type
         else:
             raise NotSupported("Chosen type of connection is not supported.")
+
+    def _get_remote_ports(self):
+        ports = {
+            "signal": 50000,
+            "request": 50001,
+            "status_check": 50050,
+            "file_op": 50050,
+            "confirmation": 50053
+        }
+
+        return ports
 
     def get_remote_version(self):
         """Retrievs the version of hidra to connect to.
