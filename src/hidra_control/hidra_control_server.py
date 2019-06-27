@@ -32,6 +32,7 @@ from __future__ import unicode_literals
 
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
+from builtins import dict  # efficient py2 + py3 dict iteration
 
 import argparse
 import copy
@@ -74,157 +75,16 @@ REPLYCODES = utils.ReplyCodes(
 )
 
 
-class HidraServiceHandling(object):
-    """
-    Implements service handling.
-    """
-
-    def __init__(self, beamline, log):
-
-        self.beamline = beamline
-        self.log = log
-        self.service_conf = {}
-        self.reply_codes = REPLYCODES
-
-        self.call_hidra_service = None
-
-        self.__setup()
-
-    # prevent overwriting from subclass
-    def __setup(self):
-
-        self.__set_service_conf()
-
-        if self.service_conf["manager"] == "systemd":
-            self.call_hidra_service = self._call_systemd
-
-        elif self.service_conf["manager"] == "init":
-            self.call_hidra_service = self._call_init_script
-
-        else:
-            self.log.debug("Call: no service to call found")
-
-    def __set_service_conf(self):
-        systemd_prefix = "hidra@"
-        service_name = "hidra"
-        service_manager = utils.get_service_manager(
-            systemd_prefix=systemd_prefix,
-            service_name=service_name
-        )
-
-        self.service_conf["manager"] = service_manager
-        if service_manager == "systemd":
-            self.service_conf["name"] = service_name
-            self.service_conf["prefix"] = systemd_prefix
-            self.service_conf["template"] = (
-                "{}{}".format(self.service_conf["prefix"], self.beamline)
-                + "_{}.service"
-            )
-        else:
-            self.service_conf["name"] = service_name
-            self.service_conf["prefix"] = None
-            self.service_conf["template"] = None
-
-    def hidra_status(self, det_id):
-        """Request hidra status.
-
-        Args:
-            det_id: Which detector to command hidra for.
-
-        Returns:
-            A string describing the status:
-                'RUNNING'
-                'NOT RUNNING'
-                'ERROR'
-        """
-
-        try:
-            proc = self.call_hidra_service("status", det_id)
-        except Exception:
-            return self.reply_codes.error
-
-        if proc == 0:
-            return self.reply_codes.running
-        else:
-            return self.reply_codes.not_running
-
-    def _call_systemd(self, cmd, det_id):
-        """Command hidra (e.g. start, stop, status,...).
-
-        Args:
-            cmd: The command to call the service with
-                 (e.g. start, stop, status,...).
-            det_id: Which detector to command hidra for.
-
-        Returns:
-            Return value of the systemd call.
-        """
-
-        svc = self.service_conf["template"].format(det_id)
-        status_call = ["/bin/systemctl", "is-active", svc]
-        other_call = ["sudo", "-n", "/bin/systemctl", cmd, svc]
-
-        if cmd == "status":
-            self.log.debug("Call: %s", " ".join(status_call))
-            return subprocess.call(status_call)
-
-        self.log.debug("Call: %s", " ".join(other_call))
-        ret_call = subprocess.call(other_call)
-
-        if cmd != "start":
-            return ret_call
-
-        # Needed because status always returns "RUNNING" in the first
-        # second
-        # TODO exchange that with proper communication to statserver
-        time.sleep(2)
-
-        # the return value might still be 0 even if start did not work
-        # -> check status again
-        ret_status = subprocess.call(status_call)
-
-        if ret_status != 0:
-            self.log.error("Service is not running after triggering start.")
-
-            status = utils.read_status(service=svc, log=self.log)["info"]
-            self.log.debug("systemctl status: \n%s", status)
-
-        return ret_status
-
-    def _call_init_script(self, cmd, det_id):
-        """Command hidra (e.g. start, stop, status,...).
-
-        Args:
-            cmd: The command to call the service with
-                 (e.g. start, stop, status,...).
-            det_id: Which detector to command hidra for.
-
-        Returns:
-            Return value of the service call.
-
-        """
-        # pylint: disable=unused-argument
-
-        call = ["service", self.service_conf["name"], cmd]
-        # TODO implement beamline and det_id in hisdra.sh
-        # call = ["service", service_conf["name"], "status", beamline, det_id]
-
-        self.log.debug("Call: %s", " ".join(call))
-        return subprocess.call(call)
-
-
-class InstanceTracking(HidraServiceHandling):
+class InstanceTracking(object):
     """Handles instance tracking.
     """
 
     def __init__(self, beamline, backup_file, log_queue):
 
         self.log = utils.get_logger(self.__class__.__name__, log_queue)
-        super().__init__(beamline, self.log)
 
         self.beamline = beamline
         self.backup_file = backup_file
-
         self.reply_codes = REPLYCODES
 
         self.instances = None
@@ -295,28 +155,6 @@ class InstanceTracking(HidraServiceHandling):
                              self.beamline)
 
         self._update_instances()
-
-    def restart_instances(self):
-        """Restarts instances if needed.
-        """
-
-        if self.beamline not in self.instances:
-            return
-
-        for det_id in self.instances[self.beamline]:
-            # check if running
-            if self.hidra_status(det_id) == self.reply_codes.running:
-                self.log.info("Started hidra for %s_%s, already running",
-                              self.beamline, det_id)
-                continue
-
-            # restart
-            if self.call_hidra_service("start", det_id) == 0:
-                self.log.info("Started hidra for %s_%s",
-                              self.beamline, det_id)
-            else:
-                self.log.error("Could not start hidra for %s_%s",
-                               self.beamline, det_id)
 
 
 class ConfigHandling(utils.Base):
@@ -721,6 +559,122 @@ class ConfigHandling(utils.Base):
         self._stop()
 
 
+class HidraServiceHandling(object):
+    """
+    Implements service handling.
+    """
+
+    def __init__(self, beamline, log):
+
+        self.beamline = beamline
+        self.log = log
+        self.service_conf = {}
+        self.reply_codes = REPLYCODES
+
+        self.call_hidra_service = None
+
+        self.__setup()
+
+    # prevent overwriting from subclass
+    def __setup(self):
+
+        self.__set_service_conf()
+
+        if self.service_conf["manager"] == "systemd":
+            self.call_hidra_service = self._call_systemd
+
+        elif self.service_conf["manager"] == "init":
+            self.call_hidra_service = self._call_init_script
+
+        else:
+            self.log.debug("Call: no service to call found")
+
+    def __set_service_conf(self):
+        systemd_prefix = "hidra@"
+        service_name = "hidra"
+        service_manager = utils.get_service_manager(
+            systemd_prefix=systemd_prefix,
+            service_name=service_name
+        )
+
+        self.service_conf["manager"] = service_manager
+        if service_manager == "systemd":
+            self.service_conf["name"] = service_name
+            self.service_conf["prefix"] = systemd_prefix
+            self.service_conf["template"] = (
+                "{}{}".format(self.service_conf["prefix"], self.beamline)
+                + "_{}.service"
+            )
+        else:
+            self.service_conf["name"] = service_name
+            self.service_conf["prefix"] = None
+            self.service_conf["template"] = None
+
+    def _call_systemd(self, cmd, det_id):
+        """Command hidra (e.g. start, stop, status,...).
+
+        Args:
+            cmd: The command to call the service with
+                 (e.g. start, stop, status,...).
+            det_id: Which detector to command hidra for.
+
+        Returns:
+            Return value of the systemd call.
+        """
+
+        svc = self.service_conf["template"].format(det_id)
+        status_call = ["/bin/systemctl", "is-active", svc]
+        other_call = ["sudo", "-n", "/bin/systemctl", cmd, svc]
+
+        if cmd == "status":
+            self.log.debug("Call: %s", " ".join(status_call))
+            return subprocess.call(status_call)
+
+        self.log.debug("Call: %s", " ".join(other_call))
+        ret_call = subprocess.call(other_call)
+
+        if cmd != "start":
+            return ret_call
+
+        # Needed because status always returns "RUNNING" in the first
+        # second
+        # TODO exchange that with proper communication to statserver
+        time.sleep(2)
+
+        # the return value might still be 0 even if start did not work
+        # -> check status again
+        ret_status = subprocess.call(status_call)
+
+        if ret_status != 0:
+            self.log.error("Service is not running after triggering start.")
+
+            status = utils.read_status(service=svc, log=self.log)["info"]
+            self.log.debug("systemctl status: \n%s", status)
+
+        return ret_status
+
+    def _call_init_script(self, cmd, det_id):
+        """Command hidra (e.g. start, stop, status,...).
+
+        Args:
+            cmd: The command to call the service with
+                 (e.g. start, stop, status,...).
+            det_id: Which detector to command hidra for.
+
+        Returns:
+            Return value of the service call.
+
+        """
+        # pylint: disable=unused-argument
+
+        call = ["service", self.service_conf["name"], cmd]
+        # TODO implement beamline and det_id in hisdra.sh
+        # call = ["service", service_conf["name"], "status", beamline, det_id]
+
+        self.log.debug("Call: %s", " ".join(call))
+        return subprocess.call(call)
+
+
 class HidraController(HidraServiceHandling):
     """
     This class holds getter/setter for all parameters
@@ -827,7 +781,7 @@ class HidraController(HidraServiceHandling):
             return self.restart(host_id)
 
         elif cmd == "status":
-            return self.hidra_status(self.det_id)
+            return self.status()
 
         elif cmd == "get_instances":
             return self.get_instances()
@@ -858,7 +812,7 @@ class HidraController(HidraServiceHandling):
         """
 
         # check if service is running
-        if self.hidra_status(self.det_id) == self.reply_codes.running:
+        if self.status() == self.reply_codes.running:
             return self.reply_codes.already_running
 
         try:
@@ -895,12 +849,34 @@ class HidraController(HidraServiceHandling):
 
         return json.dumps(list(bl_instances.keys())).encode()
 
+    def status(self):
+        """Request hidra status.
+
+        Returns:
+            A string describing the status:
+                'RUNNING'
+                'NOT RUNNING'
+                'ERROR'
+        """
+
+        try:
+            proc = self.call_hidra_service("status", self.det_id)
+        except Exception:
+            self.log.error("Could not get status", exc_info=True)
+            return self.reply_codes.error
+
+        if proc == 0:
+            return self.reply_codes.running
+        else:
+            return self.reply_codes.not_running
+
+
     def stop(self):
         """
         stop ...
         """
         # check if really running before return
-        if self.hidra_status(self.det_id) != self.reply_codes.running:
+        if self.status() != self.reply_codes.running:
             return self.reply_codes.already_stopped
 
         # stop service
@@ -1028,7 +1004,31 @@ class ControlServer(utils.Base):
         self.instances = InstanceTracking(self.beamline,
                                           config_ctrl["backup_file"],
                                           self.log_queue)
-        self.instances.restart_instances()
+
+        self.restart_instances()
+
+    def restart_instances(self):
+        all_instances = self.instances.get_instances()
+        for beamline, bl_instances in all_instances.items():
+            for det_id in bl_instances:
+                self.log.debug("beamline=%s, instance=%s", beamline, det_id)
+
+                # use hidra controller mechanism
+                self.controller[det_id] = HidraController(self.context,
+                                                          beamline,
+                                                          det_id,
+                                                          self.config,
+                                                          self.instances,
+                                                          self.log_queue)
+
+                # check if running
+                if self.controller[det_id].status() == self.reply_codes.running:
+                    self.log.info("Started hidra for %s_%s, already running",
+                                  self.beamline, det_id)
+                    continue
+
+                # restart
+                self.controller[det_id].start("restart")
 
     def _setup_logging(self):
         config_ctrl = self.config["controlserver"]
