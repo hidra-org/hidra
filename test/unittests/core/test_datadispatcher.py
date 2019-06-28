@@ -41,6 +41,8 @@ import zmq
 from test_base import TestBase, create_dir
 from datadispatcher import DataDispatcher
 
+import hidra.utils as utils
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
@@ -118,17 +120,18 @@ class TestDataDispatcher(TestBase):
             config=config,
             log_queue=self.log_queue,
         )
-        dd = DataDispatcher(**kwargs)
-        #datadispatcher_pr = Process(target=DataDispatcher, kwargs=kwargs)
-        #datadispatcher_pr.start()
+        with self.assertRaises(utils.WrongConfiguration):
+            datadispatcher_pr = DataDispatcher(**kwargs)
+            #datadispatcher_pr = Process(target=DataDispatcher, kwargs=kwargs)
+            #datadispatcher_pr.start()
 
-        # wait till Datadisaptcher is fully started, otherwise control messages
-        # are not reseived
-        time.sleep(0.05)
+            # wait till Datadisaptcher is fully started, otherwise control messages
+            # are not reseived
+            time.sleep(0.05)
 
-        self.log.info("send exit signal")
-        control_socket.send_multipart([b"control", b"EXIT"])
-        datadispatcher_pr.join()
+            self.log.info("send exit signal")
+            control_socket.send_multipart([b"control", b"EXIT"])
+            datadispatcher_pr.join()
 
         self.stop_socket(name="control_socket", socket=control_socket)
 

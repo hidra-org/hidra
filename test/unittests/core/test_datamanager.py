@@ -110,7 +110,8 @@ class TestDataManager(TestBase):
                 "procname": "hidra",
                 "username": pwd.getpwuid(os.geteuid()).pw_name,
                 "verbose": False,
-                "whitelist": None
+                "whitelist": None,
+                "use_statserver": False
             },
             "eventdetector": {
                 "type": used_eventdetector,
@@ -164,6 +165,12 @@ class TestDataManager(TestBase):
                 }
             },
         }
+        self.datamanager_config["general"]["log_file"] = (
+            os.path.join(
+                self.datamanager_config["general"]["log_path"],
+                self.datamanager_config["general"]["log_name"]
+            )
+        )
 
         self.start = 100
         self.stop = 105
@@ -224,7 +231,6 @@ class TestDataManager(TestBase):
 
         try:
             kwargs = dict(
-                log_queue=self.log_queue,
                 config=self.datamanager_config
             )
             sender = Process(target=Sender, kwargs=kwargs)

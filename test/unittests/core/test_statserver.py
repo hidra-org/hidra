@@ -100,7 +100,7 @@ class TestStatServer(TestBase):
         self.server.start()
         time.sleep(0.1)
 
-    def test_statsserver_exposing(self):
+    def test_statserver_exposing(self):
         """functional tests of the stat server.
         """
 

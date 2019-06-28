@@ -148,6 +148,9 @@ class TestSignalHandler(TestBase):
         self.chunksize = 10485760  # = 1024*1024*10 = 10 MiB
 
         general_config = {
+            "general": {
+                "use_statserver": False,
+            },
             "datafetcher": {
                 "store_data": False
             }

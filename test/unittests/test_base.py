@@ -128,7 +128,11 @@ class MockZmqSocket(mock.MagicMock):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        try:
+            super().__init__(**kwargs)
+        except RuntimeError:
+            # happens when run with python2 because of the mock module
+            super(MockZmqSocket, self).__init__(**kwargs)
         self._connected = False
 
         self.send_multipart = mock.MagicMock()
@@ -162,7 +166,11 @@ class MockZmqContext(mock.MagicMock):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        try:
+            super().__init__(**kwargs)
+        except RuntimeError:
+            # happens when run with python2 because of the mock module
+            super(MockZmqcontext, self).__init__(**kwargs)
         self._destroyed = False
         self.IPV6 = None  # pylint: disable=invalid-name
         self.RCVTIMEO = None  # pylint: disable=invalid-name
@@ -192,7 +200,11 @@ class MockZmqPoller(mock.MagicMock):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        try:
+            super().__init__(**kwargs)
+        except RuntimeError:
+            # happens when run with python2 because of the mock module
+            super(MockZmqPoller, self).__init__(**kwargs)
         self.registered_sockets = []
 
         self.poll = mock.MagicMock()
@@ -210,7 +222,11 @@ class MockZmqPollerAllFake(mock.MagicMock):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        try:
+            super().__init__(**kwargs)
+        except RuntimeError:
+            # happens when run with python2 because of the mock module
+            super(MockZmqPollerAllFake, self).__init__(**kwargs)
         self.poll = mock.MagicMock()
         self.register = mock.MagicMock()
 
@@ -220,7 +236,11 @@ class MockZmqAuthenticator(mock.MagicMock):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        try:
+            super().__init__(**kwargs)
+        except RuntimeError:
+            # happens when run with python2 because of the mock module
+            super(MockZmqAuthenticator, self).__init__(**kwargs)
 
         self.start = mock.MagicMock()
         self.allow = mock.MagicMock()

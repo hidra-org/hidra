@@ -192,8 +192,9 @@ def get_suite(package_name, name):
         modclass = getattr(module, PACKAGES[package_name]["special"][name])
     else:
         if PACKAGES[package_name]["default"] is None:
-            print("ERROR: Could not get suite. Maybe PACKAGES wrong "
+            print("ERROR: Could not get suite. Maybe PACKAGES has wrong "
                   "configuration?")
+            print("package_name =", package_name, "name =", name)
             return []
 
         modclass = getattr(module, PACKAGES[package_name]["default"])
