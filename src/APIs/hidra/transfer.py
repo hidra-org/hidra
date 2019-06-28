@@ -252,13 +252,7 @@ class Transfer(Base):
         self.appid = None
 
         self.signal_host = None
-
-        self.signal_conf = None
-        self.request_conf = None
-        self.status_check_conf = None
-        self.file_op_conf = None
-        self.confirmation_conf = None
-
+        self.socket_conf = {}
         self.data_socket_endpoint = None
 
         self.context = None
@@ -376,33 +370,19 @@ class Transfer(Base):
         }
 
         # TCP socket configurations
-        self.status_check_conf = copy.deepcopy(default_conf)
-        self.file_op_conf = copy.deepcopy(default_conf)
-        self.confirmation_conf = copy.deepcopy(default_conf)
+        for sckt_type, port in ports.items():
+            self.socket_conf[sckt_type] = copy.deepcopy(default_conf)
+            self.socket_conf[sckt_type]["port"] = port
 
-        self.signal_conf = copy.deepcopy(default_conf)
-        self.signal_conf["ip"] = self.signal_host
-        self.signal_conf["port"] = ports["signal"]
-
-        self.request_conf = copy.deepcopy(default_conf)
-        self.request_conf["ip"] = self.signal_host
-        self.request_conf["port"] = ports["request"]
-
-        self.status_check_conf = copy.deepcopy(default_conf)
-        self.status_check_conf["port"] = ports["status_check"]
-
-        self.file_op_conf = copy.deepcopy(default_conf)
-        self.file_op_conf["port"] = ports["file_op"]
-
-        self.confirmation_conf = copy.deepcopy(default_conf)
-        self.confirmation_conf["port"] = ports["confirmation"]
+        self.socket_conf["signal"]["ip"] = self.signal_host
+        self.socket_conf["request"]["ip"] = self.signal_host
 
         # IPC socket configurations
         default_conf["protocol"] = "ipc"
         default_conf["ip"] = None
 
-        self.control_conf = copy.deepcopy(default_conf)
-        self.control_conf["ipc_file"] = "control_API"
+        self.socket_conf["control"] = copy.deepcopy(default_conf)
+        self.socket_conf["control"]["ipc_file"] = "control_API"
 
         self.is_ipv6 = False
         self.data_con_style = "bind"
@@ -561,7 +541,7 @@ class Transfer(Base):
             name="signal_socket",
             sock_type=zmq.REQ,
             sock_con="connect",
-            endpoint=self._get_endpoint(**self.signal_conf)
+            endpoint=self._get_endpoint(**self.socket_conf["signal"])
         )
 
         # using a Poller to implement the signal_socket timeout
@@ -787,9 +767,9 @@ class Transfer(Base):
         """Update socket configuration if ip has changed.
         """
 
-        self.status_check_conf["ip"] = self.ip
-        self.file_op_conf["ip"] = self.ip
-        self.confirmation_conf["ip"] = self.ip
+        self.socket_conf["status_check"]["ip"] = self.ip
+        self.socket_conf["file_op"]["ip"] = self.ip
+        self.socket_conf["confirmation"]["ip"] = self.ip
 
     def _get_endpoint(self, protocol, ip, port, ipc_file):
         """Determines socket endpoint.
@@ -888,7 +868,7 @@ class Transfer(Base):
                 name="request socket",
                 sock_type=zmq.PUSH,
                 sock_con="connect",
-                endpoint=self._get_endpoint(**self.request_conf)
+                endpoint=self._get_endpoint(**self.socket_conf["request"])
             )
             # ----------------------------------- #
 
@@ -914,7 +894,7 @@ class Transfer(Base):
                 name="internal controlling socket",
                 sock_type=zmq.PULL,
                 sock_con="bind",
-                endpoint=self._get_endpoint(**self.control_conf)
+                endpoint=self._get_endpoint(**self.socket_conf["control"])
             )
 
             self.poller.register(self.control_socket, zmq.POLLIN)
@@ -956,14 +936,14 @@ class Transfer(Base):
             # TODO create Thread which handles this asynchroniously
             if self.status_check_socket is not None:
                 self.log.error("Status check is already enabled (used port: "
-                               "%s)", self.status_check_conf["port"])
+                               "%s)", self.socket_conf["status_check"]["port"])
                 return
 
             # ------- status check socket ------ #
             # socket to get signals to get status check requests. this socket
             # is also used to get signals to open and close nexus files
-            self._unpack_value(value, self.status_check_conf)
-            endpoint = self._get_endpoint(**self.status_check_conf)
+            self._unpack_value(value, self.socket_conf["status_check"])
+            endpoint = self._get_endpoint(**self.socket_conf["status_check"])
 
             self.status_check_socket = self._start_socket(
                 name="status check socket",
@@ -980,14 +960,14 @@ class Transfer(Base):
         elif option == "file_op":
             if self.file_op_socket is not None:
                 self.log.error("File operation is already enabled (used port: "
-                               "%s)", self.file_op_conf["port"])
+                               "%s)", self.socket_conf["file_op"]["port"])
                 return
 
             # ------- status check socket ------ #
             # socket to get signals to get status check requests. this socket
             # is also used to get signals to open and close nexus files
-            self._unpack_value(value, self.file_op_conf)
-            endpoint = self._get_endpoint(**self.file_op_conf)
+            self._unpack_value(value, self.socket_conf["file_op"])
+            endpoint = self._get_endpoint(**self.socket_conf["file_op"])
 
             self.file_op_socket = self._start_socket(
                 name="file_op_socket",
@@ -1005,7 +985,7 @@ class Transfer(Base):
             if self.confirmation_socket is not None:
                 self.log.error(
                     "Confirmation is already enabled (used port: %s)",
-                    self.confirmation_conf["port"]
+                    self.socket_conf["confirmation"]["port"]
                 )
                 return
 
@@ -1037,8 +1017,8 @@ class Transfer(Base):
             # ------- confirmation socket ------ #
             # to send the a confirmation to the sender that the data packages
             # was stored successfully
-            self._unpack_value(value, self.confirmation_conf)
-            endpoint = self._get_endpoint(**self.confirmation_conf)
+            self._unpack_value(value, self.socket_conf["confirmation"])
+            endpoint = self._get_endpoint(**self.socket_conf["confirmation"])
 
             self.confirmation_socket = self._start_socket(
                 name="confirmation socket",
@@ -1924,7 +1904,7 @@ class Transfer(Base):
             # remove ipc remainings
             if self.control_socket is not None:
                 control_addr = self._get_ipc_addr(
-                    ipc_file=self.control_conf["ipc_file"]
+                    ipc_file=self.socket_conf["control"]["ipc_file"]
                 )
                 try:
                     os.remove(control_addr)

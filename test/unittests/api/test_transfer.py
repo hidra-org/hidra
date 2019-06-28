@@ -944,9 +944,9 @@ class TestTransfer(TestBase):
         transfer.ip = new_ip
         transfer._update_ip()
 
-        self.assertEqual(transfer.status_check_conf["ip"], new_ip)
-        self.assertEqual(transfer.file_op_conf["ip"], new_ip)
-        self.assertEqual(transfer.confirmation_conf["ip"], new_ip)
+        self.assertEqual(transfer.socket_conf["status_check"]["ip"], new_ip)
+        self.assertEqual(transfer.socket_conf["file_op"]["ip"], new_ip)
+        self.assertEqual(transfer.socket_conf["confirmation"]["ip"], new_ip)
 
     def test__get_endpoint(self):
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -3131,7 +3131,7 @@ class TestTransfer(TestBase):
         transfer.auth = None
 
         transfer.control_socket = mock.MagicMock()
-        transfer.control_conf = {"ipc_file": None}
+        transfer.socket_conf["control"] = {"ipc_file": None}
 
         with mock.patch("hidra.transfer.Transfer._get_ipc_addr"):
             with mock.patch("hidra.transfer.Transfer._stop_socket"):
@@ -3155,7 +3155,7 @@ class TestTransfer(TestBase):
 
             transfer.log = mock.MagicMock()
             transfer.control_socket = mock.MagicMock()
-            transfer.control_conf = {"ipc_file": None}
+            transfer.socket_conf["control"] = {"ipc_file": None}
 
             with mock.patch("hidra.transfer.Transfer._get_ipc_addr"):
                 with mock.patch("hidra.transfer.Transfer._stop_socket"):
