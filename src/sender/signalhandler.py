@@ -147,7 +147,8 @@ class SignalHandler(Base):
             self.context = zmq.Context()
             self.ext_context = False
 
-        self.setup_stats_collection()
+        if self.config["general"]["use_statserver"]:
+            self.setup_stats_collection()
 
         try:
             self.create_sockets()
