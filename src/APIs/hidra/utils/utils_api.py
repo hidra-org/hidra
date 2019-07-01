@@ -30,6 +30,9 @@ from __future__ import unicode_literals
 
 from .utils_network import start_socket, stop_socket
 
+import copy
+import json
+
 
 class Base(object):
     """The base class from which all API classes should inherit from.
@@ -92,3 +95,32 @@ class Base(object):
             setattr(self, name, return_socket)
         else:
             return return_socket
+
+    def print_config(self, config, description=None):
+        """
+        Print the configuration in a user friendly way
+        """
+
+        formated_config = copy.deepcopy(config)
+        #try:
+        #    # for better readability of named tuples
+        #    formated_config["network"]["endpoints"] = (
+        #        formated_config["network"]["endpoints"]._asdict()
+        #    )
+        #except KeyError:
+        #    pass
+
+        try:
+            formated_config = str(json.dumps(formated_config,
+                                             sort_keys=True,
+                                             indent=4))
+        except TypeError:
+            # is thrown if one of the entries is not json serializable,
+            # e.g happens for zmq context
+            pass
+
+        if description is None:
+            self.log.info("Configuration for %s: %s",
+                          self.__class__.__name__, formated_config)
+        else:
+            self.log.info("%s %s", description, formated_config)

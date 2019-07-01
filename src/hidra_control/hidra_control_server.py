@@ -367,8 +367,10 @@ class ConfigHandling(utils.Base):
         if self.remote_config is None:
             return self.reply_codes.error
 
-        if param == "endpoints":
-            return self.remote_config["network"]["endpoints"]
+        #if param == "endpoints":
+        #    return self.remote_config["network"]["endpoints"]
+
+        return self.remote_config["general"][param]
 
     def clear(self, host_id):
         """Clear the configuration.
@@ -399,9 +401,8 @@ class ConfigHandling(utils.Base):
             self.log.error("Error when trying to load config file",
                            exc_info=True)
             raise
-        self.log.debug("active_config=%s", json.dumps(self.active_config,
-                                                      sort_keys=True,
-                                                      indent=4))
+
+        self.print_config(self.active_config, description="active_config=")
 
     def _check_config_complete(self, host_id):
         """
@@ -548,6 +549,8 @@ class ConfigHandling(utils.Base):
             self.remote_config = json.loads(
                 self.stats_expose_socket.recv().decode()
             )
+            self.log.debug("Getting remote config successful.")
+            self.print_config(self.remote_config, description="remote_config=")
         except zmq.error.Again:
             self.log.error("Getting remote config failed due to timeout",
                            exc_info=True)
@@ -724,6 +727,7 @@ class HidraController(HidraServiceHandling):
         self.instances = instances
 
         self.supported_keys = []
+        self.supported_remote_keys = []
 
         self._setup()
 
@@ -749,7 +753,8 @@ class HidraController(HidraServiceHandling):
         ]
 
         self.supported_remote_keys = [
-            "endpoints"
+            "com_port",
+            "request_port"
         ]
 
 #        self.supported_keys = [k for k in list(self.ctemplate.keys())

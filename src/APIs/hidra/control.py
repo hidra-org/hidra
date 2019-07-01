@@ -57,7 +57,8 @@ class Control(Base):
                  detector,
                  ldapuri,
                  netgroup_template,
-                 use_log=False):
+                 use_log=False,
+                 do_check=True):
         """
         Enables controlling like starting/stopping or setting of parameters of
         a HiDRA instance. Such an instance is started for a specific beamline
@@ -82,6 +83,7 @@ class Control(Base):
         self.ldapuri = ldapuri
         self.netgroup_template = netgroup_template
         self.use_log = use_log
+        self.do_check = do_check
 
         self.log = None
         self.current_pid = None
@@ -115,22 +117,34 @@ class Control(Base):
         self.current_pid = os.getpid()
         self.host = socket.getfqdn()
 
-        # check host running control script
-        check_netgroup(self.host,
-                       self.beamline,
-                       self.ldapuri,
-                       self.netgroup_template,
-                       self.log)
+        if self.do_check:
+            # check host running control script
+            check_netgroup(self.host,
+                           self.beamline,
+                           self.ldapuri,
+                           self.netgroup_template,
+                           self.log)
 
-        try:
-            endpoint = "tcp://{}:{}".format(
-                CONNECTION_LIST[self.beamline]["host"],
-                CONNECTION_LIST[self.beamline]["port"]
-            )
-            self.log.info("Starting connection to %s", endpoint)
-        except KeyError:
-            self.log.error("Beamline %s not supported", self.beamline)
-            sys.exit(1)
+            try:
+                endpoint = "tcp://{}:{}".format(
+                    CONNECTION_LIST[self.beamline]["host"],
+                    CONNECTION_LIST[self.beamline]["port"]
+                )
+                self.log.info("Starting connection to %s", endpoint)
+            except KeyError:
+                self.log.error("Beamline %s not supported", self.beamline)
+                sys.exit(1)
+        else:
+            try:
+                endpoint = "tcp://{}:{}".format(
+                    self.beamline["host"],
+                    self.beamline["port"]
+                )
+                self.log.info("Starting connection to %s", endpoint)
+            except KeyError:
+                self.log.error("Beamline %s not supported", self.beamline)
+                sys.exit(1)
+
 
         # Create ZeroMQ context
         self.log.info("Registering ZMQ context")
@@ -146,25 +160,26 @@ class Control(Base):
 
         self._check_responding()
 
-        # check detector
-        check_res = check_netgroup(
-            self.detector,
-            self.beamline,
-            self.ldapuri,
-            self.netgroup_template,
-            self.log,
-            raise_if_failed=False
-        )
+        if self.do_check:
+            # check detector
+            check_res = check_netgroup(
+                self.detector,
+                self.beamline,
+                self.ldapuri,
+                self.netgroup_template,
+                self.log,
+                raise_if_failed=False
+            )
 
-        if not check_res:
-            # beamline is only allowed to stop its own istance nothing else
-            if self.detector in self.do("get_instances"):
-                self.stop_only = True
-            else:
-                raise NotAllowed(
-                    "Host {} is not contained in netgroup of beamline {}"
-                    .format(self.detector, self.beamline)
-                )
+            if not check_res:
+                # beamline is only allowed to stop its own istance nothing else
+                if self.detector in self.do("get_instances"):
+                    self.stop_only = True
+                else:
+                    raise NotAllowed(
+                        "Host {} is not contained in netgroup of beamline {}"
+                        .format(self.detector, self.beamline)
+                    )
 
     def _check_responding(self):
         """ Check if the control server is responding.
@@ -232,6 +247,10 @@ class Control(Base):
 
         try:
             return json.loads(reply)
+        except ValueError:
+            # python 3 does not allow byte objects here
+            # python <= 3.4 raises Value Error
+            return reply.encode()
         except json.decoder.JSONDecodeError:
             # python 3 does not allow byte objects here
             return reply.encode()

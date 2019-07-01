@@ -65,6 +65,7 @@ from .utils import (
     LoggingFunction,
     Base
 )
+from .control import Control
 
 
 def get_logger(logger_name,
@@ -240,9 +241,14 @@ class Transfer(Base):
                  signal_host=None,
                  use_log=False,
                  context=None,
-                 dirs_not_to_create=None):
+                 dirs_not_to_create=None,
+                 detector_id=None,
+                 control_server_port=51000):
 
         super().__init__()
+
+        self.detector_id = detector_id
+        self.control_server_port = control_server_port
 
         self.log = None
 
@@ -411,14 +417,46 @@ class Transfer(Base):
             raise NotSupported("Chosen type of connection is not supported.")
 
     def _get_remote_ports(self):
+
         ports = {
-            "signal": 50000,
-            "request": 50001,
             "status_check": 50050,
             "file_op": 50050,
             "confirmation": 50053
         }
 
+        if self.detector_id is None:
+            ports["signal"] = 50000
+            ports["request"] = 50001
+            return ports
+
+        beamline = {
+            "host": self.signal_host,
+            "port": self.control_server_port
+        }
+        self.log.info("Get ports from the control server (%s)", beamline)
+
+        control = Control(
+            beamline=beamline,
+            detector=self.detector_id,
+            ldapuri="",
+            netgroup_template="",
+            use_log="warning",
+            do_check=False
+        )
+
+        #com port
+        answer = control.get("com_port")
+        if answer == b"ERROR":
+            raise CommunicationFailed("Error when receiving signal/com port")
+        ports["signal"] = answer
+
+        # request port
+        ports["request"] = control.get("request_port")
+        if answer == b"ERROR":
+            raise CommunicationFailed("Error when receiving request port")
+        ports["request"] = control.get("request_port")
+
+        self.log.debug("ports=%s", ports)
         return ports
 
     def get_remote_version(self):
