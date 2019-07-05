@@ -453,10 +453,10 @@ class Transfer(Base):
         ports["signal"] = answer
 
         # request port
-        ports["request"] = control.get("request_port")
+        answer = control.get("request_port")
         if answer == b"ERROR":
             raise CommunicationFailed("Error when receiving request port")
-        ports["request"] = control.get("request_port")
+        ports["request"] = answer
 
         self.log.debug("ports=%s", ports)
         return ports
