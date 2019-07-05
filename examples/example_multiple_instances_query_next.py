@@ -51,6 +51,9 @@ def get_arguments():
                         type=str,
                         help="Host where the data should be send to",
                         default=socket.getfqdn())
+    parser.add_argument("--debug",
+                        help="Host where the data should be send to",
+                        action="store_true")
 
     return parser.parse_args()
 
@@ -59,6 +62,13 @@ def main():
     """Requests data from hidra on a query basis.
     """
     arguments = get_arguments()
+
+    if arguments.debug:
+        use_log = "debug"
+        print("Using debug mode")
+    else:
+        use_log = False
+
     targets = [[arguments.target_host, "50101", 1, ".*(tif|cbf)$"]]
     detector_id = socket.getfqdn() # the hidra instance to connect to
 
@@ -66,6 +76,7 @@ def main():
 
     query = Transfer("QUERY_NEXT",
                      arguments.signal_host,
+                     use_log=use_log,
                      detector_id=detector_id)
 
     query.initiate(targets)

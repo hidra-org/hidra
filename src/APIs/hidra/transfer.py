@@ -249,6 +249,7 @@ class Transfer(Base):
 
         self.detector_id = detector_id
         self.control_server_port = control_server_port
+        self.control_api_log_level = "warning"
 
         self.log = None
 
@@ -324,6 +325,7 @@ class Transfer(Base):
         # print messages of certain level to screen
         if use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(use_log)
+            self.control_api_log_level = use_log
 
         # use logutils queue
         # isinstance does not work here
@@ -440,7 +442,7 @@ class Transfer(Base):
             detector=self.detector_id,
             ldapuri="",
             netgroup_template="",
-            use_log="warning",
+            use_log=self.control_api_log_level,
             do_check=False
         )
 
