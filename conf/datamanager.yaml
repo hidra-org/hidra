@@ -25,9 +25,6 @@ general:
     whitelist: ["localhost"]
     #whitelist: None
 
-    # Use an additional process to collect all contig parameter
-    use_statserver: False
-
 eventdetector:
     # Type of event detector to use (options are:
     # inotifyx_events, watchdog_events, zmq_events, http_events)
