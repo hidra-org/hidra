@@ -21,6 +21,9 @@ general:
     control_pub_port: 50005
     control_sub_port: 50006
 
+    # Use an additional process to collect all contig parameter
+    use_statserver: False
+
 eventdetector:
     # ZMQ port to get incoming data from
     # (needed if event_detector_type is hidra_events)
