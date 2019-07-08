@@ -44,7 +44,7 @@ import threading
 import time
 from multiprocessing.dummy import Pool as ThreadPool
 
-from six import iteritems
+from future.utils import iteritems
 from watchdog.observers import Observer
 import watchdog.events
 from watchdog.events import RegexMatchingEventHandler

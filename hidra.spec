@@ -18,8 +18,9 @@ Requires:	python-zmq >= 14.5.0
 Requires:	python-inotifyx >= 0.2.2
 Requires:	python-requests
 Requires:	python-setproctitle
-Requires:	python-six
+Requires:	python-future
 Requires:	python-pathlib
+Requires:	PyYAML
 Requires:	python-hidra = %{version}
 
 %description

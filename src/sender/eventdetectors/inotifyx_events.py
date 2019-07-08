@@ -36,7 +36,7 @@ import re
 import threading
 
 import inotifyx
-from six import iteritems
+from future.utils import iteritems
 
 from eventdetectorbase import EventDetectorBase
 from hidra import convert_suffix_list_to_regex

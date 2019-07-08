@@ -41,7 +41,7 @@ import threading
 import time
 
 import inotify.adapters
-from six import iteritems
+from future.utils import iteritems
 
 CURRENT_DIR = os.path.realpath(__file__)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))))

@@ -187,8 +187,9 @@ BUILD_EXE_OPTIONS = {
             "logging.handlers",
             "logutils",
             "setproctitle",
-            "six",
+            "future",
             "zmq",
+            "yaml"
             # zmq.backend.cython seems to be left out by default
             "zmq.backend.cython",
         ]

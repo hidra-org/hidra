@@ -50,7 +50,7 @@ try:
 except ImportError:
     # for python2
     import mock
-from six import iteritems
+from future.utils import iteritems
 
 from test_base import (TestBase,
                        create_dir,
