@@ -39,7 +39,12 @@ import platform
 import sys
 import traceback
 
-from logutils.queue import QueueListener, QueueHandler
+try:
+    # Queuehandler and Listener are part of logging in python3
+    QueueListener = logging.handlers.QueueListener
+    QueueHandler = logging.handlers.QueueHandler
+except AttributeError:
+    from logutils.queue import QueueListener, QueueHandler
 
 
 def is_windows():
