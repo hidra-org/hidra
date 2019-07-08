@@ -34,11 +34,16 @@ from importlib import import_module
 import logging
 import os
 import platform
-import pwd
 import re
 import socket as socket_m
 import subprocess
 import sys
+
+try:
+    import pwd
+except ImportError:
+    #on windows
+    pass
 
 from ._version import __version__
 from .utils_datatypes import WrongConfiguration, NotFoundError
@@ -359,6 +364,13 @@ def change_user(config):
         (True: was changed).
     """
 
+    if is_windows():
+        if "username" in config:
+            # this is not working on windows
+            return config["username"], False
+        else:
+            return None, False
+
     start_user = pwd.getpwuid(os.geteuid())
 
     try:
@@ -393,12 +405,14 @@ def log_user_change(log, user_was_changed, user_info):
         user_info: a password database entry of the user name changed to.
     """
 
+    if is_windows():
+        if user_info is not None:
+            log.info("No user change performed (Windows)")
+        # otherwise no output is needed
+        return
+
     if user_was_changed:
         log.info("Running as user %s (uid %s)",
-                 user_info.pw_name, user_info.pw_uid)
-    elif is_windows():
-        log.info("No user change performed (windows), "
-                 "running as user %s, (uid %s)",
                  user_info.pw_name, user_info.pw_uid)
     else:
         log.info("No user change needed, running as user %s (uid %s)",
