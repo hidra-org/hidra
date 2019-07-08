@@ -165,9 +165,12 @@ def extend_whitelist(whitelist, ldapuri, log):
     if isinstance(whitelist, str):
         whitelist = [whitelist]
 
-    ext_whitelist = []
-    for i in whitelist:
-        ext_whitelist += execute_ldapsearch(log, i, ldapuri)
+    if is_windows():
+        ext_whitelist = [socket_m.getfqdn(host) for host in whitelist]
+    else:
+        ext_whitelist = []
+        for i in whitelist:
+            ext_whitelist += execute_ldapsearch(log, i, ldapuri)
 
     log.debug("Converted whitelist: %s", ext_whitelist)
 
