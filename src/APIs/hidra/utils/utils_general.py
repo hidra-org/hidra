@@ -29,6 +29,7 @@ from __future__ import (absolute_import,
                         print_function,
                         unicode_literals)
 
+import copy
 import errno
 from importlib import import_module
 import logging
@@ -616,3 +617,34 @@ def _read_status_init(service, log):
     }
 
     return service_status
+
+
+def get_by_path(root, items):
+    """
+    Access a nested object in root by a items sequence.
+
+    Args:
+        root: The object (e.g. dictionary) to get values from.
+        items: The list of keys used to reach the requested leaf.
+
+    Returns:
+        The value of the leaf.
+    """
+
+    tmp = copy.deepcopy(root)
+    for k in items:
+        tmp = tmp[k]
+
+    return tmp
+
+
+def set_by_path(root, items, value):
+    """
+    Set a value in a nested object in root by item sequence.
+
+    Args:
+        root: The object (e.g. dictionary) to set values to
+        items:The list of keys used to reach the requested leaf.
+        value: Thev alue to set the leaf to.
+    """
+    get_by_path(root, items[:-1])[items[-1]] = value

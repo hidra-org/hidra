@@ -46,7 +46,9 @@ from .utils_general import (
     log_user_change,
     show_files_in_dir,
     get_service_manager,
-    read_status
+    read_status,
+    get_by_path,
+    set_by_path
 )
 
 from .utils_datatypes import (
@@ -128,6 +130,8 @@ __all__ = [
     "show_files_in_dir",
     "get_service_manager",
     "read_status",
+    "get_by_path",
+    "set_by_path",
     # utils_datatypes
     "ReplyCodes",
     "IpcAddresses",
