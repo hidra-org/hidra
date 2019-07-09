@@ -1,16 +1,45 @@
 # develop
 
-- Extracted control server config into config file
-- Extracted control client config into config file
 - Control: Fix unicode compatibility
-- Moved utils location
-- Extract datatype definition in separate utils module
+- Move, clean up and structure of utils into serparate module files
 - Control client: show already running instances when start fails
 - Changed effective user id inside of datamanager and datareceiver directly
-- Sender: Use config hierachy
-- Receiver: Use config hierachy
+- Removed underscore from event_detector and data_fetcher
 - Renamed event_det_port und data_fetch_port
 - Simplify log setup (no separated calls for with or without onscreen)
+- Control-server: Fixed file handle exception handling
+- Transfer: Checking chunk number before opening file
+- Fix stopping of datadispatcher and taskprovider
+- event detector: Check monitored_dir when stopping
+- Extracted control server and control client config into config file
+- Use hierachical config format for sender, receiver and control server
+- Changed default config to yaml
+- Simpify inotifyx event detector
+- Generalize control signals reaction
+- Improve test suite to handle individual modules
+- Remove scripts to build SuSE packages via docker (new kernels incompatible with SUSE 10)
+- Fix python3 compatibility
+- Change __version__ to str
+- Remove check for closed file in metdata mode
+- Enable display of hanging processes on shut down
+- Add inotify event detector
+- Fix start up of eventdetector
+- Fix hidra usage via docker
+- Remove restriction to supported modules only
+- Add experimental ewmscp (kafka) synching event detector
+- Add data fetcher only distributing metadata (no data)
+- Enable modules which do not need conf parameter
+- Enable netgroup and host list config for whitelist
+- Change default config for Pilatus and on Windows
+- Add host checks on control server
+- Enable stopping of still runnning instances via control client
+- Rename ModuleNotFound to NotFound for versatility
+- Structured config server
+- Remove config file when hidra is stopped via control server
+- Enable random port usage for com_port and request_port
+- Introduce StatServer to expose config (locally only)
+- Enable control server and statserver communication
+- Enable port receiving via transfer api
 
 # 4.0.23
 
@@ -26,7 +55,7 @@
 
 # 4.0.21
 
-- Fix readding of events for watchdog event detector
+- Fix reading of events for watchdog event detector
 - Fix typo in http_fetcher
 - Fix with_confirmation on Windows
 - Fix python3 compatibility
