@@ -1,14 +1,12 @@
 controlserver:
-    #log_path: &log_path /var/log/hidra
-    log_path: &log_path /home/kuhnm/projects/hidra/logs
+    log_path: &log_path /var/log/hidra
     log_size: 10485760
 
     # use {bl} as placeholder for the beamline
     log_name: hidra-control-server_{bl}.log
     procname: hidra-control-server_{bl}
 
-    #backup_file:/beamline/support/hidra/instances.txt
-    backup_file: /home/kuhnm/projects/hidra/instances.txt
+    backup_file:/beamline/support/hidra/instances.txt
 
     ldapuri: "it-ldap-slave.desy.de:1389"
 
