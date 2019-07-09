@@ -56,13 +56,10 @@ def argument_parsing():
     """Parsing command line arguments.
     """
 
-    config_file = os.path.join(CONFIG_DIR, "control_client.yaml")
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--beamline",
                         type=str,
-                        required=True,
                         choices=ALLOWED_BEAMLINES,
                         help="Beamline for which the HiDRA server (detector "
                              "mode) should be operated")
@@ -73,7 +70,6 @@ def argument_parsing():
                         help="IP (or DNS name) of the detector")
     parser.add_argument("--detapi",
                         type=str,
-                        default="1.6.0",
                         help="API version of the detector "
                              "(default: 1.6.0)")
 
@@ -103,23 +99,39 @@ def argument_parsing():
                         action="store_true")
 
     args = parser.parse_args()
+    config = _merge_with_config(args)
+
+    check_config(config)
+
+    return config
+
+
+def _merge_with_config(args):
+    """
+    Takes the comand line arguments and overwrites the parameter of the confi
+    file with it.
+    """
+    config_file = os.path.join(CONFIG_DIR, "control_client.yaml")
 
     # convert to dict and map to config section
     args_dict = vars(args)
 
     # hidra config
-    arguments = {
-        "hidra": {
-            "eventdetector": {
-                "http_events": {
-                    "det_ip": args_dict["det"],
-                    "det_api_version": args_dict["detapi"]
-                }
+    eventdetector = {
+        "http_events": {
+                "det_ip": args_dict["det"],
             }
-        }
     }
+    if args_dict["detapi"] is not None:
+        eventdetector["http-events"]["det_api_version"] = args_dict["det_api"]
+
+    arguments = {"hidra": {"eventdetector": eventdetector}}
+
     del args_dict["det"]
     del args_dict["detapi"]
+
+    if args_dict["beamline"] is None:
+        del args_dict["beamline"]
 
     # general config
     arguments["general"] = args_dict
@@ -132,7 +144,16 @@ def argument_parsing():
     config = utils.load_config(config_file)
     utils.update_dict(arguments, config)
 
-    check_config(config)
+    # check for beamline
+    try:
+        if config["general"]["beamline"] not in ALLOWED_BEAMLINES:
+            raise parser.error(
+                "argument --beamline: invalid choice: '{}' (choose from {})"
+                .format(config["general"]["beamline"],
+                        str(ALLOWED_BEAMLINES)[1:-1])
+            )
+    except KeyError:
+        raise parser.error("the following arguments are required: --beamline")
 
     return config
 
