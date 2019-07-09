@@ -46,7 +46,7 @@ except ImportError:
     pass
 
 from ._version import __version__
-from .utils_datatypes import WrongConfiguration, NotFoundError
+from .utils_datatypes import WrongConfiguration, NotFoundError, NotSupported
 
 
 def is_windows():
@@ -481,7 +481,36 @@ def get_service_manager(systemd_prefix, service_name):
     return service_manager
 
 
-def read_status(service, log):
+def read_status(service, log, service_manager="systemd"):
+    """
+    Get more status information. Only available for systems using systemd.
+
+    Args:
+        service_manager: The kind of service manager the system uses
+                         (systemd or init).
+        service: The service name prefix (for systemd e.g hidra@)
+        log: Logging handle
+
+    Returns:
+        A dictionary with the detail information:
+            service
+            status
+            since
+            uptime
+            pid
+            info
+    """
+
+    if service_manager == "systemd":
+        return _read_status_systemd(service, log)
+    elif service_manager == "init":
+        return _read_status_init(service, log)
+    else:
+        raise NotSupported("Service manager '{}' is not supported."
+                           .format(service_manager))
+
+
+def _read_status_systemd(service, log):
     """
     Get more status information. Only available for systems using systemd.
 
@@ -545,5 +574,45 @@ def read_status(service, log):
                 service_status["info"] = message_search.group(1)
             else:
                 service_status["info"] += "\n" + message_search.group(1)
+
+    return service_status
+
+
+def _read_status_init(service, log):
+    """
+    Args:
+        service: The systemd service name prefix (e.g hidra@)
+        log: Logging handle
+
+    Returns:
+        A dictionary with the detail information:
+            service
+            status
+            since
+            uptime
+            pid
+            info
+    """
+
+    raise NotSupported("Using init script is not implemented (yet)!")
+
+    cmd = ["service", service, "status"]
+
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        (output, err) = proc.communicate()
+        output = output.decode('utf-8')
+    except Exception:
+        log.debug("systemctl error was: %s", err)
+        raise
+
+    service_status = {
+        "service": None,
+        "status": None,
+        "since": None,
+        "uptime": None,
+        "pid": None,
+        "info": None,
+    }
 
     return service_status
