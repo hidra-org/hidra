@@ -1044,7 +1044,13 @@ class ControlServer(utils.Base):
 
     def restart_instances(self):
         all_instances = self.instances.get_instances()
+
         for beamline, bl_instances in all_instances.items():
+
+            # only start instances belonging to this beamline
+            if beamline != self.beamline:
+                continue
+
             for det_id in bl_instances:
                 self.log.debug("beamline=%s, instance=%s", beamline, det_id)
 
