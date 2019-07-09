@@ -11,7 +11,10 @@ usage() { echo "Usage: $0 [-f <cbf|tif>] [-s <sourcepath>] [-t <targetpath>] [-n
 while getopts ':f:s:t:n:' OPTION ; do
     case "${OPTION}" in
         f) FORMAT=${OPTARG}
-            if [ "${FORMAT}" != "cbf" ] && [ "${FORMAT}" != "tif" ]; then echo "${FORMAT} not supported"; exit 1; fi
+            if [ "${FORMAT}" != "cbf" ] && [ "${FORMAT}" != "tif" ] && [ "${FORMAT}" != "h5" ]; then
+                echo "${FORMAT} not supported"
+                exit 1
+            fi
 #           ((${FORMAT} == "cbf" || ${FORMAT} == "tif")) || usage
             ;;
         s) SOURCE=${OPTARG}
@@ -36,7 +39,8 @@ fi
 
 case "${FORMAT}" in
     cbf) FILES=${SOURCE}/test/test_files/test_file.cbf ;;
-    tif) FILES=${SOURCE}/test/test_files/test_file.tif
+    tif) FILES=${SOURCE}/test/test_files/test_file.tif ;;
+    h5) FILES=${SOURCE}/test/test_files/test_file.h5
 esac
 
 i=1
