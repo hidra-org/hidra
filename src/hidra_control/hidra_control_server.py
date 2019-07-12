@@ -1241,7 +1241,7 @@ class ControlServer(utils.Base):
             return self.reply_codes.error
 
         if not check_res:
-            return self.reply_code.error
+            return self.reply_codes.error
 
         # --------------------------------------------------------------------
         # react to message
