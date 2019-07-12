@@ -127,7 +127,9 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
             line = line.decode()  # for python3 compatibility
             if match_host.match(line):
                 if match_host.match(line).group(1) not in netgroup:
-                    netgroup.append(match_host.match(line).group(1))
+                    netgroup.append(
+                        socket_m.getfqdn(match_host.match(line).group(1))
+                    )
 
         if error or not netgroup:
             log.error("Problem when using ldapsearch.")
