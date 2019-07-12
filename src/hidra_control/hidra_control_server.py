@@ -283,14 +283,18 @@ class ConfigHandling(utils.Base):
             "{}_{}".format(config_g["procname"], self.det_id)
         )
         df_type = self.config_static["datafetcher"]["type"]
-        try:
-            self.config_static["datafetcher"][df_type]["local_target"] = (
-                config_df["local_target"]
-            )
-        except KeyError:
-            self.config_static["datafetcher"][df_type] = {
-                "local_target": config_df["local_target"]
-            }
+#        try:
+#            self.config_static["datafetcher"][df_type]["local_target"] = (
+#                config_df["local_target"]
+#            )
+#        except KeyError:
+#            self.config_static["datafetcher"][df_type] = {
+#                "local_target": config_df["local_target"]
+#            }
+        self.config_static["datafetcher"]["local_target"] = (
+           config_df["local_target"]
+        )
+
 
         self._read_config()
 

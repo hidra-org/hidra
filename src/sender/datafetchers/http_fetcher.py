@@ -163,7 +163,7 @@ class DataFetcher(DataFetcherBase):
                 "available.", self.source_file, self.target_file,
                 metadata["relative_path"]
             )
-            self.log.error(msg, exc_info=True)
+            self.log.error(*msg, exc_info=True)
             raise Exception(msg[0].format(*msg[1:]))
         else:
             fix_subdir_found = False
