@@ -1209,6 +1209,52 @@ class ControlServer(utils.Base):
             return self.reply_codes.ok
 
         # --------------------------------------------------------------------
+        # check_netgroup
+        # --------------------------------------------------------------------
+
+        # check if host is allowed to execute commands
+        try:
+            check_res = utils.check_netgroup(
+                hostname=host_id,
+                beamline=self.beamline,
+                ldapuri=self.ldapuri,
+                netgroup_template=self.netgroup_template,
+                log=self.log,
+                raise_if_failed=False
+            )
+        except Exception:
+            self.log.error("Error when checking netgroup (host)",
+                           exc_info=True)
+            self.log.debug("msg=%s", msg)
+            return self.reply_codes.error
+
+        if not check_res:
+            self.log.info("Host %s is not allowed to execute commands for "
+                          "beamline %s.", host_id, self.beamline)
+            return self.reply_codes.error
+
+        # check if detector belongs to the beamline
+        try:
+            check_res = utils.check_netgroup(
+                hostname=det_id,
+                beamline=self.beamline,
+                ldapuri=self.ldapuri,
+                netgroup_template=self.netgroup_template,
+                log=self.log,
+                raise_if_failed=False
+            )
+        except Exception:
+            self.log.error("Error when checking netgroup (detector)",
+                           exc_info=True)
+            self.log.debug("msg=%s", msg)
+            return self.reply_codes.error
+
+        if not check_res:
+            self.log.info("Detector %s does not belong to beamline %s.",
+                          det_id, self.beamline)
+            return self.reply_codes.error
+
+        # --------------------------------------------------------------------
         # get hidra controller
         # --------------------------------------------------------------------
         try:
@@ -1221,27 +1267,6 @@ class ControlServer(utils.Base):
                                                       self.instances,
                                                       self.log_queue)
             controller = self.controller[det_id]
-
-        # --------------------------------------------------------------------
-        # check_netgroup
-        # --------------------------------------------------------------------
-        try:
-            # check if host is allowed to execute commands
-            check_res = utils.check_netgroup(
-                host_id,
-                self.beamline,
-                self.ldapuri,
-                self.netgroup_template.format(bl=self.beamline),
-                log=self.log,
-                raise_if_failed=False
-            )
-        except Exception:
-            self.log.error("Error when checking netgroup", exc_info=True)
-            self.log.debug("msg=%s", msg)
-            return self.reply_codes.error
-
-        if not check_res:
-            return self.reply_codes.error
 
         # --------------------------------------------------------------------
         # react to message
