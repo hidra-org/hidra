@@ -6,7 +6,8 @@ controlserver:
     log_name: hidra-control-server_{bl}.log
     procname: hidra-control-server_{bl}
 
-    backup_file: /beamline/support/hidra/instances.txt
+    # use {bl} as placeholder for the beamline
+    backup_file: /beamline/support/hidra/instances_{bl}.txt
 
     ldapuri: "it-ldap-slave.desy.de:1389"
 

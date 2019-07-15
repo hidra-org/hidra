@@ -84,7 +84,7 @@ class InstanceTracking(object):
         self.log = utils.get_logger(self.__class__.__name__, log_queue)
 
         self.beamline = beamline
-        self.backup_file = backup_file
+        self.backup_file = backup_file.format(bl=self.beamline)
         self.reply_codes = REPLYCODES
 
         self.instances = None
