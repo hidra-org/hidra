@@ -111,8 +111,6 @@ def _merge_with_config(args):
     Takes the comand line arguments and overwrites the parameter of the confi
     file with it.
     """
-    config_file = os.path.join(CONFIG_DIR, "control_client.yaml")
-
     # convert to dict and map to config section
     args_dict = vars(args)
 
@@ -139,7 +137,23 @@ def _merge_with_config(args):
     # ------------------------------------------------------------------------
     # Get arguments from config file and comand line
     # ------------------------------------------------------------------------
-    utils.check_existance(config_file)
+    filename_bl = "control_client_{}.yaml"
+    filename_gen = "control_client.yaml"
+
+    try:
+        if "beamline" in arguments["general"]:
+            config_file = os.path.join(
+                CONFIG_DIR,
+                filename_bl.format(arguments["general"]["beamline"])
+            )
+            # throws WrongConfiguration if file does not exist
+            utils.check_existance(config_file)
+        else:
+            # No beamline specified, use default config file
+            raise utils.WrongConfiguration()
+    except utils.WrongConfiguration:
+        config_file = os.path.join(CONFIG_DIR, filename_gen)
+        utils.check_existance(config_file)
 
     config = utils.load_config(config_file)
     utils.update_dict(arguments, config)
