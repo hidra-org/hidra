@@ -164,7 +164,7 @@ class DataFetcher(DataFetcherBase):
                 metadata["relative_path"]
             )
             self.log.error(*msg, exc_info=True)
-            raise Exception(msg[0].format(*msg[1:]))
+            raise Exception(msg[0] % msg[1:])
         else:
             fix_subdir_found = False
             # identify which of the pefixes is the correct one and check that
@@ -183,8 +183,8 @@ class DataFetcher(DataFetcherBase):
                             "is not available.", self.source_file,
                             self.target_file, prefix
                         )
-                        self.log.error(msg, exc_info=True)
-                        raise Exception(msg[0].format(*msg[1:]))
+                        self.log.error(*msg, exc_info=True)
+                        raise Exception(msg[0] % msg[1:])
                     else:
                         # everything is fine -> create directory
                         try:
