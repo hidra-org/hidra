@@ -169,7 +169,8 @@ class ConfigHandling(utils.Base):
         self.context = context
         self.beamline = beamline
         self.det_id = det_id
-        self.log = utils.get_logger(self.__class__.__name__, log_queue)
+        logger_name = "{}_{}".format(self.__class__.__name__, self.det_id)
+        self.log = utils.get_logger(logger_name, log_queue)
 
         self.config_prefix = None
         # the general config of the control server
@@ -716,7 +717,8 @@ class HidraController(HidraServiceHandling):
                  instances,
                  log_queue):
 
-        self.log = utils.get_logger(self.__class__.__name__, log_queue)
+        logger_name = "{}_{}".format(self.__class__.__name__, det_id)
+        self.log = utils.get_logger(logger_name, log_queue)
         super().__init__(beamline, self.log)
 
         self.context = context
