@@ -66,7 +66,7 @@ class Worker(multiprocessing.Process):
 
         self.transfer_type = transfer_type
 
-        self.log = logging.getLogger("Worker-%s", self.identifier)
+        self.log = logging.getLogger("Worker-{}".format(self.identifier))
 
         self.query = Transfer(self.transfer_type, signal_host, use_log=True)
 
