@@ -381,12 +381,7 @@ class DataHandler(Base, threading.Thread):
         """
 
         self.keep_running = False
-        i = 0
-        while self.stopped is False:
-            # if the socket is closed to early the thread will hang.
-            self.log.debug("Waiting for run loop to stop (iter %s)", i)
-            time.sleep(0.1)
-            i += 1
+        self.wait_for_stopped()
 
         if self.datafetcher is not None:
             self.datafetcher.stop()
