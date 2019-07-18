@@ -263,6 +263,9 @@ class TestDataManager(TestBase):
                                         "local",
                                         "raw")
 
+        if not os.path.exists(target_file_base):
+            os.makedirs(target_file_base)
+
         time.sleep(0.5)
         try:
             n_iter = self.stop - self.start
@@ -299,6 +302,7 @@ class TestDataManager(TestBase):
         except Exception as excp:
             self.log.error("Exception detected: %s", excp,
                            exc_info=True)
+            raise
         finally:
             self.stop_socket(name="com_socket")
             self.stop_socket(name="fixed_recv_socket")
