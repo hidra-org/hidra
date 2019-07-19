@@ -28,10 +28,10 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from .utils_network import start_socket, stop_socket
-
 import copy
 import json
+
+from .utils_network import start_socket, stop_socket
 
 
 class Base(object):
@@ -51,10 +51,13 @@ class Base(object):
                       is_ipv6=False,
                       zap_domain=None,
                       random_port=None,
-                      socket_options=[],
+                      socket_options=None,
                       message=None):
         """Wrapper of start_socket.
         """
+
+        if socket_options is None:
+            socket_options = []
 
         socket, _ = start_socket(
             name=name,
@@ -65,7 +68,7 @@ class Base(object):
             log=self.log,
             is_ipv6=is_ipv6,
             zap_domain=zap_domain,
-            random_port=None,
+            random_port=random_port,
             socket_options=socket_options,
             message=message
         )
@@ -102,13 +105,13 @@ class Base(object):
         """
 
         formated_config = copy.deepcopy(config)
-        #try:
-        #    # for better readability of named tuples
-        #    formated_config["network"]["endpoints"] = (
-        #        formated_config["network"]["endpoints"]._asdict()
-        #    )
-        #except KeyError:
-        #    pass
+#        try:
+#            # for better readability of named tuples
+#            formated_config["network"]["endpoints"] = (
+#                formated_config["network"]["endpoints"]._asdict()
+#            )
+#        except KeyError:
+#            pass
 
         try:
             formated_config = str(json.dumps(formated_config,

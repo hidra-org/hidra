@@ -22,7 +22,9 @@
 
 """
 This module implements an example for the QUERY-NEXT mode in.
-If there are multiple hidra instances on one signal_host, the port to communicate to is not fixed and thus has to be acquired over a control server instance first (enabled with the get_endpoint option).
+If there are multiple hidra instances on one signal_host, the port to
+communicate to is not fixed and thus has to be acquired over a control
+server instance first (enabled with the get_endpoint option).
 """
 
 from __future__ import absolute_import
@@ -30,7 +32,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-import hashlib
 import socket
 import sys
 

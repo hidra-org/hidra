@@ -122,11 +122,9 @@ class TestDataDispatcher(TestBase):
         )
         with self.assertRaises(utils.WrongConfiguration):
             datadispatcher_pr = DataDispatcher(**kwargs)
-            #datadispatcher_pr = Process(target=DataDispatcher, kwargs=kwargs)
-            #datadispatcher_pr.start()
 
-            # wait till Datadisaptcher is fully started, otherwise control messages
-            # are not reseived
+            # wait till Datadisaptcher is fully started, otherwise control
+            # messages are not reseived
             time.sleep(0.05)
 
             self.log.info("send exit signal")
@@ -134,7 +132,6 @@ class TestDataDispatcher(TestBase):
             datadispatcher_pr.join()
 
         self.stop_socket(name="control_socket", socket=control_socket)
-
 
     def disabled_test_datadispatcher(self):
         """Simulate incoming data and check if received events are correct.

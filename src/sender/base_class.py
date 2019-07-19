@@ -67,6 +67,8 @@ class Base(object):
         self.stats_collect_socket = None
         self.control_socket = None
 
+        self.stopped = None
+
     def _base_check(self, module_class, check_dep=True):
         """
         eg. module_class is "eventdetector"
@@ -141,7 +143,7 @@ class Base(object):
     def setup_stats_collection(self):
         """Sets up communication to stats server.
         """
-        endpoints = self.config["network"]["endpoints"]
+        endpoints = self.config_all["network"]["endpoints"]
 
         self.stats_collect_socket = self.start_socket(
             name="stats_collect_socket",
@@ -150,7 +152,7 @@ class Base(object):
             endpoint=endpoints.stats_collect_con
         )
 
-    def stats_config(self):
+    def stats_config(self):  # pylint: disable=no-self-use
         """Mapping for stats server.
         """
         return {}
@@ -206,7 +208,7 @@ class Base(object):
                      sock_con,
                      endpoint,
                      random_port=None,
-                     socket_options=[],
+                     socket_options=None,
                      message=None):
         """Wrapper of start_socket
 
@@ -222,6 +224,9 @@ class Base(object):
         Returns:
             The ZMQ socket with the specified properties.
         """
+
+        if socket_options is None:
+            socket_options = []
 
         socket, port = utils.start_socket(
             name=name,

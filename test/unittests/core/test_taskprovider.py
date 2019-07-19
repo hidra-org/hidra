@@ -215,7 +215,6 @@ class TestTaskProvider(TestBase):
         )
 
         with mock.patch(mocked_fct) as mock_get_events:
-            #mock_get_events.return_value = [event_message_list]
             mock_get_events.side_effect = [event_message_list]
             taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
             taskprovider_pr.start()

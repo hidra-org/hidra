@@ -508,7 +508,7 @@ def start_socket(name,
                  is_ipv6=False,
                  zap_domain=None,
                  random_port=None,
-                 socket_options=[],
+                 socket_options=None,
                  message=None):
     """Creates a zmq socket.
 
@@ -529,6 +529,9 @@ def start_socket(name,
         message (optional): wording to be used in the message
                             (default: Start).
     """
+
+    if socket_options is None:
+        socket_options = []
 
     if message is None:
         message = "Start"

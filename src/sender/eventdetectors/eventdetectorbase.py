@@ -34,7 +34,6 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 
-import json
 import os
 import sys
 

@@ -99,14 +99,14 @@ def argument_parsing():
                         action="store_true")
 
     args = parser.parse_args()
-    config = _merge_with_config(args)
+    config = _merge_with_config(args, parser)
 
     check_config(config)
 
     return config
 
 
-def _merge_with_config(args):
+def _merge_with_config(args, parser):
     """
     Takes the comand line arguments and overwrites the parameter of the confi
     file with it.
@@ -117,8 +117,8 @@ def _merge_with_config(args):
     # hidra config
     eventdetector = {
         "http_events": {
-                "det_ip": args_dict["det"],
-            }
+            "det_ip": args_dict["det"],
+        }
     }
     if args_dict["detapi"] is not None:
         eventdetector["http-events"]["det_api_version"] = args_dict["det_api"]

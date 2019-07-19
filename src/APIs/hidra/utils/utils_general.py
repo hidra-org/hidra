@@ -43,7 +43,7 @@ import sys
 try:
     import pwd
 except ImportError:
-    #on windows
+    # on windows
     pass
 
 from ._version import __version__
@@ -596,6 +596,7 @@ def _read_status_init(service, log):
     """
 
     raise NotSupported("Using init script is not implemented (yet)!")
+    # pylint: disable=unreachable
 
     cmd = ["service", service, "status"]
 

@@ -915,16 +915,17 @@ class DataManager(Base):
         """
 
         if self.use_statserver:
+            # bug in pylint pylint: disable=bad-continuation
             self.statserver = Process(target=StatServer,
                                       args=(
                                           self.config,
                                           self.log_queue
+                                          )
                                       )
-                                     )
             self.statserver.start()
 
         # SignalHandler
-        # "bug in pylint pylint: disable=bad-continuation
+        # bug in pylint pylint: disable=bad-continuation
         self.signalhandler_thr = threading.Thread(target=SignalHandler,
                                                   args=(
                                                       self.config,
@@ -946,7 +947,7 @@ class DataManager(Base):
             return
 
         # TaskProvider
-        # "bug in pylint pylint: disable=bad-continuation
+        # bug in pylint pylint: disable=bad-continuation
         self.taskprovider_pr = Process(target=TaskProvider,
                                        args=(
                                            self.config,

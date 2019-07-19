@@ -41,6 +41,7 @@ import traceback
 
 try:
     # Queuehandler and Listener are part of logging in python3
+    # pylint: disable=invalid-name
     QueueListener = logging.handlers.QueueListener
     QueueHandler = logging.handlers.QueueHandler
 except AttributeError:

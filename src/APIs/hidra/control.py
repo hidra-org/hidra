@@ -145,7 +145,6 @@ class Control(Base):
                 self.log.error("Beamline %s not supported", self.beamline)
                 sys.exit(1)
 
-
         # Create ZeroMQ context
         self.log.info("Registering ZMQ context")
         self.context = zmq.Context()
@@ -230,7 +229,6 @@ class Control(Base):
             self.log.error("Action not allowed (detector is not in netgroup)")
             return
 
-
         msg = [
             b"get",
             self.host.encode(),
@@ -251,7 +249,7 @@ class Control(Base):
             # python 3 does not allow byte objects here
             # python <= 3.4 raises Value Error
             return reply.encode()
-        except json.decoder.JSONDecodeError:
+        except json.decoder.JSONDecodeError:  # pylint: disable=no-member
             # python 3 does not allow byte objects here
             return reply.encode()
 

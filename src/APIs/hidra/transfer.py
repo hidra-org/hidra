@@ -446,7 +446,7 @@ class Transfer(Base):
             do_check=False
         )
 
-        #com port
+        # com port
         answer = control.get("com_port")
         if answer == b"ERROR":
             raise CommunicationFailed("Error when receiving signal/com port")

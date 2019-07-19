@@ -32,11 +32,11 @@ from __future__ import unicode_literals
 
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
-from builtins import dict  # efficient py2 + py3 dict iteration
+# efficient py2 + py3 dict iteration
+from builtins import dict  # noqa F401 # pylint: disable=redefined-builtin
 
 import argparse
 import copy
-import glob
 import json
 import os
 import sys
@@ -194,7 +194,7 @@ class ConfigHandling(utils.Base):
         self.reply_codes = REPLYCODES
 
         self.use_statserver = None
-        self.stats_expose_sockets = {}
+        self.stats_expose_socket = None
         self.stats_expose_endpt_tmpl = None
 
         self.timeout = 1000
@@ -205,8 +205,9 @@ class ConfigHandling(utils.Base):
 
         self.config_prefix = "datamanager_"
         self.hidra_config_file = os.path.join(
-            CONFIG_DIR,
-            "{}{}_{}.yaml".format(self.config_prefix, self.beamline, self.det_id)
+            CONFIG_DIR, "{}{}_{}.yaml".format(self.config_prefix,
+                                              self.beamline,
+                                              self.det_id)
         )
 
         self.config_static = self.config["hidraconfig_static"]
@@ -260,7 +261,6 @@ class ConfigHandling(utils.Base):
         self.stats_expose_sockets = {}
         self.stats_expose_endpt_tmpl = "ipc:///tmp/hidra/{}_stats_exposing"
 
-
         # add variable config
         config_g = self.config_variable["general"]
         config_df = self.config_variable["datafetcher"]
@@ -268,8 +268,8 @@ class ConfigHandling(utils.Base):
         # fill in beamline into config parameter placeholder
         for param in ["log_name", "procname", "username"]:
             config_g[param] = config_g[param].format(bl=self.beamline)
-        config_df["local_target"] = config_df["local_target"].format(bl=self.beamline)
-
+        config_df["local_target"] = (config_df["local_target"]
+                                     .format(bl=self.beamline))
 
         # detemine static parameter
         self.config_static["general"]["username"] = config_g["username"]
@@ -283,7 +283,7 @@ class ConfigHandling(utils.Base):
         self.config_static["general"]["procname"] = (
             "{}_{}".format(config_g["procname"], self.det_id)
         )
-        df_type = self.config_static["datafetcher"]["type"]
+#        df_type = self.config_static["datafetcher"]["type"]
 #        try:
 #            self.config_static["datafetcher"][df_type]["local_target"] = (
 #                config_df["local_target"]
@@ -293,9 +293,8 @@ class ConfigHandling(utils.Base):
 #                "local_target": config_df["local_target"]
 #            }
         self.config_static["datafetcher"]["local_target"] = (
-           config_df["local_target"]
+            config_df["local_target"]
         )
-
 
         self._read_config()
 
@@ -371,9 +370,6 @@ class ConfigHandling(utils.Base):
 
         if self.remote_config is None:
             return self.reply_codes.error
-
-        #if param == "endpoints":
-        #    return self.remote_config["network"]["endpoints"]
 
         return self.remote_config["general"][param]
 
@@ -739,8 +735,6 @@ class HidraController(HidraServiceHandling):
 
     def _setup(self):
 
-        config_ctrl = self.config["controlserver"]
-
         self.confighandling = ConfigHandling(self.context,
                                              self.beamline,
                                              self.det_id,
@@ -910,7 +904,6 @@ class HidraController(HidraServiceHandling):
             return self.reply_codes.running
         else:
             return self.reply_codes.not_running
-
 
     def stop(self):
         """

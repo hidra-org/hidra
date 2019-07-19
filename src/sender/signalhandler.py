@@ -470,7 +470,9 @@ class SignalHandler(Base):
                         # e.g. list(a, b, c), remove index 1 and 2
                         # -> remove index 1 -> list(a, c)
                         #    remove index 2 -> error
-                        idxs_to_remove = [query[1] for query in possible_queries]
+                        idxs_to_remove = [
+                            query[1] for query in possible_queries
+                        ]
                         idxs_to_remove.sort(reverse=True)
                         self.log.debug("idxs_to_remove=%s", idxs_to_remove)
 
@@ -478,17 +480,18 @@ class SignalHandler(Base):
                         for i in idxs_to_remove:
                             try:
                                 self.log.debug(
-                                    "Remove leftover/dublicate registered query %s ",
-                                    self.registered_queries[i]
+                                    "Remove leftover/dublicate registered "
+                                    "query %s ", self.registered_queries[i]
                                 )
                                 del self.vari_requests[i]
                                 del self.registered_queries[i]
                             except Exception:
                                 self.log.debug("i=%s", i)
-                                self.log.debug("registered_queries=%s", self.registered_queries)
+                                self.log.debug("registered_queries=%s",
+                                               self.registered_queries)
                                 self.log.error(
-                                    "Could not remove leftover/dubplicate query",
-                                    exc_info=True
+                                    "Could not remove leftover/dubplicate "
+                                    "query", exc_info=True
                                 )
                                 raise
 

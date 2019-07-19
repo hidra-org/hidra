@@ -170,7 +170,7 @@ class MockZmqContext(mock.MagicMock):
             super().__init__(**kwargs)
         except RuntimeError:
             # happens when run with python2 because of the mock module
-            super(MockZmqcontext, self).__init__(**kwargs)
+            super(MockZmqContext, self).__init__(**kwargs)
         self._destroyed = False
         self.IPV6 = None  # pylint: disable=invalid-name
         self.RCVTIMEO = None  # pylint: disable=invalid-name
