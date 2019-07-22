@@ -1063,6 +1063,31 @@ class DataManager(Base):
             )
         return status
 
+    def check_hanging(self, log=True):
+        is_hanging = False
+
+        # detecting hanging processes
+        if (self.signalhandler_thr is not None
+                and self.signalhandler_thr.is_alive()):
+            if log: self.log.error("SignalHandler hangs.")
+            is_hanging = True
+
+        if (self.taskprovider_pr is not None
+                and self.taskprovider_pr.is_alive()):
+            if log: self.log.error("TaskProvider hangs.")
+            is_hanging = True
+
+        if self.use_cleaner and self.cleaner_pr.is_alive():
+            if log: self.log.error("Cleaner hangs.")
+            is_hanging = True
+
+        for i, datadispatcher in enumerate(self.datadispatcher_pr):
+            if datadispatcher is not None and datadispatcher.is_alive():
+                if log: self.log.error("DataDispatcher-%s hangs.", i)
+                is_hanging = True
+
+        return is_hanging
+
     def stop(self):
         """Close socket and clean up.
         """
@@ -1076,6 +1101,18 @@ class DataManager(Base):
             self.log.info("Sending 'Exit' signal")
             self.control_pub_socket.send_multipart([b"control", b"EXIT"])
 
+            # check if the different processes where up and running (meaning
+            # are able to receive signals) otherwise this would result in
+            # hanging processes (zmq slow joiner problem)
+            for i in range(5):
+                if self.check_hanging(log=False):
+                    self.log.debug("Waiting for processes to finish, resending "
+                                   "'EXIT' signal (try %s)", i)
+                    time.sleep(1)
+                    self.control_pub_socket.send_multipart([b"control", b"EXIT"])
+                else:
+                    break
+
         # closing control fowarding
         if self.device is not None:
             self.log.info("Stopping forwarder device")
@@ -1087,17 +1124,7 @@ class DataManager(Base):
         self.stop_socket(name="test_socket")
 
         # detecting hanging processes
-        if (self.signalhandler_thr is not None
-                and self.signalhandler_thr.is_alive()):
-            self.log.error("SignalHandler hangs.")
-        if (self.taskprovider_pr is not None
-                and self.taskprovider_pr.is_alive()):
-            self.log.error("TaskProvider hangs.")
-        if self.use_cleaner and self.cleaner_pr.is_alive():
-            self.log.error("Cleaner hangs.")
-        for datadispatcher in self.datadispatcher_pr:
-            if datadispatcher is not None and datadispatcher.is_alive():
-                self.log.error("DataDispatcher hangs.")
+        self.check_hanging(log=True)
         if (self.statserver is not None
                 and self.statserver.is_alive()):
             self.log.error("StatServer hangs.")
