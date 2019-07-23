@@ -43,7 +43,7 @@ if [[ "$(docker images -q ${DOCKER_IMAGE} 2> /dev/null)" == "" ]]; then
     docker build -f ./Dockerfile.build_centos -t ${DOCKER_IMAGE} .
 fi
 
-cmd="cd /home/rpmbuild/SPECS; rpmbuild -ba -D 'dist .el7' hidra.spec"
+cmd="cd ~/rpmbuild/SPECS; rpmbuild -ba -D 'dist .el7' hidra.spec"
 
 PASSWD_FILE=/tmp/passwd_x
 GROUP_FILE=/tmp/group_x
@@ -62,10 +62,10 @@ docker create -it \
     --name ${DOCKER_CONTAINER} \
     ${DOCKER_IMAGE} \
     bash
-docker start ${DOCKER_CONTAINER}
-docker exec --user=$(id -u $USER):$(id -g $USER) ${DOCKER_CONTAINER} sh -c "$cmd"
-docker stop ${DOCKER_CONTAINER}
-docker rm ${DOCKER_CONTAINER}
+docker start ${DOCKER_CONTAINER} > /dev/null && echo "Started container"
+docker exec --user=$(id -u $USER):$(id -g $USER) ${DOCKER_CONTAINER} sh -c "$cmd" && success=true
+docker stop ${DOCKER_CONTAINER} > /dev/null && echo "Stopped container"
+docker rm ${DOCKER_CONTAINER} > /dev/null && echo "Removed container"
 
 rm $PASSWD_FILE
 rm $GROUP_FILE
@@ -73,4 +73,9 @@ rm $GROUP_FILE
 #docker rmi ${DOCKER_IMAGE}
 #rm -rf ${MAPPED_DIR}/hidra
 
-echo "RPM packages can be found in ${MAPPED_DIR}"
+if [ "$success" == "true" ]; then
+    echo "RPM packages can be found in ${MAPPED_DIR}"
+else
+    echo "Building packages failed"
+    exit 1
+fi
