@@ -143,14 +143,19 @@ class Base(object):
     def setup_stats_collection(self):
         """Sets up communication to stats server.
         """
-        endpoints = self.config_all["network"]["endpoints"]
+        try:
+            endpoints = self.config_all["network"]["endpoints"]
 
-        self.stats_collect_socket = self.start_socket(
-            name="stats_collect_socket",
-            sock_type=zmq.PUSH,
-            sock_con="connect",
-            endpoint=endpoints.stats_collect_con
-        )
+            self.stats_collect_socket = self.start_socket(
+                name="stats_collect_socket",
+                sock_type=zmq.PUSH,
+                sock_con="connect",
+                endpoint=endpoints.stats_collect_con
+            )
+        except Exception:
+            self.log.error("Error when setting up stats collection",
+                           exc_info=True)
+            raise
 
     def stats_config(self):  # pylint: disable=no-self-use
         """Mapping for stats server.
