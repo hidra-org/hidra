@@ -326,7 +326,14 @@ class Control(Base):
         reply = self.socket.recv().decode()
 
         if command in ["get_instances"]:
-            reply = json.loads(reply)
+            try:
+                reply = json.loads(reply)
+            except ValueError:
+                # python 2, for compatibility with 4.0.23
+                return reply
+            except json.decoder.JSONDecodeError:
+                # python 3, for compatibility with 4.0.23
+                return reply
 
         self.log.debug("recv: %s", reply)
 
