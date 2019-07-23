@@ -93,6 +93,9 @@ class SignalHandler(Base):
 
         super().__init__()
 
+        # needed to initialize base_class
+        self.config_all = config
+        # signal handler does not have a stripped down config
         self.config = config
         self.endpoints = endpoints
 
