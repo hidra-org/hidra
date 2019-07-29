@@ -93,29 +93,6 @@ def linux_specific():
          os.path.join("conf", "datamanager.yaml"))
     ]
 
-    # Workaround for including setproctitle when building on SuSE 10
-    dist = platform.dist()
-    if dist[0].lower() == "suse" and dist[1].startswith("10"):
-        architecture_type = platform.architecture()[0]
-        if architecture_type == "64bit":
-            archi_t = "x86_64"
-        else:
-            archi_t = "i686"
-        setproctitle_egg_path = (
-            os.path.join(
-                os.path.expanduser("~"),
-                ".cache/Python-Eggs/"
-                "setproctitle-1.1.10-py2.7-linux-" + archi_t + ".egg-tmp/"
-                "setproctitle.so"
-            )
-        )
-
-        if not os.path.exists(setproctitle_egg_path):
-            import setproctitle
-            setproctitle_egg_path = setproctitle.__file__
-
-        files += [(setproctitle_egg_path, "setproctitle.so")]
-
     return packages, files
 
 
