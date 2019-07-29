@@ -1,4 +1,4 @@
-# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+# Copyright (C) 2015 DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
 #
 # HiDRA is a generic tool set for high performance data multiplexing with
 # different qualities of service and based on Python and ZeroMQ.
@@ -19,14 +19,10 @@
 # Authors:
 #     Manuela Kuhn <manuela.kuhn@desy.de>
 #
-
-# For Linux:
-# Tested with cx_Freeze 4.3.4 after fixing the this installation bug:
-# http://stackoverflow.com/questions/25107697/compiling-cx-freeze-under-ubuntu
 #
-# For Windows:
-# Tested with cx_Freeze 4.3.3 installed with pip
-
+# Important: dependencies have to be installed with pip and not setup.py
+#            because e.g. installing setproctitle will result in an
+#            .egg-file which cx_Freeze cannot handle.
 
 """
 This module freezes hidra to be able to run in on systems without installing
@@ -52,8 +48,6 @@ UTILSPATH = os.path.join(APIPATH, "utils")
 CONFPATH = os.path.join(BASEPATH, "conf")
 PYTHON_PATH = os.path.dirname(get_python_lib())
 
-WORKAROUND_FILES = []
-
 
 def get_zmq_path():
     """Find the correct zmq path
@@ -63,6 +57,9 @@ def get_zmq_path():
 #    path = os.path.join(get_python_lib(), "zmq")
 #    LIBZMQ_PATH = "C:\Python27\Lib\site-packages\zmq"
 #    LIBZMQ_PATH = "/usr/local/lib/python2.7/dist-packages/zmq"
+
+#    libzmq.pyd is a vital dependency
+#    "include_files": [zmq.libzmq.__file__, ],
 
     return path
 
@@ -148,35 +145,29 @@ else:
 if sys.version_info >= (3, 0):
     VERSION_SPECIFIC_PACKAGES = ["configparser"]
 else:
-    VERSION_SPECIFIC_PACKAGES = ["ConfigParser", "pathlib2"]
-
-WORKAROUND_FILES += [
-    # needed to make pathlib2 work, cx_Freeze does not imclude ntpath
-    # although it is a standard builtin module
-    (os.path.join(PYTHON_PATH, "ntpath.py"), "ntpath.py")
-]
+    VERSION_SPECIFIC_PACKAGES = [
+        "ConfigParser",
+        # otherwise loutils cannot be found
+        # ImportError: No module named logutils.queue
+        "logutils",
+        "pathlib2"
+    ]
 
 # Dependencies are automatically detected, but it might need fine tuning.
 BUILD_EXE_OPTIONS = {
     "packages": (
         [
-            "ast",
-            "logging.handlers",
-            "logutils",
-            "setproctitle",
-            "future",
+            # otherwise zmq.auth.thread cannot be found:
+            # ImportError: No module named auth.thread
             "zmq",
-            "yaml"
+            "yaml",
             # zmq.backend.cython seems to be left out by default
-            "zmq.backend.cython",
+            #"zmq.backend.cython",
         ]
         + VERSION_SPECIFIC_PACKAGES
         + PLATFORM_SPECIFIC_PACKAGES
     ),
-    # libzmq.pyd is a vital dependency
-    # "include_files": [zmq.libzmq.__file__, ],
     "include_files": [
-        (get_zmq_path(), "zmq"),
         (os.path.join(BASEPATH, "logs/.gitignore"),
          os.path.join("logs", ".gitignore")),
         (get_init(), "hidra.sh"),
@@ -188,6 +179,7 @@ BUILD_EXE_OPTIONS = {
         (os.path.join(SENDERPATH, "taskprovider.py"), "taskprovider.py"),
         (os.path.join(SENDERPATH, "signalhandler.py"), "signalhandler.py"),
         (os.path.join(SENDERPATH, "datadispatcher.py"), "datadispatcher.py"),
+        (os.path.join(SENDERPATH, "statserver.py"), "statserver.py"),
         # only for readability (not for actual code)
         (os.path.join(UTILSPATH, "_version.py"), "_version.py"),
         # event detectors
@@ -195,6 +187,10 @@ BUILD_EXE_OPTIONS = {
          os.path.join("eventdetectors", "eventdetectorbase.py")),
         (os.path.join(SENDERPATH, "eventdetectors", "inotifyx_events.py"),
          os.path.join("eventdetectors", "inotifyx_events.py")),
+        (os.path.join(SENDERPATH, "eventdetectors", "inotify_events.py"),
+         os.path.join("eventdetectors", "inotify_events.py")),
+        (os.path.join(SENDERPATH, "eventdetectors", "inotify_utils.py"),
+         os.path.join("eventdetectors", "inotify_utils.py")),
         (os.path.join(SENDERPATH, "eventdetectors", "watchdog_events.py"),
          os.path.join("eventdetectors", "watchdog_events.py")),
         (os.path.join(SENDERPATH, "eventdetectors", "http_events.py"),
@@ -214,7 +210,7 @@ BUILD_EXE_OPTIONS = {
          os.path.join("datafetchers", "cleanerbase.py")),
         # apis
         (APIPATH, "hidra"),
-    ] + PLATFORM_SPECIFIC_FILES + WORKAROUND_FILES,
+    ] + PLATFORM_SPECIFIC_FILES,
 }
 
 BDIS_MSI_OPTIONS = {
