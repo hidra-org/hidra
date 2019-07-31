@@ -218,8 +218,8 @@ then
     DAEMON=${BASEDIR}/src/sender/datamanager.py
     DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"
     LOG_DIRECTORY=/var/log/hidra
-    getsettings=${BASEDIR}/src/APIs/utils/getsettings.py
-    get_receiver_status=${BASEDIR}/src/APIs/utils/get_receiver_status.py
+    getsettings=${BASEDIR}/src/APIs/hidra/utils/getsettings.py
+    get_receiver_status=${BASEDIR}/src/APIs/hidra/utils/get_receiver_status.py
 else
     DAEMON=${BASEDIR}/datamanager
     DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"

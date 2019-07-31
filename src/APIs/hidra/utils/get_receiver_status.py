@@ -86,17 +86,19 @@ def main():
 
     host = args.host
 
-    default_config_file = "/opt/hidra/conf/datamanager.conf"
+    default_config_file = "/opt/hidra/conf/datamanager.yaml"
     config_file = args.config_file or default_config_file
 
     if host is not None and config_file is not None:
         parser.error("Either use --host or --config_file but not both.")
 
     if host is None:
-        params = utils.parse_parameters(
-            utils.load_config(config_file)
-        )["asection"]
-        data_stream_targets = params["data_stream_targets"]
+        params = utils.load_config(config_file)
+        # in case the config file was in the old config format
+        # (for backwards compatibility to 4.0.x)
+        config = utils.map_conf_format(params, "sender")
+
+        data_stream_targets = params["datafetcher"]["data_stream_targets"]
         hosts = [target[0] for target in data_stream_targets]
 
         # TODO make generic
