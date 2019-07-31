@@ -51,14 +51,18 @@ eventdetector:
         # Event type of files (options are: IN_CLOSE_WRITE, IN_MOVED_TO, ...)
         # and the formats to be monitored, files in an other format will be be
         # neglected
-        monitored events: &monitored_events
-           IN_MOVED_TO:
+        monitored_events: &monitored_events
+            IN_MOVED_TO:
                 - ".tif"
                 - ".cbf"
                 - ".img"
                 - ".edf"
             IN_CLOSE_WRITE:
                 - ".log"
+
+        # Timeout after which the event generator should return if no events
+        # where detected.
+        event_timeout: 1
 
         # Number of events stored to look for doubles
         history_size: 0
