@@ -201,15 +201,15 @@ then
         if [ -n "${detector}" ]
         then
             NAME=${SCRIPT_PROC_NAME}_${beamline}_${detector}
-            config_file=${CONFIGDIR}/datamanager_${beamline}_${detector}.conf
+            config_file=${CONFIGDIR}/datamanager_${beamline}_${detector}.yaml
         else
             NAME=${SCRIPT_PROC_NAME}_${beamline}
-            config_file=${CONFIGDIR}/datamanager_${beamline}.conf
+            config_file=${CONFIGDIR}/datamanager_${beamline}.yaml
         fi
         PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
     else
         printf "No beamline or detector specified. Fallback to default configuration file\n"
-        config_file=$CONFIGDIR/datamanager.conf
+        config_file=$CONFIGDIR/datamanager.yaml
     fi
 fi
 
@@ -218,8 +218,8 @@ then
     DAEMON=${BASEDIR}/src/sender/datamanager.py
     DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"
     LOG_DIRECTORY=/var/log/hidra
-    getsettings=${BASEDIR}/src/shared/getsettings.py
-    get_receiver_status=${BASEDIR}/src/shared/get_receiver_status.py
+    getsettings=${BASEDIR}/src/APIs/utils/getsettings.py
+    get_receiver_status=${BASEDIR}/src/APIs/utils/get_receiver_status.py
 else
     DAEMON=${BASEDIR}/datamanager
     DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"

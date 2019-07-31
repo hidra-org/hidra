@@ -26,17 +26,24 @@
 This is a helper script to get the status of the receiver.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
+import os
 import sys
 import traceback
 
-#import __init__  # noqa F401  # pylint: disable=unused-import
+# to make windows freeze work (cx_Freeze 5.x)
+try:
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+except NameError:
+    CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
 from hidra.control import ReceiverControl
 from hidra import CommunicationFailed
 import hidra.utils as utils
