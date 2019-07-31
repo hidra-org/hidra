@@ -22,10 +22,10 @@ override_dh_auto_install:
 	cp -r src/sender debian/tmp/opt/hidra/src
 	cp -r src/shared/*.py debian/tmp/opt/hidra/src/shared
 	cp -r src/hidra_control debian/tmp/opt/hidra/src
-	cp -r conf/base_sender.conf debian/tmp/opt/hidra/conf
-	cp -r conf/datamanager.conf debian/tmp/opt/hidra/conf
-	cp -r conf/base_receiver.conf debian/tmp/opt/hidra/conf
-	cp -r conf/datareceiver.conf debian/tmp/opt/hidra/conf
+	cp -r conf/base_sender.yaml debian/tmp/opt/hidra/conf
+	cp -r conf/datamanager.yaml debian/tmp/opt/hidra/conf
+	cp -r conf/base_receiver.yaml debian/tmp/opt/hidra/conf
+	cp -r conf/datareceiver.yaml debian/tmp/opt/hidra/conf
 	cp initscripts/*.service debian/tmp/lib/systemd/system
 %:
 	dh $@ --with python2

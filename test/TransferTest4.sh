@@ -12,7 +12,7 @@ onda_procname=example_onda
 
 
 python $BASEDIR/src/sender/datamanager.py \
-    --config_file $BASEDIR/test/datamanager.conf \
+    --config_file $BASEDIR/test/datamanager.yaml \
     --procname $procname \
     --log_path $BASEDIR/logs \
     --log_name ${procname}.log \

@@ -389,7 +389,7 @@ class ConfigHandling(utils.Base):
     def _read_config(self):
 
         # write configfile
-        # /etc/hidra/P01.conf
+        # /etc/hidra/P01.yaml
         config_file = self.get_config_file_name()
         self.log.info("Reading config files: %s", config_file)
 
@@ -438,7 +438,7 @@ class ConfigHandling(utils.Base):
             A absolute configuration file path as string.
         """
 
-        # /etc/hidra/P01_eiger01.conf
+        # /etc/hidra/P01_eiger01.yaml
         return os.path.join(
             CONFIG_DIR,
             self.config["controlserver"]["hidra_config_name"]

@@ -16,7 +16,6 @@ controlserver:
 
     # use {bl} as placeholder for the beamline and {det} for the detector
     hidra_config_name: datamanager_{bl}_{det}.yaml
-#    hidra_config_name: datamanager_{bl}_{det}.conf
 
 hidraconfig_static:
     general:

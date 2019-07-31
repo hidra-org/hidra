@@ -10,7 +10,7 @@ One which runs the HiDRA datamanager, one for the datareceiver and one which set
 ## sender
 
 * Clone hidra repo
-* If necessary modify conf/datamanager_docker.conf
+* If necessary modify conf/datamanager_docker.yaml
 * Create docker image (give it for example the name "sender_test").
 ```
 docker build -t sender_test -f Dockerfile.sender .
@@ -31,7 +31,7 @@ docker run -it -v <hidra location>:/opt/hidra -v <source>:/ramdisk --net=host se
 
 #### Migrate data locally
 
-* Change conf/datamanager_docker.conf: Enable storing of data
+* Change conf/datamanager_docker.yaml: Enable storing of data
 ```
 store_data = True
 ```
@@ -43,7 +43,7 @@ docker run -it -v <hidra location>:/opt/hidra -v <source>:/ramdisk -v <target>:/
 ## receiver
 
 * Clone hidra repo
-* If necessary modify conf/datareceiver_docker.conf
+* If necessary modify conf/datareceiver_docker.yaml
 * Create docker image (give it for example the name "receiver_test").
 ```
 docker build -t receiver_test -f Dockerfile.receiver .

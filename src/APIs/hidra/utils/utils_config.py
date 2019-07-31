@@ -56,7 +56,7 @@ def determine_config_file(fname_base, config_dir):
 
     Args:
         fname_base: the file name base of the config file
-                    e.g. fname_base for base_sender.conf would be base_sender
+                    e.g. fname_base for base_sender.yaml would be base_sender
         config_dir: the directory where the config files can be found
     Returns:
         The base config file (full path).

@@ -184,9 +184,9 @@ HIDRA_ERROR hidraIngest_init (hidraIngest **out)
 //    dI->signalHost      = "zitpcx22614w";
     dI->signalPort      = "50050";
 
-    // has to be the same port as configured in dataManager.conf as eventDetPort
+    // has to be the same port as configured in dataManager.yaml as eventDetPort
     dI->eventDetPort    = "50003";
-    // has to be the same port as configured in dataManager.conf as dataFetchPort
+    // has to be the same port as configured in dataManager.yaml as dataFetchPort
     dI->dataFetchPort   = "50010";
 
     char signalConId[128];

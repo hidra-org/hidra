@@ -76,7 +76,7 @@ cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
-cp conf/datamanager.conf conf/datareceiver.conf conf/base_receiver.conf conf/base_sender.conf %{buildroot}/opt/%{name}/conf/
+cp conf/datamanager.yamlf conf/datareceiver.yaml conf/base_receiver.yaml conf/base_sender.yaml %{buildroot}/opt/%{name}/conf/
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
