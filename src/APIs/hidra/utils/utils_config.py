@@ -105,7 +105,7 @@ def load_config(config_file, config_type=None, log=logging):
             try:
                 configparser.readfp(_FakeSecHead(open(config_file)))
             # TODO why was this necessary?
-            except:  # pylint: disable=bare-except
+            except Exception:
                 with open(config_file, 'r') as open_file:
                     config_string = '[asection]\n' + open_file.read()
                 configparser.read_string(config_string)

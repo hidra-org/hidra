@@ -55,7 +55,7 @@ def get_arguments():
 
     parser.add_argument("--config_file",
                         type=str,
-                        default="/opt/hidra/conf/datamanager.conf",
+                        default="/opt/hidra/conf/datamanager.yaml",
                         help="Location of the configuration file")
 
     return parser.parse_args()
@@ -68,26 +68,31 @@ def main():
     args = get_arguments()
 
     config_file = args.config_file
-    params = utils.parse_parameters(utils.load_config(config_file))["asection"]
+    params = utils.load_config(config_file)
+    # in case the config file was in the old config format
+    # (for backwards compatibility to 4.0.x)
+    config = utils.map_conf_format(params, "sender")
+
+    config_ed = config["eventdetector"][config["eventdetector"]["type"]]
 
     print("Configured settings:")
-    print("Monitored direcory:            {}".format(params["monitored_dir"]))
-    print("Watched subdirectories are:    {}".format(params["fix_subdirs"]))
+    print("Monitored direcory: {}".format(config_ed["monitored_dir"]))
+    print("Watched subdirectories are: {}".format(config_ed["fix_subdirs"]))
 
-    msg = "Data is written to:            {}"
-    if params["store_data"]:
-        print(msg.format(params["local_target"]))
+    msg = "Data is written to: {}"
+    if config["datafetcher"]["store_data"]:
+        print(msg.format(config["datafetcher"]["local_target"]))
     else:
         print(msg.format("Data is not stored locally"))
 
-    msg = "Data is sent to:               {}"
-    if params["use_data_stream"]:
-        print(msg.format(params["data_stream_targets"]))
+    msg = "Data is sent to: {}"
+    if config["datafetcher"]["use_data_stream"]:
+        print(msg.format(config["datafetcher"]["data_stream_targets"]))
     else:
         print(msg.format("Data is not sent as priority stream anywhere"))
 
-    print("Remove data from the detector: {}".format(params["remove_data"]))
-    print("Whitelist:                     {}".format(params["whitelist"]))
+    print("Remove data from the detector: {}".format(config["datafetcher"]["remove_data"]))
+    print("Whitelist: {}".format(config["general"]["whitelist"]))
 
 
 if __name__ == "__main__":
