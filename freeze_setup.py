@@ -161,8 +161,6 @@ BUILD_EXE_OPTIONS = {
             # ImportError: No module named auth.thread
             "zmq",
             "yaml",
-            # zmq.backend.cython seems to be left out by default
-            #"zmq.backend.cython",
         ]
         + VERSION_SPECIFIC_PACKAGES
         + PLATFORM_SPECIFIC_PACKAGES
