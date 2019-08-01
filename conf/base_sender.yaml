@@ -21,6 +21,10 @@ general:
     control_pub_port: 50005
     control_sub_port: 50006
 
+    # IP/DNS name of the interface to bind to for external communication
+    ext_ip: 0.0.0.0
+    #ext_ip: asap3-p00
+
     # Use an additional process to collect all contig parameter
     use_statserver: False
 

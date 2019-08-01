@@ -13,10 +13,6 @@ general:
     # Name with which the service should be running
     procname: hidra
 
-    # IP/DNS name of the interface to bind to for external communication
-    ext_ip: 0.0.0.0
-    #ext_ip: asap3-p00
-
     # List of hosts allowed to connect. Options are:
     # [] - Nobody is allowed to connect
     # [<host>, <host>] - The hosts in the list are allowed to connect.
