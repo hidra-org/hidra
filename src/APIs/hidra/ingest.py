@@ -1,31 +1,53 @@
-# API to ingest data into a data transfer unit
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
 
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+API to ingest data into a data transfer unit
+"""
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
-import os
-import platform
-import zmq
-import logging
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import json
-import tempfile
+import logging
+import os
 import socket
+import tempfile
+import zmq
 
-# from ._version import __version__
-from ._shared_utils import LoggingFunction, Base
-
-
-def is_windows():
-    if platform.system() == "Windows":
-        return True
-    else:
-        return False
+from .utils import LoggingFunction, Base, is_windows
 
 
 class Ingest(Base):
-    # return error code
+    """Ingest data into a hidra instance.
+    """
+
     def __init__(self, use_log=False, context=None):
+
+        super().__init__()
 
         self.log = None
         self.context = None
@@ -41,8 +63,8 @@ class Ingest(Base):
 
         self.signal_host = None
         self.signal_port = None
-        self.event_det_port = None
-        self.data_fetch_port = None
+        self.eventdetector_port = None
+        self.datafetcher_port = None
 
         self.signal_endpoint = None
         self.eventdet_endpoint = None
@@ -63,15 +85,20 @@ class Ingest(Base):
 
     def _setup(self, use_log, context):
 
+        # pylint: disable=redefined-variable-type
+
         # print messages of certain level to screen
         if use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(use_log)
+
         # use logging
         elif use_log:
             self.log = logging.getLogger("Ingest")
+
         # use no logging at all
         elif use_log is None:
             self.log = LoggingFunction(None)
+
         # print everything to screen
         else:
             self.log = LoggingFunction("debug")
@@ -92,12 +119,12 @@ class Ingest(Base):
 #        self.localhost = socket.gethostbyaddr("localhost")[2][0]
         try:
             socket.inet_aton(self.localhost)
-            self.log.info("IPv4 address detected for localhost: {}."
-                          .format(self.localhost))
+            self.log.info("IPv4 address detected for localhost: %s.",
+                          self.localhost)
             self.localhost_is_ipv6 = False
         except socket.error:
-            self.log.info("Address '{}' is not a IPv4 address, asume it is "
-                          "an IPv6 address.".format(self.localhost))
+            self.log.info("Address '%s' is not a IPv4 address, asume it is "
+                          "an IPv6 address.", self.localhost)
             self.localhost_is_ipv6 = True
 
         self.ext_ip = "0.0.0.0"
@@ -107,22 +134,23 @@ class Ingest(Base):
         self.signal_port = "50050"
 
         # has to be the same port as configured in the configuration file
-        # as event_det_port
-        self.event_det_port = "50003"
+        # as eventdetector_port
+        self.eventdetector_port = "50003"
         # has to be the same port as configured in the configuration file
         # as ...
-        self.data_fetch_port = "50010"
+        self.datafetcher_port = "50010"
 
         self.signal_endpoint = "tcp://{}:{}".format(self.signal_host,
                                                     self.signal_port)
 
         if is_windows():
             self.log.info("Using tcp for internal communication.")
-            self.eventdet_endpoint = "tcp://{}:{}".format(self.localhost,
-                                                          self.event_det_port)
+            self.eventdet_endpoint = ("tcp://{}:{}"
+                                      .format(self.localhost,
+                                              self.eventdetector_port))
             self.datafetch_endpoint = ("tcp://{}:{}"
                                        .format(self.localhost,
-                                               self.data_fetch_port))
+                                               self.datafetcher_port))
         else:
             self.log.info("Using ipc for internal communication.")
             self.eventdet_endpoint = "ipc://{}/{}".format(self.ipc_dir,
@@ -180,8 +208,13 @@ class Ingest(Base):
             is_ipv6=is_ipv6
         )
 
-    # return error code
     def create_file(self, filename):
+        """Notify hidra to open a file.
+
+        Args:
+            filename: The name of the file to create.
+        """
+
         signal = b"OPEN_FILE"
 
         if self.filename and self.filename != filename:
@@ -192,17 +225,23 @@ class Ingest(Base):
         self.log.info("Sending signal to open a new file.")
 
         message = self.file_op_socket.recv_multipart()
-        self.log.debug("Received responce: {}".format(message))
+        self.log.debug("Received responce: %s", message)
 
         if signal == message[0] and filename == message[1]:
             self.filename = filename
             self.filepart = 0
         else:
-            self.log.debug("signal={} and filename={}"
-                           .format(signal, filename))
-            raise Exception("Wrong responce received: {}".format(message))
+            self.log.debug("signal=%s and filename=%s", signal, filename)
+            raise Exception("Wrong responce received: %s", message)
 
     def write(self, data):
+        """Write data into the file.
+
+        Args:
+            data: The data to be written (as binary block).
+        """
+        # pylint: disable=redefined-variable-type
+
         # send event to eventdet
         message = {
             "filename": self.filename,
@@ -217,10 +256,12 @@ class Ingest(Base):
         # send data to ZMQ-Queue
         self.datafetch_socket.send(data)
         self.filepart += 1
-#        self.log.debug("write action sent: {0}".format(message))
+#        self.log.debug("write action sent: %s", message)
 
-    # return error code
     def close_file(self):
+        """Close the file.
+        """
+
         # send close-signal to signal socket
         send_message = [b"CLOSE_FILE", self.filename]
         try:
@@ -234,15 +275,14 @@ class Ingest(Base):
         try:
             self.eventdet_socket.send_multipart(send_message)
             self.log.debug("Sending signal to close the file to "
-                           "eventdet_socket (send_message={})"
-                           .format(send_message))
+                           "eventdet_socket (send_message=%s)", send_message)
         except:
             raise Exception("Sending signal to close the file to "
                             "eventdet_socket...failed")
 
         try:
             socks = dict(self.poller.poll(10000))  # in ms
-        except:
+        except Exception:
             socks = None
             self.log.error("Could not poll for signal", exc_info=True)
 
@@ -253,14 +293,13 @@ class Ingest(Base):
             self.log.info("Received answer to signal...")
             #  Get the reply.
             recv_message = self.file_op_socket.recv_multipart()
-            self.log.info("Received answer to signal: {}"
-                          .format(recv_message))
+            self.log.info("Received answer to signal: %s", recv_message)
         else:
             recv_message = None
 
         if recv_message != send_message:
-            self.log.debug("received message: {}".format(recv_message))
-            self.log.debug("send message: {}".format(send_message))
+            self.log.debug("received message: %s", recv_message)
+            self.log.debug("send message: %s", send_message)
             raise Exception("Something went wrong while notifying to close "
                             "the file")
 
@@ -271,13 +310,13 @@ class Ingest(Base):
         """
         Send signal that the displayer is quitting, close ZMQ connections,
         destoying context
-
         """
+
         try:
             self._stop_socket(name="file_op_socket")
             self._stop_socket(name="eventdet_socket")
             self._stop_socket(name="datafetch_socket")
-        except:
+        except Exception:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
         # if the context was created inside this class,
@@ -288,10 +327,10 @@ class Ingest(Base):
                 self.context.destroy(0)
                 self.context = None
                 self.log.info("Closing ZMQ context...done.")
-            except:
+            except Exception:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):

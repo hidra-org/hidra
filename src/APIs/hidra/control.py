@@ -1,79 +1,64 @@
-# API to communicate with a data transfer unit
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
 
-from __future__ import print_function
-# from __future__ import unicode_literals
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+API to communicate with a hidra control server or with a hidra receiver.
+"""
+
 from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
 
 import json
 import logging
 import os
-import re
 import socket
-import subprocess
 import sys
 import zmq
 
-# from ._version import __version__
-from ._constants import connection_list
-from ._shared_utils import LoggingFunction, Base, execute_ldapsearch
-
-
-class NotSupported(Exception):
-    pass
-
-
-class UsageError(Exception):
-    pass
-
-
-class FormatError(Exception):
-    pass
-
-
-class ConnectionFailed(Exception):
-    pass
-
-
-class VersionError(Exception):
-    pass
-
-
-class AuthenticationFailed(Exception):
-    pass
-
-
-class CommunicationFailed(Exception):
-    pass
-
-
-def check_netgroup(hostname, beamline, ldapuri, netgroup_template, log=None):
-
-    if log is None:
-        log = LoggingFunction(None)
-    elif log:
-        pass
-    else:
-        log = LoggingFunction("debug")
-
-    netgroup_name = netgroup_template.format(bl=beamline)
-    netgroup = execute_ldapsearch(log, netgroup_name, ldapuri)
-
-    # convert host to fully qualified DNS name
-    hostname = socket.getfqdn(hostname)
-
-    if hostname not in netgroup:
-        log.error("Host {} is not contained in netgroup of "
-                  "beamline {}".format(hostname, beamline))
-        sys.exit(1)
+from ._constants import CONNECTION_LIST
+from .utils import (
+    CommunicationFailed,
+    NotAllowed,
+    LoggingFunction,
+    Base,
+    check_netgroup
+)
 
 
 class Control(Base):
+    """Communicate with a hidra control server.
+    """
+
     def __init__(self,
                  beamline,
                  detector,
                  ldapuri,
                  netgroup_template,
-                 use_log=False):
+                 use_log=False,
+                 do_check=True):
         """
         Enables controlling like starting/stopping or setting of parameters of
         a HiDRA instance. Such an instance is started for a specific beamline
@@ -91,30 +76,40 @@ class Control(Base):
             use_log (optional): Specified the logging type.
         """
 
+        super().__init__()
+
         self.beamline = beamline
-        self.detector = detector
+        self.detector = socket.getfqdn(detector)
         self.ldapuri = ldapuri
         self.netgroup_template = netgroup_template
         self.use_log = use_log
+        self.do_check = do_check
 
         self.log = None
         self.current_pid = None
         self.host = None
         self.context = None
         self.socket = None
+        self.stop_only = False
 
         self._setup()
 
     def _setup(self):
+
+        # pylint: disable=redefined-variable-type
+
         # print messages of certain level to screen
         if self.use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(self.use_log)
+
         # use logging
         elif self.use_log:
             self.log = logging.getLogger("Control")
+
         # use no logging at all
         elif self.use_log is None:
             self.log = LoggingFunction(None)
+
         # print everything to screen
         else:
             self.log = LoggingFunction("debug")
@@ -122,28 +117,33 @@ class Control(Base):
         self.current_pid = os.getpid()
         self.host = socket.getfqdn()
 
-        # check host running control script
-        check_netgroup(self.host,
-                       self.beamline,
-                       self.ldapuri,
-                       self.netgroup_template,
-                       self.log)
-        # check detector
-        check_netgroup(self.detector,
-                       self.beamline,
-                       self.ldapuri,
-                       self.netgroup_template,
-                       self.log)
+        if self.do_check:
+            # check host running control script
+            check_netgroup(self.host,
+                           self.beamline,
+                           self.ldapuri,
+                           self.netgroup_template,
+                           self.log)
 
-        try:
-            endpoint = "tcp://{}:{}".format(
-                connection_list[self.beamline]["host"],
-                connection_list[self.beamline]["port"]
-            )
-            self.log.info("Starting connection to {}".format(endpoint))
-        except KeyError:
-            self.log.error("Beamline {} not supported".format(self.beamline))
-            sys.exit(1)
+            try:
+                endpoint = "tcp://{}:{}".format(
+                    CONNECTION_LIST[self.beamline]["host"],
+                    CONNECTION_LIST[self.beamline]["port"]
+                )
+                self.log.info("Starting connection to %s", endpoint)
+            except KeyError:
+                self.log.error("Beamline %s not supported", self.beamline)
+                sys.exit(1)
+        else:
+            try:
+                endpoint = "tcp://{}:{}".format(
+                    self.beamline["host"],
+                    self.beamline["port"]
+                )
+                self.log.info("Starting connection to %s", endpoint)
+            except KeyError:
+                self.log.error("Beamline %s not supported", self.beamline)
+                sys.exit(1)
 
         # Create ZeroMQ context
         self.log.info("Registering ZMQ context")
@@ -158,6 +158,27 @@ class Control(Base):
         )
 
         self._check_responding()
+
+        if self.do_check:
+            # check detector
+            check_res = check_netgroup(
+                self.detector,
+                self.beamline,
+                self.ldapuri,
+                self.netgroup_template,
+                self.log,
+                raise_if_failed=False
+            )
+
+            if not check_res:
+                # beamline is only allowed to stop its own istance nothing else
+                if self.detector in self.do("get_instances"):
+                    self.stop_only = True
+                else:
+                    raise NotAllowed(
+                        "Host {} is not contained in netgroup of beamline {}"
+                        .format(self.detector, self.beamline)
+                    )
 
     def _check_responding(self):
         """ Check if the control server is responding.
@@ -187,7 +208,7 @@ class Control(Base):
             self.log.info("HiDRA control server up and answering.")
         else:
             self.log.error("HiDRA control server is in failed state.")
-            self.log.debug("responce was: {}".format(responce))
+            self.log.debug("responce was: %s", responce)
             self.stop(unregister=False)
             sys.exit(1)
 
@@ -201,16 +222,36 @@ class Control(Base):
         Return:
             Value of the attribute.
         """
+        # pylint: disable=unused-argument
+        # TODO implement timeout
 
-        msg = [b"get", self.host, self.detector, attribute]
+        if self.stop_only:
+            self.log.error("Action not allowed (detector is not in netgroup)")
+            return
+
+        msg = [
+            b"get",
+            self.host.encode(),
+            self.detector.encode(),
+            attribute.encode()
+        ]
 
         self.socket.send_multipart(msg)
-        self.log.debug("sent: {}".format(msg))
+        self.log.debug("sent: %s", msg)
 
-        reply = self.socket.recv()
-        self.log.debug("recv: {}".format(reply))
+        # TODO implement timeout
+        reply = self.socket.recv().decode()
+        self.log.debug("recv: %s", reply)
 
-        return json.loads(reply)
+        try:
+            return json.loads(reply)
+        except ValueError:
+            # python 3 does not allow byte objects here
+            # python <= 3.4 raises Value Error
+            return reply.encode()
+        except json.decoder.JSONDecodeError:  # pylint: disable=no-member
+            # python 3 does not allow byte objects here
+            return reply.encode()
 
     def set(self, attribute, *value):
         """Set the value of an attribute.
@@ -223,31 +264,33 @@ class Control(Base):
             Received "DONE" if setting was successful and "ERROR" if not.
         """
 
+        if self.stop_only:
+            self.log.error("Action not allowed (detector is not in netgroup)")
+            return
+
         # flatten list if entry was a list (result: list of lists)
-        if type(value[0]) == list:
+        if isinstance(value[0], list):
             value = [item for sublist in value for item in sublist]
         else:
             value = value[0]
 
-        if attribute == "det_ip":
-            check_netgroup(value,
-                           self.beamline,
-                           self.ldapuri,
-                           self.netgroup_template,
-                           self.log)
-
-        msg = [b"set", self.host, self.detector, attribute,
-               json.dumps(value)]
+        msg = [
+            b"set",
+            self.host.encode(),
+            self.detector.encode(),
+            attribute.encode(),
+            json.dumps(value).encode()
+        ]
 
         self.socket.send_multipart(msg)
-        self.log.debug("sent: {}".format(msg))
+        self.log.debug("sent: %s", msg)
 
-        reply = self.socket.recv()
-        self.log.debug("recv: {}".format(reply))
+        reply = self.socket.recv().decode()
+        self.log.debug("recv: %s", reply)
 
         return reply
 
-    def do(self, command, timeout=None):
+    def do(self, command, timeout=None):  # pylint: disable=invalid-name
         """Request the server to execute a command.
 
         Args:
@@ -261,14 +304,38 @@ class Control(Base):
             - stop: "ARLEADY_STOPPED"
             - status: "RUNNING", "NOT RUNNING"
         """
+        # pylint: disable=unused-argument
+        # TODO implement timeout
 
-        msg = [b"do", self.host, self.detector, command]
+        if self.stop_only and command not in ["stop", "get_instances"]:
+            raise NotAllowed(
+                "Action not allowed (detector is not in netgroup)"
+            )
+
+        msg = [
+            b"do",
+            self.host.encode(),
+            self.detector.encode(),
+            command.encode()
+        ]
 
         self.socket.send_multipart(msg)
-        self.log.debug("sent: {}".format(msg))
+        self.log.debug("sent: %s", msg)
 
-        reply = self.socket.recv()
-        self.log.debug("recv: {}".format(reply))
+        # TODO implement timeout
+        reply = self.socket.recv().decode()
+
+        if command in ["get_instances"]:
+            try:
+                reply = json.loads(reply)
+            except ValueError:
+                # python 2, for compatibility with 4.0.23
+                return reply
+            except json.decoder.JSONDecodeError:
+                # python 3, for compatibility with 4.0.23
+                return reply
+
+        self.log.debug("recv: %s", reply)
 
         return reply
 
@@ -283,20 +350,20 @@ class Control(Base):
         if self.socket is not None:
             if unregister:
                 self.log.info("Sending close signal")
-                msg = [b"bye", self.host, self.detector]
+                msg = [b"bye", self.host.encode(), self.detector.encode()]
 
                 self.socket.send_multipart(msg)
-                self.log.debug("sent: {}".format(msg))
+                self.log.debug("sent: %s", msg)
 
-                reply = self.socket.recv()
-                self.log.debug("recv: {} ".format(reply))
+                reply = self.socket.recv().decode()
+                self.log.debug("recv: %s", reply)
 
             try:
                 self._stop_socket(name="socket")
-            except:
+            except Exception:
                 self.log.error("closing sockets...failed.", exc_info=True)
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):
@@ -304,6 +371,8 @@ class Control(Base):
 
 
 class ReceiverControl(Base):
+    """Communicate with a hidra receiver.
+    """
 
     def __init__(self, host, port=None):
         """
@@ -311,6 +380,8 @@ class ReceiverControl(Base):
             host: Host the receiver is running on.
             port (optional): Port the receiver is listening to.
         """
+
+        super().__init__()
 
         if port is None:
             port = 50050
@@ -352,7 +423,7 @@ class ReceiverControl(Base):
                 and socks[self.status_socket] == zmq.POLLIN):
 
             response = self.status_socket.recv_multipart()
-            self.log.debug("Response: {}".format(response))
+            self.log.debug("Response: %s", response)
 
             return response
         else:
@@ -387,13 +458,16 @@ class ReceiverControl(Base):
         self._get_response()
 
     def stop(self):
+        """Clean up zmq part.
+        """
+
         if self.context is not None:
             self.context.destroy(0)
 
         self._stop_socket(name="status_socket")
 
-    def __del__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
-    def __exit__(self):
+    def __del__(self):
         self.stop()

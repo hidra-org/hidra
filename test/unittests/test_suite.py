@@ -1,220 +1,274 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Unittest suite for HiDRA
 """
 
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
+import argparse
+import difflib
 import unittest
 from importlib import import_module
 import pkgutil
+import sys
 
-import eventdetectors
-import datafetchers
-from core.test_taskprovider import TestTaskProvider
-from core.test_datadispatcher import TestDataDispatcher
-from core.test_signalhandler import TestSignalHandler
-from core.test_datamanager import TestDataManager
-
-from api.test_transfer import TestTransfer
-from api.test_control import TestReceiverControl
-
-from receiver.test_datareceiver import TestCheckNetgroup
+import _environment  # noqa F401 # pylint: disable=unused-import
+from test_base import TestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+# some tests only work with python2
+if sys.version_info[0] < 3:
+    EVENTDETECTOR_EXCLUDE = []
+else:
+    EVENTDETECTOR_EXCLUDE = ["test_inotifyx_events"]
 
-def get_eventdetector_suites():
-    """Collects all available eventdetector tests
+PACKAGES = {
+    "eventdetector": {
+        "default": "TestEventDetector",
+        "special": {
+            "test_inotify_utils": "TestInotifyUtils"
+        },
+        "exclude": EVENTDETECTOR_EXCLUDE
+    },
+    "datafetcher": {
+        "default": "TestDataFetcher",
+        "special": {},
+        "exclude": ["test_http_fetcher"]
+    },
+    "core": {
+        "default": None,
+        "special": {
+            "test_taskprovider": "TestTaskProvider",
+            "test_datadispatcher": "TestDataDispatcher",
+            "test_signalhandler": "TestSignalHandler",
+            "test_datamanager": "TestDataManager",
+            "test_base_class": "TestBaseClass",
+            "test_statserver": "TestStatServer",
+        },
+        "exclude": []
+    },
+    "api": {
+        "default": None,
+        "special": {
+            "test_transfer": "TestTransfer",
+            # "test_control": "TestControl",
+            "test_control": "TestReceiverControl"
+        },
+        "exclude": []
+    },
+    "receiver": {
+        "default": None,
+        "special": {
+            "test_datareceiver": "TestCheckNetgroup"
+        },
+        "exclude": []
+    },
+    "utils": {
+        "default": None,
+        "special": {
+            "test_utils_config": "TestUtilsConfig"
+        },
+        "exclude": []
+    }
+}
+
+
+def argument_parsing():
+    """Parsing command line arguments.
+    """
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--suite",
+                        type=str,
+                        nargs="+",
+                        help="Which test suites to test")
+
+    parser.add_argument("--case",
+                        type=str,
+                        nargs="+",
+                        help="Which test case to test individually "
+                             "(mainly for debugging)")
+
+    parser.add_argument("--debug",
+                        action="store_true",
+                        help="Start in debug mode")
+
+    arguments = parser.parse_args()
+
+    return arguments
+
+
+def get_case_mapping(cases):
+    """Get the unittest suites matching the specified case.
+
+    Args:
+        cases (list): A list of test cases to include.
 
     Returns:
-        An array containing all available eventdetector test suites.
+        A list of test suites including the test classes.
     """
 
     all_suites = []
 
-    # find all event detector test modules
-    # iter_modules returns: importer, modname, ispkg
-    for _, modname, _ in pkgutil.iter_modules(eventdetectors.__path__):
-        # the base class not a test module
-        if modname in ["eventdetector_test_base"]:
-            continue
+    for package_name in PACKAGES:
+        modpath = import_module(package_name).__path__
+        for _, modname, _ in pkgutil.iter_modules(modpath):
 
-        # load the test suite
-        module_name = "eventdetectors.{}".format(modname)
-        module = import_module(module_name).TestEventDetector
-        suite = unittest.TestLoader().loadTestsFromTestCase(module)
-        # this is equivalent to loading one module like this
-        # > from eventdetectors.test_inotifyx_events \
-        # >     import TestEventDetector as TestInotifyxEvents
-        # > loader = unittest.TestLoader()
-        # > suite = loader.loadTestsFromTestCase(TestInotifyxEvents)
-
-        # add the test suite
-        all_suites.append(suite)
+            if modname in cases:
+                all_suites += get_suite(package_name, modname)
 
     return all_suites
 
 
-def get_datafetcher_suites():
-    """Collects all available datafetcher tests
+def get_suite_mapping(suites):
+    """Get the matching unittest suites sets by name.
+
+    Args:
+        suites (list): A list of suite set names.
 
     Returns:
-        An array containing all available datafetcher test suites.
+        A list of unittest suites matching the given suite names.
     """
 
     all_suites = []
 
-    # find all event detector test modules
-    # iter_modules returns: importer, modname, ispkg
-    for _, modname, _ in pkgutil.iter_modules(datafetchers.__path__):
-        # the base class not a test module
-        # TODO exclude test_http_fetcher only temporarily till bug is fixed
-        if modname in ["datafetcher_test_base", "test_http_fetcher"]:
-            continue
+    for package_name in PACKAGES:
+        if package_name in suites or "all" in suites:
 
-        # load the test suite
-        module_name = "datafetchers.{}".format(modname)
-        module = import_module(module_name).TestDataFetcher
-        suite = unittest.TestLoader().loadTestsFromTestCase(module)
-        # this is equivalent to loading one module like this
-        # > from datafetchers.test_file_fetcher \
-        # >     import TestDataFetcher as TestFileFetcher
-        # > loader = unittest.TestLoader()
-        # > suite = loader.loadTestsFromTestCase(TestFileFetcher)
+            modpath = import_module(package_name).__path__
+            for _, modname, _ in pkgutil.iter_modules(modpath):
 
-        # add the test suite
-        all_suites.append(suite)
+                # the base class not a test module
+                if (not modname.startswith("test")
+                        or modname in PACKAGES[package_name]["exclude"]):
+                    continue
+
+                all_suites += get_suite(package_name, modname)
 
     return all_suites
 
 
-def get_core_suites():
-    """Collects all available hidra core tests
+def get_suite(package_name, name):
+    """Get the unittestsuite by name.
+
+    Args:
+        package_name: The package the test modules belongs to.
+        name: The name of the test module.
 
     Returns:
-        An array containing all available core test suites.
+        A unittest suite corresponding to the specified module name.
     """
 
-    all_suites = [
-        unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
-        unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
-        unittest.TestLoader().loadTestsFromTestCase(TestDataManager),  # noqa E122
-        unittest.TestLoader().loadTestsFromTestCase(TestSignalHandler),  # noqa E122
-    ]
+    module_name = "{}.{}".format(package_name, name)
 
-    return all_suites
+    # just a more generic way of e.g. saying
+    # from eventdetector.test_inotify_events import TestEventDetector
+    module = import_module(module_name)
+    if name in PACKAGES[package_name]["special"]:
+        modclass = getattr(module, PACKAGES[package_name]["special"][name])
+    else:
+        if PACKAGES[package_name]["default"] is None:
+            print("ERROR: Could not get suite. Maybe PACKAGES has wrong "
+                  "configuration?")
+            print("package_name =", package_name, "name =", name)
+            return []
 
+        modclass = getattr(module, PACKAGES[package_name]["default"])
 
-def get_api_suites():
-    """Collects all available hidra api tests
-
-    Returns:
-        An array containing all available api test suites.
-    """
-
-    all_suites = [
-        unittest.TestLoader().loadTestsFromTestCase(TestTransfer),  # noqa E122
-        unittest.TestLoader().loadTestsFromTestCase(TestReceiverControl),  # noqa E122
-    ]
-
-    return all_suites
-
-
-def get_receiver_suites():
-    """Collects all available receiver tests
-
-    Returns:
-        An array containing all available receiver test suites.
-    """
-
-    all_suites = [
-        unittest.TestLoader().loadTestsFromTestCase(TestCheckNetgroup),  # noqa E122
-    ]
-
-    return all_suites
-
-
-def get_testing_suites():
-
-    # for testing
-    from eventdetectors.test_inotifyx_events import TestEventDetector as TestInotifyxEvents  # noqa F401
-    from eventdetectors.test_watchdog_events import TestEventDetector as TestWatchdogEvents  # noqa F401
-    from eventdetectors.test_http_events import TestEventDetector as TestHttpEvents  # noqa F401
-    from eventdetectors.test_zmq_events import TestEventDetector as TestZmqEvents  # noqa F401
-    from eventdetectors.test_hidra_events import TestEventDetector as TestHidraEvents  # noqa F401
-    from eventdetectors.test_eventdetector_template import TestEventDetector as TestEventDetectorTemplate  # noqa F401
-
-    from datafetchers.test_cleanerbase import TestDataFetcher as TestCleanerbase  # noqa F401
-    from datafetchers.test_file_fetcher import TestDataFetcher as TestFileFetcher  # noqa F401
-    from datafetchers.test_http_fetcher import TestDataFetcher as TestHttpFetcher  # noqa F401
-    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
-    from datafetchers.test_zmq_fetcher import TestDataFetcher as TestZmqFetcher  # noqa F401
-    from datafetchers.test_hidra_fetcher import TestDataFetcher as TestHidraFetcher  # noqa F401
-    from datafetchers.test_datafetcher_template import TestDataFetcher as TestDataFetcherTemplate  # noqa F401
-
-    from api.test_control import TestControl  # noqa F401
-
-    all_suites = [
-#        unittest.TestLoader().loadTestsFromTestCase(TestInotifyxEvents),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestWatchdogEvents),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestHttpEvents),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestZmqEvents),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestHidraEvents),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestEventDetectorTemplate),  # noqa E122
-
-#        unittest.TestLoader().loadTestsFromTestCase(TestCleanerbase),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestFileFetcher),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestHttpFetcher),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestZmqFetcher),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestHidraFetcher),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestDataFetcherTemplate),  # noqa E122
-
-#        unittest.TestLoader().loadTestsFromTestCase(TestSignalHandler),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestTaskProvider),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestDataDispatcher),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestDataManager),  # noqa E122
-
-#        unittest.TestLoader().loadTestsFromTestCase(TestTransfer),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestControl),  # noqa E122
-#        unittest.TestLoader().loadTestsFromTestCase(TestReceiverControl),  # noqa E122
-
-        unittest.TestLoader().loadTestsFromTestCase(TestCheckNetgroup),  # noqa E122
-    ]
-
-    return all_suites
-
-
-def get_suite():
-    """Collect all tests to be performed as one suite.
-
-    Returns:
-        A unittest TestSuite instance containing all unittests to be performed.
-    """
-
-    all_suites = []
-
-    # get the subsuites
-    all_suites += get_api_suites()
-    all_suites += get_eventdetector_suites()
-    all_suites += get_datafetcher_suites()
-    all_suites += get_core_suites()
-    all_suites += get_receiver_suites()
-
-#    all_suites += get_testing_suites()
-
-    # combine all subsuites to one big one
-    suite = unittest.TestSuite(all_suites)
+    # load the test suite
+    suite = unittest.TestLoader().loadTestsFromTestCase(modclass)
+    # this is equivalent to loading one module like this
+    # > from eventdetector.test_inotifyx_events \
+    # >     import TestEventDetector as TestInotifyxEvents
+    # > loader = unittest.TestLoader()
+    # > suite = loader.loadTestsFromTestCase(TestInotifyxEvents)
 
     return suite
+
+
+def find_matches(namelist):
+    """Find closest machtes in module names for given given strings.
+
+    Args:
+        namelist (list): A list of strings.
+
+    Return:
+        A dictionary with the closest matches for each string of the form:
+            { <string1>: [<match1>, <match2>, ...], ...}
+    """
+
+    # all key in module (e.g. eventdetector)
+    klist = []
+
+    for package_name in PACKAGES:
+        modpath = import_module(package_name).__path__
+        # iter_modules returns: importer, modname, ispkg
+        for _, modname, _ in pkgutil.iter_modules(modpath):
+            klist.append(modname)
+
+    res = {}
+    for name in namelist:
+        res[name] = difflib.get_close_matches(name, klist)
+
+    return res
 
 
 def main():
     """Run the test suite.
     """
 
+    args = argument_parsing()
+
+    if args.debug:
+        TestBase.loglevel = "debug"
+
+    # combine all sub-suites to one big one
+    all_suites = []
+
+    if args.suite is not None:
+        all_suites += get_suite_mapping(args.suite)
+
+    if args.case is not None:
+        all_suites += get_case_mapping(args.case)
+
+    if not all_suites:
+        print("No tests found.")
+        matches = find_matches(args.case)
+        for key in matches:
+            options = ", ".join(matches[key])
+            if options:
+                print("possible options for {} are: {}".format(key, options))
+            else:
+                print("No possible options found for {}".format(key))
+
+    suite = unittest.TestSuite(all_suites)
+
     runner = unittest.TextTestRunner(verbosity=2)
-    runner.run(get_suite())
+    runner.run(suite)
 
 
 if __name__ == '__main__':

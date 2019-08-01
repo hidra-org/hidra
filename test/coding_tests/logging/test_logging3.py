@@ -1,3 +1,7 @@
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 # System imports
 import multiprocessing
 import logging
@@ -39,7 +43,7 @@ MESSAGES = [
 
 class CustomQueueListener(QueueListener):
     def __init__(self, queue, *handlers):
-        super(CustomQueueListener, self).__init__(queue, *handlers)
+        super().__init__(queue, *handlers)
         """
         Initialise an instance with the specified queue and
         handlers.

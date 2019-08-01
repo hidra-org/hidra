@@ -1,37 +1,71 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Testing the task provider.
 """
 
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=redefined-variable-type
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
 
 import datetime
 import inspect
 import json
 import logging
-import mock
+from multiprocessing import freeze_support
 import os
 import re
 import threading
 import time
 import zmq
-from multiprocessing import freeze_support
-from six import iteritems
 
-import utils
-from .__init__ import BASE_DIR
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
+from future.utils import iteritems
+
 from test_base import (TestBase,
                        create_dir,
                        MockLogging,
                        mock_get_logger,
                        MockZmqPoller)
 from signalhandler import SignalHandler, UnpackedMessage, TargetProperties
-from _version import __version__
+import hidra.utils as utils
+from hidra import __version__
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class RequestPuller(threading.Thread):
+
     def __init__(self, endpoints, log_queue):
         threading.Thread.__init__(self)
 
@@ -40,7 +74,7 @@ class RequestPuller(threading.Thread):
 
         self.context = zmq.Context()
 
-        self.request_fw_socket = utils.start_socket(
+        self.request_fw_socket, _ = utils.start_socket(
             name="request_fw_socket",
             sock_type=zmq.REQ,
             sock_con="connect",
@@ -56,16 +90,19 @@ class RequestPuller(threading.Thread):
             try:
                 msg = json.dumps(filename).encode("utf-8")
                 self.request_fw_socket.send_multipart([b"GET_REQUESTS", msg])
-                self.log.info("send {}".format(msg))
-            except Exception as e:
+                self.log.info("send %s", msg)
+            except Exception:
                 raise
 
             try:
                 requests = json.loads(self.request_fw_socket.recv_string())
-                self.log.info("Requests: {}".format(requests))
+                self.log.info("Requests: %s", requests)
                 time.sleep(0.25)
-            except Exception as e:
-                raise
+            except Exception:
+                # if the thread is stopped it might cause exceptions which
+                # should not be raised.
+                if self.continue_run:
+                    raise
 
     def stop(self):
         if self.continue_run:
@@ -79,19 +116,19 @@ class RequestPuller(threading.Thread):
 
             self.context.term()
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
 
 class TestSignalHandler(TestBase):
-    """Specification of tests to be performed for the TaskProvider.
+    """Specification of tests to be performed for the SignalHandler.
     """
 
     # pylint: disable=too-many-instance-attributes
     # Is reasonable in this case.
 
     def setUp(self):
-        super(TestSignalHandler, self).setUp()
+        super().setUp()
 
         # see https://docs.python.org/2/library/multiprocessing.html#windows
         freeze_support()
@@ -107,11 +144,16 @@ class TestSignalHandler(TestBase):
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
 
-        self.local_target = os.path.join(BASE_DIR, "data", "target")
+        self.local_target = os.path.join(self.base_dir, "data", "target")
         self.chunksize = 10485760  # = 1024*1024*10 = 10 MiB
 
         general_config = {
-            "store_data": False
+            "general": {
+                "use_statserver": False,
+            },
+            "datafetcher": {
+                "store_data": False
+            }
         }
 
         self.receiving_ports = [6005, 6006]
@@ -126,38 +168,39 @@ class TestSignalHandler(TestBase):
         }
 
     def send_signal(self, socket, signal, ports, prio=None):
-        self.log.info("send_signal : {}, {}".format(signal, ports))
+        self.log.info("send_signal : %s, %s", signal, ports)
 
         app_id = str(self.config["main_pid"]).encode("utf-8")
+        version = __version__.encode("utf-8")
 
-        send_message = [__version__, app_id, signal]
+        send_message = [version, app_id, signal]
 
         targets = []
-        if type(ports) == list:
+        if isinstance(ports, list):
             for port in ports:
-                targets.append(["{}:{}".format(self.con_ip, port), prio, [""]])
+                targets.append(["{}:{}".format(self.con_ip, port), prio, ".*"])
         else:
-            targets.append(["{}:{}".format(self.con_ip, ports), prio, [""]])
+            targets.append(["{}:{}".format(self.con_ip, ports), prio, ".*"])
 
-        targets = json.dumps(targets).encode("utf-8")
-        send_message.append(targets)
+        targets_json = json.dumps(targets).encode("utf-8")
+        send_message.append(targets_json)
 
         socket.send_multipart(send_message)
 
         received_message = socket.recv()
-        self.log.info("Responce : {}".format(received_message))
+        self.log.info("Responce : %s", received_message)
 
     def send_request(self, socket, socket_id):
         send_message = [b"NEXT", socket_id.encode('utf-8')]
-        self.log.info("send_request: {}".format(send_message))
+        self.log.info("send_request: %s", send_message)
         socket.send_multipart(send_message)
-        self.log.info("request sent: {}".format(send_message))
+        self.log.info("request sent: %s", send_message)
 
     def cancel_request(self, socket, socket_id):
         send_message = [b"CANCEL", socket_id.encode('utf-8')]
-        self.log.info("send_request: {}".format(send_message))
+        self.log.info("send_request: %s", send_message)
         socket.send_multipart(send_message)
-        self.log.info("request sent: {}".format(send_message))
+        self.log.info("request sent: %s", send_message)
 
     @mock.patch.object(utils, "get_logger", mock_get_logger)
     def test_signalhandler(self):
@@ -233,14 +276,14 @@ class TestSignalHandler(TestBase):
                              prio=2)
 
             self.send_request(socket=request_socket,
-                              socket_id=receiving_endpoints[1].encode())
+                              socket_id=receiving_endpoints[1])
             self.send_request(socket=request_socket,
-                              socket_id=receiving_endpoints[1].encode())
+                              socket_id=receiving_endpoints[1])
             self.send_request(socket=request_socket,
-                              socket_id=receiving_endpoints[0].encode())
+                              socket_id=receiving_endpoints[0])
 
             self.cancel_request(socket=request_socket,
-                                socket_id=receiving_endpoints[1].encode())
+                                socket_id=receiving_endpoints[1])
 
             time.sleep(0.5)
 
@@ -273,6 +316,8 @@ class TestSignalHandler(TestBase):
     # it is called in __del__
     @mock.patch("signalhandler.SignalHandler.stop")
     def test_setup(self, mock_stop):
+        # pylint: disable=unused-argument
+
         current_func_name = inspect.currentframe().f_code.co_name
 
         with mock.patch("signalhandler.SignalHandler.setup"):
@@ -291,7 +336,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # external context
         # --------------------------------------------------------------------
-        self.log.info("{}: EXTERNAL CONTEXT".format(current_func_name))
+        self.log.info("%s: EXTERNAL CONTEXT", current_func_name)
 
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             sighandler.setup(**setup_conf)
@@ -307,7 +352,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # no external context
         # --------------------------------------------------------------------
-        self.log.info("{}: NO EXTERNAL CONTEXT".format(current_func_name))
+        self.log.info("%s: NO EXTERNAL CONTEXT", current_func_name)
 
         setup_conf["context"] = None
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
@@ -320,6 +365,8 @@ class TestSignalHandler(TestBase):
 
     @mock.patch("signalhandler.SignalHandler.stop")
     def test_create_sockets(self, mock_stop):
+        # pylint: disable=unused-argument
+
         current_func_name = inspect.currentframe().f_code.co_name
 
         def init():
@@ -350,8 +397,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # with no nodes allowed to connect
         # --------------------------------------------------------------------
-        self.log.info("{}: WITH NO NODES ALLOWED TO CONNECT"
-                      .format(current_func_name))
+        self.log.info("%s: WITH NO NODES ALLOWED TO CONNECT",
+                      current_func_name)
 
         self.signalhandler_config["whitelist"] = []
         sighandler = init()
@@ -373,8 +420,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # with all nodes allowed to connect
         # --------------------------------------------------------------------
-        self.log.info("{}: WITH ALL NODES ALLOWED TO CONNECT"
-                      .format(current_func_name))
+        self.log.info("%s: WITH ALL NODES ALLOWED TO CONNECT",
+                      current_func_name)
 
         self.signalhandler_config["whitelist"] = None
         sighandler = init()
@@ -393,7 +440,8 @@ class TestSignalHandler(TestBase):
         ]
         check_registered(sighandler, sockets_to_test, self)
 
-    def test_run(self):
+    @mock.patch("signalhandler.SignalHandler.check_control_signal")
+    def test_run(self, mock_check):
         current_func_name = inspect.currentframe().f_code.co_name
 
         # with all nodes allowed to connect
@@ -419,9 +467,10 @@ class TestSignalHandler(TestBase):
             socket.recv_multipart.side_effect = [signal]
             # either use side_effect or recreate mock object and use
             # return_value
-            sighandler.control_sub_socket.recv_multipart.side_effect = [
-                ["", "EXIT"]
-            ]
+
+            # always stop via control channel
+            mock_check.reset_mock()
+            mock_check.return_value = True
 
         def reset(sighandler):
             sighandler.com_socket.reset_mock()
@@ -439,22 +488,17 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # control_sub_socket: exit
         # --------------------------------------------------------------------
-        self.log.info("{}: CONTROL_SUB_SOCKET: EXIT"
-                      .format(current_func_name))
+        self.log.info("%s: CONTROL_SOCKET call", current_func_name)
 
         sighandler.log = mock.MagicMock()
 
         sighandler.poller.poll.side_effect = [
             {sighandler.control_sub_socket: zmq.POLLIN}
         ]
-        sighandler.control_sub_socket.recv_multipart.return_value = ["",
-                                                                     "EXIT"]
 
         sighandler.run()
-
-        calls = sighandler.log.method_calls
-        expected = mock.call.info("Requested to shutdown.")
-        self.assertIn(expected, calls)
+        # assert_called() only works version >3.5
+        self.assertTrue(mock_check.called)
 
         # reset
         sighandler.log = MockLogging()
@@ -463,23 +507,20 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # control_sub_socket: SLEEP/WAKEUP or unhandled
         # --------------------------------------------------------------------
-        self.log.info("{}: CONTROL_SUB_SOCKET: SLEEP/WAKEUP"
-                      .format(current_func_name))
+        self.log.info("%s: CONTROL_SUB_SOCKET: SLEEP/WAKEUP",
+                      current_func_name)
 
         sighandler.poller.poll.side_effect = [
             {sighandler.control_sub_socket: zmq.POLLIN},
             # for stopping the run loop
             {sighandler.control_sub_socket: zmq.POLLIN}
         ]
-        sighandler.control_sub_socket.recv_multipart.side_effect = [
-            ["", "SLEEP"],
-            # for stopping the run loop
-            ["", "EXIT"],
-        ]
 
         sighandler.run()
+        # assert_called() only works version >3.5
+        self.assertTrue(mock_check.called)
 
-        # if the code run till here without throwing an exception if passed
+        # if the code run till here without throwing an exception it passed
         # if StopIteration is thrown by mock that means that poll was called
         # more often than 2 times
 
@@ -489,8 +530,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_fw_socket: failed receive
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_FW_SOCKET: FAILED RECEIVE"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_FW_SOCKET: FAILED RECEIVE",
+                      current_func_name)
 
         signal = [Exception()]
         init_sighandler(sighandler, sighandler.request_fw_socket, signal)
@@ -499,7 +540,7 @@ class TestSignalHandler(TestBase):
         sighandler.run()
 
         call = sighandler.log.error.call_args[0][0]
-        self.log.debug("call args {}".format(call))
+        self.log.debug("call args %s", call)
         expected = "Failed to receive/answer"
         self.assertIn(expected, call)
 
@@ -510,8 +551,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_fw_socket: incoming message not supported
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_FW_SOCKET: INCOMING MESSAGE NOT SUPPORTED"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_FW_SOCKET: INCOMING MESSAGE NOT SUPPORTED",
+                      current_func_name)
 
         signal = ["NOT_SUPPORTED"]
         init_sighandler(sighandler, sighandler.request_fw_socket, signal)
@@ -520,7 +561,7 @@ class TestSignalHandler(TestBase):
         sighandler.run()
 
         call = sighandler.log.error.call_args[0][0]
-        self.log.debug("call args {}".format(call))
+        self.log.debug("call args %s", call)
         expected = "Failed to receive/answer"
         self.assertIn(expected, call)
 
@@ -531,8 +572,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_fw_socket: no open requests
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_FW_SOCKET: NO OPEN REQUESTS"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_FW_SOCKET: NO OPEN REQUESTS",
+                      current_func_name)
 
         signal = [b"GET_REQUESTS",
                   json.dumps({"filename": "my_filename"}).encode("utf-8")]
@@ -560,8 +601,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_fw_socket: open perm requests (match)
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_FW_SOCKET: OPEN PERM REQUESTS (MATCH)"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_FW_SOCKET: OPEN PERM REQUESTS (MATCH)",
+                      current_func_name)
         signal = [b"GET_REQUESTS",
                   json.dumps("my_filename").encode("utf-8")]
         init_sighandler(sighandler, sighandler.request_fw_socket, signal)
@@ -603,8 +644,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_fw_socket: open perm requests (no match)
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_FW_SOCKET: OPEN PERM REQUESTS (NO MATCH)"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_FW_SOCKET: OPEN PERM REQUESTS (NO MATCH)",
+                      current_func_name)
 
         signal = [b"GET_REQUESTS",
                   json.dumps("my_filename").encode("utf-8")]
@@ -648,8 +689,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_fw_socket: open vari requests (match)
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_FW_SOCKET: OPEN VARI REQUESTS (MATCH)"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_FW_SOCKET: OPEN VARI REQUESTS (MATCH)",
+                      current_func_name)
 
         signal = [b"GET_REQUESTS",
                   json.dumps("my_filename").encode("utf-8")]
@@ -679,8 +720,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_fw_socket: open vari requests (no match)
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_FW_SOCKET: OPEN VARI REQUESTS (NO MATCH)"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_FW_SOCKET: OPEN VARI REQUESTS (NO MATCH)",
+                      current_func_name)
 
         signal = [b"GET_REQUESTS",
                   json.dumps("my_filename").encode("utf-8")]
@@ -713,7 +754,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # com_socket: signal ok
         # --------------------------------------------------------------------
-        self.log.info("{}: COM_SOCKET: SIGNAL OK".format(current_func_name))
+        self.log.info("%s: COM_SOCKET: SIGNAL OK", current_func_name)
 
         signal = []
         init_sighandler(sighandler, sighandler.com_socket, signal)
@@ -739,8 +780,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # com_socket: signal not ok
         # --------------------------------------------------------------------
-        self.log.info("{}: COM_SOCKET: SIGNAL NOT OK"
-                      .format(current_func_name))
+        self.log.info("%s: COM_SOCKET: SIGNAL NOT OK", current_func_name)
 
         signal = []
         init_sighandler(sighandler, sighandler.com_socket, signal)
@@ -766,8 +806,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_socket: not supported
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_SOCKET: NOT SUPPORTED"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_SOCKET: NOT SUPPORTED", current_func_name)
 
         signal = [""]
         init_sighandler(sighandler, sighandler.request_socket, signal)
@@ -786,11 +825,10 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_socket: next (allowed)
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_SOCKET: NEXT (ALLOWED)"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_SOCKET: NEXT (ALLOWED)", current_func_name)
 
         socket_id = "{}:{}".format(host, port)
-        signal = ["NEXT", socket_id]
+        signal = [b"NEXT", socket_id.encode("utf-8")]
         init_sighandler(sighandler, sighandler.request_socket, signal)
 
         targets = [
@@ -803,7 +841,7 @@ class TestSignalHandler(TestBase):
         ]
         sighandler.vari_requests = [[]]
 
-        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+        with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
             sighandler.run()
 
@@ -818,17 +856,17 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_socket: next (not allowed)
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_SOCKET: NEXT (NOT ALLOWED)"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_SOCKET: NEXT (NOT ALLOWED)",
+                      current_func_name)
 
         socket_id = "{}:{}".format(host, port)
-        signal = ["NEXT", socket_id]
+        signal = [b"NEXT", socket_id.encode("utf-8")]
         init_sighandler(sighandler, sighandler.request_socket, signal)
 
         sighandler.registered_queries = []
         sighandler.vari_requests = []
 
-        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+        with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
             sighandler.run()
 
@@ -840,17 +878,17 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_socket: cancel (no requests)
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_SOCKET: CANCEL (NO REQUESTS)"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_SOCKET: CANCEL (NO REQUESTS)",
+                      current_func_name)
 
         socket_id = "{}:{}".format(host, port)
-        signal = ["CANCEL", socket_id]
+        signal = [b"CANCEL", socket_id.encode("utf-8")]
         init_sighandler(sighandler, sighandler.request_socket, signal)
 
         sighandler.registered_queries = []
         sighandler.vari_requests = []
 
-        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+        with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
             sighandler.run()
 
@@ -862,11 +900,11 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_socket: cancel (requests)
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_SOCKET: CANCEL (NO REQUESTS)"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_SOCKET: CANCEL (NO REQUESTS)",
+                      current_func_name)
 
         socket_id = "{}:{}".format(host, port)
-        signal = ["CANCEL", socket_id]
+        signal = [b"CANCEL", socket_id.encode("utf-8")]
         init_sighandler(sighandler, sighandler.request_socket, signal)
 
         sighandler.registered_queries = []
@@ -874,7 +912,7 @@ class TestSignalHandler(TestBase):
             [[socket_id, 0, re.compile(".*"), send_type]]
         ]
 
-        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+        with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
             sighandler.run()
 
@@ -886,11 +924,11 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # request_socket: cancel (multiple requests)
         # --------------------------------------------------------------------
-        self.log.info("{}: REQUEST_SOCKET: CANCEL (NO REQUESTS)"
-                      .format(current_func_name))
+        self.log.info("%s: REQUEST_SOCKET: CANCEL (NO REQUESTS)",
+                      current_func_name)
 
         socket_id = "{}:{}".format(host, port)
-        signal = ["CANCEL", socket_id]
+        signal = [b"CANCEL", socket_id.encode("utf-8")]
         init_sighandler(sighandler, sighandler.request_socket, signal)
 
         port2 = 9876
@@ -901,7 +939,7 @@ class TestSignalHandler(TestBase):
              ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]]
         ]
 
-        with mock.patch("utils.convert_socket_to_fqdn") as mock_utils:
+        with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
             sighandler.run()
 
@@ -930,11 +968,12 @@ class TestSignalHandler(TestBase):
         appid = str(appid).encode("utf-8")
         in_targets_list = [["{}:{}".format(host, port), 0, [""]]]
         in_targets = json.dumps(in_targets_list).encode("utf-8")
+        version = __version__.encode("utf-8")
 
         # --------------------------------------------------------------------
         # no valid message
         # --------------------------------------------------------------------
-        self.log.info("{}: NO VALID MESSAGE".format(current_func_name))
+        self.log.info("%s: NO VALID MESSAGE", current_func_name)
 
         in_message = []
         unpacked_message = sighandler.check_signal(in_message)
@@ -947,13 +986,13 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # no valid message due to missing port
         # --------------------------------------------------------------------
-        self.log.info("{}: NO VALID MESSAGE DUE TO MISSING PORT"
-                      .format(current_func_name))
+        self.log.info("%s: NO VALID MESSAGE DUE TO MISSING PORT",
+                      current_func_name)
 
         fake_in_targets = [["{}".format(host), 0, [""]]]
         fake_in_targets = json.dumps(fake_in_targets).encode("utf-8")
 
-        in_message = [__version__, appid, "START_STREAM", fake_in_targets]
+        in_message = [version, appid, "START_STREAM", fake_in_targets]
         unpacked_message = sighandler.check_signal(in_message)
         self.assertFalse(unpacked_message.check_successful)
         self.assertEqual(unpacked_message.response, [b"NO_VALID_SIGNAL"])
@@ -964,7 +1003,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # no version set
         # --------------------------------------------------------------------
-        self.log.info("{}: NO VERSION SET".format(current_func_name))
+        self.log.info("%s: NO VERSION SET", current_func_name)
 
         in_message = [None, appid, "START_STREAM", in_targets]
         unpacked_message = sighandler.check_signal(in_message)
@@ -977,16 +1016,16 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # valid message but version conflict
         # --------------------------------------------------------------------
-        self.log.info("{}: VALID MESSAGE BUT VERSION CONFLICT"
-                      .format(current_func_name))
+        self.log.info("%s: VALID MESSAGE BUT VERSION CONFLICT",
+                      current_func_name)
 
-        version = "0.0.0"
+        version = b"0.0.0"
         #             version, application id, signal, targets
         in_message = [version, appid, "START_STREAM", in_targets]
         unpacked_message = sighandler.check_signal(in_message)
         self.assertFalse(unpacked_message.check_successful)
         self.assertEqual(unpacked_message.response,
-                         ["VERSION_CONFLICT", __version__])
+                         [b"VERSION_CONFLICT", __version__])
         self.assertIsNone(unpacked_message.appid)
         self.assertIsNone(unpacked_message.signal)
         self.assertIsNone(unpacked_message.targets)
@@ -994,29 +1033,30 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # no version set (empty string)
         # --------------------------------------------------------------------
-        self.log.info("{}: NO VERSION SET (EMPTY STRING)"
-                      .format(current_func_name))
+        self.log.info("%s: NO VERSION SET (EMPTY STRING)",
+                      current_func_name)
 
-        in_message = ["", appid, "START_STREAM", in_targets]
+        in_message = [b"", appid, "START_STREAM", in_targets]
         unpacked_message = sighandler.check_signal(in_message)
         self.assertTrue(unpacked_message.check_successful)
         self.assertIsNone(unpacked_message.response)
-        self.assertEqual(unpacked_message.appid, appid)
+        self.assertEqual(unpacked_message.appid, appid.decode("utf-8"))
         self.assertEqual(unpacked_message.signal, "START_STREAM")
         self.assertEqual(unpacked_message.targets, in_targets_list)
 
         # --------------------------------------------------------------------
         # valid message, valid version
         # --------------------------------------------------------------------
-        self.log.info("{}: VALID MESSAGE, VALID VERSION"
-                      .format(current_func_name))
+        self.log.info("%s: VALID MESSAGE, VALID VERSION",
+                      current_func_name)
 
         #             version, application id, signal, targets
-        in_message = [__version__, appid, "START_STREAM", in_targets]
+        in_message = [__version__.encode("utf-8"), appid,
+                      "START_STREAM", in_targets]
         unpacked_message = sighandler.check_signal(in_message)
         self.assertTrue(unpacked_message.check_successful)
         self.assertIsNone(unpacked_message.response)
-        self.assertEqual(unpacked_message.appid, appid)
+        self.assertEqual(unpacked_message.appid, appid.decode("utf-8"))
         self.assertEqual(unpacked_message.signal, "START_STREAM")
         self.assertEqual(unpacked_message.targets, in_targets_list)
 
@@ -1034,11 +1074,12 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # valid message, valid version, but host is not allowed to connect
         # --------------------------------------------------------------------
-        self.log.info("{}: VALID MESSAGE, VALID VERSION, BUT HOST IS NOT "
-                      "ALLOWED TO CONNTECT".format(current_func_name))
+        self.log.info("%s: VALID MESSAGE, VALID VERSION, BUT HOST IS NOT "
+                      "ALLOWED TO CONNTECT", current_func_name)
 
         #             version, application id, signal, targets
-        in_message = [__version__, appid, "START_STREAM", in_targets]
+        in_message = [__version__.encode("utf-8"), appid,
+                      "START_STREAM", in_targets]
         unpacked_message = sighandler.check_signal(in_message)
         self.assertFalse(unpacked_message.check_successful)
         self.assertEqual(unpacked_message.response, [b"NO_VALID_HOST"])
@@ -1062,7 +1103,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # signal is string
         # --------------------------------------------------------------------
-        self.log.info("{}: SIGNAL IS STRING".format(current_func_name))
+        self.log.info("%s: SIGNAL IS STRING", current_func_name)
 
         signal = "test"
         sighandler.send_response(signal)
@@ -1070,7 +1111,7 @@ class TestSignalHandler(TestBase):
         # assert_called_once only works version >3.6
         self.assertTrue(mocked_func.call_count == 1)
 
-        args, kwargs = mocked_func.call_args
+        args, _ = mocked_func.call_args
         # mock returns a tuple with the args
         self.assertTrue(args[0] == [signal])
 
@@ -1079,7 +1120,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # signal is list
         # --------------------------------------------------------------------
-        self.log.info("{}: SIGNAL IS LIST".format(current_func_name))
+        self.log.info("%s: SIGNAL IS LIST", current_func_name)
 
         signal = ["test"]
         sighandler.send_response(signal)
@@ -1087,7 +1128,7 @@ class TestSignalHandler(TestBase):
         # assert_called_once only works version >3.6
         self.assertTrue(mocked_func.call_count == 1)
 
-        args, kwargs = mocked_func.call_args
+        args, _ = mocked_func.call_args
         # mock returns a tuple with the args
         self.assertTrue(args[0] == signal)
 
@@ -1110,8 +1151,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check that socket_id is added
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK THAT SOCKET_ID IS ADDED"
-                      .format(current_func_name))
+        self.log.info("%s: CHECK THAT SOCKET_ID IS ADDED",
+                      current_func_name)
 
         #            [[<host>, <prio>, <suffix>], ...]
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
@@ -1133,7 +1174,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1145,8 +1186,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check that same socke_id is not added twice
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK THAT SAME SOCKET_ID IS NOT ADDED TWICE"
-                      .format(current_func_name))
+        self.log.info("%s: CHECK THAT SAME SOCKET_ID IS NOT ADDED TWICE",
+                      current_func_name)
 
         #            [[<host>, <prio>, <suffix>], ...]
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
@@ -1176,7 +1217,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1189,8 +1230,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # adding additional set
         # --------------------------------------------------------------------
-        self.log.info("{}: ADDING ADDITIONAL SET"
-                      .format(current_func_name))
+        self.log.info("%s: ADDING ADDITIONAL SET", current_func_name)
 
         host2 = "abc"
         port2 = 9876
@@ -1224,7 +1264,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ])
         # the registered time cannot be forseen
-        time_registered=registered_ids[1].time_registered
+        time_registered = registered_ids[1].time_registered
         expected_result = [
             TargetProperties(targets=targets,
                              appid=appid,
@@ -1241,8 +1281,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # adding additional set (superset of already existing one)
         # --------------------------------------------------------------------
-        self.log.info("{}: ADDING ADDITIONAL SET (SUPERSET OF ALREADY "
-                      "EXISTING ONE".format(current_func_name))
+        self.log.info("%s: ADDING ADDITIONAL SET (SUPERSET OF ALREADY "
+                      "EXISTING ONE", current_func_name)
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"],
                       ["{}:{}".format(host, port2), 0, ".*"]]
@@ -1271,7 +1311,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ])
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1284,8 +1324,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # adding additional set (subset of already existing one)
         # --------------------------------------------------------------------
-        self.log.info("{}: ADDING ADDITIONAL SET (SUBSET OF ALREADY EXISTING "
-                      "ONE)".format(current_func_name))
+        self.log.info("%s: ADDING ADDITIONAL SET (SUBSET OF ALREADY EXISTING "
+                      "ONE)", current_func_name)
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
 
@@ -1313,7 +1353,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1326,8 +1366,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check that socket_id is added (no vari_requests)
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK THAT SOCKET_ID IS ADDED (no_vari_requests)"
-                      .format(current_func_name))
+        self.log.info("%s: CHECK THAT SOCKET_ID IS ADDED (no_vari_requests)",
+                      current_func_name)
 
         #            [[<host>, <prio>, <suffix>], ...]
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
@@ -1349,7 +1389,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1362,8 +1402,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check that socket_id is added (no perm_requests)
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK THAT SOCKET_ID IS ADDED (no perm_requests)"
-                      .format(current_func_name))
+        self.log.info("%s: CHECK THAT SOCKET_ID IS ADDED (no perm_requests)",
+                      current_func_name)
 
         #            [[<host>, <prio>, <suffix>], ...]
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
@@ -1385,7 +1425,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[0].time_registered
+        time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
                                             time_registered=time_registered)]
@@ -1398,8 +1438,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # same socke_id but different appid
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK THAT SAME SOCKET_ID IS NOT ADDED TWICE"
-                      .format(current_func_name))
+        self.log.info("%s: CHECK THAT SAME SOCKET_ID IS NOT ADDED TWICE",
+                      current_func_name)
 
         appid2 = 9876543210
 
@@ -1431,7 +1471,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
         # the registered time cannot be forseen
-        time_registered=registered_ids[1].time_registered
+        time_registered = registered_ids[1].time_registered
         expected_result = [
             TargetProperties(targets=targets,
                              appid=appid,
@@ -1470,8 +1510,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # socket_id not registered
         # --------------------------------------------------------------------
-        self.log.info("{}: SOCKET_ID NOT REGISTERED"
-                      .format(current_func_name))
+        self.log.info("%s: SOCKET_ID NOT REGISTERED", current_func_name)
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
         registered_ids = []
@@ -1501,8 +1540,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # unregister socket_id (registered for querying data)
         # --------------------------------------------------------------------
-        self.log.info("{}: UNREGISTER SOCKET_ID (QUERY)"
-                      .format(current_func_name))
+        self.log.info("%s: UNREGISTER SOCKET_ID (QUERY)", current_func_name)
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
         targets = [
@@ -1536,8 +1574,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # unregister socket_id (registered for streaming data)
         # --------------------------------------------------------------------
-        self.log.info("{}: UNREGISTER SOCKET_ID (STREAM)"
-                      .format(current_func_name))
+        self.log.info("%s: UNREGISTER SOCKET_ID (STREAM)", current_func_name)
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
         targets = [
@@ -1569,8 +1606,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # unregister one socket_id from set (open query request)
         # --------------------------------------------------------------------
-        self.log.info("{}: UNREGISTER ONE SOCKET_ID FROM SET (NO OPEN QUERY)"
-                      .format(current_func_name))
+        self.log.info("%s: UNREGISTER ONE SOCKET_ID FROM SET (NO OPEN QUERY)",
+                      current_func_name)
 
         port2 = 9876
 
@@ -1613,8 +1650,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # unregister one socket_id from set (no open query request)
         # --------------------------------------------------------------------
-        self.log.info("{}: UNREGISTER ONE SOCKET_ID FROM SET (OPEN QUERY)"
-                      .format(current_func_name))
+        self.log.info("%s: UNREGISTER ONE SOCKET_ID FROM SET (OPEN QUERY)",
+                      current_func_name)
 
         port2 = 9876
 
@@ -1657,8 +1694,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # unregister one socket_id from set (registered for streaming data)
         # --------------------------------------------------------------------
-        self.log.info("{}: UNREGISTER ONE SOCKET_ID FROM SET (STREAM)"
-                      .format(current_func_name))
+        self.log.info("%s: UNREGISTER ONE SOCKET_ID FROM SET (STREAM)",
+                      current_func_name)
 
         port2 = 9876
 
@@ -1699,7 +1736,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check signal answering
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK SIGNAL ANSWERING".format(current_func_name))
+        self.log.info("%s: CHECK SIGNAL ANSWERING", current_func_name)
 
         socket_ids = [["{}:{}".format(host, port), 0, ".*"]]
         targets = [
@@ -1742,6 +1779,8 @@ class TestSignalHandler(TestBase):
         sighandler._start_signal = mock.MagicMock()
         sighandler._stop_signal = mock.MagicMock()
 
+        version = __version__.encode("utf-8")
+
         unpacked_message_dict = dict(
             check_successful=True,
             response=None,
@@ -1753,7 +1792,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check GET_VERSION
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK GET_VERSION".format(current_func_name))
+        self.log.info("%s: CHECK GET_VERSION", current_func_name)
 
         signal = b"GET_VERSION"
         unpacked_message_dict["signal"] = signal
@@ -1761,7 +1800,7 @@ class TestSignalHandler(TestBase):
 
         sighandler.react_to_signal(unpacked_message)
 
-        expected_args = [signal, __version__]
+        expected_args = [signal, version]
         sighandler.send_response.assert_called_once_with(expected_args)
 
         sighandler.send_response.reset_mock()
@@ -1771,7 +1810,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check START_STREAM
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK START_STREAM".format(current_func_name))
+        self.log.info("%s: CHECK START_STREAM", current_func_name)
 
         signal = b"START_STREAM"
         unpacked_message_dict["signal"] = signal
@@ -1798,8 +1837,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check START_STREAM_METADATA (storing disabled)
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK START_STREAM_METADATA (STORING DISABLED)"
-                      .format(current_func_name))
+        self.log.info("%s: CHECK START_STREAM_METADATA (STORING DISABLED)",
+                      current_func_name)
 
         signal = b"START_STREAM_METADATA"
         unpacked_message_dict["signal"] = signal
@@ -1811,7 +1850,7 @@ class TestSignalHandler(TestBase):
         for key, value in iteritems(self.signalhandler_config):
             config[key] = value
 
-        config["config"]["store_data"] = False
+        config["config"]["datafetcher"]["store_data"] = False
 
         # resetting QueueHandlers
         sighandler.log.handlers = []
@@ -1826,7 +1865,7 @@ class TestSignalHandler(TestBase):
 
         sighandler.react_to_signal(unpacked_message)
 
-        expected_args = [b"STORING_DISABLED", __version__]
+        expected_args = [b"STORING_DISABLED", version]
         sighandler.send_response.assert_called_once_with(expected_args)
 
         sighandler.send_response.reset_mock()
@@ -1836,8 +1875,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check START_STREAM_METADATA (storing enabled)
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK START_STREAM_METADATA (STORING ENABLED)"
-                      .format(current_func_name))
+        self.log.info("%s: CHECK START_STREAM_METADATA (STORING ENABLED)",
+                      current_func_name)
 
         signal = b"START_STREAM_METADATA"
         unpacked_message_dict["signal"] = signal
@@ -1849,7 +1888,7 @@ class TestSignalHandler(TestBase):
         for key, value in iteritems(self.signalhandler_config):
             config[key] = value
 
-        config["config"]["store_data"] = True
+        config["config"]["datafetcher"]["store_data"] = True
 
         # resetting QueueHandlers
         sighandler.log.handlers = []
@@ -1883,8 +1922,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check STOP_STREAM/STOP_STREAM_METADATA
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK STOP_STREAM/STOP_STREAM_METADATA"
-                      .format(current_func_name))
+        self.log.info("%s: CHECK STOP_STREAM/STOP_STREAM_METADATA",
+                      current_func_name)
 
         signal = b"STOP_STREAM"
         unpacked_message_dict["signal"] = signal
@@ -1911,7 +1950,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check START_QUERY_NEXT
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK START_QUERY".format(current_func_name))
+        self.log.info("%s: CHECK START_QUERY", current_func_name)
 
         signal = b"START_QUERY_NEXT"
         unpacked_message_dict["signal"] = signal
@@ -1938,8 +1977,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check START_QUERY_NEXT_METADATA (storing disabled)
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK START_QUERY_NEXT_METADATA (STORING DISABLED)"
-                      .format(current_func_name))
+        self.log.info("%s: CHECK START_QUERY_NEXT_METADATA "
+                      "(STORING DISABLED)", current_func_name)
 
         signal = b"START_QUERY_NEXT_METADATA"
         unpacked_message_dict["signal"] = signal
@@ -1951,7 +1990,7 @@ class TestSignalHandler(TestBase):
         for key, value in iteritems(self.signalhandler_config):
             config[key] = value
 
-        config["config"]["store_data"] = False
+        config["config"]["datafetcher"]["store_data"] = False
 
         # resetting QueueHandlers
         sighandler.log.handlers = []
@@ -1966,7 +2005,7 @@ class TestSignalHandler(TestBase):
 
         sighandler.react_to_signal(unpacked_message)
 
-        expected_args = [b"STORING_DISABLED", __version__]
+        expected_args = [b"STORING_DISABLED", version]
         sighandler.send_response.assert_called_once_with(expected_args)
 
         sighandler.send_response.reset_mock()
@@ -1976,8 +2015,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check START_QUERY_NEXT_METADATA (storing enabled)
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK START_QUERY_NEXT_METADATA (STORING ENABLED)"
-                      .format(current_func_name))
+        self.log.info("%s: CHECK START_QUERY_NEXT_METADATA (STORING ENABLED)",
+                      current_func_name)
 
         signal = b"START_QUERY_NEXT_METADATA"
         unpacked_message_dict["signal"] = signal
@@ -1989,7 +2028,7 @@ class TestSignalHandler(TestBase):
         for key, value in iteritems(self.signalhandler_config):
             config[key] = value
 
-        config["config"]["store_data"] = True
+        config["config"]["datafetcher"]["store_data"] = True
 
         # resetting QueueHandlers
         sighandler.log.handlers = []
@@ -2023,8 +2062,8 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check STOP_QUERY_NEXT/STOP_QUERY_NEXT_METADATA
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK STOP_QUERY_NEXT/STOP_QUERY_NEXT_METADATA"
-                      .format(current_func_name))
+        self.log.info("%s: CHECK STOP_QUERY_NEXT/STOP_QUERY_NEXT_METADATA",
+                      current_func_name)
 
         signal = b"STOP_QUERY_NEXT"
         unpacked_message_dict["signal"] = signal
@@ -2051,7 +2090,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # check NO_VALID_SIGNAL
         # --------------------------------------------------------------------
-        self.log.info("{}: CHECK NO_VALID_SIGNAL".format(current_func_name))
+        self.log.info("%s: CHECK NO_VALID_SIGNAL", current_func_name)
 
         signal = b"SOME_WEIRD_SIGNAL"
         unpacked_message_dict["signal"] = signal
@@ -2068,7 +2107,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # external context
         # --------------------------------------------------------------------
-        self.log.info("{}: EXTERNAL CONTEXT".format(current_func_name))
+        self.log.info("%s: EXTERNAL CONTEXT", current_func_name)
 
         self.signalhandler_config["context"] = self.context
 
@@ -2096,7 +2135,7 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         # no external context
         # --------------------------------------------------------------------
-        self.log.info("{}: NO EXTERNAL CONTEXT".format(current_func_name))
+        self.log.info("%s: NO EXTERNAL CONTEXT", current_func_name)
 
         self.signalhandler_config["context"] = None
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
@@ -2120,4 +2159,4 @@ class TestSignalHandler(TestBase):
     def tearDown(self):
         self.context.destroy(0)
 
-        super(TestSignalHandler, self).tearDown()
+        super().tearDown()

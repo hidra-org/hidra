@@ -1,44 +1,78 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Testing the zmq_events event detector.
 """
 
+# pylint: disable=protected-access
+# pylint: disable=missing-docstring
+# pylint: disable=redefined-variable-type
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
-import copy
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 import errno
 import inspect
 import json
 import logging
-import mock
-import os
-import re
-import time
-import socket
-import zmq
 from multiprocessing import Queue
+import re
+import socket
+import sys
+import zmq
 
-from .__init__ import BASE_DIR
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
+
 from test_base import (TestBase,
-                       create_dir,
                        MockZmqSocket,
                        MockZmqPollerAllFake,
                        MockZmqAuthenticator)
 import hidra
 import hidra.transfer as m_transfer
-from hidra._version import __version__
+from hidra import __version__
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
+
 class TestException(Exception):
+    """A custom exception to throw and catch.
+    """
     pass
 
+
 class TestTransfer(TestBase):
-    """
+    """Specification of tests to be performed for the transfer API.
     """
 
     def setUp(self):
-        super(TestTransfer, self).setUp()
+        super().setUp()
 
         # attributes inherited from parent class:
         # self.config
@@ -48,14 +82,23 @@ class TestTransfer(TestBase):
         self.transfer_conf = dict(
             connection_type="STREAM",
             signal_host=None,
-            use_log=False,
+            use_log=self.loglevel,
             context="fake_context",
             dirs_not_to_create=None
         )
 
+        if sys.version_info[0] < 3:
+            self.builtins_open_mock = "__builtin__.open"
+        else:
+            # python3: __builtin__ was renamed to builtins
+            self.builtins_open_mock = "builtins.open"
 
     def test_get_logger(self):
+
         def test_logger_with_queue(log_level, logging_level):
+            """Helper function to test logger using a log queue.
+            """
+
             queue = Queue(-1)
 
             logger = m_transfer.get_logger("my_logger_name",
@@ -68,7 +111,7 @@ class TestTransfer(TestBase):
         # No logging module used
         # --------------------------------------------------------------------
         logger = m_transfer.get_logger("my_logger_name", queue=False)
-        self.assertIsInstance(logger, hidra._shared_utils.LoggingFunction)
+        self.assertIsInstance(logger, hidra.utils.LoggingFunction)
 
         # --------------------------------------------------------------------
         # Logging module used
@@ -80,6 +123,7 @@ class TestTransfer(TestBase):
         test_logger_with_queue("critical", logging.CRITICAL)
 
     def test_generate_filepath(self):
+
         config_dict = {
             "relative_path": None,
             "filename": None
@@ -191,6 +235,8 @@ class TestTransfer(TestBase):
 
     def test_convert_suffix_list_to_regex(self):
 
+        # pylint: disable=invalid-name
+
         # --------------------------------------------------------------------
         # already regex (not compiled)
         # --------------------------------------------------------------------
@@ -226,9 +272,11 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # multiple file extentions
         # --------------------------------------------------------------------
-        ret_val = m_transfer.convert_suffix_list_to_regex(pattern=[".py", ".txt"],
-                                                          suffix=False,
-                                                          compile_regex=False)
+        ret_val = m_transfer.convert_suffix_list_to_regex(
+            pattern=[".py", ".txt"],
+            suffix=False,
+            compile_regex=False
+        )
         self.assertEqual(ret_val, "(.py|.txt)$")
 
         # --------------------------------------------------------------------
@@ -236,7 +284,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         log = mock.MagicMock()
         ret_val = m_transfer.convert_suffix_list_to_regex(pattern=".*",
-                                                        log=log)
+                                                          log=log)
 
         self.assertGreater(len(log.method_calls), 0)
 
@@ -248,7 +296,7 @@ class TestTransfer(TestBase):
         }
 
         with mock.patch("hidra.transfer.Transfer._setup"):
-             transfer = m_transfer.Transfer(**self.transfer_conf)
+            transfer = m_transfer.Transfer(**self.transfer_conf)
 
         def check_loggingfunction(log_level):
             self.transfer_conf["use_log"] = log_level
@@ -262,7 +310,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # external context
         # --------------------------------------------------------------------
-        self.log.info("{}: EXTERNAL CONTEXT".format(current_func_name))
+        self.log.info("%s: EXTERNAL CONTEXT", current_func_name)
 
         self.transfer_conf["context"] = conf["context"]
         transfer._setup(**self.transfer_conf)
@@ -277,7 +325,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no external context
         # --------------------------------------------------------------------
-        self.log.info("{}: NO EXTERNAL CONTEXT".format(current_func_name))
+        self.log.info("%s: NO EXTERNAL CONTEXT", current_func_name)
 
         self.transfer_conf["context"] = None
         transfer._setup(**self.transfer_conf)
@@ -293,7 +341,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # use LoggingFunction
         # --------------------------------------------------------------------
-        self.log.info("{}: USE LOGGINGFUNCTION".format(current_func_name))
+        self.log.info("%s: USE LOGGINGFUNCTION", current_func_name)
 
         check_loggingfunction("debug")
         check_loggingfunction("info")
@@ -304,7 +352,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # use logging queue
         # --------------------------------------------------------------------
-        self.log.info("{}: USE LOGGING QUEUE".format(current_func_name))
+        self.log.info("%s: USE LOGGING QUEUE", current_func_name)
 
         self.transfer_conf["use_log"] = Queue(-1)
         with mock.patch("hidra.transfer.get_logger") as mock_get_logger:
@@ -315,7 +363,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # use logging
         # --------------------------------------------------------------------
-        self.log.info("{}: USE LOGGING".format(current_func_name))
+        self.log.info("%s: USE LOGGING", current_func_name)
 
         self.transfer_conf["use_log"] = True
         transfer._setup(**self.transfer_conf)
@@ -325,29 +373,27 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no logging
         # --------------------------------------------------------------------
-        self.log.info("{}: NO LOGGING".format(current_func_name))
+        self.log.info("%s: NO LOGGING", current_func_name)
 
         check_loggingfunction(None)
 
         # --------------------------------------------------------------------
         # no logging method configured
         # --------------------------------------------------------------------
-        self.log.info("{}: NO LOGGING METHOD CONFIGURED"
-                      .format(current_func_name))
+        self.log.info("%s: NO LOGGING METHOD CONFIGURED", current_func_name)
 
         check_loggingfunction("debug")
 
         # --------------------------------------------------------------------
         # not supported
         # --------------------------------------------------------------------
-        self.log.info("{}: NOT SUPPORTED".format(current_func_name))
+        self.log.info("%s: NOT SUPPORTED", current_func_name)
 
         self.transfer_conf["connection_type"] = None
         with self.assertRaises(m_transfer.NotSupported):
             transfer._setup(**self.transfer_conf)
 
     def test_get_remote_version(self):
-        current_func_name = inspect.currentframe().f_code.co_name
 
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
@@ -408,9 +454,9 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
-        targets = ""
+        wrong_targets = ""
         with self.assertRaises(m_transfer.FormatError):
-            transfer.initiate(targets)
+            transfer.initiate(wrong_targets)
 
         # --------------------------------------------------------------------
         # successful
@@ -426,7 +472,9 @@ class TestTransfer(TestBase):
             with mock.patch(m_set_targets) as mock_set_targets:
                 with mock.patch(m_send_signal) as mock_send_signal:
                     mock_send_signal.return_value = [
-                        b"START_{}".format(self.transfer_conf["connection_type"])
+                        "START_{}".format(
+                            self.transfer_conf["connection_type"]
+                        ).encode("ascii")
                     ]
 
                     transfer.initiate(targets)
@@ -451,7 +499,7 @@ class TestTransfer(TestBase):
             with mock.patch(m_set_targets) as mock_set_targets:
                 with mock.patch(m_send_signal) as mock_send_signal:
                     mock_send_signal.return_value = [
-                        "something_wrong"
+                        b"something_wrong"
                     ]
 
                     with self.assertRaises(m_transfer.CommunicationFailed):
@@ -505,10 +553,10 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # target not a list
         # --------------------------------------------------------------------
-        targets = ""
+        wrong_targets = ""
 
         with self.assertRaises(m_transfer.FormatError):
-            transfer._set_targets(targets)
+            transfer._set_targets(wrong_targets)
 
         # --------------------------------------------------------------------
         # one target without suffixes
@@ -582,7 +630,7 @@ class TestTransfer(TestBase):
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
         def check_message(transfer, signal, exception):
-            transfer.stop = MockZmqSocket()
+            transfer.stop = mock.MagicMock()
 
             transfer.signal_socket = MockZmqSocket()
             transfer.signal_socket.recv_multipart.return_value = [signal, ""]
@@ -593,19 +641,19 @@ class TestTransfer(TestBase):
             }
 
             with self.assertRaises(exception):
-                transfer._send_signal("foo")
+                transfer._send_signal(b"foo")
 
             self.assertTrue(transfer.stop.called)
 
             # cleanup
             transfer.signal_socket = None
             transfer.poller = None
-            transfer.stop = None
+            transfer.stop.reset_mock()
 
         # --------------------------------------------------------------------
         # no signal
         # --------------------------------------------------------------------
-        self.log.info("{}: NO SIGNAL".format(current_func_name))
+        self.log.info("%s: NO SIGNAL", current_func_name)
 
         ret_val = transfer._send_signal(None)
 
@@ -614,13 +662,13 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Error when sending
         # --------------------------------------------------------------------
-        self.log.info("{}: ERROR WHEN SENDING".format(current_func_name))
+        self.log.info("%s: ERROR WHEN SENDING", current_func_name)
 
         transfer.signal_socket = MockZmqSocket()
         transfer.signal_socket.send_multipart.side_effect = TestException()
 
         with self.assertRaises(TestException):
-            transfer._send_signal("foo")
+            transfer._send_signal(b"foo")
 
         # cleanup
         transfer.signal_socket = None
@@ -628,14 +676,14 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Error when polling
         # --------------------------------------------------------------------
-        self.log.info("{}: ERROR WHEN POLLING".format(current_func_name))
+        self.log.info("%s: ERROR WHEN POLLING", current_func_name)
 
         transfer.signal_socket = MockZmqSocket()
         transfer.poller = MockZmqPollerAllFake()
         transfer.poller.poll.side_effect = TestException()
 
         with self.assertRaises(TestException):
-            transfer._send_signal("foo")
+            transfer._send_signal(b"foo")
 
         # cleanup
         transfer.signal_socket = None
@@ -644,16 +692,18 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Error when receiving
         # --------------------------------------------------------------------
-        self.log.info("{}: ERROR WHEN RECEIVING".format(current_func_name))
+        self.log.info("%s: ERROR WHEN RECEIVING", current_func_name)
 
         transfer.signal_socket = MockZmqSocket()
         transfer.signal_socket.recv_multipart.side_effect = TestException()
 
         transfer.poller = MockZmqPollerAllFake()
-        transfer.poller.poll.return_value = {transfer.signal_socket: zmq.POLLIN}
+        transfer.poller.poll.return_value = {
+            transfer.signal_socket: zmq.POLLIN
+        }
 
         with self.assertRaises(TestException):
-            transfer._send_signal("foo")
+            transfer._send_signal(b"foo")
 
         # cleanup
         transfer.signal_socket = None
@@ -662,8 +712,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received VERSION_CONFLICT
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED VERSION_CONFLICT"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVED VERSION_CONFLICT", current_func_name)
 
         check_message(transfer,
                       b"VERSION_CONFLICT",
@@ -672,7 +721,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received NO_VALID_HOST
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED NO_VALID_HOST".format(current_func_name))
+        self.log.info("%s: RECEIVED NO_VALID_HOST", current_func_name)
 
         check_message(transfer,
                       b"NO_VALID_HOST",
@@ -681,8 +730,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received CONNECTION_ALREADY_OPEN
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED CONNECTION_ALREADY_OPEN"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVED CONNECTION_ALREADY_OPEN",
+                      current_func_name)
 
         check_message(transfer,
                       b"CONNECTION_ALREADY_OPEN",
@@ -691,8 +740,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received STORING_DISABLED
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED STORING_DISABLED"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVED STORING_DISABLED", current_func_name)
 
         check_message(transfer,
                       b"STORING_DISABLED",
@@ -701,8 +749,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received NO_VALID_SIGNAL
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED NO_VALID_SIGNAL"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVED NO_VALID_SIGNAL", current_func_name)
 
         check_message(transfer,
                       b"NO_VALID_SIGNAL",
@@ -711,10 +758,9 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Received not supported
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVED NOT SUPPORTED MESSAGE"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVED NOT SUPPORTED MESSAGE", current_func_name)
 
-        transfer.stop = MockZmqSocket()
+        transfer.stop = mock.MagicMock()
 
         transfer.signal_socket = MockZmqSocket()
         transfer.signal_socket.recv_multipart.return_value = [
@@ -727,13 +773,13 @@ class TestTransfer(TestBase):
             transfer.signal_socket: zmq.POLLIN
         }
 
-        ret_val = transfer._send_signal("foo")
-        self.assertEqual(ret_val, ["something not supported", ""])
+        ret_val = transfer._send_signal(b"foo")
+        self.assertEqual(ret_val, [b"something not supported", ""])
 
         # cleanup
         transfer.signal_socket = None
         transfer.poller = None
-        transfer.stop = None
+        transfer.stop.reset_mock()
 
     @mock.patch("socket.getfqdn")
     def test__get_data_endpoint(self, mock_getfqdn):
@@ -745,7 +791,8 @@ class TestTransfer(TestBase):
 
         host = self.con_ip
         port = 1234
-        socket_id = "{}:{}".format(host, port).encode("utf-8")
+        socket_id = "{}:{}".format(host, port)
+        socket_id_enc = socket_id.encode("utf-8")
 
         ipc_dir = "test_dir"
         ipc_file = "test_file"
@@ -756,8 +803,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # data_socket_prop: list but wrong format
         # --------------------------------------------------------------------
-        self.log.info("{}: DATA_SOCKET_PROP: LIST BUT WRONG FORMAT"
-                      .format(current_func_name))
+        self.log.info("%s: DATA_SOCKET_PROP: LIST BUT WRONG FORMAT",
+                      current_func_name)
 
         data_socket_prop = []
         with self.assertRaises(hidra.transfer.FormatError):
@@ -766,35 +813,33 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # data_socket_prop: list ok
         # --------------------------------------------------------------------
-        self.log.info("{}: DATA_SOCKET_PROP: LIST OK"
-                      .format(current_func_name))
+        self.log.info("%s: DATA_SOCKET_PROP: LIST OK", current_func_name)
 
         data_socket_prop = [host, port]
         ret_val = transfer._get_data_endpoint(data_socket_prop)
 
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
         # --------------------------------------------------------------------
         # data_socket_prop: port only
         # --------------------------------------------------------------------
-        self.log.info("{}: DATA_SOCKET_PROP: PORT ONLY"
-                      .format(current_func_name))
+        self.log.info("%s: DATA_SOCKET_PROP: PORT ONLY", current_func_name)
 
         data_socket_prop = port
         ret_val = transfer._get_data_endpoint(data_socket_prop)
 
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
         # --------------------------------------------------------------------
         # no data_socket_prop but correct targets
         # --------------------------------------------------------------------
-        self.log.info("{}: NO DATA_SOCKET_PROP BUT CORRECT TARGETS"
-                      .format(current_func_name))
+        self.log.info("%s: NO DATA_SOCKET_PROP BUT CORRECT TARGETS",
+                      current_func_name)
 
         transfer.targets = [[socket_id, 1, ".*"]]
         ret_val = transfer._get_data_endpoint(data_socket_prop=None)
 
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
         # cleanup
         transfer.targets = None
@@ -802,8 +847,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no data_socket_prop, too many targets
         # --------------------------------------------------------------------
-        self.log.info("{}: NO DATA_SOCKET_PROP, TOO MANY TARGETS"
-                      .format(current_func_name))
+        self.log.info("%s: NO DATA_SOCKET_PROP, TOO MANY TARGETS",
+                      current_func_name)
 
         transfer.targets = [[socket_id, 1, ".*"], [socket_id, 1, ".*"]]
         with self.assertRaises(hidra.transfer.FormatError):
@@ -815,8 +860,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no data_socket_prop, no targets
         # --------------------------------------------------------------------
-        self.log.info("{}: DATA_SOCKET_PROP, NO TARGETS"
-                      .format(current_func_name))
+        self.log.info("%s: DATA_SOCKET_PROP, NO TARGETS",
+                      current_func_name)
 
         transfer.targets = None
         with self.assertRaises(hidra.transfer.FormatError):
@@ -825,14 +870,16 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # zmq_protocol is ipc
         # --------------------------------------------------------------------
-        self.log.info("{}: ZMQ_PROTOCOL IS IPC".format(current_func_name))
+        self.log.info("%s: ZMQ_PROTOCOL IS IPC", current_func_name)
 
         transfer.zmq_protocol = "ipc"
         data_socket_prop = [ipc_dir, ipc_file]
         ret_val = transfer._get_data_endpoint(data_socket_prop)
 
-        self.assertEqual(ret_val,
-                         (ipc_socket_id, "ipc://{}".format(ipc_socket_id)))
+        self.assertEqual(
+            ret_val,
+            (ipc_socket_id.encode("utf-8"), "ipc://{}".format(ipc_socket_id))
+        )
 
         # cleanup
         transfer.zmq_protocol = None
@@ -840,7 +887,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # set IPs
         # --------------------------------------------------------------------
-        self.log.info("{}: SET IPS".format(current_func_name))
+        self.log.info("%s: SET IPS", current_func_name)
 
         data_socket_prop = port
         with mock.patch("socket.gethostbyaddr") as mock_gethostbyaddr:
@@ -848,16 +895,18 @@ class TestTransfer(TestBase):
             ret_val = transfer._get_data_endpoint(data_socket_prop)
 
         self.assertEqual(transfer.ip, "my_ip")
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
         # --------------------------------------------------------------------
         # multiple possible IPs
         # --------------------------------------------------------------------
-        self.log.info("{}: MULTIPLE POSSIBLE IPS".format(current_func_name))
+        self.log.info("%s: MULTIPLE POSSIBLE IPS", current_func_name)
 
         data_socket_prop = port
         with mock.patch("socket.gethostbyaddr") as mock_gethostbyaddr:
-            mock_gethostbyaddr.return_value = ("", [""], ["my_ip", "second_ip"])
+            mock_gethostbyaddr.return_value = ("",
+                                               [""],
+                                               ["my_ip", "second_ip"])
 
             with self.assertRaises(hidra.transfer.CommunicationFailed):
                 transfer._get_data_endpoint(data_socket_prop)
@@ -865,19 +914,19 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # IPv4
         # --------------------------------------------------------------------
-        self.log.info("{}: IPV4".format(current_func_name))
+        self.log.info("%s: IPV4", current_func_name)
 
         data_socket_prop = [host, port]
         with mock.patch("socket.inet_aton") as mock_inet_aton:
             ret_val = transfer._get_data_endpoint(data_socket_prop)
 
         self.assertFalse(transfer.is_ipv6)
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
         # --------------------------------------------------------------------
         # IPv6
         # --------------------------------------------------------------------
-        self.log.info("{}: IPV6".format(current_func_name))
+        self.log.info("%s: IPV6", current_func_name)
 
         data_socket_prop = [host, port]
         with mock.patch("socket.inet_aton") as mock_inet_aton:
@@ -885,7 +934,7 @@ class TestTransfer(TestBase):
             ret_val = transfer._get_data_endpoint(data_socket_prop)
 
         self.assertTrue(transfer.is_ipv6)
-        self.assertEqual(ret_val, (socket_id, "my_endpoint"))
+        self.assertEqual(ret_val, (socket_id_enc, "my_endpoint"))
 
     def test__update_ip(self):
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -895,9 +944,9 @@ class TestTransfer(TestBase):
         transfer.ip = new_ip
         transfer._update_ip()
 
-        self.assertEqual(transfer.status_check_conf["ip"], new_ip)
-        self.assertEqual(transfer.file_op_conf["ip"], new_ip)
-        self.assertEqual(transfer.confirmation_conf["ip"], new_ip)
+        self.assertEqual(transfer.socket_conf["status_check"]["ip"], new_ip)
+        self.assertEqual(transfer.socket_conf["file_op"]["ip"], new_ip)
+        self.assertEqual(transfer.socket_conf["confirmation"]["ip"], new_ip)
 
     def test__get_endpoint(self):
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -964,7 +1013,7 @@ class TestTransfer(TestBase):
         transfer = m_transfer.Transfer(**self.transfer_conf)
         transfer.register = mock.MagicMock()
         transfer._get_data_endpoint = mock.MagicMock(
-            return_value = ("test_socket_id", "test_endpoint")
+            return_value=("test_socket_id", "test_endpoint")
         )
         transfer._start_socket = mock.MagicMock()
         transfer.setopt = mock.MagicMock()
@@ -1048,6 +1097,7 @@ class TestTransfer(TestBase):
         self.assertEqual(transfer.started_connections, expected)
         self.assertTrue(transfer._start_socket.called)
         self.assertIsNotNone(transfer.control_socket)
+        # pylint: disable=no-member
         self.assertTrue(transfer.poller.register.called)
         self.assertTrue(transfer.setopt.called)
 
@@ -1113,7 +1163,7 @@ class TestTransfer(TestBase):
         self.assertFalse(transfer._get_data_endpoint.called)
 
     @mock.patch("hidra.transfer.Transfer.stop")
-    def test_setopt(self, mock_stop):
+    def test_setopt(self, mock_stop):  # pylint: disable=unused-argument
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
         # --------------------------------------------------------------------
@@ -1121,6 +1171,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         transfer.status_check_socket = "foo"
         transfer.log = mock.MagicMock()
+        transfer.log.error = mock.MagicMock()
 
         option = "status_check"
         transfer.setopt(option)
@@ -1138,6 +1189,7 @@ class TestTransfer(TestBase):
         transfer._get_endpoint = mock.MagicMock()
         transfer._start_socket = mock.MagicMock()
         transfer.poller = MockZmqPollerAllFake()
+        transfer.poller.register = mock.MagicMock()
         transfer.status_check_socket = None
 
         option = "status_check"
@@ -1308,6 +1360,8 @@ class TestTransfer(TestBase):
     @mock.patch("hidra.transfer.Transfer.stop")
     @mock.patch("hidra.transfer.Transfer._start_socket")
     def test_register(self, mock_start_socket, mock_stop):
+        # pylint: disable=unused-argument
+
         transfer = m_transfer.Transfer(**self.transfer_conf)
         transfer.poller = MockZmqPollerAllFake()
         transfer.data_socket = None
@@ -1331,9 +1385,9 @@ class TestTransfer(TestBase):
         # whitelist: wrong format
         # --------------------------------------------------------------------
 
-        whitelist = ""
+        wrong_whitelist = ""
         with self.assertRaises(hidra.transfer.FormatError):
-            transfer.register(whitelist)
+            transfer.register(wrong_whitelist)
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -1365,6 +1419,7 @@ class TestTransfer(TestBase):
             transfer.register(whitelist)
 
             self.assertTrue(mock_gethostbyname.called)
+            # pylint: disable=no-member
             self.assertTrue(transfer.auth.allow.called)
 
         # cleanup
@@ -1385,6 +1440,7 @@ class TestTransfer(TestBase):
             transfer.register(whitelist)
 
             self.assertTrue(mock_gethostbyaddr.called)
+            # pylint: disable=no-member
             self.assertTrue(transfer.auth.allow.called)
 
         # cleanup
@@ -1432,6 +1488,8 @@ class TestTransfer(TestBase):
 
     @mock.patch("hidra.transfer.Transfer.stop")
     def test_get_chunk(self, mock_stop):
+        # pylint: disable=unused-argument
+
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
         # --------------------------------------------------------------------
@@ -1563,7 +1621,9 @@ class TestTransfer(TestBase):
 
         transfer.get_chunk()
 
-        transfer.status_check_socket.send_multipart.called_once_with([b"ERROR"])
+        transfer.status_check_socket.send_multipart.called_once_with(
+            [b"ERROR"]
+        )
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -1647,7 +1707,7 @@ class TestTransfer(TestBase):
         transfer.log = mock.MagicMock()
         transfer.started_connections = {"STREAM": None}
         transfer.data_socket = MockZmqSocket()
-        transfer.data_socket.recv_multipart.return_value = ["foo"]
+        transfer.data_socket.recv_multipart.return_value = [b"foo"]
         transfer.poller = MockZmqPollerAllFake()
         transfer.poller.poll.return_value = {
             transfer.data_socket: zmq.POLLIN
@@ -1762,7 +1822,8 @@ class TestTransfer(TestBase):
         transfer.poller = MockZmqPollerAllFake()
         transfer.poller.poll.return_value = {}
         transfer.request_socket = MockZmqSocket()
-        transfer.request_socket.send_multipart.side_effect = [None, TestException()]
+        transfer.request_socket.send_multipart.side_effect = [None,
+                                                              TestException()]
         transfer.started_connections = {
             "QUERY_NEXT": {
                 "id": None
@@ -1834,8 +1895,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # all data in one iteration
         # --------------------------------------------------------------------
-        self.log.info("{}: ALL DATA IN ONE ITERATION"
-                      .format(current_func_name))
+        self.log.info("%s: ALL DATA IN ONE ITERATION", current_func_name)
 
         metadata = {
             "relative_path": "test_rel_path",
@@ -1843,7 +1903,7 @@ class TestTransfer(TestBase):
             "file_mod_time": "now",
             "chunk_number": 0
         }
-        mock_get_chunk.side_effect = [[metadata, ""]]
+        mock_get_chunk.side_effect = [[metadata, b""]]
         mock_check_file_closed.side_effect = [True]
 
         ret_metadata, ret_data = transfer.get()
@@ -1855,7 +1915,7 @@ class TestTransfer(TestBase):
             "chunk_number": None
         }
         self.assertDictEqual(ret_metadata, expected)
-        self.assertEqual(ret_data, "")
+        self.assertEqual(ret_data, b"")
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -1867,8 +1927,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # all data in two iteration
         # --------------------------------------------------------------------
-        self.log.info("{}: ALL DATA IN TWO ITERATION"
-                      .format(current_func_name))
+        self.log.info("%s: ALL DATA IN TWO ITERATION", current_func_name)
 
         metadata0 = {
             "relative_path": "test_rel_path",
@@ -1882,8 +1941,8 @@ class TestTransfer(TestBase):
             "file_mod_time": "now1",
             "chunk_number": 1
         }
-        mock_get_chunk.side_effect = [[metadata0, "part0"],
-                                      [metadata1, "part1"]]
+        mock_get_chunk.side_effect = [[metadata0, b"part0"],
+                                      [metadata1, b"part1"]]
         mock_check_file_closed.side_effect = [False, True]
 
         ret_metadata, ret_data = transfer.get()
@@ -1895,7 +1954,7 @@ class TestTransfer(TestBase):
             "chunk_number": None
         }
         self.assertDictEqual(ret_metadata, expected)
-        self.assertEqual(ret_data, "part0part1")
+        self.assertEqual(ret_data, b"part0part1")
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -1907,7 +1966,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # KeyboardInterrupt
         # --------------------------------------------------------------------
-        self.log.info("{}: KEYBOARDINTERRUPT".format(current_func_name))
+        self.log.info("%s: KEYBOARDINTERRUPT", current_func_name)
 
         mock_check_file_closed.reset_mock()
         metadata = {
@@ -1931,8 +1990,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Exception when getting chunk, not stopped
         # --------------------------------------------------------------------
-        self.log.info("{}: EXCEPTION WHEN GETTING CHUNK, NOT STOPPED"
-                      .format(current_func_name))
+        self.log.info("%s: EXCEPTION WHEN GETTING CHUNK, NOT STOPPED",
+                      current_func_name)
 
         transfer.log = mock.MagicMock()
         metadata = {
@@ -1957,8 +2016,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Exception when getting chunk, stopped
         # --------------------------------------------------------------------
-        self.log.info("{}: EXCEPTION WHEN GETTING CHUNK, STOPPED"
-                      .format(current_func_name))
+        self.log.info("%s: EXCEPTION WHEN GETTING CHUNK, STOPPED",
+                      current_func_name)
 
         mock_check_file_closed.reset_mock()
         metadata = {
@@ -1981,8 +2040,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # Exception when joining
         # --------------------------------------------------------------------
-        self.log.info("{}: EXCEPTION WHEN JOINING"
-                      .format(current_func_name))
+        self.log.info("%s: EXCEPTION WHEN JOINING", current_func_name)
 
         transfer.log = mock.MagicMock()
         mock_check_file_closed.reset_mock()
@@ -2010,8 +2068,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # chunks of multiple files received intermixed
         # --------------------------------------------------------------------
-        self.log.info("{}: CHUNKS OF MULITPLE FILES RECEIVED INTERMIXED"
-                      .format(current_func_name))
+        self.log.info("%s: CHUNKS OF MULITPLE FILES RECEIVED INTERMIXED",
+                      current_func_name)
 
         metadata0 = {
             "relative_path": "test_rel_path",
@@ -2032,9 +2090,9 @@ class TestTransfer(TestBase):
             "file_mod_time": "now2",
             "chunk_number": 0
         }
-        mock_get_chunk.side_effect = [[metadata0, "part0"],
-                                      [metadata_extra_chunk, "extra_part0"],
-                                      [metadata1, "part1"]]
+        mock_get_chunk.side_effect = [[metadata0, b"part0"],
+                                      [metadata_extra_chunk, b"extra_part0"],
+                                      [metadata1, b"part1"]]
         mock_check_file_closed.side_effect = [False, False, True]
 
         ret_metadata, ret_data = transfer.get()
@@ -2046,7 +2104,7 @@ class TestTransfer(TestBase):
             "chunk_number": None
         }
         self.assertDictEqual(ret_metadata, expected)
-        self.assertEqual(ret_data, "part0part1")
+        self.assertEqual(ret_data, b"part0part1")
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2058,7 +2116,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # reach timeout
         # --------------------------------------------------------------------
-        self.log.info("{}: REACH TIMEOUT".format(current_func_name))
+        self.log.info("%s: REACH TIMEOUT", current_func_name)
 
         metadata = {
             "relative_path": "test_rel_path",
@@ -2078,7 +2136,6 @@ class TestTransfer(TestBase):
         mock_get_chunk.side_effect = None
         mock_get_chunk.reset_mock()
         mock_check_file_closed.reset_mock()
-
 
     @mock.patch("hidra.transfer.generate_file_identifier")
     @mock.patch("hidra.transfer.generate_filepath")
@@ -2101,30 +2158,30 @@ class TestTransfer(TestBase):
 
         class TestIOError(IOError):
             def __init__(self, **kwargs):
-                super(TestIOError, self).__init__(**kwargs)
+                super().__init__(**kwargs)
                 self.errno = errno.ENOENT
 
         # multiple calls of open (one of which is returns an exception)
         vars_calls = ["raise", ""]
-        def mock_two_calls(*args):
+
+        def mock_two_calls(*args):  # pylint: disable=unused-argument
             # for some reason there are more than just two calls
             # open transfer.py is also mocked (why?)
             try:
-                do = vars_calls.pop(0)
-            except:
-                do = ""
+                call = vars_calls.pop(0)
+            except Exception:
+                call = ""
 
-            if do == "raise":
+            if call == "raise":
                 raise TestIOError
             else:
                 return mock.MagicMock()
 
-
         # --------------------------------------------------------------------
         # open descriptors, file not closed
         # --------------------------------------------------------------------
-        self.log.info("{}: OPEN DESCRIPTORS, FILE NOT CLOSED"
-                      .format(current_func_name))
+        self.log.info("%s: OPEN DESCRIPTORS, FILE NOT CLOSED",
+                      current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2138,7 +2195,7 @@ class TestTransfer(TestBase):
 
         mock_check_file_closed.side_effect = [False]
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             ret_val = transfer.store_chunk(descriptors,
                                            filepath,
                                            payload,
@@ -2156,7 +2213,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS".format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS", current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2165,7 +2222,7 @@ class TestTransfer(TestBase):
 
         mock_check_file_closed.side_effect = [False]
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             ret_val = transfer.store_chunk(descriptors,
                                            filepath,
                                            payload,
@@ -2186,7 +2243,8 @@ class TestTransfer(TestBase):
         self.assertIn("last_chunk_number", descriptors["test_filepath"])
         self.assertEqual(descriptors["test_filepath"]["last_chunk_number"], 0)
         self.assertIn("file", descriptors["test_filepath"])
-        self.assertIsInstance(descriptors["test_filepath"]["file"], mock.MagicMock)
+        self.assertIsInstance(descriptors["test_filepath"]["file"],
+                              mock.MagicMock)
 
         # cleanup
         mock_check_file_closed.side_effect = None
@@ -2195,8 +2253,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors, "No such file or directory" but exception
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY' "
-                      "but exception".format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY' "
+                      "but exception", current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2206,7 +2264,7 @@ class TestTransfer(TestBase):
 
         transfer.log = mock.MagicMock()
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             # errno.ENOENT == "No such file or directory"
             mock_open.side_effect = TestIOError()
 
@@ -2226,8 +2284,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors, "No such file or directory", all dirs allowed
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY', "
-                      "ALL DIRS ALLOWED".format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY', "
+                      "ALL DIRS ALLOWED", current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2242,7 +2300,7 @@ class TestTransfer(TestBase):
         vars_calls = ["raise", ""]
 
         with mock.patch("os.makedirs") as mock_makedirs:
-            with mock.patch("__builtin__.open") as mock_open:
+            with mock.patch(self.builtins_open_mock) as mock_open:
                 # errno.ENOENT == "No such file or directory"
                 mock_open.side_effect = mock_two_calls
 
@@ -2269,7 +2327,8 @@ class TestTransfer(TestBase):
         self.assertIn("last_chunk_number", descriptors["test_filepath"])
         self.assertEqual(descriptors["test_filepath"]["last_chunk_number"], 0)
         self.assertIn("file", descriptors["test_filepath"])
-        self.assertIsInstance(descriptors["test_filepath"]["file"], mock.MagicMock)
+        self.assertIsInstance(descriptors["test_filepath"]["file"],
+                              mock.MagicMock)
 
         # cleanup
         mock_generate_filepath.reset_mock()
@@ -2277,8 +2336,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors, "No such file or directory", No dirs allowed
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY', "
-                      "NO DIRS ALLOWED".format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS, 'NO SUCH FILE OR DIRECTORY', "
+                      "NO DIRS ALLOWED", current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2296,7 +2355,7 @@ class TestTransfer(TestBase):
         transfer.dirs_not_to_create = "test_rel_path"
 
         with mock.patch("os.makedirs") as mock_makedirs:
-            with mock.patch("__builtin__.open") as mock_open:
+            with mock.patch(self.builtins_open_mock) as mock_open:
                 # errno.ENOENT == "No such file or directory"
                 mock_open.side_effect = mock_two_calls
 
@@ -2319,8 +2378,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors, not "no such file or directory"
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS, NOT 'NO SUCH FILE OR "
-                      "DIRECTORY'".format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS, NOT 'NO SUCH FILE OR "
+                      "DIRECTORY'", current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2329,7 +2388,7 @@ class TestTransfer(TestBase):
 
         transfer.log = mock.MagicMock()
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             mock_open.side_effect = IOError()
 
             with self.assertRaises(IOError):
@@ -2348,8 +2407,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # No open descriptors, unknown exception when open
         # --------------------------------------------------------------------
-        self.log.info("{}: NO OPEN DESCRIPTORS, UNKNOWN EXCEPTION WHEN OPEN"
-                      .format(current_func_name))
+        self.log.info("%s: NO OPEN DESCRIPTORS, UNKNOWN EXCEPTION WHEN OPEN",
+                      current_func_name)
 
         descriptors = {}
         metadata = {
@@ -2358,7 +2417,7 @@ class TestTransfer(TestBase):
 
         transfer.log = mock.MagicMock()
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             mock_open.side_effect = TestException()
 
             with self.assertRaises(TestException):
@@ -2377,8 +2436,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # KeyboardInterrupt in write
         # --------------------------------------------------------------------
-        self.log.info("{}: KEYBOARDINTERRUPT IN WRITE"
-                      .format(current_func_name))
+        self.log.info("%s: KEYBOARDINTERRUPT IN WRITE", current_func_name)
 
         mock_file.write.side_effect = KeyboardInterrupt()
         descriptors = {
@@ -2405,8 +2463,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # descriptors of wrong format
         # --------------------------------------------------------------------
-        self.log.info("{}: DESCRIPTORS OF WRONG FORMAT"
-                      .format(current_func_name))
+        self.log.info("%s: DESCRIPTORS OF WRONG FORMAT", current_func_name)
 
         mock_file.write.side_effect = TestException()
         descriptors = {
@@ -2438,8 +2495,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # chunk_number not in order
         # --------------------------------------------------------------------
-        self.log.info("{}: CHUNK_NUMBER NOT IN ORDER"
-                      .format(current_func_name))
+        self.log.info("%s: CHUNK_NUMBER NOT IN ORDER", current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2453,7 +2509,7 @@ class TestTransfer(TestBase):
 
         mock_check_file_closed.side_effect = [False]
 
-        with mock.patch("__builtin__.open") as mock_open:
+        with mock.patch(self.builtins_open_mock) as mock_open:
             transfer.store_chunk(descriptors,
                                  filepath,
                                  payload,
@@ -2472,18 +2528,17 @@ class TestTransfer(TestBase):
         self.assertIn("last_chunk_number", descriptors["test_filepath"])
         self.assertEqual(descriptors["test_filepath"]["last_chunk_number"], 0)
         self.assertIn("file", descriptors["test_filepath"])
-        self.assertIsInstance(descriptors["test_filepath"]["file"], mock.MagicMock)
+        self.assertIsInstance(descriptors["test_filepath"]["file"],
+                              mock.MagicMock)
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
         mock_file = mock.MagicMock(write=mock.MagicMock())
 
-
         # --------------------------------------------------------------------
         # send confirmation: not enabled
         # --------------------------------------------------------------------
-        self.log.info("{}: SEND CONFIRMATION: NOT ENABLED"
-                      .format(current_func_name))
+        self.log.info("%s: SEND CONFIRMATION: NOT ENABLED", current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2515,8 +2570,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # send confirmation: OK (backwards compatible)
         # --------------------------------------------------------------------
-        self.log.info("{}: SEND CONFIRMATION: OK (BACKWARDS COMPATIBLE)"
-                      .format(current_func_name))
+        self.log.info("%s: SEND CONFIRMATION: OK (BACKWARDS COMPATIBLE)",
+                      current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2530,9 +2585,12 @@ class TestTransfer(TestBase):
         }
 
         mock_check_file_closed.side_effect = [False]
-        transfer.confirmation_socket = mock.MagicMock(
-            send_multipart=mock.MagicMock()
-        )
+        transfer.confirmation_socket = mock.MagicMock()
+        transfer.confirmation_socket.send_multipart = mock.MagicMock()
+
+#        transfer.confirmation_socket = mock.MagicMock(
+#            send_multipart=mock.MagicMock()
+#        )
 
         # would have been set in initiate
         transfer._remote_version = b"4.0.7"
@@ -2545,7 +2603,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            ["test_topic", "test_file_id"]
+            [b"test_topic", b"test_file_id"]
         )
 
         # cleanup
@@ -2558,7 +2616,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # send confirmation: OK
         # --------------------------------------------------------------------
-        self.log.info("{}: SEND CONFIRMATION: OK".format(current_func_name))
+        self.log.info("%s: SEND CONFIRMATION: OK", current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2589,7 +2647,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            ["test_topic", "test_file_id", str(chunk_number)]
+            [b"test_topic", b"test_file_id", str(chunk_number)]
         )
 
         # cleanup
@@ -2602,8 +2660,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # send confirmation: error
         # --------------------------------------------------------------------
-        self.log.info("{}: SEND CONFIRMATION: ERROR"
-                      .format(current_func_name))
+        self.log.info("%s: SEND CONFIRMATION: ERROR", current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2621,7 +2678,9 @@ class TestTransfer(TestBase):
         transfer.confirmation_socket = mock.MagicMock(
             send_multipart=mock.MagicMock()
         )
-        transfer.confirmation_socket.send_multipart.side_effect = TestException()
+        transfer.confirmation_socket.send_multipart.side_effect = (
+            TestException()
+        )
         # would have been set in initiate
         transfer._remote_version = __version__
 
@@ -2634,7 +2693,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            ["test_topic", "test_file_id", "1"]
+            [b"test_topic", b"test_file_id", "1"]
         )
 
         # cleanup
@@ -2647,8 +2706,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # open descriptors, file closed
         # --------------------------------------------------------------------
-        self.log.info("{}: OPEN DESCRIPTORS, FILE CLOSED"
-                      .format(current_func_name))
+        self.log.info("%s: OPEN DESCRIPTORS, FILE CLOSED", current_func_name)
 
         descriptors = {
             "test_filepath": {
@@ -2683,8 +2741,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # open descriptors, file closed but error
         # --------------------------------------------------------------------
-        self.log.info("{}: OPEN DESCRIPTORS, FILE CLOSED BUT ERROR"
-                      .format(current_func_name))
+        self.log.info("%s: OPEN DESCRIPTORS, FILE CLOSED BUT ERROR",
+                      current_func_name)
 
         mock_file_error = mock.MagicMock(close=mock.MagicMock())
         mock_file_error.close.side_effect = TestException()
@@ -2736,8 +2794,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # one iteration, nothing received
         # --------------------------------------------------------------------
-        self.log.info("{}: ONE ITERATION, NOTHING RECEIVED"
-                      .format(current_func_name))
+        self.log.info("%s: ONE ITERATION, NOTHING RECEIVED", current_func_name)
 
         metadata = None
         payload = None
@@ -2755,8 +2812,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # one iteration, KeyboardInterrupt during receive
         # --------------------------------------------------------------------
-        self.log.info("{}: ONE ITERATION, KEYBOARDINTERRUPT DURING RECEIVE"
-                      .format(current_func_name))
+        self.log.info("%s: ONE ITERATION, KEYBOARDINTERRUPT DURING RECEIVE",
+                      current_func_name)
 
         metadata = None
         payload = None
@@ -2772,8 +2829,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # one iteration, error during receive, not stopped
         # --------------------------------------------------------------------
-        self.log.info("{}: ONE ITERATION, ERROR DURING RECEIVE, NOT STOPPED"
-                      .format(current_func_name))
+        self.log.info("%s: ONE ITERATION, ERROR DURING RECEIVE, NOT STOPPED",
+                      current_func_name)
 
         metadata = None
         payload = None
@@ -2796,8 +2853,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # one iteration, error during receive, stopped
         # --------------------------------------------------------------------
-        self.log.info("{}: ONE ITERATION, ERROR DURING RECEIVE, STOPPED"
-                      .format(current_func_name))
+        self.log.info("%s: ONE ITERATION, ERROR DURING RECEIVE, STOPPED",
+                      current_func_name)
 
         metadata = None
         payload = None
@@ -2818,8 +2875,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # one iteration, received and closed
         # --------------------------------------------------------------------
-        self.log.info("{}: ONE ITERATION, RECEIVED AND CLOSE"
-                      .format(current_func_name))
+        self.log.info("%s: ONE ITERATION, RECEIVED AND CLOSE",
+                      current_func_name)
 
         metadata = {}
         payload = "foo"
@@ -2848,8 +2905,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # receive and close in second iteration
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVE AND CLOSE IN SECOND ITERATION"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVE AND CLOSE IN SECOND ITERATION",
+                      current_func_name)
 
         metadata = {}
         payload = "foo"
@@ -2880,8 +2937,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # receive but error in storing
         # --------------------------------------------------------------------
-        self.log.info("{}: RECEIVE BUT ERROR IN STORING"
-                      .format(current_func_name))
+        self.log.info("%s: RECEIVE BUT ERROR IN STORING", current_func_name)
 
         metadata = {}
         payload = "foo"
@@ -2912,7 +2968,6 @@ class TestTransfer(TestBase):
         mock_store_chunk.reset_mock()
 
     def test__stop_socket(self):
-        current_func_name = inspect.currentframe().f_code.co_name
 
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
@@ -2922,11 +2977,12 @@ class TestTransfer(TestBase):
 
         transfer.test_socket = mock.MagicMock()
         transfer.log = mock.MagicMock()
+        transfer.log.info = mock.MagicMock()
 
         transfer._stop_socket("test_socket")
 
         self.assertIsNone(transfer.test_socket)
-        transfer.log.info.assert_called_once_with("Closing test_socket")
+        transfer.log.info.assert_called_once_with("Closing %s", "test_socket")
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2948,7 +3004,7 @@ class TestTransfer(TestBase):
 
         ret_val = transfer._stop_socket("test_socket", test_socket)
 
-        transfer.log.info.assert_called_once_with("Closing test_socket")
+        transfer.log.info.assert_called_once_with("Closing %s", "test_socket")
         self.assertIsNone(ret_val)
 
         # cleanup
@@ -2968,7 +3024,7 @@ class TestTransfer(TestBase):
         # no_auth,
         # no exteral context
         # --------------------------------------------------------------------
-        self.log.info("{}: CLOSE SOCKETS".format(current_func_name))
+        self.log.info("%s: CLOSE SOCKETS", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None
@@ -2992,7 +3048,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # open descriptors
         # --------------------------------------------------------------------
-        self.log.info("{}: OPEN DESCRIPTORS".format(current_func_name))
+        self.log.info("%s: OPEN DESCRIPTORS", current_func_name)
 
         transfer.signal_exchanged = None
         transfer.control_socket = None
@@ -3011,7 +3067,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # signal exchanged
         # --------------------------------------------------------------------
-        self.log.info("{}: SIGNAL EXCHANGED".format(current_func_name))
+        self.log.info("%s: SIGNAL EXCHANGED", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.control_socket = None
@@ -3019,7 +3075,7 @@ class TestTransfer(TestBase):
 
         def stop_started_connections(transfer, connection):
             transfer.signal_socket = mock.MagicMock()
-            transfer.signal_exchanged = b"{}".format(connection)
+            transfer.signal_exchanged = str(connection).encode("ascii")
             transfer.started_connections = {
                 connection: None
             }
@@ -3030,7 +3086,9 @@ class TestTransfer(TestBase):
                     transfer.stop()
 
                 self.assertTrue(mock_send_signal.called)
-                mock_send_signal.assert_called_once_with("STOP_" + connection)
+                mock_send_signal.assert_called_once_with(
+                    "STOP_{}".format(connection).encode("ascii")
+                )
 
             self.assertDictEqual(transfer.started_connections, {})
 
@@ -3039,7 +3097,7 @@ class TestTransfer(TestBase):
 
         def stop_signal_exchanged(transfer, connection):
             transfer.signal_socket = mock.MagicMock()
-            transfer.signal_exchanged = connection
+            transfer.signal_exchanged = str(connection).encode("ascii")
             transfer.started_connections = {}
 
             m_mock_send_signal = "hidra.transfer.Transfer._send_signal"
@@ -3048,15 +3106,17 @@ class TestTransfer(TestBase):
                     transfer.stop()
 
                 self.assertTrue(mock_send_signal.called)
-                mock_send_signal.assert_called_once_with("STOP_" + connection)
+                mock_send_signal.assert_called_once_with(
+                    "STOP_{}".format(connection).encode("ascii")
+                )
 
             # cleanup
             transfer.signal_socket = None
 
         stop_started_connections(transfer, "STREAM")
-        stop_signal_exchanged(transfer, b"STREAM")
+        stop_signal_exchanged(transfer, "STREAM")
         stop_started_connections(transfer, "QUERY_NEXT")
-        stop_signal_exchanged(transfer, b"QUERY_NEXT")
+        stop_signal_exchanged(transfer, "QUERY_NEXT")
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -3064,14 +3124,14 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # control_socket
         # --------------------------------------------------------------------
-        self.log.info("{}: CONTROL_SOCKET".format(current_func_name))
+        self.log.info("%s: CONTROL_SOCKET", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None
         transfer.auth = None
 
         transfer.control_socket = mock.MagicMock()
-        transfer.control_conf = {"ipc_file": None}
+        transfer.socket_conf["control"] = {"ipc_file": None}
 
         with mock.patch("hidra.transfer.Transfer._get_ipc_addr"):
             with mock.patch("hidra.transfer.Transfer._stop_socket"):
@@ -3087,13 +3147,15 @@ class TestTransfer(TestBase):
         # control_socket, Exception
         # --------------------------------------------------------------------
         def stop_control_socket_with_exception(transfer, side_effect):
+            # pylint: disable=invalid-name
+
             transfer.file_descriptors = {}
             transfer.signal_exchanged = None
             transfer.auth = None
 
             transfer.log = mock.MagicMock()
             transfer.control_socket = mock.MagicMock()
-            transfer.control_conf = {"ipc_file": None}
+            transfer.socket_conf["control"] = {"ipc_file": None}
 
             with mock.patch("hidra.transfer.Transfer._get_ipc_addr"):
                 with mock.patch("hidra.transfer.Transfer._stop_socket"):
@@ -3108,16 +3170,15 @@ class TestTransfer(TestBase):
             # cleanup
             transfer = m_transfer.Transfer(**self.transfer_conf)
 
-        self.log.info("{}: CONTROL_SOCKET, OSERROR".format(current_func_name))
+        self.log.info("%s: CONTROL_SOCKET, OSERROR", current_func_name)
         stop_control_socket_with_exception(transfer, OSError())
-        self.log.info("{}: CONTROL_SOCKET, EXCEPTION"
-                      .format(current_func_name))
+        self.log.info("%s: CONTROL_SOCKET, EXCEPTION", current_func_name)
         stop_control_socket_with_exception(transfer, TestException())
 
         # --------------------------------------------------------------------
         # auth, ok
         # --------------------------------------------------------------------
-        self.log.info("{}: AUTH".format(current_func_name))
+        self.log.info("%s: AUTH", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None
@@ -3133,7 +3194,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # auth, exception
         # --------------------------------------------------------------------
-        self.log.info("{}: AUTH, EXCEPTION".format(current_func_name))
+        self.log.info("%s: AUTH, EXCEPTION", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None
@@ -3155,7 +3216,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no external context
         # --------------------------------------------------------------------
-        self.log.info("{}: NO EXTERNAL CONTEXT".format(current_func_name))
+        self.log.info("%s: NO EXTERNAL CONTEXT", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None
@@ -3177,8 +3238,7 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # no external context, exception
         # --------------------------------------------------------------------
-        self.log.info("{}: NO EXTERNAL CONTEXT, EXCEPTION"
-                      .format(current_func_name))
+        self.log.info("%s: NO EXTERNAL CONTEXT, EXCEPTION", current_func_name)
 
         transfer.file_descriptors = {}
         transfer.signal_exchanged = None
@@ -3209,6 +3269,8 @@ class TestTransfer(TestBase):
                         mock_create_signal_socket,
                         mock_set_targets,
                         mock_send_signal):
+        # pylint: disable=unused-argument
+
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
         # --------------------------------------------------------------------
@@ -3226,7 +3288,7 @@ class TestTransfer(TestBase):
 
         def call_force_stop(transfer, connection):
             transfer.connection_type = connection
-            signal = b"FORCE_STOP_{}".format(connection)
+            signal = "FORCE_STOP_{}".format(connection).encode("ascii")
 
             mock_send_signal.side_effect = [[signal]]
             transfer.log = mock.MagicMock()
@@ -3253,7 +3315,7 @@ class TestTransfer(TestBase):
 
         transfer.connection_type = "STREAM"
 
-        mock_send_signal.side_effect = [["foo"]]
+        mock_send_signal.side_effect = [[b"foo"]]
         transfer.log = mock.MagicMock()
 
         transfer.force_stop(targets=[])
@@ -3295,6 +3357,3 @@ class TestTransfer(TestBase):
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
-
-    def tearDown(self):
-        super(TestTransfer, self).tearDown()

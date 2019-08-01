@@ -1,3 +1,30 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements a data fetcher for handling files.
+"""
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
@@ -16,17 +43,22 @@ except ImportError:
 from datafetcherbase import DataFetcherBase, DataHandlingError
 from cleanerbase import CleanerBase
 from hidra import generate_filepath
-import utils
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 # for platform-independency
 # WindowsError only exists on Windows machines
 if not getattr(__builtins__, "WindowsError", None):
-    class WindowsError(OSError): pass
+    class WindowsError(OSError):
+        """ Define WindowsError on Unix systems """
+        pass
 
 
 class DataFetcher(DataFetcherBase):
+    """
+    Implementation of the data fetcher to handle files.
+    """
 
     def __init__(self, config, log_queue, fetcher_id, context, lock):
 
@@ -38,8 +70,13 @@ class DataFetcher(DataFetcherBase):
                                  context,
                                  lock)
 
-        self.config = config
-        self.log_queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_df - the config of the datafetcher
+        #   self.config - the module specific config
+        #   self.df_type -  the name of the datafetcher module
+        #   self.log_queue
+        #   self.log
 
         self.source_file = None
         self.target_file = None
@@ -50,12 +87,15 @@ class DataFetcher(DataFetcherBase):
 
         self.keep_running = True
 
-        self.required_params = ["fix_subdirs", "store_data"]
+        self.required_params = ["fix_subdirs"]
 
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
-        self.setup()
 
-    def setup(self):
+        self._setup()
+
+    def _setup(self):
         """
         Sets static configuration parameters and which finish method to use.
         """
@@ -70,8 +110,8 @@ class DataFetcher(DataFetcherBase):
 
         self.is_windows = utils.is_windows()
 
-        if (self.config["remove_data"] == "with_confirmation"
-                and self.config["use_data_stream"]):
+        if (self.config_df["remove_data"] == "with_confirmation"
+                and self.config_df["use_data_stream"]):
             self.log.debug("Set finish to finish_with_cleaner")
             self.finish = self.finish_with_cleaner
         else:
@@ -79,6 +119,10 @@ class DataFetcher(DataFetcherBase):
 
     def get_metadata(self, targets, metadata):
         """Implementation of the abstract method get_metadata.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata to extend.
         """
 
         # Build source file
@@ -86,22 +130,20 @@ class DataFetcher(DataFetcherBase):
                                              metadata)
         # Build target file
         # if local_target is not set (== None) generate_filepath returns None
-        self.target_file = generate_filepath(self.config["local_target"],
+        self.target_file = generate_filepath(self.config_df["local_target"],
                                              metadata)
 
         if targets:
             try:
-                self.log.debug("get filesize for '{}'..."
-                               .format(self.source_file))
+                self.log.debug("get filesize for '%s'...", self.source_file)
                 filesize = os.path.getsize(self.source_file)
                 file_mod_time = os.stat(self.source_file).st_mtime
                 file_create_time = os.stat(self.source_file).st_ctime
-                self.log.debug("filesize({}) = {}"
-                               .format(self.source_file, filesize))
-                self.log.debug("file_mod_time({}) = {}"
-                               .format(self.source_file, file_mod_time))
+                self.log.debug("filesize(%s) = %s", self.source_file, filesize)
+                self.log.debug("file_mod_time(%s) = %s", self.source_file,
+                               file_mod_time)
 
-            except:
+            except Exception:
                 self.log.error("Unable to create metadata dictionary.")
                 raise
 
@@ -118,6 +160,7 @@ class DataFetcher(DataFetcherBase):
                 #        }
                 if self.is_windows:
                     # path convertions is save, see:
+                    # pylint: disable=line-too-long
                     # http://softwareengineering.stackexchange.com/questions/245156/is-it-safe-to-convert-windows-file-paths-to-unix-file-paths-with-a-simple-replac  # noqa E501
                     metadata["source_path"] = (
                         metadata["source_path"].replace("\\", "/"))
@@ -127,19 +170,25 @@ class DataFetcher(DataFetcherBase):
                 metadata["filesize"] = filesize
                 metadata["file_mod_time"] = file_mod_time
                 metadata["file_create_time"] = file_create_time
-                metadata["chunksize"] = self.config["chunksize"]
-                if self.config["remove_data"] == "with_confirmation":
+                metadata["chunksize"] = self.config_df["chunksize"]
+                if self.config_df["remove_data"] == "with_confirmation":
                     metadata["confirmation_required"] = self.confirmation_topic
                 else:
                     metadata["confirmation_required"] = False
 
-                self.log.debug("metadata = {}".format(metadata))
-            except:
+                self.log.debug("metadata = %s", metadata)
+            except Exception:
                 self.log.error("Unable to assemble multi-part message.")
                 raise
 
     def send_data(self, targets, metadata, open_connections):
         """Implementation of the abstract method send_data.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         # no targets to send data to -> data can be removed
@@ -165,15 +214,15 @@ class DataFetcher(DataFetcherBase):
 
         # reading source file into memory
         try:
-            self.log.debug("Opening '{}'...".format(self.source_file))
+            self.log.debug("Opening '%s'...", self.source_file)
             file_descriptor = open(str(self.source_file), "rb")
-        except:
-            self.log.error("Unable to read source file '{}'"
-                           .format(self.source_file), exc_info=True)
+        except Exception:
+            self.log.error("Unable to read source file '%s'",
+                           self.source_file, exc_info=True)
             raise
 
-        self.log.debug("Passing multipart-message for file '{}'..."
-                       .format(self.source_file))
+        self.log.debug("Passing multipart-message for file '%s'...",
+                       self.source_file)
         # sending data divided into chunks
         while self.keep_running:
 
@@ -195,9 +244,9 @@ class DataFetcher(DataFetcherBase):
                 chunk_payload.append(
                     json.dumps(chunk_metadata).encode("utf-8"))
                 chunk_payload.append(file_content)
-            except:
+            except Exception:
                 self.log.error("Unable to pack multipart-message for file "
-                               "'{}'".format(self.source_file), exc_info=True)
+                               "'%s'", self.source_file, exc_info=True)
 
             # send message to data targets
             try:
@@ -208,30 +257,28 @@ class DataFetcher(DataFetcherBase):
                                      chunk_number=chunk_number)
             except DataHandlingError:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{}' (chunk {})".format(self.source_file,
-                                                        chunk_number),
-                               exc_info=True)
+                               "'%s' (chunk %s)", self.source_file,
+                               chunk_number, exc_info=True)
                 send_error = True
-            except:
+            except Exception:
                 self.log.error("Unable to send multipart-message for file "
-                               "'{}' (chunk {})".format(self.source_file,
-                                                        chunk_number),
-                               exc_info=True)
+                               "'%s' (chunk %s)", self.source_file,
+                               chunk_number, exc_info=True)
 
             chunk_number += 1
 
         # close file
         try:
-            self.log.debug("Closing '{}'...".format(self.source_file))
+            self.log.debug("Closing '%s'...", self.source_file)
             file_descriptor.close()
-        except:
-            self.log.error("Unable to close target file '{}'"
-                           .format(self.source_file), exc_info=True)
+        except Exception:
+            self.log.error("Unable to close target file '%s'",
+                           self.source_file, exc_info=True)
             raise
 
         # do not remove data until a confirmation is sent back from the
         # priority target
-#        if self.config["remove_data"] == "with_confirmation":
+#        if self.config_df["remove_data"] == "with_confirmation":
 #            self.config["remove_flag"] = False
 #
 #        # the data was successfully sent -> mark it as removable
@@ -242,67 +289,80 @@ class DataFetcher(DataFetcherBase):
     def _datahandling(self, action_function, metadata):
         try:
             action_function(self.source_file, self.target_file)
-        except IOError as e:
+        except IOError as excp:
 
             # errno.ENOENT == "No such file or directory"
-            if e.errno == errno.ENOENT:
-                subdir, tmp = os.path.split(metadata["relative_path"])
+            if excp.errno == errno.ENOENT:
+                subdir, _ = os.path.split(metadata["relative_path"])
                 target_base_path = os.path.join(
-                    self.target_file.split(subdir + os.sep)[0], subdir)
+                    self.target_file.split(subdir + os.sep)[0], subdir
+                )
 
                 if metadata["relative_path"] in self.config["fix_subdirs"]:
-                    self.log.error("Unable to copy/move file '{}' to '{}': "
-                                   "Directory {} is not available"
-                                   .format(self.source_file, self.target_file,
-                                           metadata["relative_path"]))
+                    self.log.error("Unable to copy/move file '%s' to '%s': "
+                                   "Directory %s is not available",
+                                   self.source_file, self.target_file,
+                                   metadata["relative_path"])
                     raise
                 elif (subdir in self.config["fix_subdirs"]
-                        and not os.path.isdir(target_base_path)):
-                    self.log.error("Unable to copy/move file '{}' to '{}': "
-                                   "Directory {} is not available"
-                                   .format(self.source_file,
-                                           self.target_file,
-                                           subdir))
+                      and not os.path.isdir(target_base_path)):
+                    self.log.error("Unable to copy/move file '%s' to '%s': "
+                                   "Directory %s is not available",
+                                   self.source_file, self.target_file,
+                                   subdir)
                     raise
                 else:
                     try:
-                        target_path, filename = os.path.split(self.target_file)
+                        target_path, _ = os.path.split(self.target_file)
                         os.makedirs(target_path)
-                        self.log.info("New target directory created: {}"
-                                      .format(target_path))
+                        self.log.info("New target directory created: %s",
+                                      target_path)
                         action_function(self.source_file, self.target_file)
-                    except OSError as e:
+                    except OSError:
                         self.log.info("Target directory creation failed, was "
-                                      "already created in the meantime: {}"
-                                      .format(target_path))
+                                      "already created in the meantime: %s",
+                                      target_path)
                         action_function(self.source_file, self.target_file)
                     except:
-                        err_msg = ("Unable to copy/move file '{}' to '{}'"
-                                   .format(self.source_file, self.target_file))
+                        err_msg = ("Unable to copy/move file '%s' to '%s'",
+                                   self.source_file, self.target_file)
                         self.log.error(err_msg, exc_info=True)
-                        self.log.debug("target_path: {}".format(target_path))
+                        self.log.debug("target_path: %s", target_path)
                         raise
             else:
-                self.log.error("Unable to copy/move file '{}' to '{}'"
-                               .format(self.source_file, self.target_file),
+                self.log.error("Unable to copy/move file '%s' to '%s'",
+                               self.source_file, self.target_file,
                                exc_info=True)
                 raise
-        except:
-            self.log.error("Unable to copy/move file '{}' to '{}'"
-                           .format(self.source_file, self.target_file),
+        except Exception:
+            self.log.error("Unable to copy/move file '%s' to '%s'",
+                           self.source_file, self.target_file,
                            exc_info=True)
             raise
 
+    # pylint: disable=method-hidden
     def finish(self, targets, metadata, open_connections):
         """Implementation of the abstract method finish.
 
         Is overwritten when class is instantiated depending if a cleaner class
         is used or not
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
         pass
 
     def finish_with_cleaner(self, targets, metadata, open_connections):
         """Finish method to be used if use of cleaner was configured.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
@@ -310,18 +370,21 @@ class DataFetcher(DataFetcherBase):
 
         # copy file
         # (does not preserve file owner, group or ACLs)
-        if self.config["store_data"]:
+        if self.config_df["store_data"]:
             try:
                 self._datahandling(shutil.copy, metadata)
-                self.log.info("Copying file '{}' ...success."
-                              .format(self.source_file))
-            except:
+                self.log.info("Copying file '%s' ...success.",
+                              self.source_file)
+            except Exception:
+                self.log.error("Could not copy file %s to %s",
+                               self.source_file, self.target_file,
+                               exc_info=True)
                 return
 
         # remove file
         # can be set/done in addition to copy -> no elif
         # (e.g. store_data = True and remove_data = with_confirmation)
-        if self.config["remove_data"] and self.config["remove_flag"]:
+        if self.config_df["remove_data"] and self.config["remove_flag"]:
 
             file_id = self.generate_file_id(metadata)
             try:
@@ -330,14 +393,14 @@ class DataFetcher(DataFetcherBase):
             except KeyError:
                 filesize = os.path.getsize(self.source_file)
                 # round up the division result
-                n_chunks = -(-filesize // self.config["chunksize"])
+                n_chunks = -(-filesize // self.config_df["chunksize"])
 
             self.cleaner_job_socket.send_multipart(
                 [metadata["source_path"].encode("utf-8"),
                  file_id.encode("utf-8"),
                  str(n_chunks)]
             )
-            self.log.debug("Forwarded to cleaner {}".format(file_id))
+            self.log.debug("Forwarded to cleaner %s", file_id)
 
         # send message to metadata targets
         if targets_metadata:
@@ -349,48 +412,56 @@ class DataFetcher(DataFetcherBase):
                                      chunk_number=None,
                                      timeout=self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
-                               "{}...done.".format(self.source_file))
+                               "%s...done.", self.source_file)
 
-            except:
+            except Exception:
                 self.log.error("Unable to send metadata multipart-message for "
-                               "file '{}' to '{}'"
-                               .format(self.source_file, targets_metadata),
-                               exc_info=True)
+                               "file '%s' to '%s'", self.source_file,
+                               targets_metadata, exc_info=True)
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
         """Finish method to use when use of cleaner not configured.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
         targets_metadata = [i for i in targets if i[2] == "metadata"]
 
         # move file
-        if (self.config["store_data"]
-                and self.config["remove_data"]
+        if (self.config_df["store_data"]
+                and self.config_df["remove_data"]
                 and self.config["remove_flag"]):
 
             try:
                 self._datahandling(shutil.move, metadata)
-                self.log.info("Moving file '{}' to '{}'...success."
-                              .format(self.source_file, self.target_file))
-            except:
-                self.log.error("Could not move file {} to {}"
-                               .format(self.source_file, self.target_file),
+                self.log.info("Moving file '%s' to '%s'...success.",
+                              self.source_file, self.target_file)
+            except Exception:
+                self.log.error("Could not move file %s to %s",
+                               self.source_file, self.target_file,
                                exc_info=True)
                 return
 
         # copy file
         # (does not preserve file owner, group or ACLs)
-        elif self.config["store_data"]:
+        elif self.config_df["store_data"]:
             try:
                 self._datahandling(shutil.copy, metadata)
-                self.log.info("Copying file '{}' ...success."
-                              .format(self.source_file))
-            except:
+                self.log.info("Copying file '%s' ...success.",
+                              self.source_file)
+            except Exception:
+                self.log.error("Could not copy file %s to %s",
+                               self.source_file, self.target_file,
+                               exc_info=True)
                 return
 
         # remove file
-        elif self.config["remove_data"] and self.config["remove_flag"]:
+        elif self.config_df["remove_data"] and self.config["remove_flag"]:
             try:
                 os.remove(self.source_file)
                 self.log.info("Removing file '%s' ...success.",
@@ -405,7 +476,7 @@ class DataFetcher(DataFetcherBase):
                     self.log.error("Unable to remove file %s",
                                    self.source_file, exc_info=True)
 
-            except Exception as err:
+            except Exception:
                 self.log.error("Unable to remove file %s", self.source_file,
                                exc_info=True)
             finally:
@@ -421,13 +492,12 @@ class DataFetcher(DataFetcherBase):
                                      chunk_number=None,
                                      timeout=self.config["send_timeout"])
                 self.log.debug("Passing metadata multipart-message for file "
-                               "{}...done.".format(self.source_file))
+                               "%s...done.", self.source_file)
 
-            except:
+            except Exception:
                 self.log.error("Unable to send metadata multipart-message for "
-                               "file '{}' to '{}'"
-                               .format(self.source_file, targets_metadata),
-                               exc_info=True)
+                               "file '%s' to '%s'", self.source_file,
+                               targets_metadata, exc_info=True)
 
     def _get_file_handle_info(self):
 
@@ -449,7 +519,8 @@ class DataFetcher(DataFetcherBase):
                                                     file_to_check]))
 
         except Exception:
-            self.log.error("Collecting debug information failed.", exc_info=True)
+            self.log.error("Collecting debug information failed.",
+                           exc_info=True)
 
     def _retry_remove(self):
 
@@ -461,11 +532,11 @@ class DataFetcher(DataFetcherBase):
             time.sleep(0.2)
             try:
                 os.remove(self.source_file)
-                self.log.info("Removing file '%s' ...success (%s\%s).",
+                self.log.info("Removing file '%s' ...success (%s/%s).",
                               self.source_file, i, n_iter)
                 break
             except Exception:
-                self.log.error("Unable to remove file %s (%s\%s)",
+                self.log.error("Unable to remove file %s (%s/%s)",
                                self.source_file, i, n_iter, exc_info=True)
 
     def stop(self):
@@ -482,6 +553,10 @@ class DataFetcher(DataFetcherBase):
 
 
 class Cleaner(CleanerBase):
+    """
+    Implementation of the cleaner when handling files.
+    """
+
     def remove_element(self, base_path, file_id):
 
         # generate file path
@@ -490,7 +565,7 @@ class Cleaner(CleanerBase):
         # remove file
         try:
             os.remove(source_file)
-            self.log.info("Removing file '{}' ...success".format(source_file))
-        except:
-            self.log.error("Unable to remove file {}".format(source_file),
+            self.log.info("Removing file '%s' ...success", source_file)
+        except Exception:
+            self.log.error("Unable to remove file %s", source_file,
                            exc_info=True)

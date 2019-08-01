@@ -1,3 +1,33 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements a data fetcher to connect multiple hidra instances
+in series.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
@@ -6,18 +36,25 @@ import time
 
 from datafetcherbase import DataFetcherBase, DataHandlingError
 from hidra import generate_filepath, Transfer
-import utils
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class DataFetcher(DataFetcherBase):
+    """
+    Implementation of the data fetcher reacting on data sent by another
+    hidra instance.
+    """
 
     def __init__(self, config, log_queue, fetcher_id, context, lock):
         """Initial setup
 
         Checks if all required parameters are set in the configuration
         """
+
+        self.f_descriptors = dict()
+        self.transfer = None
 
         DataFetcherBase.__init__(self,
                                  config,
@@ -27,18 +64,24 @@ class DataFetcher(DataFetcherBase):
                                  context,
                                  lock)
 
-        self.config = config
-        self.log_queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_df - the config of the datafetcher
+        #   self.config - the module specific config
+        #   self.df_type -  the name of the datafetcher module
+        #   self.log_queue
+        #   self.log
 
-        self.f_descriptors = dict()
-        self.transfer = None
         self.metadata_r = None
         self.data_r = None
 
         self.set_required_params()
 
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
-        self.setup()
+
+        self._setup()
 
     def set_required_params(self):
         """
@@ -46,41 +89,51 @@ class DataFetcher(DataFetcherBase):
         Depending if on Linux or Windows other parameters are required.
         """
 
-        self.required_params = ["context",
-                                "store_data",
-                                "ext_ip",
-                                "status_check_resp_port",
-                                "confirmation_resp_port"]
+        self.required_params = {
+            "network": ["ext_ip"],
+        }
+
+        df_params = ["status_check_resp_port",
+                     "confirmation_resp_port",
+                     "context"]
 
         if utils.is_windows():
-            self.required_params += ["data_fetch_port"]
+            df_params += ["datafetcher_port"]
         else:
-            self.required_params += ["ipc_dir", "main_pid"]
+            self.required_params["network"] += ["ipc_dir", "main_pid"]
 
-    def setup(self):
-        """
-        Sets up and configures the transfer.
+        self.required_params["datafetcher"] = ["store_data",
+                                               {self.df_type: df_params}]
+
+    def _setup(self):
+        """Sets up and configures the transfer.
         """
         self.transfer = Transfer("STREAM", use_log=self.log_queue)
 
-        endpoint = "{}_{}".format(self.config["main_pid"], "out")
-        self.transfer.start([self.config["ipc_dir"], endpoint],
+        config_net = self.config_all["network"]
+
+        endpoint = "{}_{}".format(config_net["main_pid"], "out")
+        self.transfer.start([config_net["ipc_dir"], endpoint],
                             protocol="ipc",
                             data_con_style="connect")
 
         # enable status check requests from any sender
         self.transfer.setopt(option="status_check",
-                             value=[self.config["ext_ip"],
+                             value=[config_net["ext_ip"],
                                     self.config["status_check_resp_port"]])
 
         # enable confirmation reply if this is requested in a received data
         # packet
         self.transfer.setopt(option="confirmation",
-                             value=[self.config["ext_ip"],
+                             value=[config_net["ext_ip"],
                                     self.config["confirmation_resp_port"]])
 
     def get_metadata(self, targets, metadata):
         """Implementation of the abstract method get_metadata.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata to extend.
         """
 
         timeout = 10000
@@ -96,13 +149,15 @@ class DataFetcher(DataFetcherBase):
         # Use received data to prevent missmatch of metadata and data
         # TODO handle case if file type requesed by target does not match
 
+        # pylint: disable=attribute-defined-outside-init
+
         # Build source file
         self.source_file = generate_filepath(self.metadata_r["source_path"],
                                              self.metadata_r)
 
         # Build target file
         # if local_target is not set (== None) generate_filepath returns None
-        self.target_file = generate_filepath(self.config["local_target"],
+        self.target_file = generate_filepath(self.config_df["local_target"],
                                              self.metadata_r)
 
         # Extends metadata
@@ -124,11 +179,18 @@ class DataFetcher(DataFetcherBase):
             if "chunksize" not in self.metadata_r:
                 self.log.error("Received metadata do not contain 'chunksize'. "
                                "Setting it to locally configured one")
-                self.metadata_r["chunksize"] = self.config["chunksize"]
+                self.metadata_r["chunksize"] = self.config_df["chunksize"]
 
     def send_data(self, targets, metadata, open_connections):
         """Implementation of the abstract method send_data.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
+        # pylint: disable=unused-argument
 
         if not targets:
             return
@@ -139,20 +201,18 @@ class DataFetcher(DataFetcherBase):
         if not targets_data:
             return
 
-        self.log.debug("Received data for file {} (chunknumber {})"
-                       .format(self.source_file,
-                               self.metadata_r["chunk_number"]))
+        self.log.debug("Received data for file %s (chunknumber %s)",
+                       self.source_file, self.metadata_r["chunk_number"])
 
-        self.log.debug("Passing multipart-message for file '{}'..."
-                       .format(self.source_file))
+        self.log.debug("Passing multipart-message for file '%s'...",
+                       self.source_file)
 
         try:
             chunk_payload = [json.dumps(self.metadata_r).encode("utf-8"),
                              self.data_r]
-        except:
+        except Exception:
             self.log.error("Unable to pack multipart-message for file "
-                           "'{}'".format(self.source_file),
-                           exc_info=True)
+                           "'%s'", self.source_file, exc_info=True)
 
         # send message to data targets
         try:
@@ -165,19 +225,25 @@ class DataFetcher(DataFetcherBase):
             )
         except DataHandlingError:
             self.log.error(
-                "Unable to send multipart-message for file '{}' (chunk {})"
-                .format(self.source_file, self.metadata_r["chunk_number"]),
+                "Unable to send multipart-message for file '%s' (chunk %s)",
+                self.source_file, self.metadata_r["chunk_number"],
                 exc_info=True
             )
-        except:
+        except Exception:
             self.log.error(
-                "Unable to send multipart-message for file '{}' (chunk {})"
-                .format(self.source_file, self.metadata_r["chunk_number"]),
+                "Unable to send multipart-message for file '%s' (chunk %s)",
+                self.source_file, self.metadata_r["chunk_number"],
                 exc_info=True
             )
 
     def finish(self, targets, metadata, open_connections):
         """Implementation of the abstract method finish.
+
+        Args:
+            targets (list): The target list this file is supposed to go.
+            metadata (dict): The dictionary with the metedata of the file
+            open_connections (dict): The dictionary containing all open zmq
+                                     connections.
         """
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
@@ -195,30 +261,30 @@ class DataFetcher(DataFetcherBase):
                     timeout=self.config["send_timeout"]
                 )
                 self.log.debug("Passing metadata multipart-message for file "
-                               "{}...done.".format(self.source_file))
+                               "%s...done.", self.source_file)
 
-            except:
+            except Exception:
                 self.log.error(
                     "Unable to send metadata multipart-message for file"
-                    "'{}' to '{}'".format(self.source_file, targets_metadata),
+                    "'%s' to '%s'", self.source_file, targets_metadata,
                     exc_info=True
                 )
 
         # store data
-        if self.config["store_data"]:
+        if self.config_df["store_data"]:
             try:
                 # TODO: save message to file using a thread (avoids blocking)
-                self.transfer.store_data_chunk(
+                self.transfer.store_chunk(
                     descriptors=self.f_descriptors,
                     filepath=self.target_file,
                     payload=self.data_r,
-                    base_path=self.config["local_target"],
+                    base_path=self.config_df["local_target"],
                     metadata=self.metadata_r
                 )
-            except:
+            except Exception:
                 self.log.error(
-                    "Storing multipart message for file '{}' failed"
-                    .format(self.source_file),
+                    "Storing multipart message for file '%s' failed",
+                    self.source_file,
                     exc_info=True
                 )
 
@@ -230,7 +296,7 @@ class DataFetcher(DataFetcherBase):
         self.close_socket()
 
         # Close open file handler to prevent file corruption
-        for target_file in list(self.f_descriptors.keys()):
+        for target_file in list(self.f_descriptors):
             self.f_descriptors[target_file].close()
             del self.f_descriptors[target_file]
 

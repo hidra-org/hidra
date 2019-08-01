@@ -1,4 +1,70 @@
 # develop
+# 4.1.0
+
+## general
+- Move, clean up and structure of utils into separate module files
+- Use hierarchical config format for sender, receiver and control server
+- Changed default config to yaml
+- Improve test suite to handle individual modules
+- Remove scripts to build SuSE packages via docker (new kernels incompatible with SUSE 10)
+- Fix python3 compatibility
+- Change \__version__ to str
+- Fix hidra usage via docker
+- Enable mixture of netgroup and host list config for whitelist
+- Rename ModuleNotFound to NotFound for versatility
+- Remove hard dependency on logutils in python3
+- Remove dependency on six
+- Add script to build CentOS packages via docker
+- Remove manual .egg tracking for setproctitle when freezing
+
+## hidra base
+- Changed effective user id inside of datamanager and datareceiver directly
+- Removed underscore from event_detector and data_fetcher
+- Renamed event_det_port and data_fetch_port
+- Simplify log setup (no separated calls for with or without onscreen)
+- Fix stopping of datadispatcher and taskprovider
+- Event detector: Check monitored_dir when stopping
+- Simplify inotifyx event detector
+- Remove check for closed file in metadata mode
+- Enable display of hanging processes on shut down
+- Add inotify event detector
+- Fix start up of eventdetector
+- Remove restriction to supported modules only
+- Add experimental ewmscp (kafka) syncing event detector
+- Add data fetcher only distributing metadata (no data)
+- Enable modules which do not need conf parameter
+- Change default config for Pilatus and on Windows
+- Fix log file permission problem if user starting hidra and the one as which is runs differ
+- Enable random port usage for com_port and request_port
+- Reduce number of workers when using Eiger (from 32 to 16)
+- Fix netgroup resolving when result is not a fully qualified domain name
+- Fix error message if writing fails (http_fetcher)
+- Fix hanging processes due of missed control signal
+
+## hidra control
+- Control: Fix unicode compatibility
+- Control client: show already running instances when start fails
+- Control-server: Fixed file handle exception handling
+- Extracted control server and control client config into config file
+- Generalize control signals reaction
+- Add host checks on control server
+- Enable stopping of still running instances via control client
+- Add option to show running instances via control client
+- Improve error message when usage of control server
+- Structured config server
+- Remove config file when hidra is stopped via control server
+- Introduce statserver to expose config (locally only)
+- Enable control server and statserver communication
+- Enable setting of beamline in config file of control client
+- Fix starting of wrong beamline instances via control server
+- Fix permission checking in control server
+- Use one backup file per beamline
+
+## APIs
+- Transfer: Checking chunk number before opening file
+- Enable port receiving via transfer api
+- Fix double query for request port in transfer API
+
 # 4.0.23
 
 - Fix crash of signal handler when removing multiple leftover connections
@@ -13,7 +79,7 @@
 
 # 4.0.21
 
-- Fix readding of events for watchdog event detector
+- Fix reading of events for watchdog event detector
 - Fix typo in http_fetcher
 - Fix with_confirmation on Windows
 - Fix python3 compatibility

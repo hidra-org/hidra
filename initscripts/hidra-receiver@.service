@@ -6,10 +6,7 @@ After=network-online.target
 [Service]
 TimeoutStartSec=0
 WorkingDirectory=/opt/hidra
-EnvironmentFile=/opt/hidra/conf/receiver_%i.conf
-#User=$username
-#ExecStart=/opt/hidra/src/receiver/datareceiver.py --verbose --config_file /opt/hidra/conf/receiver_%i.conf
-ExecStart=/bin/sh -c 'exec /usr/bin/sudo -u $username /opt/hidra/src/receiver/datareceiver.py --verbose --config_file /opt/hidra/conf/receiver_%i.conf'
+ExecStart=/opt/hidra/src/receiver/datareceiver.py --verbose --config_file /opt/hidra/conf/receiver_%i.yaml
 
 [Install]
 WantedBy=multi-user.target

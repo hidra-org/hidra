@@ -1,16 +1,45 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements an event detector to connect multiple hidra instances
+in series.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
 from collections import namedtuple
 import json
+import multiprocessing
 import zmq
 # from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
 from zmq.utils.strtypes import asbytes
-import multiprocessing
 
 from eventdetectorbase import EventDetectorBase
-import utils
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -37,8 +66,8 @@ def get_ipc_addresses(config):
     if utils.is_windows():
         addrs = None
     else:
-        ipc_ip = "{}/{}".format(config["ipc_dir"],
-                                config["main_pid"])
+        ipc_ip = "{}/{}".format(config["network"]["ipc_dir"],
+                                config["network"]["main_pid"])
 
         out = "{}_{}".format(ipc_ip, "out")
         mon = "{}_{}".format(ipc_ip, "mon")
@@ -60,19 +89,19 @@ def get_endpoints(config, ipc_addresses):
         An Endpoints object containing the bind and connection endpoints.
     """
 
-    ext_ip = config["ext_ip"]
-    con_ip = config["con_ip"]
+    ext_ip = config["network"]["ext_ip"]
+    con_ip = config["network"]["con_ip"]
 
-    port = config["ext_data_port"]
+    port = config["eventdetector"]["hidra_events"]["ext_data_port"]
     in_bind = "tcp://{}:{}".format(ext_ip, port)
     in_con = "tcp://{}:{}".format(con_ip, port)
 
     if utils.is_windows():
-        port = config["data_fetcher_port"]
+        port = config["datafetcher_port"]
         out_bind = "tcp://{}:{}".format(ext_ip, port)
         out_con = "tcp://{}:{}".format(con_ip, port)
 
-        port = config["event_det_port"]
+        port = config["eventdetector_port"]
         mon_bind = "tcp://{}:{}".format(ext_ip, port)
         mon_con = "tcp://{}:{}".format(con_ip, port)
     else:
@@ -90,6 +119,13 @@ def get_endpoints(config, ipc_addresses):
 
 
 class MonitorDevice(object):
+    """
+    A device to monitore a ZMQ queue for incoming data but excluding
+    'ALIVE_TEST' messages.
+    """
+
+    # pylint: disable=too-few-public-methods
+
     def __init__(self, in_endpoint, out_endpoint, mon_endpoint):
 
         self.in_prefix = asbytes('in')
@@ -109,6 +145,12 @@ class MonitorDevice(object):
         self.run()
 
     def run(self):
+        """Forward messages received on the in_socket to the out_socket.
+
+        In addition to forwarding the messages a notifycation is sent to the
+        mon_socket. And 'ALIVE_TEST' messages are ignored in total.
+        """
+
         while True:
             try:
                 msg = self.in_socket.recv_multipart()
@@ -136,15 +178,24 @@ class MonitorDevice(object):
 
 
 class EventDetector(EventDetectorBase):
+    """
+    Implementation of the event detector reacting on data sent by another
+    hidra instance.
+    """
+
     def __init__(self, config, log_queue):
 
         EventDetectorBase.__init__(self,
                                    config,
                                    log_queue,
                                    "hidra_events")
-
-        self.config = config
-        self.log_queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_ed - the config of the event detector
+        #   self.config - the module specific config
+        #   self.ed_type -  the name of the eventdetector module
+        #   self.log_queue
+        #   self.log
 
         self.ipc_addresses = None
         self.endpoints = None
@@ -165,18 +216,30 @@ class EventDetector(EventDetectorBase):
         Depending if on Linux or Windows other parameters are required.
         """
 
-        self.required_params = ["context", "ext_ip", "con_ip", "ext_data_port"]
+#        self.required_params = ["context", "ext_ip",
+#                                "con_ip", "ext_data_port"]
+#        if utils.is_windows():
+#            self.required_params += ["eventdetector_port", "datafetcher_port"]
+#        else:
+#            self.required_params += ["ipc_dir", "main_pid"]
+
+        self.required_params = {
+            "eventdetector": {self.ed_type: ["ext_data_port"]},
+            "network": ["ext_ip", "con_ip", "context"]
+        }
+
         if utils.is_windows():
-            self.required_params += ["event_det_port", "data_fetch_port"]
+            ed_params = self.required_params["eventdetector"][self.ed_type]
+            ed_params += ["eventdetector_port", "datafetcher_port"]
         else:
-            self.required_params += ["ipc_dir", "main_pid"]
+            self.required_params["network"] += ["ipc_dir", "main_pid"]
 
     def setup(self):
         """Configures ZMQ sockets and starts monitoring device.
         """
 
-        self.ipc_addresses = get_ipc_addresses(config=self.config)
-        self.endpoints = get_endpoints(config=self.config,
+        self.ipc_addresses = get_ipc_addresses(config=self.config_all)
+        self.endpoints = get_endpoints(config=self.config_all,
                                        ipc_addresses=self.ipc_addresses)
 
         # Set up monitored queue to get notification when new data is sent to
@@ -203,14 +266,12 @@ class EventDetector(EventDetectorBase):
 
         self.monitoringdevice.start()
         self.log.info("Monitoring device has started with (bind)\n"
-                      "in: {}\nout: {}\nmon: {}"
-                      .format(self.endpoints.in_bind,
-                              self.endpoints.out_bind,
-                              self.endpoints.mon_bind))
+                      "in: %s\nout: %s\nmon: %s", self.endpoints.in_bind,
+                      self.endpoints.out_bind, self.endpoints.mon_bind)
 
         # set up monitoring socket where the events are sent to
-        if self.config["context"] is not None:
-            self.context = self.config["context"]
+        if self.config_all["network"]["context"] is not None:
+            self.context = self.config_all["network"]["context"]
             self.ext_context = True
         else:
             self.log.info("Registering ZMQ context")
@@ -238,12 +299,12 @@ class EventDetector(EventDetectorBase):
         # the metadata were received as string and have to be converted into
         # a dictionary
         metadata = json.loads(metadata)
-        self.log.debug("Monitoring Client: {}".format(metadata))
+        self.log.debug("Monitoring Client: %s", metadata)
 
         # TODO receive more than this one metadata unit
         event_message_list = [metadata]
 
-        self.log.debug("event_message: {}".format(event_message_list))
+        self.log.debug("event_message: %s", event_message_list)
 
         return event_message_list
 
@@ -266,5 +327,5 @@ class EventDetector(EventDetectorBase):
                 self.context.destroy(0)
                 self.context = None
                 self.log.info("Closing ZMQ context...done.")
-            except:
+            except Exception:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)

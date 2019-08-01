@@ -9,18 +9,15 @@ One which runs the HiDRA datamanager, one for the datareceiver and one which set
 
 ## sender
 
-* Copy or rename the Dockerfile to use to "Dockerfile", e.g.
-```
-cp Dockerfile.sender Dockerfile
-```
-* If necessary modify conf/datamanager_docker.conf
+* Clone hidra repo
+* If necessary modify conf/datamanager_docker.yaml
 * Create docker image (give it for example the name "sender_test").
 ```
-docker build -t sender_test .
+docker build -t sender_test -f Dockerfile.sender .
 ```
 * Create the docker container and map directorie from outside the containter as source.
 ```
-docker run -it -v <source>:/ramdisk sender_test
+docker run -it -v <hidra location>:/opt/hidra -v <source>:/ramdisk sender_test
 ```
 
 ### Alternatives
@@ -29,45 +26,39 @@ docker run -it -v <source>:/ramdisk sender_test
 
 To be able to connect from outside to it, run
 ```
-docker run -it -v <source>:/ramdisk -v <target>:/target --net=host sender_test
+docker run -it -v <hidra location>:/opt/hidra -v <source>:/ramdisk --net=host sender_test
 ```
 
 #### Migrate data locally
 
-* Change conf/datamanager_docker.conf: Enable storing of data
+* Change conf/datamanager_docker.yaml: Enable storing of data
 ```
 store_data = True
 ```
 * Create the docker container and map directories from outside the containter as source and target.
 ```
-docker run -it -v <source>:/ramdisk -v <target>:/target sender_test
+docker run -it -v <hidra location>:/opt/hidra -v <source>:/ramdisk -v <target>:/target sender_test
 ```
 
 ## receiver
 
-* Copy or rename the Dockerfile to use to "Dockerfile", e.g.
-```
-cp Dockerfile.receiver Dockerfile
-```
-* If necessary modify conf/datareceiver_docker.conf
+* Clone hidra repo
+* If necessary modify conf/datareceiver_docker.yaml
 * Create docker image (give it for example the name "receiver_test").
 ```
-docker build -t receiver_test .
+docker build -t receiver_test -f Dockerfile.receiver .
 ```
 * Create the docker container and map directory from outside the containter as target.
 ```
-docker run -it -v <target>:/target receiver_test
+docker run -it -v <hidra location>:/opt/hidra -v <target>:/target receiver_test
 ```
 
 ## API
 
-* Copy or rename the Dockerfile to use to "Dockerfile", e.g.
+* No cloning of the repo required, this is done inside the image.
+* Create docker image (give it for example the name "api_test").
 ```
-cp Dockerfile.api Dockerfile
-```
-* Create docker image (give it for example the name "receiver_test").
-```
-docker build -t api_test .
+docker build -t api_test -f Dockerfile.api .
 ```
 * Create the docker container.
 ```

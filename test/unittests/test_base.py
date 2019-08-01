@@ -1,29 +1,61 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Providing a base for all test classes.
 """
 
+# pylint: disable=global-variable-not-assigned
+# pylint: disable=too-many-ancestors
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
 
 import inspect
 import logging
-import mock
+from multiprocessing import Queue
 import os
 import socket as m_socket
 import tempfile
 import traceback
 import unittest
 import zmq
-from multiprocessing import Queue
-from logutils.queue import QueueHandler
 
-import utils
+from logutils.queue import QueueHandler
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
+
+import _environment
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-# LOGLEVEL = "error"
-# LOGLEVEL = "info"
-LOGLEVEL = "debug"
+LOGLEVEL = "error"
 
 
 def create_dir(directory, chmod=None, log=logging):
@@ -37,7 +69,7 @@ def create_dir(directory, chmod=None, log=logging):
 
     if not os.path.isdir(directory):
         os.mkdir(directory)
-        log.info("Creating directory: {}".format(directory))
+        log.info("Creating directory: %s", directory)
 
     if chmod is not None:
         # the permission have to changed explicitly because
@@ -49,65 +81,105 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
     """ Mock the logging module.
     """
 
+    loglevel = LOGLEVEL
+
     def __init__(self, **kwargs):
         mock.MagicMock.__init__(self, **kwargs)
-        utils.LoggingFunction.__init__(self, level="debug")
+        utils.LoggingFunction.__init__(self, level=self.loglevel)
 
-    def out(self, message, exc_info=False):
+    def out(self, msg, *args, **kwargs):
         """Forward the output to stdout.
 
         Args:
             message: the messages to be logged.
+            args: The arguments to fill in into msg.
             exc_info (optional): Append a traceback.
         """
+
+        try:
+            msg = unicode(msg)  # noqa F821
+        except NameError:
+            # Literal strings are unicode by default in Python3
+            msg = str(msg)
+
+        if args:
+            msg = msg % args
+
         caller = inspect.getframeinfo(inspect.stack()[1][0])
         fname = os.path.split(caller.filename)[1]
-        msg = "[{}:{}] > {}".format(fname, caller.lineno, message)
-        if exc_info:
+        msg = "[{}:{}] > {}".format(fname, caller.lineno, msg)
+
+        if "exc_info" in kwargs and kwargs["exc_info"]:
             print(msg, traceback.format_exc())
         else:
             print(msg)
 
 
-def mock_get_logger(logger_name, queue=False, log_level="debug"):
+def mock_get_logger(logger_name, queue=False, log_level=LOGLEVEL):
     """Wrapper for the get_logger function
     """
+    # pylint: disable=unused-argument
+
     return MockLogging()
 
 
 class MockZmqSocket(mock.MagicMock):
+    """Mock a zmq socket.
+    """
 
     def __init__(self, **kwargs):
-        super(MockZmqSocket, self).__init__(**kwargs)
+        try:
+            super().__init__(**kwargs)
+        except RuntimeError:
+            # happens when run with python2 because of the mock module
+            super(MockZmqSocket, self).__init__(**kwargs)
         self._connected = False
 
         self.send_multipart = mock.MagicMock()
         self.recv_multipart = mock.MagicMock()
 
     def bind(self, endpoint):
+        """Mock the socket bind method.
+        """
         assert not self._connected
         assert endpoint != ""
         self._connected = True
 
     def connect(self, endpoint):
+        """Mock the socket connect method.
+        """
         assert not self._connected
         assert endpoint != ""
         self._connected = True
 
     def close(self, linger):
+        """Mock the socket close method.
+        """
+        # pylint: disable=unused-argument
+
         assert self._connected
         self._connected = False
 
 
 class MockZmqContext(mock.MagicMock):
+    """Mock a zmq context.
+    """
 
     def __init__(self, **kwargs):
-        super(MockZmqContext, self).__init__(**kwargs)
+        try:
+            super().__init__(**kwargs)
+        except RuntimeError:
+            # happens when run with python2 because of the mock module
+            super(MockZmqContext, self).__init__(**kwargs)
         self._destroyed = False
-        self.IPV6 = None
-        self.RCVTIMEO = None
+        self.IPV6 = None  # pylint: disable=invalid-name
+        self.RCVTIMEO = None  # pylint: disable=invalid-name
 
     def socket(self, sock_type):
+        """Mock a zmq socket call.
+        """
+        # pylint: disable=unused-argument
+
         assert not self._destroyed
 #        assert self.IPV6 == 1
 #        assert self.RCVTIMEO is not None
@@ -115,36 +187,60 @@ class MockZmqContext(mock.MagicMock):
         return MockZmqSocket()
 
     def destroy(self, linger=None):
+        """Mock the context destroy method.
+        """
+        # pylint: disable=unused-argument
+
         assert not self._destroyed
         self._destroyed = True
 
 
 class MockZmqPoller(mock.MagicMock):
+    """Mock the zmq poller.
+    """
 
     def __init__(self, **kwargs):
-        super(MockZmqPoller, self).__init__(**kwargs)
+        try:
+            super().__init__(**kwargs)
+        except RuntimeError:
+            # happens when run with python2 because of the mock module
+            super(MockZmqPoller, self).__init__(**kwargs)
         self.registered_sockets = []
 
         self.poll = mock.MagicMock()
 
     def register(self, socket, event):
+        """Mock the poller register method.
+        """
         assert isinstance(socket, zmq.sugar.socket.Socket)
         assert event in [zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]
         self.registered_sockets.append([socket, event])
 
 
 class MockZmqPollerAllFake(mock.MagicMock):
+    """Mock the zmq poller. All methods come from mock.
+    """
 
     def __init__(self, **kwargs):
-        super(MockZmqPollerAllFake, self).__init__(**kwargs)
+        try:
+            super().__init__(**kwargs)
+        except RuntimeError:
+            # happens when run with python2 because of the mock module
+            super(MockZmqPollerAllFake, self).__init__(**kwargs)
         self.poll = mock.MagicMock()
         self.register = mock.MagicMock()
 
 
 class MockZmqAuthenticator(mock.MagicMock):
+    """Mock the zmq authenticator.
+    """
 
     def __init__(self, **kwargs):
-        super(MockZmqAuthenticator, self).__init__(**kwargs)
+        try:
+            super().__init__(**kwargs)
+        except RuntimeError:
+            # happens when run with python2 because of the mock module
+            super(MockZmqAuthenticator, self).__init__(**kwargs)
 
         self.start = mock.MagicMock()
         self.allow = mock.MagicMock()
@@ -154,12 +250,15 @@ class TestBase(unittest.TestCase):
     """The Base class from which all data fetchers should inherit from.
     """
 
+    loglevel = "error"
+
     def setUp(self):
-        global LOGLEVEL
 
         self.log_queue = False
         self.listener = None
         self.log = None
+        self.context = None
+        self.base_dir = _environment.BASE_DIR
 
         main_pid = os.getpid()
         self.con_ip = m_socket.getfqdn()
@@ -197,15 +296,16 @@ class TestBase(unittest.TestCase):
             "endpoints": endpoints,
         }
 
-        self._init_logging(loglevel=LOGLEVEL)
+        MockLogging.loglevel = self.loglevel
+        self._init_logging(loglevel=self.loglevel)
 
-#        self.log.debug("{} pid {}".format(self.__class__.__name__, main_pid))
+#        self.log.debug("%s pid %s", self.__class__.__name__, main_pid)
 
     def __iter__(self):
-        for attr, value in self.__dict__.iteritems():
+        for attr, value in self.__dict__.items():
             yield attr, value
 
-    def _init_logging(self, loglevel="debug"):
+    def _init_logging(self, loglevel=LOGLEVEL):
         """Initialize log listener and log queue.
 
         Args:
@@ -250,7 +350,7 @@ class TestBase(unittest.TestCase):
         """Wrapper of utils.start_socket
         """
 
-        return utils.start_socket(
+        socket, _ = utils.start_socket(
             name=name,
             sock_type=sock_type,
             sock_con=sock_con,
@@ -258,6 +358,8 @@ class TestBase(unittest.TestCase):
             context=self.context,
             log=self.log
         )
+
+        return socket
 
     def stop_socket(self, name, socket=None):
         """Wrapper for utils.stop_socket.
@@ -280,17 +382,17 @@ class TestBase(unittest.TestCase):
             return return_socket
 
     def tearDown(self):
-        for key, endpoint in vars(self.ipc_addresses).iteritems():
+
+        for _, endpoint in self.ipc_addresses._asdict().items():
             try:
                 os.remove(endpoint)
-                self.log.debug("Removed ipc socket: {}".format(endpoint))
+                self.log.debug("Removed ipc socket: %s", endpoint)
             except OSError:
                 pass
-#                selfi.log.debug("Could not remove ipc socket: {}"
-#                               .format(endpoint))
-            except:
-                self.log.warning("Could not remove ipc socket: {}"
-                                 .format(endpoint), exc_info=True)
+#                selfi.log.debug("Could not remove ipc socket: %s", endpoint)
+            except Exception:
+                self.log.warning("Could not remove ipc socket: %s", endpoint,
+                                 exc_info=True)
 
         if self.listener is not None:
             self.log_queue.put_nowait(None)

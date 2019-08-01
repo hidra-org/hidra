@@ -1,6 +1,38 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the data fetcher base class from which all data fetchers
+inherit from.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
 
 import abc
 import json
@@ -15,15 +47,15 @@ except ImportError:
     # only avaliable for Python3
     from pathlib import Path
 
-import __init__ as init  # noqa F401
+#import __init__ as init  # noqa F401 # pylint: disable=unused-import
 from base_class import Base
-import utils
-from utils import WrongConfiguration
+import hidra.utils as utils
 
 # source:
+# pylint: disable=line-too-long
 # http://stackoverflow.com/questions/35673474/using-abc-abcmeta-in-a-way-it-is-compatible-both-with-python-2-7-and-python-3-5  # noqa E501
 if sys.version_info[0] >= 3 and sys.version_info[1] >= 4:
-    ABC = abc.ABC
+    ABC = abc.ABC  # pylint: disable=no-member
 else:
     ABC = abc.ABCMeta(str("ABC"), (), {})
 
@@ -31,10 +63,15 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class DataHandlingError(Exception):
+    """An exception class to be used when handling data.
+    """
     pass
 
 
 class DataFetcherBase(Base, ABC):
+    """
+    Implementation of the data fetcher base class.
+    """
 
     def __init__(self,
                  config,
@@ -42,7 +79,8 @@ class DataFetcherBase(Base, ABC):
                  fetcher_id,
                  logger_name,
                  context,
-                 lock):
+                 lock,
+                 check_dep=True):
         """Initial setup
 
         Checks if the required parameters are set in the configuration for
@@ -57,14 +95,45 @@ class DataFetcherBase(Base, ABC):
             context: The ZMQ context to be used.
             lock: A threading lock object to handle control signal access.
         """
+        super().__init__()
+
+        self.log_queue = log_queue
+        self.log = utils.get_logger(logger_name, self.log_queue)
+
+        self.config_all = config
+
+        # base_parameters
+        self.required_params_base = {
+            "network": [
+                "endpoints",
+                "main_pid"
+            ],
+            "datafetcher": [
+                "type",
+                "chunksize",
+                "local_target",
+                ["remove_data", [True,
+                                 False,
+                                 "stop_on_error",
+                                 "with_confirmation"]]
+            ]
+        }
+
+        self.required_params_dep = {}
+        self.config_reduced = {}
+        self._base_check(module_class="datafetcher", check_dep=check_dep)
+
+        self.config_df = self.config_all["datafetcher"]
+        self.df_type = self.config_df["type"]
+        if self.required_params_dep:
+            self.config = self.config_df[self.df_type]
+        else:
+            self.config = {}
 
         self.fetcher_id = fetcher_id
-        self.config = config
         self.context = context
         self.lock = lock
         self.cleaner_job_socket = None
-
-        self.log = utils.get_logger(logger_name, log_queue)
 
         self.source_file = None
         self.target_file = None
@@ -74,51 +143,44 @@ class DataFetcherBase(Base, ABC):
 
         self.required_params = []
 
-        self.required_base_params = [
-            "chunksize",
-            "local_target",
-            ["remove_data", [True,
-                             False,
-                             "stop_on_error",
-                             "with_confirmation"]],
-            "endpoints",
-            "main_pid"
-        ]
-
-        self.check_config(print_log=False)
         self.base_setup()
 
-    def check_config(self, print_log=False):
+    def check_config(self, print_log=False, check_module_config=True):
         """Check that the configuration containes the nessessary parameters.
 
         Args:
-            print_log (boolean): If a summary of the configured parameters
-                                 should be logged.
+            print_log (boolean, optional): If a summary of the configured
+                                           parameters should be logged.
         Raises:
             WrongConfiguration: The configuration has missing or
                                 wrong parameteres.
         """
 
-        # combine paramerters which aare needed for all datafetchers with the
-        # specific ones for this fetcher
-        required_params = self.required_base_params + self.required_params
+        if self.required_params and isinstance(self.required_params, list):
+            self.required_params = {
+                "datafetcher": {self.df_type: self.required_params}
+            }
 
-        # Check format of config
-        check_passed, config_reduced = utils.check_config(
-            required_params,
-            self.config,
-            self.log
+        if check_module_config:
+            required_params = [
+                self.required_params_base,
+                self.required_params_dep,
+                self.required_params
+            ]
+        else:
+            required_params = [
+                self.required_params_base,
+            ]
+
+        config_reduced = self._check_config_base(
+            config=self.config_all,
+            required_params=required_params
         )
 
-        if check_passed:
-            if print_log:
-                self.log.info("Configuration for data fetcher: {}"
-                              .format(config_reduced))
+        self.config_reduced.update(config_reduced)
 
-        else:
-            # self.log.debug("config={}".format(self.config))
-            msg = "The configuration has missing or wrong parameteres."
-            raise WrongConfiguration(msg)
+        if print_log:
+            super().print_config(self.config_reduced)
 
     def base_setup(self):
         """Sets up the shared components needed by all datafetchers.
@@ -126,17 +188,20 @@ class DataFetcherBase(Base, ABC):
         Created a socket to communicate with the cleaner and sets the topic.
         """
 
-        if self.config["remove_data"] == "with_confirmation":
+        if self.config_df["remove_data"] == "with_confirmation":
+
+            config_net = self.config_all["network"]
+
             # create socket
             self.cleaner_job_socket = self.start_socket(
                 name="cleaner_job_socket",
                 sock_type=zmq.PUSH,
                 sock_con="connect",
-                endpoint=self.config["endpoints"].cleaner_job_con
+                endpoint=config_net["endpoints"].cleaner_job_con
             )
 
             self.confirmation_topic = (
-                utils.generate_sender_id(self.config["main_pid"])
+                utils.generate_sender_id(config_net["main_pid"])
             )
 
     def send_to_targets(self,
@@ -225,7 +290,7 @@ class DataFetcherBase(Base, ABC):
                                           "%s from file '%s' to '%s' with "
                                           "priority %s", chunk_number,
                                           self.source_file, target, prio)
-                            self.log.debug("metadata={}".format(metadata))
+                            self.log.debug("metadata=%s", metadata)
 
                         if not tracker.done:
                             self.log.debug("Message part %s from file '%s' "
@@ -255,10 +320,11 @@ class DataFetcherBase(Base, ABC):
 
                 except:
                     self.log.debug("Raising DataHandling error", exc_info=True)
-                    msg = ("Sending (metadata of) message part %s from file "
-                           "'%s' to '%s' with priority %s failed.",
-                           chunk_number, self.source_file, target, prio)
-                    raise DataHandlingError(msg)
+                    raise DataHandlingError(
+                        "Sending (metadata of) message part %s from file '%s' "
+                        "to '%s' with priority %s failed.",
+                        chunk_number, self.source_file, target, prio
+                    )
 
             else:
                 # socket not known
@@ -298,27 +364,27 @@ class DataFetcherBase(Base, ABC):
         if self.control_signal is None:
             return
 
-        if  self.control_signal[0] == b"EXIT":
-            self.log.debug("Received %s signal.",  self.control_signal[0])
+        if self.control_signal[0] == b"EXIT":
+            self.log.debug("Received %s signal.", self.control_signal[0])
             self.keep_running = False
 
-        elif  self.control_signal[0] == b"CLOSE_SOCKETS":
+        elif self.control_signal[0] == b"CLOSE_SOCKETS":
             # do nothing
             pass
 
-        elif  self.control_signal[0] == b"SLEEP":
-            self.log.debug("Received %s signal",  self.control_signal[0])
-            self._react_to_sleep_signal()
+        elif self.control_signal[0] == b"SLEEP":
+            self.log.debug("Received %s signal", self.control_signal[0])
+            self._react_to_sleep_signal(message=None)
             # TODO reschedule file (part?)
             woke_up = True
 
-        elif  self.control_signal[0] == b"WAKEUP":
+        elif self.control_signal[0] == b"WAKEUP":
             self.log.debug("Received %s signal without sleeping",
                            self.control_signal[0])
 
         else:
             self.log.error("Unhandled control signal received: %s",
-                            self.control_signal)
+                           self.control_signal)
 
         try:
             self.lock.acquire()
@@ -328,7 +394,7 @@ class DataFetcherBase(Base, ABC):
 
         return woke_up
 
-    def _react_to_sleep_signal(self):
+    def _react_to_sleep_signal(self, message):
         self.log.debug("Received sleep signal. Going to sleep.")
 
         sleep_time = 0.2
@@ -357,7 +423,7 @@ class DataFetcherBase(Base, ABC):
                 self.keep_running = False
                 keep_checking_signal = False
 
-            elif  self.control_signal[0] == b"CLOSE_SOCKETS":
+            elif self.control_signal[0] == b"CLOSE_SOCKETS":
                 # do nothing
                 pass
 
@@ -372,8 +438,12 @@ class DataFetcherBase(Base, ABC):
             finally:
                 self.lock.release()
 
+    # pylint: disable=no-self-use
     def generate_file_id(self, metadata):
         """Generates a file id consisting of relative path and file name
+
+        Args:
+            metadata (dict): The dictionary with the metedata of the file.
         """
         # generate file identifier
         if (metadata["relative_path"] == ""
@@ -469,9 +539,13 @@ class DataFetcherBase(Base, ABC):
         pass
 
     def close_socket(self):
+        """Close open sockets
+        """
         self.stop_socket("cleaner_job_socket")
 
     def stop_base(self):
+        """Stop datafetcher run loop and clean up sockets.
+        """
         self.close_socket()
         self.keep_running = False
 
@@ -481,7 +555,7 @@ class DataFetcherBase(Base, ABC):
         """
         pass
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop_base()
         self.stop()
 

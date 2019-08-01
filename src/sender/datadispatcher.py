@@ -1,36 +1,72 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the data dispatcher.
+"""
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
-import zmq
-import os
-import time
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
+from importlib import import_module
 import json
+import os
 import signal
 import threading
+import time
+import zmq
 
 from base_class import Base
-import utils
-from _version import __version__
+import hidra.utils as utils
+from hidra import __version__
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class DataHandler(Base, threading.Thread):
+    """
+    Reads the data using the configured module type and send it to the targets.
+    """
     def __init__(self,
                  dispatcher_id,
                  endpoints,
-                 chunksize,
                  fixed_stream_addr,
                  config,
                  log_queue,
                  context):
 
+        super().__init__()
+
+        self.dispatcher_id = dispatcher_id
         self.endpoints = endpoints
         self.context = context
-        self.config = config
-        self.dispatcher_id = dispatcher_id
         self.fixed_stream_addr = fixed_stream_addr
+        self.config_all = config
+        self.config = self.config_all["general"]
+        self.config_df = self.config_all["datafetcher"]
         self.log_queue = log_queue
         self.lock = threading.Lock()
 
@@ -38,17 +74,23 @@ class DataHandler(Base, threading.Thread):
         self.datafetcher = None
         self.keep_running = True
         self.open_connections = None
+        self.control_signal = None
 
         self.poller = None
         self.control_socket = None
         self.router_socket = None
-        self.stopped = False
+        self.stopped = None
 
-        threading.Thread.__init__(self)
-
-        self._setup()
+        try:
+            self._setup()
+        except Exception:
+            # to make sure that all sockets are closed
+            self.stop()
+            raise
 
     def _setup(self):
+        """Initializes parameters and creates sockets.
+        """
 
         log_name = "DataHandler-{}".format(self.dispatcher_id)
         self.log = utils.get_logger(log_name, self.log_queue)
@@ -57,11 +99,10 @@ class DataHandler(Base, threading.Thread):
         # opened (host, port,...)
         self.open_connections = dict()
 
-        self.log.info("Loading data fetcher: {}"
-                      .format(self.config["data_fetcher_type"]))
-        datafetcher_m = __import__(self.config["data_fetcher_type"])
+        self.log.info("Loading data fetcher: %s", self.config_df["type"])
+        datafetcher_m = import_module(self.config_df["type"])
 
-        self.datafetcher = datafetcher_m.DataFetcher(self.config,
+        self.datafetcher = datafetcher_m.DataFetcher(self.config_all,
                                                      self.log_queue,
                                                      self.dispatcher_id,
                                                      self.context,
@@ -69,11 +110,13 @@ class DataHandler(Base, threading.Thread):
 
         try:
             self.create_sockets()
-        except:
+        except Exception:
             self.log.error("Cannot create sockets", ext_info=True)
             self.stop()
 
     def create_sockets(self):
+        """Create ZMQ sockets.
+        """
 
         # socket for control signals
         self.control_socket = self.start_socket(
@@ -99,6 +142,12 @@ class DataHandler(Base, threading.Thread):
         self.poller.register(self.router_socket, zmq.POLLIN)
 
     def set_control_signal(self, message):
+        """Sets control signal attribute.
+
+        Args:
+            message: The value to set the attribute to.
+        """
+
         self.lock.acquire()
         try:
             self.control_signal = message
@@ -116,12 +165,20 @@ class DataHandler(Base, threading.Thread):
             self.stopped = True
 
     def _run(self):
+        """Reacting on jobs
+        """
 
         fixed_stream_addr = [self.fixed_stream_addr, 0, "data"]
 
         while self.keep_running:
             self.log.debug("Waiting for new job")
-            socks = dict(self.poller.poll())
+            try:
+                socks = dict(self.poller.poll())
+            except zmq.ZMQError:
+                # when stop is called without a control signal
+                # -> suppress error message
+                self.log.error("Error when polling", exc_info=True)
+                break
 
             # ----------------------------------------------------------------
             # messages from TaskProvider
@@ -133,7 +190,7 @@ class DataHandler(Base, threading.Thread):
                     message = self.router_socket.recv_multipart()
                     self.log.debug("New job received")
                     self.log.debug("message = %s", message)
-                except:
+                except Exception:
                     self.log.error("Waiting for new job...failed",
                                    exc_info=True)
                     continue
@@ -145,8 +202,8 @@ class DataHandler(Base, threading.Thread):
 
                     if self.fixed_stream_addr:
                         targets.insert(0, fixed_stream_addr)
-                        self.log.debug("Added fixed_stream_addr %s to targets"
-                                       " %s", fixed_stream_addr, targets)
+                        self.log.debug("Added fixed_stream_addr %s to targets "
+                                       "%s", fixed_stream_addr, targets)
 
                     # sort the target list by the priority
                     targets = sorted(targets, key=lambda target: target[1])
@@ -154,7 +211,8 @@ class DataHandler(Base, threading.Thread):
                 else:
                     metadata = json.loads(message[0].decode("utf-8"))
 
-                    if type(metadata) == list and metadata[0] == b"CLOSE_FILE":
+                    if (isinstance(metadata, list)
+                            and metadata[0] == b"CLOSE_FILE"):
 
                         # workaround for error
                         # "TypeError: Frame 0 (u'CLOSE_FILE') does not support
@@ -227,9 +285,10 @@ class DataHandler(Base, threading.Thread):
 
                 except KeyboardInterrupt:
                     break
-                except:
+                except Exception:
                     self.log.error("Building of metadata dictionary failed "
-                                   "for metadata: %s", metadata, exc_info=True)
+                                   "for metadata: %s", metadata,
+                                   exc_info=True)
                     # skip all further instructions and
                     # continue with next iteration
                     continue
@@ -238,7 +297,7 @@ class DataHandler(Base, threading.Thread):
                 try:
                     self.datafetcher.send_data(targets, metadata,
                                                self.open_connections)
-                except:
+                except Exception:
                     self.log.error("Passing new file to data stream...failed",
                                    exc_info=True)
 
@@ -257,142 +316,79 @@ class DataHandler(Base, threading.Thread):
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
 
-                try:
-                    message = self.control_socket.recv_multipart()
-                    self.log.debug("Control signal received")
-                    self.log.debug("message = %s", message)
-                except:
-                    self.log.error("Reiceiving control signal...failed",
-                                   exc_info=True)
-                    continue
-
-                # remove subsription topic
-                del message[0]
-
-                if message[0] == b"EXIT":
-                    self.log.debug("Received EXIT signal")
-                    self.react_to_exit_signal()
+                # the exit signal should become effective
+                if self.check_control_signal():
                     break
 
-                elif message[0] == b"CLOSE_SOCKETS":
-                    self.react_to_close_sockets_signal(message)
-                    continue
+    def _react_to_wakeup_signal(self, message):
+        """Overwrite the base class reaction method to wakeup signal.
+        """
 
-                elif message[0] == b"SLEEP":
-                    self.log.debug("Router requested to wait.")
-                    break_outer_loop = False
+        if len(message) == 2 and message[1] == "RECONNECT":
 
-                    # if there are problems on the receiving side no data
-                    # should be processed till the problem is solved
-                    while True:
-                        try:
-                            message = self.control_socket.recv_multipart()
-                        except KeyboardInterrupt:
-                            self.log.error("Receiving control signal..."
-                                           "failed due to KeyboardInterrupt")
-                            break_outer_loop = True
-                            break
-                        except:
-                            self.log.error("Receiving control signal...failed",
-                                           exc_info=True)
-                            continue
+            # Reestablish all open data connections
+            for socket_id in self.open_connections:
+                # close the connection
+                self.stop_socket(
+                    name="connection",
+                    socket=self.open_connections[socket_id]
+                )
 
-                        # remove subsription topic
-                        del message[0]
+                # reopen it
+                endpoint = "tcp://" + socket_id
+                self.open_connections[socket_id] = (
+                    self.start_socket(
+                        name="connection",
+                        sock_type=zmq.PUSH,
+                        sock_con="connect",
+                        endpoint=endpoint,
+                        message="Restart"
+                    )
+                )
 
-                        if message[0] == b"SLEEP":
-                            continue
+    def _react_to_exit_signal(self):
+        """Overwrite the base class reaction method to exit signal.
 
-                        elif message[0] == b"WAKEUP":
-                            self.log.debug("Received wakeup signal")
-
-                            if len(message) == 2 and message[1] == "RECONNECT":
-                                # Reestablish all open data connections
-                                for socket_id in self.open_connections:
-
-                                    # close the connection
-                                    self.stop_socket(
-                                        name="connection",
-                                        socket=self.open_connections[socket_id]
-                                    )
-
-                                    # reopen it
-                                    endpoint = "tcp://" + socket_id
-                                    self.open_connections[socket_id] = (
-                                        self.start_socket(
-                                            name="connection",
-                                            sock_type=zmq.PUSH,
-                                            sock_con="connect",
-                                            endpoint=endpoint,
-                                            message="Restart"
-                                        )
-                                    )
-
-                            # Wake up from sleeping
-                            break
-
-                        elif message[0] == b"EXIT":
-                            self.log.debug("Received exit signal while "
-                                           "sleeping.")
-                            self.react_to_exit_signal()
-                            break_outer_loop = True
-                            break
-
-                        elif message[0] == b"CLOSE_SOCKETS":
-                            self.react_to_close_sockets_signal(message)
-                            continue
-
-                        else:
-                            self.log.error("Unhandled control signal received:"
-                                           " %s", message)
-
-                    # the exit signal should become effective
-                    if break_outer_loop:
-                        break
-                    else:
-                        continue
-
-                elif message[0] == b"WAKEUP":
-                    self.log.debug("Received wakeup signal without sleeping. "
-                                   "Do nothing.")
-                    continue
-
-                else:
-                    self.log.error("Unhandled control signal received: %s",
-                                   message)
-
-    def react_to_exit_signal(self):
-        self.log.debug("Router requested to shutdown.")
+        Reaction to exit signal from control socket.
+        """
+        self.log.debug("Requested to shut down.")
         self.keep_running = False
 
-    def react_to_close_sockets_signal(self, message):
+    def _react_to_close_sockets_signal(self, message):
+        """Overwrite the base class reaction method to close_socket signal.
+
+        Closing socket specified.
+
+        Args:
+            message: JSON decoded message of the form:
+                     <socket id>, <prio>, <suffix>
+        """
+
         targets = json.loads(message[1].decode("utf-8"))
         try:
-            for socket_id, prio, suffix in targets:
+            for socket_id, _, _ in targets:
                 if socket_id in self.open_connections:
                     self.stop_socket(name="socket{}".format(socket_id),
                                      socket=self.open_connections[socket_id])
                     del self.open_connections[socket_id]
-        except:
+
+        except Exception:
             self.log.error("Request for closing sockets of wrong format",
                            exc_info=True)
 
     def stop(self):
+        """Stopping, closing sockets and clean up.
+        """
+
         self.keep_running = False
-
-        i = 0
-        while not self.stopped:
-            # if the socket is closed to early the thread will hang.
-            self.log.debug("Waiting for run loop to stop (iter %s)", i)
-            time.sleep(0.1)
-            i += 1
-
-        self.stop_socket(name="router_socket")
-        self.stop_socket(name="control_socket")
+        self.wait_for_stopped()
 
         if self.datafetcher is not None:
             self.datafetcher.stop()
             self.datafetcher = None
+
+        self.stop_socket(name="router_socket")
+        self.stop_socket(name="control_socket")
 
         for connection in self.open_connections:
             self.stop_socket(
@@ -403,11 +399,7 @@ class DataHandler(Base, threading.Thread):
 
         # context is destroyed in outer process.
 
-    def signal_term_handler(self, signal, frame):
-        self.log.debug('got SIGTERM')
-        self.stop()
-
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):
@@ -415,30 +407,37 @@ class DataHandler(Base, threading.Thread):
 
 
 class DataDispatcher(Base):
+    """ Starts a data handling thread while listening to control signals.
+    """
 
     def __init__(self,
                  dispatcher_id,
                  endpoints,
-                 chunksize,
                  fixed_stream_addr,
                  config,
                  log_queue):
 
+        super().__init__()
+
         self.dispatcher_id = dispatcher_id
         self.endpoints = endpoints
-        self.chunksize = chunksize
         self.fixed_stream_addr = fixed_stream_addr
         self.config = config
         self.log_queue = log_queue
 
+        self.context = None
         self.poller = None
         self.control_socket = None
-        self.context = None
         self.datahandler = None
-        self.continue_run = None
-        self.stopped = False
+        self.keep_running = None
+        self.stopped = None
 
-        self._setup()
+        try:
+            self._setup()
+        except Exception:
+            # make sure all sockets are closed
+            self.stop()
+            raise
 
         try:
             self.run()
@@ -446,44 +445,42 @@ class DataDispatcher(Base):
             pass
         except KeyboardInterrupt:
             pass
-        except:
-            self.log.error("Stopping DataDispatcher-{} due to unknown "
-                           "error condition.".format(self.dispatcher_id),
+        except Exception:
+            self.log.error("Stopping DataDispatcher-%s due to unknown "
+                           "error condition.", self.dispatcher_id,
                            exc_info=True)
         finally:
             self.stop()
 
     def _setup(self):
+        """Initializes parameters and creates sockets.
+        """
+
         log_name = "DataDispatcher-{}".format(self.dispatcher_id)
         self.log = utils.get_logger(log_name, self.log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
-        self.log.debug("DataDispatcher-{} started (PID {})."
-                       .format(self.dispatcher_id, os.getpid()))
+        self.log.debug("DataDispatcher-%s started (PID %s).",
+                       self.dispatcher_id, os.getpid())
 
-        formated_config = str(json.dumps(self.config,
-                                         sort_keys=True,
-                                         indent=4))
-        self.log.info("Configuration for data dispatcher: {}"
-                      .format(formated_config))
+        super().print_config(self.config)
 
         self.context = zmq.Context()
         if ("context" in self.config
                 and not self.config["context"]):
             self.config["context"] = self.context
 
-        self.continue_run = True
+        self.keep_running = True
 
         try:
             self.create_sockets()
-        except:
+        except Exception:
             self.log.error("Cannot create sockets", ext_info=True)
             self.stop()
 
         self.datahandler = DataHandler(self.dispatcher_id,
                                        self.endpoints,
-                                       self.chunksize,
                                        self.fixed_stream_addr,
                                        self.config,
                                        self.log_queue,
@@ -492,6 +489,8 @@ class DataDispatcher(Base):
         self.datahandler.start()
 
     def create_sockets(self):
+        """Create ZMQ sockets.
+        """
 
         # socket for control signals
         self.control_socket = self.start_socket(
@@ -508,6 +507,9 @@ class DataDispatcher(Base):
         self.poller.register(self.control_socket, zmq.POLLIN)
 
     def run(self):
+        """ Wrapper around the _run method to detect if it has stopped.
+        """
+
         self.stopped = False
         try:
             self._run()
@@ -517,57 +519,54 @@ class DataDispatcher(Base):
             self.stopped = True
 
     def _run(self):
-        while self.continue_run:
+        """React on control signals and inform DataHandler thread.
+        """
+
+        while self.keep_running:
             socks = dict(self.poller.poll())
 
             # ----------------------------------------------------------------
             # control commands
             # ----------------------------------------------------------------
+
             if (self.control_socket in socks
                     and socks[self.control_socket] == zmq.POLLIN):
 
-                try:
-                    message = self.control_socket.recv_multipart()
-                    self.log.debug("Control signal received")
-                    self.log.debug("message = %s", message)
-                except:
-                    self.log.error("Reiceiving control signal...failed.",
-                                   exc_info=True)
-                    continue
-
-                # remove subsription topic
-                del message[0]
-
-                self.log.debug("Setting control signal for data handler.")
-                self.datahandler.set_control_signal(message)
-
-                if message[0] == b"EXIT":
-                    self.log.debug("Received EXIT signal")
-                    self.log.debug("Router requested to shutdown.")
+                # the exit signal should become effective
+                if self.check_control_signal():
                     break
 
-                elif message[0] in [b"CLOSE_SOCKETS", b"SLEEP", b"WAKEUP"]:
-                    self.log.debug("Received %s signal. Do nothing.",
-                                   message[0])
-                    continue
+        self.stopped = True
 
-                else:
-                    self.log.error("Unhandled control signal received: %s",
-                                   message)
+    def _forward_control_signal(self, message):
+        """
+        Overwrite the base class method and forward the control signal to the
+        data handler.
+        """
+        self.log.debug("Setting control signal for data handler.")
+        self.datahandler.set_control_signal(message)
+
+    def _react_to_sleep_signal(self, message):
+        """Overwrite the base class reaction method to sleep signal.
+        """
+
+        # Do not react on sleep signals.
+        pass
+
+    def _react_to_exit_signal(self):
+        """Overwrite the base class reaction method to exit signal.
+
+        Reaction to exit signal from control socket.
+        """
+        self.log.debug("Requested to shut down.")
+        self.keep_running = False
 
     def stop(self):
-        self.continue_run = False
+        """Stopping, closing sockets and clean up.
+        """
 
-        # to prevent the message two be logged multiple times
-        if self.continue_run:
-            self.log.debug("Closing sockets.")
-
-        i = 0
-        while not self.stopped:
-            # if the socket is closed to early the thread will hang.
-            self.log.debug("Waiting for run loop to stop (iter %s)", i)
-            time.sleep(0.1)
-            i += 1
+        self.keep_running = False
+        self.wait_for_stopped()
 
         self.stop_socket(name="control_socket")
 
@@ -575,7 +574,7 @@ class DataDispatcher(Base):
             self.datahandler.stop()
             self.log.debug("Waiting for datahandler to join.")
             self.datahandler.join()
-            self.log.debug("Datahandler joined.")
+            self.log.debug("DataHandler joined.")
             self.datahandler = None
 
         if self.context is not None:
@@ -583,11 +582,15 @@ class DataDispatcher(Base):
             self.context.destroy(0)
             self.context = None
 
-    def signal_term_handler(self, signal, frame):
-        self.log.debug('got SIGTERM')
-        self.stop()
+    # pylint: disable=unused-argument
+    def signal_term_handler(self, signal_to_react, frame):
+        """React on external SIGTERM signal.
+        """
 
-    def __exit__(self):
+        self.log.debug('got SIGTERM')
+        self.keep_running = False
+
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):

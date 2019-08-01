@@ -1,23 +1,54 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
 """Testing the task provider.
 """
 
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
 
 import json
+from multiprocessing import Process, freeze_support
 import os
 import time
 import threading
-import socket
-import zmq
 from shutil import copyfile
-from multiprocessing import Process, freeze_support
+import socket
+import sys
+import zmq
 
-from .__init__ import BASE_DIR
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
+
 from test_base import TestBase, create_dir
 from taskprovider import TaskProvider
-import utils
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -40,8 +71,8 @@ class RequestResponder(threading.Thread):
         endpoint = self.config["endpoints"].request_fw_con
         self.request_fw_socket = self.context.socket(zmq.REP)
         self.request_fw_socket.bind(endpoint)
-        self.log.info("request_fw_socket started (bind) for '{}'"
-                      .format(endpoint))
+        self.log.info("request_fw_socket started (bind) for '%s'",
+                      endpoint)
 
     def run(self):
         """Answer to all incoming requests.
@@ -58,11 +89,11 @@ class RequestResponder(threading.Thread):
         while self.continue_run:
             try:
                 request = self.request_fw_socket.recv_multipart()
-                self.log.debug("Received request: {}".format(request))
+                self.log.debug("Received request: %s", request)
 
                 message = json.dumps(open_requests).encode("utf-8")
                 self.request_fw_socket.send(message)
-                self.log.debug("Answer: {}".format(open_requests))
+                self.log.debug("Answer: %s", open_requests)
             except zmq.ContextTerminated:
                 self.log.debug("ContextTerminated -> break")
                 break
@@ -76,7 +107,7 @@ class RequestResponder(threading.Thread):
             self.request_fw_socket.close(0)
             self.context.term()
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
 
@@ -88,7 +119,7 @@ class TestTaskProvider(TestBase):
     # Is reasonable in this case.
 
     def setUp(self):
-        super(TestTaskProvider, self).setUp()
+        super().setUp()
 
         # see https://docs.python.org/2/library/multiprocessing.html#windows
         freeze_support()
@@ -97,29 +128,108 @@ class TestTaskProvider(TestBase):
         # self.config
         # self.con_ip
         # self.ext_ip
+        # self.base_dir
 
         self.context = zmq.Context()
 
         ipc_dir = self.config["ipc_dir"]
         create_dir(directory=ipc_dir, chmod=0o777)
 
+        monitored_dir = os.path.join(self.base_dir, "data", "source")
+
+        if sys.version_info[0] < 3:
+            used_eventdetector = "inotifyx_events"
+        else:
+            used_eventdetector = "inotify_events"
+
         self.taskprovider_config = {
-            "event_detector_type": "inotifyx_events",
-            "monitored_dir": os.path.join(BASE_DIR, "data", "source"),
-            "fix_subdirs": ["commissioning", "current", "local"],
-            "monitored_events": {
-                "IN_CLOSE_WRITE": [".tif", ".cbf"],
-                "IN_MOVED_TO": [".log"]
-            },
-            "timeout": 0.1,
-            "history_size": 0,
-            "use_cleanup": False,
-            "time_till_closed": 5,
-            "action_time": 120
+            "eventdetector": {
+                "type": used_eventdetector,
+                "inotify_events": {
+                    "monitored_dir": monitored_dir,
+                    "fix_subdirs": ["commissioning", "current", "local"],
+                    "monitored_events": {
+                        "IN_CLOSE_WRITE": [".tif", ".cbf"],
+                        "IN_MOVED_TO": [".log"]
+                    },
+                    "event_timeout": 0.1,
+                    "history_size": 0,
+                    "use_cleanup": False,
+                    "time_till_closed": 5,
+                    "action_time": 120
+                },
+                "inotifyx_events": {
+                    "monitored_dir": monitored_dir,
+                    "fix_subdirs": ["commissioning", "current", "local"],
+                    "monitored_events": {
+                        "IN_CLOSE_WRITE": [".tif", ".cbf"],
+                        "IN_MOVED_TO": [".log"]
+                    },
+                    "event_timeout": 0.1,
+                    "history_size": 0,
+                    "use_cleanup": False,
+                    "time_till_closed": 5,
+                    "action_time": 120
+                }
+            }
         }
 
         self.start = 100
         self.stop = 105
+
+    def test_taskprovider_terminate(self):
+        """Simulate start up with wrong configuration.
+        """
+
+        endpoints = self.config["endpoints"]
+        event_message_list = [{
+            "filename": "test_file.cbf",
+            "source_path": "my_source_path",
+            "relative_path": "local"
+        }]
+
+        kwargs = dict(
+            config=self.taskprovider_config,
+            endpoints=endpoints,
+            log_queue=self.log_queue
+        )
+
+        mocked_fct = "{}.EventDetector.get_new_event".format(
+            self.taskprovider_config["eventdetector"]["type"]
+        )
+
+        router_socket = self.start_socket(
+            name="router_socket",
+            sock_type=zmq.PULL,
+            sock_con="connect",
+            endpoint=endpoints.router_con
+        )
+
+        control_socket = self.start_socket(
+            name="control_socket",
+            sock_type=zmq.PUB,
+            sock_con="bind",
+            # it is the sub endpoint because originally this is handled with
+            # a zmq thread device
+            endpoint=endpoints.control_sub_bind
+        )
+
+        with mock.patch(mocked_fct) as mock_get_events:
+            mock_get_events.side_effect = [event_message_list]
+            taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
+            taskprovider_pr.start()
+
+        # wait till everything is set up
+        time.sleep(0.5)
+
+        self.log.info("Sending 'Exit' signal")
+        control_socket.send_multipart([b"control", b"EXIT"])
+
+        # give task provider time to react
+        time.sleep(0.7)
+
+        self.stop_socket(name="router_socket", socket=router_socket)
+        self.stop_socket(name="control_socket", socket=control_socket)
 
     def test_taskprovider(self):
         """Simulate incoming data and check if received events are correct.
@@ -145,11 +255,20 @@ class TestTaskProvider(TestBase):
             endpoint=endpoints.router_con
         )
 
-        source_file = os.path.join(BASE_DIR,
+        control_socket = self.start_socket(
+            name="control_socket",
+            sock_type=zmq.PUB,
+            sock_con="bind",
+            # it is the sub endpoint because originally this is handled with
+            # a zmq thread device
+            endpoint=endpoints.control_sub_bind
+        )
+
+        source_file = os.path.join(self.base_dir,
                                    "test",
                                    "test_files",
                                    "test_file.cbf")
-        target_file_base = os.path.join(BASE_DIR,
+        target_file_base = os.path.join(self.base_dir,
                                         "data",
                                         "source",
                                         "local",
@@ -157,34 +276,36 @@ class TestTaskProvider(TestBase):
 
         create_dir(target_file_base)
 
-    #    time.sleep(5)
+        # give it time to start up
+        time.sleep(0.5)
+
         try:
             for i in range(self.start, self.stop):
-                time.sleep(0.5)
                 target_file = os.path.join(target_file_base,
                                            "{}.cbf".format(i))
-                self.log.debug("copy to {}".format(target_file))
+                self.log.debug("copy to %s", target_file)
                 copyfile(source_file, target_file)
 
                 workload = router_socket.recv_multipart()
-                self.log.info("next workload {}".format(workload))
-                time.sleep(1)
+                self.log.info("next workload %s", workload)
         except KeyboardInterrupt:
             pass
         finally:
+            self.log.info("send exit signal")
+            control_socket.send_multipart([b"control", b"EXIT"])
 
             request_responder_pr.stop()
-            taskprovider_pr.terminate()
 
             self.stop_socket(name="router_socket", socket=router_socket)
+            self.stop_socket(name="control_socket", socket=control_socket)
 
             for number in range(self.start, self.stop):
                 target_file = os.path.join(target_file_base,
                                            "{}.cbf".format(number))
-                self.log.debug("remove {}".format(target_file))
+                self.log.debug("remove %s", target_file)
                 os.remove(target_file)
 
     def tearDown(self):
         self.context.destroy(0)
 
-        super(TestTaskProvider, self).tearDown()
+        super().tearDown()

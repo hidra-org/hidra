@@ -1,8 +1,39 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the data dispatcher.
+"""
+
+# pylint: disable=redefined-variable-type
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
+
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
 
 import argparse
 from distutils.version import LooseVersion
@@ -29,14 +60,20 @@ except NameError:
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
+# pylint: disable=wrong-import-position
 from base_class import Base  # noqa E402
+# pylint: disable=wrong-import-position
 from signalhandler import SignalHandler  # noqa E402
+# pylint: disable=wrong-import-position
 from taskprovider import TaskProvider  # noqa E402
+# pylint: disable=wrong-import-position
 from datadispatcher import DataDispatcher  # noqa E402
+# pylint: disable=wrong-import-position
+from statserver import StatServer  # noqa E402
 
 from _environment import BASE_DIR  # noqa E402
-import utils  # noqa E402
-from _version import __version__  # noqa E402
+import hidra.utils as utils # noqa E402
+from hidra import __version__  # noqa E402
 
 CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
@@ -44,19 +81,11 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 def argument_parsing():
-    base_config_file = os.path.join(CONFIG_DIR, "base_sender.conf")
-    default_config_file = os.path.join(CONFIG_DIR, "datamanager.conf")
+    """Parses and checks the command line arguments used.
+    """
 
-    supported_ed_types = ["inotifyx_events",
-                          "watchdog_events",
-                          "zmq_events",
-                          "http_events",
-                          "hidra_events"]
-
-    supported_df_types = ["file_fetcher",
-                          "zmq_fetcher",
-                          "http_fetcher",
-                          "hidra_fetcher"]
+    base_config_file = utils.determine_config_file(fname_base="base_sender",
+                                                   config_dir=CONFIG_DIR)
 
     # ------------------------------------------------------------------------
     # Get command line arguments
@@ -120,7 +149,7 @@ def argument_parsing():
 
     # EventDetector config
 
-    parser.add_argument("--event_detector_type",
+    parser.add_argument("--eventdetector_type",
                         type=str,
                         help="Type of event detector to use")
     parser.add_argument("--fix_subdirs",
@@ -166,41 +195,41 @@ def argument_parsing():
     parser.add_argument("--action_time",
                         type=float,
                         help="Intervall time (in seconds) used for clea nup "
-                             "(only needed if event_detector_type is "
+                             "(only needed if eventdetector_type is "
                              "inotifyx_events)")
 
     parser.add_argument("--time_till_closed",
                         type=float,
                         help="Time (in seconds) since last modification after "
                              "which a file will be seen as closed (only "
-                             "needed if event_detector_type is "
+                             "needed if eventdetector_type is "
                              "inotifyx_events (for clean up) or "
                              "watchdog_events)")
 
-    parser.add_argument("--event_det_port",
+    parser.add_argument("--eventdetector_port",
                         type=str,
                         help="ZMQ port to get events from (only needed if "
-                             "event_detector_type is zmq_events)")
+                             "eventdetector_type is zmq_events)")
 
     parser.add_argument("--det_ip",
                         type=str,
                         help="IP of the detector (only needed if "
-                             "event_detector_type is http_events)")
+                             "eventdetector_type is http_events)")
     parser.add_argument("--det_api_version",
                         type=str,
                         help="API version of the detector (only needed "
-                             "if event_detector_type is http_events)")
+                             "if eventdetector_type is http_events)")
 
     # DataFetcher config
 
-    parser.add_argument("--data_fetcher_type",
+    parser.add_argument("--datafetcher_type",
                         type=str,
                         help="Module with methods specifying how to get the "
                              "data)")
-    parser.add_argument("--data_fetcher_port",
+    parser.add_argument("--datafetcher_port",
                         type=str,
                         help="If 'zmq_fetcher' is specified as "
-                             "data_fetcher_type it needs a port to listen to)")
+                             "datafetcher_type it needs a port to listen to)")
 
     parser.add_argument("--use_data_stream",
                         help="Enable ZMQ pipe into storage system (if set to "
@@ -230,12 +259,12 @@ def argument_parsing():
 
     parser.add_argument("--store_data",
                         help="Flag describing if the data should be stored in "
-                             "local_target (needed if data_fetcher_type is "
+                             "local_target (needed if datafetcher_type is "
                              "file_fetcher or http_fetcher)",
                         choices=["True", "False"])
     parser.add_argument("--remove_data",
                         help="Flag describing if the files should be removed "
-                             "from the source (needed if data_fetcher_type is "
+                             "from the source (needed if datafetcher_type is "
                              "file_fetcher or http_fetcher)",
                         choices=["True",
                                  "False",
@@ -243,7 +272,11 @@ def argument_parsing():
                                  "with_confirmation"])
 
     arguments = parser.parse_args()
-    arguments.config_file = arguments.config_file or default_config_file
+    arguments.config_file = (
+        arguments.config_file
+        or utils.determine_config_file(fname_base="datamanager",
+                                       config_dir=CONFIG_DIR)
+    )
 
     # check if config_file exist
     utils.check_existance(base_config_file)
@@ -253,93 +286,108 @@ def argument_parsing():
     # Get arguments from config file and comand line
     # ------------------------------------------------------------------------
 
-    params = utils.set_parameters(base_config_file=base_config_file,
-                                  config_file=arguments.config_file,
-                                  arguments=arguments)
+    config = utils.load_config(base_config_file)
+    config_detailed = utils.load_config(arguments.config_file)
+
+    # if config and yaml is mixed mapping has to take place before merging them
+    config_type = "sender"
+    config = utils.map_conf_format(config, config_type)
+    config_detailed = utils.map_conf_format(config_detailed, config_type)
+    arguments_dict = utils.map_conf_format(arguments,
+                                           config_type,
+                                           is_namespace=True)
+
+    utils.update_dict(config_detailed, config)
+    utils.update_dict(arguments_dict, config)
 
     # ------------------------------------------------------------------------
     # Check given arguments
     # ------------------------------------------------------------------------
 
-    required_params = ["log_path",
-                       "log_name",
-                       "procname",
-                       "ext_ip",
-                       "event_detector_type",
-                       "data_fetcher_type",
-                       "store_data",
-                       "use_data_stream",
-                       "chunksize"]
-#                       "local_target"]
+    required_params = {
+        "general": [
+            "log_path",
+            "log_name",
+            "procname",
+            "ext_ip"
+        ],
+        "eventdetector": [
+            "type",
+        ],
+        "datafetcher": [
+            "type",
+            "chunksize",
+            "use_data_stream",
+            "store_data",
+            # "local_target"
+        ]
+    }
 
     # Check format of config
-    check_passed, _ = utils.check_config(required_params,
-                                         params,
-                                         logging)
-
+    check_passed, _ = utils.check_config(required_params, config, logging)
     if not check_passed:
         logging.error("Wrong configuration")
-        sys.exit(1)
+        raise utils.WrongConfiguration
+
+    # for convenience
+    config_gen = config["general"]
+    config_ed = config["eventdetector"]
+    config_df = config["datafetcher"]
+    ed_type = config_ed["type"]
+    df_type = config_df["type"]
 
     # check if logfile is writable
-    params["log_file"] = utils.format_log_filename(
-        os.path.join(params["log_path"], params["log_name"])
+    config_gen["log_file"] = utils.format_log_filename(
+        os.path.join(config_gen["log_path"],
+                     config_gen["log_name"])
     )
-    utils.check_writable(params["log_file"])
 
-    # check if the event_detector_type is supported
-    utils.check_type(params["event_detector_type"],
-                     supported_ed_types,
-                     "Event detector")
-
-    # check if the data_fetcher_type is supported
-    utils.check_type(params["data_fetcher_type"],
-                     supported_df_types,
-                     "Data fetcher")
+    # check if configured eventdetector and datafetcher modules really exist
+    utils.check_module_exist(ed_type)
+    utils.check_module_exist(df_type)
 
     # check if directories exist
-    utils.check_existance(params["log_path"])
-    if "monitored_dir" in params:
-        # get rid of formating errors
-        params["monitored_dir"] = os.path.normpath(params["monitored_dir"])
+    utils.check_existance(config_gen["log_path"])
 
-        utils.check_existance(params["monitored_dir"])
-        if "create_fix_subdirs" in params and params["create_fix_subdirs"]:
-            # create the subdirectories which do not exist already
-            utils.create_sub_dirs(
-                dir_path=params["monitored_dir"],
-                subdirs=params["fix_subdirs"],
-                dirs_not_to_create=params["dirs_not_to_create"]
-            )
-        else:
-            # the subdirs have to exist because handles can only be added to
-            # directories inside a directory in which a handle was already set,
-            # e.g. handlers set to current/raw, local:
-            # - all subdirs created are detected + handlers are set
-            # - new directory on the same as monitored dir
-            #   (e.g. current/scratch_bl) cannot be detected
-            utils.check_all_sub_dir_exist(params["monitored_dir"],
-                                          params["fix_subdirs"])
-    if params["store_data"]:
-        utils.check_existance(params["local_target"])
+    if config_df["store_data"]:
+        # set process name
+        check_passed, _ = utils.check_config(["local_target"],
+                                             config_df,
+                                             logging)
+        if not check_passed:
+            raise utils.WrongConfiguration
+
+        utils.check_existance(config_df["local_target"])
         # check if local_target contains fixed_subdirs
         # e.g. local_target = /beamline/p01/current/raw and
         #      fix_subdirs contain current/raw
-#        if not utils.check_sub_dir_contained(params["local_target"],
-#                                             params["fix_subdirs"]):
+#        if not utils.check_sub_dir_contained(config_df["local_target"],
+#                                             config_ed["fix_subdirs"]):
 #            # not in Eiger mode
-#            utils.check_all_sub_dir_exist(params["local_target"],
-#                                          params["fix_subdirs"])
+#            utils.check_all_sub_dir_exist(config_df["local_target"],
+#                                          config_ed["fix_subdirs"])
 
-    if params["use_data_stream"]:
-        utils.check_ping(params["data_stream_targets"][0][0])
+    if config_df["use_data_stream"]:
 
-    return params
+        check_passed, _ = utils.check_config(["data_stream_targets"],
+                                             config_df,
+                                             logging)
+        if not check_passed:
+            raise utils.WrongConfiguration
+
+        utils.check_ping(config_df["data_stream_targets"][0][0])
+
+    return config
 
 
 class DataManager(Base):
+    """The main class.
+    """
 
-    def __init__(self, log_queue=None, config=None):
+    def __init__(self, config=None):
+
+        super().__init__()
+
         self.device = None
         self.control_pub_socket = None
         self.test_socket = None
@@ -347,7 +395,6 @@ class DataManager(Base):
 
         self.log = None
         self.log_queue = None
-        self.ext_log_queue = None
         self.log_queue_listener = None
 
         self.localhost = None
@@ -358,8 +405,7 @@ class DataManager(Base):
 
         self.reestablish_time = None
         self.continue_run = None
-        self.params = None
-        self.use_cleaner = None
+        self.config = None
 
         self.whitelist = None
         self.ldapuri = None
@@ -370,126 +416,165 @@ class DataManager(Base):
         self.check_target_host = None
 
         self.number_of_streams = None
-        self.chunksize = None
 
         self.endpoints = None
+        self.ipc_addresses = None
 
         self.local_target = None
 
         self.signalhandler_thr = None
         self.taskprovider_pr = None
-        self.cleaner_pr = None
         self.datadispatcher_pr = []
 
-        self.zmq_again_occured = None
-        self.socket_reconnected = None
+        self.use_cleaner = None
+        self.cleaner_m = None
+        self.cleaner_pr = None
+
+        self.use_statserver = None
+        self.statserver = None
 
         self.context = None
+        self.zmq_again_occured = 0
+        self.socket_reconnected = False
 
-        self.setup(config, log_queue)
+        self.setup(config)
 
-#        self.run()
+    def setup(self, config):
+        """Initializes parameters and creates sockets.
 
-    def setup(self, config, log_queue):
+        Args:
+            config (dict): All the configuration set either via config file or
+                           command line parameter.
+        """
+
         self.localhost = "127.0.0.1"
-
         self.current_pid = os.getpid()
-
         self.reestablish_time = 600  # in sec
-
         self.continue_run = True
 
         try:
             if config is None:
-                self.params = argument_parsing()
+                self.config = argument_parsing()
             else:
-                self.params = config
-        except:
+                self.config = config
+        except Exception:
             self.log = logging
             self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
             raise
 
-        if log_queue is not None:
-            self.log_queue = log_queue
-            self.ext_log_queue = True
+        config_gen = self.config["general"]
+        config_df = self.config["datafetcher"]
+
+        # change user
+        # has to be done before logging is setup because otherwise the logfile
+        # belongs to the wrong user
+        user_info, user_was_changed = utils.change_user(config_gen)
+
+        # set up logging
+        utils.check_writable(config_gen["log_file"])
+        self._setup_logging()
+
+        utils.log_user_change(self.log, user_was_changed, user_info)
+
+        # set process name
+        # pylint: disable=no-member
+        setproctitle.setproctitle(config_gen["procname"])
+        self.log.info("Running as %s", config_gen["procname"])
+
+        self.log.info("DataManager started (PID %s).", self.current_pid)
+
+        signal.signal(signal.SIGTERM, self.signal_term_handler)
+
+        # cleaner cannot be coupled to use_data_stream because this would
+        # break the http fetcher
+        self.use_cleaner = (config_df["remove_data"] == "with_confirmation")
+
+        self.use_statserver = config_gen["use_statserver"]
+        self.number_of_streams = config_df["number_of_streams"]
+        self.use_data_stream = config_df["use_data_stream"]
+        self.log.info("Usage of data stream set to '%s'", self.use_data_stream)
+
+        # set up enpoints and network config
+        self._setup_network()
+        self._check_data_stream_targets()
+
+        if "local_target" in config_df:
+            self.log.info("Configured local_target: %s",
+                          config_df["local_target"])
         else:
-            self.ext_log_queue = False
+            config_df["local_target"] = None
 
-            # Get queue
-            self.log_queue = Queue(-1)
+        self.log.info("Version: %s", __version__)
 
-            # Get the log Configuration for the lisener
-            if self.params["onscreen"]:
-                h1, h2 = utils.get_log_handlers(self.params["log_file"],
-                                                self.params["log_size"],
-                                                self.params["verbose"],
-                                                self.params["onscreen"])
+        self.whitelist = config_gen["whitelist"]
+        self.ldapuri = config_gen["ldapuri"]
 
-                # Start queue listener using the stream handler above.
-                self.log_queue_listener = utils.CustomQueueListener(
-                    self.log_queue, h1, h2)
-            else:
-                h1 = utils.get_log_handlers(self.params["log_file"],
-                                            self.params["log_size"],
-                                            self.params["verbose"],
-                                            self.params["onscreen"])
+        # IP and DNS name should be both in the whitelist
+        self.whitelist = utils.extend_whitelist(self.whitelist,
+                                                self.ldapuri,
+                                                self.log)
 
-                # Start queue listener using the stream handler above
-                self.log_queue_listener = (
-                    utils.CustomQueueListener(self.log_queue, h1))
+        # Create zmq context
+        # there should be only one context in one process
+        self.context = zmq.Context()
+        self.log.debug("Registering global ZMQ context")
 
-            self.log_queue_listener.start()
+    def _setup_logging(self):
+        config_gen = self.config["general"]
+
+        # Get queue
+        self.log_queue = Queue(-1)
+
+        handler = utils.get_log_handlers(
+            config_gen["log_file"],
+            config_gen["log_size"],
+            config_gen["verbose"],
+            config_gen["onscreen"]
+        )
+
+        # Start queue listener using the stream handler above.
+        self.log_queue_listener = utils.CustomQueueListener(
+            self.log_queue, *handler
+        )
+
+        self.log_queue_listener.start()
 
         # Create log and set handler to queue handle
         self.log = utils.get_logger("DataManager", self.log_queue)
 
+    def _setup_network(self):
+        config_gen = self.config["general"]
+        config_df = self.config["datafetcher"]
+
         self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
-        self.log.info("Configured ipc_dir: {}".format(self.ipc_dir))
-
-        # set process name
-        check_passed, _ = utils.check_config(["procname"],
-                                             self.params,
-                                             self.log)
-        if not check_passed:
-            raise Exception("Configuration check failed")
-        setproctitle.setproctitle(self.params["procname"])
-        self.log.info("Running as {}".format(self.params["procname"]))
-
-        self.log.info("DataManager started (PID {})."
-                      .format(self.current_pid))
-
-        signal.signal(signal.SIGTERM, self.signal_term_handler)
+        self.log.info("Configured ipc_dir: %s", self.ipc_dir)
 
         if not os.path.exists(self.ipc_dir):
             os.mkdir(self.ipc_dir)
             # the permission have to changed explicitly because
             # on some platform they are ignored when called within mkdir
             os.chmod(self.ipc_dir, 0o777)
-            self.log.info("Creating directory for IPC communication: {}"
-                          .format(self.ipc_dir))
+            self.log.info("Creating directory for IPC communication: %s",
+                          self.ipc_dir)
 
         # Enable specification via IP and DNS name
         # TODO make this IPv6 compatible
-        if self.params["ext_ip"] == "0.0.0.0":
-            self.ext_ip = self.params["ext_ip"]
+        if config_gen["ext_ip"] == "0.0.0.0":
+            self.ext_ip = config_gen["ext_ip"]
         else:
-            self.ext_ip = socket.gethostbyaddr(self.params["ext_ip"])[2][0]
+            self.ext_ip = socket.gethostbyaddr(config_gen["ext_ip"])[2][0]
         self.con_ip = socket.getfqdn()
 
-        # cleaner cannot be coupled to use_data_stream because this would
-        # break the http fetcher
-        self.use_cleaner = (self.params["remove_data"] == "with_confirmation")
-
         ports = {
-            "com": self.params["com_port"],
-            "request": self.params["request_port"],
-            "request_fw": self.params["request_fw_port"],
-            "router": self.params["router_port"],
-            "control_pub": self.params["control_pub_port"],
-            "control_sub": self.params["control_sub_port"],
-            "cleaner": self.params["cleaner_port"],
-            "cleaner_trigger": self.params["cleaner_trigger_port"],
-            "confirmation": self.params["confirmation_port"],
+            "com": config_gen["com_port"],
+            "request": config_gen["request_port"],
+            "request_fw": config_gen["request_fw_port"],
+            "control_pub": config_gen["control_pub_port"],
+            "control_sub": config_gen["control_sub_port"],
+            "router": config_df["router_port"],
+            "cleaner": config_df["cleaner_port"],
+            "cleaner_trigger": config_df["cleaner_trigger_port"],
+            "confirmation": config_df["confirmation_port"],
         }
 
         self.ipc_addresses = utils.set_ipc_addresses(
@@ -498,12 +583,8 @@ class DataManager(Base):
             use_cleaner=self.use_cleaner
         )
 
-        self.use_data_stream = self.params["use_data_stream"]
-        self.log.info("Usage of data stream set to '{}'"
-                      .format(self.use_data_stream))
-
         if self.use_data_stream:
-            data_stream_target = self.params["data_stream_targets"][0][0]
+            data_stream_target = config_df["data_stream_targets"][0][0]
             confirm_ips = [socket.gethostbyaddr(data_stream_target)[2][0],
                            data_stream_target]
         else:
@@ -522,34 +603,38 @@ class DataManager(Base):
             self.log.info("Using ipc for internal communication.")
 
         # Make ipc_dir accessible for modules
-        self.params["ext_ip"] = self.ext_ip
-        self.params["con_ip"] = self.con_ip
-        self.params["ipc_dir"] = self.ipc_dir
-        self.params["main_pid"] = self.current_pid
-        self.params["endpoints"] = self.endpoints
-        # TODO: this should not be set here (it belong to the moduls)
-        self.params["context"] = None
-        self.params["session"] = None
+        self.config["network"] = {
+            "ext_ip": self.ext_ip,
+            "con_ip": self.con_ip,
+            "ipc_dir": self.ipc_dir,
+            "main_pid": self.current_pid,
+            "endpoints": self.endpoints,
+            # TODO: this should not be set here (it belong to the modules)
+            "context": None,
+            "session": None
+        }
 
-        self.whitelist = self.params["whitelist"]
-        self.ldapuri = self.params["ldapuri"]
+    def _check_data_stream_targets(self):
+        config_df = self.config["datafetcher"]
 
         if self.use_data_stream:
-            if len(self.params["data_stream_targets"]) > 1:
+            if len(config_df["data_stream_targets"]) > 1:
                 self.log.error("Targets to send data stream to have more than "
                                "one entry which is not supported")
-                self.log.debug("data_stream_targets: {}"
-                               .format(self.params["data_stream_targets"]))
+                self.log.debug("data_stream_targets: %s",
+                               config_df["data_stream_targets"])
                 sys.exit(1)
 
             self.fixed_stream_addr = (
-                "{}:{}".format(self.params["data_stream_targets"][0][0],
-                               self.params["data_stream_targets"][0][1]))
+                "{}:{}".format(config_df["data_stream_targets"][0][0],
+                               config_df["data_stream_targets"][0][1])
+            )
 
-            if self.params["remove_data"] == "stop_on_error":
+            if config_df["remove_data"] == "stop_on_error":
                 self.status_check_id = (
-                    "{}:{}".format(self.params["data_stream_targets"][0][0],
-                                   self.params["status_check_port"]))
+                    "{}:{}".format(config_df["data_stream_targets"][0][0],
+                                   config_df["status_check_port"])
+                )
 
                 self.log.info("Enabled receiver checking")
                 self.check_target_host = self.check_status_receiver
@@ -564,38 +649,10 @@ class DataManager(Base):
             self.fixed_stream_addr = None
             self.status_check_id = None
 
-        self.number_of_streams = self.params["number_of_streams"]
-        self.chunksize = self.params["chunksize"]
-
-        try:
-            self.local_target = self.params["local_target"]
-            self.log.info("Configured local_target: {}"
-                          .format(self.local_target))
-        except KeyError:
-            self.params["local_target"] = None
-            self.local_target = None
-
-        self.signalhandler_thr = None
-        self.taskprovider_pr = None
-        self.cleaner_pr = None
-        self.datadispatcher_pr = []
-
-        self.log.info("Version: {}".format(__version__))
-
-        # IP and DNS name should be both in the whitelist
-        self.whitelist = utils.extend_whitelist(self.whitelist,
-                                                self.ldapuri,
-                                                self.log)
-
-        self.zmq_again_occured = 0
-        self.socket_reconnected = False
-
-        # Create zmq context
-        # there should be only one context in one process
-        self.context = zmq.Context()
-        self.log.debug("Registering global ZMQ context")
-
     def create_sockets(self):
+        """Create ZMQ sockets.
+        """
+
         # initiate forwarder for control signals (multiple pub, multiple sub)
         try:
             self.device = zmq.devices.ThreadDevice(zmq.FORWARDER,
@@ -606,15 +663,14 @@ class DataManager(Base):
             self.device.setsockopt_in(zmq.SUBSCRIBE, b"")
             self.device.start()
             self.log.info("Start thead device forwarding messages "
-                          "from '{}' to '{}'"
-                          .format(self.endpoints.control_pub_bind,
-                                  self.endpoints.control_sub_bind))
+                          "from '%s' to '%s'",
+                          self.endpoints.control_pub_bind,
+                          self.endpoints.control_sub_bind)
         except:
             self.log.error("Failed to start thead device forwarding messages "
-                           "from '{}' to '{}'"
-                           .format(self.endpoints.control_pub_bind,
-                                   self.endpoints.control_sub_bind),
-                           exc_info=True)
+                           "from '%s' to '%s'",
+                           self.endpoints.control_pub_bind,
+                           self.endpoints.control_sub_bind, exc_info=True)
             raise
 
         # socket for control signals
@@ -626,6 +682,15 @@ class DataManager(Base):
         )
 
     def check_status_receiver(self, enable_logging=False):
+        """Communicate to the receiver and checks status.
+
+        Args:
+            enable_logging (optional, bool): if log messages should be
+                                             generated.
+        Returns:
+            Boolean depending if the status was ok or not.
+        """
+
         return self.communicate_with_receiver(
             test_signal=b"STATUS_CHECK",
             socket_conf=dict(
@@ -639,6 +704,15 @@ class DataManager(Base):
         )
 
     def test_fixed_streaming_host(self, enable_logging=False):
+        """Comminicates with the receiver and checks if it is alive.
+
+        Args:
+            enable_logging (optional, bool): if log messages should be
+                                             generated.
+        Returns:
+            Boolean depending if the receiver is alive or not.
+        """
+
         return self.communicate_with_receiver(
             test_signal=b"ALIVE_TEST",
             socket_conf=dict(
@@ -656,6 +730,15 @@ class DataManager(Base):
                                   socket_conf,
                                   addr,
                                   use_log=False):
+        """Communicates to the receiver and checks response.
+
+        Args:
+            test_signal (str): The signal to send to the receiver
+            socket_conf (dict): The configuration of the socket to use for
+                                communication.
+            addr: The address of the socket.
+            use_log (optional, bool): if log messages should be generated.
+        """
 
         # no data stream used means that no receiver is used
         # -> status always is fine
@@ -673,11 +756,11 @@ class DataManager(Base):
             # socket
             try:
                 self.test_socket = self.start_socket(**socket_conf)
-            except:
+            except Exception:
                 return False
 
         if use_log:
-            self.log.debug("ZMQ version used: {}".format(zmq.__version__))
+            self.log.debug("ZMQ version used: %s", zmq.__version__)
 
         # --------------------------------------------------------------------
         # old zmq version
@@ -689,21 +772,20 @@ class DataManager(Base):
             try:
                 self.test_socket.send_multipart([test_signal])
                 if use_log:
-                    self.log.info("Sending {} to fixed streaming host {}..."
-                                  "success".format(action_name, addr))
+                    self.log.info("Sending %s to fixed streaming host %s..."
+                                  "success", action_name, addr)
 
                 if is_req:
                     status = self.test_socket.recv_multipart()
                     if use_log:
-                        self.log.info("Received responce for {} of fixed "
-                                      "streaming host {}"
-                                      .format(action_name, addr))
+                        self.log.info("Received responce for %s of fixed "
+                                      "streaming host %s", action_name, addr)
             except KeyboardInterrupt:
                 # nothing to log
                 raise
-            except:
-                self.log.error("Failed to {} of fixed streaming host {}"
-                               .format(action_name, addr), exc_info=True)
+            except Exception:
+                self.log.error("Failed to %s of fixed streaming host %s",
+                               action_name, addr, exc_info=True)
                 return False
 
         # --------------------------------------------------------------------
@@ -725,7 +807,7 @@ class DataManager(Base):
                     try:
                         socket_conf["message"] = "Restart"
                         self.test_socket = self.start_socket(**socket_conf)
-                    except:
+                    except Exception:
                         # TODO is this right here?
                         pass
 
@@ -742,8 +824,8 @@ class DataManager(Base):
                     )
 
                     if is_req and use_log:
-                        self.log.info("Sent {} to fixed streaming host {}"
-                                      .format(action_name, addr))
+                        self.log.info("Sent %s to fixed streaming host %s",
+                                      action_name, addr)
 
                 # The receiver may have dropped authentication or
                 # previous status check was not answered
@@ -753,10 +835,10 @@ class DataManager(Base):
                     exc_type, exc_value, _ = sys.exc_info()
 
                     if self.zmq_again_occured == 0:
-                        self.log.error("Failed to send {} to fixed streaming "
-                                       "host {}".format(action_name, addr))
-                        self.log.debug("Error was: {}: {}"
-                                       .format(exc_type, exc_value))
+                        self.log.error("Failed to send %s to fixed streaming "
+                                       "host %s", action_name, addr)
+                        self.log.debug("Error was: %s: %s",
+                                       exc_type, exc_value)
 
                     self.zmq_again_occured += 1
                     self.socket_reconnected = False
@@ -770,15 +852,14 @@ class DataManager(Base):
 
                 # no one picked up the test message
                 if not tracker.done:
-                    self.log.error("Failed to send {} of fixed streaming host "
-                                   "{}".format(action_name, addr),
-                                   exc_info=True)
+                    self.log.error("Failed to send %s of fixed streaming host "
+                                   "%s", action_name, addr, exc_info=True)
                     return False
 
                 # test message was successfully sent
                 if use_log:
-                    self.log.info("Sending {} to fixed streaming host {}..."
-                                  "success".format(action_name, addr))
+                    self.log.info("Sending %s to fixed streaming host %s..."
+                                  "success", action_name, addr)
                     self.zmq_again_occured = 0
 
                 if is_req:
@@ -788,51 +869,66 @@ class DataManager(Base):
                     status = self.test_socket.recv_multipart()
 
                     if use_log:
-                        self.log.debug("Received response: {}".format(status))
+                        self.log.debug("Received response: %s", status)
 
                     # responce to test message was successfully received
                     # TODO check status + react
                     if status[0] == b"ERROR":
                         self.log.error("Fixed streaming host is in error "
-                                       "state: {}"
-                                       .format(status[1].decode("utf-8")))
+                                       "state: %s", status[1].decode("utf-8"))
                         return False
 
                     elif use_log:
-                        self.log.info("Responce for {} of fixed streaming "
-                                      "host {}: {}"
-                                      .format(action_name, addr, status))
+                        self.log.info("Responce for %s of fixed streaming "
+                                      "host %s: %s",
+                                      action_name, addr, status)
 
             except KeyboardInterrupt:
                 # nothing to log
                 raise
-            except:
-                self.log.error("Failed to send {} of fixed streaming host {}"
-                               .format(action_name, addr), exc_info=True)
+            except Exception:
+                self.log.error("Failed to send %s of fixed streaming host %s",
+                               action_name, addr, exc_info=True)
                 return False
 
         return True
 
     def run(self):
+        """Running while reacting to exceptions.
+        """
+
         try:
             if self.check_target_host(enable_logging=True):
                 self.create_sockets()
 
-                self.exec_run()
+                self._exec_run()
         except KeyboardInterrupt:
             pass
-        except:
+        except Exception:
             self.log.error("Stopping due to unknown error condition",
                            exc_info=True)
         finally:
             self.stop()
 
-    def exec_run(self):
+    def _exec_run(self):
+        """Starting all thread and processes and checks if they are running.
+        """
+
+        if self.use_statserver:
+            # bug in pylint pylint: disable=bad-continuation
+            self.statserver = Process(target=StatServer,
+                                      args=(
+                                          self.config,
+                                          self.log_queue
+                                          )
+                                      )
+            self.statserver.start()
 
         # SignalHandler
+        # bug in pylint pylint: disable=bad-continuation
         self.signalhandler_thr = threading.Thread(target=SignalHandler,
                                                   args=(
-                                                      self.params,
+                                                      self.config,
                                                       self.endpoints,
                                                       self.whitelist,
                                                       self.ldapuri,
@@ -851,9 +947,10 @@ class DataManager(Base):
             return
 
         # TaskProvider
+        # bug in pylint pylint: disable=bad-continuation
         self.taskprovider_pr = Process(target=TaskProvider,
                                        args=(
-                                           self.params,
+                                           self.config,
                                            self.endpoints,
                                            self.log_queue
                                            )
@@ -862,35 +959,37 @@ class DataManager(Base):
 
         # Cleaner
         if self.use_cleaner:
-            self.log.info("Loading cleaner from data fetcher module: {}"
-                          .format(self.params["data_fetcher_type"]))
-            self.cleaner_m = __import__(self.params["data_fetcher_type"])
+            self.log.info("Loading cleaner from data fetcher module: %s",
+                          self.config["datafetcher"]["type"])
+            self.cleaner_m = __import__(self.config["datafetcher"]["type"])
 
             self.cleaner_pr = Process(
                 target=self.cleaner_m.Cleaner,
-                args=(self.params,
+                args=(self.config,
                       self.log_queue,
-                      self.endpoints))
+                      self.endpoints)
+            )
             self.cleaner_pr.start()
 
-        self.log.info("Configured type of data fetcher: {}"
-                      .format(self.params["data_fetcher_type"]))
+        self.log.info("Configured type of data fetcher: %s",
+                      self.config["datafetcher"]["type"])
 
         # DataDispatcher
         for i in range(self.number_of_streams):
-            dispatcher_id = "{}/{}".format(i, self.number_of_streams).encode("ascii")
-            #dispatcher_id = b"{}/{}".format(i, self.number_of_streams)
-            pr = Process(target=DataDispatcher,
-                         args=(
-                             dispatcher_id,
-                             self.endpoints,
-                             self.chunksize,
-                             self.fixed_stream_addr,
-                             self.params,
-                             self.log_queue)
-                         )
-            pr.start()
-            self.datadispatcher_pr.append(pr)
+            dispatcher_id = "{}/{}".format(i, self.number_of_streams)
+            dispatcher_id = dispatcher_id.encode("ascii")
+            # bug in pylint # pylint: disable=bad-continuation
+            proc = Process(target=DataDispatcher,
+                           args=(
+                               dispatcher_id,
+                               self.endpoints,
+                               self.fixed_stream_addr,
+                               self.config,
+                               self.log_queue
+                               )
+                           )
+            proc.start()
+            self.datadispatcher_pr.append(proc)
 
         # indicates if the processed are sent to waiting mode
         sleep_was_sent = False
@@ -939,6 +1038,12 @@ class DataManager(Base):
                 self.log.info("One DataDispatcher terminated.")
 
     def core_parts_status_check(self):
+        """Check if the core componets still are running.
+
+        Returns:
+            A boolean if the components are running or not.
+        """
+
         if self.use_cleaner:
             status = (
                 self.signalhandler_thr.is_alive()
@@ -958,7 +1063,35 @@ class DataManager(Base):
             )
         return status
 
+    def check_hanging(self, log=True):
+        is_hanging = False
+
+        # detecting hanging processes
+        if (self.signalhandler_thr is not None
+                and self.signalhandler_thr.is_alive()):
+            if log: self.log.error("SignalHandler hangs.")
+            is_hanging = True
+
+        if (self.taskprovider_pr is not None
+                and self.taskprovider_pr.is_alive()):
+            if log: self.log.error("TaskProvider hangs.")
+            is_hanging = True
+
+        if self.use_cleaner and self.cleaner_pr.is_alive():
+            if log: self.log.error("Cleaner hangs.")
+            is_hanging = True
+
+        for i, datadispatcher in enumerate(self.datadispatcher_pr):
+            if datadispatcher is not None and datadispatcher.is_alive():
+                if log: self.log.error("DataDispatcher-%s hangs.", i)
+                is_hanging = True
+
+        return is_hanging
+
     def stop(self):
+        """Close socket and clean up.
+        """
+
         self.continue_run = False
 
         if self.log is None:
@@ -967,6 +1100,18 @@ class DataManager(Base):
         if self.control_pub_socket is not None:
             self.log.info("Sending 'Exit' signal")
             self.control_pub_socket.send_multipart([b"control", b"EXIT"])
+
+            # check if the different processes where up and running (meaning
+            # are able to receive signals) otherwise this would result in
+            # hanging processes (zmq slow joiner problem)
+            for i in range(5):
+                if self.check_hanging(log=False):
+                    self.log.debug("Waiting for processes to finish, resending "
+                                   "'EXIT' signal (try %s)", i)
+                    time.sleep(1)
+                    self.control_pub_socket.send_multipart([b"control", b"EXIT"])
+                else:
+                    break
 
         # closing control fowarding
         if self.device is not None:
@@ -978,16 +1123,11 @@ class DataManager(Base):
         self.stop_socket(name="control_pub_socket")
         self.stop_socket(name="test_socket")
 
-        # cleanup hanging processes
-#        if self.signalhandler_thr.is_alive():
-#            self.log.info("SignalHandler hangs. Terminated.")
-#        if self.taskprovider_pr.is_alive():
-#            self.log.info("TaskProvider hangs. Terminated.")
-#        if self.use_cleaner and self.cleaner_pr.is_alive():
-#            self.log.info("Cleaner hangs. Terminated.")
-#        for datadispatcher in self.datadispatcher_pr:
-#            if datadispatcher.is_alive():
-#                self.log.info("DataDispatcher hangs. Terminated.")
+        # detecting hanging processes
+        self.check_hanging(log=True)
+        if (self.statserver is not None
+                and self.statserver.is_alive()):
+            self.log.error("StatServer hangs.")
 
         if self.context is not None:
             self.log.info("Destroying context")
@@ -1005,35 +1145,39 @@ class DataManager(Base):
 
                 try:
                     os.remove(path)
-                    self.log.debug("Removed ipc socket: {}".format(path))
+                    self.log.debug("Removed ipc socket: %s", path)
                 except OSError:
                     pass
-                except:
-                    self.log.warning("Could not remove ipc socket: {}"
-                                     .format(path), exc_info=True)
+                except Exception:
+                    self.log.warning("Could not remove ipc socket: %s",
+                                     path, exc_info=True)
 
             # Remove temp directory (if empty)
             try:
                 os.rmdir(self.ipc_dir)
-                self.log.debug("Removed IPC direcory: {}".format(self.ipc_dir))
+                self.log.debug("Removed IPC direcory: %s", self.ipc_dir)
             except OSError:
-                self.log.debug("Could not remove IPC directory: {}"
-                               .format(self.ipc_dir))
-            except:
-                self.log.warning("Could not remove IPC directory: {}"
-                                 .format(self.ipc_dir), exc_info=True)
+                self.log.debug("Could not remove IPC directory: %s",
+                               self.ipc_dir)
+            except Exception:
+                self.log.warning("Could not remove IPC directory: %s",
+                                 self.ipc_dir, exc_info=True)
 
-        if not self.ext_log_queue and self.log_queue_listener:
+        if self.log_queue_listener:
             self.log.info("Stopping log_queue")
             self.log_queue.put_nowait(None)
             self.log_queue_listener.stop()
             self.log_queue_listener = None
 
-    def signal_term_handler(self, signal, frame):
+    # pylint: disable=unused-argument
+    def signal_term_handler(self, signal_to_react, frame):
+        """React on external SIGTERM signal.
+        """
+
         self.log.debug('got SIGTERM')
         self.stop()
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):
@@ -1044,9 +1188,9 @@ if __name__ == '__main__':
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     freeze_support()
 
-    sender = None
+    sender = None  # pylint: disable=invalid-name
     try:
-        sender = DataManager()
+        sender = DataManager()  # pylint: disable=invalid-name
         sender.run()
     finally:
         if sender is not None:

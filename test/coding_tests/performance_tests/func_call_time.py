@@ -15,8 +15,8 @@ def without_func_call(n_iter):
     for i in xrange(n_iter):
         pass
 
-if __name__ == "__main__":
-    n_iter = 1000000000
+def main():
+    n_iter = 100000000
     print("Testing", n_iter, "iterations")
 
     t = time.time()
@@ -26,3 +26,6 @@ if __name__ == "__main__":
     t = time.time()
     without_func_call(n_iter)
     print('without func call:', time.time() - t)
+
+if __name__ == "__main__":
+    main()

@@ -1,15 +1,44 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements a data fetcher be used together with the hidra ingest
+API.
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
-import zmq
-import os
+from collections import namedtuple
 import json
 import time
-from collections import namedtuple
+import os
+import zmq
 
 from datafetcherbase import DataFetcherBase
-import utils
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -33,10 +62,11 @@ def get_tcp_addresses(config):
     """
 
     if utils.is_windows():
-        ext_ip = config["ext_ip"]
-        con_ip = config["con_ip"]
+        ext_ip = config["network"]["ext_ip"]
+        con_ip = config["network"]["con_ip"]
 
-        port = config["data_fetcher_port"]
+        df_type = config["datafetcher"]["type"]
+        port = config["datafetcher"][df_type]["datafetcher_port"]
         datafetch_bind = "{}:{}".format(ext_ip, port)
         datafetch_con = "{}:{}".format(con_ip, port)
 
@@ -66,7 +96,8 @@ def get_ipc_addresses(config):
     if utils.is_windows():
         addrs = None
     else:
-        ipc_ip = "{}/{}".format(config["ipc_dir"], config["main_pid"])
+        ipc_ip = "{}/{}".format(config["network"]["ipc_dir"],
+                                config["network"]["main_pid"])
 
         datafetch = "{}_{}".format(ipc_ip, "datafetch")
 
@@ -104,6 +135,9 @@ def get_endpoints(ipc_addresses, tcp_addresses):
 
 
 class DataFetcher(DataFetcherBase):
+    """
+    Implementation of the data fetcher to be used with the ingest API.
+    """
 
     def __init__(self, config, log_queue, fetcher_id, context, lock):
 
@@ -115,28 +149,40 @@ class DataFetcher(DataFetcherBase):
                                  context,
                                  lock)
 
-        self.config = config
-        self.log_queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_df - the config of the datafetcher
+        #   self.config - the module specific config
+        #   self.df_type -  the name of the datafetcher module
+        #   self.log_queue
+        #   self.log
+
         self.context = context
 
         self.ipc_addresses = None
         self.endpoints = None
 
         if utils.is_windows():
-            self.required_params = ["ext_ip", "data_fetcher_port"]
+            self.required_params = {
+                "network": ["ext_ip"],
+                "datafetcher": {self.df_type: ["datafetcher_port"]}
+            }
         else:
-            self.required_params = ["ipc_dir"]
+            self.required_params = {"network": ["ipc_dir"]}
 
-        self.check_config
-        self.setup()
+        # check that the required_params are set inside of module specific
+        # config
+        self.check_config()
 
-    def setup(self):
+        self._setup()
+
+    def _setup(self):
         """
         Sets ZMQ endpoints and addresses and creates the ZMQ socket.
         """
 
-        self.ipc_addresses = get_ipc_addresses(config=self.config)
-        self.tcp_addresses = get_tcp_addresses(config=self.config)
+        self.ipc_addresses = get_ipc_addresses(config=self.config_all)
+        self.tcp_addresses = get_tcp_addresses(config=self.config_all)
         self.endpoints = get_endpoints(ipc_addresses=self.ipc_addresses,
                                        tcp_addresses=self.tcp_addresses)
 
@@ -152,6 +198,8 @@ class DataFetcher(DataFetcherBase):
         """Implementation of the abstract method get_metadata.
         """
 
+        # pylint: disable=attribute-defined-outside-init
+
         # extract event metadata
         try:
             # TODO validate metadata dict
@@ -159,13 +207,13 @@ class DataFetcher(DataFetcherBase):
         except:
             self.log.error("Invalid fileEvent message received.",
                            exc_info=True)
-            self.log.debug("metadata={}".format(metadata))
+            self.log.debug("metadata=%s", metadata)
             # skip all further instructions and continue with next iteration
             raise
 
         # TODO combine better with source_file... (for efficiency)
-        if self.config["local_target"]:
-            self.target_file = os.path.join(self.config["local_target"],
+        if self.config_df["local_target"]:
+            self.target_file = os.path.join(self.config_df["local_target"],
                                             self.source_file)
         else:
             self.target_file = None
@@ -184,7 +232,7 @@ class DataFetcher(DataFetcherBase):
                 metadata["file_create_time"] = time.time()
                 # chunksize is coming from zmq_events
 
-                self.log.debug("metadata = {}".format(metadata))
+                self.log.debug("metadata = %s", metadata)
             except:
                 self.log.error("Unable to assemble multi-part message.",
                                exc_info=True)
@@ -199,12 +247,12 @@ class DataFetcher(DataFetcherBase):
 
         # reading source file into memory
         try:
-            self.log.debug("Getting data out of queue for file '{}'..."
-                           .format(self.source_file))
+            self.log.debug("Getting data out of queue for file '%s'...",
+                           self.source_file)
             data = self.socket.recv()
-        except:
-            self.log.error("Unable to get data out of queue for file '{}'"
-                           .format(self.source_file), exc_info=True)
+        except Exception:
+            self.log.error("Unable to get data out of queue for file '%s'",
+                           self.source_file, exc_info=True)
             raise
 
     #    try:
@@ -213,8 +261,8 @@ class DataFetcher(DataFetcherBase):
     #        self.log.error("Unable to get chunksize", exc_info=True)
 
         try:
-            self.log.debug("Packing multipart-message for file {}..."
-                           .format(self.source_file))
+            self.log.debug("Packing multipart-message for file %s...",
+                           self.source_file)
             chunk_number = 0
 
             # assemble metadata for zmq-message
@@ -224,22 +272,22 @@ class DataFetcher(DataFetcherBase):
             payload = []
             payload.append(json.dumps(metadata_extended).encode("utf-8"))
             payload.append(data)
-        except:
-            self.log.error("Unable to pack multipart-message for file '{}'"
-                           .format(self.source_file), exc_info=True)
+        except Exception:
+            self.log.error("Unable to pack multipart-message for file '%s'",
+                           self.source_file, exc_info=True)
 
         # send message
         try:
-            self.send_to_targets(targets,
-                                 open_connections,
-                                 metadata_extended,
-                                 payload,
-                                 chunk_number)
-            self.log.debug("Passing multipart-message for file '{}'...done."
-                           .format(self.source_file))
-        except:
-            self.log.error("Unable to send multipart-message for file '{}'"
-                           .format(self.source_file), exc_info=True)
+            self.send_to_targets(targets=targets,
+                                 open_connections=open_connections,
+                                 metadata=metadata_extended,
+                                 payload=payload,
+                                 chunk_number=chunk_number)
+            self.log.debug("Passing multipart-message for file '%s'...done.",
+                           self.source_file)
+        except Exception:
+            self.log.error("Unable to send multipart-message for file '%s'",
+                           self.source_file, exc_info=True)
 
     def finish(self, targets, metadata, open_connections):
         """Implementation of the abstract method finish.

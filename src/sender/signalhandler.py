@@ -1,21 +1,49 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the signal handler class.
+"""
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
+from collections import namedtuple
+import copy
 import datetime
+import json
+import os
+import re
 import zmq
 import zmq.devices
-import os
-import copy
-import json
-import re
-from collections import namedtuple
 
 from base_class import Base
 
-from _version import __version__
-import utils
-from hidra import convert_suffix_list_to_regex
+from hidra import convert_suffix_list_to_regex, __version__
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -52,6 +80,8 @@ TargetProperties = namedtuple(
 
 
 class SignalHandler(Base):
+    """React to signals from outside.
+    """
 
     def __init__(self,
                  config,
@@ -61,6 +91,11 @@ class SignalHandler(Base):
                  log_queue,
                  context=None):
 
+        super().__init__()
+
+        # needed to initialize base_class
+        self.config_all = config
+        # signal handler does not have a stripped down config
         self.config = config
         self.endpoints = endpoints
 
@@ -91,10 +126,18 @@ class SignalHandler(Base):
         self.exec_run()
 
     def setup(self, log_queue, context, whitelist, ldapuri):
+        """Initializes parameters and creates sockets.
+
+        Args:
+            log_queue: Logging queue used to synchronize log messages.
+            context: ZMQ context to create the socket on.
+            whitelist: List of hosts allowed to connect.
+            ldapuri: Ldap node and port needed to check whitelist.
+        """
 
         # Send all logs to the main process
         self.log = utils.get_logger("SignalHandler", log_queue)
-        self.log.debug("SignalHandler started (PID {}).".format(os.getpid()))
+        self.log.debug("SignalHandler started (PID %s).", os.getpid())
 
         self.whitelist = utils.extend_whitelist(whitelist, ldapuri, self.log)
 
@@ -107,14 +150,28 @@ class SignalHandler(Base):
             self.context = zmq.Context()
             self.ext_context = False
 
+        if self.config["general"]["use_statserver"]:
+            self.setup_stats_collection()
+
         try:
             self.create_sockets()
-        except:
+        except Exception:
             self.log.error("Cannot create sockets", exc_info=True)
             self.stop()
             raise
 
+    def stats_config(self):
+        """Extend the stats_config function of the Base class
+        """
+        conf = super().stats_config()
+        conf["com_socket"] = ["general", "com_port"]
+        conf["request_socket"] = ["general", "request_port"]
+
+        return conf
+
     def create_sockets(self):
+        """Create ZMQ sockets.
+        """
 
         # socket to send control signals to
         self.control_pub_socket = self.start_socket(
@@ -134,6 +191,10 @@ class SignalHandler(Base):
 
         self.control_sub_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
 
+        # just anther name for the same socket to be able to use the base
+        # class check_control_socket method
+        self.control_socket = self.control_sub_socket
+
         # socket to forward requests
         self.request_fw_socket = self.start_socket(
             name="request_fw_socket",
@@ -143,12 +204,22 @@ class SignalHandler(Base):
         )
 
         if self.whitelist != []:
+            com_endpt_split = self.endpoints.com_bind.split(":")
+            use_random_com = len(com_endpt_split) == 2
+            self.log.debug("use random port for request: %s", use_random_com)
+
+            request_endpt_split = self.endpoints.request_bind.split(":")
+            use_random_request = len(request_endpt_split) == 2
+            self.log.debug("use random port for com: %s", use_random_request)
+
             # create zmq socket for signal communication with receiver
             self.com_socket = self.start_socket(
                 name="com_socket",
                 sock_type=zmq.REP,
                 sock_con="bind",
-                endpoint=self.endpoints.com_bind
+                endpoint=self.endpoints.com_bind,
+                # TODO this is a hack
+                random_port=use_random_com
             )
 
             # create socket to receive requests
@@ -156,7 +227,9 @@ class SignalHandler(Base):
                 name="request_socket",
                 sock_type=zmq.PULL,
                 sock_con="bind",
-                endpoint=self.endpoints.request_bind
+                endpoint=self.endpoints.request_bind,
+                # TODO this is a hack
+                random_port=use_random_request
             )
         else:
             self.log.info("Socket com_socket and request_socket not started "
@@ -172,6 +245,9 @@ class SignalHandler(Base):
             self.poller.register(self.request_socket, zmq.POLLIN)
 
     def exec_run(self):
+        """Calling run method and react to exceptions.
+        """
+
         try:
             self.run()
         except zmq.ZMQError:
@@ -179,7 +255,7 @@ class SignalHandler(Base):
                            exc_info=True)
         except KeyboardInterrupt:
             pass
-        except:
+        except Exception:
             self.log.error("Stopping SignalHandler due to unknown error "
                            "condition.", exc_info=True)
         finally:
@@ -230,9 +306,9 @@ class SignalHandler(Base):
         while True:
             socks = dict(self.poller.poll())
 
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             # incoming request from TaskProvider
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             if (self.request_fw_socket in socks
                     and socks[self.request_fw_socket] == zmq.POLLIN):
 
@@ -282,43 +358,38 @@ class SignalHandler(Base):
                         if open_requests:
                             self.request_fw_socket.send_string(
                                 json.dumps(open_requests))
-                            self.log.debug("Answered to request: {}"
-                                           .format(open_requests))
-                            self.log.debug("vari_requests: {}"
-                                           .format(self.vari_requests))
-                            self.log.debug("registered_queries: {}"
-                                           .format(self.registered_queries))
                         else:
                             open_requests = ["None"]
                             self.request_fw_socket.send_string(
                                 json.dumps(open_requests)
                             )
-                            self.log.debug("Answered to request: {}"
-                                           .format(open_requests))
-                            self.log.debug("vari_requests: {}"
-                                           .format(self.vari_requests))
-                            self.log.debug("registered_queries: {}"
-                                           .format(self.registered_queries))
+
+                        self.log.debug("Answered to request: %s",
+                                       open_requests)
+                        self.log.debug("vari_requests: %s",
+                                       self.vari_requests)
+                        self.log.debug("registered_queries: %s",
+                                       self.registered_queries)
 
                     else:
-                        self.log.debug("in_message={}".format(in_message))
+                        self.log.debug("in_message=%s", in_message)
                         self.log.error("Failed to receive/answer new signal "
                                        "requests: incoming message not "
                                        "supported")
 
-                except:
-                    self.log.debug("in_message={}".format(in_message))
+                except Exception:
+                    self.log.debug("in_message=%s", in_message)
                     self.log.error("Failed to receive/answer new signal "
                                    "requests", exc_info=True)
 
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             # start/stop command from external
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             if (self.com_socket in socks
                     and socks[self.com_socket] == zmq.POLLIN):
 
                 in_message = self.com_socket.recv_multipart()
-                self.log.debug("Received signal: {}".format(in_message))
+                self.log.debug("Received signal: %s", in_message)
 
                 unpacked_message = self.check_signal(in_message)
 
@@ -327,17 +398,17 @@ class SignalHandler(Base):
                 else:
                     self.send_response(unpacked_message.response)
 
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             # request from external
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             if (self.request_socket in socks
                     and socks[self.request_socket] == zmq.POLLIN):
 
                 in_message = self.request_socket.recv_multipart()
-                self.log.debug("Received request: {}".format(in_message))
+                self.log.debug("Received request: %s", in_message)
 
                 if in_message[0] == b"NEXT":
-                    incoming_socket_id = utils.convert_socket_to_fqdn(
+                    socket_id = utils.convert_socket_to_fqdn(
                         in_message[1].decode("utf-8"), self.log
                     )
 
@@ -345,15 +416,15 @@ class SignalHandler(Base):
                     # TargetProperties
                     # -> True is so, False otherwise (each TargetProperty
                     #    checked independently
-                    m = [map(lambda x: x[0] == incoming_socket_id, query_set.targets)
-                         for query_set in self.registered_queries]
+                    res = [[i[0] == socket_id for i in query_set.targets]
+                           for query_set in self.registered_queries]
 
                     # determine the registered queries where the socket id is
                     # contained
                     possible_queries = [
                         # (time, target set index, target index)
                         (self.registered_queries[i].time_registered, i, j)
-                        for i, tset in enumerate(m)
+                        for i, tset in enumerate(res)
                         for j, trgt in enumerate(tset)
                         if trgt
                     ]
@@ -363,7 +434,9 @@ class SignalHandler(Base):
 
                     # identify which one is the newest
                     try:
-                        idx_newest = possible_queries.index(max(possible_queries))
+                        idx_newest = possible_queries.index(
+                            max(possible_queries)
+                        )
                     except ValueError:
                         # target not found in possible_queries
                         self.log.debug("No registration found for query")
@@ -385,9 +458,9 @@ class SignalHandler(Base):
                     # because putting it in there would e.g. break in the
                     # following case:
                     # - app1 connects and gets data normally
-                    # - app2 (duplicate of app1, i.e. same host + port to receive
-                    #   data on) tries to connect but fails when establishing
-                    #   the sockets
+                    # - app2 (duplicate of app1, i.e. same host + port to
+                    #   receive data on) tries to connect but fails when
+                    #   establishing the sockets
                     # -> putting the cleanup in the start would break app1 once
                     #    app2 is started
                     if len(possible_queries) > 1:
@@ -400,7 +473,9 @@ class SignalHandler(Base):
                         # e.g. list(a, b, c), remove index 1 and 2
                         # -> remove index 1 -> list(a, c)
                         #    remove index 2 -> error
-                        idxs_to_remove = [query[1] for query in possible_queries]
+                        idxs_to_remove = [
+                            query[1] for query in possible_queries
+                        ]
                         idxs_to_remove.sort(reverse=True)
                         self.log.debug("idxs_to_remove=%s", idxs_to_remove)
 
@@ -408,22 +483,23 @@ class SignalHandler(Base):
                         for i in idxs_to_remove:
                             try:
                                 self.log.debug(
-                                    "Remove leftover/dublicate registered query %s ",
-                                    self.registered_queries[i]
+                                    "Remove leftover/dublicate registered "
+                                    "query %s ", self.registered_queries[i]
                                 )
                                 del self.vari_requests[i]
                                 del self.registered_queries[i]
                             except Exception:
                                 self.log.debug("i=%s", i)
-                                self.log.debug("registered_queries=%s", self.registered_queries)
+                                self.log.debug("registered_queries=%s",
+                                               self.registered_queries)
                                 self.log.error(
-                                    "Could not remove leftover/dubplicate query",
-                                    exc_info=True
+                                    "Could not remove leftover/dubplicate "
+                                    "query", exc_info=True
                                 )
                                 raise
 
                 elif in_message[0] == b"CANCEL":
-                    incoming_socket_id = utils.convert_socket_to_fqdn(
+                    socket_id = utils.convert_socket_to_fqdn(
                         in_message[1].decode("utf-8"), self.log
                     )
 
@@ -435,46 +511,32 @@ class SignalHandler(Base):
                         [
                             socket_conf
                             for socket_conf in request_set
-                            if incoming_socket_id != socket_conf[0]
+                            if socket_id != socket_conf[0]
                         ]
                         for request_set in self.vari_requests
                     ]
 
-                    self.log.info("Remove all occurences from {} from "
-                                  "variable request list."
-                                  .format(incoming_socket_id))
+                    self.log.info("Remove all occurences from %s from "
+                                  "variable request list.", socket_id)
                 else:
                     self.log.info("Request not supported.")
 
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             # control commands from internal
-            # --------------------------------------------------------------------
+            # ----------------------------------------------------------------
             if (self.control_sub_socket in socks
                     and socks[self.control_sub_socket] == zmq.POLLIN):
 
-                try:
-                    message = self.control_sub_socket.recv_multipart()
-                    # self.log.debug("Control signal received.")
-                except:
-                    self.log.error("Waiting for control signal...failed",
-                                   exc_info=True)
-                    continue
-
-                # remove subscription topic
-                del message[0]
-
-                if message[0] == b"EXIT":
-                    self.log.info("Requested to shutdown.")
+                # the exit signal should become effective
+                if self.check_control_signal():
                     break
-                elif message[0] == b"SLEEP":
-                    # self.log.debug("Received sleep signal. Do nothing.")
-                    continue
-                elif message[0] == b"WAKEUP":
-                    self.log.debug("Received wakeup signal. Do nothing.")
-                    continue
-                else:
-                    self.log.error("Unhandled control signal received: {}"
-                                   .format(message[0]))
+
+    def _react_to_sleep_signal(self, message):
+        """Overwrite the base class reaction method to sleep signal.
+        """
+
+        # Do not react on sleep signals.
+        pass
 
     def check_signal(self, in_message):
         """Unpack and check incoming message.
@@ -496,8 +558,8 @@ class SignalHandler(Base):
 
         if len(in_message) != 4:
             self.log.warning("Received signal is of the wrong format")
-            self.log.debug("Received signal is too short or too long: {}"
-                           .format(in_message))
+            self.log.debug("Received signal is too short or too long: %s",
+                           in_message)
             return UnpackedMessage(
                 check_successful=False,
                 response=[b"NO_VALID_SIGNAL"],
@@ -518,9 +580,9 @@ class SignalHandler(Base):
             targets = utils.convert_socket_to_fqdn(targets, self.log)
 
             host = [t[0].split(":")[0] for t in targets]
-            self.log.debug("host {}".format(host))
-        except:
-            self.log.debug("no valid signal received", exc_info=True)
+            self.log.debug("host %s", host)
+        except Exception:
+            self.log.debug("No valid signal received", exc_info=True)
             return UnpackedMessage(
                 check_successful=False,
                 response=[b"NO_VALID_SIGNAL"],
@@ -547,11 +609,11 @@ class SignalHandler(Base):
             self.log.debug("Check if host to send data to are in whitelist...")
             if utils.check_host(host, self.whitelist, self.log):
                 self.log.info("Hosts are allowed to connect.")
-                self.log.debug("hosts: {}".format(host))
+                self.log.debug("hosts: %s", host)
             else:
                 self.log.warning("One of the hosts is not allowed to connect.")
-                self.log.debug("hosts: {}".format(host))
-                self.log.debug("whitelist: {}".format(self.whitelist))
+                self.log.debug("hosts: %s", host)
+                self.log.debug("whitelist: %s", self.whitelist)
                 return UnpackedMessage(
                     check_successful=False,
                     response=[b"NO_VALID_HOST"],
@@ -572,10 +634,10 @@ class SignalHandler(Base):
         """Send response back.
         """
 
-        if type(signal) != list:
+        if not isinstance(signal, list):
             signal = [signal]
 
-        self.log.debug("Send response back: {}".format(signal))
+        self.log.debug("Send response back: %s", signal)
         self.com_socket.send_multipart(signal, zmq.NOBLOCK)
 
     def _start_signal(self,
@@ -608,7 +670,7 @@ class SignalHandler(Base):
         # for compatibility with API versions 3.1.2 or older
         # socket_ids is of the format [[<host>, <prio>, <suffix>], ...]
         for socket_conf in socket_ids:
-            self.log.debug("suffix={}".format(socket_conf[2]))
+            self.log.debug("suffix=%s", socket_conf[2])
             socket_conf[2] = convert_suffix_list_to_regex(socket_conf[2],
                                                           suffix=True,
                                                           compile_regex=False,
@@ -669,9 +731,8 @@ class SignalHandler(Base):
                 self.log.error("socket_ids is neither a subset nor "
                                "superset of already contained set")
                 self.log.debug("Currently: no idea what to do with this.")
-                self.log.debug("socket_ids={}".format(socket_ids_flatlist))
-                self.log.debug("registered_socketids={}"
-                               .format(targets_flatlist))
+                self.log.debug("socket_ids=%s", socket_ids_flatlist)
+                self.log.debug("registered_socketids=%s", targets_flatlist)
 
         if overwrite_index is None:
             registered_ids.append(targetset)
@@ -687,7 +748,7 @@ class SignalHandler(Base):
             # different parameters like monitored file suffix, priority or
             # connection type also this means the old socket_id set should be
             # replaced in total and not only partially
-            self.log.debug("overwrite_index={}".format(overwrite_index))
+            self.log.debug("overwrite_index=%s", overwrite_index)
 
             registered_ids[overwrite_index] = targetset
 
@@ -697,8 +758,8 @@ class SignalHandler(Base):
             if vari_requests is not None:
                 vari_requests[overwrite_index] = []
 
-        self.log.debug("after start handling: registered_ids={}"
-                       .format(registered_ids))
+        self.log.debug("after start handling: registered_ids=%s",
+                       registered_ids)
 
         # send signal back to receiver
         self.send_response([signal])
@@ -746,22 +807,21 @@ class SignalHandler(Base):
                      for sublist in reg_to_check
                      for reg_id in sublist[1].targets
                      if socket_conf[0] == reg_id[0]]
-        self.log.debug("to_remove {}".format(to_remove))
+        self.log.debug("to_remove %s", to_remove)
 
         if not to_remove:
             self.send_response([b"NO_OPEN_CONNECTION_FOUND"])
-            self.log.info("No connection to close was found for {}"
-                          .format(socket_ids))
+            self.log.info("No connection to close was found for %s",
+                          socket_ids)
         else:
             # send signal back to receiver
             self.send_response([signal])
 
-            self.log.debug("registered_ids {}".format(registered_ids))
-            self.log.debug("vari_requests {}".format(vari_requests))
-            self.log.debug("perm_requests {}".format(perm_requests))
+            self.log.debug("registered_ids %s", registered_ids)
+            self.log.debug("vari_requests %s", vari_requests)
+            self.log.debug("perm_requests %s", perm_requests)
             for i, target_properties in reg_to_check:
-                self.log.debug("target_properties {}"
-                               .format(target_properties))
+                self.log.debug("target_properties %s", target_properties)
 
                 targets = target_properties.targets
 
@@ -770,7 +830,7 @@ class SignalHandler(Base):
 
                     try:
                         targets.remove(reg_id)
-                        self.log.debug("Deregister {}".format(socket_id))
+                        self.log.debug("Deregister %s", socket_id)
                     except ValueError:
                         # reg_id is not contained in targets
                         # -> nothing to remove
@@ -798,9 +858,9 @@ class SignalHandler(Base):
                                 if socket_id != socket_conf[0]
                             ]
 
-                            self.log.debug("Remove all occurences from {} "
-                                           "from variable request list."
-                                           .format(socket_id))
+                            self.log.debug("Remove all occurences from %s "
+                                           "from variable request list.",
+                                           socket_id)
 
                         # perm_requests is a list of node numbers to feed
                         # next i.e. index of the node inside of the node
@@ -821,26 +881,39 @@ class SignalHandler(Base):
         return registered_ids, vari_requests, perm_requests
 
     def react_to_signal(self, unpacked_message):
+        """React to external signal.
+
+        Args:
+            unpacked_message: Named tuple containing all signal information,
+                              e.g.
+                                check_successful=...
+                                response=...
+                                appid=...
+                                signal=...
+                                targets=...
+        """
 
         signal = unpacked_message.signal
         appid = unpacked_message.appid
         socket_ids = unpacked_message.targets
+        version = __version__.encode("utf-8")
 
         # --------------------------------------------------------------------
         # GET_VERSION
         # --------------------------------------------------------------------
         if signal == b"GET_VERSION":
-            self.log.info("Received signal: {}".format(signal))
+            self.log.info("Received signal: %s", signal)
 
-            self.send_response([signal, __version__])
+            self.send_response([signal, version])
             return
+        else:
+            self.log.info("Received signal: %s for hosts %s",
+                          signal, socket_ids)
 
         # --------------------------------------------------------------------
         # START_STREAM
         # --------------------------------------------------------------------
-        elif signal == b"START_STREAM":
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
+        if signal == b"START_STREAM":
 
             self._start_signal(
                 signal=signal,
@@ -858,11 +931,10 @@ class SignalHandler(Base):
         # START_STREAM_METADATA
         # --------------------------------------------------------------------
         elif signal == b"START_STREAM_METADATA":
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
-            if not self.config["store_data"]:
+
+            if not self.config["datafetcher"]["store_data"]:
                 self.log.debug("Send notification that store_data is disabled")
-                self.send_response([b"STORING_DISABLED", __version__])
+                self.send_response([b"STORING_DISABLED", version])
             else:
                 self._start_signal(
                     signal=signal,
@@ -881,8 +953,6 @@ class SignalHandler(Base):
         # STOP_STREAM_METADATA
         # --------------------------------------------------------------------
         elif signal == b"STOP_STREAM" or signal == b"STOP_STREAM_METADATA":
-            self.log.info("Received signal: {} for host {}"
-                          .format(signal, socket_ids))
 
             ret_val = self._stop_signal(
                 signal=signal,
@@ -901,8 +971,6 @@ class SignalHandler(Base):
         # START_QUERY_NEXT
         # --------------------------------------------------------------------
         elif signal == b"START_QUERY_NEXT":
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
 
             self._start_signal(
                 signal=signal,
@@ -920,12 +988,10 @@ class SignalHandler(Base):
         # START_QUERY_NEXT_METADATA
         # --------------------------------------------------------------------
         elif signal == b"START_QUERY_NEXT_METADATA":
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
 
-            if not self.config["store_data"]:
+            if not self.config["datafetcher"]["store_data"]:
                 self.log.debug("Send notification that store_data is disabled")
-                self.send_response([b"STORING_DISABLED", __version__])
+                self.send_response([b"STORING_DISABLED", version])
             else:
                 self._start_signal(
                     signal=signal,
@@ -944,9 +1010,7 @@ class SignalHandler(Base):
         #  STOP_QUERY_NEXT_METADATA
         # --------------------------------------------------------------------
         elif (signal == b"STOP_QUERY_NEXT"
-                or signal == b"STOP_QUERY_NEXT_METADATA"):
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
+              or signal == b"STOP_QUERY_NEXT_METADATA"):
 
             ret_val = self._stop_signal(
                 signal=signal,
@@ -966,9 +1030,7 @@ class SignalHandler(Base):
         # FORCE_STOP_STREAM_METADATA
         # --------------------------------------------------------------------
         elif (signal == b"FORCE_STOP_STREAM"
-                or signal == b"FORCE_STOP_STREAM_METADATA"):
-            self.log.info("Received signal: {} for host {}"
-                          .format(signal, socket_ids))
+              or signal == b"FORCE_STOP_STREAM_METADATA"):
 
             ret_val = self._stop_signal(
                 signal=signal,
@@ -988,10 +1050,7 @@ class SignalHandler(Base):
         #  FORCE_STOP_QUERY_NEXT_METADATA
         # --------------------------------------------------------------------
         elif (signal == b"FORCE_STOP_QUERY_NEXT"
-                or signal == b"FORCE_STOP_QUERY_NEXT_METADATA"):
-
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
+              or signal == b"FORCE_STOP_QUERY_NEXT_METADATA"):
 
             ret_val = self._stop_signal(
                 signal=signal,
@@ -1007,11 +1066,13 @@ class SignalHandler(Base):
             return
 
         else:
-            self.log.info("Received signal: {} for hosts {}"
-                          .format(signal, socket_ids))
             self.send_response([b"NO_VALID_SIGNAL"])
 
     def stop(self):
+        """Close sockets and clean up.
+        """
+        super().stop()
+
         self.log.debug("Closing sockets for SignalHandler")
 
         self.stop_socket(name="com_socket")
@@ -1026,7 +1087,7 @@ class SignalHandler(Base):
             self.context.destroy(0)
             self.context = None
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):

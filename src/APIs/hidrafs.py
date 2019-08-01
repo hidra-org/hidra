@@ -1,5 +1,38 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module provides a fuseFS interface to hidra.
+"""
+
+# pylint: disable=missing-docstring
+# pylint: disable=unused-argument
+# pylint: disable=no-self-use
+
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
 from __future__ import with_statement
 
 import os
@@ -15,6 +48,7 @@ from hidra import Transfer
 
 
 class Passthrough(Operations):
+
     def __init__(self, signal_host):
 
         self.log = self.__get_logger()
@@ -40,10 +74,10 @@ class Passthrough(Operations):
         log = logging.getLogger("fuse.log-mixin")
         log.setLevel(logging.DEBUG)
         # create console handler with a higher log level
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
+        handler = logging.StreamHandler()
+        handler.setLevel(logging.DEBUG)
         # add the handlers to the logger
-        log.addHandler(ch)
+        log.addHandler(handler)
 
         return log
 
@@ -60,10 +94,10 @@ class Passthrough(Operations):
 #        pass
 
     def getattr(self, path, fh=None):
-        self.log.debug("path={0}".format(path))
+        self.log.debug("path=%s", path)
 
         if path == "/" or path.startswith("/.Trash"):
-            st = os.lstat(path)
+            st = os.lstat(path)  # pylint: disable=invalid-name
             return {
                 "st_mode": getattr(st, "st_mode"),
                 "st_nlink": getattr(st, "st_nlink"),
@@ -170,7 +204,6 @@ class Passthrough(Operations):
     # (at most) that size of the argument length
     def truncate(self, path, length, fh=None):
         self.log.debug("truncate")
-        pass
 
     # The method fsync() forces write of file with file descriptor fd to disk.
 #    def flush(self, path, fh):
@@ -185,7 +218,7 @@ class Passthrough(Operations):
 #        self.release(path, fh)
 
 
-if __name__ == '__main__':
+def main():
 
     parser = argparse.ArgumentParser()
 
@@ -208,3 +241,7 @@ if __name__ == '__main__':
 
     FUSE(Passthrough(arguments.signal_host), arguments.mount,
          nothreads=True, foreground=True)
+
+
+if __name__ == '__main__':
+    main()

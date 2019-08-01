@@ -11,66 +11,6 @@ print("inotifyx_version", __version__)
 BASE_DIR = "/home/kuhnm/projects/hidra"
 print("BASE_DIR", BASE_DIR)
 
-constants = {}
-
-for name in dir(binding):
-    if name.startswith('IN_'):
-        globals()[name] = constants[name] = getattr(binding, name)
-
-
-# Source: inotifyx library code example
-# Copyright (c) 2005 Manuel Amador
-# Copyright (c) 2009-2011 Forest Bond
-class InotifyEvent (object):
-    '''
-    InotifyEvent(wd, mask, cookie, name)
-
-    A representation of the inotify_event structure.  See the inotify
-    documentation for a description of these fields.
-    '''
-
-    wd = None
-    mask = None
-    cookie = None
-    name = None
-
-    def __init__(self, wd, mask, cookie, name):
-        self.wd = wd
-        self.mask = mask
-        self.cookie = cookie
-        self.name = name
-
-    def __str__(self):
-        return '%s: %s' % (self.wd, self.get_mask_description())
-
-    def __repr__(self):
-        return '%s(%s, %s, %s, %s)' % (
-            self.__class__.__name__,
-            repr(self.wd),
-            repr(self.mask),
-            repr(self.cookie),
-            repr(self.name),
-        )
-
-    def get_mask_description(self):
-        '''
-        Return an ASCII string describing the mask field in terms of
-        bitwise-or'd IN_* constants, or 0.  The result is valid Python code
-        that could be eval'd to get the value of the mask field.  In other
-        words, for a given event:
-
-        >>> from inotifyx import *
-        >>> assert (event.mask == eval(event.get_mask_description()))
-        '''
-
-        parts = []
-        for name, value in constants.items():
-            if self.mask & value:
-                parts.append(name)
-        if parts:
-            return parts
-        return []
-
 
 class EventDetector():
 
@@ -78,12 +18,12 @@ class EventDetector():
         global BASE_DIR
 
         self.wd_to_path = {}
-        self.fd = binding.init()
+        self.fd = inotifyx.init()
 
         self.timeout = 1
 
         path = BASE_DIR + "/data/source/local"
-        wd = binding.add_watch(self.fd, path)
+        wd = inotifyx.add_watch(self.fd, path)
         self.wd_to_path[wd] = path
 
     def get_new_event(self):
@@ -92,8 +32,8 @@ class EventDetector():
 
         events = [
             InotifyEvent(wd, mask, cookie, name)
-            for wd, mask, cookie, name in binding.get_events(self.fd,
-                                                             self.timeout)
+            for wd, mask, cookie, name in inotifyx.get_events(self.fd,
+                                                              self.timeout)
         ]
 
         for event in events:
@@ -121,7 +61,7 @@ class EventDetector():
     def stop(self):
         try:
             for wd in self.wd_to_path:
-                binding.rm_watch(self.fd, wd)
+                inotifyx.rm_watch(self.fd, wd)
         finally:
             os.close(self.fd)
 

@@ -1,5 +1,5 @@
 Name:		hidra
-Version:	4.0.23
+Version:	4.1.0
 Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
@@ -18,8 +18,9 @@ Requires:	python-zmq >= 14.5.0
 Requires:	python-inotifyx >= 0.2.2
 Requires:	python-requests
 Requires:	python-setproctitle
-Requires:	python-six
+Requires:	python-future
 Requires:	python-pathlib
+Requires:	PyYAML
 Requires:	python-hidra = %{version}
 
 %description
@@ -75,7 +76,7 @@ cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
-cp conf/datamanager.conf conf/datareceiver.conf conf/base_receiver.conf conf/base_sender.conf %{buildroot}/opt/%{name}/conf/
+cp conf/datamanager.yamlf conf/datareceiver.yaml conf/base_receiver.yaml conf/base_sender.yaml %{buildroot}/opt/%{name}/conf/
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
@@ -117,6 +118,8 @@ mkdir -p %{buildroot}/var/log/%{name}
 /opt/%{name}/src/hidra_control/hidra_control_client.pyo
 
 %changelog
+* Thu Aug 01 2019 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.0-1
+- Bump version
 * Fri Jun 14 2019 Manuela Kuhn <manuela.kuhn@desy.de> - 4.0.23-1
 - Bump version
 * Tue Apr 23 2019 Manuela Kuhn <manuela.kuhn@desy.de> - 4.0.22-1

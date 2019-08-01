@@ -1,33 +1,68 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#
+
+"""
+This module implements the receiver.
+"""
+
+# pylint: disable=global-variable-not-assigned
+# pylint: disable=invalid-name
+
+from __future__ import absolute_import
 from __future__ import print_function
+from __future__ import unicode_literals
 
 import argparse
+import copy
 import logging
 import os
-import setproctitle
 import signal
 import threading
-import copy
 import time
+
+import setproctitle
 
 from __init__ import BASE_DIR
 
-import utils
 from hidra import Transfer, __version__
+import hidra.utils as utils
 
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
-whitelist = []
-changed_netgroup = False
+_whitelist = []
+_changed_netgroup = False
 
 
 def argument_parsing():
-    base_config_file = os.path.join(CONFIG_DIR, "base_receiver.conf")
-    default_config_file = os.path.join(CONFIG_DIR, "datareceiver.conf")
+    """Parses and checks the command line arguments used.
+    """
+
+    base_config_file = utils.determine_config_file(fname_base="base_receiver",
+                                                   config_dir=CONFIG_DIR)
 
     # ------------------------------------------------------------------------
     # Get command line arguments
@@ -81,7 +116,11 @@ def argument_parsing():
                              "files from")
 
     arguments = parser.parse_args()
-    arguments.config_file = arguments.config_file or default_config_file
+    arguments.config_file = (
+        arguments.config_file
+        or utils.determine_config_file(fname_base="datareceiver",
+                                       config_dir=CONFIG_DIR)
+    )
 
     # check if config_file exist
     utils.check_existance(arguments.config_file)
@@ -90,33 +129,75 @@ def argument_parsing():
     # Get arguments from config file
     # ------------------------------------------------------------------------
 
-    params = utils.set_parameters(base_config_file=base_config_file,
-                                  config_file=arguments.config_file,
-                                  arguments=arguments)
+    config = utils.load_config(base_config_file)
+    config_detailed = utils.load_config(arguments.config_file)
+
+    # if config and yaml is mixed mapping has to take place before merging them
+    config_type = "receiver"
+    config = utils.map_conf_format(config, config_type)
+    config_detailed = utils.map_conf_format(config_detailed, config_type)
+    arguments_dict = utils.map_conf_format(arguments,
+                                           config_type,
+                                           is_namespace=True)
+
+    utils.update_dict(config_detailed, config)
+
+    utils.update_dict(arguments_dict, config)
+
+#    params = utils.set_parameters(base_config_file=base_config_file,
+#                                  config_file=arguments.config_file,
+#                                  arguments=arguments)
 
     # ------------------------------------------------------------------------
     # Check given arguments
     # ------------------------------------------------------------------------
 
+    required_params = {
+        "general": [
+            "log_path",
+            "log_name",
+            "procname",
+            "procname",
+            "ldapuri",
+            "dirs_not_to_create",
+            "whitelist"
+        ],
+        "datareceiver": [
+            "target_dir",
+            "data_stream_ip",
+            "data_stream_port",
+        ]
+    }
+
+    # Check format of config
+    check_passed, _ = utils.check_config(required_params, config, logging)
+    if not check_passed:
+        logging.error("Configuration check failed")
+        raise utils.WrongConfiguration
+
     # check target directory for existance
-    utils.check_existance(params["target_dir"])
+    utils.check_existance(config["datareceiver"]["target_dir"])
 
     # check if logfile is writable
-    params["log_file"] = os.path.join(params["log_path"], params["log_name"])
-    utils.check_writable(params["log_file"])
+    config["general"]["log_file"] = os.path.join(config["general"]["log_path"],
+                                                 config["general"]["log_name"])
+    utils.check_writable(config["general"]["log_file"])
 
-    return params
+    return config
 
 
 def reset_changed_netgroup():
     """helper because global variables can only be reset in same namespace.
     """
-    global changed_netgroup
+    global _changed_netgroup
 
-    changed_netgroup = False
+    _changed_netgroup = False
 
 
-class CheckNetgroup (threading.Thread):
+class CheckNetgroup(threading.Thread):
+    """A thread checking on a regular basis if the netgroup has changed.
+    """
+
     def __init__(self, netgroup, lock, ldapuri, ldap_retry_time, check_time):
         self.log = logging.getLogger("CheckNetgroup")
 
@@ -132,13 +213,21 @@ class CheckNetgroup (threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        global whitelist
-        global changed_netgroup
+        global _whitelist
+        global _changed_netgroup
 
         # wake up evey 2 seconds to see if there is a stopping signal
         sec_to_sleep = 2
-        ldap_sleep_intervalls = int(self.ldap_retry_time // sec_to_sleep)
-        check_sleep_intervalls = int(self.check_time // sec_to_sleep)
+
+        if self.ldap_retry_time < sec_to_sleep:
+            ldap_sleep_intervalls = 1
+        else:
+            ldap_sleep_intervalls = int(self.ldap_retry_time // sec_to_sleep)
+
+        if self.check_time < sec_to_sleep:
+            check_sleep_intervalls = 1
+        else:
+            check_sleep_intervalls = int(self.check_time // sec_to_sleep)
 
         while self.run_loop:
             new_whitelist = utils.execute_ldapsearch(self.log,
@@ -149,36 +238,42 @@ class CheckNetgroup (threading.Thread):
             # -> do nothing but wait till ldap is reachable again
             if not new_whitelist:
                 self.log.info("LDAP search returned an empty list. Ignore.")
-                for i in range(ldap_sleep_intervalls):
+                for _ in range(ldap_sleep_intervalls):
                     if self.run_loop:
                         time.sleep(sec_to_sleep)
                 continue
 
             # new elements added to whitelist
-            new_elements = [e for e in new_whitelist if e not in whitelist]
+            new_elements = [e for e in new_whitelist if e not in _whitelist]
             # elements which were removed from whitelist
-            removed_elements = [e for e in whitelist if e not in new_whitelist]
+            removed_elements = [e for e in _whitelist
+                                if e not in new_whitelist]
 
             if new_elements or removed_elements:
                 with self.lock:
                     # remember new whitelist
-                    whitelist = copy.deepcopy(new_whitelist)
+                    _whitelist = copy.deepcopy(new_whitelist)
 
                     # mark that there was a change
-                    changed_netgroup = True
+                    _changed_netgroup = True
 
-                self.log.info("Netgroup has changed. New whitelist: {}"
-                              .format(whitelist))
+                self.log.info("Netgroup has changed. New whitelist: %s",
+                              _whitelist)
 
-            for i in range(check_sleep_intervalls):
+            for _ in range(check_sleep_intervalls):
                 if self.run_loop:
                     time.sleep(sec_to_sleep)
 
     def stop(self):
+        """Stopping.
+        """
         self.run_loop = False
 
 
-class DataReceiver:
+class DataReceiver(object):
+    """Receives data and stores it to disc usign the hidra API.
+    """
+
     def __init__(self):
 
         self.transfer = None
@@ -201,40 +296,49 @@ class DataReceiver:
         self.exec_run()
 
     def setup(self):
-        global whitelist
+        """Initializes parameters, logging and transfer object.
+        """
+
+        global _whitelist
 
         try:
-            params = argument_parsing()
+            config = argument_parsing()
         except:
             self.log = logging.getLogger("DataReceiver")
             raise
+
+        config_gen = config["general"]
+        config_recv = config["datareceiver"]
+
+        # change user
+        user_info, user_was_changed = utils.change_user(config_gen)
 
         # enable logging
         root = logging.getLogger()
         root.setLevel(logging.DEBUG)
 
-        handlers = utils.get_log_handlers(params["log_file"],
-                                          params["log_size"],
-                                          params["verbose"],
-                                          params["onscreen"])
+        handlers = utils.get_log_handlers(config_gen["log_file"],
+                                          config_gen["log_size"],
+                                          config_gen["verbose"],
+                                          config_gen["onscreen"])
 
-        if type(handlers) == tuple:
-            for h in handlers:
-                root.addHandler(h)
+        if isinstance(handlers, tuple):
+            for hdl in handlers:
+                root.addHandler(hdl)
         else:
             root.addHandler(handlers)
 
         self.log = logging.getLogger("DataReceiver")
 
+        utils.log_user_change(self.log, user_was_changed, user_info)
+
         # set process name
-        check_passed, _ = utils.check_config(["procname"], params, self.log)
-        if not check_passed:
-            raise Exception("Configuration check failed")
-        setproctitle.setproctitle(params["procname"])
+        # pylint: disable=no-member
+        setproctitle.setproctitle(config_gen["procname"])
 
-        self.log.info("Version: {}".format(__version__))
+        self.log.info("Version: %s", __version__)
 
-        self.dirs_not_to_create = params["dirs_not_to_create"]
+        self.dirs_not_to_create = config_gen["dirs_not_to_create"]
 
         # for proper clean up if kill is called
         signal.signal(signal.SIGTERM, self.signal_term_handler)
@@ -243,58 +347,60 @@ class DataReceiver:
         self.lock = threading.Lock()
 
         try:
-            ldap_retry_time = params["ldap_retry_time"]
+            ldap_retry_time = config_gen["ldap_retry_time"]
         except KeyError:
             ldap_retry_time = 10
 
         try:
-            check_time = params["netgroup_check_time"]
+            check_time = config_gen["netgroup_check_time"]
         except KeyError:
             check_time = 2
 
-        if params["whitelist"] is not None:
-            self.log.debug("params['whitelist']={}"
-                           .format(params["whitelist"]))
+        if config_gen["whitelist"] is not None:
+            self.log.debug("config_gen['whitelist']=%s",
+                           config_gen["whitelist"])
 
             with self.lock:
-                whitelist = utils.extend_whitelist(params["whitelist"],
-                                                   params["ldapuri"],
-                                                   self.log)
-            self.log.info("Configured whitelist: {}".format(whitelist))
+                _whitelist = utils.extend_whitelist(config_gen["whitelist"],
+                                                    config_gen["ldapuri"],
+                                                    self.log)
+            self.log.info("Configured whitelist: %s", _whitelist)
         else:
-            whitelist = None
+            _whitelist = None
 
         # only start the thread if a netgroup was configured
-        if (params["whitelist"] is not None
-                and type(params["whitelist"]) == str):
+        if (config_gen["whitelist"] is not None
+                and isinstance(config_gen["whitelist"], str)):
             self.log.debug("Starting checking thread")
-            self.checking_thread = CheckNetgroup(params["whitelist"],
+            self.checking_thread = CheckNetgroup(config_gen["whitelist"],
                                                  self.lock,
-                                                 params["ldapuri"],
+                                                 config_gen["ldapuri"],
                                                  ldap_retry_time,
                                                  check_time)
             self.checking_thread.start()
         else:
-            self.log.debug("Checking thread not started: {}"
-                           .format(params["whitelist"]))
+            self.log.debug("Checking thread not started: %s",
+                           config_gen["whitelist"])
 
-        self.target_dir = os.path.normpath(params["target_dir"])
-        self.data_ip = params["data_stream_ip"]
-        self.data_port = params["data_stream_port"]
+        self.target_dir = os.path.normpath(config_recv["target_dir"])
+        self.data_ip = config_recv["data_stream_ip"]
+        self.data_port = config_recv["data_stream_port"]
 
-        self.log.info("Writing to directory '{}'".format(self.target_dir))
+        self.log.info("Writing to directory '%s'", self.target_dir)
 
         self.transfer = Transfer(connection_type="STREAM",
                                  use_log=True,
                                  dirs_not_to_create=self.dirs_not_to_create)
 
     def exec_run(self):
+        """Wrapper around run to react to exceptions.
+        """
 
         try:
             self.run()
         except KeyboardInterrupt:
             pass
-        except:
+        except Exception:
             self.log.error("Stopping due to unknown error condition",
                            exc_info=True)
             raise
@@ -302,13 +408,16 @@ class DataReceiver:
             self.stop()
 
     def run(self):
-        global whitelist
-        global changed_netgroup
+        """Start the transfer and stores the data.
+        """
+
+        global _whitelist
+        global _changed_netgroup
 
         try:
-            self.transfer.start([self.data_ip, self.data_port], whitelist)
+            self.transfer.start([self.data_ip, self.data_port], _whitelist)
 #            self.transfer.start(self.data_port)
-        except:
+        except Exception:
             self.log.error("Could not initiate stream", exc_info=True)
             self.stop(store=False)
             raise
@@ -323,23 +432,30 @@ class DataReceiver:
         self.run_loop = True
         # run loop, and wait for incoming messages
         while self.run_loop:
-            if changed_netgroup:
+            if _changed_netgroup:
                 self.log.debug("Reregistering whitelist")
-                self.transfer.register(whitelist)
+                self.transfer.register(_whitelist)
 
                 # reset flag
                 with self.lock:
-                    changed_netgroup = False
+                    _changed_netgroup = False
 
             try:
                 self.transfer.store(self.target_dir, self.timeout)
             except KeyboardInterrupt:
                 break
-            except:
+            except Exception:
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise
 
     def stop(self, store=True):
+        """Stop threads, close sockets and cleanes up.
+
+        Args:
+            store (optional, bool): Run a little longer to store remaining
+                                    data.
+        """
+
         self.run_loop = False
 
         if self.transfer is not None:
@@ -354,7 +470,7 @@ class DataReceiver:
                     try:
                         self.log.debug("Storing remaining data...")
                         self.transfer.store(self.target_dir, self.timeout)
-                    except:
+                    except Exception:
                         self.log.error("Storing data...failed.", exc_info=True)
                     diff_time = (time.time() - start_time) * 1000
 
@@ -368,11 +484,15 @@ class DataReceiver:
             self.log.debug("checking_thread stopped")
             self.checking_thread = None
 
-    def signal_term_handler(self, signal, frame):
+    # pylint: disable=unused-argument
+    def signal_term_handler(self, signal_to_react, frame):
+        """React on external SIGTERM signal.
+        """
+
         self.log.debug('got SIGTERM')
         self.stop()
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
     def __del__(self):
@@ -381,4 +501,4 @@ class DataReceiver:
 
 if __name__ == "__main__":
     # start file receiver
-    receiver = DataReceiver()
+    DataReceiver()

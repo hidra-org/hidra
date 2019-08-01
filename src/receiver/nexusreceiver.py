@@ -1,3 +1,5 @@
+# pylint: skip-file
+
 from __future__ import print_function
 
 import argparse
@@ -7,8 +9,8 @@ import errno
 
 from __init__ import BASE_DIR
 
-import utils
 from hidra import Transfer
+import hidra.utils as utils
 
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -78,7 +80,7 @@ def argument_parsing():
                                   argumetns=arguments)
 
     if params["whitelist"] is not None and type(params["whitelist"]) == str:
-        params["whitelist"] = utils.execute_ldapsearch(log,
+        params["whitelist"] = utils.execute_ldapsearch(logging,
                                                        params["whitelist"],
                                                        params["ldapuri"])
 

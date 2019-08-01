@@ -1,0 +1,7 @@
+FROM centos:7
+
+RUN yum update -y && yum install -y \
+    git \
+    rpm-build \
+    python-devel \
+    python-setuptools

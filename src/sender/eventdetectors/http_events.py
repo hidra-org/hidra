@@ -1,12 +1,42 @@
+# Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
+#
+# HiDRA is a generic tool set for high performance data multiplexing with
+# different qualities of service and based on Python and ZeroMQ.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Authors:
+#     Manuela Kuhn <manuela.kuhn@desy.de>
+#     Jan Garrevoet <jan.garrevoet@desy.de>
+#
+
+"""
+This module implements the event detector used for the Eiger detector and
+other detectors with a http interface
+"""
+
+# pylint: disable=broad-except
+
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
 
+import collections
 import os
+import socket
 import time
 import requests
-import collections
-import socket
 
 from eventdetectorbase import EventDetectorBase
 
@@ -15,6 +45,10 @@ __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
 
 
 class EventDetector(EventDetectorBase):
+    """
+    Implements an event detector to get files from the Eiger detector or other
+    detectors with a http interface.
+    """
 
     def __init__(self, config, log_queue):
 
@@ -23,8 +57,13 @@ class EventDetector(EventDetectorBase):
                                    log_queue,
                                    "http_events")
 
-        self.config = config
-        self.log.queue = log_queue
+        # base class sets
+        #   self.config_all - all configurations
+        #   self.config_ed - the config of the event detector
+        #   self.config - the module specific config
+        #   self.ed_type -  the name of the eventdetector module
+        #   self.log_queue
+        #   self.log
 
         self.session = None
         self.det_ip = None
@@ -40,6 +79,8 @@ class EventDetector(EventDetectorBase):
                                 "history_size",
                                 "fix_subdirs"]
 
+        # check that the required_params are set inside of module specific
+        # config
         self.check_config()
         self.setup()
 
@@ -55,7 +96,7 @@ class EventDetector(EventDetectorBase):
         self.det_api_version = self.config["det_api_version"]
         self.det_url = ("http://{}/filewriter/api/{}/files"
                         .format(self.det_ip, self.det_api_version))
-        self.log.debug("Getting files from: {}".format(self.det_url))
+        self.log.debug("Getting files from: %s", self.det_url)
 #            http://192.168.138.37/filewriter/api/1.6.0/files
 
         # history to prevend double events
@@ -88,9 +129,9 @@ class EventDetector(EventDetectorBase):
             response = self.session.get(self.det_url)
         except KeyboardInterrupt:
             return event_message_list
-        except:
-            self.log.error("Error in getting file list from {0}"
-                           .format(self.det_url), exc_info=True)
+        except Exception:
+            self.log.error("Error in getting file list from %s", self.det_url,
+                           exc_info=True)
             # Wait till next try to prevent denial of service
             time.sleep(self.sleep_time)
             return event_message_list
@@ -100,7 +141,7 @@ class EventDetector(EventDetectorBase):
 #            self.log.debug("response: {}".format(response.text))
             files_stored = response.json()
 #            self.log.debug("files_stored: {}".format(files_stored))
-        except:
+        except Exception:
             self.log.error("Getting file list...failed.", exc_info=True)
             # Wait till next try to prevent denial of service
             time.sleep(self.sleep_time)
@@ -111,18 +152,19 @@ class EventDetector(EventDetectorBase):
             # no new files received
             time.sleep(self.sleep_time)
 
-        for f in files_stored:
-            if (f.startswith(tuple(self.config["fix_subdirs"]))
-                    and f not in self.files_downloaded):
-                (relative_path, filename) = os.path.split(f)
+        fix_subdirs_tuple = tuple(self.config["fix_subdirs"])
+        for file_obj in files_stored:
+            if (file_obj.startswith(fix_subdirs_tuple)
+                    and file_obj not in self.files_downloaded):
+                (relative_path, filename) = os.path.split(file_obj)
                 event_message = {
                     "source_path": "http://{}/data".format(self.det_ip),
                     "relative_path": relative_path,
                     "filename": filename
                 }
-                self.log.debug("event_message {}".format(event_message))
+                self.log.debug("event_message %s", event_message)
                 event_message_list.append(event_message)
-                self.files_downloaded.append(f)
+                self.files_downloaded.append(file_obj)
 
         return event_message_list
 
