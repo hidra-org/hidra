@@ -13,14 +13,12 @@ override_dh_auto_install:
 	mkdir -p debian/tmp/$(PYDIR)/hidra
 	mkdir -p debian/tmp/opt/hidra/src/
 	mkdir -p debian/tmp/opt/hidra/conf
-	mkdir -p debian/tmp/opt/hidra/src/shared
 	mkdir -p debian/tmp/lib/systemd/system
 	mkdir -p debian/tmp/var/log/hidra
 	chmod 1777 debian/tmp/var/log/hidra
 	cp src/APIs/hidra/*.py  debian/tmp/$(PYDIR)/hidra
 	cp -r src/receiver debian/tmp/opt/hidra/src
 	cp -r src/sender debian/tmp/opt/hidra/src
-	cp -r src/shared/*.py debian/tmp/opt/hidra/src/shared
 	cp -r src/hidra_control debian/tmp/opt/hidra/src
 	cp -r conf/base_sender.yaml debian/tmp/opt/hidra/conf
 	cp -r conf/datamanager.yaml debian/tmp/opt/hidra/conf

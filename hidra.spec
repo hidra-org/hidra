@@ -64,12 +64,10 @@ This package contains only the client to interact with the control server in the
 mkdir -p %{buildroot}/%{python_sitelib}/%{name}
 cp -r src/APIs/hidra/*.py %{buildroot}/%{python_sitelib}/%{name}/
 
-# src receiver/sender and shared
+# src receiver/sender
 mkdir -p %{buildroot}/opt/%{name}/src
 cp -ra src/receiver %{buildroot}/opt/%{name}/src/
 cp -ra src/sender %{buildroot}/opt/%{name}/src/
-mkdir -p %{buildroot}/opt/%{name}/src/shared/
-cp -a src/shared/*.py %{buildroot}/opt/%{name}/src/shared/
 
 mkdir -p %{buildroot}/opt/%{name}/src/hidra_control
 cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
@@ -100,7 +98,6 @@ mkdir -p %{buildroot}/var/log/%{name}
 %attr(0755,root,root) /opt/%{name}/src/receiver/*
 /opt/%{name}/src/sender/*
 %attr(0755,root,root) /opt/%{name}/src/sender/datamanager.py
-/opt/%{name}/src/shared/*
 /opt/%{name}/src/hidra_control/hidra_control_server.py
 /opt/%{name}/src/hidra_control/hidra_control_server.pyc
 /opt/%{name}/src/hidra_control/hidra_control_server.pyo
