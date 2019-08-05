@@ -86,13 +86,13 @@ mkdir -p %{buildroot}/var/log/%{name}
 #%{__python} setup.py install -O1 --skip-build --root %{buildroot}
 
 %post
-%systemd_post %{name}@.service
+%systemd_post %{name}@.service %{name}-receiver@.service %{name}-control-server@.service
 
 %preun
-%systemd_preun %{name}@.service
+%systemd_preun %{name}@.service %{name}-receiver@.service %{name}-control-server@.service
 
 %postun
-%systemd_postun_with_restart %{name}@.service
+%systemd_postun_with_restart %{name}@.service %{name}-receiver@.service %{name}-control-server@.service
 
 %files
 %attr(0755,root,root) /opt/%{name}/src/receiver/*
