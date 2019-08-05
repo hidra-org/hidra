@@ -62,7 +62,7 @@ This package contains only the client to interact with the control server in the
 %install
 # Packaging Python API
 mkdir -p %{buildroot}/%{python_sitelib}/%{name}
-cp -r src/APIs/hidra/*.py %{buildroot}/%{python_sitelib}/%{name}/
+cp -r src/APIs/hidra/* %{buildroot}/%{python_sitelib}/%{name}/
 
 # src receiver/sender
 mkdir -p %{buildroot}/opt/%{name}/src
