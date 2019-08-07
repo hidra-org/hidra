@@ -1077,7 +1077,7 @@ class DataManager(Base):
             if log: self.log.error("TaskProvider hangs.")
             is_hanging = True
 
-        if self.use_cleaner and self.cleaner_pr.is_alive():
+        if self.cleaner_pr is not None and self.cleaner_pr.is_alive():
             if log: self.log.error("Cleaner hangs.")
             is_hanging = True
 
