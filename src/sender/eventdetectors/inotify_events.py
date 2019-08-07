@@ -111,9 +111,13 @@ class EventDetector(EventDetectorBase):
         self.required_params = ["monitored_dir",
                                 "fix_subdirs",
                                 ["monitored_events", dict],
-                                "event_timeout",
+                                #"event_timeout",
                                 "history_size",
                                 "use_cleanup"]
+
+        # to keep backwards compatibility to old config files
+        if not self.config_all["general"]["config_file"].endswith("conf"):
+            self.required_params.append("event_timeout")
 
         if self.config["use_cleanup"]:
             self.required_params += ["time_till_closed", "action_time"]
@@ -124,7 +128,12 @@ class EventDetector(EventDetectorBase):
         Sets static configuration parameters creates ring buffer and starts
         cleanup thread.
         """
-        self.timeout = self.config["event_timeout"]
+
+        try:
+            self.timeout = self.config["event_timeout"]
+        except KeyError:
+            # when using old config file type
+            self.timeout = 1
 
         watch_dirs = [
             os.path.normpath(
