@@ -44,7 +44,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
     # set variables
     BEAMLINE="$2"
     NAME=${SCRIPT_NAME}_${BEAMLINE}
-    CONFIG_FILE="${CONFIGDIR}/receiver_${BEAMLINE}.conf"
+    CONFIG_FILE="${CONFIGDIR}/receiver_${BEAMLINE}.yaml"
     DAEMON_ARGS="--verbose --config_file ${CONFIG_FILE} --procname ${NAME}"
 
     if [ ! -f $CONFIG_FILE ]
@@ -174,7 +174,7 @@ elif [ -f /etc/debian_version ] ; then
     # set variables
     BEAMLINE="$2"
     NAME=${SCRIPT_NAME}_${BEAMLINE}
-    DAEMON_ARGS="--verbose --config_file ${CONFIGDIR}/receiver_${BEAMLINE}.conf"
+    DAEMON_ARGS="--verbose --config_file ${CONFIGDIR}/receiver_${BEAMLINE}.yaml"
     PIDFILE=${PIDFILE_LOCATION}/${NAME}.pid
 
     #
