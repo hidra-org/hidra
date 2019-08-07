@@ -168,7 +168,7 @@ class CleanerBase(Base, ABC):
 
                 # backward compatibility with versions <= 4.0.7
                 if len(message) > 2:
-                    chunk_number = message[2]
+                    chunk_number = int(message[2].decode("utf-8"))
                 else:
                     chunk_number = None
 
@@ -227,8 +227,9 @@ class CleanerBase(Base, ABC):
                 message = self.job_socket.recv_multipart()
                 self.log.debug("New job received: %s", message)
 
-                base_path, file_id, n_chunks = message
-                n_chunks = int(n_chunks)
+                base_path = message[0].decode("utf-8")
+                file_id = message[1].decode("utf-8")
+                n_chunks = int(message[2].decode("utf-8"))
 
                 if (file_id in confirmations
                         and confirmations[file_id]["count"] >= n_chunks):

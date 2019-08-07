@@ -172,7 +172,9 @@ class DataFetcher(DataFetcherBase):
                 metadata["file_create_time"] = file_create_time
                 metadata["chunksize"] = self.config_df["chunksize"]
                 if self.config_df["remove_data"] == "with_confirmation":
-                    metadata["confirmation_required"] = self.confirmation_topic
+                    metadata["confirmation_required"] = (
+                        self.confirmation_topic.decode()
+                    )
                 else:
                     metadata["confirmation_required"] = False
 
@@ -186,7 +188,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
@@ -242,7 +244,8 @@ class DataFetcher(DataFetcherBase):
 
                 chunk_payload = []
                 chunk_payload.append(
-                    json.dumps(chunk_metadata).encode("utf-8"))
+                    json.dumps(chunk_metadata).encode("utf-8")
+                )
                 chunk_payload.append(file_content)
             except Exception:
                 self.log.error("Unable to pack multipart-message for file "
@@ -398,7 +401,7 @@ class DataFetcher(DataFetcherBase):
             self.cleaner_job_socket.send_multipart(
                 [metadata["source_path"].encode("utf-8"),
                  file_id.encode("utf-8"),
-                 str(n_chunks)]
+                 str(n_chunks).encode("utf-8")]
             )
             self.log.debug("Forwarded to cleaner %s", file_id)
 

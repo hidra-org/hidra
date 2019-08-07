@@ -1760,7 +1760,7 @@ class Transfer(Base):
                 topic = metadata["confirmation_required"].encode()
 
                 try:
-                    remote_version = metadata["version"]
+                    remote_version = LooseVersion(metadata["version"])
                 except KeyError:
                     remote_version = None
 
@@ -1774,7 +1774,7 @@ class Transfer(Base):
                 else:
                     message = [topic,
                                file_id.encode("utf-8"),
-                               str(metadata["chunk_number"])]
+                               str(metadata["chunk_number"]).encode("utf-8")]
 
                 self.confirmation_socket.send_multipart(message)
                 self.log.debug("Sending confirmation for chunk %s of "
@@ -1877,7 +1877,7 @@ class Transfer(Base):
                 # returns a tuple (type, value, traceback)
                 exc_type, exc_value = sys.exc_info()[:2]
 
-                self.log.error(exc_value)
+                self.log.error(exc_value, exc_info=True)
 
                 self.status = [b"ERROR",
                                str(exc_type).encode("utf-8"),
