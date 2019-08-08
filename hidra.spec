@@ -74,7 +74,7 @@ cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
-cp conf/datamanager.yaml conf/datareceiver.yaml conf/base_receiver.yaml conf/base_sender.yaml conf/control_server.yaml %{buildroot}/opt/%{name}/conf/
+cp conf/datamanager.yaml conf/datareceiver.yaml conf/base_receiver.yaml conf/base_sender.yaml conf/control_server.yaml control_client.yaml %{buildroot}/opt/%{name}/conf/
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
@@ -113,6 +113,7 @@ mkdir -p %{buildroot}/var/log/%{name}
 /opt/%{name}/src/hidra_control/hidra_control_client.py
 /opt/%{name}/src/hidra_control/hidra_control_client.pyc
 /opt/%{name}/src/hidra_control/hidra_control_client.pyo
+%config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
 * Thu Aug 01 2019 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.0-1
