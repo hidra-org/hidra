@@ -33,12 +33,12 @@ import re
 import socket as socket_m
 import subprocess
 
-from .utils_datatypes import (IpcAddresses, # noqa F401
+from hidra.utils.utils_datatypes import (IpcAddresses, # noqa F401
                               Endpoints,
                               MAPPING_ZMQ_CONSTANTS_TO_STR,
                               NotAllowed)
-from .utils_logging import LoggingFunction
-from .utils_general import is_windows
+from hidra.utils.utils_logging import LoggingFunction
+from hidra.utils.utils_general import is_windows
 
 
 def check_netgroup(hostname,

@@ -52,8 +52,8 @@ try:
 except ImportError:
     from pathlib import Path
 
-from .utils._version import __version__
-from .utils import (
+from hidra.utils._version import __version__
+from hidra.utils import (
     NotSupported,
     UsageError,
     FormatError,
@@ -65,7 +65,7 @@ from .utils import (
     LoggingFunction,
     Base
 )
-from .control import Control
+from hidra.control import Control
 
 
 def get_logger(logger_name,

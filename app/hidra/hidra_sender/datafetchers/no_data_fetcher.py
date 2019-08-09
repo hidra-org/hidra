@@ -32,7 +32,7 @@ from __future__ import unicode_literals
 import json
 import time
 
-from datafetcherbase import DataFetcherBase
+from hidra_sender.datafetchers.datafetcherbase import DataFetcherBase
 from hidra import generate_filepath
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

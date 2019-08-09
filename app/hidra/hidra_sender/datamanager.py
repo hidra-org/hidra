@@ -37,6 +37,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import argparse
 from distutils.version import LooseVersion
+from importlib import import_module
 import logging
 from multiprocessing import Process, freeze_support, Queue
 import os
@@ -51,31 +52,21 @@ import zmq.devices
 
 import setproctitle
 
-# to make windows freeze work (cx_Freeze 5.x)
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except NameError:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+# pylint: disable=wrong-import-position
+from hidra_sender.base_class import Base  # noqa E402
+# pylint: disable=wrong-import-position
+from hidra_sender.signalhandler import SignalHandler  # noqa E402
+# pylint: disable=wrong-import-position
+from hidra_sender.taskprovider import TaskProvider  # noqa E402
+# pylint: disable=wrong-import-position
+from hidra_sender.datadispatcher import DataDispatcher  # noqa E402
+# pylint: disable=wrong-import-position
+from hidra_sender.statserver import StatServer  # noqa E402
 
-if CURRENT_DIR not in sys.path:
-    sys.path.insert(0, CURRENT_DIR)
-
-# pylint: disable=wrong-import-position
-from base_class import Base  # noqa E402
-# pylint: disable=wrong-import-position
-from signalhandler import SignalHandler  # noqa E402
-# pylint: disable=wrong-import-position
-from taskprovider import TaskProvider  # noqa E402
-# pylint: disable=wrong-import-position
-from datadispatcher import DataDispatcher  # noqa E402
-# pylint: disable=wrong-import-position
-from statserver import StatServer  # noqa E402
-
-from _environment import BASE_DIR  # noqa E402
 import hidra.utils as utils # noqa E402
 from hidra import __version__  # noqa E402
 
-CONFIG_DIR = os.path.join(BASE_DIR, "conf")
+CONFIG_DIR = "conf"
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -333,8 +324,10 @@ def argument_parsing():
     config_gen = config["general"]
     config_ed = config["eventdetector"]
     config_df = config["datafetcher"]
-    ed_type = config_ed["type"]
-    df_type = config_df["type"]
+    config_ed["type_module"] = "hidra_sender.eventdetectors." + config_ed["type"]
+    ed_type = config_ed["type_module"]
+    config_df["type_module"] = "hidra_sender.datafetchers." + config_df["type"]
+    df_type = config_df["type_module"]
 
     # check if logfile is writable
     config_gen["log_file"] = utils.format_log_filename(
@@ -960,8 +953,10 @@ class DataManager(Base):
         # Cleaner
         if self.use_cleaner:
             self.log.info("Loading cleaner from data fetcher module: %s",
-                          self.config["datafetcher"]["type"])
-            self.cleaner_m = __import__(self.config["datafetcher"]["type"])
+                          self.config["datafetcher"]["type_module"])
+            self.cleaner_m = import_module(
+                self.config["datafetcher"]["type_module"]
+            )
 
             self.cleaner_pr = Process(
                 target=self.cleaner_m.Cleaner,

@@ -40,7 +40,7 @@ import re
 import zmq
 import zmq.devices
 
-from base_class import Base
+from hidra_sender.base_class import Base
 
 from hidra import convert_suffix_list_to_regex, __version__
 import hidra.utils as utils

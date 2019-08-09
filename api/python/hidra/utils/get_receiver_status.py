@@ -31,18 +31,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-import os
 import sys
 import traceback
-
-# to make windows freeze work (cx_Freeze 5.x)
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except NameError:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
-
-if CURRENT_DIR not in sys.path:
-    sys.path.insert(0, CURRENT_DIR)
 
 from hidra.control import ReceiverControl
 from hidra import CommunicationFailed

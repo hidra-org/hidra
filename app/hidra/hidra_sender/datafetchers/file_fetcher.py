@@ -40,8 +40,11 @@ try:
 except ImportError:
     from pathlib import Path
 
-from datafetcherbase import DataFetcherBase, DataHandlingError
-from cleanerbase import CleanerBase
+from hidra_sender.datafetchers.datafetcherbase import (
+    DataFetcherBase,
+    DataHandlingError
+)
+from hidra_sender.datafetchers.cleanerbase import CleanerBase
 from hidra import generate_filepath
 import hidra.utils as utils
 

@@ -6,8 +6,6 @@ import collections
 import copy
 import json
 from kafka import KafkaConsumer
-import os
-import sys
 import threading
 
 try:
@@ -15,14 +13,7 @@ try:
 except ImportError:
     import pathlib2 as pathlib
 
-CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))
-SENDER_DIR = os.path.join(BASE_DIR, "src", "sender")
-
-if SENDER_DIR not in sys.path:
-    sys.path.insert(0, SENDER_DIR)
-
-from eventdetectorbase import EventDetectorBase  # noqa E402
+from hidra_sender.eventdetectors.eventdetectorbase import EventDetectorBase  # noqa E402
 import hidra.utils as utils  # noqa E402
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

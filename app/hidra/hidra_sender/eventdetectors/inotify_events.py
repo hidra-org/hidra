@@ -40,9 +40,12 @@ import threading
 import inotify.adapters
 from future.utils import iteritems
 
-from eventdetectorbase import EventDetectorBase
+from hidra_sender.eventdetectors.eventdetectorbase import EventDetectorBase
 from hidra import convert_suffix_list_to_regex
-from inotify_utils import get_event_message, CleanUp
+from hidra_sender.eventdetectors.inotify_utils import (
+    get_event_message,
+    CleanUp
+)
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

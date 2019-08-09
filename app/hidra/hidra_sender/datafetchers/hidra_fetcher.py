@@ -34,7 +34,10 @@ from __future__ import unicode_literals
 import json
 import time
 
-from datafetcherbase import DataFetcherBase, DataHandlingError
+from hidra_sender.datafetchers.datafetcherbase import (
+    DataFetcherBase,
+    DataHandlingError
+)
 from hidra import generate_filepath, Transfer
 import hidra.utils as utils
 

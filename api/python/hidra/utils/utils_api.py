@@ -31,7 +31,7 @@ from __future__ import unicode_literals
 import copy
 import json
 
-from .utils_network import start_socket, stop_socket
+from hidra.utils.utils_network import start_socket, stop_socket
 
 
 class Base(object):

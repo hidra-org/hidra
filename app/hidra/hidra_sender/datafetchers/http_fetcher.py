@@ -38,8 +38,8 @@ import time
 
 import requests
 
-from cleanerbase import CleanerBase
-from datafetcherbase import DataFetcherBase
+from hidra_sender.datafetchers.cleanerbase import CleanerBase
+from hidra_sender.datafetchers.datafetcherbase import DataFetcherBase
 from hidra import generate_filepath
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',

@@ -30,7 +30,10 @@ from __future__ import unicode_literals
 
 import json
 
-from datafetcherbase import DataFetcherBase, DataHandlingError
+from hidra_sender.datafetchers.datafetcherbase import (
+    DataFetcherBase,
+    DataHandlingError
+)
 from hidra import generate_filepath
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

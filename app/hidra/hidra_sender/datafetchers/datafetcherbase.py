@@ -48,7 +48,7 @@ except ImportError:
     from pathlib import Path
 
 #import __init__ as init  # noqa F401 # pylint: disable=unused-import
-from base_class import Base
+from hidra_sender.base_class import Base
 import hidra.utils as utils
 
 # source:

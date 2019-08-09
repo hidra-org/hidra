@@ -36,7 +36,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 import json
 import zmq
 
-from base_class import Base
+from hidra_sender.base_class import Base
 import hidra.utils as utils
 
 

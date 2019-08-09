@@ -38,7 +38,7 @@ import socket
 import tempfile
 import zmq
 
-from .utils import LoggingFunction, Base, is_windows
+from hidra.utils import LoggingFunction, Base, is_windows
 
 
 class Ingest(Base):

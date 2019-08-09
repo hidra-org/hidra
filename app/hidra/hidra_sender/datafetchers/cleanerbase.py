@@ -42,7 +42,7 @@ import hidra.utils as utils
 
 # pylint: disable=unused-import
 #import __init__  as init # noqa F401  # rename it to remove F811
-from base_class import Base
+from hidra_sender.base_class import Base
 
 # source:
 # pylint: disable=line-too-long

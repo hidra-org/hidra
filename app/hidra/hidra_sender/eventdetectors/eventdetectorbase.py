@@ -41,7 +41,7 @@ import abc
 
 #import __init__  # noqa F401 # pylint: disable=unused-import
 import hidra.utils as utils
-from base_class import Base
+from hidra_sender.base_class import Base
 
 # source:
 # pylint: disable=line-too-long

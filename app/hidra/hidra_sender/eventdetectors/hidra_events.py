@@ -38,7 +38,7 @@ import zmq
 # from zmq.devices.monitoredqueuedevice import ThreadMonitoredQueue
 from zmq.utils.strtypes import asbytes
 
-from eventdetectorbase import EventDetectorBase
+from hidra_sender.eventdetectors.eventdetectorbase import EventDetectorBase
 import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

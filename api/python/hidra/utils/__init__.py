@@ -27,7 +27,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from .utils_general import (
+from hidra.utils.utils_general import (
     is_windows,
     is_linux,
     check_module_exist,
@@ -51,7 +51,7 @@ from .utils_general import (
     set_by_path
 )
 
-from .utils_datatypes import (
+from hidra.utils.utils_datatypes import (
     ReplyCodes,
     IpcAddresses,
     Endpoints,
@@ -69,7 +69,7 @@ from .utils_datatypes import (
     NotAllowed
 )
 
-from .utils_config import (
+from hidra.utils.utils_config import (
     check_config,
     determine_config_file,
     load_config,
@@ -82,7 +82,7 @@ from .utils_config import (
     get_flat_param
 )
 
-from .utils_logging import (
+from hidra.utils.utils_logging import (
     CustomQueueListener,
     get_stream_log_handler,
     get_file_log_handler,
@@ -93,7 +93,7 @@ from .utils_logging import (
     LoggingFunction
 )
 
-from .utils_network import (
+from hidra.utils.utils_network import (
     check_netgroup,
     execute_ldapsearch,
     extend_whitelist,
@@ -107,7 +107,7 @@ from .utils_network import (
     stop_socket
 )
 
-from .utils_api import Base
+from hidra.utils.utils_api import Base
 
 __all__ = [
     # utils_general

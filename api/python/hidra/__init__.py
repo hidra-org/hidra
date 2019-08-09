@@ -27,24 +27,26 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from .transfer import Transfer  # noqa F401
-from .transfer import generate_filepath, generate_filepath_synced
-from .transfer import convert_suffix_list_to_regex
-from .ingest import Ingest  # noqa F401
-from .control import Control  # noqa F401
-from .control import check_netgroup
-from .utils import (LoggingFunction,
-                    execute_ldapsearch,
-                    NotSupported,
-                    UsageError,
-                    FormatError,
-                    ConnectionFailed,
-                    VersionError,
-                    AuthenticationFailed,
-                    CommunicationFailed,
-                    DataSavingError)
-from .utils._version import __version__
-from ._constants import CONNECTION_LIST
+from hidra.transfer import Transfer  # noqa F401
+from hidra.transfer import generate_filepath, generate_filepath_synced
+from hidra.transfer import convert_suffix_list_to_regex
+from hidra.ingest import Ingest  # noqa F401
+from hidra.control import Control  # noqa F401
+from hidra.control import check_netgroup
+from hidra.utils import (
+    LoggingFunction,
+    execute_ldapsearch,
+    NotSupported,
+    UsageError,
+    FormatError,
+    ConnectionFailed,
+    VersionError,
+    AuthenticationFailed,
+    CommunicationFailed,
+    DataSavingError
+)
+from hidra.utils._version import __version__
+from hidra._constants import CONNECTION_LIST
 
 
 __all__ = [

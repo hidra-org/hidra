@@ -55,7 +55,7 @@ except ImportError:
     # only available for Python3
     from pathlib import Path
 
-from eventdetectorbase import EventDetectorBase
+from hidra_sender.eventdetectors.eventdetectorbase import EventDetectorBase
 import hidra.utils as utils
 from hidra import convert_suffix_list_to_regex
 

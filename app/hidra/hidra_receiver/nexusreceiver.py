@@ -7,15 +7,13 @@ import logging
 import os
 import errno
 
-from __init__ import BASE_DIR
-
 from hidra import Transfer
 import hidra.utils as utils
 
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-CONFIG_DIR = os.path.join(BASE_DIR, "conf")
+CONFIG_DIR = "conf"
 
 
 def argument_parsing():
@@ -152,7 +150,7 @@ class NexusReceiver:
         return logger
 
     def open_callback(self, params, filename):
-        target_file = os.path.join(BASE_DIR,
+        target_file = os.path.join("",
                                    "data",
                                    "target",
                                    "local",

@@ -43,15 +43,13 @@ import time
 
 import setproctitle
 
-from __init__ import BASE_DIR
-
 from hidra import Transfer, __version__
 import hidra.utils as utils
 
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-CONFIG_DIR = os.path.join(BASE_DIR, "conf")
+CONFIG_DIR = "conf"
 
 _whitelist = []
 _changed_netgroup = False

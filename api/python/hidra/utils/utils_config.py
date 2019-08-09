@@ -39,8 +39,12 @@ import logging
 import os
 import yaml
 
-from .utils_datatypes import (Endpoints, NotSupported, WrongConfiguration)
-from .utils_general import check_existance
+from hidra.utils.utils_datatypes import (
+    Endpoints,
+    NotSupported,
+    WrongConfiguration
+)
+from hidra.utils.utils_general import check_existance
 
 try:
     import ConfigParser

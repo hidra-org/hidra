@@ -46,8 +46,12 @@ except ImportError:
     # on windows
     pass
 
-from ._version import __version__
-from .utils_datatypes import WrongConfiguration, NotFoundError, NotSupported
+from hidra.utils._version import __version__
+from hidra.utils.utils_datatypes import (
+    WrongConfiguration,
+    NotFoundError,
+    NotSupported
+)
 
 
 def is_windows():

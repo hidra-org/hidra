@@ -39,7 +39,7 @@ import threading
 import time
 import zmq
 
-from base_class import Base
+from hidra_sender.base_class import Base
 import hidra.utils as utils
 from hidra import __version__
 
@@ -100,7 +100,7 @@ class DataHandler(Base, threading.Thread):
         self.open_connections = dict()
 
         self.log.info("Loading data fetcher: %s", self.config_df["type"])
-        datafetcher_m = import_module(self.config_df["type"])
+        datafetcher_m = import_module(self.config_df["type_module"])
 
         self.datafetcher = datafetcher_m.DataFetcher(self.config_all,
                                                      self.log_queue,

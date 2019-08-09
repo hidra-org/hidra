@@ -40,7 +40,7 @@ import os
 import signal
 import zmq
 
-from base_class import Base
+from hidra_sender.base_class import Base
 import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -110,7 +110,7 @@ class TaskProvider(Base):
 
         self.log.info("Loading event detector: %s",
                       self.config["eventdetector"]["type"])
-        eventdetector_m = import_module(self.config["eventdetector"]["type"])
+        eventdetector_m = import_module(self.config["eventdetector"]["type_module"])
 
         self.eventdetector = eventdetector_m.EventDetector(self.config,
                                                            self.log_queue)

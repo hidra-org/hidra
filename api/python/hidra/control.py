@@ -38,8 +38,8 @@ import socket
 import sys
 import zmq
 
-from ._constants import CONNECTION_LIST
-from .utils import (
+from hidra._constants import CONNECTION_LIST
+from hidra.utils import (
     CommunicationFailed,
     NotAllowed,
     LoggingFunction,

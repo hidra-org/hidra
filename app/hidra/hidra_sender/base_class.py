@@ -38,7 +38,6 @@ import json
 import time
 import zmq
 
-import _environment  # noqa F401 # pylint: disable=unused-import
 import hidra.utils as utils
 from hidra.utils import WrongConfiguration
 

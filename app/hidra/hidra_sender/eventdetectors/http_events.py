@@ -38,7 +38,7 @@ import socket
 import time
 import requests
 
-from eventdetectorbase import EventDetectorBase
+from hidra_sender.eventdetectors.eventdetectorbase import EventDetectorBase
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan.garrevoet@desy.de>')

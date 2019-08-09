@@ -37,7 +37,7 @@ import time
 import os
 import zmq
 
-from datafetcherbase import DataFetcherBase
+from hidra_sender.datafetchers.datafetcherbase import DataFetcherBase
 import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
