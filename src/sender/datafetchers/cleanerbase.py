@@ -176,7 +176,7 @@ class CleanerBase(Base, ABC):
                 self.log.debug("New confirmation received: %s", file_id)
                 self.log.debug("chunk_number=%s", chunk_number)
 
-                if file_id in confirmations and chunk_number != 1:
+                if file_id in confirmations and chunk_number != 0:
                     confirmations[file_id]["count"] += 1
                     confirmations[file_id]["chunks"].append(chunk_number)
                 else:
