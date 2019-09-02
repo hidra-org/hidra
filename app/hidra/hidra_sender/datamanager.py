@@ -1179,7 +1179,7 @@ class DataManager(Base):
         self.stop()
 
 
-if __name__ == '__main__':
+def main():
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     freeze_support()
 
@@ -1190,3 +1190,7 @@ if __name__ == '__main__':
     finally:
         if sender is not None:
             sender.stop()
+
+
+if __name__ == '__main__':
+    main()
