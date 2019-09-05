@@ -231,7 +231,7 @@ class DataHandler(Base, threading.Thread):
 
                         self.log.debug("Router requested to send signal that "
                                        "file was closed.")
-                        metadata.append(self.dispatcher_id)
+                        metadata.append(self.dispatcher_id.encode("ascii"))
 
                         # socket not known
                         if self.fixed_stream_addr not in self.open_connections:
