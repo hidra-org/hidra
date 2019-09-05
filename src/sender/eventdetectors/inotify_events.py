@@ -25,8 +25,6 @@ This module implements an event detector based on the inotify library usable
 for systems running inotify.
 """
 
-# pylint: disable=global-statement
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -66,12 +64,11 @@ class EventDetector(EventDetectorBase):
     inotifyx library.
     """
 
-    def __init__(self, config, log_queue):
+    def __init__(self, eventdetector_base_config):
 
-        EventDetectorBase.__init__(self,
-                                   config,
-                                   log_queue,
-                                   "inotify_events")
+        EventDetectorBase.__init__(self, eventdetector_base_config,
+                                   name=__name__)
+
         # sets
         #   self.config_all - all configurations
         #   self.config_ed - the config of the event detector

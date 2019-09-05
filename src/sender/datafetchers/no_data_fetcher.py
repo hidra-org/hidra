@@ -43,16 +43,11 @@ class DataFetcher(DataFetcherBase):
     Implementation of data fetcher to only distibute file metadata.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context, lock):
+    def __init__(self, datafetcher_base_config):
 
-        DataFetcherBase.__init__(self,
-                                 config,
-                                 log_queue,
-                                 fetcher_id,
-                                 "no_data_fetcher-{}".format(fetcher_id),
-                                 context,
-                                 lock,
-                                 check_dep=False)
+        datafetcher_base_config["check_dep"] = False
+        DataFetcherBase.__init__(self, datafetcher_base_config,
+                                 name=__name__)
 
         # base class sets
         #   self.config_all - all configurations

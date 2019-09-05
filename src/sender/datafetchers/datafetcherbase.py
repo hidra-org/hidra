@@ -73,34 +73,44 @@ class DataFetcherBase(Base, ABC):
     Implementation of the data fetcher base class.
     """
 
-    def __init__(self,
-                 config,
-                 log_queue,
-                 fetcher_id,
-                 logger_name,
-                 context,
-                 lock,
-                 check_dep=True):
+    def __init__(self, datafetcher_base_config, name):
         """Initial setup
 
         Checks if the required parameters are set in the configuration for
         the base setup.
 
         Args:
-            config (dict): A dictionary containing the configuration
-                           parameters.
-            log_queue: The multiprocessing queue which is used for logging.
-            fetcher_id (int): The ID of this datafetcher instance.
-            logger_name (str): The name to be used for the logger.
-            context: The ZMQ context to be used.
-            lock: A threading lock object to handle control signal access.
+            datafetcher_base_config: A dictionary containing all needed
+                                     parameters encapsulated into a dictionary
+                                     to prevent the data fetcher modules to be
+                                     affected by adding and removing of
+                                     parameters.
+                                     datafetcher_base_args should contain the
+                                     following keys:
+                                        config (dict): A dictionary containing
+                                                       the configuration
+                                                       parameters.
+                                        log_queue: The multiprocessing queue
+                                                   which is used for logging.
+                                        fetcher_id (int): The ID of this
+                                                          datafetcher instance.
+                                        context: The ZMQ context to be used.
+                                        lock: A threading lock object to handle
+                                              control signal access.
+            name (str): The name of the derived data fetcher module. This is
+                        used for logging.
         """
         super().__init__()
 
-        self.log_queue = log_queue
-        self.log = utils.get_logger(logger_name, self.log_queue)
+        self.log_queue = datafetcher_base_config["log_queue"]
+        self.config_all = datafetcher_base_config["config"]
+        self.fetcher_id = datafetcher_base_config["fetcher_id"]
+        self.context = datafetcher_base_config["context"]
+        self.lock = datafetcher_base_config["lock"]
+        check_dep = datafetcher_base_config["check_dep"]
+        logger_name = "{}-{}".format(name, self.fetcher_id)
 
-        self.config_all = config
+        self.log = utils.get_logger(logger_name, self.log_queue)
 
         # base_parameters
         self.required_params_base = {
@@ -130,9 +140,6 @@ class DataFetcherBase(Base, ABC):
         else:
             self.config = {}
 
-        self.fetcher_id = fetcher_id
-        self.context = context
-        self.lock = lock
         self.cleaner_job_socket = None
 
         self.source_file = None

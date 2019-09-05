@@ -25,8 +25,6 @@ This module implements a data fetcher to connect multiple hidra instances
 in series.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -47,7 +45,7 @@ class DataFetcher(DataFetcherBase):
     hidra instance.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context, lock):
+    def __init__(self, datafetcher_base_config):
         """Initial setup
 
         Checks if all required parameters are set in the configuration
@@ -56,13 +54,8 @@ class DataFetcher(DataFetcherBase):
         self.f_descriptors = dict()
         self.transfer = None
 
-        DataFetcherBase.__init__(self,
-                                 config,
-                                 log_queue,
-                                 fetcher_id,
-                                 "hidra_fetcher-{}".format(fetcher_id),
-                                 context,
-                                 lock)
+        DataFetcherBase.__init__(self, datafetcher_base_config,
+                                 name=__name__)
 
         # base class sets
         #   self.config_all - all configurations

@@ -25,8 +25,6 @@ This module implements the data fetcher used for the Eiger detector and other
 detectors with a http interface.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -52,15 +50,10 @@ class DataFetcher(DataFetcherBase):
     other detectors with a http interface.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context, lock):
+    def __init__(self, datafetcher_base_config):
 
-        DataFetcherBase.__init__(self,
-                                 config,
-                                 log_queue,
-                                 fetcher_id,
-                                 "http_fetcher-{}".format(fetcher_id),
-                                 context,
-                                 lock)
+        DataFetcherBase.__init__(self, datafetcher_base_config,
+                                 name=__name__)
 
         # base class sets
         #   self.config_all - all configurations

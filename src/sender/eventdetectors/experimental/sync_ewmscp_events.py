@@ -197,12 +197,10 @@ class Synchronizing(threading.Thread):
 
 class EventDetector(EventDetectorBase):
 
-    def __init__(self, config, log_queue):
+    def __init__(self, eventdetector_base_config):
 
-        EventDetectorBase.__init__(self,
-                                   config=config,
-                                   log_queue=log_queue,
-                                   logger_name="sync_ewnscp_events")
+        EventDetectorBase.__init__(self, eventdetector_base_config,
+                                   name=__name__)
 
         # base class sets
         #   self.config_all - all configurations

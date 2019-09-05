@@ -112,8 +112,13 @@ class TaskProvider(Base):
                       self.config["eventdetector"]["type"])
         eventdetector_m = import_module(self.config["eventdetector"]["type"])
 
-        self.eventdetector = eventdetector_m.EventDetector(self.config,
-                                                           self.log_queue)
+        self.eventdetector = eventdetector_m.EventDetector(
+            {
+                "config": self.config,
+                "log_queue": self.log_queue,
+                "check_dep": True
+            }
+        )
 
         self.keep_running = True
 

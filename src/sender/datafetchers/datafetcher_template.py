@@ -41,15 +41,10 @@ class DataFetcher(DataFetcherBase):
     Implementation of the data fetcher.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context, lock):
+    def __init__(self, datafetcher_base_config):
 
-        DataFetcherBase.__init__(self,
-                                 config,
-                                 log_queue,
-                                 fetcher_id,
-                                 "datafetcher_template-{}".format(fetcher_id),
-                                 context,
-                                 lock)
+        DataFetcherBase.__init__(self, datafetcher_base_config,
+                                 name=__name__)
 
         # base class sets
         #   self.config_all - all configurations

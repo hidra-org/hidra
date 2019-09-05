@@ -25,8 +25,6 @@ This module implements an event detector to connect multiple hidra instances
 in series.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -183,12 +181,11 @@ class EventDetector(EventDetectorBase):
     hidra instance.
     """
 
-    def __init__(self, config, log_queue):
+    def __init__(self, eventdetector_base_config):
 
-        EventDetectorBase.__init__(self,
-                                   config,
-                                   log_queue,
-                                   "hidra_events")
+        EventDetectorBase.__init__(self, eventdetector_base_config,
+                                   name=__name__)
+
         # base class sets
         #   self.config_all - all configurations
         #   self.config_ed - the config of the event detector

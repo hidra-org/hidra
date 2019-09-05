@@ -25,8 +25,6 @@ This module implements a data fetcher be used together with the hidra ingest
 API.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -139,15 +137,11 @@ class DataFetcher(DataFetcherBase):
     Implementation of the data fetcher to be used with the ingest API.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context, lock):
+    def __init__(self, datafetcher_base_config):
 
-        DataFetcherBase.__init__(self,
-                                 config,
-                                 log_queue,
-                                 fetcher_id,
-                                 "zmq_fetcher-{}".format(fetcher_id),
-                                 context,
-                                 lock)
+        datafetcher_base_config["check_dep"] = False
+        DataFetcherBase.__init__(self, datafetcher_base_config,
+                                 name=__name__)
 
         # base class sets
         #   self.config_all - all configurations
@@ -156,8 +150,6 @@ class DataFetcher(DataFetcherBase):
         #   self.df_type -  the name of the datafetcher module
         #   self.log_queue
         #   self.log
-
-        self.context = context
 
         self.ipc_addresses = None
         self.endpoints = None

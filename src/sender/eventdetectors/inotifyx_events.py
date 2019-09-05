@@ -53,12 +53,10 @@ class EventDetector(EventDetectorBase):
     inotifyx library.
     """
 
-    def __init__(self, config, log_queue):
+    def __init__(self, eventdetector_base_config):
 
-        EventDetectorBase.__init__(self,
-                                   config,
-                                   log_queue,
-                                   "inotifyx_events")
+        EventDetectorBase.__init__(self, eventdetector_base_config,
+                                   name=__name__)
 
         # base class sets
         #   self.config_all - all configurations

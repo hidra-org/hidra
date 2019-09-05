@@ -102,11 +102,16 @@ class DataHandler(Base, threading.Thread):
         self.log.info("Loading data fetcher: %s", self.config_df["type"])
         datafetcher_m = import_module(self.config_df["type"])
 
-        self.datafetcher = datafetcher_m.DataFetcher(self.config_all,
-                                                     self.log_queue,
-                                                     self.dispatcher_id,
-                                                     self.context,
-                                                     self.lock)
+        datafetcher_base_config =  {
+            "config": self.config_all,
+            "log_queue": self.log_queue,
+            "fetcher_id": self.dispatcher_id,
+            "context": self.context,
+            "lock": self.lock,
+            "check_dep": True
+        }
+
+        self.datafetcher = datafetcher_m.DataFetcher(datafetcher_base_config)
 
         try:
             self.create_sockets()

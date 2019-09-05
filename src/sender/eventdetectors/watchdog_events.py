@@ -24,10 +24,6 @@
 This module implements an event detector based on the the watchdog library.
 """
 
-# pylint: disable=global-statement
-# pylint: disable=broad-except
-# pylint: disable=global-variable-not-assigned
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -464,12 +460,10 @@ class EventDetector(EventDetectorBase):
     Implementation of the event detector using the watchdog library.
     """
 
-    def __init__(self, config, log_queue):
+    def __init__(self, eventdetector_base_config):
 
-        EventDetectorBase.__init__(self,
-                                   config,
-                                   log_queue,
-                                   "watchdog_events")
+        EventDetectorBase.__init__(self, eventdetector_base_config,
+                                   name=__name__)
 
         # base class sets
         #   self.config_all - all configurations

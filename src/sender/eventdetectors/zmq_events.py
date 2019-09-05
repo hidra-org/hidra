@@ -25,8 +25,6 @@ This module implements an event detector to be used together with the hidra
 ingest API.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -177,7 +175,7 @@ class EventDetector(EventDetectorBase):
     Implementation of the event detector to be used with the ingest API.
     """
 
-    def __init__(self, config, log_queue):
+    def __init__(self, eventdetector_base_config):
 
         # needs to be initialized before parent init
         # reason: if the latter fails stop would otherwise run into problems
@@ -185,10 +183,8 @@ class EventDetector(EventDetectorBase):
         self.context = None
         self.event_socket = None
 
-        EventDetectorBase.__init__(self,
-                                   config,
-                                   log_queue,
-                                   "zmq_events")
+        EventDetectorBase.__init__(self, eventdetector_base_config,
+                                   name=__name__)
 
         # base class sets
         #   self.config_all - all configurations
