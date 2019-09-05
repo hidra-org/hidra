@@ -1008,7 +1008,7 @@ class DataManager(Base):
                     sleep_was_sent = False
 
             else:
-                # Due to an unforseeable event there is no active receiver on
+                # Due to an unforeseeable event there is no active receiver on
                 # the other side. Thus the processes should enter a waiting
                 # mode and no data should be send.
                 if not sleep_was_sent:
@@ -1068,21 +1068,25 @@ class DataManager(Base):
         # detecting hanging processes
         if (self.signalhandler_thr is not None
                 and self.signalhandler_thr.is_alive()):
-            if log: self.log.error("SignalHandler hangs.")
+            if log: self.log.error("SignalHandler hangs (PID %s).",
+                                   self.signalhandler.pid)
             is_hanging = True
 
         if (self.taskprovider_pr is not None
                 and self.taskprovider_pr.is_alive()):
-            if log: self.log.error("TaskProvider hangs.")
+            if log: self.log.error("TaskProvider hangs (PID %s).",
+                                   self.taskprovider.pid)
             is_hanging = True
 
         if self.cleaner_pr is not None and self.cleaner_pr.is_alive():
-            if log: self.log.error("Cleaner hangs.")
+            if log: self.log.error("Cleaner hangs (PID %s).",
+                                   self.cleaner_pr.pid)
             is_hanging = True
 
         for i, datadispatcher in enumerate(self.datadispatcher_pr):
             if datadispatcher is not None and datadispatcher.is_alive():
-                if log: self.log.error("DataDispatcher-%s hangs.", i)
+                if log: self.log.error("DataDispatcher-%s hangs (PID %s)",
+                                       i, datadispatcher.pid)
                 is_hanging = True
 
         return is_hanging
