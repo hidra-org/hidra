@@ -68,7 +68,7 @@ def get_arguments():
 
     parser.add_argument("--host",
                         type=str,
-                        help="Host where HiDRA is runnning")
+                        help="Host where HiDRA is running")
     parser.add_argument("--config_file",
                         type=str,
                         help="Location of the configuration file to extract "

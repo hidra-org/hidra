@@ -157,7 +157,7 @@ class TaskProvider(Base):
             sock_type=zmq.PUSH,
             sock_con="bind",
             endpoint=self.endpoints.router_bind,
-            # this sometimes blocks indefinitly if ther are problems
+            # this sometimes blocks indefinitely if ther are problems
             # with sending (e.g. when wrong config on datadispatcher)
             socket_options=[[zmq.SNDTIMEO, self.timeout]]
         )

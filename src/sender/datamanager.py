@@ -167,7 +167,7 @@ def argument_parsing():
                         type=str,
                         help="Directory to be monitor for changes; inside "
                              "this directory only the specified "
-                             "subdirectories are monitred (only needed if "
+                             "subdirectories are monitored (only needed if "
                              "event detector is inotifyx_events or "
                              "watchdog_events)")
     parser.add_argument("--monitored_events",
@@ -194,7 +194,7 @@ def argument_parsing():
 
     parser.add_argument("--action_time",
                         type=float,
-                        help="Intervall time (in seconds) used for clea nup "
+                        help="Interval time (in seconds) used for clea nup "
                              "(only needed if eventdetector_type is "
                              "inotifyx_events)")
 
@@ -434,7 +434,7 @@ class DataManager(Base):
         self.statserver = None
 
         self.context = None
-        self.zmq_again_occured = 0
+        self.zmq_again_occurred = 0
         self.socket_reconnected = False
 
         self.setup(config)
@@ -667,7 +667,7 @@ class DataManager(Base):
                           self.endpoints.control_pub_bind,
                           self.endpoints.control_sub_bind)
         except:
-            self.log.error("Failed to start thead device forwarding messages "
+            self.log.error("Failed to start thread device forwarding messages "
                            "from '%s' to '%s'",
                            self.endpoints.control_pub_bind,
                            self.endpoints.control_sub_bind, exc_info=True)
@@ -778,7 +778,7 @@ class DataManager(Base):
                 if is_req:
                     status = self.test_socket.recv_multipart()
                     if use_log:
-                        self.log.info("Received responce for %s of fixed "
+                        self.log.info("Received response for %s of fixed "
                                       "streaming host %s", action_name, addr)
             except KeyboardInterrupt:
                 # nothing to log
@@ -799,7 +799,7 @@ class DataManager(Base):
                 # reestablish the connection (this should not be done in
                 # every test iteration because of overhead but only once in
                 # a while)
-                if self.zmq_again_occured >= self.reestablish_time:
+                if self.zmq_again_occurred >= self.reestablish_time:
                     # close the socket
                     self.test_socket.close()
 
@@ -811,7 +811,7 @@ class DataManager(Base):
                         # TODO is this right here?
                         pass
 
-                    self.zmq_again_occured = 0
+                    self.zmq_again_occurred = 0
                     self.socket_reconnected = True
 
                 # send test message
@@ -829,18 +829,18 @@ class DataManager(Base):
 
                 # The receiver may have dropped authentication or
                 # previous status check was not answered
-                # (req send after req, without rep inbetween)
+                # (req send after req, without rep in between)
                 except (zmq.Again, zmq.error.ZMQError):
                     # returns a tuple (type, value, traceback)
                     exc_type, exc_value, _ = sys.exc_info()
 
-                    if self.zmq_again_occured == 0:
+                    if self.zmq_again_occurred == 0:
                         self.log.error("Failed to send %s to fixed streaming "
                                        "host %s", action_name, addr)
                         self.log.debug("Error was: %s: %s",
                                        exc_type, exc_value)
 
-                    self.zmq_again_occured += 1
+                    self.zmq_again_occurred += 1
                     self.socket_reconnected = False
 
                     return False
@@ -860,7 +860,7 @@ class DataManager(Base):
                 if use_log:
                     self.log.info("Sending %s to fixed streaming host %s..."
                                   "success", action_name, addr)
-                    self.zmq_again_occured = 0
+                    self.zmq_again_occurred = 0
 
                 if is_req:
                     if use_log:
@@ -871,7 +871,7 @@ class DataManager(Base):
                     if use_log:
                         self.log.debug("Received response: %s", status)
 
-                    # responce to test message was successfully received
+                    # response to test message was successfully received
                     # TODO check status + react
                     if status[0] == b"ERROR":
                         self.log.error("Fixed streaming host is in error "
@@ -879,7 +879,7 @@ class DataManager(Base):
                         return False
 
                     elif use_log:
-                        self.log.info("Responce for %s of fixed streaming "
+                        self.log.info("Response for %s of fixed streaming "
                                       "host %s: %s",
                                       action_name, addr, status)
 
@@ -1037,7 +1037,7 @@ class DataManager(Base):
                 self.log.info("One DataDispatcher terminated.")
 
     def core_parts_status_check(self):
-        """Check if the core componets still are running.
+        """Check if the core components still are running.
 
         Returns:
             A boolean if the components are running or not.
@@ -1116,7 +1116,7 @@ class DataManager(Base):
                 else:
                     break
 
-        # closing control fowarding
+        # closing control forwarding
         if self.device is not None:
             self.log.info("Stopping forwarder device")
 #            self.device.context_factory().term()
@@ -1158,7 +1158,7 @@ class DataManager(Base):
             # Remove temp directory (if empty)
             try:
                 os.rmdir(self.ipc_dir)
-                self.log.debug("Removed IPC direcory: %s", self.ipc_dir)
+                self.log.debug("Removed IPC directory: %s", self.ipc_dir)
             except OSError:
                 self.log.debug("Could not remove IPC directory: %s",
                                self.ipc_dir)

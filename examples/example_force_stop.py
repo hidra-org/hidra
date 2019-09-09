@@ -22,7 +22,7 @@
 
 """
 This module implements an example for stopping an open connection when the
-associated programm shut down without deregistering.
+associated program shut down without de-registering.
 """
 
 # pylint: disable=broad-except
@@ -41,7 +41,7 @@ import hidra.utils as utils
 
 
 def main():
-    """Deregisters a connection from a broken down program.
+    """De-registers a connection from a broken down program.
     """
 
     # enable logging

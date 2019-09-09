@@ -138,7 +138,7 @@ class Synchronizing(threading.Thread):
                     if str(msg_path).count(found_detector) == 1:
                         path_tmpl = str(msg_path).replace(found_detector, "{}")
                     else:
-                        self.log.error("Multiple occurences of detector id "
+                        self.log.error("Multiple occurrences of detector id "
                                        "inside path is not supported.")
                         self.log.debug("msg_path=%s", msg_path)
 

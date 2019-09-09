@@ -82,7 +82,7 @@ def get_ipc_addresses(config):
     to None.
 
     Args:
-        config (dict): A dictionary conaining the ipc base directory and the
+        config (dict): A dictionary containing the ipc base directory and the
                        main PID.
     Returns:
         An IpcAddresses object.
@@ -104,7 +104,7 @@ def get_endpoints(ipc_addresses, tcp_addresses):
     """Configures the ZMQ endpoints depending on the protocol.
 
     Args:
-        ipc_addresses: The endpoints used for the interprocess communication
+        ipc_addresses: The endpoints used for the inter-process communication
                        (ipc) protocol.
         tcp_addresses: The endpoints used for communication over TCP.
     Returns:
@@ -135,7 +135,7 @@ def get_endpoints(ipc_addresses, tcp_addresses):
 #    if not utils.is_windows():
 #        eventdet_bind = "{}:{}".format(config["ext_ip"],
 #                                       config["eventdetector_port"]),
-#        eventdet_con = "{}:{}".formau(config["con_ip"],
+#        eventdet_con = "{}:{}".format(config["con_ip"],
 #                                      config["eventdetector_port"]),
 #    else:
 #        ipc_ip = "{}/{}".format(config["ipc_dir"],

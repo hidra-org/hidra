@@ -47,7 +47,7 @@ Endpoints = namedtuple("endpoints", ["datafetch_bind", "datafetch_con"])
 
 
 def get_tcp_addresses(config):
-    """Build the addresses used for TCP communcation.
+    """Build the addresses used for TCP communication.
 
     The addresses are only set if called on Windows. For Linux they are set
     to None.
@@ -85,7 +85,7 @@ def get_ipc_addresses(config):
     to None.
 
     Args:
-        config (dict): A dictionary conaining the ipc base directory and the
+        config (dict): A dictionary containing the ipc base directory and the
                        main PID.
     Returns:
         An IpcAddresses object.
@@ -108,7 +108,7 @@ def get_endpoints(ipc_addresses, tcp_addresses):
     """Configures the ZMQ endpoints depending on the protocol.
 
     Args:
-        ipc_addresses: The addresses used for the interprocess communication
+        ipc_addresses: The addresses used for the inter-process communication
                        (ipc) protocol.
         tcp_addresses: The addresses used for communication over TCP.
     Returns:
@@ -196,7 +196,7 @@ class DataFetcher(DataFetcherBase):
         try:
             # TODO validate metadata dict
             self.source_file = metadata["filename"]
-        except:
+        except Exception:
             self.log.error("Invalid fileEvent message received.",
                            exc_info=True)
             self.log.debug("metadata=%s", metadata)
@@ -225,7 +225,7 @@ class DataFetcher(DataFetcherBase):
                 # chunksize is coming from zmq_events
 
                 self.log.debug("metadata = %s", metadata)
-            except:
+            except Exception:
                 self.log.error("Unable to assemble multi-part message.",
                                exc_info=True)
                 raise

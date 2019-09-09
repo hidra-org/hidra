@@ -46,7 +46,7 @@ __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
 
 class DataFetcher(DataFetcherBase):
     """
-    Implemenation of the data fetcher to get files from the Eiger detector or
+    Implementation of the data fetcher to get files from the Eiger detector or
     other detectors with a http interface.
     """
 
@@ -99,7 +99,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata to extend.
+            metadata (dict): The dictionary with the metadata to extend.
         """
 
         # pylint: disable=attribute-defined-outside-init
@@ -421,10 +421,10 @@ class Cleaner(CleanerBase):
         source_file = os.path.join(base_path, file_id)
 
         # remove file
-        responce = requests.delete(source_file)
+        response = requests.delete(source_file)
 
         try:
-            responce.raise_for_status()
+            response.raise_for_status()
             self.log.debug("Deleting file '%s' succeeded.", source_file)
         except Exception:
             self.log.error("Deleting file '%s' failed.", source_file,

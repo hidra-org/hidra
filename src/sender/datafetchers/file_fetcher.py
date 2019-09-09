@@ -117,7 +117,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata to extend.
+            metadata (dict): The dictionary with the metadata to extend.
         """
 
         # Build source file
@@ -154,6 +154,7 @@ class DataFetcher(DataFetcherBase):
                 #        "chunksize"      : ...
                 #        }
                 if self.is_windows:
+                    # TODO use pathlib here instead
                     # path convertions is save, see:
                     # pylint: disable=line-too-long
                     # http://softwareengineering.stackexchange.com/questions/245156/is-it-safe-to-convert-windows-file-paths-to-unix-file-paths-with-a-simple-replac  # noqa E501
@@ -347,7 +348,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
@@ -358,7 +359,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
@@ -422,7 +423,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
@@ -466,7 +467,7 @@ class DataFetcher(DataFetcherBase):
                               self.source_file)
             except OSError as err:
                 if type(err).__name__ == "WindowsError":
-                    self.log.error("Windows Error occured.")
+                    self.log.error("Windows Error occurred.")
 
                     self._get_file_handle_info()
                     self._retry_remove()

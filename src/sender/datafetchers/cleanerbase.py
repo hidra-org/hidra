@@ -86,6 +86,9 @@ class CleanerBase(Base, ABC):
         self.confirmation_socket = None
         self.control_socket = None
 
+        self.confirm_topic = None
+        self.poller = None
+
         self.continue_run = True
 
         if context:

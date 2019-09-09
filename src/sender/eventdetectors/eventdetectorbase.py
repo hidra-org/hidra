@@ -104,11 +104,11 @@ class EventDetectorBase(Base):
         self.required_params = []
 
     def check_config(self):
-        """Check that the configuration containes the nessessary parameters.
+        """Check that the configuration contains the necessary parameters.
 
         Raises:
             WrongConfiguration: The configuration has missing or
-                                wrong parameteres.
+                                wrong parameters.
         """
 
         if self.required_params and isinstance(self.required_params, list):
@@ -135,7 +135,7 @@ class EventDetectorBase(Base):
         if "monitored_dir" not in self.config_ed[self.ed_type]:
             return
 
-        # get rid of formating errors
+        # get rid of formatting errors
         self.config["monitored_dir"] = os.path.normpath(
             self.config["monitored_dir"]
         )

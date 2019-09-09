@@ -966,7 +966,7 @@ def argument_parsing():
     arguments = {"controlserver": vars(arguments)}
 
     # ------------------------------------------------------------------------
-    # Get arguments from config file and comand line
+    # Get arguments from config file and command line
     # ------------------------------------------------------------------------
     utils.check_existance(config_file)
 

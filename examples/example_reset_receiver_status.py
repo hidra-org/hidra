@@ -22,7 +22,7 @@
 
 """
 This module implements an example for resetting the status of the receiver
-after an error occured.
+after an error occurred.
 """
 
 from __future__ import absolute_import
@@ -37,7 +37,7 @@ from hidra.control import ReceiverControl
 
 def main():
     """
-    Reset the status of the receiver after an error occured while transvering
+    Reset the status of the receiver after an error occurred while transferring
     file with a hidra instance running with stop_on_error.
     """
 

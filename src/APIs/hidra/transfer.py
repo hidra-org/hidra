@@ -462,7 +462,7 @@ class Transfer(Base):
         return ports
 
     def get_remote_version(self):
-        """Retrievs the version of hidra to connect to.
+        """Retrieves the version of hidra to connect to.
 
         Return:
             The version as a string.
@@ -671,7 +671,7 @@ class Transfer(Base):
         message = None
         try:
             socks = dict(self.poller.poll(self.socket_response_timeout))
-        except:
+        except Exception:
             self.log.error("Could not poll for new message")
             raise
 
@@ -683,7 +683,7 @@ class Transfer(Base):
                 message = self.signal_socket.recv_multipart()
                 self.log.info("Received answer to signal: %s", message)
 
-            except:
+            except Exception:
                 self.log.error("Could not receive answer to signal")
                 raise
         else:
@@ -778,7 +778,7 @@ class Transfer(Base):
             self._update_ip()
         else:
             self.log.debug("ip_from_host=%s", ip_from_host)
-            raise CommunicationFailed("IP is ambiguish")
+            raise CommunicationFailed("IP is ambiguous")
 
         # determine socket identifier (might use DNS name)
         socket_id = "{}:{}".format(host, port).encode("utf-8")
@@ -790,7 +790,7 @@ class Transfer(Base):
             self.is_ipv6 = False
         except socket_m.error:
             self.log.info("Address '%s' is not an IPv4 address, "
-                          "asume it is an IPv6 address.", self.ip)
+                          "assume it is an IPv6 address.", self.ip)
             self.is_ipv6 = True
 
         # determine socket endpoint to bind to (uses IP)
@@ -891,7 +891,7 @@ class Transfer(Base):
         else:
             socket_id, socket_endpoint = self._get_data_endpoint(endpoint)
 
-        # -- authenication and data socket -- #
+        # -- authentication and data socket -- #
         # remember the endpoint for reestablishment of the connection
         self.data_socket_endpoint = socket_endpoint
         self.log.debug("data_socket_endpoint=%s", self.data_socket_endpoint)
@@ -973,7 +973,7 @@ class Transfer(Base):
             FormatError: If value has the wrong format.
         """
         if option == "status_check":
-            # TODO create Thread which handles this asynchroniously
+            # TODO create Thread which handles this asynchronously
             if self.status_check_socket is not None:
                 self.log.error("Status check is already enabled (used port: "
                                "%s)", self.socket_conf["status_check"]["port"])
@@ -1104,7 +1104,7 @@ class Transfer(Base):
                 prop["port"] = value
 
     def register(self, whitelist):
-        """Registers a new whiltelist and restart data socket.
+        """Registers a new whitelist and restart data socket.
 
         If the whitelist contains a netgroup whose content changed, the new
         hosts have to be registered and existing data sockets restarted.
@@ -1182,7 +1182,7 @@ class Transfer(Base):
              close_callback):
         """
 
-        Arsg:
+        Args:
             callback_params:
             open_callback:
             read_callback:
@@ -1375,16 +1375,16 @@ class Transfer(Base):
         connection initialized.
 
         Args:
-            timout (optional): The time (in ms) to wait for new messages to
+            timeout (optional): The time (in ms) to wait for new messages to
                                come before aborting.
 
         Returns:
             Either
             the newest data chunk
-                (if connection type "QUERY_NEXT" or "STREAM" was choosen)
+                (if connection type "QUERY_NEXT" or "STREAM" was chosen)
             the metadata of the newest data chunk
                 (if connection type "QUERY_NEXT_METADATA" or "STREAM_METADATA"
-                was choosen)
+                was chosen)
 
         """
 
@@ -1479,12 +1479,12 @@ class Transfer(Base):
                 # TODO validate multipart_message
                 # (like correct dict-values for metadata)
 
-                # this does not fail because length was alreay checked
+                # this does not fail because length was already checked
                 payload = multipart_message[1]
 
                 return [metadata, payload]
 
-            # no responce was received
+            # no response was received
             else:
                 # self.log.warning("Could not receive data in the given time.")
 
@@ -1507,7 +1507,7 @@ class Transfer(Base):
             payload: The data of the file.
 
         Return:
-            True if the patload was the last chunk of the file,
+            True if the payload was the last chunk of the file,
             False otherwise.
         """
         # pylint: disable=no-self-use
@@ -1531,16 +1531,16 @@ class Transfer(Base):
         initialized.
 
         Args:
-            timout (optional): The time (in ms) to wait for new messages to
+            timeout (optional): The time (in ms) to wait for new messages to
                                come before stop waiting.
 
         Returns:
             Either
             the newest file
-                (if connection type "QUERY_NEXT" or "STREAM" was choosen)
+                (if connection type "QUERY_NEXT" or "STREAM" was chosen)
             the metadata of the newest file
                 (if connection type "QUERY_NEXT_METADATA" or "STREAM_METADATA"
-                was choosen)
+                was chosen)
 
         """
         run_loop = True
@@ -1744,7 +1744,7 @@ class Transfer(Base):
             # save the data in the file before quitting
             self.log.debug("KeyboardInterrupt received while writing data")
             raise
-        except:
+        except Exception:
             self.log.error("Failed to append payload to file: '%s'", filepath,
                            exc_info=True)
             raise
@@ -1816,7 +1816,7 @@ class Transfer(Base):
         Args:
             target_base_path: The base path under which the file possible
                               subdirectories should be created.
-            timout (optional): The time (in ms) to wait for new messages to
+            timeout (optional): The time (in ms) to wait for new messages to
                                come before aborting.
         """
 
@@ -1986,7 +1986,7 @@ class Transfer(Base):
         """Stops the open connection on the hidra side.
 
         This is used for example when the former transfer process did not stop
-        and deregister properly.
+        and de-register properly.
 
         Args
             targets: The targets to enable.

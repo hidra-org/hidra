@@ -47,7 +47,6 @@ except ImportError:
     # only avaliable for Python3
     from pathlib import Path
 
-#import __init__ as init  # noqa F401 # pylint: disable=unused-import
 from base_class import Base
 import hidra.utils as utils
 
@@ -141,6 +140,7 @@ class DataFetcherBase(Base, ABC):
             self.config = {}
 
         self.cleaner_job_socket = None
+        self.confirmation_topic = None
 
         self.source_file = None
         self.target_file = None
@@ -153,14 +153,14 @@ class DataFetcherBase(Base, ABC):
         self.base_setup()
 
     def check_config(self, print_log=False, check_module_config=True):
-        """Check that the configuration containes the nessessary parameters.
+        """Check that the configuration contains the necessary parameters.
 
         Args:
             print_log (boolean, optional): If a summary of the configured
                                            parameters should be logged.
         Raises:
             WrongConfiguration: The configuration has missing or
-                                wrong parameteres.
+                                wrong parameters.
         """
 
         if self.required_params and isinstance(self.required_params, list):
@@ -260,7 +260,7 @@ class DataFetcherBase(Base, ABC):
                             sock_con="connect",
                             endpoint=endpoint
                         )
-                    except:
+                    except Exception:
                         self.log.debug("Raising DataHandling error",
                                        exc_info=True)
                         msg = ("Failed to start socket (connect): '{}'"
@@ -325,7 +325,7 @@ class DataFetcherBase(Base, ABC):
                                                "waiting...done",
                                                chunk_number, self.source_file)
 
-                except:
+                except Exception:
                     self.log.debug("Raising DataHandling error", exc_info=True)
                     raise DataHandlingError(
                         "Sending (metadata of) message part %s from file '%s' "
@@ -406,7 +406,7 @@ class DataFetcherBase(Base, ABC):
 
         sleep_time = 0.2
 
-        # controle loop with variable instead of break/continue commands to be
+        # control loop with variable instead of break/continue commands to be
         # able to reset control_signal
         keep_checking_signal = True
 
@@ -418,7 +418,7 @@ class DataFetcherBase(Base, ABC):
                 time.sleep(sleep_time)
 
                 # do not reset control_signal to be able to check on it
-                # reseting it woul mean "no signal set -> sleep"
+                # resetting it would mean "no signal set -> sleep"
                 continue
 
             elif self.control_signal[0] == "WAKEUP":
@@ -450,7 +450,7 @@ class DataFetcherBase(Base, ABC):
         """Generates a file id consisting of relative path and file name
 
         Args:
-            metadata (dict): The dictionary with the metedata of the file.
+            metadata (dict): The dictionary with the metadata of the file.
         """
         # generate file identifier
         if (metadata["relative_path"] == ""
@@ -517,7 +517,7 @@ class DataFetcherBase(Base, ABC):
                     [[<node_name>:<port>, <priority>, <request_type>], ...]
                 where
                     <request_type>: u'data' or u'metadata'
-            metadata (dict): extendet metadata dictionary filled by function
+            metadata (dict): extended metadata dictionary filled by function
                              get_metadata
             open_connections (dict)
 

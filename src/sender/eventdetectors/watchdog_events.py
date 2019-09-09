@@ -142,7 +142,7 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         list of events.
 
         Args:
-            event: a wachdog event
+            event: a watchdog event
         """
 
         self.log.debug("process")
@@ -495,7 +495,7 @@ class EventDetector(EventDetectorBase):
 
     def setup(self):
         """
-        Sets static configuration paramters and starts the observer and
+        Sets static configuration parameters and starts the observer and
         checking_thread.
         """
 

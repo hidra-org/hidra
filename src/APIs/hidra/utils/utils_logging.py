@@ -21,7 +21,7 @@
 #
 
 """
-This module provides utilities use thoughout different parts of hidra.
+This module provides utilities use throughout different parts of hidra.
 """
 
 from __future__ import (absolute_import,
@@ -110,7 +110,7 @@ class CustomQueueListener(QueueListener):
 
 
 def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
-    """Initalizes a stream handler and formats it.
+    """Initializes a stream handler and formats it.
 
     Args:
         log_level: Which log level to be used (e.g. debug).
@@ -166,7 +166,7 @@ def get_file_log_handler(logfile,
                          loglevel="debug",
                          datafmt=None,
                          fmt=None):
-    """Initalizes a file handler and formats it.
+    """Initializes a file handler and formats it.
 
     Args:
         logfile: The name of the log file.

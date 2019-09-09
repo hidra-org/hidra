@@ -516,7 +516,7 @@ class SignalHandler(Base):
                         for request_set in self.vari_requests
                     ]
 
-                    self.log.info("Remove all occurences from %s from "
+                    self.log.info("Remove all occurrences from %s from "
                                   "variable request list.", socket_id)
                 else:
                     self.log.info("Request not supported.")
@@ -779,7 +779,7 @@ class SignalHandler(Base):
         Args:
             signal: Signal to send after finishing
             appid: The application ID to identify where the signal came from.
-            socket_ids: Socket ids to be deregistered.
+            socket_ids: Socket ids to be de-registered.
             registered_ids: Currently registered socket ids.
             vari_requests: List of open requests (query mode).
             perm_requests: List of next node number to serve (stream mode).
@@ -830,7 +830,7 @@ class SignalHandler(Base):
 
                     try:
                         targets.remove(reg_id)
-                        self.log.debug("Deregister %s", socket_id)
+                        self.log.debug("De-register %s", socket_id)
                     except ValueError:
                         # reg_id is not contained in targets
                         # -> nothing to remove
@@ -858,7 +858,7 @@ class SignalHandler(Base):
                                 if socket_id != socket_conf[0]
                             ]
 
-                            self.log.debug("Remove all occurences from %s "
+                            self.log.debug("Remove all occurrences from %s "
                                            "from variable request list.",
                                            socket_id)
 

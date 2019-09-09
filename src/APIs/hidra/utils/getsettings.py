@@ -76,7 +76,7 @@ def main():
     config_ed = config["eventdetector"][config["eventdetector"]["type"]]
 
     print("Configured settings:")
-    print("Monitored direcory: {}".format(config_ed["monitored_dir"]))
+    print("Monitored directory: {}".format(config_ed["monitored_dir"]))
     print("Watched subdirectories are: {}".format(config_ed["fix_subdirs"]))
 
     msg = "Data is written to: {}"
@@ -91,7 +91,8 @@ def main():
     else:
         print(msg.format("Data is not sent as priority stream anywhere"))
 
-    print("Remove data from the detector: {}".format(config["datafetcher"]["remove_data"]))
+    print("Remove data from the detector: {}"
+          .format(config["datafetcher"]["remove_data"]))
     print("Whitelist: {}".format(config["general"]["whitelist"]))
 
 

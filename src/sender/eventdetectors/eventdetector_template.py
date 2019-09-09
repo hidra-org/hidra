@@ -64,7 +64,7 @@ class EventDetector(EventDetectorBase):
         pass
 
     def get_new_event(self):
-        """Implmentation of the abstract method get_new_event.
+        """Implementation of the abstract method get_new_event.
         """
 
         event_message_list = [{

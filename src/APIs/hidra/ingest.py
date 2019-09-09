@@ -232,7 +232,7 @@ class Ingest(Base):
             self.filepart = 0
         else:
             self.log.debug("signal=%s and filename=%s", signal, filename)
-            raise Exception("Wrong responce received: %s", message)
+            raise Exception("Wrong response received: %s", message)
 
     def write(self, data):
         """Write data into the file.
@@ -267,7 +267,7 @@ class Ingest(Base):
         try:
             self.file_op_socket.send_multipart(send_message)
             self.log.info("Sending signal to close the file to file_op_socket")
-        except:
+        except Exception:
             raise Exception("Sending signal to close the file to "
                             "file_op_socket...failed")
 
@@ -276,7 +276,7 @@ class Ingest(Base):
             self.eventdet_socket.send_multipart(send_message)
             self.log.debug("Sending signal to close the file to "
                            "eventdet_socket (send_message=%s)", send_message)
-        except:
+        except Exception:
             raise Exception("Sending signal to close the file to "
                             "eventdet_socket...failed")
 
