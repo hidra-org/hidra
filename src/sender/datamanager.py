@@ -1069,13 +1069,13 @@ class DataManager(Base):
         if (self.signalhandler_thr is not None
                 and self.signalhandler_thr.is_alive()):
             if log: self.log.error("SignalHandler hangs (PID %s).",
-                                   self.signalhandler.pid)
+                                   self.signalhandler_thr.pid)
             is_hanging = True
 
         if (self.taskprovider_pr is not None
                 and self.taskprovider_pr.is_alive()):
             if log: self.log.error("TaskProvider hangs (PID %s).",
-                                   self.taskprovider.pid)
+                                   self.taskprovider_pr.pid)
             is_hanging = True
 
         if self.cleaner_pr is not None and self.cleaner_pr.is_alive():
