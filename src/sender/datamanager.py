@@ -914,28 +914,28 @@ class DataManager(Base):
         """Starting all thread and processes and checks if they are running.
         """
 
+        # StatServer
         if self.use_statserver:
-            # bug in pylint pylint: disable=bad-continuation
-            self.statserver = Process(target=StatServer,
-                                      args=(
-                                          self.config,
-                                          self.log_queue
-                                          )
-                                      )
+            self.statserver = Process(
+                target=StatServer,
+                kwargs={
+                    "config": self.config,
+                    "log_queue": self.log_queue
+                }
+            )
             self.statserver.start()
 
         # SignalHandler
-        # bug in pylint pylint: disable=bad-continuation
-        self.signalhandler_thr = threading.Thread(target=SignalHandler,
-                                                  args=(
-                                                      self.config,
-                                                      self.endpoints,
-                                                      self.whitelist,
-                                                      self.ldapuri,
-                                                      self.log_queue
-                                                      )
-                                                  )
-
+        self.signalhandler_thr = threading.Thread(
+            target=SignalHandler,
+            kwargs={
+                "config": self.config,
+                "endpoints": self.endpoints,
+                "whitelist": self.whitelist,
+                "ldapuri": self.ldapuri,
+                "log_queue": self.log_queue
+            }
+        )
         self.signalhandler_thr.start()
 
         # needed, because otherwise the requests for the first files are not
@@ -947,14 +947,14 @@ class DataManager(Base):
             return
 
         # TaskProvider
-        # bug in pylint pylint: disable=bad-continuation
-        self.taskprovider_pr = Process(target=TaskProvider,
-                                       args=(
-                                           self.config,
-                                           self.endpoints,
-                                           self.log_queue
-                                           )
-                                       )
+        self.taskprovider_pr = Process(
+            target=TaskProvider,
+            kwargs={
+                "config": self.config,
+                "endpoints": self.endpoints,
+                "log_queue": self.log_queue
+            }
+        )
         self.taskprovider_pr.start()
 
         # Cleaner
@@ -965,9 +965,11 @@ class DataManager(Base):
 
             self.cleaner_pr = Process(
                 target=self.cleaner_m.Cleaner,
-                args=(self.config,
-                      self.log_queue,
-                      self.endpoints)
+                kwargs={
+                    "config": self.config,
+                    "log_queue": self.log_queue,
+                    "endpoints": self.endpoints
+                }
             )
             self.cleaner_pr.start()
 
@@ -977,16 +979,16 @@ class DataManager(Base):
         # DataDispatcher
         for i in range(self.number_of_streams):
             dispatcher_id = "{}/{}".format(i, self.number_of_streams)
-            # bug in pylint # pylint: disable=bad-continuation
-            proc = Process(target=DataDispatcher,
-                           args=(
-                               dispatcher_id,
-                               self.endpoints,
-                               self.fixed_stream_addr,
-                               self.config,
-                               self.log_queue
-                               )
-                           )
+            proc = Process(
+                target=DataDispatcher,
+                kwargs={
+                    "dispatcher_id":dispatcher_id,
+                    "endpoints": self.endpoints,
+                    "fixed_stream_addr": self.fixed_stream_addr,
+                    "config": self.config,
+                    "log_queue": self.log_queue
+                }
+            )
             proc.start()
             self.datadispatcher_pr.append(proc)
 

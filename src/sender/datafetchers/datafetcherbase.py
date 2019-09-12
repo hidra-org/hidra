@@ -106,6 +106,7 @@ class DataFetcherBase(Base, ABC):
         self.fetcher_id = datafetcher_base_config["fetcher_id"]
         self.context = datafetcher_base_config["context"]
         self.lock = datafetcher_base_config["lock"]
+        self.stop_request = datafetcher_base_config["stop_request"]
         check_dep = datafetcher_base_config["check_dep"]
         logger_name = "{}-{}".format(name, self.fetcher_id)
 
@@ -222,12 +223,12 @@ class DataFetcherBase(Base, ABC):
 
         Args:
             targets: A list of targets where to send the data to.
-                     Each taget has is of the form:
+                     Each target is of the form:
                         - target: A ZMQ endpoint to send the data to.
                         - prio (int): With which priority this data should be
                                       sent:
-                                      - 0 is highes priority with blocking
-                                      - all other prioirities are nonblocking
+                                      - 0 is highest priority with blocking
+                                      - all other priorities are non-blocking
                                         but sorted numerically.
                         - send_type: If the data (means payload and metadata)
                                      or only the metadata should be sent.
@@ -304,7 +305,9 @@ class DataFetcherBase(Base, ABC):
                                            "has not been sent yet, waiting...",
                                            chunk_number, self.source_file)
 
-                            while not tracker.done and self.keep_running:
+                            while (not tracker.done
+                                   and self.keep_running
+                                   and not self.stop_request.is_set()):
                                 try:
                                     tracker.wait(timeout)
                                 except zmq.error.NotDone:
@@ -410,7 +413,9 @@ class DataFetcherBase(Base, ABC):
         # able to reset control_signal
         keep_checking_signal = True
 
-        while keep_checking_signal and self.keep_running:
+        while (keep_checking_signal
+               and self.keep_running
+               and not self.stop_request.is_set()):
 
             if self.control_signal[0] == "SLEEP":
                 # go to sleep, but check every once in

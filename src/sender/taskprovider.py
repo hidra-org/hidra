@@ -78,13 +78,6 @@ class TaskProvider(Base):
         self.stopped = None
         self.ignore_accumulated_events = None
 
-        try:
-            self._setup()
-        except Exception:
-            # to make sure that all sockets are closed
-            self.stop()
-            raise
-
         self.run()
 
     def _setup(self):
@@ -168,6 +161,12 @@ class TaskProvider(Base):
     def run(self):
         """Wrapper around the _run method to detect if it has stopped.
         """
+        try:
+            self._setup()
+        except Exception:
+            # to make sure that all sockets are closed
+            self.stop()
+            raise
 
         self.stopped = False
         try:

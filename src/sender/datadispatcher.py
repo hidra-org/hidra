@@ -56,15 +56,17 @@ class DataHandler(Base, threading.Thread):
                  fixed_stream_addr,
                  config,
                  log_queue,
-                 context):
+                 context,
+                 stop_request):
 
         super().__init__()
 
         self.dispatcher_id = dispatcher_id
         self.endpoints = endpoints
-        self.context = context
         self.fixed_stream_addr = fixed_stream_addr
         self.config_all = config
+        self.stop_request = stop_request
+        self.context = context
         self.config = self.config_all["general"]
         self.config_df = self.config_all["datafetcher"]
         self.log_queue = log_queue
@@ -79,14 +81,6 @@ class DataHandler(Base, threading.Thread):
         self.poller = None
         self.control_socket = None
         self.router_socket = None
-        self.stopped = None
-
-        try:
-            self._setup()
-        except Exception:
-            # to make sure that all sockets are closed
-            self.stop()
-            raise
 
     def _setup(self):
         """Initializes parameters and creates sockets.
@@ -102,12 +96,13 @@ class DataHandler(Base, threading.Thread):
         self.log.info("Loading data fetcher: %s", self.config_df["type"])
         datafetcher_m = import_module(self.config_df["type"])
 
-        datafetcher_base_config =  {
+        datafetcher_base_config = {
             "config": self.config_all,
             "log_queue": self.log_queue,
             "fetcher_id": self.dispatcher_id,
             "context": self.context,
             "lock": self.lock,
+            "stop_request": self.stop_request,
             "check_dep": True
         }
 
@@ -161,13 +156,20 @@ class DataHandler(Base, threading.Thread):
             self.lock.release()
 
     def run(self):
-        self.stopped = False
+
+        try:
+            self._setup()
+        except Exception:
+            # to make sure that all sockets are closed
+            self.stop()
+            self.cleanup()
+            raise
+
         try:
             self._run()
         finally:
-            # ensure that the stop method always knows that the run method
-            # actually stopped.
-            self.stopped = True
+            self.stop()
+            self.cleanup()
 
     def _run(self):
         """Reacting on jobs
@@ -384,9 +386,13 @@ class DataHandler(Base, threading.Thread):
     def stop(self):
         """Stopping, closing sockets and clean up.
         """
-
         self.keep_running = False
-        self.wait_for_stopped()
+        self.stop_request.set()
+
+    def cleanup(self):
+        """Closing sockets and clean up.
+        """
+        self.cleanup_base()
 
         if self.datafetcher is not None:
             self.datafetcher.stop()
@@ -403,12 +409,6 @@ class DataHandler(Base, threading.Thread):
         self.open_connections = {}
 
         # context is destroyed in outer process.
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
 
 
 class DataDispatcher(Base):
@@ -434,28 +434,10 @@ class DataDispatcher(Base):
         self.poller = None
         self.control_socket = None
         self.datahandler = None
-        self.keep_running = None
         self.stopped = None
+        self.stop_request = threading.Event()
 
-        try:
-            self._setup()
-        except Exception:
-            # make sure all sockets are closed
-            self.stop()
-            raise
-
-        try:
-            self.run()
-        except zmq.ZMQError:
-            pass
-        except KeyboardInterrupt:
-            pass
-        except Exception:
-            self.log.error("Stopping DataDispatcher-%s due to unknown "
-                           "error condition.", self.dispatcher_id,
-                           exc_info=True)
-        finally:
-            self.stop()
+        self.run()
 
     def _setup(self):
         """Initializes parameters and creates sockets.
@@ -465,6 +447,7 @@ class DataDispatcher(Base):
         self.log = utils.get_logger(log_name, self.log_queue)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
+        signal.signal(signal.SIGINT, self.signal_term_handler)
 
         self.log.debug("DataDispatcher-%s started (PID %s).",
                        self.dispatcher_id, os.getpid())
@@ -476,21 +459,21 @@ class DataDispatcher(Base):
                 and not self.config["context"]):
             self.config["context"] = self.context
 
-        self.keep_running = True
-
         try:
             self.create_sockets()
         except Exception:
             self.log.error("Cannot create sockets", ext_info=True)
             self.stop()
 
-        self.datahandler = DataHandler(self.dispatcher_id,
-                                       self.endpoints,
-                                       self.fixed_stream_addr,
-                                       self.config,
-                                       self.log_queue,
-                                       self.context)
-
+        self.datahandler = DataHandler(
+            dispatcher_id=self.dispatcher_id,
+            endpoints=self.endpoints,
+            fixed_stream_addr=self.fixed_stream_addr,
+            config=self.config,
+            log_queue=self.log_queue,
+            context=self.context,
+            stop_request=self.stop_request
+        )
         self.datahandler.start()
 
     def create_sockets(self):
@@ -511,24 +494,42 @@ class DataDispatcher(Base):
         self.poller = zmq.Poller()
         self.poller.register(self.control_socket, zmq.POLLIN)
 
-    def run(self):
-        """ Wrapper around the _run method to detect if it has stopped.
-        """
 
-        self.stopped = False
+    def run(self):
+
         try:
+            self._setup()
+        except Exception:
+            # make sure all sockets are closed
+            self.stop()
+            raise
+
+        try:
+            self.stopped = False
             self._run()
+        except zmq.ZMQError:
+            self.log.debug("ZMQERROR, pass")
+            pass
+        except KeyboardInterrupt:
+            self.log.debug("KEYBOARDINTERRUPT")
+            pass
+        except Exception:
+            self.log.error("Stopping DataDispatcher-%s due to unknown "
+                           "error condition.", self.dispatcher_id,
+                           exc_info=True)
         finally:
+            self.set_stop_request()
             # ensure that the stop method always knows that the run method
             # actually stopped.
             self.stopped = True
+            self.stop()
 
     def _run(self):
         """React on control signals and inform DataHandler thread.
         """
-
-        while self.keep_running:
-            socks = dict(self.poller.poll())
+        while not self.stop_request.is_set():
+            # wake up to check for stopping requests
+            socks = dict(self.poller.poll(1000))  # in ms
 
             # ----------------------------------------------------------------
             # control commands
@@ -541,15 +542,17 @@ class DataDispatcher(Base):
                 if self.check_control_signal():
                     break
 
-        self.stopped = True
-
     def _forward_control_signal(self, message):
         """
         Overwrite the base class method and forward the control signal to the
         data handler.
         """
         self.log.debug("Setting control signal for data handler.")
-        self.datahandler.set_control_signal(message)
+        try:
+            self.datahandler.set_control_signal(message)
+        except AttributeError:
+            # if data handler is not initialized or already stopped
+            pass
 
     def _react_to_sleep_signal(self, message):
         """Overwrite the base class reaction method to sleep signal.
@@ -564,15 +567,15 @@ class DataDispatcher(Base):
         Reaction to exit signal from control socket.
         """
         self.log.debug("Requested to shut down.")
-        self.keep_running = False
+        self.set_stop_request()
 
     def stop(self):
         """Stopping, closing sockets and clean up.
         """
-
-        self.keep_running = False
+        self.set_stop_request()
         self.wait_for_stopped()
 
+        super().cleanup_base()
         self.stop_socket(name="control_socket")
 
         if self.datahandler is not None:
@@ -584,7 +587,7 @@ class DataDispatcher(Base):
 
         if self.context is not None:
             self.log.info("Destroying context")
-            self.context.destroy(0)
+            self.context.destroy()
             self.context = None
 
     # pylint: disable=unused-argument
@@ -592,11 +595,14 @@ class DataDispatcher(Base):
         """React on external SIGTERM signal.
         """
 
-        self.log.debug('got SIGTERM')
-        self.keep_running = False
+        signal_type = None
+        if signal_to_react == 2:
+            signal_type = "SIGINT"
+        elif signal_to_react == 15:
+            signal_type = "SIGTERM"
 
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
+        self.log.debug('got %s', signal_type)
+        self.set_stop_request()
 
-    def __del__(self):
-        self.stop()
+    def set_stop_request(self):
+        self.stop_request.set()

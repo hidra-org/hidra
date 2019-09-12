@@ -121,19 +121,23 @@ class SignalHandler(Base):
         self.request_fw_socket = None
         self.request_socket = None
 
-        self.setup(log_queue, context, whitelist, ldapuri)
+        self.init_args={
+            "whitelist": whitelist,
+            "ldapuri": ldapuri,
+            "context": context,
+            "log_queue": log_queue
+        }
 
-        self.exec_run()
+        self.run()
 
-    def setup(self, log_queue, context, whitelist, ldapuri):
+    def setup(self):
         """Initializes parameters and creates sockets.
-
-        Args:
-            log_queue: Logging queue used to synchronize log messages.
-            context: ZMQ context to create the socket on.
-            whitelist: List of hosts allowed to connect.
-            ldapuri: Ldap node and port needed to check whitelist.
         """
+
+        whitelist = self.init_args["whitelist"]
+        ldapuri = self.init_args["ldapuri"]
+        context = self.init_args["context"]
+        log_queue = self.init_args["log_queue"]
 
         # Send all logs to the main process
         self.log = utils.get_logger("SignalHandler", log_queue)
@@ -244,12 +248,14 @@ class SignalHandler(Base):
             self.poller.register(self.com_socket, zmq.POLLIN)
             self.poller.register(self.request_socket, zmq.POLLIN)
 
-    def exec_run(self):
+    def run(self):
         """Calling run method and react to exceptions.
         """
 
+        self.setup()
+
         try:
-            self.run()
+            self._run()
         except zmq.ZMQError:
             self.log.error("Stopping signalHandler due to ZMQError.",
                            exc_info=True)
@@ -261,10 +267,10 @@ class SignalHandler(Base):
         finally:
             self.stop()
 
-    def run(self):
+    def _run(self):
         """React to incoming signals.
 
-        Possible incomming signals:
+        Possible incoming signals:
         com_socket
             (start/stop command from external)
             START_STREAM: Add request for all incoming data packets
