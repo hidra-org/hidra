@@ -1,4 +1,5 @@
 # develop
+# 4.0.24
 # 4.0.23
 
 - Fix crash of signal handler when removing multiple leftover connections
