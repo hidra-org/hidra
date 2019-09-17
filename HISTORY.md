@@ -66,6 +66,11 @@
 - Enable port receiving via transfer api
 - Fix double query for request port in transfer API
 
+# 4.0.24
+
+- Fix version check between remote and local version
+- Fix CPU usage of watchdog events
+
 # 4.0.23
 
 - Fix crash of signal handler when removing multiple leftover connections
