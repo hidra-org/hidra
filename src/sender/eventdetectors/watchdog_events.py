@@ -35,9 +35,50 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 # except NameError:
 #     WindowsError = None
 
-event_message_list = []
-event_list_to_observe = []
-event_list_to_observe_tmp = []
+_potential_close_events = []  # pylint: disable=invalid-name
+_events_marked_to_remove = []  # pylint: disable=invalid-name
+
+
+class EventStore(object):
+    def __init__(self):
+        self.cond = threading.Condition()
+        self.events = []
+
+    def add(self, event):
+        with self.cond:
+            self.events.append(event)
+            # Waking up threads that are waiting for new input
+            self.cond.notify()
+
+    def get_all(self, blocking=False, timeout=None):
+        """Get and emtpy all stored event.
+
+        Args:
+            blocking (oprtional): block until there is at least one event
+                                  present.
+            timeout (optional): timeout to wait for events
+
+        Returns:
+             A list of events.
+        """
+        with self.cond:
+            # If blocking is true, always return at least one event
+            while blocking and len(self.events) == 0:
+                self.cond.wait(timeout)
+            events, self.events = self.events, []
+
+        return events
+
+    def is_empty(self):
+        return self.events == []
+
+    def remove_all(self):
+        """Remove all events"""
+        with self.cond:
+            self.events = []
+
+
+_event_store = EventStore()
 
 
 # documentation of watchdog: https://pythonhosted.org/watchdog/api.html
@@ -106,7 +147,7 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
     def process(self, event):
         self.log.debug("process")
 
-        global event_message_list
+        global _event_store   # pylint: disable=invalid-name
 
         # Directories will be skipped
         if not event.is_directory:
@@ -116,8 +157,7 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
             else:
                 event_message = split_file_path(event.src_path, self.paths)
 
-            with self.lock:
-                event_message_list.append(event_message)
+            _event_store.add(event_message)
 
     def on_any_event(self, event):
         if self.detect_all and self.detect_all.match(event.src_path):
@@ -125,24 +165,24 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
             self.process(event)
 
     def on_created(self, event):
-        global event_list_to_observe
+        global _potential_close_events   # pylint: disable=invalid-name
 
         if self.detect_create and self.detect_create.match(event.src_path):
-            # TODO only fire for file-event. skip directory-events.
+            # TODO only file for file-event. skip directory-events.
             self.log.debug("On move event detected")
             self.process(event)
 
         if self.detect_close and self.detect_close.match(event.src_path):
             self.log.debug("On close event detected (from create)")
             if (not event.is_directory
-                    and event.src_path not in event_list_to_observe):
-                self.log.debug("Append event to event_list_to_observe: {}"
-                               .format(event.src_path))
-#                event_list_to_observe.append(event.src_path)
-                bisect.insort_left(event_list_to_observe, event.src_path)
+                    and event.src_path not in _potential_close_events):
+                self.log.debug("Append event to _potential_close_events: %s",
+                               event.src_path)
+#                _potential_close_events.append(event.src_path)
+                bisect.insort_left(_potential_close_events, event.src_path)
 
     def on_modified(self, event):
-        global event_list_to_observe
+        global _potential_close_events   # pylint: disable=invalid-name
 
         if self.detect_modify and self.detect_modify.match(event.src_path):
             self.log.debug("On modify event detected")
@@ -150,10 +190,10 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
 
         if self.detect_close and self.detect_close.match(event.src_path):
             if (not event.is_directory
-                    and event.src_path not in event_list_to_observe):
+                    and event.src_path not in _potential_close_events):
                 self.log.debug("On close event detected (from modify)")
-#                event_list_to_observe.append(event.src_path)
-                bisect.insort_left(event_list_to_observe, event.src_path)
+#                _potential_close_events.append(event.src_path)
+                bisect.insort_left(_potential_close_events, event.src_path)
 
     def on_deleted(self, event):
         if self.detect_delete and self.detect_delete.match(event.src_path):
@@ -176,7 +216,6 @@ def split_file_path(filepath, paths):
 
     (parent_dir, filename) = os.path.split(filepath)
     relative_path = ""
-    event_message = {}
 
     # extract relative pathname and filename for the file.
     while True:
@@ -198,12 +237,6 @@ def split_file_path(filepath, paths):
                 # relative_path = os.sep + rel_dir + relative_path
             else:
                 relative_path = rel_dir
-    # corresponds to source_path
-#    common_prefix = os.path.commonprefix([self.mon_dir,filepath])
-    # corresponds to relative_path + filename
-#    relative_base_path = os.path.relpath(filepath, common_prefix)
-    # corresponds to relative_path
-#    (relative_parent, filename_tmp) = os.path.split(relative_base_path)
 
     # the event for a file /tmp/test/source/local/file1.tif is of the form:
     # {
@@ -227,7 +260,9 @@ class CheckModTime(threading.Thread):
                  mon_dir,
                  action_time,
                  lock,
+                 stop_request,
                  log_queue):
+        threading.Thread.__init__(self)
 
         self.log = utils.get_logger("CheckModTime",
                                     log_queue,
@@ -240,65 +275,56 @@ class CheckModTime(threading.Thread):
         self.time_till_closed = time_till_closed  # s
         self.action_time = action_time
         self.lock = lock
-        self.stopper = threading.Event()
+        self.stopper = stop_request
         self.pool_running = True
 
-        self.log.debug("threading.Thread init")
-        threading.Thread.__init__(self)
-
     def run(self):
-        global event_list_to_observe
-        global event_list_to_observe_tmp
+        global _event_store
+        global _potential_close_events   # pylint: disable=invalid-name
+        global _events_marked_to_remove   # pylint: disable=invalid-name
 
+        self.log.debug("start run")
         while not self.stopper.is_set():
             try:
                 with self.lock:
-                    event_list_to_observe_copy = (
-                        copy.deepcopy(event_list_to_observe))
+                    tmp_copy_of_events = copy.deepcopy(_potential_close_events)
 
-                # Open the urls in their own threads
-#                self.log.debug("List to observe: {}"
-#                               .format(event_list_to_observe))
-#                self.log.debug("event_message_list: {}"
-#                               .format(event_message_list))
                 if self.pool_running:
-                    self.pool.map(self.check_last_modified,
-                                  event_list_to_observe_copy)
+                    self.pool.map(self.check_last_modified, tmp_copy_of_events)
                 else:
                     self.log.info("Pool was already closed")
                     break
-#                self.log.debug("event_message_list: {}"
-#                               .format(event_message_list))
 
-#                self.log.debug("List to observe tmp: {}"
-#                               .format(event_list_to_observe_tmp))
-
-                for event in event_list_to_observe_tmp:
+                for event in _events_marked_to_remove:
                     try:
                         with self.lock:
-                            event_list_to_observe.remove(event)
-                        self.log.debug("Removing event: {}".format(event))
-                    except:
-                        self.log.error("Removing event failed: {}"
-                                       .format(event), exc_info=True)
-                        self.log.debug("event_list_to_observe_tmp={}"
-                                       .format(event_list_to_observe_tmp))
-                        self.log.debug("event_list_to_observe={}"
-                                       .format(event_list_to_observe))
-                event_list_to_observe_tmp = []
+                            _potential_close_events.remove(event)
+                        self.log.debug("Removing event: %s", event)
+                    except Exception:
+                        self.log.error("Removing event failed: %s", event,
+                                       exc_info=True)
+                        self.log.debug("_events_marked_to_remove=%s",
+                                       _events_marked_to_remove)
+                        self.log.debug("_potential_close_events=%s",
+                                       _potential_close_events)
+                _events_marked_to_remove = []
 
-#                self.log.debug("List to observe after map-function: {0}"
-#                               .format(event_list_to_observe))
                 time.sleep(self.action_time)
             except:
                 self.log.error("Stopping loop due to error", exc_info=True)
                 break
 
     def check_last_modified(self, filepath):
-        global event_message_list
-        global event_list_to_observe_tmp
+        """
+        Checks if a files modification time is above the threshold. If so it
+        is added to the global event message list.
 
-#        thread_name = threading.current_thread().name
+        Args:
+            filepath (str): the filename of the file to check (absolute path).
+        """
+
+        global _event_store   # pylint: disable=invalid-name
+        global _events_marked_to_remove   # pylint: disable=invalid-name
 
         try:
             # check modification time
@@ -308,22 +334,23 @@ class CheckModTime(threading.Thread):
 #                           .format(filepath), exc_info=True)
             # remove the file from the observing list
 #            with self.lock
-#                event_list_to_observe_tmp.append(filepath)
+#                _events_marked_to_remove.append(filepath)
 #            return
         except:
             self.log.error("Unable to get modification time for file: {}"
                            .format(filepath), exc_info=True)
             # remove the file from the observing list
             with self.lock:
-                event_list_to_observe_tmp.append(filepath)
+                _events_marked_to_remove.append(filepath)
             return
 
         try:
             # get current time
             time_current = time.time()
-        except:
-            self.log.error("Unable to get current time for file: {}"
-                           .format(filepath), exc_info=True)
+        except Exception:
+            self.log.error("Unable to get current time for file: %s",
+                           filepath, exc_info=True)
+            return
 
         # compare ( >= limit)
         if time_current - time_last_modified >= self.time_till_closed:
@@ -333,16 +360,10 @@ class CheckModTime(threading.Thread):
             self.log.debug("event_message: {}".format(event_message))
 
             # add to result list
-#            self.log.debug("check_last_modified-{0} event_message_list {1}"
-#                           .format(thread_name, event_message_list))
+            _event_store.add(event_message)
+
             with self.lock:
-                event_message_list.append(event_message)
-                event_list_to_observe_tmp.append(filepath)
-#            self.log.debug("check_last_modified-{0} event_message_list {1}"
-#                           .format(thread_name, event_message_list))
-#            self.log.debug("check_last_modified-{0} "
-#                           "event_list_to_observe_tmp "{1}"
-#                           .format(thread_name, event_list_to_observe_tmp))
+                _events_marked_to_remove.append(filepath)
         else:
             self.log.debug("File was last modified {} sec ago: {}"
                            .format(time_current - time_last_modified,
@@ -358,6 +379,7 @@ class CheckModTime(threading.Thread):
             # close the pool and wait for the work to finish
             self.pool.close()
             self.pool.join()
+            self.log.info("Checking pool joined")
             self.pool = None
 
     def __exit__(self, type, value, traceback):
@@ -382,6 +404,13 @@ class EventDetector(EventDetectorBase):
         self.mon_subdirs = None
         self.paths = None
         self.lock = None
+
+        #TODO add in watchdog config
+        self.timeout = 2
+
+        self.observer_threads = None
+        self.checking_thread = None
+        self.stop_request = threading.Event()
 
         self.required_params = ["monitored_dir",
                                 "fix_subdirs",
@@ -432,6 +461,7 @@ class EventDetector(EventDetectorBase):
             mon_dir=self.mon_dir,
             action_time=self.config["action_time"],
             lock=self.lock,
+            stop_request=self.stop_request,
             log_queue=self.log_queue
         )
         self.checking_thread.start()
@@ -439,23 +469,19 @@ class EventDetector(EventDetectorBase):
     def get_new_event(self):
         """Implementation of the abstract method get_new_event.
         """
+        global _event_store   # pylint: disable=invalid-name
 
-        global event_message_list
-
-        with self.lock:
-            event_message_list_local = copy.deepcopy(event_message_list)
-            # reset global list
-            event_message_list = []
-
-        return event_message_list_local
+        return _event_store.get_all(blocking=True, timeout=self.timeout)
 
     def stop(self):
         """Implementation of the abstract method stop.
         """
 
-        global event_message_list
-        global event_list_to_observe
-        global event_list_to_observe_tmp
+        global _event_store   # pylint: disable=invalid-name
+        global _potential_close_events   # pylint: disable=invalid-name
+        global _events_marked_to_remove   # pylint: disable=invalid-name
+
+        self.stop_request.set()
 
         if self.observer_threads is not None:
             self.log.info("Stopping observer threads")
@@ -475,8 +501,7 @@ class EventDetector(EventDetectorBase):
 
         # resetting event list
         with self.lock:
-            event_message_list = []
-            event_list_to_observe = []
-            event_list_to_observe_tmp = []
+            _event_store.remove_all()
+            _potential_close_events = []
+            _events_marked_to_remove = []
 
-#        pprint.pprint(threading._active)
