@@ -281,22 +281,30 @@ def check_writable(file_to_check):
         sys.exit(1)
 
 
-def check_version(version, log):
-    """ Compares version depending on the minor releases
+def check_version(version, log, check_minor=False):
+    """ Compares version depending on the major releases.
 
     Args:
         version (str): version string of the form
                        <major release>.<minor release>.<patch level>
         log: logging handler
+        check_minor: Instead of checking the major release check for minor ones.
     """
-    log.debug("remote version: {}, local version: {}"
-              .format(version, __version__))
+    log.debug("remote version: %s, local version: %s", version, __version__)
 
-    if version.rsplit(".", 1)[0] < __version__.rsplit(".", 1)[0]:
-        log.info("Version of receiver is lower. Please update receiver.")
+    if check_minor:
+        check_index = 1
+    else:
+        check_index = 2
+
+    v_remote = version.rsplit(".", check_index)[0]
+    v_local = __version__.rsplit(".", check_index)[0]
+
+    if v_remote < v_local:
+        log.info("Remote version is lower. Please update remote version.")
         return False
-    elif version.rsplit(".", 1)[0] > __version__.rsplit(".", 1)[0]:
-        log.info("Version of receiver is higher. Please update sender.")
+    elif v_remote > v_local:
+        log.info("Remote version is higher. Please update your local version.")
         return False
     else:
         return True
