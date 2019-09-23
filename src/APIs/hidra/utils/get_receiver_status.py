@@ -35,7 +35,7 @@ import os
 import sys
 import traceback
 
-# to make windows freeze work (cx_Freeze 5.x)
+# to make windows/suse10 freeze work (cx_Freeze 5.x)
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 except NameError:
@@ -44,6 +44,7 @@ except NameError:
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
+from _environment import BASE_DIR  # noqa E402
 from hidra.control import ReceiverControl
 from hidra import CommunicationFailed
 import hidra.utils as utils

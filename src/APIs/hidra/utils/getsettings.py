@@ -44,6 +44,7 @@ except NameError:
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
+from _environment import BASE_DIR  # noqa E402
 import hidra.utils as utils
 
 
