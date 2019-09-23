@@ -33,11 +33,21 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
+import os
 import socket
 import sys
 import traceback
 
-import __init__  # noqa F401  # pylint: disable=unused-import
+# to make windows/suse10 freeze work (cx_Freeze 5.x)
+try:
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+except NameError:
+    CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
+from _environment import BASE_DIR  # noqa E402
 from hidra.control import ReceiverControl
 from hidra import CommunicationFailed
 import utils
