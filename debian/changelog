@@ -1,3 +1,8 @@
+hidra (4.0.25-1+deb9u5~fsec) stretch; urgency=low
+
+  * Bump version
+
+ -- M. Kuhn <manuela.kuhn@desy.de>  Mon, 23 Sep 2019 11:46:48 +0200
 hidra (4.0.24-1+deb9u5~fsec) stretch; urgency=low
 
   * Bump version

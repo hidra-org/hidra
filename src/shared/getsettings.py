@@ -2,8 +2,20 @@
 
 from __future__ import print_function
 import __init__  # noqa F401
-import utils
 import argparse
+import os
+
+# to make windows/suse10 freeze work (cx_Freeze 5.x)
+try:
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+except NameError:
+    CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
+from _environment import BASE_DIR  # noqa E402
+import utils
 
 
 def get_arguments():
