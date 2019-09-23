@@ -46,7 +46,8 @@ else
     exit 1
 fi
 
-VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/shared/_version.py?at=refs%2Fheads%2Fmaster")
+#VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/shared/_version.py?at=refs%2Fheads%2Fmaster")
+VERSION=$(curl -L "https://raw.githubusercontent.com/hidra-org/hidra/v4.0.24/src/APIs/hidra/_version.py")
 # cut of the first 16 characters
 VERSION=${VERSION:16}
 VERSION=${VERSION%?}
@@ -68,7 +69,7 @@ if [ -d "$MAPPED_DIR/build" ]; then
 fi
 
 cd ${MAPPED_DIR}
-git clone --branch "v$VERSION" https://stash.desy.de/scm/hidra/hidra.git
+git clone --branch "v$VERSION" https://github.com/hidra-org/hidra.git
 
 mv hidra/debian .
 if [ "$DEBIAN_NAME" == "jessie" ]
