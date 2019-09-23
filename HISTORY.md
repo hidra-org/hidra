@@ -1,5 +1,10 @@
 # develop
 # 4.0.25
+
+- Fix debian package building via docker
+- Fix freezing into executable
+- Remove user change as default value from sender
+
 # 4.0.24
 
 - Fix version check between remote and local version
