@@ -376,6 +376,8 @@ class SignalHandler(Base):
                                        self.vari_requests)
                         self.log.debug("registered_queries: %s",
                                        self.registered_queries)
+                        self.log.debug("registered_streams: %s",
+                                       self.registered_streams)
 
                     else:
                         self.log.debug("in_message=%s", in_message)
