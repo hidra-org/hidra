@@ -202,7 +202,7 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
     def on_any_event(self, event):
         # pylint: disable=no-member
         if self.detect_all and self.detect_all.match(event.src_path):
-            self.log.debug("Any event detected")
+            self.log.debug("Any event detected (filename=%s)", event.src_path)
             self.process(event)
 
     def on_created(self, event):
@@ -211,12 +211,14 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         # pylint: disable=no-member
         if self.detect_create and self.detect_create.match(event.src_path):
             # TODO only file for file-event. skip directory-events.
-            self.log.debug("On move event detected")
+            self.log.debug("On create event detected (filename=%s)",
+                           event.src_path)
             self.process(event)
 
         # pylint: disable=no-member
         if self.detect_close and self.detect_close.match(event.src_path):
-            self.log.debug("On close event detected (from create)")
+            self.log.debug("On close event detected (from create, filename=%s)",
+                           event.src_path)
             if (not event.is_directory
                     and event.src_path not in _potential_close_events):
                 self.log.debug("Append event to _potential_close_events: %s",
@@ -229,33 +231,38 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
 
         # pylint: disable=no-member
         if self.detect_modify and self.detect_modify.match(event.src_path):
-            self.log.debug("On modify event detected")
+            self.log.debug("On modify event detected (filename=%s)",
+                           event.src_path)
             self.process(event)
 
         # pylint: disable=no-member
         if self.detect_close and self.detect_close.match(event.src_path):
             if (not event.is_directory
                     and event.src_path not in _potential_close_events):
-                self.log.debug("On close event detected (from modify)")
+                self.log.debug("On close event detected (from modify, "
+                               "filename=%s)", event.src_path)
 #                _potential_close_events.append(event.src_path)
                 bisect.insort_left(_potential_close_events, event.src_path)
 
     def on_deleted(self, event):
         # pylint: disable=no-member
         if self.detect_delete and self.detect_delete.match(event.src_path):
-            self.log.debug("On delete event detected")
+            self.log.debug("On delete event detected (filename=%s)",
+                           event.src_path)
             self.process(event)
 
     def on_moved(self, event):
         # pylint: disable=no-member
         if (self.detect_move_from
                 and self.detect_move_from.match(event.src_path)):
-            self.log.debug("On move from event detected")
+            self.log.debug("On move from event detected (filename=%s)",
+                           event.src_path)
             self.process(event)
 
         if (self.detect_move_to
                 and self.detect_move_to.match(event.dest_path)):
-            self.log.debug("On move to event detected")
+            self.log.debug("On move to event detected (filename=%s)",
+                           event.dest_path)
             self.process(event)
 
 
