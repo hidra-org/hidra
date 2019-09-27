@@ -1,5 +1,27 @@
 # develop
 # 4.1.1
+
+- Fix RPM package building
+- Move ext_ip into base_sender config
+- Fix bumbversion script
+- Fix backwards compatibility to yaml config type
+- Fix with_confirmation when mixing python2 and 3
+- Fix debian package building
+- Fix data removal for multi chunk files
+- Fix dispatcher name in logging
+- Add pid of hanging proccess into log
+- Simplify parameter handover in custom modules
+- Fix misspellings and typos
+- Fix pid display if hanging
+- Fix hanging of datadispatcher on shutdow
+- Fix version check between remote and local version
+- Fix CPU usage of watchdog events (on linux)
+- Fix freezing into executable
+- Add file name information to watchdog event log
+- Add information about registered streams to log
+- Add option choose tag in debian build script
+- Fix job forwarding from http events to cleaner
+
 # 4.1.0
 
 ## general
