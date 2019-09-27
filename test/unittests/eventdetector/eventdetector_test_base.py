@@ -27,6 +27,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# requires dependency on future
+from builtins import super  # pylint: disable=redefined-builtin
+
 from test_base import TestBase, create_dir  # noqa F401  # pylint: disable=unused-import
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -35,4 +38,16 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 class EventDetectorTestBase(TestBase):
     """The Base class from which all event detectors should inherit from.
     """
-    pass
+    def setUp(self):
+        super().setUp()
+
+
+        self.ed_base_config = {
+            "config": {
+                "general": {
+                    "config_file": "testconfig.yaml"
+                }
+            },
+            "log_queue": self.log_queue,
+            "check_dep": True
+        }

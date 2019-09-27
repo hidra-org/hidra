@@ -171,6 +171,9 @@ class TestTaskProvider(TestBase):
                     "time_till_closed": 5,
                     "action_time": 120
                 }
+            },
+            "general": {
+                "config_file": "testnotconfig.yaml"
             }
         }
 

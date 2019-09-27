@@ -81,11 +81,9 @@ class TestEventDetector(EventDetectorTestBase):
             "action_time": 120
         }
 
-        self.eventdetector_config = {
-            "eventdetector": {
-                "type": self.module_name,
-                self.module_name: config_module
-            }
+        self.ed_base_config["config"]["eventdetector"] = {
+            "type": self.module_name,
+            self.module_name: config_module
         }
 
         self.start = 100
@@ -110,8 +108,7 @@ class TestEventDetector(EventDetectorTestBase):
         """Sets up the event detector.
         """
 
-        self.eventdetector = EventDetector(self.eventdetector_config,
-                                           self.log_queue)
+        self.eventdetector = EventDetector(self.ed_base_config)
 
     def test_setup(self):
         """Simulate setup of event detector.
@@ -121,19 +118,20 @@ class TestEventDetector(EventDetectorTestBase):
         # regex + no cleanup
         # --------------------------------------------------------------------
 
-        monitored_events = {
+        config_module = (
+            self.ed_base_config["config"]["eventdetector"][self.module_name]
+        )
+
+        orig_value = config_module["monitored_events"]
+        config_module["monitored_events"] = {
             "IN_CLOSE_WRITE": [".tif", ".cbf", ".file"],
             "IN_MOVED_TO": [".log"]
         }
 
-        config = copy.deepcopy(self.eventdetector_config)
-        config_module = config["eventdetector"][self.module_name]
-        config_module["monitored_events"] = monitored_events
-
         with mock.patch("inotify_events.EventDetector._setup"):
             with mock.patch("inotify_events.EventDetector.check_config"):
                 with mock.patch("hidra.utils.get_logger"):
-                    self.eventdetector = EventDetector(config, self.log_queue)
+                    self.eventdetector = EventDetector(self.ed_base_config)
 
         self.eventdetector._setup()
 
@@ -155,24 +153,33 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.assertIsNone(self.eventdetector.cleanup_thread)
 
+        # revert changes
+        config_module["monitored_events"] = orig_value
+
         # --------------------------------------------------------------------
         # use cleanup
         # --------------------------------------------------------------------
 
-        config = copy.deepcopy(self.eventdetector_config)
-        config_module = config["eventdetector"][self.module_name]
+        config_module = (
+            self.ed_base_config["config"]["eventdetector"][self.module_name]
+        )
+
+        orig_value = config_module["use_cleanup"]
         config_module["use_cleanup"] = True
 
         with mock.patch("inotify_events.EventDetector._setup"):
             with mock.patch("inotify_events.EventDetector.check_config"):
                 with mock.patch("hidra.utils.get_logger"):
-                    self.eventdetector = EventDetector(config, self.log_queue)
+                    self.eventdetector = EventDetector(self.ed_base_config)
 
         with mock.patch("inotify_events.CleanUp"):
             self.eventdetector._setup()
 
             self.assertIsInstance(self.eventdetector.cleanup_thread,
                                   mock.MagicMock)
+
+        # revert changes
+        config_module["use_cleanup"] = orig_value
 
     def test_module_functionality(self):
         """Tests the module without simulating anything.

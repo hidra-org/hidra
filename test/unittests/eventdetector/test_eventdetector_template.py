@@ -50,7 +50,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.module_name = "eventdetector_template"
 
-        self.eventdetector_config = {
+        self.ed_base_config["config"] = {
             "eventdetector": {
                 "type": self.module_name,
                 self.module_name: {}
@@ -60,8 +60,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.start = 100
         self.stop = 101
 
-        self.eventdetector = EventDetector(self.eventdetector_config,
-                                           self.log_queue)
+        self.eventdetector = EventDetector(self.ed_base_config)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.

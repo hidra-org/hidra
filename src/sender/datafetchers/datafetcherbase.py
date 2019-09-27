@@ -96,6 +96,9 @@ class DataFetcherBase(Base, ABC):
                                         context: The ZMQ context to be used.
                                         lock: A threading lock object to handle
                                               control signal access.
+                                        stop_request: A threading event to
+                                                      notify the data fetcher to
+                                                      stop.
             name (str): The name of the derived data fetcher module. This is
                         used for logging.
         """

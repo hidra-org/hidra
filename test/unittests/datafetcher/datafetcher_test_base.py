@@ -30,6 +30,11 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
 import threading
 import zmq
 
@@ -55,6 +60,16 @@ class DataFetcherTestBase(TestBase):
 
         self.context = zmq.Context()
         self.lock = threading.Lock()
+
+        self.df_base_config = {
+            "config": None,
+            "log_queue": self.log_queue,
+            "fetcher_id": "0",
+            "context": self.context,
+            "lock": self.lock,
+            "stop_request": mock.MagicMock(),
+            "check_dep": True
+        }
 
     def tearDown(self):
         super().tearDown()

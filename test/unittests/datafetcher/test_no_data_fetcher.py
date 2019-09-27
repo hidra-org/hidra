@@ -47,7 +47,7 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Set up config
         self.module_name = "no_data_fetcher"
-        self.datafetcher_config = {
+        self.df_base_config["config"] = {
             "network": {
                 "ipc_dir": self.config["ipc_dir"],
                 "main_pid": self.config["main_pid"],
@@ -74,11 +74,7 @@ class TestDataFetcher(DataFetcherTestBase):
         """Simulate fetching.
         """
 
-        self.datafetcher = DataFetcher(config=self.datafetcher_config,
-                                       log_queue=self.log_queue,
-                                       fetcher_id=0,
-                                       context=self.context,
-                                       lock=self.lock)
+        self.datafetcher = DataFetcher(self.df_base_config)
 
         # Set up receiver simulator
         targets = []
