@@ -394,11 +394,11 @@ class DataFetcher(DataFetcherBase):
                 # round up the division result
                 n_chunks = -(-filesize // self.config_df["chunksize"])
 
-            self.cleaner_job_socket.send_multipart(
-                [metadata["source_path"].encode("utf-8"),
-                 file_id.encode("utf-8"),
-                 str(n_chunks).encode("utf-8")]
-            )
+            self.cleaner_job_socket.send_multipart([
+                metadata["source_path"].encode("utf-8"),
+                file_id.encode("utf-8"),
+                str(n_chunks).encode("utf-8")
+            ])
             self.log.debug("Forwarded to cleaner %s", file_id)
 
         # send message to metadata targets

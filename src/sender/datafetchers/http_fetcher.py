@@ -131,9 +131,12 @@ class DataFetcher(DataFetcherBase):
                 #        }
                 metadata["file_mod_time"] = time.time()
                 metadata["file_create_time"] = time.time()
-                metadata["confirmation_required"] = (
-                    self.config_df["remove_data"] == "with_confirmation"
-                )
+                if self.config_df["remove_data"] == "with_confirmation":
+                    metadata["confirmation_required"] = (
+                        self.confirmation_topic.decode()
+                    )
+                else:
+                    metadata["confirmation_required"] = False
 
                 self.log.debug("metadata = %s", metadata)
             except:
@@ -374,10 +377,13 @@ class DataFetcher(DataFetcherBase):
         # pylint: disable=unused-argument
 
         file_id = self.generate_file_id(metadata)
+        n_chunks = 1
 
-        self.cleaner_job_socket.send_multipart(
-            [metadata["source_path"].encode("utf-8"),
-             file_id.encode("utf-8")])
+        self.cleaner_job_socket.send_multipart([
+            metadata["source_path"].encode("utf-8"),
+            file_id.encode("utf-8"),
+            str(n_chunks).encode("utf-8")
+        ])
         self.log.debug("Forwarded to cleaner %s", file_id)
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
@@ -392,10 +398,10 @@ class DataFetcher(DataFetcherBase):
         # pylint: disable=unused-argument
 
         if self.config_df["remove_data"] and self.config["remove_flag"]:
-            responce = requests.delete(self.source_file)
+            response = requests.delete(self.source_file)
 
             try:
-                responce.raise_for_status()
+                response.raise_for_status()
                 self.log.debug("Deleting file '%s' succeeded.",
                                self.source_file)
             except Exception:
