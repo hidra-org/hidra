@@ -9,11 +9,11 @@
 - Fix debian package building
 - Fix data removal for multi chunk files
 - Fix dispatcher name in logging
-- Add pid of hanging proccess into log
+- Add pid of hanging process into log
 - Simplify parameter handover in custom modules
 - Fix misspellings and typos
 - Fix pid display if hanging
-- Fix hanging of datadispatcher on shutdow
+- Fix hanging of datadispatcher on shutdown
 - Fix version check between remote and local version
 - Fix CPU usage of watchdog events (on linux)
 - Fix freezing into executable
@@ -29,7 +29,7 @@
 - Use hierarchical config format for sender, receiver and control server
 - Changed default config to yaml
 - Improve test suite to handle individual modules
-- Remove scripts to build SuSE packages via docker (new kernels incompatible with SUSE 10)
+- Remove scripts to build SuSE packages via docker (new kernels incompatible with SuSE 10)
 - Fix python3 compatibility
 - Change \__version__ to str
 - Fix hidra usage via docker
