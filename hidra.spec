@@ -5,7 +5,7 @@ Summary:	High performance data multiplexing tool
 
 License:	AGPLv3
 URL:		https://github.com/hidra-org/hidra
-Source0:	hidra-v%{version}.zip
+Source0:	hidra-%{version}.tar.gz
 #Source1:	hidra.service
 
 BuildArch:	noarch
@@ -54,7 +54,7 @@ Requires:	python-hidra = %{version}
 This package contains only the client to interact with the control server in the HIDRA package.
 
 %prep
-%setup -q -c %{name}-%{version}
+%setup -q
 
 #%build
 #%{__python} setup.py build
@@ -74,7 +74,7 @@ cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
-cp conf/datamanager.yaml conf/datareceiver.yaml conf/base_receiver.yaml conf/base_sender.yaml conf/control_server.yaml control_client.yaml %{buildroot}/opt/%{name}/conf/
+cp conf/datamanager.yaml conf/datareceiver.yaml conf/base_receiver.yaml conf/base_sender.yaml conf/control_server.yaml conf/control_client.yaml %{buildroot}/opt/%{name}/conf/
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
