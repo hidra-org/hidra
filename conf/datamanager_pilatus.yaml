@@ -98,10 +98,10 @@ datafetcher:
     #                     datafetcher_type is file_fetcher or http_fetcher;
     #                     data is removed from the source only after the target
     #                     sent a verification.
-    #                     In case that a file could not be transfered, it is
+    #                     In case that a file could not be transferred, it is
     #                     not removed from the source. Here the datamanager
     #                     does not go in error state and new files are
-    #                     transfered if possible.
+    #                     transferred if possible.
     remove_data: False
 
     # Flag describing if the data should be stored in local_target

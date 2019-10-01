@@ -86,6 +86,9 @@ class CleanerBase(Base, ABC):
         self.confirmation_socket = None
         self.control_socket = None
 
+        self.confirm_topic = None
+        self.poller = None
+
         self.continue_run = True
 
         if context:
@@ -168,7 +171,7 @@ class CleanerBase(Base, ABC):
 
                 # backward compatibility with versions <= 4.0.7
                 if len(message) > 2:
-                    chunk_number = message[2]
+                    chunk_number = int(message[2].decode("utf-8"))
                 else:
                     chunk_number = None
 
@@ -176,7 +179,7 @@ class CleanerBase(Base, ABC):
                 self.log.debug("New confirmation received: %s", file_id)
                 self.log.debug("chunk_number=%s", chunk_number)
 
-                if file_id in confirmations and chunk_number != 1:
+                if file_id in confirmations and chunk_number != 0:
                     confirmations[file_id]["count"] += 1
                     confirmations[file_id]["chunks"].append(chunk_number)
                 else:
@@ -227,8 +230,9 @@ class CleanerBase(Base, ABC):
                 message = self.job_socket.recv_multipart()
                 self.log.debug("New job received: %s", message)
 
-                base_path, file_id, n_chunks = message
-                n_chunks = int(n_chunks)
+                base_path = message[0].decode("utf-8")
+                file_id = message[1].decode("utf-8")
+                n_chunks = int(message[2].decode("utf-8"))
 
                 if (file_id in confirmations
                         and confirmations[file_id]["count"] >= n_chunks):

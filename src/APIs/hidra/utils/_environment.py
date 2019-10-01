@@ -20,34 +20,29 @@
 #     Manuela Kuhn <manuela.kuhn@desy.de>
 #
 
-"""Providing a base for the event detector test classes.
+"""The environment to run the datamanger.
 """
 
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-# requires dependency on future
-from builtins import super  # pylint: disable=redefined-builtin
+import os
+import sys
 
-from test_base import TestBase, create_dir  # noqa F401  # pylint: disable=unused-import
+CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+print(CURRENT_DIR)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR))))
+print(BASE_DIR)
+EVENTDETECTOR_DIR = os.path.join(CURRENT_DIR, "eventdetectors")
+DATAFETCHER_DIR = os.path.join(CURRENT_DIR, "datafetchers")
+API_DIR = os.path.join(BASE_DIR, "src", "APIs")
 
-__author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+if EVENTDETECTOR_DIR not in sys.path:
+    sys.path.insert(0, EVENTDETECTOR_DIR)
 
+if DATAFETCHER_DIR not in sys.path:
+    sys.path.insert(0, DATAFETCHER_DIR)
 
-class EventDetectorTestBase(TestBase):
-    """The Base class from which all event detectors should inherit from.
-    """
-    def setUp(self):
-        super().setUp()
-
-
-        self.ed_base_config = {
-            "config": {
-                "general": {
-                    "config_file": "testconfig.yaml"
-                }
-            },
-            "log_queue": self.log_queue,
-            "check_dep": True
-        }
+if API_DIR not in sys.path:
+    sys.path.insert(0, API_DIR)

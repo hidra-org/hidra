@@ -108,7 +108,7 @@ def argument_parsing():
 
 def _merge_with_config(args, parser):
     """
-    Takes the comand line arguments and overwrites the parameter of the confi
+    Takes the command line arguments and overwrites the parameter of the config
     file with it.
     """
     # convert to dict and map to config section
@@ -192,7 +192,7 @@ def check_config(config):
     if not check_passed:
         raise utils.WrongConfiguration(
             "The general section of configuration has missing or wrong "
-            "parameteres."
+            "parameters."
         )
 
     # hidra section
@@ -211,7 +211,7 @@ def check_config(config):
     if not check_passed:
         raise utils.WrongConfiguration(
             "The hidra section of configuration has missing or wrong "
-            "parameteres."
+            "parameters."
         )
 
     potential_whitelist = (

@@ -24,8 +24,6 @@
 This is a template module for implementing event detectors.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -40,12 +38,10 @@ class EventDetector(EventDetectorBase):
     Implementation of the event detector.
     """
 
-    def __init__(self, config, log_queue):
+    def __init__(self, eventdetector_base_config):
 
-        EventDetectorBase.__init__(self,
-                                   config,
-                                   log_queue,
-                                   "eventdetector_template")
+        EventDetectorBase.__init__(self, eventdetector_base_config,
+                                   name=__name__)
 
         # base class sets
         #   self.config_all - all configurations
@@ -68,7 +64,7 @@ class EventDetector(EventDetectorBase):
         pass
 
     def get_new_event(self):
-        """Implmentation of the abstract method get_new_event.
+        """Implementation of the abstract method get_new_event.
         """
 
         event_message_list = [{

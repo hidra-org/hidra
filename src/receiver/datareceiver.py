@@ -220,14 +220,14 @@ class CheckNetgroup(threading.Thread):
         sec_to_sleep = 2
 
         if self.ldap_retry_time < sec_to_sleep:
-            ldap_sleep_intervalls = 1
+            ldap_sleep_intervals = 1
         else:
-            ldap_sleep_intervalls = int(self.ldap_retry_time // sec_to_sleep)
+            ldap_sleep_intervals = int(self.ldap_retry_time // sec_to_sleep)
 
         if self.check_time < sec_to_sleep:
-            check_sleep_intervalls = 1
+            check_sleep_intervals = 1
         else:
-            check_sleep_intervalls = int(self.check_time // sec_to_sleep)
+            check_sleep_intervals = int(self.check_time // sec_to_sleep)
 
         while self.run_loop:
             new_whitelist = utils.execute_ldapsearch(self.log,
@@ -238,7 +238,7 @@ class CheckNetgroup(threading.Thread):
             # -> do nothing but wait till ldap is reachable again
             if not new_whitelist:
                 self.log.info("LDAP search returned an empty list. Ignore.")
-                for _ in range(ldap_sleep_intervalls):
+                for _ in range(ldap_sleep_intervals):
                     if self.run_loop:
                         time.sleep(sec_to_sleep)
                 continue
@@ -260,7 +260,7 @@ class CheckNetgroup(threading.Thread):
                 self.log.info("Netgroup has changed. New whitelist: %s",
                               _whitelist)
 
-            for _ in range(check_sleep_intervalls):
+            for _ in range(check_sleep_intervals):
                 if self.run_loop:
                     time.sleep(sec_to_sleep)
 
@@ -303,7 +303,7 @@ class DataReceiver(object):
 
         try:
             config = argument_parsing()
-        except:
+        except Exception:
             self.log = logging.getLogger("DataReceiver")
             raise
 
@@ -433,7 +433,7 @@ class DataReceiver(object):
         # run loop, and wait for incoming messages
         while self.run_loop:
             if _changed_netgroup:
-                self.log.debug("Reregistering whitelist")
+                self.log.debug("Re-registering whitelist")
                 self.transfer.register(_whitelist)
 
                 # reset flag
@@ -449,7 +449,7 @@ class DataReceiver(object):
                 raise
 
     def stop(self, store=True):
-        """Stop threads, close sockets and cleanes up.
+        """Stop threads, close sockets and cleans up.
 
         Args:
             store (optional, bool): Run a little longer to store remaining

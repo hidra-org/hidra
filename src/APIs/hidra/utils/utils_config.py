@@ -85,7 +85,7 @@ def load_config(config_file, config_type=None, log=logging):
     Args:
         config_file (str): Absolute path to the configuration file.
         config_type (str): The type the configuration is in (config or yaml).
-                           If not set (or set to None) the file extenstion is
+                           If not set (or set to None) the file extension is
                            used for automatic detection.
 
     Returns:
@@ -143,12 +143,12 @@ def write_config(config_file, config, config_type=None, log=logging):
         config (dict): The configuration data.
         config_type (str, optional): The type the configuration is in
                                      (config or yaml). If not set (or set to
-                                     None) the file extenstion is used for
+                                     None) the file extension is used for
                                      automatic detection.
 
     Raises:
-        NotSupported if the defined config_type (or when autodetecting the
-        file extention) is not supported.
+        NotSupported if the defined config_type (or when auto-detecting the
+        file extension) is not supported.
     """
 
     # Auto-detection
@@ -195,7 +195,7 @@ def _fix_none_entries(dictionary):
 
 
 def update_dict(dictionary, dict_to_update):
-    """Updated one dictionary recursively with the entires of another.
+    """Updated one dictionary recursively with the entries of another.
 
     Args:
         dictionary (dict): The dict used to update dict_to_update.
@@ -541,7 +541,7 @@ def check_config(required_params, config, log, serialize=True):
 
     Returns:
 
-        check_passed: if all checks were successfull
+        check_passed: if all checks were successful
         config_reduced (str or dict): serialized (only if serialize=True) dict
                                       containing the values of the required
                                       parameters only
@@ -850,7 +850,7 @@ def _convert_parameters(config_dict):
 
     Args:
 
-        config (Dict[str]): a dictionary containing the parameters from
+        config_dict (Dict[str]): a dictionary containing the parameters from
             a configuration file as extracted by the
             :obj:`configparser` module).
 

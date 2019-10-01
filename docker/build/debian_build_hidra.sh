@@ -2,10 +2,11 @@
 
 usage()
 {
-    printf "Usage: $SCRIPTNAME --version <debian_version>\n" >&2
+    printf "Usage: $SCRIPTNAME --version <debian_version> --tag <hidra tag\n" >&2
 }
 
 action=
+TAG=
 while test $# -gt 0
 do
     #convert to lower case
@@ -17,6 +18,10 @@ do
             version=$(echo "$2" | tr '[:upper:]' '[:lower:]')
             shift
             ;;
+        --tag)
+            TAG="$2"
+            shift
+            ;;
         -h | --help ) usage
             exit
             ;;
@@ -25,13 +30,15 @@ do
     shift
 done
 
-if [ -z ${version+x} ]
+if [ "${version}" == "" ]
+#if [ -z ${version+x} -o "${version}" == "" ]
 then
-    usage
-    exit 1
-fi
-
-if [ "$version" == "9" -o "$version" == "stretch" ]
+    # set default to debian 9
+    DEBIAN_NAME=stretch
+    DEBIAN_VERSION=9
+    printf "Create packages for debian $DEBIAN_VERSION. "
+    printf "If you want a different version use --version\n"
+elif [ "$version" == "9" -o "$version" == "stretch" ]
 then
     DEBIAN_NAME=stretch
     DEBIAN_VERSION=9
@@ -42,18 +49,27 @@ then
     DEBIAN_VERSION=8
 
 else
-    echo "Not supported version"
+    echo "Not supported debian version"
     exit 1
 fi
 
-#VERSION=$(curl -L "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/APIs/hidra/utils/_version.py?at=refs%2Fheads%2Fmaster")
-VERSION=$(curl -l "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/APIs/hidra/_version.py?at=refs%2Fheads%2Fmaster")
+if [ "${TAG}" == "" ]
+then
+    # set default
+    TAG="master"
+fi
+
+URL="https://raw.githubusercontent.com/hidra-org/hidra/$TAG/src/APIs/hidra/utils/_version.py"
+VERSION=$(curl -L $URL)
 # cut of the first characters
-#VERSION=${VERSION:15}
-VERSION=${VERSION:16}
+VERSION=${VERSION:15}
 VERSION=${VERSION%?}
 
-MAPPED_DIR=/tmp/hidra_builds/${VERSION}/debian${DEBIAN_VERSION}
+echo "Create packages for hidra tag $TAG for version $VERSION"
+
+BRANCH="v${VERSION}"
+
+MAPPED_DIR=/tmp/hidra_builds/debian${DEBIAN_VERSION}/${VERSION}
 IN_DOCKER_DIR=/external
 DOCKER_DIR=$(pwd)
 
@@ -70,7 +86,7 @@ if [ -d "$MAPPED_DIR/build" ]; then
 fi
 
 cd ${MAPPED_DIR}
-git clone --branch "v$VERSION" https://stash.desy.de/scm/hidra/hidra.git
+git clone --branch $BRANCH https://github.com/hidra-org/hidra.git
 
 mv hidra/debian .
 if [ "$DEBIAN_NAME" == "jessie" ]
@@ -122,4 +138,4 @@ rm $GROUP_FILE
 #docker rmi ${DOCKER_IMAGE}
 #rm -rf ${MAPPED_DIR}/hidra
 
-echo "Debian ${DEBIAN_VERSION} packages can be found in ${MAPPED_DIR}/build"
+echo "Debian ${DEBIAN_VERSION} packages can be found in ${MAPPED_DIR}"

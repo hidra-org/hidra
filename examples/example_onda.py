@@ -133,7 +133,7 @@ def main():
 
     parser.add_argument("--signal_host",
                         type=str,
-                        help="Host where HiDRA is runnning",
+                        help="Host where HiDRA is running",
                         default=socket.getfqdn())
     parser.add_argument("--target_host",
                         type=str,

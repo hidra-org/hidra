@@ -21,7 +21,7 @@
 #
 
 """
-This module provides utilities use thoughout different parts of hidra.
+This module provides utilities use throughout different parts of hidra.
 """
 
 from __future__ import (absolute_import,
@@ -58,7 +58,7 @@ def check_netgroup(hostname,
                         None: no logging
                         False: use print
                         anything else: use the standard logging module
-        raise_if_failed (optional): Raise an exeption the check fails.
+        raise_if_failed (optional): Raise an exception the check fails.
     """
 
     if log is None:
@@ -354,11 +354,13 @@ def set_endpoints(ext_ip,
     Args:
         ext_ip: IP to bind TCP connections to
         con_ip: IP to connect TCP connections to
-        ipc_addresses: Addresses to use for the IPC connections.
-        confirm_ips: External ips/hostnames to bind and connect cornfirmation
-                     socket to.
-        port: A dictionary giving the ports to open TCP connection on
+        ports: A dictionary giving the ports to open TCP connection on
               (only used on Windows).
+        ipc_addresses: Addresses to use for the IPC connections.
+        confirm_ips: External ips/hostnames to bind and connect confirmation
+                     socket to.
+        use_cleaner (optional): Boolean which definies if the cleaner
+                                connections should be set (default: True)
     Returns:
         A namedtuple object Endpoints with the entries:
             control_pub_bind
@@ -525,7 +527,7 @@ def start_socket(name,
         random_port (optional): Use zmq bind_to_random_port option.
         socket_options (optional): Additional zmq options which should be set
                                    on the socket
-                                   (as lists wich [key, value] entries).
+                                   (as lists which [key, value] entries).
         message (optional): wording to be used in the message
                             (default: Start).
     """

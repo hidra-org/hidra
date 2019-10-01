@@ -420,11 +420,14 @@ class Base(object):
         """
         pass
 
-    def stop(self):
+    def cleanup_base(self):
         """Stop sockets and clean up.
         """
         if self.stats_collect_socket is not None:
             self.stop_socket(name="stats_collect_socket")
+
+    def stop(self):
+        self.cleanup_base()
 
     def wait_for_stopped(self, n_iter=5, sleep_time=0.1):
         """

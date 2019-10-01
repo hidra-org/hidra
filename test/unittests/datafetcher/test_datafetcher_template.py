@@ -31,9 +31,12 @@ from __future__ import unicode_literals
 from builtins import super  # pylint: disable=redefined-builtin
 
 import json
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
 import os
-# import time
-# from shutil import copyfile
 
 from datafetcher_template import DataFetcher
 from .datafetcher_test_base import DataFetcherTestBase
@@ -55,7 +58,7 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Set up config
         self.module_name = "datafetcher_template"
-        self.datafetcher_config = {
+        self.df_base_config["config"] = {
             "network": {
                 "endpoints": None,
                 "main_pid": self.config["main_pid"]
@@ -82,11 +85,7 @@ class TestDataFetcher(DataFetcherTestBase):
         """Simulate file fetching without taking care of confirmation signals.
         """
 
-        self.datafetcher = DataFetcher(config=self.datafetcher_config,
-                                       log_queue=self.log_queue,
-                                       fetcher_id=0,
-                                       context=self.context,
-                                       lock=self.lock)
+        self.datafetcher = DataFetcher(self.df_base_config)
 
         # Set up receiver simulator
         self.receiving_sockets = []

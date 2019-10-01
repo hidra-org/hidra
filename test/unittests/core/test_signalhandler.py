@@ -321,17 +321,10 @@ class TestSignalHandler(TestBase):
         current_func_name = inspect.currentframe().f_code.co_name
 
         with mock.patch("signalhandler.SignalHandler.setup"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler.run"):
                 sighandler = SignalHandler(**self.signalhandler_config)
 
         conf = self.signalhandler_config
-
-        setup_conf = dict(
-            log_queue=conf["log_queue"],
-            context=conf["context"],
-            whitelist=conf["whitelist"],
-            ldapuri=conf["ldapuri"]
-        )
 
         # --------------------------------------------------------------------
         # external context
@@ -339,7 +332,7 @@ class TestSignalHandler(TestBase):
         self.log.info("%s: EXTERNAL CONTEXT", current_func_name)
 
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            sighandler.setup(**setup_conf)
+            sighandler.setup()
 
         self.assertIsInstance(sighandler.log, logging.Logger)
         self.assertEqual(sighandler.whitelist, conf["whitelist"])
@@ -349,30 +342,18 @@ class TestSignalHandler(TestBase):
         # resetting QueueHandlers
         sighandler.log.handlers = []
 
-        # --------------------------------------------------------------------
-        # no external context
-        # --------------------------------------------------------------------
-        self.log.info("%s: NO EXTERNAL CONTEXT", current_func_name)
-
-        setup_conf["context"] = None
-        with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            sighandler.setup(**setup_conf)
-
-        self.assertIsInstance(sighandler.log, logging.Logger)
-        self.assertEqual(sighandler.whitelist, conf["whitelist"])
-        self.assertIsInstance(sighandler.context, zmq.Context)
-        self.assertFalse(sighandler.ext_context)
-
     @mock.patch("signalhandler.SignalHandler.stop")
     def test_create_sockets(self, mock_stop):
         # pylint: disable=unused-argument
 
         current_func_name = inspect.currentframe().f_code.co_name
 
-        def init():
+        def init(signalhandler_config):
             with mock.patch("signalhandler.SignalHandler.create_sockets"):
-                with mock.patch("signalhandler.SignalHandler.exec_run"):
-                    sighandler = SignalHandler(**self.signalhandler_config)
+                with mock.patch("signalhandler.SignalHandler._run"):
+                    sighandler = SignalHandler(**signalhandler_config)
+
+            sighandler.log = mock.MagicMock()
 
             with mock.patch.object(zmq, "Poller", MockZmqPoller):
                 sighandler.create_sockets()
@@ -401,7 +382,7 @@ class TestSignalHandler(TestBase):
                       current_func_name)
 
         self.signalhandler_config["whitelist"] = []
-        sighandler = init()
+        sighandler = init(self.signalhandler_config)
 
         self.assertIsInstance(sighandler.control_pub_socket, zmq_socket)
         self.assertIsInstance(sighandler.control_sub_socket, zmq_socket)
@@ -424,7 +405,7 @@ class TestSignalHandler(TestBase):
                       current_func_name)
 
         self.signalhandler_config["whitelist"] = None
-        sighandler = init()
+        sighandler = init(self.signalhandler_config)
 
         self.assertIsInstance(sighandler.control_pub_socket, zmq_socket)
         self.assertIsInstance(sighandler.control_sub_socket, zmq_socket)
@@ -446,7 +427,7 @@ class TestSignalHandler(TestBase):
 
         # with all nodes allowed to connect
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler.run"):
                 sighandler = SignalHandler(**self.signalhandler_config)
 
         sighandler.com_socket = mock.MagicMock()
@@ -496,7 +477,7 @@ class TestSignalHandler(TestBase):
             {sighandler.control_sub_socket: zmq.POLLIN}
         ]
 
-        sighandler.run()
+        sighandler._run()
         # assert_called() only works version >3.5
         self.assertTrue(mock_check.called)
 
@@ -516,7 +497,7 @@ class TestSignalHandler(TestBase):
             {sighandler.control_sub_socket: zmq.POLLIN}
         ]
 
-        sighandler.run()
+        sighandler._run()
         # assert_called() only works version >3.5
         self.assertTrue(mock_check.called)
 
@@ -537,7 +518,7 @@ class TestSignalHandler(TestBase):
         init_sighandler(sighandler, sighandler.request_fw_socket, signal)
         sighandler.log.error = mock.MagicMock()
 
-        sighandler.run()
+        sighandler._run()
 
         call = sighandler.log.error.call_args[0][0]
         self.log.debug("call args %s", call)
@@ -558,7 +539,7 @@ class TestSignalHandler(TestBase):
         init_sighandler(sighandler, sighandler.request_fw_socket, signal)
         sighandler.log.error = mock.MagicMock()
 
-        sighandler.run()
+        sighandler._run()
 
         call = sighandler.log.error.call_args[0][0]
         self.log.debug("call args %s", call)
@@ -584,7 +565,7 @@ class TestSignalHandler(TestBase):
         sighandler.vari_requests = []
         sighandler.perm_requests = []
 
-        sighandler.run()
+        sighandler._run()
 
         expected = json.dumps(["None"])
         (sighandler.request_fw_socket
@@ -619,7 +600,7 @@ class TestSignalHandler(TestBase):
         sighandler.vari_requests = []
         sighandler.perm_requests = [0]
 
-        sighandler.run()
+        sighandler._run()
 
         expected = json.dumps([["{}:{}".format(host, port), 0, send_type]])
         (sighandler.request_fw_socket
@@ -664,7 +645,7 @@ class TestSignalHandler(TestBase):
         sighandler.vari_requests = []
         sighandler.perm_requests = [0]
 
-        sighandler.run()
+        sighandler._run()
 
         expected = json.dumps(["None"])
         (sighandler.request_fw_socket
@@ -703,7 +684,7 @@ class TestSignalHandler(TestBase):
         ]
         sighandler.perm_requests = []
 
-        sighandler.run()
+        sighandler._run()
 
         expected = json.dumps([["{}:{}".format(host, port), 0, send_type]])
         (sighandler.request_fw_socket
@@ -734,7 +715,7 @@ class TestSignalHandler(TestBase):
         ]
         sighandler.perm_requests = []
 
-        sighandler.run()
+        sighandler._run()
 
         expected = json.dumps(["None"])
         (sighandler.request_fw_socket
@@ -770,7 +751,7 @@ class TestSignalHandler(TestBase):
             targets=None
         )
 
-        sighandler.run()
+        sighandler._run()
 
         self.assertTrue(sighandler.react_to_signal.called)
 
@@ -796,7 +777,7 @@ class TestSignalHandler(TestBase):
             targets=None
         )
 
-        sighandler.run()
+        sighandler._run()
 
         self.assertTrue(sighandler.send_response.called)
 
@@ -812,7 +793,7 @@ class TestSignalHandler(TestBase):
         init_sighandler(sighandler, sighandler.request_socket, signal)
         sighandler.log = mock.MagicMock()
 
-        sighandler.run()
+        sighandler._run()
 
         calls = sighandler.log.method_calls
         expected = mock.call.info("Request not supported.")
@@ -843,7 +824,7 @@ class TestSignalHandler(TestBase):
 
         with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
-            sighandler.run()
+            sighandler._run()
 
         expected = [
             [[socket_id, 0, re.compile(".*"), send_type]]
@@ -868,7 +849,7 @@ class TestSignalHandler(TestBase):
 
         with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
-            sighandler.run()
+            sighandler._run()
 
         self.assertEqual(sighandler.vari_requests, [])
 
@@ -890,7 +871,7 @@ class TestSignalHandler(TestBase):
 
         with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
-            sighandler.run()
+            sighandler._run()
 
         self.assertEqual(sighandler.vari_requests, [])
 
@@ -914,7 +895,7 @@ class TestSignalHandler(TestBase):
 
         with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
-            sighandler.run()
+            sighandler._run()
 
         self.assertEqual(sighandler.vari_requests, [[]])
 
@@ -941,7 +922,7 @@ class TestSignalHandler(TestBase):
 
         with mock.patch("hidra.utils.convert_socket_to_fqdn") as mock_utils:
             mock_utils.return_value = socket_id
-            sighandler.run()
+            sighandler._run()
 
         expected = [
             [["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]]
@@ -957,7 +938,7 @@ class TestSignalHandler(TestBase):
         # with all nodes allowed to connect
         self.signalhandler_config["whitelist"] = None
         with mock.patch("signalhandler.SignalHandler.setup"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler.run"):
                 sighandler = SignalHandler(**self.signalhandler_config)
 
         sighandler.log = MockLogging()
@@ -1066,7 +1047,7 @@ class TestSignalHandler(TestBase):
         # with no nodes allowed to connect
         self.signalhandler_config["whitelist"] = []
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler._run"):
                 sighandler = SignalHandler(**self.signalhandler_config)
 
         sighandler.log = MockLogging()
@@ -1091,7 +1072,7 @@ class TestSignalHandler(TestBase):
         current_func_name = inspect.currentframe().f_code.co_name
 
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler._run"):
                 sighandler = SignalHandler(**self.signalhandler_config)
 
         sighandler.com_socket = mock.MagicMock(
@@ -1136,7 +1117,7 @@ class TestSignalHandler(TestBase):
         current_func_name = inspect.currentframe().f_code.co_name
 
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler._run"):
                 sighandler = SignalHandler(**self.signalhandler_config)
 
         sighandler.send_response = mock.MagicMock()
@@ -1489,7 +1470,7 @@ class TestSignalHandler(TestBase):
         current_func_name = inspect.currentframe().f_code.co_name
 
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler._run"):
                 sighandler = SignalHandler(**self.signalhandler_config)
 
         sighandler.send_response = mock.MagicMock()
@@ -1772,7 +1753,7 @@ class TestSignalHandler(TestBase):
         current_func_name = inspect.currentframe().f_code.co_name
 
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler._run"):
                 sighandler = SignalHandler(**self.signalhandler_config)
 
         sighandler.send_response = mock.MagicMock()
@@ -1856,7 +1837,7 @@ class TestSignalHandler(TestBase):
         sighandler.log.handlers = []
 
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler._run"):
                 sighandler = SignalHandler(**config)
 
         sighandler.send_response = mock.MagicMock()
@@ -1894,7 +1875,7 @@ class TestSignalHandler(TestBase):
         sighandler.log.handlers = []
 
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler._run"):
                 sighandler = SignalHandler(**config)
 
         sighandler.send_response = mock.MagicMock()
@@ -1996,7 +1977,7 @@ class TestSignalHandler(TestBase):
         sighandler.log.handlers = []
 
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler._run"):
                 sighandler = SignalHandler(**config)
 
         sighandler.send_response = mock.MagicMock()
@@ -2034,7 +2015,7 @@ class TestSignalHandler(TestBase):
         sighandler.log.handlers = []
 
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler._run"):
                 sighandler = SignalHandler(**config)
 
         sighandler.send_response = mock.MagicMock()
@@ -2112,7 +2093,7 @@ class TestSignalHandler(TestBase):
         self.signalhandler_config["context"] = self.context
 
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler._run"):
                 sighandler = SignalHandler(**self.signalhandler_config)
         sighandler.stop_socket = mock.MagicMock()
 
@@ -2139,7 +2120,7 @@ class TestSignalHandler(TestBase):
 
         self.signalhandler_config["context"] = None
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
-            with mock.patch("signalhandler.SignalHandler.exec_run"):
+            with mock.patch("signalhandler.SignalHandler._run"):
                 sighandler = SignalHandler(**self.signalhandler_config)
         sighandler.stop_socket = mock.MagicMock()
 

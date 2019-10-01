@@ -25,8 +25,6 @@ This module implements the data fetcher used for the Eiger detector and other
 detectors with a http interface.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -48,19 +46,14 @@ __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
 
 class DataFetcher(DataFetcherBase):
     """
-    Implemenation of the data fetcher to get files from the Eiger detector or
+    Implementation of the data fetcher to get files from the Eiger detector or
     other detectors with a http interface.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context, lock):
+    def __init__(self, datafetcher_base_config):
 
-        DataFetcherBase.__init__(self,
-                                 config,
-                                 log_queue,
-                                 fetcher_id,
-                                 "http_fetcher-{}".format(fetcher_id),
-                                 context,
-                                 lock)
+        DataFetcherBase.__init__(self, datafetcher_base_config,
+                                 name=__name__)
 
         # base class sets
         #   self.config_all - all configurations
@@ -106,7 +99,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata to extend.
+            metadata (dict): The dictionary with the metadata to extend.
         """
 
         # pylint: disable=attribute-defined-outside-init
@@ -138,9 +131,12 @@ class DataFetcher(DataFetcherBase):
                 #        }
                 metadata["file_mod_time"] = time.time()
                 metadata["file_create_time"] = time.time()
-                metadata["confirmation_required"] = (
-                    self.config_df["remove_data"] == "with_confirmation"
-                )
+                if self.config_df["remove_data"] == "with_confirmation":
+                    metadata["confirmation_required"] = (
+                        self.confirmation_topic.decode()
+                    )
+                else:
+                    metadata["confirmation_required"] = False
 
                 self.log.debug("metadata = %s", metadata)
             except:
@@ -381,10 +377,13 @@ class DataFetcher(DataFetcherBase):
         # pylint: disable=unused-argument
 
         file_id = self.generate_file_id(metadata)
+        n_chunks = 1
 
-        self.cleaner_job_socket.send_multipart(
-            [metadata["source_path"].encode("utf-8"),
-             file_id.encode("utf-8")])
+        self.cleaner_job_socket.send_multipart([
+            metadata["source_path"].encode("utf-8"),
+            file_id.encode("utf-8"),
+            str(n_chunks).encode("utf-8")
+        ])
         self.log.debug("Forwarded to cleaner %s", file_id)
 
     def finish_without_cleaner(self, targets, metadata, open_connections):
@@ -399,10 +398,10 @@ class DataFetcher(DataFetcherBase):
         # pylint: disable=unused-argument
 
         if self.config_df["remove_data"] and self.config["remove_flag"]:
-            responce = requests.delete(self.source_file)
+            response = requests.delete(self.source_file)
 
             try:
-                responce.raise_for_status()
+                response.raise_for_status()
                 self.log.debug("Deleting file '%s' succeeded.",
                                self.source_file)
             except Exception:
@@ -428,10 +427,10 @@ class Cleaner(CleanerBase):
         source_file = os.path.join(base_path, file_id)
 
         # remove file
-        responce = requests.delete(source_file)
+        response = requests.delete(source_file)
 
         try:
-            responce.raise_for_status()
+            response.raise_for_status()
             self.log.debug("Deleting file '%s' succeeded.", source_file)
         except Exception:
             self.log.error("Deleting file '%s' failed.", source_file,

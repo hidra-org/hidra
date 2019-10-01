@@ -21,7 +21,7 @@
 #
 
 """
-This module provides utilities use thoughout different parts of hidra.
+This module provides utilities use throughout different parts of hidra.
 """
 
 from __future__ import (absolute_import,
@@ -179,6 +179,6 @@ class NotFoundError(Exception):
 class NotAllowed(Exception):
     """
     Raised when an action is performed which is not allowed with the
-    configurated parameters.
+    configured parameters.
     """
     pass

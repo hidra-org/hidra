@@ -57,7 +57,7 @@ class TestDataFetcher(DataFetcherTestBase):
         local_target = None
         # local_target = os.path.join(self.base_dir, "data", "target")
         self.module_name = "file_fetcher"
-        self.datafetcher_config = {
+        self.df_base_config["config"] = {
             "network": {
                 "main_pid": self.config["main_pid"],
                 "endpoints": self.config["endpoints"]
@@ -90,11 +90,7 @@ class TestDataFetcher(DataFetcherTestBase):
         """Simulate file fetching without taking care of confirmation signals.
         """
 
-        self.datafetcher = DataFetcher(config=self.datafetcher_config,
-                                       log_queue=self.log_queue,
-                                       fetcher_id=0,
-                                       context=self.context,
-                                       lock=self.lock)
+        self.datafetcher = DataFetcher(self.df_base_config)
 
         # Set up receiver simulator
         self.receiving_sockets = []
@@ -149,11 +145,7 @@ class TestDataFetcher(DataFetcherTestBase):
         """Simulate file fetching while taking care of confirmation signals.
         """
 
-        self.datafetcher = DataFetcher(config=self.datafetcher_config,
-                                       log_queue=self.log_queue,
-                                       fetcher_id=0,
-                                       context=self.context,
-                                       lock=self.lock)
+        self.datafetcher = DataFetcher(self.df_base_config)
 
         self.config["remove_data"] = "with_confirmation"
         endpoints = self.config["endpoints"]

@@ -1,5 +1,5 @@
 Name:		hidra
-Version:	4.1.0
+Version:	4.1.1
 Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
@@ -62,21 +62,19 @@ This package contains only the client to interact with the control server in the
 %install
 # Packaging Python API
 mkdir -p %{buildroot}/%{python_sitelib}/%{name}
-cp -r src/APIs/hidra/*.py %{buildroot}/%{python_sitelib}/%{name}/
+cp -r src/APIs/hidra/* %{buildroot}/%{python_sitelib}/%{name}/
 
-# src receiver/sender and shared
+# src receiver/sender
 mkdir -p %{buildroot}/opt/%{name}/src
 cp -ra src/receiver %{buildroot}/opt/%{name}/src/
 cp -ra src/sender %{buildroot}/opt/%{name}/src/
-mkdir -p %{buildroot}/opt/%{name}/src/shared/
-cp -a src/shared/*.py %{buildroot}/opt/%{name}/src/shared/
 
 mkdir -p %{buildroot}/opt/%{name}/src/hidra_control
 cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
-cp conf/datamanager.yamlf conf/datareceiver.yaml conf/base_receiver.yaml conf/base_sender.yaml %{buildroot}/opt/%{name}/conf/
+cp conf/datamanager.yaml conf/datareceiver.yaml conf/base_receiver.yaml conf/base_sender.yaml conf/control_server.yaml control_client.yaml %{buildroot}/opt/%{name}/conf/
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
@@ -88,19 +86,18 @@ mkdir -p %{buildroot}/var/log/%{name}
 #%{__python} setup.py install -O1 --skip-build --root %{buildroot}
 
 %post
-%systemd_post %{name}@.service
+%systemd_post %{name}@.service %{name}-receiver@.service %{name}-control-server@.service
 
 %preun
-%systemd_preun %{name}@.service
+%systemd_preun %{name}@.service %{name}-receiver@.service %{name}-control-server@.service
 
 %postun
-%systemd_postun_with_restart %{name}@.service
+%systemd_postun_with_restart %{name}@.service %{name}-receiver@.service %{name}-control-server@.service
 
 %files
 %attr(0755,root,root) /opt/%{name}/src/receiver/*
 /opt/%{name}/src/sender/*
 %attr(0755,root,root) /opt/%{name}/src/sender/datamanager.py
-/opt/%{name}/src/shared/*
 /opt/%{name}/src/hidra_control/hidra_control_server.py
 /opt/%{name}/src/hidra_control/hidra_control_server.pyc
 /opt/%{name}/src/hidra_control/hidra_control_server.pyo
@@ -116,8 +113,11 @@ mkdir -p %{buildroot}/var/log/%{name}
 /opt/%{name}/src/hidra_control/hidra_control_client.py
 /opt/%{name}/src/hidra_control/hidra_control_client.pyc
 /opt/%{name}/src/hidra_control/hidra_control_client.pyo
+%config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
+* Wed Sep 04 2019 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.1-1
+- Bump version
 * Thu Aug 01 2019 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.0-1
 - Bump version
 * Fri Jun 14 2019 Manuela Kuhn <manuela.kuhn@desy.de> - 4.0.23-1

@@ -203,12 +203,12 @@ class Control(Base):
             self.stop(unregister=False)
             sys.exit(1)
 
-        responce = self.socket.recv()
-        if responce == b"OK":
+        response = self.socket.recv()
+        if response == b"OK":
             self.log.info("HiDRA control server up and answering.")
         else:
             self.log.error("HiDRA control server is in failed state.")
-            self.log.debug("responce was: %s", responce)
+            self.log.debug("response was: %s", response)
             self.stop(unregister=False)
             sys.exit(1)
 

@@ -67,6 +67,16 @@ usage()
     echo "    --debug                 enable verbose output for debugging purposes"
 }
 
+load_ld_library_path()
+{
+    export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
+    if [ "${USE_EXE}" == "true" ]
+    then
+        export LD_LIBRARY_PATH=${BASEDIR}/lib:$LD_LIBRARY_PATH
+        export LD_LIBRARY_PATH=${BASEDIR}/lib/zmq/backend/cython:$LD_LIBRARY_PATH
+    fi
+}
+
 # for the environment to be set correctly these have to be loaded before the
 # parameters are parsed
 # e.g. SuSE: if this is done after ther parameters status results in failed
@@ -261,7 +271,7 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
         fi
 
     	printf "%-50s" "Starting ${NAME}..."
-        export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
+        load_ld_library_path
 
 	    ${DAEMON} ${DAEMON_ARGS} &
     	RETVAL=$?
@@ -344,7 +354,8 @@ elif [ -f /etc/debian_version ] ; then
     #
     do_start()
     {
-        export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
+        log_daemon_msg "Starting $NAME"
+        load_ld_library_path
 
         # Checked the PID file exists and check the actual status of process
         if [ -e $PIDFILE ]; then
@@ -508,7 +519,7 @@ elif [ -f /etc/SuSE-release ] ; then
     {
         printf "Starting $NAME"
 
-        export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
+        load_ld_library_path
 
         # Checking if the process is already running
         /sbin/checkproc $NAME > /dev/null && status="0" || status="$?"
@@ -596,7 +607,7 @@ fi
 do_start_debug()
 {
     printf "Starting $NAME"
-    export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
+    load_ld_library_path
     $DAEMON $DAEMON_ARGS
 }
 
@@ -615,7 +626,7 @@ case "$action" in
     status)
         do_status
         echo
-        export LD_LIBRARY_PATH=${BASEDIR}:$LD_LIBRARY_PATH
+        load_ld_library_path
         ${get_receiver_status} --config_file ${config_file}
         ;;
     #reload|force-reload)

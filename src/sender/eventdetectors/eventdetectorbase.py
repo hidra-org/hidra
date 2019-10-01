@@ -59,22 +59,33 @@ class EventDetectorBase(Base):
     Implementation of the event detector base class.
     """
 
-    def __init__(self, config, log_queue, logger_name, check_dep=True):
+    def __init__(self, eventdetector_base_config, name):
         """Initial setup
 
         Args:
-            config (dict): A dictionary containing the configuration
-                           parameters.
-            log_queue: The multiprocessing queue which is used for logging.
-            logger_name (str): The name to be used for the logger.
+            eventdetector_base_config: A dictionary containing all needed
+                                       parameters encapsulated into a dictionary
+                                       to prevent the event detector modules
+                                       being affected by adding and removing of
+                                       parameters.
+                                       eventdetector_base_args should contain the
+                                       following keys:
+                                           config (dict): A dictionary
+                                                          containing the
+                                                          configuration
+                                                          parameters.
+                                           log_queue: The multiprocessing queue
+                                                      which is used for logging.
+            name (str): The name to be used for the logger.
         """
 
         super().__init__()
 
-        self.log_queue = log_queue
-        self.log = utils.get_logger(logger_name, log_queue)
+        self.config_all = eventdetector_base_config["config"]
+        check_dep = eventdetector_base_config["check_dep"]
 
-        self.config_all = config
+        self.log_queue = eventdetector_base_config["log_queue"]
+        self.log = utils.get_logger(name, self.log_queue)
 
         # base_parameters
         self.required_params_base = {"eventdetector": ["type"]}
@@ -93,11 +104,11 @@ class EventDetectorBase(Base):
         self.required_params = []
 
     def check_config(self):
-        """Check that the configuration containes the nessessary parameters.
+        """Check that the configuration contains the necessary parameters.
 
         Raises:
             WrongConfiguration: The configuration has missing or
-                                wrong parameteres.
+                                wrong parameters.
         """
 
         if self.required_params and isinstance(self.required_params, list):
@@ -124,7 +135,7 @@ class EventDetectorBase(Base):
         if "monitored_dir" not in self.config_ed[self.ed_type]:
             return
 
-        # get rid of formating errors
+        # get rid of formatting errors
         self.config["monitored_dir"] = os.path.normpath(
             self.config["monitored_dir"]
         )

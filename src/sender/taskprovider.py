@@ -78,13 +78,6 @@ class TaskProvider(Base):
         self.stopped = None
         self.ignore_accumulated_events = None
 
-        try:
-            self._setup()
-        except Exception:
-            # to make sure that all sockets are closed
-            self.stop()
-            raise
-
         self.run()
 
     def _setup(self):
@@ -112,8 +105,13 @@ class TaskProvider(Base):
                       self.config["eventdetector"]["type"])
         eventdetector_m = import_module(self.config["eventdetector"]["type"])
 
-        self.eventdetector = eventdetector_m.EventDetector(self.config,
-                                                           self.log_queue)
+        self.eventdetector = eventdetector_m.EventDetector(
+            {
+                "config": self.config,
+                "log_queue": self.log_queue,
+                "check_dep": True
+            }
+        )
 
         self.keep_running = True
 
@@ -152,7 +150,7 @@ class TaskProvider(Base):
             sock_type=zmq.PUSH,
             sock_con="bind",
             endpoint=self.endpoints.router_bind,
-            # this sometimes blocks indefinitly if ther are problems
+            # this sometimes blocks indefinitely if ther are problems
             # with sending (e.g. when wrong config on datadispatcher)
             socket_options=[[zmq.SNDTIMEO, self.timeout]]
         )
@@ -163,6 +161,12 @@ class TaskProvider(Base):
     def run(self):
         """Wrapper around the _run method to detect if it has stopped.
         """
+        try:
+            self._setup()
+        except Exception:
+            # to make sure that all sockets are closed
+            self.stop()
+            raise
 
         self.stopped = False
         try:
