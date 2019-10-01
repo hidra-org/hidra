@@ -25,8 +25,6 @@ This module implements an event detector based on the inotify library usable
 for systems running inotify.
 """
 
-# pylint: disable=global-statement
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -66,12 +64,11 @@ class EventDetector(EventDetectorBase):
     inotifyx library.
     """
 
-    def __init__(self, config, log_queue):
+    def __init__(self, eventdetector_base_config):
 
-        EventDetectorBase.__init__(self,
-                                   config,
-                                   log_queue,
-                                   "inotify_events")
+        EventDetectorBase.__init__(self, eventdetector_base_config,
+                                   name=__name__)
+
         # sets
         #   self.config_all - all configurations
         #   self.config_ed - the config of the event detector
@@ -111,9 +108,13 @@ class EventDetector(EventDetectorBase):
         self.required_params = ["monitored_dir",
                                 "fix_subdirs",
                                 ["monitored_events", dict],
-                                "event_timeout",
+                                #"event_timeout",
                                 "history_size",
                                 "use_cleanup"]
+
+        # to keep backwards compatibility to old config files
+        if not self.config_all["general"]["config_file"].endswith("conf"):
+            self.required_params.append("event_timeout")
 
         if self.config["use_cleanup"]:
             self.required_params += ["time_till_closed", "action_time"]
@@ -124,7 +125,12 @@ class EventDetector(EventDetectorBase):
         Sets static configuration parameters creates ring buffer and starts
         cleanup thread.
         """
-        self.timeout = self.config["event_timeout"]
+
+        try:
+            self.timeout = self.config["event_timeout"]
+        except KeyError:
+            # when using old config file type
+            self.timeout = 1
 
         watch_dirs = [
             os.path.normpath(

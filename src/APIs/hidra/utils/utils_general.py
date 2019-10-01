@@ -21,7 +21,7 @@
 #
 
 """
-This module provides utilities use thoughout different parts of hidra.
+This module provides utilities use throughout different parts of hidra.
 """
 
 from __future__ import (absolute_import,
@@ -176,7 +176,7 @@ def check_existance(path):
         path (str): Absolute path of the directory or file.
 
     Raises:
-        WrongConfigruation: when file or dir is not set or does not exist.
+        WrongConfiguration: when file or dir is not set or does not exist.
     """
 
     if path is None:
@@ -209,24 +209,30 @@ def check_writable(file_to_check):
         sys.exit(1)
 
 
-def check_version(version, log):
-    """ Compares version depending on the minor releases.
+def check_version(version, log, check_minor=False):
+    """ Compares version depending on the major releases.
 
     Args:
         version (str): version string of the form
                        <major release>.<minor release>.<patch level>
         log: logging handler
+        check_minor: Instead of checking the major release check for minor ones.
     """
-
-    v_remote = version.rsplit(".", 1)[0]
-    v_local = __version__.rsplit(".", 1)[0]
     log.debug("remote version: %s, local version: %s", version, __version__)
 
+    if check_minor:
+        check_index = 1
+    else:
+        check_index = 2
+
+    v_remote = version.rsplit(".", check_index)[0]
+    v_local = __version__.rsplit(".", check_index)[0]
+
     if v_remote < v_local:
-        log.info("Version of receiver is lower. Please update receiver.")
+        log.info("Remote version is lower. Please update remote version.")
         return False
     elif v_remote > v_local:
-        log.info("Version of receiver is higher. Please update sender.")
+        log.info("Remote version is higher. Please update your local version.")
         return False
     else:
         return True
@@ -402,7 +408,7 @@ def log_user_change(log, user_was_changed, user_info):
 
     Args:
         log: log handler
-        uis_changed_flag: flag if the change
+        user_was_changed: flag if the change
         user_info: a password database entry of the user name changed to.
     """
 
@@ -448,7 +454,7 @@ def get_service_manager(systemd_prefix, service_name):
     Determines which kind of service manager system to use (systemd or init).
 
     Return:
-        A string if serice manager lookup was successful:
+        A string if service manager lookup was successful:
             "systemd": on a modern linux system using systemd
             "init": on a older system using init scripts
         And None if it could not be determined.
@@ -646,6 +652,6 @@ def set_by_path(root, items, value):
     Args:
         root: The object (e.g. dictionary) to set values to
         items:The list of keys used to reach the requested leaf.
-        value: Thev alue to set the leaf to.
+        value: The value to set the leaf to.
     """
     get_by_path(root, items[:-1])[items[-1]] = value

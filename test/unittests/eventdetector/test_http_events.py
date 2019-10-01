@@ -57,25 +57,22 @@ class TestEventDetector(EventDetectorTestBase):
 #        det_ip          = "192.168.138.52"  # haspp11e1m
 
         self.module_name = "http_events"
-        self.config_module = {
+        config_module = {
             "det_ip": "asap3-mon",
             "det_api_version": "1.6.0",
             "history_size": 1000,
             "fix_subdirs": ["local"],
             }
 
-        self.eventdetector_config = {
-            "eventdetector": {
-                "type": self.module_name,
-                self.module_name: self.config_module
-            }
+        self.ed_base_config["config"]["eventdetector"] = {
+            "type": self.module_name,
+            self.module_name: config_module
         }
 
         self.target_base_path = "http://{}/data".format(
-            socket.gethostbyname(self.config_module["det_ip"]))
+            socket.gethostbyname(config_module["det_ip"]))
 
-        self.eventdetector = EventDetector(self.eventdetector_config,
-                                           self.log_queue)
+        self.eventdetector = EventDetector(self.ed_base_config)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.

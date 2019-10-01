@@ -121,19 +121,23 @@ class SignalHandler(Base):
         self.request_fw_socket = None
         self.request_socket = None
 
-        self.setup(log_queue, context, whitelist, ldapuri)
+        self.init_args={
+            "whitelist": whitelist,
+            "ldapuri": ldapuri,
+            "context": context,
+            "log_queue": log_queue
+        }
 
-        self.exec_run()
+        self.run()
 
-    def setup(self, log_queue, context, whitelist, ldapuri):
+    def setup(self):
         """Initializes parameters and creates sockets.
-
-        Args:
-            log_queue: Logging queue used to synchronize log messages.
-            context: ZMQ context to create the socket on.
-            whitelist: List of hosts allowed to connect.
-            ldapuri: Ldap node and port needed to check whitelist.
         """
+
+        whitelist = self.init_args["whitelist"]
+        ldapuri = self.init_args["ldapuri"]
+        context = self.init_args["context"]
+        log_queue = self.init_args["log_queue"]
 
         # Send all logs to the main process
         self.log = utils.get_logger("SignalHandler", log_queue)
@@ -244,12 +248,14 @@ class SignalHandler(Base):
             self.poller.register(self.com_socket, zmq.POLLIN)
             self.poller.register(self.request_socket, zmq.POLLIN)
 
-    def exec_run(self):
+    def run(self):
         """Calling run method and react to exceptions.
         """
 
+        self.setup()
+
         try:
-            self.run()
+            self._run()
         except zmq.ZMQError:
             self.log.error("Stopping signalHandler due to ZMQError.",
                            exc_info=True)
@@ -261,10 +267,10 @@ class SignalHandler(Base):
         finally:
             self.stop()
 
-    def run(self):
+    def _run(self):
         """React to incoming signals.
 
-        Possible incomming signals:
+        Possible incoming signals:
         com_socket
             (start/stop command from external)
             START_STREAM: Add request for all incoming data packets
@@ -370,6 +376,8 @@ class SignalHandler(Base):
                                        self.vari_requests)
                         self.log.debug("registered_queries: %s",
                                        self.registered_queries)
+                        self.log.debug("registered_streams: %s",
+                                       self.registered_streams)
 
                     else:
                         self.log.debug("in_message=%s", in_message)
@@ -516,7 +524,7 @@ class SignalHandler(Base):
                         for request_set in self.vari_requests
                     ]
 
-                    self.log.info("Remove all occurences from %s from "
+                    self.log.info("Remove all occurrences from %s from "
                                   "variable request list.", socket_id)
                 else:
                     self.log.info("Request not supported.")
@@ -779,7 +787,7 @@ class SignalHandler(Base):
         Args:
             signal: Signal to send after finishing
             appid: The application ID to identify where the signal came from.
-            socket_ids: Socket ids to be deregistered.
+            socket_ids: Socket ids to be de-registered.
             registered_ids: Currently registered socket ids.
             vari_requests: List of open requests (query mode).
             perm_requests: List of next node number to serve (stream mode).
@@ -830,7 +838,7 @@ class SignalHandler(Base):
 
                     try:
                         targets.remove(reg_id)
-                        self.log.debug("Deregister %s", socket_id)
+                        self.log.debug("De-register %s", socket_id)
                     except ValueError:
                         # reg_id is not contained in targets
                         # -> nothing to remove
@@ -858,7 +866,7 @@ class SignalHandler(Base):
                                 if socket_id != socket_conf[0]
                             ]
 
-                            self.log.debug("Remove all occurences from %s "
+                            self.log.debug("Remove all occurrences from %s "
                                            "from variable request list.",
                                            socket_id)
 

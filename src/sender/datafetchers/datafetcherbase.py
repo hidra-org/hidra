@@ -47,7 +47,6 @@ except ImportError:
     # only avaliable for Python3
     from pathlib import Path
 
-#import __init__ as init  # noqa F401 # pylint: disable=unused-import
 from base_class import Base
 import hidra.utils as utils
 
@@ -73,34 +72,48 @@ class DataFetcherBase(Base, ABC):
     Implementation of the data fetcher base class.
     """
 
-    def __init__(self,
-                 config,
-                 log_queue,
-                 fetcher_id,
-                 logger_name,
-                 context,
-                 lock,
-                 check_dep=True):
+    def __init__(self, datafetcher_base_config, name):
         """Initial setup
 
         Checks if the required parameters are set in the configuration for
         the base setup.
 
         Args:
-            config (dict): A dictionary containing the configuration
-                           parameters.
-            log_queue: The multiprocessing queue which is used for logging.
-            fetcher_id (int): The ID of this datafetcher instance.
-            logger_name (str): The name to be used for the logger.
-            context: The ZMQ context to be used.
-            lock: A threading lock object to handle control signal access.
+            datafetcher_base_config: A dictionary containing all needed
+                                     parameters encapsulated into a dictionary
+                                     to prevent the data fetcher modules to be
+                                     affected by adding and removing of
+                                     parameters.
+                                     datafetcher_base_args should contain the
+                                     following keys:
+                                        config (dict): A dictionary containing
+                                                       the configuration
+                                                       parameters.
+                                        log_queue: The multiprocessing queue
+                                                   which is used for logging.
+                                        fetcher_id (int): The ID of this
+                                                          datafetcher instance.
+                                        context: The ZMQ context to be used.
+                                        lock: A threading lock object to handle
+                                              control signal access.
+                                        stop_request: A threading event to
+                                                      notify the data fetcher to
+                                                      stop.
+            name (str): The name of the derived data fetcher module. This is
+                        used for logging.
         """
         super().__init__()
 
-        self.log_queue = log_queue
-        self.log = utils.get_logger(logger_name, self.log_queue)
+        self.log_queue = datafetcher_base_config["log_queue"]
+        self.config_all = datafetcher_base_config["config"]
+        self.fetcher_id = datafetcher_base_config["fetcher_id"]
+        self.context = datafetcher_base_config["context"]
+        self.lock = datafetcher_base_config["lock"]
+        self.stop_request = datafetcher_base_config["stop_request"]
+        check_dep = datafetcher_base_config["check_dep"]
+        logger_name = "{}-{}".format(name, self.fetcher_id)
 
-        self.config_all = config
+        self.log = utils.get_logger(logger_name, self.log_queue)
 
         # base_parameters
         self.required_params_base = {
@@ -130,10 +143,8 @@ class DataFetcherBase(Base, ABC):
         else:
             self.config = {}
 
-        self.fetcher_id = fetcher_id
-        self.context = context
-        self.lock = lock
         self.cleaner_job_socket = None
+        self.confirmation_topic = None
 
         self.source_file = None
         self.target_file = None
@@ -146,14 +157,14 @@ class DataFetcherBase(Base, ABC):
         self.base_setup()
 
     def check_config(self, print_log=False, check_module_config=True):
-        """Check that the configuration containes the nessessary parameters.
+        """Check that the configuration contains the necessary parameters.
 
         Args:
             print_log (boolean, optional): If a summary of the configured
                                            parameters should be logged.
         Raises:
             WrongConfiguration: The configuration has missing or
-                                wrong parameteres.
+                                wrong parameters.
         """
 
         if self.required_params and isinstance(self.required_params, list):
@@ -215,12 +226,12 @@ class DataFetcherBase(Base, ABC):
 
         Args:
             targets: A list of targets where to send the data to.
-                     Each taget has is of the form:
+                     Each target is of the form:
                         - target: A ZMQ endpoint to send the data to.
                         - prio (int): With which priority this data should be
                                       sent:
-                                      - 0 is highes priority with blocking
-                                      - all other prioirities are nonblocking
+                                      - 0 is highest priority with blocking
+                                      - all other priorities are non-blocking
                                         but sorted numerically.
                         - send_type: If the data (means payload and metadata)
                                      or only the metadata should be sent.
@@ -253,7 +264,7 @@ class DataFetcherBase(Base, ABC):
                             sock_con="connect",
                             endpoint=endpoint
                         )
-                    except:
+                    except Exception:
                         self.log.debug("Raising DataHandling error",
                                        exc_info=True)
                         msg = ("Failed to start socket (connect): '{}'"
@@ -297,7 +308,9 @@ class DataFetcherBase(Base, ABC):
                                            "has not been sent yet, waiting...",
                                            chunk_number, self.source_file)
 
-                            while not tracker.done and self.keep_running:
+                            while (not tracker.done
+                                   and self.keep_running
+                                   and not self.stop_request.is_set()):
                                 try:
                                     tracker.wait(timeout)
                                 except zmq.error.NotDone:
@@ -318,7 +331,7 @@ class DataFetcherBase(Base, ABC):
                                                "waiting...done",
                                                chunk_number, self.source_file)
 
-                except:
+                except Exception:
                     self.log.debug("Raising DataHandling error", exc_info=True)
                     raise DataHandlingError(
                         "Sending (metadata of) message part %s from file '%s' "
@@ -399,11 +412,13 @@ class DataFetcherBase(Base, ABC):
 
         sleep_time = 0.2
 
-        # controle loop with variable instead of break/continue commands to be
+        # control loop with variable instead of break/continue commands to be
         # able to reset control_signal
         keep_checking_signal = True
 
-        while keep_checking_signal and self.keep_running:
+        while (keep_checking_signal
+               and self.keep_running
+               and not self.stop_request.is_set()):
 
             if self.control_signal[0] == "SLEEP":
                 # go to sleep, but check every once in
@@ -411,7 +426,7 @@ class DataFetcherBase(Base, ABC):
                 time.sleep(sleep_time)
 
                 # do not reset control_signal to be able to check on it
-                # reseting it woul mean "no signal set -> sleep"
+                # resetting it would mean "no signal set -> sleep"
                 continue
 
             elif self.control_signal[0] == "WAKEUP":
@@ -443,7 +458,7 @@ class DataFetcherBase(Base, ABC):
         """Generates a file id consisting of relative path and file name
 
         Args:
-            metadata (dict): The dictionary with the metedata of the file.
+            metadata (dict): The dictionary with the metadata of the file.
         """
         # generate file identifier
         if (metadata["relative_path"] == ""
@@ -510,7 +525,7 @@ class DataFetcherBase(Base, ABC):
                     [[<node_name>:<port>, <priority>, <request_type>], ...]
                 where
                     <request_type>: u'data' or u'metadata'
-            metadata (dict): extendet metadata dictionary filled by function
+            metadata (dict): extended metadata dictionary filled by function
                              get_metadata
             open_connections (dict)
 

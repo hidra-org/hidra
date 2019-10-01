@@ -60,15 +60,10 @@ class DataFetcher(DataFetcherBase):
     Implementation of the data fetcher to handle files.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context, lock):
+    def __init__(self, datafetcher_base_config):
 
-        DataFetcherBase.__init__(self,
-                                 config,
-                                 log_queue,
-                                 fetcher_id,
-                                 "file_fetcher-{}".format(fetcher_id),
-                                 context,
-                                 lock)
+        DataFetcherBase.__init__(self, datafetcher_base_config,
+                                 name=__name__)
 
         # base class sets
         #   self.config_all - all configurations
@@ -122,7 +117,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata to extend.
+            metadata (dict): The dictionary with the metadata to extend.
         """
 
         # Build source file
@@ -159,6 +154,7 @@ class DataFetcher(DataFetcherBase):
                 #        "chunksize"      : ...
                 #        }
                 if self.is_windows:
+                    # TODO use pathlib here instead
                     # path convertions is save, see:
                     # pylint: disable=line-too-long
                     # http://softwareengineering.stackexchange.com/questions/245156/is-it-safe-to-convert-windows-file-paths-to-unix-file-paths-with-a-simple-replac  # noqa E501
@@ -172,7 +168,9 @@ class DataFetcher(DataFetcherBase):
                 metadata["file_create_time"] = file_create_time
                 metadata["chunksize"] = self.config_df["chunksize"]
                 if self.config_df["remove_data"] == "with_confirmation":
-                    metadata["confirmation_required"] = self.confirmation_topic
+                    metadata["confirmation_required"] = (
+                        self.confirmation_topic.decode()
+                    )
                 else:
                     metadata["confirmation_required"] = False
 
@@ -186,7 +184,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
@@ -242,7 +240,8 @@ class DataFetcher(DataFetcherBase):
 
                 chunk_payload = []
                 chunk_payload.append(
-                    json.dumps(chunk_metadata).encode("utf-8"))
+                    json.dumps(chunk_metadata).encode("utf-8")
+                )
                 chunk_payload.append(file_content)
             except Exception:
                 self.log.error("Unable to pack multipart-message for file "
@@ -349,7 +348,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
@@ -360,7 +359,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
@@ -395,11 +394,11 @@ class DataFetcher(DataFetcherBase):
                 # round up the division result
                 n_chunks = -(-filesize // self.config_df["chunksize"])
 
-            self.cleaner_job_socket.send_multipart(
-                [metadata["source_path"].encode("utf-8"),
-                 file_id.encode("utf-8"),
-                 str(n_chunks)]
-            )
+            self.cleaner_job_socket.send_multipart([
+                metadata["source_path"].encode("utf-8"),
+                file_id.encode("utf-8"),
+                str(n_chunks).encode("utf-8")
+            ])
             self.log.debug("Forwarded to cleaner %s", file_id)
 
         # send message to metadata targets
@@ -424,7 +423,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
@@ -468,7 +467,7 @@ class DataFetcher(DataFetcherBase):
                               self.source_file)
             except OSError as err:
                 if type(err).__name__ == "WindowsError":
-                    self.log.error("Windows Error occured.")
+                    self.log.error("Windows Error occurred.")
 
                     self._get_file_handle_info()
                     self._retry_remove()

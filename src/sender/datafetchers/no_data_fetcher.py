@@ -40,19 +40,14 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 class DataFetcher(DataFetcherBase):
     """
-    Implementation of data fetcher to only distibute file metadata.
+    Implementation of data fetcher to only distribute file metadata.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context, lock):
+    def __init__(self, datafetcher_base_config):
 
-        DataFetcherBase.__init__(self,
-                                 config,
-                                 log_queue,
-                                 fetcher_id,
-                                 "no_data_fetcher-{}".format(fetcher_id),
-                                 context,
-                                 lock,
-                                 check_dep=False)
+        datafetcher_base_config["check_dep"] = False
+        DataFetcherBase.__init__(self, datafetcher_base_config,
+                                 name=__name__)
 
         # base class sets
         #   self.config_all - all configurations
@@ -73,7 +68,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata to extend.
+            metadata (dict): The dictionary with the metadata to extend.
         """
 
         # Build source file
@@ -95,7 +90,7 @@ class DataFetcher(DataFetcherBase):
                 metadata["chunksize"] = None
 
                 self.log.debug("metadata = %s", metadata)
-            except:
+            except Exception:
                 self.log.error("Unable to assemble multi-part message.")
                 raise
 
@@ -108,7 +103,7 @@ class DataFetcher(DataFetcherBase):
 
         if targets_data:
             self.log.error("Sending data directly is not supported for this "
-                           "data fertcher.")
+                           "data fetcher.")
 
         targets_metadata = [i for i in targets if i[2] == "metadata"]
 

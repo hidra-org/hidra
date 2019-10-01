@@ -25,8 +25,6 @@ This module implements an event detector to connect multiple hidra instances
 in series.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -83,7 +81,7 @@ def get_endpoints(config, ipc_addresses):
     Args:
         config (dict): A dictionary containing the IPs to bind and to connect
                        to as well as the ports. Usually con_ip is teh DNS name.
-        ipc_addresses: The addresses used for the interprocess communication
+        ipc_addresses: The addresses used for the inter-process communication
                        (ipc) protocol.
     Returns:
         An Endpoints object containing the bind and connection endpoints.
@@ -120,7 +118,7 @@ def get_endpoints(config, ipc_addresses):
 
 class MonitorDevice(object):
     """
-    A device to monitore a ZMQ queue for incoming data but excluding
+    A device to monitor a ZMQ queue for incoming data but excluding
     'ALIVE_TEST' messages.
     """
 
@@ -147,7 +145,7 @@ class MonitorDevice(object):
     def run(self):
         """Forward messages received on the in_socket to the out_socket.
 
-        In addition to forwarding the messages a notifycation is sent to the
+        In addition to forwarding the messages a notification is sent to the
         mon_socket. And 'ALIVE_TEST' messages are ignored in total.
         """
 
@@ -183,12 +181,11 @@ class EventDetector(EventDetectorBase):
     hidra instance.
     """
 
-    def __init__(self, config, log_queue):
+    def __init__(self, eventdetector_base_config):
 
-        EventDetectorBase.__init__(self,
-                                   config,
-                                   log_queue,
-                                   "hidra_events")
+        EventDetectorBase.__init__(self, eventdetector_base_config,
+                                   name=__name__)
+
         # base class sets
         #   self.config_all - all configurations
         #   self.config_ed - the config of the event detector

@@ -72,11 +72,9 @@ class TestEventDetector(EventDetectorTestBase):
             "action_time": 1  # in s
         }
 
-        self.eventdetector_config = {
-            "eventdetector": {
-                "type": self.module_name,
-                self.module_name: self.config_module
-            }
+        self.ed_base_config["config"]["eventdetector"] = {
+            "type": self.module_name,
+            self.module_name: self.config_module
         }
 
         self.start = 100
@@ -104,8 +102,7 @@ class TestEventDetector(EventDetectorTestBase):
     def _start_eventdetector(self):
         """Sets up the event detector.
         """
-        self.eventdetector = EventDetector(self.eventdetector_config,
-                                           self.log_queue)
+        self.eventdetector = EventDetector(self.ed_base_config)
 
     def test_single_file(self):
         """Simulate single file creation.

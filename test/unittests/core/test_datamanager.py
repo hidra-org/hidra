@@ -111,7 +111,8 @@ class TestDataManager(TestBase):
                 "username": pwd.getpwuid(os.geteuid()).pw_name,
                 "verbose": False,
                 "whitelist": None,
-                "use_statserver": False
+                "use_statserver": False,
+                "config_file": "something_not_config.yaml"
             },
             "eventdetector": {
                 "type": used_eventdetector,

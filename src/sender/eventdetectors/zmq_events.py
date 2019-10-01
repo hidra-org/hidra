@@ -25,8 +25,6 @@ This module implements an event detector to be used together with the hidra
 ingest API.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -84,7 +82,7 @@ def get_ipc_addresses(config):
     to None.
 
     Args:
-        config (dict): A dictionary conaining the ipc base directory and the
+        config (dict): A dictionary containing the ipc base directory and the
                        main PID.
     Returns:
         An IpcAddresses object.
@@ -106,7 +104,7 @@ def get_endpoints(ipc_addresses, tcp_addresses):
     """Configures the ZMQ endpoints depending on the protocol.
 
     Args:
-        ipc_addresses: The endpoints used for the interprocess communication
+        ipc_addresses: The endpoints used for the inter-process communication
                        (ipc) protocol.
         tcp_addresses: The endpoints used for communication over TCP.
     Returns:
@@ -137,7 +135,7 @@ def get_endpoints(ipc_addresses, tcp_addresses):
 #    if not utils.is_windows():
 #        eventdet_bind = "{}:{}".format(config["ext_ip"],
 #                                       config["eventdetector_port"]),
-#        eventdet_con = "{}:{}".formau(config["con_ip"],
+#        eventdet_con = "{}:{}".format(config["con_ip"],
 #                                      config["eventdetector_port"]),
 #    else:
 #        ipc_ip = "{}/{}".format(config["ipc_dir"],
@@ -177,7 +175,7 @@ class EventDetector(EventDetectorBase):
     Implementation of the event detector to be used with the ingest API.
     """
 
-    def __init__(self, config, log_queue):
+    def __init__(self, eventdetector_base_config):
 
         # needs to be initialized before parent init
         # reason: if the latter fails stop would otherwise run into problems
@@ -185,10 +183,8 @@ class EventDetector(EventDetectorBase):
         self.context = None
         self.event_socket = None
 
-        EventDetectorBase.__init__(self,
-                                   config,
-                                   log_queue,
-                                   "zmq_events")
+        EventDetectorBase.__init__(self, eventdetector_base_config,
+                                   name=__name__)
 
         # base class sets
         #   self.config_all - all configurations

@@ -25,8 +25,6 @@ This module implements a data fetcher to connect multiple hidra instances
 in series.
 """
 
-# pylint: disable=broad-except
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -47,7 +45,7 @@ class DataFetcher(DataFetcherBase):
     hidra instance.
     """
 
-    def __init__(self, config, log_queue, fetcher_id, context, lock):
+    def __init__(self, datafetcher_base_config):
         """Initial setup
 
         Checks if all required parameters are set in the configuration
@@ -56,13 +54,8 @@ class DataFetcher(DataFetcherBase):
         self.f_descriptors = dict()
         self.transfer = None
 
-        DataFetcherBase.__init__(self,
-                                 config,
-                                 log_queue,
-                                 fetcher_id,
-                                 "hidra_fetcher-{}".format(fetcher_id),
-                                 context,
-                                 lock)
+        DataFetcherBase.__init__(self, datafetcher_base_config,
+                                 name=__name__)
 
         # base class sets
         #   self.config_all - all configurations
@@ -85,7 +78,7 @@ class DataFetcher(DataFetcherBase):
 
     def set_required_params(self):
         """
-        Defines the parameters to be in configuration to run this datafetcher.
+        Defines the parameters to be in configuration to run this data fetcher.
         Depending if on Linux or Windows other parameters are required.
         """
 
@@ -133,7 +126,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata to extend.
+            metadata (dict): The dictionary with the metadata to extend.
         """
 
         timeout = 10000
@@ -146,8 +139,8 @@ class DataFetcher(DataFetcherBase):
                 or metadata["filename"] != self.metadata_r["filename"]):
             self.log.error("Received metadata do not match data")
 
-        # Use received data to prevent missmatch of metadata and data
-        # TODO handle case if file type requesed by target does not match
+        # Use received data to prevent mismatch of metadata and data
+        # TODO handle case if file type requested by target does not match
 
         # pylint: disable=attribute-defined-outside-init
 
@@ -186,7 +179,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
@@ -241,7 +234,7 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
                                      connections.
         """
@@ -292,7 +285,7 @@ class DataFetcher(DataFetcherBase):
         """Implementation of the abstract method stop.
         """
 
-        # cloes base class zmq sockets
+        # Close base class zmq sockets
         self.close_socket()
 
         # Close open file handler to prevent file corruption
@@ -300,6 +293,6 @@ class DataFetcher(DataFetcherBase):
             self.f_descriptors[target_file].close()
             del self.f_descriptors[target_file]
 
-        # close zmq sockets
+        # Close zmq sockets
         if self.transfer is not None:
             self.transfer.stop()

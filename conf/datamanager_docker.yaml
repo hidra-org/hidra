@@ -136,7 +136,7 @@ eventdetector:
         # Kafka topic to register for events
         kafka_topic: "kuhnm_test"
 
-        # Detector identifers used to distinguished from which detector a file
+        # Detector identifiers used to distinguished from which detector a file
         # comes from. There are 2 variants:
         # - list of the detector ids as strings
         #   e.g. ["DET0", "DET1", "DET2"]
@@ -184,10 +184,10 @@ datafetcher:
     #                     datafetcher_type is file_fetcher or http_fetcher;
     #                     data is removed from the source only after the target
     #                     sent a verification.
-    #                     In case that a file could not be transfered, it is
+    #                     In case that a file could not be transferred, it is
     #                     not removed from the source. Here the datamanager
     #                     does not go in error state and new files are
-    #                     transfered if possible.
+    #                     transferred if possible.
     remove_data: True
 
     # Flag describing if the data should be stored in local_target

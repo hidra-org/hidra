@@ -95,9 +95,11 @@ class TestDataDispatcher(TestBase):
 
         self.receiving_ports = ["6005", "6006"]
 
-    def test_datadispatcher_wrong_config(self):
+    def disable_test_datadispatcher_wrong_config(self):
         """Simulate wrong configuration.
         """
+        # This is actually testing the config of the file fetcher located in the
+        # datahandler and not the datadispatcher
 
         config = copy.deepcopy(self.datadispatcher_config)
         endpoints = self.config["endpoints"]
@@ -123,8 +125,8 @@ class TestDataDispatcher(TestBase):
         with self.assertRaises(utils.WrongConfiguration):
             datadispatcher_pr = DataDispatcher(**kwargs)
 
-            # wait till Datadisaptcher is fully started, otherwise control
-            # messages are not reseived
+            # wait till Datadispatcher is fully started, otherwise control
+            # messages are not received
             time.sleep(0.05)
 
             self.log.info("send exit signal")

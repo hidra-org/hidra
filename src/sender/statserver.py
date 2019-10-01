@@ -60,7 +60,6 @@ class StatServer(Base):
         self.stats_collect_socket = None
         self.stats_expose_socket = None
 
-        self._setup()
         self.run()
 
     def _setup(self):
@@ -105,6 +104,7 @@ class StatServer(Base):
     def run(self):
         """Collect stats from and exposes them.
         """
+        self._setup()
 
         while self.keep_running:
             socks = dict(self.poller.poll())

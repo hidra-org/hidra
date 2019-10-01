@@ -1,4 +1,27 @@
 # develop
+# 4.1.1
+
+- Fix RPM package building
+- Move ext_ip into base_sender config
+- Fix bumbversion script
+- Fix backwards compatibility to yaml config type
+- Fix with_confirmation when mixing python2 and 3
+- Fix debian package building
+- Fix data removal for multi chunk files
+- Fix dispatcher name in logging
+- Add pid of hanging process into log
+- Simplify parameter handover in custom modules
+- Fix misspellings and typos
+- Fix pid display if hanging
+- Fix hanging of datadispatcher on shutdown
+- Fix version check between remote and local version
+- Fix CPU usage of watchdog events (on linux)
+- Fix freezing into executable
+- Add file name information to watchdog event log
+- Add information about registered streams to log
+- Add option choose tag in debian build script
+- Fix job forwarding from http events to cleaner
+
 # 4.1.0
 
 ## general
@@ -6,7 +29,7 @@
 - Use hierarchical config format for sender, receiver and control server
 - Changed default config to yaml
 - Improve test suite to handle individual modules
-- Remove scripts to build SuSE packages via docker (new kernels incompatible with SUSE 10)
+- Remove scripts to build SuSE packages via docker (new kernels incompatible with SuSE 10)
 - Fix python3 compatibility
 - Change \__version__ to str
 - Fix hidra usage via docker
@@ -64,6 +87,17 @@
 - Transfer: Checking chunk number before opening file
 - Enable port receiving via transfer api
 - Fix double query for request port in transfer API
+
+# 4.0.25
+
+- Fix debian package building via docker
+- Fix freezing into executable
+- Remove user change as default value from sender
+
+# 4.0.24
+
+- Fix version check between remote and local version
+- Fix CPU usage of watchdog events
 
 # 4.0.23
 
@@ -162,7 +196,7 @@
 
 - Fixed subdir creation in http_fetcher
 - Fixed get in transfer API if timeout is reached
-- Fixed debian package nameing
+- Fixed debian package naming
 - Fixed log dir permissions for debian packages
 - Fixed building script for suse 10
 - Added building script for debian
@@ -197,7 +231,7 @@
 # 4.0.4
 
 - Added automatic freeze build for suse 10 in docker container
-- Changed default value for whitlist on Windows to localhost
+- Changed default value for whitelist on Windows to localhost
 - Fixed start up if fix_subdir cannot be created
 - Fixed windows paths parsing in config
 - Fixed endpoints in forwarder device

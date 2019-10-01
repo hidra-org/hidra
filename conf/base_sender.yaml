@@ -25,7 +25,7 @@ general:
     ext_ip: 0.0.0.0
     #ext_ip: asap3-p00
 
-    # Use an additional process to collect all contig parameter
+    # Use an additional process to collect all config parameter
     use_statserver: False
 
 eventdetector:
@@ -37,13 +37,13 @@ eventdetector:
     # (needed if event_detector_type is zmq_events)
     event_det_port: 50003
 
-    # Subdirectories which should not be created when create_fix_subdirs option is
-    # enabled
+    # Subdirectories which should not be created when create_fix_subdirs option
+    # is enabled
     dirs_not_to_create: []
 
 datafetcher:
-    # If "zmq_fetcher" is specified as data_fetcher_type it needs a port to listen
-    # to
+    # If "zmq_fetcher" is specified as data_fetcher_type it needs a port to
+    # listen to
     # (needed if event_detector_type is zmq_events or if on windows and
     #  event_detector_type is http_events)
     data_fetcher_port: 50010
@@ -62,7 +62,8 @@ datafetcher:
     #1024*1024*1024
     #chunksize: 1073741824
 
-    # ZMQ-router port which coordinates the load-balancing to the worker-processes
+    # ZMQ-router port which coordinates the load-balancing to the
+    # worker-processes
     # (needed if running on Windows)
     router_port: 50004
 
