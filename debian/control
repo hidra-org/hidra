@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Manuela Kuhn <manuela.kuhn@desy.de>
 Build-Depends: debhelper (>= 9.0.0), python, dh-python, python-dev, python-setuptools
 Standards-Version: 4.1.4
-Homepage: https://stash.desy.de/projects/LSDMA/repos/hidra/browse
+Homepage: https://github.com/hidra-org/hidra
 
 Package: hidra
 Architecture: any

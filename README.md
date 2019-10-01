@@ -27,7 +27,7 @@ The project is licensed under __AGPL v3__.
 * pathlib2 (when using python 2)
 
 ### Installation and Usage
-* Download and unpack or clone HiDRA from [Stash](https://stash.desy.de/projects/HIDRA/repos/hidra/browse)
+* Download and unpack or clone HiDRA from [Github](https://github.com/hidra-org/hidra)
 * Configure HiDRA as described in the [Datamanager](https://confluence.desy.de/display/hidra/Datamanager) page
 * Start with verbose mode displayed on screen
 ```
@@ -45,7 +45,7 @@ The project is licensed under __AGPL v3__.
 * pathlib2 (when using python 2)
 
 ### Installation and Usage
-* Download and unpack or clone HiDRA from [Stash](https://stash.desy.de/projects/HIDRA/repos/hidra/browse)
+* Download and unpack or clone HiDRA from [Github](https://github.com/hidra-org/hidra)
 * Configure HiDRA as described in the [Datareceiver](https://confluence.desy.de/display/hidra/Datareceiver) page
 * Start with verbose mode displayed on screen
 ```

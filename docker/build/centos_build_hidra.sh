@@ -1,8 +1,9 @@
 #!/bin/bash
 
-VERSION=$(curl -l "https://stash.desy.de/projects/HIDRA/repos/hidra/raw/src/APIs/hidra/_version.py?at=refs%2Fheads%2Fmaster")
+URL="https://raw.githubusercontent.com/hidra-org/hidra/master/src/APIs/hidra/utils/_version.py"
+VERSION=$(curl -L $URL)
 # cut of the first characters
-VERSION=${VERSION:16}
+VERSION=${VERSION:15}
 VERSION=${VERSION%?}
 
 MAPPED_DIR=/tmp/hidra_builds/${VERSION}/centos/rpmbuild
@@ -27,7 +28,7 @@ mkdir -p ${MAPPED_DIR}/SPECS
 mkdir -p ${MAPPED_DIR}/SRPMS
 
 # get sources
-git clone --branch "v$VERSION" https://stash.desy.de/scm/hidra/hidra.git
+git clone --branch "v$VERSION" https://github.com/hidra-org/hidra.git
 cd hidra
 git archive --format zip -o hidra-v${VERSION}.zip v${VERSION}
 mv hidra-v${VERSION}.zip ${MAPPED_DIR}/SOURCES

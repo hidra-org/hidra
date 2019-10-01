@@ -4,7 +4,7 @@ Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
 License:	AGPLv3
-URL:		https://stash.desy.de/projects/HIDRA/repos/hidra
+URL:		https://github.com/hidra-org/hidra
 Source0:	hidra-v%{version}.zip
 #Source1:	hidra.service
 
