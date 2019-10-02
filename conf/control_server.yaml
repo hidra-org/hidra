@@ -25,7 +25,9 @@ hidraconfig_static:
         log_path: *log_path
         log_size: 10485760
         com_port: 50000
+        # com_port: random
         request_port: 50001
+        # request_port: random
         use_statserver: False
     eventdetector:
         type: http_events
