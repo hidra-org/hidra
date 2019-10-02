@@ -1071,12 +1071,16 @@ class ControlServer(utils.Base):
                 self.log.debug("beamline=%s, instance=%s", beamline, det_id)
 
                 # use hidra controller mechanism
-                self.controller[det_id] = HidraController(self.context,
-                                                          beamline,
-                                                          det_id,
-                                                          self.config,
-                                                          self.instances,
-                                                          self.log_queue)
+                self.controller[det_id] = HidraController(
+                    self.context,
+                    beamline,
+                    det_id,
+                    # to prevent different detector processes to write into the
+                    # same config
+                    copy.deepcopy(self.config),
+                    self.instances,
+                    self.log_queue
+                )
 
                 # restart
                 ret_val = self.controller[det_id].start("restart")
@@ -1274,12 +1278,15 @@ class ControlServer(utils.Base):
         try:
             controller = self.controller[det_id]
         except KeyError:
-            self.controller[det_id] = HidraController(self.context,
-                                                      self.beamline,
-                                                      det_id,
-                                                      self.config,
-                                                      self.instances,
-                                                      self.log_queue)
+            self.controller[det_id] = HidraController(
+                self.context,
+                self.beamline,
+                det_id,
+                # to prevent different detector processes to write into the same config
+                copy.deepcopy(self.config),
+                self.instances,
+                self.log_queue
+            )
             controller = self.controller[det_id]
 
         # --------------------------------------------------------------------
