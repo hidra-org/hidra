@@ -403,6 +403,8 @@ class DataManager(Base):
         self.ipc_dir = None
         self.current_pid = None
 
+        self.ipc_dir_permissions = 0o777
+
         self.reestablish_time = None
         self.continue_run = None
         self.config = None
@@ -551,9 +553,9 @@ class DataManager(Base):
 
         if not os.path.exists(self.ipc_dir):
             os.mkdir(self.ipc_dir)
-            # the permission have to changed explicitly because
+            # the permission have to be changed explicitly because
             # on some platform they are ignored when called within mkdir
-            os.chmod(self.ipc_dir, 0o777)
+            os.chmod(self.ipc_dir, self.ipc_dir_permissions)
             self.log.info("Creating directory for IPC communication: %s",
                           self.ipc_dir)
 
