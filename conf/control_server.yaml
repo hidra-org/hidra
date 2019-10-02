@@ -9,6 +9,9 @@ controlserver:
     # use {bl} as placeholder for the beamline
     backup_file: /beamline/support/hidra/instances_{bl}.txt
 
+    # User as which the service should be running
+    #username: {bl}user
+
     ldapuri: "it-ldap-slave.desy.de:1389"
 
     # use {bl} as placeholder for the beamline
