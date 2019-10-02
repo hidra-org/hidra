@@ -24,11 +24,15 @@ hidraconfig_static:
     general:
         log_path: *log_path
         log_size: 10485760
-        com_port: 50000
-        # com_port: random
-        request_port: 50001
-        # request_port: random
-        use_statserver: False
+        # if one control instance should be able to control hidra instance for
+        # multiple detectors use these:
+        com_port: random
+        request_port: random
+        use_statserver: True
+        # if there is no need for multiple detectors activate these:
+        # com_port: 50000
+        # request_port: 50001
+        # use_statserver: False
     eventdetector:
         type: http_events
         # type: inotifyx_events
