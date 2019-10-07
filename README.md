@@ -4,8 +4,8 @@ __HiDRA__ (High Data Rate Access) is a generic tool set for high performance dat
 On the one hand, it was developed to support 20 or more of the next generation detectors generating data up to 10GB/sec and images with kHz frequencies.
 On the other hand, its purpose is to decouple persistent storage and selective image collection to support next generations of experiment setups, where the experiment conditions have to be monitored/analyzed in close to real time to prevent wasting the precious sample. <br />
 This open source and facility independent software can be used to store the data directly in the storage system but also to send it to some kind of online monitoring or analysis framework.
-Together with the tool [OnDA] (https://stash.desy.de/projects/ONDA), data can be analyzed with a delay of seconds resulting in test to an increase of the quality of the generated scientific data by 20 %.
-The modular architecture of the tool makes it easily extendible and even gives the possibility to adapt the software to specific detectors directly (e.g. Eiger detector).
+Together with the tool [OnDA](https://github.com/ondateam/onda), data can be analyzed with a delay of seconds resulting in test to an increase of the quality of the generated scientific data by 20 %.
+The modular architecture of the tool makes it easily extendable and even gives the possibility to adapt the software to specific detectors directly (e.g. Eiger detector).
 
 # License
 
@@ -27,7 +27,7 @@ The project is licensed under __AGPL v3__.
 * pathlib2 (when using python 2)
 
 ### Installation and Usage
-* Download and unpack or clone HiDRA from [Stash](https://stash.desy.de/projects/HIDRA/repos/hidra/browse)
+* Download and unpack or clone HiDRA from [Github](https://github.com/hidra-org/hidra)
 * Configure HiDRA as described in the [Datamanager](https://confluence.desy.de/display/hidra/Datamanager) page
 * Start with verbose mode displayed on screen
 ```
@@ -45,7 +45,7 @@ The project is licensed under __AGPL v3__.
 * pathlib2 (when using python 2)
 
 ### Installation and Usage
-* Download and unpack or clone HiDRA from [Stash](https://stash.desy.de/projects/HIDRA/repos/hidra/browse)
+* Download and unpack or clone HiDRA from [Github](https://github.com/hidra-org/hidra)
 * Configure HiDRA as described in the [Datareceiver](https://confluence.desy.de/display/hidra/Datareceiver) page
 * Start with verbose mode displayed on screen
 ```

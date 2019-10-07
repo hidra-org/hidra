@@ -34,6 +34,7 @@ from __future__ import unicode_literals
 from builtins import super  # pylint: disable=redefined-builtin
 
 import json
+import os
 import zmq
 
 from base_class import Base
@@ -56,6 +57,8 @@ class StatServer(Base):
         self.keep_running = True
         self.stats = {"config": config}
 
+        self.ipc_dir_umask = 0o001
+
         self.context = None
         self.stats_collect_socket = None
         self.stats_expose_socket = None
@@ -72,6 +75,13 @@ class StatServer(Base):
         self.context = zmq.Context()
 
         endpoints = self.config["network"]["endpoints"]
+
+        # to enable communication between the StatServer and
+        # hidra-control running as different users
+        # this has to be called even if the ipc dir was already created by
+        # another hidra instance
+        old_umask = os.umask(self.ipc_dir_umask)
+        self.log.info("Changed umask on ipc_dir to %s", self.ipc_dir_umask)
 
         self.stats_collect_socket = self.start_socket(
             name="stats_collect_socket",
@@ -95,6 +105,11 @@ class StatServer(Base):
             sock_con="bind",
             endpoint=endpoints.stats_expose_bind
         )
+
+        # revert change of umask after ipc dir was created to not interfere
+        # with anything else (e.g. data files stored)
+        os.umask(old_umask)
+        self.log.info("Changed back to old umask %s", old_umask)
 
         self.poller = zmq.Poller()
         self.poller.register(self.control_socket, zmq.POLLIN)

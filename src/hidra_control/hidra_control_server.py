@@ -1024,10 +1024,27 @@ class ControlServer(utils.Base):
         self.ldapuri = config_ctrl["ldapuri"]
         self.netgroup_template = config_ctrl["netgroup_template"]
 
-        setproctitle.setproctitle(config_ctrl["procname"]
-                                  .format(bl=self.beamline))
+        # change user
+        # has to be done before logging is setup because otherwise the logfile
+        # belongs to the wrong user
+        try:
+            config_ctrl["username"] = (
+                config_ctrl["username"].format(bl=self.beamline)
+            )
+        except KeyError:
+            pass
 
+        user_info, user_was_changed = utils.change_user(config_ctrl)
+
+        # set up logging
         self._setup_logging()
+
+        utils.log_user_change(self.log, user_was_changed, user_info)
+
+        # set process name
+        title = config_ctrl["procname"].format(bl=self.beamline)
+        setproctitle.setproctitle(title)
+        self.log.info("Running as %s", title)
 
         host = hidra.CONNECTION_LIST[self.beamline]["host"]
         host = socket.gethostbyaddr(host)[2][0]
@@ -1054,12 +1071,16 @@ class ControlServer(utils.Base):
                 self.log.debug("beamline=%s, instance=%s", beamline, det_id)
 
                 # use hidra controller mechanism
-                self.controller[det_id] = HidraController(self.context,
-                                                          beamline,
-                                                          det_id,
-                                                          self.config,
-                                                          self.instances,
-                                                          self.log_queue)
+                self.controller[det_id] = HidraController(
+                    self.context,
+                    beamline,
+                    det_id,
+                    # to prevent different detector processes to write into the
+                    # same config
+                    copy.deepcopy(self.config),
+                    self.instances,
+                    self.log_queue
+                )
 
                 # restart
                 ret_val = self.controller[det_id].start("restart")
@@ -1074,6 +1095,8 @@ class ControlServer(utils.Base):
             config_ctrl["log_path"],
             config_ctrl["log_name"].format(bl=self.beamline)
         )
+
+        utils.check_writable(logfile)
 
         # Get queue
         self.log_queue = Queue(-1)
@@ -1255,12 +1278,15 @@ class ControlServer(utils.Base):
         try:
             controller = self.controller[det_id]
         except KeyError:
-            self.controller[det_id] = HidraController(self.context,
-                                                      self.beamline,
-                                                      det_id,
-                                                      self.config,
-                                                      self.instances,
-                                                      self.log_queue)
+            self.controller[det_id] = HidraController(
+                self.context,
+                self.beamline,
+                det_id,
+                # to prevent different detector processes to write into the same config
+                copy.deepcopy(self.config),
+                self.instances,
+                self.log_queue
+            )
             controller = self.controller[det_id]
 
         # --------------------------------------------------------------------
