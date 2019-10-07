@@ -1623,16 +1623,16 @@ class Transfer(Base):
             filepath: The path of the file to which the chunk should be stored.
             payload: The data to store.
             base_path: The base path under which the file should be stored
-            metadata: The metadata recceived together with the data.
+            metadata: The metadata received together with the data.
         """
 
         # --------------------------------------------------------------------
         # check chunk_number
         # --------------------------------------------------------------------
         # if chunk_number == 0 open file
-        # if not, and file is not open thow datasavingerror
+        # if not, and file is not open throw DataSavingError
         # if file is open,
-        #      - and chun_number did not change compared to last one -> ignore
+        #      - and chunk_number did not change compared to last one -> ignore
         #      - and chunk_number < last chunk number -> either reopen (if 0)
         #                                                or throw error
 
@@ -1696,12 +1696,12 @@ class Transfer(Base):
                         self.log.debug("target_path:%s", target_path)
                         raise
                 else:
-                    self.log.error("Failed to append payload to file: '%s'",
-                                   filepath, exc_info=True)
+                    self.log.error("Failed to open file: '%s'", filepath,
+                                   exc_info=True)
                     raise
             except Exception:
-                self.log.error("Failed to append payload to file: '%s'",
-                               filepath, exc_info=True)
+                self.log.error("Failed to open file: '%s'", filepath,
+                               exc_info=True)
                 raise
 
         # --------------------------------------------------------------------
@@ -1738,15 +1738,20 @@ class Transfer(Base):
         try:
             if write_chunk:
                 desc["file"].write(payload)
-                # TODO what todo when chunk_number is not 0?
                 desc["last_chunk_number"] = metadata["chunk_number"]
         except KeyboardInterrupt:
             # save the data in the file before quitting
             self.log.debug("KeyboardInterrupt received while writing data")
+            self.log.debug("Closing file %s", filepath)
+            descriptors[filepath]["file"].close()
+            del descriptors[filepath]
             raise
         except Exception:
             self.log.error("Failed to append payload to file: '%s'", filepath,
                            exc_info=True)
+            self.log.debug("Closing file %s", filepath)
+            descriptors[filepath]["file"].close()
+            del descriptors[filepath]
             raise
 
         # --------------------------------------------------------------------
@@ -1860,24 +1865,14 @@ class Transfer(Base):
                     base_path=target_base_path,
                     metadata=metadata
                 )
-                # for testing
-#                    try:
-#                        a = 5/0
-#                    except:
-#                        # returns a tuple (type, value, traceback)
-#                        exc_type, exc_value, _ = sys.exc_info()
-#
-#                        self.status = [b"ERROR",
-#                                       str(exc_type).encode("utf-8"),
-#                                       str(exc_value).encode("utf-8")]
-#                        self.log.debug("Status changed to: %s", self.status)
             except Exception:
                 self.log.debug("Stopping data storing loop")
 
                 # returns a tuple (type, value, traceback)
                 exc_type, exc_value = sys.exc_info()[:2]
 
-                self.log.error(exc_value, exc_info=True)
+                # duplicates error message in log
+                #self.log.error(exc_value, exc_info=True)
 
                 self.status = [b"ERROR",
                                str(exc_type).encode("utf-8"),
