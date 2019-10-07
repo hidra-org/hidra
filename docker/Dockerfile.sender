@@ -13,7 +13,7 @@ RUN pip install \
     inotifyx \
     pathlib2
 # RUN cd /opt && \
-#     git clone https://stash.desy.de/scm/hidra/hidra.git && \
+#     git clone https://github.com/hidra-org/hidra.git && \
 #     cd hidra && \
 #     git checkout develop && \
 #     mkdir /var/log/hidra

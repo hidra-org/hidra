@@ -136,6 +136,6 @@ rm $PASSWD_FILE
 rm $GROUP_FILE
 
 #docker rmi ${DOCKER_IMAGE}
-#rm -rf ${MAPPED_DIR}/hidra
+rm -rf ${MAPPED_DIR}/hidra
 
 echo "Debian ${DEBIAN_VERSION} packages can be found in ${MAPPED_DIR}"
