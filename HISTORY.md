@@ -1,5 +1,15 @@
 # develop
 # 4.1.2
+
+- Fix links in readme
+- Fix links in package builds and docker images
+- Fix minor bug in packaging for CentOs
+- Add user change option to control server config
+- Add example how to use statserver (config and communication)
+- Fix config uniqueness for multiple detectors
+- Fix communication of control server and StatServer if they run as different users
+- Fix closing of file descriptors if anything goes wrong when storing data
+
 # 4.1.1
 
 - Fix RPM package building
