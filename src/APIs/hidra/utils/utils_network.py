@@ -82,6 +82,23 @@ def check_netgroup(hostname,
     else:
         return False
 
+def _resolve_ldap_server_ip(log, ldapuri):
+    # measure time to identify misconfigured network settings
+    # (e.g. wrong resolve.conf)
+    t_start = time.time()
+    try:
+        ldap_host = ldapuri.split(":")[0]
+        ldap_server_ip = socket_m.gethostbyname(ldap_host)
+    except Exception:
+        log.error("Failed to look up ldap ip", exc_info=True)
+
+    ldap_response_limit = 9  # in sec
+    if time.time() - t_start > ldap_response_limit:
+        log.warning("Hostname resolution took quite long (longer that %s sec). "
+                    "This can result in problems with connecting services",
+                    ldap_response_limit)
+
+    return ldap_server_ip
 
 def execute_ldapsearch(log, ldap_cn, ldapuri):
     """Searches ldap for a netgroup and parses the output.
@@ -98,11 +115,7 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
         return []
 
     # if there were problems with ldapsearch these information are needed
-    try:
-        ldap_host = ldapuri.split(":")[0]
-        ldap_server_ip = socket_m.gethostbyname(ldap_host)
-    except Exception:
-        log.error("Failed to look up ldap ip", exc_info=True)
+    ldap_server_ip = _resolve_ldap_server_ip(log, ldapuri)
 
     proc = subprocess.Popen(
         ["ldapsearch",
