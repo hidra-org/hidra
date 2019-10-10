@@ -1,5 +1,10 @@
 # develop
 # 4.1.3
+
+- Fix ownership of log file of datareceiver
+- Fix debian package dependencies
+- Fix downloading of files in chunks for http fetcher
+
 # 4.1.2
 
 - Fix links in readme
