@@ -181,7 +181,6 @@ def argument_parsing():
     # check if logfile is writable
     config["general"]["log_file"] = os.path.join(config["general"]["log_path"],
                                                  config["general"]["log_name"])
-    utils.check_writable(config["general"]["log_file"])
 
     return config
 
@@ -302,33 +301,20 @@ class DataReceiver(object):
         global _whitelist
 
         try:
-            config = argument_parsing()
+            self.config = argument_parsing()
         except Exception:
             self.log = logging.getLogger("DataReceiver")
             raise
 
-        config_gen = config["general"]
-        config_recv = config["datareceiver"]
+        config_gen = self.config["general"]
+        config_recv = self.config["datareceiver"]
 
         # change user
         user_info, user_was_changed = utils.change_user(config_gen)
 
-        # enable logging
-        root = logging.getLogger()
-        root.setLevel(logging.DEBUG)
-
-        handlers = utils.get_log_handlers(config_gen["log_file"],
-                                          config_gen["log_size"],
-                                          config_gen["verbose"],
-                                          config_gen["onscreen"])
-
-        if isinstance(handlers, tuple):
-            for hdl in handlers:
-                root.addHandler(hdl)
-        else:
-            root.addHandler(handlers)
-
-        self.log = logging.getLogger("DataReceiver")
+        # set up logging
+        utils.check_writable(config_gen["log_file"])
+        self._setup_logging()
 
         utils.log_user_change(self.log, user_was_changed, user_info)
 
@@ -391,6 +377,28 @@ class DataReceiver(object):
         self.transfer = Transfer(connection_type="STREAM",
                                  use_log=True,
                                  dirs_not_to_create=self.dirs_not_to_create)
+
+    def _setup_logging(self):
+        config_gen = self.config["general"]
+
+        # enable logging
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG)
+
+        handlers = utils.get_log_handlers(
+            config_gen["log_file"],
+            config_gen["log_size"],
+            config_gen["verbose"],
+            config_gen["onscreen"]
+        )
+
+        if isinstance(handlers, tuple):
+            for hdl in handlers:
+                root.addHandler(hdl)
+        else:
+            root.addHandler(handlers)
+
+        self.log = logging.getLogger("DataReceiver")
 
     def exec_run(self):
         """Wrapper around run to react to exceptions.
