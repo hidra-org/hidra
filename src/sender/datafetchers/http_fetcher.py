@@ -212,7 +212,7 @@ class DataFetcher(DataFetcherBase):
                                      connections.
         """
 
-        response = self.config["session"].get(self.source_file)
+        response = self.config["session"].get(self.source_file, stream=True)
         try:
             response.raise_for_status()
             self.log.debug("Initiating http get for file '%s' succeeded.",
@@ -268,6 +268,9 @@ class DataFetcher(DataFetcherBase):
         for data in response.iter_content(chunk_size=chunksize):
             self.log.debug("Packing multipart-message for file '%s'...",
                            self.source_file)
+
+            if not data:
+                continue
 
             try:
                 # assemble metadata for zmq-message

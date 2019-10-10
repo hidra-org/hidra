@@ -71,6 +71,6 @@ Executables build for Linux and Windows systems are available [here](http://nims
 
 # Contributors
 
-HiDRA is developed by [Deutsches Elektronen-Synchrotron DESY] (http://www.desy.de).
+HiDRA is developed by [Deutsches Elektronen-Synchrotron DESY](http://www.desy.de).
 
-Further information can be found [in the documentation space] (https://confluence.desy.de/display/hidra/HiDRA)
+Further information can be found [in the documentation space](https://confluence.desy.de/display/hidra/HiDRA)

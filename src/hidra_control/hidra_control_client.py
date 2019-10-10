@@ -135,7 +135,7 @@ def _merge_with_config(args, parser):
     arguments["general"] = args_dict
 
     # ------------------------------------------------------------------------
-    # Get arguments from config file and comand line
+    # Get arguments from config file and command line
     # ------------------------------------------------------------------------
     filename_bl = "control_client_{}.yaml"
     filename_gen = "control_client.yaml"

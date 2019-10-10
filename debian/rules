@@ -17,6 +17,7 @@ override_dh_auto_install:
 	mkdir -p debian/tmp/var/log/hidra
 	chmod 1777 debian/tmp/var/log/hidra
 	cp src/APIs/hidra/*.py  debian/tmp/$(PYDIR)/hidra
+	cp -r src/APIs/hidra/utils  debian/tmp/$(PYDIR)/hidra
 	cp -r src/receiver debian/tmp/opt/hidra/src
 	cp -r src/sender debian/tmp/opt/hidra/src
 	cp -r src/hidra_control debian/tmp/opt/hidra/src
