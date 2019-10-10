@@ -1,12 +1,139 @@
 #!/bin/bash
 
+fix_debian_version()
+{
+    # debian 8
+    if [ "$DEBIAN_NAME" == "jessie" ]
+    then
+        sed -i -e "s/+deb9u5\~fsec) stretch/+deb8u11\~fsec) jessie/g" debian/changelog
+        sed -i -e "s/stretch/jessie/g" debian/changelog
+        sed -i -e "s/Standards-Version: [0-9.]*/Standards-Version: 3.9.4/g" debian/control
+    fi
+}
+
+check_arguments()
+{
+    if [ "${version}" == "" ]
+    #if [ -z ${version+x} -o "${version}" == "" ]
+    then
+        # set default to debian 9
+        DEBIAN_NAME=stretch
+        DEBIAN_VERSION=9
+        printf "Create packages for debian $DEBIAN_VERSION. "
+        printf "If you want a different version use --version\n"
+    elif [ "$version" == "9" -o "$version" == "stretch" ]
+    then
+        DEBIAN_NAME=stretch
+        DEBIAN_VERSION=9
+
+    elif [ "$version" == "8" -o "$version" == "jessie" ]
+    then
+        DEBIAN_NAME=jessie
+        DEBIAN_VERSION=8
+
+    else
+        echo "Not supported debian version"
+        exit 1
+    fi
+
+    if [ "${TAG}" == "" ]
+    then
+        # set default
+        TAG="master"
+    fi
+
+    if [ "${HIDRA_LOCATION}" != "" ]; then
+        if [ -d "$HIDRA_LOCATION" ]; then
+            echo "Hidra is not downloaded. Using $HIDRA_LOCATION"
+        else
+            echo "ERROR: No hidra found at $HIDRA_LOCATION. Abort."
+            exit 1
+        fi
+    fi
+}
+
+get_hidra_version()
+{
+    if [ "${HIDRA_LOCATION}" != "" ]; then
+        HIDRA_VERSION=$(cat ${HIDRA_LOCATION}/src/APIs/hidra/utils/_version.py)
+    else
+        URL="https://raw.githubusercontent.com/hidra-org/hidra/$TAG/src/APIs/hidra/utils/_version.py"
+        HIDRA_VERSION=$(curl -L $URL)
+    fi
+    # cut of the first characters
+    HIDRA_VERSION=${HIDRA_VERSION:15}
+    HIDRA_VERSION=${HIDRA_VERSION%?}
+}
+
+download_hidra()
+{
+    if [ "$HIDRA_LOCATION" != "" ]; then
+        cp -r $HIDRA_LOCATION $MAPPED_DIR/hidra
+        return
+    fi
+
+    # clean up old download
+    if [ -d "$MAPPED_DIR/hidra" ]; then
+        rm -rf $MAPPED_DIR/hidra
+    fi
+
+    BRANCH="v${HIDRA_VERSION}"
+    git clone --branch $BRANCH https://github.com/hidra-org/hidra.git
+}
+
+build_docker_image()
+{
+    DOCKER_DIR=$(pwd)
+    DOCKER_IMAGE=debian_${DEBIAN_NAME}_build
+    DOCKER_CONTAINER=hidra_build_${DEBIAN_NAME}
+
+    cd ${DOCKER_DIR}
+    if [[ "$(docker images -q ${DOCKER_IMAGE} 2> /dev/null)" == "" ]]; then
+        echo "Creating container"
+        docker build -f ./Dockerfile.build_debian${DEBIAN_VERSION} -t ${DOCKER_IMAGE} .
+    fi
+}
+
+build_package()
+{
+    cmd="cd /external/hidra; dpkg-buildpackage -us -uc"
+
+    IN_DOCKER_DIR=/external
+
+    PASSWD_FILE=/tmp/passwd_x
+    GROUP_FILE=/tmp/group_x
+
+    getent passwd $USER > $PASSWD_FILE
+    echo "$(id -gn):*:$(id -g):$USER" > $GROUP_FILE
+    docker create -it \
+        -v $PASSWD_FILE:/etc/passwd \
+        -v $GROUP_FILE:/etc/group \
+        --userns=host \
+        --net=host \
+        --security-opt no-new-privileges \
+        --privileged \
+        -v ${MAPPED_DIR}:$IN_DOCKER_DIR \
+        --user=$(id -u $USER):$(id -g $USER) \
+        --name ${DOCKER_CONTAINER} \
+        ${DOCKER_IMAGE} \
+        bash
+    docker start ${DOCKER_CONTAINER}
+    docker exec --user=$(id -u $USER):$(id -g $USER) ${DOCKER_CONTAINER} sh -c "$cmd"
+    docker stop ${DOCKER_CONTAINER}
+    docker rm ${DOCKER_CONTAINER}
+
+    rm $PASSWD_FILE
+    rm $GROUP_FILE
+}
+
 usage()
 {
-    printf "Usage: $SCRIPTNAME --version <debian_version> --tag <hidra tag\n" >&2
+    printf "Usage: $SCRIPTNAME --version <debian version> --tag <hidra tag> --hidra-location <path>\n" >&2
 }
 
 action=
 TAG=
+HIDRA_LOCATION=
 while test $# -gt 0
 do
     #convert to lower case
@@ -22,6 +149,10 @@ do
             TAG="$2"
             shift
             ;;
+        --hidra-location)
+            HIDRA_LOCATION="$2"
+            shift
+            ;;
         -h | --help ) usage
             exit
             ;;
@@ -30,112 +161,30 @@ do
     shift
 done
 
-if [ "${version}" == "" ]
-#if [ -z ${version+x} -o "${version}" == "" ]
-then
-    # set default to debian 9
-    DEBIAN_NAME=stretch
-    DEBIAN_VERSION=9
-    printf "Create packages for debian $DEBIAN_VERSION. "
-    printf "If you want a different version use --version\n"
-elif [ "$version" == "9" -o "$version" == "stretch" ]
-then
-    DEBIAN_NAME=stretch
-    DEBIAN_VERSION=9
+check_arguments
+get_hidra_version
 
-elif [ "$version" == "8" -o "$version" == "jessie" ]
-then
-    DEBIAN_NAME=jessie
-    DEBIAN_VERSION=8
+MAPPED_DIR=/tmp/hidra_builds/debian${DEBIAN_VERSION}/${HIDRA_VERSION}
 
-else
-    echo "Not supported debian version"
-    exit 1
-fi
-
-if [ "${TAG}" == "" ]
-then
-    # set default
-    TAG="master"
-fi
-
-URL="https://raw.githubusercontent.com/hidra-org/hidra/$TAG/src/APIs/hidra/utils/_version.py"
-VERSION=$(curl -L $URL)
-# cut of the first characters
-VERSION=${VERSION:15}
-VERSION=${VERSION%?}
-
-echo "Create packages for hidra tag $TAG for version $VERSION"
-
-BRANCH="v${VERSION}"
-
-MAPPED_DIR=/tmp/hidra_builds/debian${DEBIAN_VERSION}/${VERSION}
-IN_DOCKER_DIR=/external
-DOCKER_DIR=$(pwd)
+echo "Create packages for hidra tag $TAG for version $HIDRA_VERSION"
 
 if [ ! -d "$MAPPED_DIR" ]; then
     mkdir -p $MAPPED_DIR
 fi
 
-if [ -d "$MAPPED_DIR/hidra" ]; then
-    rm -rf $MAPPED_DIR/hidra
-fi
-
-if [ -d "$MAPPED_DIR/build" ]; then
-    rm -rf $MAPPED_DIR/build
-fi
-
 cd ${MAPPED_DIR}
-git clone --branch $BRANCH https://github.com/hidra-org/hidra.git
+download_hidra
 
 mv hidra/debian .
-if [ "$DEBIAN_NAME" == "jessie" ]
-then
-    sed -i -e "s/+deb9u5\~fsec) stretch/+deb8u11\~fsec) jessie/g" debian/changelog
-    sed -i -e "s/stretch/jessie/g" debian/changelog
-    sed -i -e "s/Standards-Version: [0-9.]*/Standards-Version: 3.9.4/g" debian/control
-fi
-tar czf hidra_${VERSION}.orig.tar.gz hidra
+fix_debian_version
+tar czf hidra_${HIDRA_VERSION}.orig.tar.gz hidra
 mv debian hidra/debian
 
-# DOCKER
-DOCKER_IMAGE=debian_${DEBIAN_NAME}_build
-DOCKER_CONTAINER=hidra_build_${DEBIAN_NAME}
+build_docker_image
+build_package
 
-cd ${DOCKER_DIR}
-if [[ "$(docker images -q ${DOCKER_IMAGE} 2> /dev/null)" == "" ]]; then
-    echo "Creating container"
-    docker build -f ./Dockerfile.build_debian${DEBIAN_VERSION} -t ${DOCKER_IMAGE} .
-fi
-
-cmd="cd /external/hidra; dpkg-buildpackage -us -uc"
-
-PASSWD_FILE=/tmp/passwd_x
-GROUP_FILE=/tmp/group_x
-
-getent passwd $USER > $PASSWD_FILE
-echo "$(id -gn):*:$(id -g):$USER" > $GROUP_FILE
-docker create -it \
-    -v $PASSWD_FILE:/etc/passwd \
-    -v $GROUP_FILE:/etc/group \
-    --userns=host \
-    --net=host \
-    --security-opt no-new-privileges \
-    --privileged \
-    -v ${MAPPED_DIR}:$IN_DOCKER_DIR \
-    --user=$(id -u $USER):$(id -g $USER) \
-    --name ${DOCKER_CONTAINER} \
-    ${DOCKER_IMAGE} \
-    bash
-docker start ${DOCKER_CONTAINER}
-docker exec --user=$(id -u $USER):$(id -g $USER) ${DOCKER_CONTAINER} sh -c "$cmd"
-docker stop ${DOCKER_CONTAINER}
-docker rm ${DOCKER_CONTAINER}
-
-rm $PASSWD_FILE
-rm $GROUP_FILE
-
+# clean up
 #docker rmi ${DOCKER_IMAGE}
-rm -rf ${MAPPED_DIR}/hidra
+rm -rf $MAPPED_DIR/hidra
 
 echo "Debian ${DEBIAN_VERSION} packages can be found in ${MAPPED_DIR}"
