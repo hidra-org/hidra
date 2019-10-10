@@ -491,7 +491,7 @@ class SignalHandler(Base):
                         for i in idxs_to_remove:
                             try:
                                 self.log.debug(
-                                    "Remove leftover/dublicate registered "
+                                    "Remove leftover/duplicate registered "
                                     "query %s ", self.registered_queries[i]
                                 )
                                 del self.vari_requests[i]

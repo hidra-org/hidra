@@ -336,7 +336,7 @@ def argument_parsing():
     ed_type = config_ed["type"]
     df_type = config_df["type"]
 
-    # check if logfile is writable
+    # generate log file name
     config_gen["log_file"] = utils.format_log_filename(
         os.path.join(config_gen["log_path"],
                      config_gen["log_name"])
