@@ -96,7 +96,7 @@ build_docker_image()
 
 build_package()
 {
-    cmd="cd /external/hidra; dpkg-buildpackage -us -uc"
+    cmd="cd /external/hidra; dpkg-buildpackage -us -uc -sa"
 
     IN_DOCKER_DIR=/external
 
