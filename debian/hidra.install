@@ -1,6 +1,11 @@
 opt/hidra/src/hidra_control/hidra_control_server.py
 opt/hidra/src/receiver/*
 opt/hidra/src/sender/*
-opt/hidra/conf/*
+opt/hidra/conf/base_sender.yaml
+opt/hidra/conf/datamanager.yaml
+opt/hidra/conf/base_receiver.yaml
+opt/hidra/conf/datareceiver.yaml
+opt/hidra/conf/control_server.yaml
+
 var/log/hidra
 lib/systemd/system/*
