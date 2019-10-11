@@ -32,6 +32,7 @@ from __future__ import (absolute_import,
 import re
 import socket as socket_m
 import subprocess
+import time
 
 from .utils_datatypes import (IpcAddresses, # noqa F401
                               Endpoints,
