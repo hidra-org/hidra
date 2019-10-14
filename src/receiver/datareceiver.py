@@ -358,12 +358,15 @@ class DataReceiver(object):
         if (config_gen["whitelist"] is not None
                 and isinstance(config_gen["whitelist"], str)):
             self.log.debug("Starting checking thread")
-            self.checking_thread = CheckNetgroup(config_gen["whitelist"],
-                                                 self.lock,
-                                                 config_gen["ldapuri"],
-                                                 ldap_retry_time,
-                                                 check_time)
-            self.checking_thread.start()
+            try:
+                self.checking_thread = CheckNetgroup(config_gen["whitelist"],
+                                                     self.lock,
+                                                     config_gen["ldapuri"],
+                                                     ldap_retry_time,
+                                                     check_time)
+                self.checking_thread.start()
+            except Exception:
+                self.log.error("Could not start checking thread", exc_info=True)
         else:
             self.log.debug("Checking thread not started: %s",
                            config_gen["whitelist"])
