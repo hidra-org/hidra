@@ -42,8 +42,11 @@ fix_changelog_entries()
     fi
 }
 
-bumpversion ${RELEASE} ${DRYRUN} --config-file .bumpversion_prework.cfg || return 1
-bumpversion ${RELEASE} ${DRYRUN} --allow-dirty || return 1
+CURRENTFILE="$(readlink --canonicalize-existing -- "$0")"
+SCRIPTDIR="${CURRENTFILE%/*}"
+
+bumpversion ${RELEASE} ${DRYRUN} --config-file $SCRIPTDIR/.bumpversion_prework.cfg || return 1
+bumpversion ${RELEASE} ${DRYRUN} --config-file $SCRIPTDIR/.bumpversion.cfg --allow-dirty || return 1
 
 fix_timezone
 fix_changelog_entries
