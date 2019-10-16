@@ -2399,7 +2399,7 @@ class TestTransfer(TestBase):
                                      metadata)
 
         self.assertTrue(transfer.log.error.called)
-        self.assertIn("append payload", transfer.log.error.call_args[0][0])
+        self.assertIn("Failed to open file", transfer.log.error.call_args[0][0])
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2428,7 +2428,7 @@ class TestTransfer(TestBase):
                                      metadata)
 
         self.assertTrue(transfer.log.error.called)
-        self.assertIn("append payload", transfer.log.error.call_args[0][0])
+        self.assertIn("Failed to open file", transfer.log.error.call_args[0][0])
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)

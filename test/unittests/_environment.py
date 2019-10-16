@@ -33,11 +33,11 @@ import sys
 CURRENT_DIR = os.path.realpath(__file__)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))
 
-SENDER_DIR = os.path.join(BASE_DIR, "src", "sender")
+RECEIVER_DIR = os.path.join(BASE_DIR, "app", "hidra", "hidra_receiver")
+SENDER_DIR = os.path.join(BASE_DIR, "app", "hidra", "hidra_sender")
 EVENT_DETECTOR_DIR = os.path.join(SENDER_DIR, "eventdetectors")
 DATAFETCHER_DIR = os.path.join(SENDER_DIR, "datafetchers")
-API_DIR = os.path.join(BASE_DIR, "src", "APIs")
-RECEIVER_DIR = os.path.join(BASE_DIR, "src", "receiver")
+API_DIR = os.path.join(BASE_DIR, "api", "python")
 
 if SENDER_DIR not in sys.path:
     sys.path.insert(0, SENDER_DIR)

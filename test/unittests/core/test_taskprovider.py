@@ -145,6 +145,9 @@ class TestTaskProvider(TestBase):
         self.taskprovider_config = {
             "eventdetector": {
                 "type": used_eventdetector,
+                "type_module": (
+                    "hidra_sender.eventdetectors." + used_eventdetector
+                ),
                 "inotify_events": {
                     "monitored_dir": monitored_dir,
                     "fix_subdirs": ["commissioning", "current", "local"],

@@ -116,6 +116,9 @@ class TestDataManager(TestBase):
             },
             "eventdetector": {
                 "type": used_eventdetector,
+                "type_module": (
+                    "hidra_sender.eventdetectors." + used_eventdetector
+                ),
                 "eventdetector_port": 50003,
                 "ext_data_port": 50101,
                 "inotify_events": {
@@ -143,6 +146,9 @@ class TestDataManager(TestBase):
             },
             "datafetcher": {
                 "type": "file_fetcher",
+                "type_module": (
+                        "hidra_sender.datafetchers.file_fetcher"
+                ),
                 "chunksize": self.chunksize,
                 "data_stream_targets": [[self.con_ip,
                                          self.config["fixed_recv"]]],
