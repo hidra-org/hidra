@@ -52,7 +52,7 @@ class TestDataFetcher(DataFetcherTestBase):
 
         # Set up config
         self.module_name = "http_fetcher"
-        self.df_base_config[config] = {
+        self.df_base_config["config"] = {
             "network": {
                 "ipc_dir": self.config["ipc_dir"],
                 "main_pid": self.config["main_pid"],
@@ -117,12 +117,12 @@ class TestDataFetcher(DataFetcherTestBase):
         self.log.debug("open_connections before function call: %s",
                        open_connections)
 
-        datafetcher.get_metadata(targets, metadata)
+        self.datafetcher.get_metadata(targets, metadata)
         # source_file = "http://131.169.55.170/test_httpget/data/test_file.cbf"
 
-        datafetcher.send_data(targets, metadata, open_connections)
+        self.datafetcher.send_data(targets, metadata, open_connections)
 
-        datafetcher.finish(targets, metadata, open_connections)
+        self.datafetcher.finish(targets, metadata, open_connections)
 
         self.log.debug("open_connections after function call: %s",
                        open_connections)
@@ -142,7 +142,7 @@ class TestDataFetcher(DataFetcherTestBase):
             for sckt in receiving_socket:
                 sckt.close(0)
 
-            datafetcher.stop()
+            self.datafetcher.stop()
 
     def test_with_confirmation(self):
         """Simulate file fetching while taking care of confirmation signals.
