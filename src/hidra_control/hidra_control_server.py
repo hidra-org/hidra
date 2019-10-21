@@ -1246,7 +1246,12 @@ class ControlServer(utils.Base):
 
         # bypass detector checking for this
         if action == "do" and param == "get_instances":
+            # allow the beamline to see it's running instances
             return self._get_instances()
+        elif action == "do" and param == "stop":
+            # allow the beamline to stop it's old instances
+            if det_id in self._get_instances():
+                return self._stop_old_instance(det_id)
 
         # check if detector belongs to the beamline
         try:
@@ -1330,6 +1335,29 @@ class ControlServer(utils.Base):
         self.log.debug("Running instances are: %s", instances)
 
         return instances
+
+    def _stop_old_instance(self, det_id):
+        """Stop an still running old hidra instance.
+
+        Args:
+            det_id: The detector to stop hidra for.
+        """
+        self.log.debug("Closing old instance for detector %s", det_id)
+
+        # use hidra controller mechanism
+        controller = HidraController(
+            self.context,
+            self.beamline,
+            det_id,
+            # to prevent different detector processes to write into the
+            # same config
+            copy.deepcopy(self.config),
+            self.instances,
+            self.log_queue
+        )
+
+        # stop
+        return self.controller[det_id].stop()
 
     def stop(self):
         """Clean up zmq sockets.
