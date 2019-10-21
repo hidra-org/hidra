@@ -241,6 +241,7 @@ class Transfer(Base):
                  signal_host=None,
                  use_log=False,
                  context=None,
+                 # TODO remove dirs_not_to_create here
                  dirs_not_to_create=None,
                  detector_id=None,
                  control_server_port=51000):

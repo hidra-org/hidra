@@ -74,12 +74,13 @@ class Control(Base):
             netgroup_template: The template to be used for netgroup
                                checking of the beamline (e.g. a3{bl}-hosts).
             use_log (optional): Specified the logging type.
+            do_check (optional): If a netgroup check should be performed or not.
         """
 
         super().__init__()
 
         self.beamline = beamline
-        self.detector = socket.getfqdn(detector)
+        self.detector = detector
         self.ldapuri = ldapuri
         self.netgroup_template = netgroup_template
         self.use_log = use_log
@@ -90,6 +91,7 @@ class Control(Base):
         self.host = None
         self.context = None
         self.socket = None
+        self.status_only = False
         self.stop_only = False
 
         self._setup()
@@ -116,6 +118,12 @@ class Control(Base):
 
         self.current_pid = os.getpid()
         self.host = socket.getfqdn()
+
+        try:
+            self.detector = socket.getfqdn(self.detector)
+        except AttributeError:
+            # if no detector was specified
+            pass
 
         if self.do_check:
             # check host running control script
@@ -161,18 +169,25 @@ class Control(Base):
 
         if self.do_check:
             # check detector
-            check_res = check_netgroup(
-                self.detector,
-                self.beamline,
-                self.ldapuri,
-                self.netgroup_template,
-                self.log,
-                raise_if_failed=False
-            )
+            try:
+                check_res = check_netgroup(
+                    self.detector,
+                    self.beamline,
+                    self.ldapuri,
+                    self.netgroup_template,
+                    self.log,
+                    raise_if_failed=False
+                )
+            except AttributeError:
+                # if no detector was specified
+                check_res = False
 
             if not check_res:
+                if self.detector is None:
+                    self.status_only = True
+
                 # beamline is only allowed to stop its own istance nothing else
-                if self.detector in self.do("get_instances"):
+                elif self.detector in self.do("get_instances"):
                     self.stop_only = True
                 else:
                     raise NotAllowed(
@@ -225,7 +240,7 @@ class Control(Base):
         # pylint: disable=unused-argument
         # TODO implement timeout
 
-        if self.stop_only:
+        if self.status_only or self.stop_only:
             self.log.error("Action not allowed (detector is not in netgroup)")
             return
 
@@ -264,7 +279,7 @@ class Control(Base):
             Received "DONE" if setting was successful and "ERROR" if not.
         """
 
-        if self.stop_only:
+        if self.status_only or self.stop_only:
             self.log.error("Action not allowed (detector is not in netgroup)")
             return
 
@@ -307,6 +322,9 @@ class Control(Base):
         # pylint: disable=unused-argument
         # TODO implement timeout
 
+        if command == "get_instances":
+            return self._get_instances()
+
         if self.stop_only and command not in ["stop", "get_instances"]:
             raise NotAllowed(
                 "Action not allowed (detector is not in netgroup)"
@@ -324,20 +342,42 @@ class Control(Base):
 
         # TODO implement timeout
         reply = self.socket.recv().decode()
-
-        if command in ["get_instances"]:
-            try:
-                reply = json.loads(reply)
-            except ValueError:
-                # python 2, for compatibility with 4.0.23
-                return reply
-            except json.decoder.JSONDecodeError:
-                # python 3, for compatibility with 4.0.23
-                return reply
-
         self.log.debug("recv: %s", reply)
 
         return reply
+
+    def _get_instances(self):
+
+        try:
+            det_id = self.detector.encode()
+        except AttributeError:
+            # if detector is not specified
+            det_id = "".encode()
+
+        msg = [
+            b"do",
+            self.host.encode(),
+            det_id,
+            "get_instances".encode()
+        ]
+
+        self.socket.send_multipart(msg)
+        self.log.debug("sent: %s", msg)
+
+        # TODO implement timeout
+        reply = self.socket.recv().decode()
+
+        try:
+            reply = json.loads(reply)
+        except ValueError:
+            # python 2, for compatibility with 4.0.23
+            return reply
+        except json.decoder.JSONDecodeError:
+            # python 3, for compatibility with 4.0.23
+            return reply
+
+        return reply
+
 
     def stop(self, unregister=True):
         """Unregisters from server and cleans up sockets.
@@ -350,7 +390,14 @@ class Control(Base):
         if self.socket is not None:
             if unregister:
                 self.log.info("Sending close signal")
-                msg = [b"bye", self.host.encode(), self.detector.encode()]
+
+                try:
+                    det_id = self.detector.encode()
+                except AttributeError:
+                    # if detector is not specified
+                    det_id = "".encode()
+
+                msg = [b"bye", self.host.encode(), det_id]
 
                 self.socket.send_multipart(msg)
                 self.log.debug("sent: %s", msg)
