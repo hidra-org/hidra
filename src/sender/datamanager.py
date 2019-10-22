@@ -1072,8 +1072,8 @@ class DataManager(Base):
         # detecting hanging processes
         if (self.signalhandler_thr is not None
                 and self.signalhandler_thr.is_alive()):
-            if log: self.log.error("SignalHandler hangs (PID %s).",
-                                   self.signalhandler_thr.pid)
+            if log: self.log.error("SignalHandler hangs (PID %s, same as DataManager).",
+                                   self.current_pid)
             is_hanging = True
 
         if (self.taskprovider_pr is not None
