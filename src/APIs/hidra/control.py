@@ -42,9 +42,10 @@ from ._constants import CONNECTION_LIST
 from .utils import (
     CommunicationFailed,
     NotAllowed,
-    LoggingFunction,
+    WrongConfiguration,
     Base,
-    check_netgroup
+    check_netgroup,
+    LoggingFunction
 )
 
 
@@ -100,6 +101,37 @@ class Control(Base):
 
         # pylint: disable=redefined-variable-type
 
+        self._setup_logging()
+
+        self.current_pid = os.getpid()
+        self.host = socket.getfqdn()
+
+        try:
+            self.detector = socket.getfqdn(self.detector)
+        except AttributeError:
+            # if no detector was specified
+            pass
+
+        endpoint = self._get_endpoint()
+
+        # Create ZeroMQ context
+        self.log.info("Registering ZMQ context")
+        self.context = zmq.Context()
+
+        # socket to get requests
+        self.socket = self._start_socket(
+            name="socket",
+            sock_type=zmq.REQ,
+            sock_con="connect",
+            endpoint=endpoint
+        )
+
+        self._check_responding()
+        self.log.info("Starting connection to %s", endpoint)
+
+        self._check_detector()
+
+    def _setup_logging(self):
         # print messages of certain level to screen
         if self.use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(self.use_log)
@@ -116,84 +148,29 @@ class Control(Base):
         else:
             self.log = LoggingFunction("debug")
 
-        self.current_pid = os.getpid()
-        self.host = socket.getfqdn()
-
+    def _get_endpoint(self):
         try:
-            self.detector = socket.getfqdn(self.detector)
-        except AttributeError:
-            # if no detector was specified
-            pass
+            if self.do_check:
+                # check host running control script
+                check_netgroup(self.host,
+                               self.beamline,
+                               self.ldapuri,
+                               self.netgroup_template,
+                               self.log)
 
-        if self.do_check:
-            # check host running control script
-            check_netgroup(self.host,
-                           self.beamline,
-                           self.ldapuri,
-                           self.netgroup_template,
-                           self.log)
-
-            try:
                 endpoint = "tcp://{}:{}".format(
                     CONNECTION_LIST[self.beamline]["host"],
                     CONNECTION_LIST[self.beamline]["port"]
                 )
-                self.log.info("Starting connection to %s", endpoint)
-            except KeyError:
-                self.log.error("Beamline %s not supported", self.beamline)
-                sys.exit(1)
-        else:
-            try:
+            else:
                 endpoint = "tcp://{}:{}".format(
                     self.beamline["host"],
                     self.beamline["port"]
                 )
-                self.log.info("Starting connection to %s", endpoint)
-            except KeyError:
-                self.log.error("Beamline %s not supported", self.beamline)
-                sys.exit(1)
+        except KeyError:
+            raise WrongConfiguration("Beamline %s not supported", self.beamline)
 
-        # Create ZeroMQ context
-        self.log.info("Registering ZMQ context")
-        self.context = zmq.Context()
-
-        # socket to get requests
-        self.socket = self._start_socket(
-            name="socket",
-            sock_type=zmq.REQ,
-            sock_con="connect",
-            endpoint=endpoint
-        )
-
-        self._check_responding()
-
-        if self.do_check:
-            # check detector
-            try:
-                check_res = check_netgroup(
-                    self.detector,
-                    self.beamline,
-                    self.ldapuri,
-                    self.netgroup_template,
-                    self.log,
-                    raise_if_failed=False
-                )
-            except AttributeError:
-                # if no detector was specified
-                check_res = False
-
-            if not check_res:
-                if self.detector is None:
-                    self.status_only = True
-
-                # beamline is only allowed to stop its own istance nothing else
-                elif self.detector in self.do("get_instances"):
-                    self.stop_only = True
-                else:
-                    raise NotAllowed(
-                        "Host {} is not contained in netgroup of beamline {}"
-                        .format(self.detector, self.beamline)
-                    )
+        return endpoint
 
     def _check_responding(self):
         """ Check if the control server is responding.
@@ -214,18 +191,56 @@ class Control(Base):
 
         # no one picked up the test message
         if not tracker.done:
-            self.log.error("HiDRA control server is not answering.")
+            err_msg = "HiDRA control server is not answering."
+            self.log.error(err_msg)
             self.stop(unregister=False)
-            sys.exit(1)
+
+            raise CommunicationFailed(err_msg)
 
         response = self.socket.recv()
         if response == b"OK":
             self.log.info("HiDRA control server up and answering.")
         else:
-            self.log.error("HiDRA control server is in failed state.")
+            err_msg = "HiDRA control server is in failed state."
+            self.log.error(err_msg)
             self.log.debug("response was: %s", response)
             self.stop(unregister=False)
-            sys.exit(1)
+
+            raise CommunicationFailed(err_msg)
+
+    def _check_detector(self):
+        """Check if the beamline is allowed to take actions for this detector.
+        """
+
+        if not  self.do_check:
+            return
+
+        # check detector
+        try:
+            check_res = check_netgroup(
+                self.detector,
+                self.beamline,
+                self.ldapuri,
+                self.netgroup_template,
+                self.log,
+                raise_if_failed=False
+            )
+        except AttributeError:
+            # if no detector was specified
+            check_res = False
+
+        if not check_res:
+            if self.detector is None:
+                self.status_only = True
+
+            # beamline is only allowed to stop its own istance nothing else
+            elif self.detector in self.do("get_instances"):
+                self.stop_only = True
+            else:
+                raise NotAllowed(
+                    "Host {} is not contained in netgroup of beamline {}"
+                    .format(self.detector, self.beamline)
+                )
 
     def get(self, attribute, timeout=None):
         """Get the value of an attribute.
