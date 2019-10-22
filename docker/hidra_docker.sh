@@ -11,7 +11,12 @@ BASEDIR="${CURRENTDIR%/*}"
 
 usage()
 {
-    printf "Usage: $SCRIPTNAME [--dockerfile <dockerfile to use>] [--hidradir <hidra location>]\n" >&2
+    printf "Usage: $SCRIPTNAME"
+    printf " [--dockerfile <dockerfile to use>]"
+    printf " [--hidradir <hidra location>]"
+    printf " [--hidratype <hidra type to use (sender, receiver, api,..)>]"
+    printf " [--overwrite]"
+    printf "\n"
 }
 
 dockerfile=
