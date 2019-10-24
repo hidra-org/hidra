@@ -1,14 +1,27 @@
 #!/bin/bash
 
+DEFAULT_VERSION=9
+DEFAULT_NAME=stretch
+
 fix_debian_version()
 {
-    # debian 8
-    if [ "$DEBIAN_NAME" == "jessie" ]
+    default_release=9u5
+
+    # debian 10
+    if [ "$DEBIAN_VERSION" == "10" ]
     then
-        sed -i -e "s/+deb9u5\~fsec) stretch/+deb8u11\~fsec) jessie/g" debian/changelog
-        sed -i -e "s/stretch/jessie/g" debian/changelog
-        sed -i -e "s/Standards-Version: [0-9.]*/Standards-Version: 3.9.4/g" debian/control
+        set_package_release=10
+        set_standards_version=4.4.0
+    # debian 8
+    elif [ "$DEBIAN_VERSION" == "8" ]
+    then
+        set_package_release=8u11
+        set_standards_version=3.9.4
     fi
+
+    sed -i -e "s/+deb${default_release}\~fsec) ${DEFAULT_NAME}/+deb${set_package_release}\~fsec) ${DEBIAN_NAME}/g" debian/changelog
+    sed -i -e "s/stretch/${DEBIAN_NAME}/g" debian/changelog
+    sed -i -e "s/Standards-Version: [0-9.]*/Standards-Version: ${set_standards_version}/g" debian/control
 }
 
 check_arguments()
@@ -17,20 +30,25 @@ check_arguments()
     #if [ -z ${version+x} -o "${version}" == "" ]
     then
         # set default to debian 9
-        DEBIAN_NAME=stretch
-        DEBIAN_VERSION=9
-        printf "Create packages for debian $DEBIAN_VERSION. "
+        DEBIAN_NAME=$DEFAULT_NAME
+        DEBIAN_VERSION=$DEFAULT_VERSION
+        printf "Create packages for debian %s. " "$DEBIAN_VERSION"
         printf "If you want a different version use --version\n"
-    elif [ "$version" == "9" -o "$version" == "stretch" ]
+    # debian 10
+    elif [ "$version" == "10" ] || [ "$version" == "buster" ]
+    then
+        DEBIAN_NAME=buster
+        DEBIAN_VERSION=10
+    # debian 9
+    elif [ "$version" == "9" ] || [ "$version" == "stretch" ]
     then
         DEBIAN_NAME=stretch
         DEBIAN_VERSION=9
-
-    elif [ "$version" == "8" -o "$version" == "jessie" ]
+    # debian 8
+    elif [ "$version" == "8" ] || [ "$version" == "jessie" ]
     then
         DEBIAN_NAME=jessie
         DEBIAN_VERSION=8
-
     else
         echo "Not supported debian version"
         exit 1
@@ -86,11 +104,12 @@ build_docker_image()
     DOCKER_DIR=$(pwd)
     DOCKER_IMAGE=debian_${DEBIAN_NAME}_build
     DOCKER_CONTAINER=hidra_build_${DEBIAN_NAME}
+    DOCKERFILE=${MAPPED_DIR}/hidra/docker/build/Dockerfile.build_debian${DEBIAN_VERSION}
 
-    cd ${DOCKER_DIR}
+    cd "${DOCKER_DIR}" || exit
     if [[ "$(docker images -q ${DOCKER_IMAGE} 2> /dev/null)" == "" ]]; then
         echo "Creating container"
-        docker build -f ./Dockerfile.build_debian${DEBIAN_VERSION} -t ${DOCKER_IMAGE} .
+        docker build -f ${DOCKERFILE} -t "${DOCKER_IMAGE}" .
     fi
 }
 
@@ -103,6 +122,8 @@ build_package()
     PASSWD_FILE=/tmp/passwd_x
     GROUP_FILE=/tmp/group_x
 
+    UIDGID=$(id -u $USER):$(id -g $USER)
+
     getent passwd $USER > $PASSWD_FILE
     echo "$(id -gn):*:$(id -g):$USER" > $GROUP_FILE
     docker create -it \
@@ -113,12 +134,12 @@ build_package()
         --security-opt no-new-privileges \
         --privileged \
         -v ${MAPPED_DIR}:$IN_DOCKER_DIR \
-        --user=$(id -u $USER):$(id -g $USER) \
+        --user ${UIDGID} \
         --name ${DOCKER_CONTAINER} \
         ${DOCKER_IMAGE} \
         bash
     docker start ${DOCKER_CONTAINER}
-    docker exec --user=$(id -u $USER):$(id -g $USER) ${DOCKER_CONTAINER} sh -c "$cmd"
+    docker exec --user=${UIDGID} ${DOCKER_CONTAINER} sh -c $cmd
     docker stop ${DOCKER_CONTAINER}
     docker rm ${DOCKER_CONTAINER}
 
@@ -128,10 +149,13 @@ build_package()
 
 usage()
 {
-    printf "Usage: $SCRIPTNAME --version <debian version> --tag <hidra tag> --hidra-location <path>\n" >&2
+    printf "Usage: %s" "$SCRIPTNAME"
+    printf " --version <debian version>"
+    printf " --tag <hidra tag>"
+    printf " --hidra-location <path>\n" >& 2
 }
 
-action=
+version=
 TAG=
 HIDRA_LOCATION=
 while test $# -gt 0
@@ -172,7 +196,7 @@ if [ ! -d "$MAPPED_DIR" ]; then
     mkdir -p $MAPPED_DIR
 fi
 
-cd ${MAPPED_DIR}
+cd ${MAPPED_DIR} || exit
 download_hidra
 
 mv hidra/debian .
