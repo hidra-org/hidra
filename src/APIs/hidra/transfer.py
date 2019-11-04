@@ -197,7 +197,11 @@ def convert_suffix_list_to_regex(pattern,
     Returns:
         regex (regex object): compiled regular expression of the style
                               ".*(<suffix>|...)$ resp. (<regex>|<regex>)"
+
+    Raises:
+        FormatError if the given regex is not compilable.
     """
+
     # Convert list into regex
     if isinstance(pattern, list):
 
@@ -227,7 +231,10 @@ def convert_suffix_list_to_regex(pattern,
         log.debug("converted regex=%s", regex)
 
     if compile_regex:
-        return re.compile(regex)
+        try:
+            return re.compile(regex)
+        except Exception:
+            raise FormatError("Error when compiling regex '{}'".format(regex))
     else:
         return regex
 
@@ -738,8 +745,9 @@ class Transfer(Base):
 
         elif message and message[0] == b"NO_VALID_SIGNAL":
             self.stop()
-            raise CommunicationFailed("Connection type is not supported for "
-                                      "this kind of sender.")
+            raise CommunicationFailed("Either the connection type is not "
+                                      "supported for this kind of sender or "
+                                      "the targets are of wrong format.")
 
         return message
 

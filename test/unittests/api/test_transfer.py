@@ -288,6 +288,16 @@ class TestTransfer(TestBase):
 
         self.assertGreater(len(log.method_calls), 0)
 
+        # --------------------------------------------------------------------
+        # no regex (compiled)
+        # --------------------------------------------------------------------
+        with self.assertRaises(m_transfer.FormatError):
+            ret_val = m_transfer.convert_suffix_list_to_regex(
+                pattern="*.*",
+                suffix=True,
+                compile_regex=True
+            )
+
     def test__setup(self):
         current_func_name = inspect.currentframe().f_code.co_name
 
