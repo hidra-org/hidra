@@ -299,9 +299,9 @@ class TestTransfer(TestBase):
             transfer = m_transfer.Transfer(**self.transfer_conf)
 
         def check_loggingfunction(log_level):
-            self.transfer_conf["use_log"] = log_level
+            transfer.init_args["use_log"] = log_level
             with mock.patch("hidra.transfer.LoggingFunction") as mock_logfunc:
-                transfer._setup(**self.transfer_conf)
+                transfer._setup()
 
                 self.assertIsInstance(transfer.log, mock.MagicMock)
                 self.assertTrue(mock_logfunc.called)
@@ -312,8 +312,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         self.log.info("%s: EXTERNAL CONTEXT", current_func_name)
 
-        self.transfer_conf["context"] = conf["context"]
-        transfer._setup(**self.transfer_conf)
+        transfer.init_args["context"] = conf["context"]
+        transfer._setup()
 
         self.assertTrue(transfer.ext_context)
         self.assertEqual(transfer.context, conf["context"])
@@ -327,8 +327,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         self.log.info("%s: NO EXTERNAL CONTEXT", current_func_name)
 
-        self.transfer_conf["context"] = None
-        transfer._setup(**self.transfer_conf)
+        transfer.init_args["context"] = None
+        transfer._setup()
 
         self.assertFalse(transfer.ext_context)
         self.assertIsInstance(transfer.context, zmq.Context)
@@ -354,9 +354,9 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         self.log.info("%s: USE LOGGING QUEUE", current_func_name)
 
-        self.transfer_conf["use_log"] = Queue(-1)
+        transfer.init_args["use_log"] = Queue(-1)
         with mock.patch("hidra.transfer.get_logger") as mock_get_logger:
-            transfer._setup(**self.transfer_conf)
+            transfer._setup()
 
             self.assertTrue(mock_get_logger.called)
 
@@ -365,8 +365,8 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         self.log.info("%s: USE LOGGING", current_func_name)
 
-        self.transfer_conf["use_log"] = True
-        transfer._setup(**self.transfer_conf)
+        transfer.init_args["use_log"] = True
+        transfer._setup()
 
         self.assertIsInstance(transfer.log, logging.Logger)
 
@@ -389,9 +389,9 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         self.log.info("%s: NOT SUPPORTED", current_func_name)
 
-        self.transfer_conf["connection_type"] = None
+        transfer.connection_type = None
         with self.assertRaises(m_transfer.NotSupported):
-            transfer._setup(**self.transfer_conf)
+            transfer._setup()
 
     def test_get_remote_version(self):
 
@@ -2399,7 +2399,7 @@ class TestTransfer(TestBase):
                                      metadata)
 
         self.assertTrue(transfer.log.error.called)
-        self.assertIn("append payload", transfer.log.error.call_args[0][0])
+        self.assertIn("Failed to open file", transfer.log.error.call_args[0][0])
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2428,7 +2428,7 @@ class TestTransfer(TestBase):
                                      metadata)
 
         self.assertTrue(transfer.log.error.called)
-        self.assertIn("append payload", transfer.log.error.call_args[0][0])
+        self.assertIn("Failed to open file", transfer.log.error.call_args[0][0])
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)

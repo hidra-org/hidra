@@ -574,6 +574,7 @@ class Transfer(Base):
             self.signal_exchanged = signal
 
         else:
+            msg_extension = ""
             if self._check_control_server_exists():
                 instances = self.control.do("get_instances")
 
@@ -582,8 +583,6 @@ class Transfer(Base):
                     #               ", ".join(instances))
                     msg_extension = (" Available detector instances: {}"
                                      .format(", ".join(instances)))
-                else:
-                    msg_extension = ""
 
             raise CommunicationFailed("Sending start signal ...failed."
                                       + msg_extension)
