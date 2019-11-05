@@ -139,7 +139,7 @@ build_package()
         ${DOCKER_IMAGE} \
         bash
     docker start ${DOCKER_CONTAINER}
-    docker exec --user=${UIDGID} ${DOCKER_CONTAINER} sh -c $cmd
+    docker exec --user=${UIDGID} ${DOCKER_CONTAINER} sh -c "$cmd"
     docker stop ${DOCKER_CONTAINER}
     docker rm ${DOCKER_CONTAINER}
 
