@@ -30,8 +30,8 @@ mkdir -p ${MAPPED_DIR}/SRPMS
 # get sources
 git clone --branch "v$VERSION" https://github.com/hidra-org/hidra.git
 cd hidra
-git archive --format zip -o hidra-v${VERSION}.zip v${VERSION}
-mv hidra-v${VERSION}.zip ${MAPPED_DIR}/SOURCES
+git archive --format tar --prefix=hidra-${VERSION}/ -o hidra-${VERSION}.tar.gz v${VERSION}
+mv hidra-${VERSION}.tar.gz ${MAPPED_DIR}/SOURCES
 cp hidra.spec ${MAPPED_DIR}/SPECS
 
 # DOCKER
