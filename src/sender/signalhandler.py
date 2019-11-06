@@ -42,7 +42,7 @@ import zmq.devices
 
 from base_class import Base
 
-from hidra import convert_suffix_list_to_regex, __version__
+from hidra import convert_suffix_list_to_regex, __version__, FormatError
 import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -402,7 +402,10 @@ class SignalHandler(Base):
                 unpacked_message = self.check_signal(in_message)
 
                 if unpacked_message.check_successful:
-                    self.react_to_signal(unpacked_message)
+                    try:
+                        self.react_to_signal(unpacked_message)
+                    except FormatError:
+                        self.send_response([b"NO_VALID_SIGNAL"])
                 else:
                     self.send_response(unpacked_message.response)
 
@@ -691,7 +694,14 @@ class SignalHandler(Base):
         # This cannot be done before because deepcopy does not support it
         # for python versions < 3.7, see http://bugs.python.org/issue10076
         for socket_conf in targets:
-            socket_conf[2] = re.compile(socket_conf[2])
+            try:
+                socket_conf[2] = re.compile(socket_conf[2])
+            except Exception:
+#                self.log.error("Could not compile regex '%s'",
+#                               socket_conf[2], exc_info=True)
+                self.log.error("Error message was:", exc_info=True)
+                raise FormatError("Could not compile regex '{}'"
+                                  .format(socket_conf[2]))
 
         current_time = datetime.datetime.now().isoformat()
         targetset = TargetProperties(targets=targets,

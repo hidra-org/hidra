@@ -59,7 +59,7 @@ from test_base import (TestBase,
                        MockZmqPoller)
 from signalhandler import SignalHandler, UnpackedMessage, TargetProperties
 import hidra.utils as utils
-from hidra import __version__
+from hidra import __version__, FormatError
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -785,6 +785,33 @@ class TestSignalHandler(TestBase):
         reset(sighandler)
 
         # --------------------------------------------------------------------
+        # com_socket: wrong targets
+        # --------------------------------------------------------------------
+        self.log.info("%s: COM_SOCKET: WRONG TARGETS", current_func_name)
+
+
+        signal = []
+        init_sighandler(sighandler, sighandler.com_socket, signal)
+        sighandler.com_socket.recv_multipart = mock.MagicMock()
+        sighandler.react_to_signal = mock.MagicMock()
+        sighandler.send_response = mock.MagicMock()
+        sighandler.check_signal = mock.MagicMock()
+        sighandler.check_signal.return_value = UnpackedMessage(
+            check_successful=True,
+            response=None,
+            appid=None,
+            signal=None,
+            targets=None
+        )
+        sighandler.react_to_signal.side_effect = FormatError()
+
+        sighandler._run()
+        self.assertTrue(sighandler.send_response.called)
+
+        # reset
+        reset(sighandler)
+
+        # --------------------------------------------------------------------
         # request_socket: not supported
         # --------------------------------------------------------------------
         self.log.info("%s: REQUEST_SOCKET: NOT SUPPORTED", current_func_name)
@@ -1128,6 +1155,29 @@ class TestSignalHandler(TestBase):
         port = 1234
         appid = 1234567890
         current_time = datetime.datetime.now().isoformat()
+
+        # --------------------------------------------------------------------
+        # check for wrong input regex
+        # --------------------------------------------------------------------
+        self.log.info("%s: CHECK WRONG INPUT REGEX",
+                      current_func_name)
+
+        #            [[<host>, <prio>, <suffix>], ...]
+        socket_ids = [["{}:{}".format(host, port), 0, "*.*"]]
+        registered_ids = []
+        vari_requests = []
+        perm_requests = []
+
+        with self.assertRaises(FormatError):
+            sighandler._start_signal(
+                signal=signal,
+                send_type=send_type,
+                appid=appid,
+                socket_ids=socket_ids,
+                registered_ids=registered_ids,
+                vari_requests=vari_requests,
+                perm_requests=perm_requests
+            )
 
         # --------------------------------------------------------------------
         # check that socket_id is added

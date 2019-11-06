@@ -97,7 +97,7 @@ def main():
         params = utils.load_config(config_file)
         # in case the config file was in the old config format
         # (for backwards compatibility to 4.0.x)
-        config = utils.map_conf_format(params, "sender")
+        params = utils.map_conf_format(params, "sender")
 
         data_stream_targets = params["datafetcher"]["data_stream_targets"]
         hosts = [target[0] for target in data_stream_targets]

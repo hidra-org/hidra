@@ -66,7 +66,7 @@ def argument_parsing():
 
     parser.add_argument("--det",
                         type=str,
-                        required=True,
+                        #required=True,
                         help="IP (or DNS name) of the detector")
     parser.add_argument("--detapi",
                         type=str,
@@ -245,6 +245,7 @@ class Client(object):
         self.config_ed = self.config_hidra["eventdetector"]["http_events"]
         self.config_df = self.config_hidra["datafetcher"]
 
+        # a version check does not rquire further action
         if self.config_g["version"]:
             print("Hidra version:", hidra.__version__)
             sys.exit(0)
@@ -253,12 +254,18 @@ class Client(object):
         self.ldapuri = self.config_g["ldapuri"]
         self.netgroup_template = self.config_g["netgroup_template"]
 
+        self._setup()
+
+    def _setup(self):
+
         try:
-            self.control = hidra.Control(self.beamline,
-                                         self.config_ed["det_ip"],
-                                         self.ldapuri,
-                                         self.netgroup_template,
-                                         use_log="warning")
+            self.control = hidra.Control(
+                self.beamline,
+                self.config_ed["det_ip"],
+                self.ldapuri,
+                self.netgroup_template,
+                use_log="warning"
+            )
         except utils.NotAllowed as excp:
             print(excp)
             sys.exit(1)
@@ -278,14 +285,13 @@ class Client(object):
                 res_start = self.control.do("status")
                 print("Status of HiDRA (detector mode):", res_start)
             except utils.NotAllowed:
-                print("except")
-
+                print("Not allowed to do this action.")
         elif self.config_g["stop"]:
             try:
                 res_start = self.control.do("stop")
                 print("Stopping HiDRA (detector mode):", res_start)
             except utils.NotAllowed:
-                print("except")
+                print("Not allowed to do this action.")
 
         elif self.config_g["getsettings"]:
             self._getsettings()

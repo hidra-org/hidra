@@ -735,11 +735,13 @@ class HidraController(HidraServiceHandling):
 
     def _setup(self):
 
-        self.confighandling = ConfigHandling(self.context,
-                                             self.beamline,
-                                             self.det_id,
-                                             self.config,
-                                             self.log_queue)
+        self.confighandling = ConfigHandling(
+            self.context,
+            self.beamline,
+            self.det_id,
+            self.config,
+            self.log_queue
+        )
 
         self.supported_keys = [
             "ldapuri",
@@ -1068,7 +1070,8 @@ class ControlServer(utils.Base):
                 continue
 
             for det_id in bl_instances:
-                self.log.debug("beamline=%s, instance=%s", beamline, det_id)
+                self.log.debug("Restarting instance for beamline=%s, "
+                               "instance=%s", beamline, det_id)
 
                 # use hidra controller mechanism
                 self.controller[det_id] = HidraController(
@@ -1232,44 +1235,33 @@ class ControlServer(utils.Base):
 
         # check if host is allowed to execute commands
         try:
-            check_res = utils.check_netgroup(
-                hostname=host_id,
-                beamline=self.beamline,
-                ldapuri=self.ldapuri,
-                netgroup_template=self.netgroup_template,
-                log=self.log,
-                raise_if_failed=False
+            self._check_netgroup(
+                name=host_id,
+                str_name="host",
+                error_msg=("Host %s is not allowed to execute commands for "
+                           "beamline %s", host_id)
             )
         except Exception:
-            self.log.error("Error when checking netgroup (host)",
-                           exc_info=True)
-            self.log.debug("msg=%s", msg)
             return self.reply_codes.error
 
-        if not check_res:
-            self.log.info("Host %s is not allowed to execute commands for "
-                          "beamline %s.", host_id, self.beamline)
-            return self.reply_codes.error
+        # bypass detector checking for this
+        if action == "do" and param == "get_instances":
+            # allow the beamline to see it's running instances
+            return self._get_instances()
+        elif action == "do" and param == "stop":
+            # allow the beamline to stop it's old instances
+            if det_id in self._get_instances():
+                return self._stop_old_instance(det_id)
 
         # check if detector belongs to the beamline
         try:
-            check_res = utils.check_netgroup(
-                hostname=det_id,
-                beamline=self.beamline,
-                ldapuri=self.ldapuri,
-                netgroup_template=self.netgroup_template,
-                log=self.log,
-                raise_if_failed=False
+            self._check_netgroup(
+                name=det_id,
+                str_name="detector",
+                error_msg=("Detector %s does not belong to beamline %s.",
+                           det_id, self.beamline)
             )
         except Exception:
-            self.log.error("Error when checking netgroup (detector)",
-                           exc_info=True)
-            self.log.debug("msg=%s", msg)
-            return self.reply_codes.error
-
-        if not check_res:
-            self.log.info("Detector %s does not belong to beamline %s.",
-                          det_id, self.beamline)
             return self.reply_codes.error
 
         # --------------------------------------------------------------------
@@ -1305,6 +1297,67 @@ class ControlServer(utils.Base):
             return controller.bye(host_id)
         else:
             return self.reply_codes.error
+
+    def _check_netgroup(self, name, str_name, error_msg):
+        try:
+            check_res = utils.check_netgroup(
+                hostname=name,
+                beamline=self.beamline,
+                ldapuri=self.ldapuri,
+                netgroup_template=self.netgroup_template,
+                log=self.log,
+                raise_if_failed=False
+            )
+        except Exception:
+            self.log.error("Error when checking netgroup (%s)", str_name,
+                           exc_info=True)
+            self.log.debug("msg=%s", msg)
+            raise
+
+        if not check_res:
+            self.log.info(*error_msg)
+            raise
+
+    def _get_instances(self):
+        """Get the started hidra instances
+
+        Returns:
+            List of detectors started for this beamline as json dump.
+        """
+
+        try:
+            bl_instances = self.instances.get_instances()[self.beamline]
+        except KeyError:
+            # something went wrong when trying to start the instance
+            bl_instances = {}
+
+        instances = json.dumps(list(bl_instances.keys())).encode()
+        self.log.debug("Running instances are: %s", instances)
+
+        return instances
+
+    def _stop_old_instance(self, det_id):
+        """Stop an still running old hidra instance.
+
+        Args:
+            det_id: The detector to stop hidra for.
+        """
+        self.log.debug("Closing old instance for detector %s", det_id)
+
+        # use hidra controller mechanism
+        controller = HidraController(
+            self.context,
+            self.beamline,
+            det_id,
+            # to prevent different detector processes to write into the
+            # same config
+            copy.deepcopy(self.config),
+            self.instances,
+            self.log_queue
+        )
+
+        # stop
+        return self.controller[det_id].stop()
 
     def stop(self):
         """Clean up zmq sockets.
