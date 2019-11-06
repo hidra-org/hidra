@@ -10,6 +10,7 @@
 - Fix config mapping in get_receiver_status
 - Add debian 10 support for package build script
 - Fix debian package build: fix conflict and missing source
+- Fix centos package build to match spec file
 
 # 4.1.3
 
