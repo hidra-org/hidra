@@ -104,8 +104,9 @@ class TestDataManager(TestBase):
                 "ext_ip": self.ext_ip,
                 "ldapuri": "it-ldap-slave.desy.de:1389",
                 "log_name": "datamanager.log",
-                "log_path": "/home/kuhnm/projects/hidra/logs",
+                "log_path": os.path.join(self.base_dir, "logs"),
                 "log_size": 10485760,
+                # "onscreen": "debug",
                 "onscreen": False,
                 "procname": "hidra",
                 "username": pwd.getpwuid(os.geteuid()).pw_name,
@@ -119,7 +120,7 @@ class TestDataManager(TestBase):
                 "eventdetector_port": 50003,
                 "ext_data_port": 50101,
                 "inotify_events": {
-                    "monitored_dir": "/home/kuhnm/projects/hidra/data/source",
+                    "monitored_dir": os.path.join(self.base_dir, "data", "source"),
                     "fix_subdirs": fix_subdirs,
                     "create_fix_subdirs": False,
                     "monitored_events": {"IN_CLOSE_WRITE": [""]},
@@ -130,7 +131,7 @@ class TestDataManager(TestBase):
                     "time_till_closed": 2,
                 },
                 "inotifyx_events": {
-                    "monitored_dir": "/home/kuhnm/projects/hidra/data/source",
+                    "monitored_dir": os.path.join(self.base_dir, "data", "source"),
                     "fix_subdirs": fix_subdirs,
                     "create_fix_subdirs": False,
                     "monitored_events": {"IN_CLOSE_WRITE": [""]},
@@ -146,7 +147,7 @@ class TestDataManager(TestBase):
                 "chunksize": self.chunksize,
                 "data_stream_targets": [[self.con_ip,
                                          self.config["fixed_recv"]]],
-                "local_target": "/home/kuhnm/projects/hidra/data/target",
+                "local_target": os.path.join(self.base_dir, "data", "target"),
                 "use_data_stream": True,
                 "number_of_streams": 1,
                 "store_data": False,
@@ -271,6 +272,7 @@ class TestDataManager(TestBase):
         try:
             n_iter = self.stop - self.start
             i = 0
+            error_i = 0
             create_new_file = True
 
             while i < n_iter:
@@ -285,11 +287,15 @@ class TestDataManager(TestBase):
                 recv_message = self.fixed_recv_socket.recv_multipart()
 
                 if recv_message == [b"ALIVE_TEST"]:
+                    if error_i > 5:
+                        raise Exception("Something went wrong... break loop")
                     self.log.info("received: %s", recv_message[0])
                     create_new_file = False
+                    error_i += 1
                     continue
 
                 i += 1
+                error_i = 0
                 create_new_file = True
 
                 self.log.info("received fixed: %s",

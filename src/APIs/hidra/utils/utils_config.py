@@ -95,7 +95,7 @@ def load_config(config_file, config_type=None, log=logging):
 
     # Auto-detection
     if config_type is None:
-        file_type = _detect_config_type(config_file)
+        file_type = _detect_config_type(config_file, log)
     else:
         file_type = config_type
 
@@ -126,11 +126,14 @@ def load_config(config_file, config_type=None, log=logging):
     return config
 
 
-def _detect_config_type(config_file):
+def _detect_config_type(config_file, log):
     if config_file.endswith(".conf"):
         file_type = "conf"
     elif config_file.endswith(".yaml"):
         file_type = "yaml"
+    else:
+        log.debug("config_file = %s", config_file)
+        raise WrongConfiguration("Detected not supported config type")
 
     return file_type
 
@@ -153,7 +156,7 @@ def write_config(config_file, config, config_type=None, log=logging):
 
     # Auto-detection
     if config_type is None:
-        file_type = _detect_config_type(config_file)
+        file_type = _detect_config_type(config_file, log)
     else:
         file_type = config_type
 

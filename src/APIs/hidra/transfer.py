@@ -197,7 +197,11 @@ def convert_suffix_list_to_regex(pattern,
     Returns:
         regex (regex object): compiled regular expression of the style
                               ".*(<suffix>|...)$ resp. (<regex>|<regex>)"
+
+    Raises:
+        FormatError if the given regex is not compilable.
     """
+
     # Convert list into regex
     if isinstance(pattern, list):
 
@@ -227,7 +231,10 @@ def convert_suffix_list_to_regex(pattern,
         log.debug("converted regex=%s", regex)
 
     if compile_regex:
-        return re.compile(regex)
+        try:
+            return re.compile(regex)
+        except Exception:
+            raise FormatError("Error when compiling regex '{}'".format(regex))
     else:
         return regex
 
@@ -241,12 +248,14 @@ class Transfer(Base):
                  signal_host=None,
                  use_log=False,
                  context=None,
+                 # TODO remove dirs_not_to_create here
                  dirs_not_to_create=None,
                  detector_id=None,
                  control_server_port=51000):
 
         super().__init__()
 
+        self.connection_type = connection_type
         self.detector_id = detector_id
         self.control_server_port = control_server_port
         self.control_api_log_level = "warning"
@@ -277,13 +286,13 @@ class Transfer(Base):
         self.confirmation_socket = None
         self.control_socket = None
 
+        self.control = None
         self.poller = None
         self.auth = None
 
         self.targets = None
         self.supported_connections = None
         self.signal_exchanged = None
-        self.connection_type = None
         self.started_connections = dict()
         self.status = None
 
@@ -306,50 +315,26 @@ class Transfer(Base):
         self.generate_target_filepath = None
         self._remote_version = None
 
-        self._setup(connection_type,
-                    signal_host,
-                    use_log,
-                    context,
-                    dirs_not_to_create)
+        self.init_args = {
+            "signal_host": signal_host,
+            "use_log": use_log,
+            "context": context,
+            "dirs_not_to_create": dirs_not_to_create
+        }
+        self._setup()
 
-    def _setup(self,
-               connection_type,
-               signal_host,
-               use_log,
-               context,
-               dirs_not_to_create):
+    def _setup(self):
 
         # pylint: disable=redefined-variable-type
         # pylint: disable=unidiomatic-typecheck
 
-        # print messages of certain level to screen
-        if use_log in ["debug", "info", "warning", "error", "critical"]:
-            self.log = LoggingFunction(use_log)
-            self.control_api_log_level = use_log
-
-        # use logutils queue
-        # isinstance does not work here
-        elif type(use_log) in [multiprocessing.Queue,
-                               multiprocessing.queues.Queue]:
-            self.log = get_logger("Transfer", use_log)
-
-        # use logging
-        elif use_log:
-            self.log = logging.getLogger("Transfer")
-
-        # use no logging at all
-        elif use_log is None:
-            self.log = LoggingFunction(None)
-
-        # print everything to screen
-        else:
-            self.log = LoggingFunction("debug")
+        self._setup_logging()
 
         # ZMQ applications always start by creating a context,
         # and then using that for creating sockets
         # (source: ZeroMQ, Messaging for Many Applications by Pieter Hintjens)
-        if context is not None:
-            self.context = context
+        if self.init_args["context"] is not None:
+            self.context = self.init_args["context"]
             self.ext_context = True
         else:
             self.context = zmq.Context()
@@ -362,8 +347,8 @@ class Transfer(Base):
         # connections from this application
         self.appid = str(self.current_pid)
 
-        if signal_host is not None:
-            self.signal_host = socket_m.getfqdn(signal_host)
+        if self.init_args["signal_host"] is not None:
+            self.signal_host = socket_m.getfqdn(self.init_args["signal_host"])
 
         ports = self._get_remote_ports()
 
@@ -397,14 +382,18 @@ class Transfer(Base):
 
         self.poller = zmq.Poller()
 
-        self.supported_connections = ["STREAM", "STREAM_METADATA",
-                                      "QUERY_NEXT", "QUERY_NEXT_METADATA",
-                                      "NEXUS"]
+        self.supported_connections = [
+            "STREAM",
+            "STREAM_METADATA",
+            "QUERY_NEXT",
+            "QUERY_NEXT_METADATA",
+            "NEXUS"
+        ]
 
-        if dirs_not_to_create is None:
-            self.dirs_not_to_create = dirs_not_to_create
+        if self.init_args["dirs_not_to_create"] is None:
+            self.dirs_not_to_create = self.init_args["dirs_not_to_create"]
         else:
-            self.dirs_not_to_create = tuple(dirs_not_to_create)
+            self.dirs_not_to_create = tuple(self.init_args["dirs_not_to_create"])
 
         self.status = [b"OK"]
         self.socket_response_timeout = 1000
@@ -413,10 +402,55 @@ class Transfer(Base):
         # (further support for users)
         self.generate_target_filepath = generate_filepath
 
-        if connection_type in self.supported_connections:
-            self.connection_type = connection_type
-        else:
+        if self.connection_type not in self.supported_connections:
             raise NotSupported("Chosen type of connection is not supported.")
+
+    def _setup_logging(self):
+
+        # print messages of certain level to screen
+        log_levels = ["debug", "info", "warning", "error", "critical"]
+        if self.init_args["use_log"] in log_levels:
+            self.log = LoggingFunction(self.init_args["use_log"])
+            self.control_api_log_level = self.init_args["use_log"]
+
+        # use logutils queue
+        # isinstance does not work here
+        elif type(self.init_args["use_log"]) in [multiprocessing.Queue,
+                                                 multiprocessing.queues.Queue]:
+            self.log = get_logger("Transfer", self.init_args["use_log"])
+
+        # use logging
+        elif self.init_args["use_log"]:
+            self.log = logging.getLogger("Transfer")
+
+        # use no logging at all
+        elif self.init_args["use_log"] is None:
+            self.log = LoggingFunction(None)
+
+        # print everything to screen
+        else:
+            self.log = LoggingFunction("debug")
+
+    def _setup_control_server_connection(self):
+
+        if self.control is not None:
+            # nothing to do
+            return
+
+        beamline = {
+            "host": self.signal_host,
+            "port": self.control_server_port
+        }
+        self.log.debug("Setup control server connection (%s)", beamline)
+
+        self.control = Control(
+            beamline=beamline,
+            detector=self.detector_id,
+            ldapuri="",
+            netgroup_template="",
+            use_log=self.control_api_log_level,
+            do_check=False
+        )
 
     def _get_remote_ports(self):
 
@@ -431,29 +465,17 @@ class Transfer(Base):
             ports["request"] = 50001
             return ports
 
-        beamline = {
-            "host": self.signal_host,
-            "port": self.control_server_port
-        }
         self.log.info("Get ports from the control server (%s)", beamline)
-
-        control = Control(
-            beamline=beamline,
-            detector=self.detector_id,
-            ldapuri="",
-            netgroup_template="",
-            use_log=self.control_api_log_level,
-            do_check=False
-        )
+        self._get_control_server_connection()
 
         # com port
-        answer = control.get("com_port")
+        answer = self.control.get("com_port")
         if answer == b"ERROR":
             raise CommunicationFailed("Error when receiving signal/com port")
         ports["signal"] = answer
 
         # request port
-        answer = control.get("request_port")
+        answer = self.control.get("request_port")
         if answer == b"ERROR":
             raise CommunicationFailed("Error when receiving request port")
         ports["request"] = answer
@@ -559,7 +581,18 @@ class Transfer(Base):
             self.signal_exchanged = signal
 
         else:
-            raise CommunicationFailed("Sending start signal ...failed.")
+            msg_extension = ""
+            if self._check_control_server_exists():
+                instances = self.control.do("get_instances")
+
+                if instances:
+                    # self.log.info("Available detector instances: %s",
+                    #               ", ".join(instances))
+                    msg_extension = (" Available detector instances: {}"
+                                     .format(", ".join(instances)))
+
+            raise CommunicationFailed("Sending start signal ...failed."
+                                      + msg_extension)
 
         self._remote_version = self.get_remote_version()
 
@@ -692,9 +725,10 @@ class Transfer(Base):
         # check correctness of message
         if message and message[0] == b"VERSION_CONFLICT":
             self.stop()
-            raise VersionError("Versions are conflicting. Sender version: {},"
-                               " API version: {}"
-                               .format(message[1], __version__))
+            raise VersionError(
+                "Versions are conflicting. Sender version: {}, API version: {}"
+                .format(message[1], __version__)
+            )
 
         elif message and message[0] == b"NO_VALID_HOST":
             self.stop()
@@ -711,10 +745,20 @@ class Transfer(Base):
 
         elif message and message[0] == b"NO_VALID_SIGNAL":
             self.stop()
-            raise CommunicationFailed("Connection type is not supported for "
-                                      "this kind of sender.")
+            raise CommunicationFailed("Either the connection type is not "
+                                      "supported for this kind of sender or "
+                                      "the targets are of wrong format.")
 
         return message
+
+    def _check_control_server_exists(self):
+        try:
+            self._setup_control_server_connection()
+            exists = True
+        except CommunicationFailed:
+            exists = False
+
+        return exists
 
     def _get_data_endpoint(self, data_socket_prop):
         """Determines the local ip, DNS name and socket IDs

@@ -1,4 +1,17 @@
 # develop
+# 4.1.4
+
+- Catch wrong target definition in transfer
+- Fix unittests
+- Improve error message if detector_id is needed
+- Fix stopping of still running instances
+- Fix getinstances in hidra-control
+- Add example for multi-detector use
+- Fix config mapping in get_receiver_status
+- Add debian 10 support for package build script
+- Fix debian package build: fix conflict and missing source
+- Fix centos package build to match spec file
+
 # 4.1.3
 
 - Fix ownership of log file of datareceiver

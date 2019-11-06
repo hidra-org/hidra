@@ -161,10 +161,16 @@ class EventDetector(EventDetectorBase):
 
             regexes.append(self.mon_regex_per_event[key])
 
-            # cannot be compiled before because regexes needs to be a list
+            # cannot be compiled before because regexes need to be a list
             # of string
-            self.mon_regex_per_event[key] = (
-                re.compile(self.mon_regex_per_event[key]))
+            try:
+                self.mon_regex_per_event[key] = (
+                    re.compile(self.mon_regex_per_event[key]))
+            except Exception:
+                self.log.error("Could not compile regex '%s'",
+                               self.mon_regex_per_event[key],
+                               exc_info=True)
+                raise
 
         self.log.debug("regexes=%s", regexes)
         self.mon_regex = convert_suffix_list_to_regex(regexes,
