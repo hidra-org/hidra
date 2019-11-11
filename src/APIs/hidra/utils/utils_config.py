@@ -475,7 +475,7 @@ def set_flat_param(param, param_value, config, config_type, log=logging):
     found = _traverse_dict(config, mapping)
     if not found:
         log.debug("config=%s", config)
-        raise Exception("Could not map flat parameter %s", param)
+        raise Exception("Could not map flat parameter {}".format(param))
 
 
 def get_flat_param(param, config, config_type, log=logging):
@@ -523,7 +523,7 @@ def get_flat_param(param, config, config_type, log=logging):
         return param_value
     else:
         log.debug("config=%s", config)
-        raise Exception("Could not map flat parameter %s", param)
+        raise Exception("Could not map flat parameter {}".format(param))
 
 
 def check_config(required_params, config, log, serialize=True):

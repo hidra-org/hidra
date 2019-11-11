@@ -1316,7 +1316,7 @@ class ControlServer(utils.Base):
 
         if not check_res:
             self.log.info(*error_msg)
-            raise
+            raise Exception(error_msg[0] % error_msg[1:])
 
     def _get_instances(self):
         """Get the started hidra instances

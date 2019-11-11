@@ -232,7 +232,7 @@ class Ingest(Base):
             self.filepart = 0
         else:
             self.log.debug("signal=%s and filename=%s", signal, filename)
-            raise Exception("Wrong response received: %s", message)
+            raise Exception("Wrong response received: {}".format(message))
 
     def write(self, data):
         """Write data into the file.
