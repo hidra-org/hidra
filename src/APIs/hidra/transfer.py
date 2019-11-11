@@ -465,8 +465,8 @@ class Transfer(Base):
             ports["request"] = 50001
             return ports
 
-        self.log.info("Get ports from the control server (%s)", beamline)
-        self._get_control_server_connection()
+        self.log.info("Get ports from the control server")
+        self._setup_control_server_connection()
 
         # com port
         answer = self.control.get("com_port")
