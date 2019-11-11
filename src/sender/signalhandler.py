@@ -121,7 +121,7 @@ class SignalHandler(Base):
         self.request_fw_socket = None
         self.request_socket = None
 
-        self.init_args={
+        self.init_args = {
             "whitelist": whitelist,
             "ldapuri": ldapuri,
             "context": context,
@@ -207,6 +207,7 @@ class SignalHandler(Base):
             endpoint=self.endpoints.request_fw_bind
         )
 
+        # needs to be explicit check to [] because None would also fail
         if self.whitelist != []:
             com_endpt_split = self.endpoints.com_bind.split(":")
             use_random_com = len(com_endpt_split) == 2
@@ -244,6 +245,7 @@ class SignalHandler(Base):
         self.poller = zmq.Poller()
         self.poller.register(self.control_sub_socket, zmq.POLLIN)
         self.poller.register(self.request_fw_socket, zmq.POLLIN)
+        # needs to be explicit check to [] because None would also fail
         if self.whitelist != []:
             self.poller.register(self.com_socket, zmq.POLLIN)
             self.poller.register(self.request_socket, zmq.POLLIN)
@@ -294,7 +296,7 @@ class SignalHandler(Base):
             CANCEL: Cancel the previous request
 
         request_fw_socket
-            (internal forwarding of requests which came fromexternal)
+            (internal forwarding of requests which came from external)
             GET_REQUESTS: TaskProvider asks to get the next set of open
                           requests
 
@@ -504,7 +506,7 @@ class SignalHandler(Base):
                                 self.log.debug("registered_queries=%s",
                                                self.registered_queries)
                                 self.log.error(
-                                    "Could not remove leftover/dubplicate "
+                                    "Could not remove leftover/duplicate "
                                     "query", exc_info=True
                                 )
                                 raise
@@ -697,8 +699,6 @@ class SignalHandler(Base):
             try:
                 socket_conf[2] = re.compile(socket_conf[2])
             except Exception:
-#                self.log.error("Could not compile regex '%s'",
-#                               socket_conf[2], exc_info=True)
                 self.log.error("Error message was:", exc_info=True)
                 raise FormatError("Could not compile regex '{}'"
                                   .format(socket_conf[2]))
@@ -713,7 +713,7 @@ class SignalHandler(Base):
             if target_properties.appid != appid:
                 continue
 
-            # the registerd disjoint socket ids for each node set
+            # the registered disjoint socket ids for each node set
             # set(<host>:<port>, <host>:<port>, ...)
             targets_flatlist = set(
                 [j[0] for j in target_properties.targets]

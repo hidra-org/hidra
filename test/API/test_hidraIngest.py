@@ -7,7 +7,7 @@ import logging
 # import json
 import tempfile
 
-from __init__ import BASE_DIR
+from _environment import BASE_DIR
 import utils
 
 
@@ -17,7 +17,7 @@ logfile = os.path.join(logfile_path, "test_ingest.log")
 utils.init_logging(logfile, True, "DEBUG")
 
 
-class Receiver ():
+class Receiver (object):
     def __init__(self, context=None):
         self.ext_host = "0.0.0.0"
         self.signal_port = "50050"
@@ -39,8 +39,7 @@ class Receiver ():
         connection_str = ("tcp://{0}:{1}"
                           .format(self.ext_host, self.signal_port))
         self.signal_socket.bind(connection_str)
-        logging.info("signal_socket started (bind) for '{0}'"
-                     .format(connection_str))
+        logging.info("signal_socket started (bind) for '%s'", connection_str)
 
         self.event_socket = self.context.socket(zmq.PULL)
         connection_str = ("ipc://{0}"
@@ -48,8 +47,7 @@ class Receiver ():
                                                "hidra",
                                                "eventDet")))
         self.event_socket.bind(connection_str)
-        logging.info("event_socket started (bind) for '{0}'"
-                     .format(connection_str))
+        logging.info("event_socket started (bind) for '%s'", connection_str)
 
         self.data_socket = self.context.socket(zmq.PULL)
         connection_str = ("ipc://{0}"
@@ -57,8 +55,7 @@ class Receiver ():
                                                "hidra",
                                                "dataFetch")))
         self.data_socket.bind(connection_str)
-        logging.info("data_socket started (bind) for '{0}"
-                     .format(connection_str))
+        logging.info("data_socket started (bind) for '%s", connection_str)
 
         self.poller = zmq.Poller()
         self.poller.register(self.signal_socket, zmq.POLLIN)
@@ -84,8 +81,7 @@ class Receiver ():
                         and socks[self.signal_socket] == zmq.POLLIN):
 
                     message = self.signal_socket.recv_multipart()
-                    logging.debug("signal_socket recv: {0}"
-                                  .format(message))
+                    logging.debug("signal_socket recv: %s", message)
 
                     if message[0] == b"OPEN_FILE":
                         # Open file
@@ -93,14 +89,12 @@ class Receiver ():
                         logging.debug("Opened file")
 
                         self.signal_socket.send_multipart(message)
-                        logging.debug("signal_socket send: {0}"
-                                      .format(message))
+                        logging.debug("signal_socket send: %s", message)
 
                     elif message[0] == b"CLOSE_FILE":
                         if all_closed:
                             self.signal_socket.send_multipart(message)
-                            logging.debug("signal_socket send: {0}"
-                                          .format(message))
+                            logging.debug("signal_socket send: %s", message)
 
                             # Close file
                             file_descriptor.close()
@@ -111,24 +105,22 @@ class Receiver ():
                             mark_as_close = message
                     else:
                         self.signal_socket.send_multipart(message)
-                        logging.debug("signal_socket send: {0}"
-                                      .format(message))
+                        logging.debug("signal_socket send: %s", message)
 
                 if (socks
                         and self.event_socket in socks
                         and socks[self.event_socket] == zmq.POLLIN):
 
                     event_message = self.event_socket.recv()
-#                    logging.debug("event_socket recv: {0}"
-#                                  .format(json.loads(event_message)))
-                    logging.debug("event_socket recv: {0}"
-                                  .format(event_message))
+#                    logging.debug("event_socket recv: %s",
+#                                  json.loads(event_message))
+                    logging.debug("event_socket recv: %s", event_message)
 
                     if event_message == b"CLOSE_FILE":
                         if mark_as_close:
                             self.signal_socket.send_multipart(mark_as_close)
-                            logging.debug("signal_socket send: {0}"
-                                          .format(mark_as_close))
+                            logging.debug("signal_socket send: %s",
+                                          mark_as_close)
                             mark_as_close = None
 
                             # Close file
@@ -145,13 +137,13 @@ class Receiver ():
 
                     data = self.data_socket.recv()
 
-                    logging.debug("data_socket recv (len={0}): {1}"
-                                  .format(data[:100], len(data)))
+                    logging.debug("data_socket recv (len=%s): %s",
+                                  data[:100], len(data))
 
                     file_descriptor.write(data)
                     logging.debug("Write file content")
 
-            except:
+            except Exception:
                 logging.error("Exception in run", exc_info=True)
                 break
 
@@ -169,7 +161,7 @@ class Receiver ():
                 logging.info("closing data_socket...")
                 self.data_socket.close(linger=0)
                 self.data_socket = None
-        except:
+        except Exception:
             logging.error("closing ZMQ Sockets...failed.", exc_info=True)
 
         if not self.ext_context and self.context:
@@ -178,7 +170,7 @@ class Receiver ():
                 self.context.destroy(0)
                 self.context = None
                 logging.info("Closing ZMQ context...done.")
-            except:
+            except Exception:
                 logging.error("Closing ZMQ context...failed.", exc_info=True)
 
     def __del__(self):

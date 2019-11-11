@@ -73,7 +73,7 @@ check_arguments()
 get_hidra_version()
 {
     if [ "${HIDRA_LOCATION}" != "" ]; then
-        HIDRA_VERSION=$(cat ${HIDRA_LOCATION}/src/APIs/hidra/utils/_version.py)
+        HIDRA_VERSION=$(cat "${HIDRA_LOCATION}/src/APIs/hidra/utils/_version.py")
     else
         URL="https://raw.githubusercontent.com/hidra-org/hidra/$TAG/src/APIs/hidra/utils/_version.py"
         HIDRA_VERSION=$(curl -L $URL)
@@ -86,30 +86,30 @@ get_hidra_version()
 download_hidra()
 {
     if [ "$HIDRA_LOCATION" != "" ]; then
-        cp -r $HIDRA_LOCATION $MAPPED_DIR/hidra
+        cp -r "$HIDRA_LOCATION" "$MAPPED_DIR/hidra"
         return
     fi
 
     # clean up old download
     if [ -d "$MAPPED_DIR/hidra" ]; then
-        rm -rf $MAPPED_DIR/hidra
+        rm -rf "$MAPPED_DIR/hidra"
     fi
 
     BRANCH="v${HIDRA_VERSION}"
-    git clone --branch $BRANCH https://github.com/hidra-org/hidra.git
+    git clone --branch "$BRANCH" https://github.com/hidra-org/hidra.git
 }
 
 build_docker_image()
 {
     DOCKER_DIR=$(pwd)
-    DOCKER_IMAGE=debian_${DEBIAN_NAME}_build
-    DOCKER_CONTAINER=hidra_build_${DEBIAN_NAME}
-    DOCKERFILE=${MAPPED_DIR}/hidra/docker/build/Dockerfile.build_debian${DEBIAN_VERSION}
+    DOCKER_IMAGE="debian_${DEBIAN_NAME}_build"
+    DOCKER_CONTAINER="hidra_build_${DEBIAN_NAME}"
+    DOCKERFILE="${MAPPED_DIR}/hidra/docker/build/Dockerfile.build_debian${DEBIAN_VERSION}"
 
-    cd "${DOCKER_DIR}" || exit
+    cd "${DOCKER_DIR}" || exit 1
     if [[ "$(docker images -q ${DOCKER_IMAGE} 2> /dev/null)" == "" ]]; then
         echo "Creating container"
-        docker build -f ${DOCKERFILE} -t "${DOCKER_IMAGE}" .
+        docker build -f "${DOCKERFILE}" -t "${DOCKER_IMAGE}" .
     fi
 }
 
@@ -122,29 +122,29 @@ build_package()
     PASSWD_FILE=/tmp/passwd_x
     GROUP_FILE=/tmp/group_x
 
-    UIDGID=$(id -u $USER):$(id -g $USER)
+    UIDGID=$(id -u "$USER"):$(id -g "$USER")
 
-    getent passwd $USER > $PASSWD_FILE
-    echo "$(id -gn):*:$(id -g):$USER" > $GROUP_FILE
+    getent passwd "$USER" > "$PASSWD_FILE"
+    echo "$(id -gn):*:$(id -g):$USER" > "$GROUP_FILE"
     docker create -it \
-        -v $PASSWD_FILE:/etc/passwd \
-        -v $GROUP_FILE:/etc/group \
+        -v "$PASSWD_FILE":/etc/passwd \
+        -v "$GROUP_FILE":/etc/group \
         --userns=host \
         --net=host \
         --security-opt no-new-privileges \
         --privileged \
-        -v ${MAPPED_DIR}:$IN_DOCKER_DIR \
-        --user ${UIDGID} \
-        --name ${DOCKER_CONTAINER} \
-        ${DOCKER_IMAGE} \
+        -v "${MAPPED_DIR}":$IN_DOCKER_DIR \
+        --user "${UIDGID}" \
+        --name "${DOCKER_CONTAINER}" \
+        "${DOCKER_IMAGE}" \
         bash
-    docker start ${DOCKER_CONTAINER}
-    docker exec --user=${UIDGID} ${DOCKER_CONTAINER} sh -c "$cmd"
-    docker stop ${DOCKER_CONTAINER}
-    docker rm ${DOCKER_CONTAINER}
+    docker start "${DOCKER_CONTAINER}"
+    docker exec --user="${UIDGID}" "${DOCKER_CONTAINER}" sh -c "$cmd"
+    docker stop "${DOCKER_CONTAINER}"
+    docker rm "${DOCKER_CONTAINER}"
 
-    rm $PASSWD_FILE
-    rm $GROUP_FILE
+    rm "$PASSWD_FILE"
+    rm "$GROUP_FILE"
 }
 
 usage()
@@ -188,27 +188,27 @@ done
 check_arguments
 get_hidra_version
 
-MAPPED_DIR=/tmp/hidra_builds/debian${DEBIAN_VERSION}/${HIDRA_VERSION}
+MAPPED_DIR="/tmp/hidra_builds/debian${DEBIAN_VERSION}/${HIDRA_VERSION}"
 
 echo "Create packages for hidra tag $TAG for version $HIDRA_VERSION"
 
 if [ ! -d "$MAPPED_DIR" ]; then
-    mkdir -p $MAPPED_DIR
+    mkdir -p "$MAPPED_DIR"
 fi
 
-cd ${MAPPED_DIR} || exit
+cd "${MAPPED_DIR}" || exit 1
 download_hidra
 
 mv hidra/debian .
 fix_debian_version
-tar czf hidra_${HIDRA_VERSION}.orig.tar.gz hidra
+tar czf "hidra_${HIDRA_VERSION}.orig.tar.gz" hidra
 mv debian hidra/debian
 
 build_docker_image
 build_package
 
 # clean up
-#docker rmi ${DOCKER_IMAGE}
-rm -rf $MAPPED_DIR/hidra
+#docker rmi "${DOCKER_IMAGE}"
+rm -rf "$MAPPED_DIR/hidra"
 
 echo "Debian ${DEBIAN_VERSION} packages can be found in ${MAPPED_DIR}"

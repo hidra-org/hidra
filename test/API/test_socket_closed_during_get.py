@@ -1,45 +1,55 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import zmq
 import json
+import socket as socket_m
+import zmq
 
-context = zmq.Context()
 
-signal_socket = context.socket(zmq.REQ)
-signal_socket.connect("tcp://zitpcx19282.desy.de:50000")
+def main():
+    localhost = socket_m.getfqdn()
+    local_ip = socket_m.gethostbyaddr(localhost)[2][0]
 
-data_socket = context.socket(zmq.PULL)
-data_socket.bind("tcp://131.169.185.121:50101")
+    context = zmq.Context()
 
-request_socket = context.socket(zmq.PUSH)
-request_socket.connect("tcp://zitpcx19282.desy.de:50001")
+    signal_socket = context.socket(zmq.REQ)
+    signal_socket.connect("tcp://{}:50000".format(localhost))
 
-signal_socket.send_multipart(
-    [b"2.4.2",
-     b"START_QUERY_NEXT",
-     json.dumps([["zitpcx19282.desy.de:50101", 1, "cbf"]])])
-print("Signal responded: ", signal_socket.recv_multipart())
+    data_socket = context.socket(zmq.PULL)
+    data_socket.bind("tcp://{}:50101".format(local_ip))
 
-try:
-    request_socket.send_multipart(
-        [b"NEXT",
-         "zitpcx19282.desy.de:50101".encode("utf-8")])
+    request_socket = context.socket(zmq.PUSH)
+    request_socket.connect("tcp://{}:50001".format(localhost))
 
-    multipart_message = data_socket.recv_multipart()
-    metadata = json.loads(multipart_message[0])
-    payload = multipart_message[1:]
-
-    print("metadata: ", metadata)
-
-finally:
     signal_socket.send_multipart(
         [b"2.4.2",
-         b"STOP_QUERY_NEXT",
-         json.dumps([["zitpcx19282.desy.de:50101", 1, "cbf"]])])
+         b"START_QUERY_NEXT",
+         json.dumps([["{}:50101".format(localhost), 1, "cbf"]])])
+    print("Signal responded:", signal_socket.recv_multipart())
 
-    signal_socket.close()
-    data_socket.close()
-    request_socket.close()
+    try:
+        request_socket.send_multipart(
+            [b"NEXT",
+             "{}:50101".format(localhost).encode("utf-8")])
 
-    context.destroy()
+        multipart_message = data_socket.recv_multipart()
+        metadata = json.loads(multipart_message[0])
+#        payload = multipart_message[1:]
+
+        print("metadata:", metadata)
+
+    finally:
+        signal_socket.send_multipart(
+            [b"2.4.2",
+             b"STOP_QUERY_NEXT",
+             json.dumps([["{}:50101".format(localhost), 1, "cbf"]])])
+
+        signal_socket.close()
+        data_socket.close()
+        request_socket.close()
+
+        context.destroy()
+
+
+if __name__ == "__main__":
+    main()

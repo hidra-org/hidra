@@ -69,7 +69,7 @@ def argument_parsing():
         or default_config
 
     # check if config_file exist
-    utils.check_existance(arguments.config_file)
+    utils.check_existence(arguments.config_file)
 
     # ------------------------------------------------------------------------
     # Get arguments from config file
@@ -77,7 +77,7 @@ def argument_parsing():
 
     params = utils.set_parameters(base_config_file=arguments.config_file,
                                   config_file=None,
-                                  argumetns=arguments)
+                                  arguments=arguments)
 
     if params["whitelist"] is not None and type(params["whitelist"]) == str:
         params["whitelist"] = utils.execute_ldapsearch(logging,
@@ -103,8 +103,8 @@ def argument_parsing():
     else:
         root.addHandler(handlers)
 
-    # check target directory for existance
-    utils.check_existance(params["target_dir"])
+    # check target directory for existence
+    utils.check_existence(params["target_dir"])
 
     # check if logfile is writable
     params["log_file"] = os.path.join(params["log_path"], params["log_name"])
@@ -119,7 +119,7 @@ class NexusReceiver:
 
         try:
             params = argument_parsing()
-        except:
+        except Exception:
             self.log = self.get_logger()
             raise
 
@@ -141,7 +141,7 @@ class NexusReceiver:
             self.run()
         except KeyboardInterrupt:
             pass
-        except:
+        except Exception:
             self.log.error("Stopping due to unknown error condition",
                            exc_info=True)
         finally:
@@ -170,10 +170,10 @@ class NexusReceiver:
 
                     params["target_fp"] = open(target_file, "wb")
                     print("New target directory created:", target_path)
-                except:
+                except Exception:
                     raise
             else:
-                    raise
+                raise
         print(params, filename)
 
     def read_callback(self, params, received_data):
@@ -193,7 +193,7 @@ class NexusReceiver:
         try:
             self.transfer.start([self.data_ip, self.data_port], self.whitelist)
 #            self.transfer.start(self.data_port)
-        except:
+        except Exception:
             self.log.error("Could not initiate stream", exc_info=True)
             raise
 
@@ -210,7 +210,7 @@ class NexusReceiver:
 #                    break
             except KeyboardInterrupt:
                 break
-            except:
+            except Exception:
                 self.log.error("Could not read")
                 raise
 

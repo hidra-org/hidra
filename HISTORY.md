@@ -281,7 +281,7 @@
 
 # 4.0.1
 
-- Fixed LD_IBRARY_PATH in initscipt for all platforms
+- Fixed LD_LIBRARY_PATH in initscript for all platforms
 - Fixed freeze (newline went missing in cleanup)
 
 # 4.0.0
@@ -294,7 +294,7 @@
 - If store_data is disabled requests for metadata gets an error
 - Converted hosts to fully qualified domain names
 - Added unittests
-- Fixed sys path extention (prepend instead of append)
+- Fixed sys path extension (prepend instead of append)
 - Fixes stopping of datareceiver if start of transfer failed
 - Fixed signal exchange with transfer API
 - Fixed file loss when shutting down receiver

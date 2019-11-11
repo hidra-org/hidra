@@ -2,7 +2,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-from inotifyx import binding
 from inotifyx.distinfo import version as __version__
 # import time
 
@@ -12,7 +11,7 @@ BASE_DIR = "/home/kuhnm/projects/hidra"
 print("BASE_DIR", BASE_DIR)
 
 
-class EventDetector():
+class EventDetector(object):
 
     def __init__(self):
         global BASE_DIR
@@ -106,7 +105,7 @@ if __name__ == '__main__':
 #    hp.setrelheap()
     try:
         for s in range(steps):
-            start = min_loop + s * step_loop
+            start = int(min_loop + s * step_loop)
             stop = start + step_loop
 #            print ("start=", start, "stop=", stop)
             for i in range(start, stop):
@@ -132,7 +131,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
     finally:
-        for number in range(min_loop, stop):
+        for number in range(min_loop, min_loop + step_loop):
             try:
                 target_file = "{0}{1}.cbf".format(target_file_base, number)
                 os.remove(target_file)

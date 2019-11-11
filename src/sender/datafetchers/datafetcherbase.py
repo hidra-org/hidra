@@ -44,7 +44,7 @@ import zmq
 try:
     from pathlib2 import Path
 except ImportError:
-    # only avaliable for Python3
+    # only available for Python3
     from pathlib import Path
 
 from base_class import Base
@@ -80,25 +80,20 @@ class DataFetcherBase(Base, ABC):
 
         Args:
             datafetcher_base_config: A dictionary containing all needed
-                                     parameters encapsulated into a dictionary
-                                     to prevent the data fetcher modules to be
-                                     affected by adding and removing of
-                                     parameters.
-                                     datafetcher_base_args should contain the
-                                     following keys:
-                                        config (dict): A dictionary containing
-                                                       the configuration
-                                                       parameters.
-                                        log_queue: The multiprocessing queue
-                                                   which is used for logging.
-                                        fetcher_id (int): The ID of this
-                                                          datafetcher instance.
-                                        context: The ZMQ context to be used.
-                                        lock: A threading lock object to handle
-                                              control signal access.
-                                        stop_request: A threading event to
-                                                      notify the data fetcher to
-                                                      stop.
+                parameters encapsulated into a dictionary to prevent the data
+                fetcher modules to be affected by adding and removing of
+                parameters.
+                datafetcher_base_args should contain the following keys:
+                    config (dict): A dictionary containing the configuration
+                        parameters.
+                    log_queue: The multiprocessing queue which is used for
+                        logging.
+                    fetcher_id (int): The ID of this datafetcher instance.
+                    context: The ZMQ context to be used.
+                    lock: A threading lock object to handle control signal
+                        access.
+                    stop_request: A threading event to notify the data fetcher
+                        to stop.
             name (str): The name of the derived data fetcher module. This is
                         used for logging.
         """
@@ -161,10 +156,12 @@ class DataFetcherBase(Base, ABC):
 
         Args:
             print_log (boolean, optional): If a summary of the configured
-                                           parameters should be logged.
+                parameters should be logged.
+            check_module_config (boolean, optional): If the module specific
+                config should also be checked.
         Raises:
             WrongConfiguration: The configuration has missing or
-                                wrong parameters.
+                wrong parameters.
         """
 
         if self.required_params and isinstance(self.required_params, list):
@@ -226,24 +223,22 @@ class DataFetcherBase(Base, ABC):
 
         Args:
             targets: A list of targets where to send the data to.
-                     Each target is of the form:
-                        - target: A ZMQ endpoint to send the data to.
-                        - prio (int): With which priority this data should be
-                                      sent:
-                                      - 0 is highest priority with blocking
-                                      - all other priorities are non-blocking
-                                        but sorted numerically.
-                        - send_type: If the data (means payload and metadata)
-                                     or only the metadata should be sent.
-
+                Each target is of the form:
+                    - target: A ZMQ endpoint to send the data to.
+                    - prio (int): With which priority this data should be sent:
+                        - 0 is highest priority with blocking
+                        - all other priorities are non-blocking but sorted
+                            numerically.
+                    - send_type: If the data (means payload and metadata) or
+                        only the metadata should be sent.
             open_connections (dict): Containing all open sockets. If data was
-                                     send to a target already the socket is
-                                     kept open till the target disconnects.
+                send to a target already the socket is kept open till the
+                target disconnects.
             metadata: The metadata of this data block.
             payload: The data block to be sent.
             chunk_number: The chunk number of the payload to be processed.
             timeout (optional): How long to wait for the message to be received
-                                in s (default: -1, means wait forever)
+                in s (default: -1, means wait forever)
         """
         timeout = 1
         self._check_control_signal()
@@ -302,6 +297,10 @@ class DataFetcherBase(Base, ABC):
                                           "priority %s", chunk_number,
                                           self.source_file, target, prio)
                             self.log.debug("metadata=%s", metadata)
+                        else:
+                            self.log.error("send_type %s is not supported",
+                                           send_type)
+                            continue
 
                         if not tracker.done:
                             self.log.debug("Message part %s from file '%s' "
@@ -483,13 +482,13 @@ class DataFetcherBase(Base, ABC):
         Reads the metadata dictionary from the event detector and extends it
         with the mandatory entries:
             - filesize (int):  the total size of the logical file (before
-                               chunking)
+                chunking)
             - file_mod_time (float, epoch time): modification time of the
-                                                 logical file in epoch
+                logical file in epoch
             - file_create_time (float, epoch time): creation time of the
-                                                    logical file in epoch
+                logical file in epoch
             - chunksize (int): the size of the chunks the logical message was
-                               split into
+                split into
 
         Additionally it generates the absolute source path and if a local
         target is specified the absolute target path as well.
@@ -502,10 +501,10 @@ class DataFetcherBase(Base, ABC):
                 where
                     <request_type>: u'data' or u'metadata'
             metadata (dict): Dictionary created by the event detector
-                             containing:
-                                - filename
-                                - source_path
-                                - relative_path
+                containing:
+                    - filename
+                    - source_path
+                    - relative_path
 
         Sets:
             source_file (str): the absolute path of the source file
@@ -526,7 +525,7 @@ class DataFetcherBase(Base, ABC):
                 where
                     <request_type>: u'data' or u'metadata'
             metadata (dict): extended metadata dictionary filled by function
-                             get_metadata
+                get_metadata
             open_connections (dict)
 
         Returns:

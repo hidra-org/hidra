@@ -20,21 +20,22 @@
 # DEALINGS IN THE SOFTWARE.
 
 
+from __future__ import print_function
+
 import os
-import select
+import sys
 
 import inotifyx
 
 
 if __name__ == '__main__':
-    import sys
 
     if len(sys.argv) == 1:
-        print >>sys.stderr, 'usage: inotify path [path ...]'
+        print('usage: inotify path [path ...]', file=sys.stderr)
         sys.exit(1)
 
     paths = sys.argv[1:]
-    print "paths: ", paths
+    print("paths: ", paths)
 
     fd = inotifyx.init()
 
@@ -45,7 +46,7 @@ if __name__ == '__main__':
             wd = inotifyx.add_watch(fd, path)
             wd_to_path[wd] = path
 
-        print "wd_to_path: ", wd_to_path
+        print("wd_to_path: ", wd_to_path)
 
         try:
             while True:
@@ -58,34 +59,35 @@ if __name__ == '__main__':
                     if event.name:
                         parts.append(event.name)
 
-#                    print '%s: %s' % (path, ' '.join(parts))
+#                    print('%s: %s' % (path, ' '.join(parts)))
                     is_dir = ("IN_ISDIR" in a_array)
-                    is_closed = ("IN_CLOSE" in a_array or "IN_CLOSE_WRITE" in a_array)
-                    is_created= ("IN_CREATE" in a_array)
+                    is_closed = ("IN_CLOSE" in a_array
+                                 or "IN_CLOSE_WRITE" in a_array)
+                    is_created = ("IN_CREATE" in a_array)
 
                     # if a new directory is created inside the monitored one,
                     # this one has to be monitored as well
                     if is_created and is_dir and event.name:
-                        dirname =  path + os.sep + event.name
+                        dirname = path + os.sep + event.name
                         if dirname in paths:
-                            print "already contained in path list"
+                            print("already contained in path list")
                         else:
                             wd = inotifyx.add_watch(fd, dirname)
                             wd_to_path[wd] = dirname
-                            print "added path to watch", wd_to_path
+                            print("added path to watch", wd_to_path)
 
                     # only closed files are send
                     if is_closed and not is_dir:
-                        parentDir    = path
+                        parentDir = path
                         relativePath = ""
                         while True:
                             if parentDir not in paths:
-                                (parentDir,relDir) = os.path.split(parentDir)
+                                (parentDir, relDir) = os.path.split(parentDir)
                                 relativePath += os.sep + relDir
                             else:
-                                print "parent", parentDir
-                                print "relativePath", relativePath
-                                print "filename", event.name
+                                print("parent", parentDir)
+                                print("relativePath", relativePath)
+                                print("filename", event.name)
                                 break
 
         except KeyboardInterrupt:

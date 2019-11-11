@@ -3,7 +3,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-import sys
 
 from inotify_simple import INotify, flags
 
@@ -16,7 +15,6 @@ def _main():
             os.mkdir(path)
     except OSError:
         pass
-
 
     inotify = INotify()
     watch_flags = flags.CREATE | flags.DELETE | flags.MODIFY | flags.DELETE_SELF
@@ -37,6 +35,7 @@ def _main():
 
             print("PATH=[{}] FILENAME=[{}] EVENT_TYPES={}"
                   .format(path, event.name, event_type))
+
 
 if __name__ == '__main__':
     _main()

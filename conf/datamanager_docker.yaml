@@ -195,7 +195,7 @@ datafetcher:
     store_data: False
 
     # Target directory to move the files into (needed if store_data is enabled)
-    local_target: &local_target /target
+    local_target: /target
 
     file_fetcher:
         fix_subdirs: *fix_subdirs

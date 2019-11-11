@@ -1,48 +1,51 @@
-import zmq
+from __future__ import print_function
+
 from multiprocessing import Process
 import time
+import zmq
+
 
 def f1():
-
     context = zmq.Context()
     socket = context.socket(zmq.PUSH)
     socket.connect("tcp://127.0.0.1:9999")
 
-#    print "p1: sockets created"
+#    print("p1: sockets created")
     try:
-        for i in range(1,11):
+        for i in range(1, 11):
             filename = "/opt/hidra/data/source/local/raw/" + str(i) + ".cbf"
             time.sleep(0.2)
             f = open(filename, "rb")
-            fileObject = f.read()
-#            print "p1: file " + filename + " read"
+            file_object = f.read()
+#            print("p1: file " + filename + " read")
             f.close()
 
-            socket.send(fileObject)
+            socket.send(file_object)
     finally:
         socket.close(1)
         context.destroy()
 
-def f2():
 
+def f2():
     context = zmq.Context()
     socket = context.socket(zmq.PUSH)
     socket.connect("tcp://127.0.0.1:9999")
 
-#    print "p2: sockets created"
+#    print("p2: sockets created")
     try:
-        for j in range(11,21):
+        for j in range(11, 21):
             filename = "/opt/hidra/data/source/local/raw/" + str(j) + ".cbf"
             time.sleep(0.1)
             f = open(filename, "rb")
-            fileObject = f.read()
-#            print "p2: file " + filename + " read"
+            file_object = f.read()
+#            print("p2: file " + filename + " read")
             f.close()
 
-            socket.send(fileObject)
+            socket.send(file_object)
     finally:
         socket.close(1)
         context.destroy()
+
 
 def f3():
     context = zmq.Context()
@@ -52,16 +55,15 @@ def f3():
     i = 1
     try:
         t1 = time.time()
-        while i<=20:
-
-#            print "main: receive"
+        while i <= 20:
+            # print("main: receive")
             res = socket.recv()
-#            print res[:10]
+            # print(res[:10])
 
             time.sleep(0.01)
             i += 1
         t2 = time.time()
-        print "time needed", t2-t1
+        print("time needed", t2-t1)
     finally:
         socket.close(1)
         context.destroy()

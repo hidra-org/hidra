@@ -39,7 +39,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class TestEventDetector(EventDetectorTestBase):
-    """Specification of tests to be performed for the loaded EventDetecor.
+    """Specification of tests to be performed for the loaded EventDetector.
     """
 
     def setUp(self):

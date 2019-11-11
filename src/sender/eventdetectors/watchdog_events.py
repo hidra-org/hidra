@@ -66,13 +66,24 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 _potential_close_events = []  # pylint: disable=invalid-name
 _events_marked_to_remove = []  # pylint: disable=invalid-name
 
+# pylint: disable=global-variable-not-assigned
+
 
 class EventStore(object):
+    """A class to store all events.
+    """
+
     def __init__(self):
         self.cond = threading.Condition()
         self.events = []
 
     def add(self, event):
+        """Add a event to the store
+
+        Args:
+            event:  The event to add.
+        """
+
         with self.cond:
             self.events.append(event)
             # Waking up threads that are waiting for new input
@@ -82,9 +93,9 @@ class EventStore(object):
         """Get and emtpy all stored event.
 
         Args:
-            blocking (oprtional): block until there is at least one event
-                                  present.
-            timeout (optional): timeout to wait for events
+            blocking (optional): block until there is at least one event
+                                 present.
+            timeout (optional): timeout to wait for events.
 
         Returns:
              A list of events.
@@ -98,15 +109,22 @@ class EventStore(object):
         return events
 
     def is_empty(self):
+        """Check if the store is emtpy.
+
+        Returns:
+            A boolean.
+        """
+
         return self.events == []
 
     def remove_all(self):
         """Remove all events"""
+
         with self.cond:
             self.events = []
 
 
-_event_store = EventStore()
+_event_store = EventStore()  # pylint: disable=invalid-name
 
 
 # documentation of watchdog: https://pythonhosted.org/watchdog/api.html
@@ -217,8 +235,8 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
 
         # pylint: disable=no-member
         if self.detect_close and self.detect_close.match(event.src_path):
-            self.log.debug("On close event detected (from create, filename=%s)",
-                           event.src_path)
+            self.log.debug("On close event detected (from create, "
+                           "filename=%s)", event.src_path)
             if (not event.is_directory
                     and event.src_path not in _potential_close_events):
                 self.log.debug("Append event to _potential_close_events: %s",
@@ -364,9 +382,10 @@ class CheckModTime(threading.Thread):
         self.pool_running = True
 
     def run(self):
-        global _event_store
-        global _potential_close_events   # pylint: disable=invalid-name
-        global _events_marked_to_remove   # pylint: disable=invalid-name
+        """Keep check for events."""
+        global _event_store  # pylint: disable=invalid-name
+        global _potential_close_events  # pylint: disable=invalid-name
+        global _events_marked_to_remove  # pylint: disable=invalid-name
 
         self.log.debug("start run")
         while not self.stopper.is_set():
@@ -497,7 +516,7 @@ class EventDetector(EventDetectorBase):
         self.paths = None
         self.lock = None
 
-        #TODO add in watchdog config
+        # TODO add in watchdog config
         self.timeout = 2
 
         self.observer_threads = None
@@ -598,4 +617,3 @@ class EventDetector(EventDetectorBase):
             _event_store.remove_all()
             _potential_close_events = []
             _events_marked_to_remove = []
-

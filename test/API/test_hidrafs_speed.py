@@ -9,9 +9,10 @@ import argparse
 
 
 class Worker(multiprocessing.Process):
-    def __init__(self, id, port, number_of_files):
+    def __init__(self, worker_id, number_of_files):
+        multiprocessing.Process.__init__()
 
-        self.id = id
+        self.id = worker_id
         self.path = "/tmp/fs_test"
         self.number_of_files = number_of_files
 
@@ -23,7 +24,7 @@ class Worker(multiprocessing.Process):
                 self.number_of_files.value += 1
 
 
-if __name__ == "__main__":
+def main():
 
     parser = argparse.ArgumentParser()
 
@@ -40,16 +41,12 @@ if __name__ == "__main__":
 
     setproctitle.setproctitle(arguments.procname)
 
-    number_of_worker = 3
-    workers = []
-
     number_of_files = multiprocessing.Value('i', 0)
 
+    workers = []
     for n in range(arguments.workers):
-        p = str(50100 + n)
-
         w = multiprocessing.Process(target=Worker,
-                                    args=(n, p, number_of_files))
+                                    args=(n, number_of_files))
         workers.append(w)
         w.start()
 
@@ -63,3 +60,7 @@ if __name__ == "__main__":
         print("number_of_files={0}".format(number_of_files.value))
         for w in workers:
             w.terminate()
+
+
+if __name__ == "__main__":
+    main()

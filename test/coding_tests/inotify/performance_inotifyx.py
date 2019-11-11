@@ -57,7 +57,7 @@ import time
 
 import inotifyx
 
-from performance_base import PerformanceBase, do_tests
+from .performance_base import PerformanceBase, do_tests
 
 
 class CreateAndGet(PerformanceBase):

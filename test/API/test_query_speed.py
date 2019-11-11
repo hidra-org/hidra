@@ -8,21 +8,22 @@ import setproctitle
 import socket
 import argparse
 
-from __init__ import BASE_DIR
+from _environment import BASE_DIR
 from hidra import Transfer
 
 
 class Worker(multiprocessing.Process):
-    def __init__(self, id, transfer_type, signal_host, target_host,   # noqa F811
+    def __init__(self, worker_id, transfer_type, signal_host, target_host,
                  port, number_of_files):
+        super().__init__()
 
-        self.id = id
+        self.id = worker_id
         self.basepath = os.path.join(BASE_DIR, "data", "target")
         self.number_of_files = number_of_files
 
         self.port = port
 
-        print("start Transfer on port {0}".format(port))
+        print("start Transfer on port", port)
         self.query = Transfer(transfer_type, signal_host, use_log=None)
         self.query.start([target_host, port])
 
@@ -48,13 +49,13 @@ class Worker(multiprocessing.Process):
         self.stop()
 
 
-if __name__ == "__main__":
+def main():
 
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--signal_host",
                         type=str,
-                        help="Host where HiDRA is runnning",
+                        help="Host where HiDRA is running",
                         default=socket.getfqdn())
     parser.add_argument("--target_host",
                         type=str,
@@ -111,3 +112,7 @@ if __name__ == "__main__":
             w.terminate()
 
         query.stop()
+
+
+if __name__ == "__main__":
+    main()

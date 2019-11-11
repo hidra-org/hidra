@@ -7,39 +7,48 @@ import os
 import tempfile
 import zmq
 
-ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
-control_pub_endpoint = os.path.join(ipc_dir, "control_sub")
-control_sub_endpoint = os.path.join(ipc_dir, "control_pub")
-check_endpoint = os.path.join(ipc_dir, "check")
 
-control_pub_str = "ipc://{}".format(control_pub_endpoint)
-control_sub_str = "ipc://{}".format(control_sub_endpoint)
-check_str = "ipc://{}".format(check_endpoint)
+def main():
+    ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
+#    control_pub_endpoint = os.path.join(ipc_dir, "control_sub")
+    control_sub_endpoint = os.path.join(ipc_dir, "control_pub")
+    check_endpoint = os.path.join(ipc_dir, "check")
 
-context = zmq.Context()
+#    control_pub_str = "ipc://{}".format(control_pub_endpoint)
+    control_sub_str = "ipc://{}".format(control_sub_endpoint)
+    check_str = "ipc://{}".format(check_endpoint)
 
-try:
-    control_socket = context.socket(zmq.SUB)
-    control_socket.connect(control_sub_str)
-    control_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
-    print("Start control socket (connect): {}".format(control_sub_str))
-except:
-    print("Failed to start control socket (connect): {}".format(control_sub_str))
+    context = zmq.Context()
 
-try:
-    check_socket = context.socket(zmq.REP)
-    check_socket.connect(check_str)
-    print("Start check socket (connect): {}".format(check_str))
-except:
-    print("Failed to start check socket (connect): {}".format(check_str))
+    try:
+        control_socket = context.socket(zmq.SUB)
+        control_socket.connect(control_sub_str)
+        control_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
+        print("Start control socket (connect): {}".format(control_sub_str))
+    except Exception:
+        print("Failed to start control socket (connect): {}"
+              .format(control_sub_str))
+        raise
 
-request = check_socket.recv()
-print("Received request {}".format(request))
-check_socket.send("Yes")
+    try:
+        check_socket = context.socket(zmq.REP)
+        check_socket.connect(check_str)
+        print("Start check socket (connect): {}".format(check_str))
+    except Exception:
+        print("Failed to start check socket (connect): {}".format(check_str))
+        raise
 
-msg = control_socket.recv_multipart()
-print("Received control message {}".format(msg))
+    request = check_socket.recv()
+    print("Received request {}".format(request))
+    check_socket.send("Yes")
 
-control_socket.close()
-check_socket.close()
-context.destroy()
+    msg = control_socket.recv_multipart()
+    print("Received control message {}".format(msg))
+
+    control_socket.close()
+    check_socket.close()
+    context.destroy()
+
+
+if __name__ == "__main__":
+    main()

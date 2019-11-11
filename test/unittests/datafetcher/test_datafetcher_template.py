@@ -31,11 +31,6 @@ from __future__ import unicode_literals
 from builtins import super  # pylint: disable=redefined-builtin
 
 import json
-try:
-    import unittest.mock as mock
-except ImportError:
-    # for python2
-    import mock
 import os
 
 from datafetcher_template import DataFetcher

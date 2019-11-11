@@ -40,13 +40,13 @@ import os
 import yaml
 
 from .utils_datatypes import (Endpoints, NotSupported, WrongConfiguration)
-from .utils_general import check_existance
+from .utils_general import check_existence
 
 try:
-    import ConfigParser
-except ImportError:
     # The ConfigParser module has been renamed to configparser in Python 3
-    import configparser as ConfigParser
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
 
 
 def determine_config_file(fname_base, config_dir):
@@ -67,11 +67,11 @@ def determine_config_file(fname_base, config_dir):
 
     config_file = os.path.join(config_dir, "{}.yaml".format(fname_base))
     try:
-        check_existance(config_file)
+        check_existence(config_file)
     except WrongConfiguration:
         config_file = os.path.join(config_dir, "{}.conf".format(fname_base))
         try:
-            check_existance(config_file)
+            check_existence(config_file)
         except WrongConfiguration:
             raise WrongConfiguration("Missing base config file ('{}')"
                                      .format(fname_base))
@@ -85,12 +85,12 @@ def load_config(config_file, config_type=None, log=logging):
     Args:
         config_file (str): Absolute path to the configuration file.
         config_type (str): The type the configuration is in (config or yaml).
-                           If not set (or set to None) the file extension is
-                           used for automatic detection.
+            If not set (or set to None) the file extension is used for
+            automatic detection.
+        log (optional): A log handler to use.
 
     Returns:
         Configuration dictionary.
-
     """
 
     # Auto-detection
@@ -101,7 +101,7 @@ def load_config(config_file, config_type=None, log=logging):
 
     try:
         if file_type == "conf":
-            configparser = ConfigParser.RawConfigParser()
+            configparser = RawConfigParser()
             try:
                 configparser.readfp(_FakeSecHead(open(config_file)))
             # TODO why was this necessary?
@@ -145,9 +145,9 @@ def write_config(config_file, config, config_type=None, log=logging):
         config_file (str): Absolute path to the configuration file.
         config (dict): The configuration data.
         config_type (str, optional): The type the configuration is in
-                                     (config or yaml). If not set (or set to
-                                     None) the file extension is used for
-                                     automatic detection.
+            (config or yaml). If not set (or set to None) the file extension is
+            used for automatic detection.
+        log (optional): A log handler to use.
 
     Raises:
         NotSupported if the defined config_type (or when auto-detecting the
@@ -440,8 +440,8 @@ def set_flat_param(param, param_value, config, config_type, log=logging):
         param: The parameter to set.
         param_value: The value to set the parameter to.
         config: A dictionary in hierarchical structure.
-        config_type: What type of mapping should be used
-
+        config_type: What type of mapping should be used.
+        log (optional): A log handler to use.
     """
 
     if config_type == "sender":
@@ -454,8 +454,6 @@ def set_flat_param(param, param_value, config, config_type, log=logging):
         raise NotSupported("Config type is not supported")
 
     def _traverse_dict(config, mapping):
-        found = False
-
         for key, value in mapping.items():
             try:
                 if isinstance(value, dict):
@@ -486,7 +484,8 @@ def get_flat_param(param, config, config_type, log=logging):
     Args:
         param: The parameter to get.
         config: A dictionary in hierarchical structure.
-        config_type: What type of mapping should be used
+        config_type: What type of mapping should be used.
+        log (optional): A log handler to use.
 
     Returns:
         The value corresponding to the key
@@ -502,8 +501,6 @@ def get_flat_param(param, config, config_type, log=logging):
         raise NotSupported("Config type is not supported")
 
     def _traverse_dict(config, mapping):
-        found = False
-
         for key, value in mapping.items():
             try:
                 if isinstance(value, dict):
@@ -524,6 +521,91 @@ def get_flat_param(param, config, config_type, log=logging):
     else:
         log.debug("config=%s", config)
         raise Exception("Could not map flat parameter {}".format(param))
+
+
+def _check_param(param_list, config, error_msg, log):
+    check_passed = True
+    config_reduced = {}
+
+    for param in param_list:
+
+        if isinstance(param, dict):
+            check_passed, config_reduced = _check_params_dict(
+                param, config, error_msg, log
+            )
+            continue
+
+        # if the type of the parameter should be checked as well the entry
+        # is a list instead of a string
+        if isinstance(param, list):
+            # if the type is checked the entry is of the form
+            # [<param_name>, <param_type>]
+            # or [<param_name>, <list of param values>]
+            param_name, param_type = param
+        else:
+            param_name, param_type = param, None
+
+        if param_name not in config:
+            log.error("%s Missing parameter: '%s'",
+                      error_msg, param_name)
+            check_passed = False
+            continue
+
+        # check param type or value
+        elif param_type is not None:
+
+            # check if the parameter is one of the supported values
+            if isinstance(param_type, list):
+                if config[param_name] not in param_type:
+                    log.error("%s Options for parameter '%s' are %s",
+                              error_msg, param_name, param_type)
+                    log.debug("parameter '%s' = %s", param_name,
+                              config[param_name])
+                    check_passed = False
+                    continue
+
+            # check if the parameter has the supported type
+            elif not isinstance(config[param_name], param_type):
+                log.error("%s Parameter '%s' is of format '%s' but should "
+                          "be of format '%s'",
+                          error_msg, param_name,
+                          type(config[param_name]), param_type)
+                check_passed = False
+                continue
+
+        config_reduced[param_name] = config[param_name]
+
+    return check_passed, config_reduced
+
+
+def _check_params_dict(required_params, config, msg, log):
+    check_passed = True
+    config_reduced = {}
+
+    for key, value in required_params.items():
+        error_msg = msg
+
+        # check general format
+        if key not in config:
+            log.error("%s Missing section: '%s'", error_msg, key)
+            check_passed = False
+            continue
+
+        error_msg = "{} (section '{}')".format(error_msg, key)
+
+        if isinstance(value, dict):
+            sub_check_passed, sub_config_reduced = _check_params_dict(
+                value, config[key], error_msg, log
+            )
+        else:
+            sub_check_passed, sub_config_reduced = _check_param(
+                value, config[key], error_msg, log
+            )
+
+        check_passed = check_passed and sub_check_passed
+        config_reduced[key] = sub_config_reduced
+
+    return check_passed, config_reduced
 
 
 def check_config(required_params, config, log, serialize=True):
@@ -553,89 +635,6 @@ def check_config(required_params, config, log, serialize=True):
     check_passed = True
     config_reduced = {}
 
-    def _check_param(param_list, config, error_msg):
-        check_passed = True
-        config_reduced = {}
-
-        for param in param_list:
-
-            if isinstance(param, dict):
-                check_passed, config_reduced = _check_params_dict(
-                    param, config, error_msg
-                )
-                continue
-
-            # if the type of the parameter should be checked as well the entry
-            # is a list instead of a string
-            if isinstance(param, list):
-                # if the type is checked the entry is of the form
-                # [<param_name>, <param_type>]
-                # or [<param_name>, <list of param values>]
-                param_name, param_type = param
-            else:
-                param_name, param_type = param, None
-
-            if param_name not in config:
-                log.error("%s Missing parameter: '%s'",
-                          error_msg, param_name)
-                check_passed = False
-                continue
-
-            # check param type or value
-            elif param_type is not None:
-
-                # check if the parameter is one of the supported values
-                if isinstance(param_type, list):
-                    if config[param_name] not in param_type:
-                        log.error("%s Options for parameter '%s' are %s",
-                                  error_msg, param_name, param_type)
-                        log.debug("parameter '%s' = %s", param_name,
-                                  config[param_name])
-                        check_passed = False
-                        continue
-
-                # check if the parameter has the supported type
-                elif not isinstance(config[param_name], param_type):
-                    log.error("%s Parameter '%s' is of format '%s' but should "
-                              "be of format '%s'",
-                              error_msg, param_name,
-                              type(config[param_name]), param_type)
-                    check_passed = False
-                    continue
-
-            config_reduced[param_name] = config[param_name]
-
-        return check_passed, config_reduced
-
-    def _check_params_dict(required_params, config, msg):
-        check_passed = True
-        config_reduced = {}
-
-        for key, value in required_params.items():
-            error_msg = msg
-
-            # check general format
-            if key not in config:
-                log.error("%s Missing section: '%s'", error_msg, key)
-                check_passed = False
-                continue
-
-            error_msg = "{} (section '{}')".format(error_msg, key)
-
-            if isinstance(value, dict):
-                sub_check_passed, sub_config_reduced = _check_params_dict(
-                    value, config[key], error_msg
-                )
-            else:
-                sub_check_passed, sub_config_reduced = _check_param(
-                    value, config[key], error_msg
-                )
-
-            check_passed = check_passed and sub_check_passed
-            config_reduced[key] = sub_config_reduced
-
-        return check_passed, config_reduced
-
     error_msg = "Configuration of wrong format."
 
     if not required_params:
@@ -643,12 +642,12 @@ def check_config(required_params, config, log, serialize=True):
 
     if isinstance(required_params, list):
         check_passed, config_reduced = _check_param(
-            required_params, config, error_msg
+            required_params, config, error_msg, log
         )
 
     elif isinstance(required_params, dict):
         check_passed, config_reduced = _check_params_dict(
-            required_params, config, error_msg
+            required_params, config, error_msg, log
         )
     else:
         log.error("%s required_params has wrong input format.",
@@ -714,7 +713,7 @@ def build_serialized_config(config_reduced):
 
 # source:
 # pylint: disable=line-too-long
-#http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788  # noqa E501
+# http://stackoverflow.com/questions/2819696/parsing-properties-file-in-python/2819788#2819788  # noqa E501
 class _FakeSecHead(object):
     """Adds a fake section had to the configuration.
 
@@ -797,6 +796,7 @@ def parse_parameters(config, log=logging):
 
     Args:
         config (class RawConfigParser): ConfigParser instance.
+        log (optional): A log handler to use.
 
     Returns:
         A dictionary containing the parameters.

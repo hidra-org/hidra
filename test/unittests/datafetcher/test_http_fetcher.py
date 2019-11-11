@@ -81,7 +81,7 @@ class TestDataFetcher(DataFetcherTestBase):
         """Simulate file fetching without taking care of confirmation signals.
         """
 
-        self.datafetcher = DataFetcher(self.df_base_config)
+        datafetcher = DataFetcher(self.df_base_config)
 
         # Set up receiver simulator
         receiving_socket = []
@@ -117,12 +117,12 @@ class TestDataFetcher(DataFetcherTestBase):
         self.log.debug("open_connections before function call: %s",
                        open_connections)
 
-        self.datafetcher.get_metadata(targets, metadata)
+        datafetcher.get_metadata(targets, metadata)
         # source_file = "http://131.169.55.170/test_httpget/data/test_file.cbf"
 
-        self.datafetcher.send_data(targets, metadata, open_connections)
+        datafetcher.send_data(targets, metadata, open_connections)
 
-        self.datafetcher.finish(targets, metadata, open_connections)
+        datafetcher.finish(targets, metadata, open_connections)
 
         self.log.debug("open_connections after function call: %s",
                        open_connections)
@@ -142,7 +142,7 @@ class TestDataFetcher(DataFetcherTestBase):
             for sckt in receiving_socket:
                 sckt.close(0)
 
-            self.datafetcher.stop()
+            datafetcher.stop()
 
     def test_with_confirmation(self):
         """Simulate file fetching while taking care of confirmation signals.

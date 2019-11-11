@@ -118,7 +118,7 @@ def check_any_sub_dir_exists(dir_path, subdirs):
     no_subdir = True
 
     for i in dirs_to_check:
-        # check directory path for existance. exits if it does not exist
+        # check directory path for existence. exits if it does not exist
         if os.path.exists(i):
             no_subdir = False
 
@@ -169,7 +169,7 @@ def check_all_sub_dir_exist(dir_path, subdirs):
             sys.exit(1)
 
 
-def check_existance(path):
+def check_existence(path):
     """Checks if a file or directory exists. Exists otherwise.
 
     Args:
@@ -183,7 +183,7 @@ def check_existance(path):
         raise WrongConfiguration("No path to check found (path={}). Abort."
                                  .format(path))
 
-    # Check path for existance.
+    # Check path for existence.
     # Exits if it does not exist
     if os.path.isdir(path):
         obj_type = "Dir"
@@ -214,9 +214,10 @@ def check_version(version, log, check_minor=False):
 
     Args:
         version (str): version string of the form
-                       <major release>.<minor release>.<patch level>
+            <major release>.<minor release>.<patch level>
         log: logging handler
-        check_minor: Instead of checking the major release check for minor ones.
+        check_minor: Instead of checking the major release, check for minor
+            ones
     """
     log.debug("remote version: %s, local version: %s", version, __version__)
 
@@ -332,8 +333,8 @@ def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
     """
 
     dir_path = os.path.normpath(dir_path)
-    # existance of mount point/monitored dir is essential to start at all
-    check_existance(dir_path)
+    # existence of mount point/monitored dir is essential to start at all
+    check_existence(dir_path)
 
     dirs_not_to_create = tuple(dirs_not_to_create)
     dirs_to_check = [os.path.join(dir_path, directory)
@@ -542,8 +543,11 @@ def _read_status_systemd(service, log):
         (output, err) = proc.communicate()
         output = output.decode('utf-8')
     except Exception:
-        log.debug("systemctl error was: %s", err)
+        log.error("Error when calling systemctl", exc_info=True)
         raise
+
+    # TODO check err
+    # TODO check: return_val = systemctl.returncode
 
     service_regex = r"Loaded:.*\/(.*service);"
     status_regex = r"Active:(.*) since (.*);(.*)"
@@ -604,26 +608,26 @@ def _read_status_init(service, log):
     raise NotSupported("Using init script is not implemented (yet)!")
     # pylint: disable=unreachable
 
-    cmd = ["service", service, "status"]
-
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        (output, err) = proc.communicate()
-        output = output.decode('utf-8')
-    except Exception:
-        log.debug("systemctl error was: %s", err)
-        raise
-
-    service_status = {
-        "service": None,
-        "status": None,
-        "since": None,
-        "uptime": None,
-        "pid": None,
-        "info": None,
-    }
-
-    return service_status
+#    cmd = ["service", service, "status"]
+#
+#    try:
+#        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+#        (output, err) = proc.communicate()
+#        output = output.decode('utf-8')
+#    except Exception:
+#        log.debug("systemctl error was: %s", err)
+#        raise
+#
+#    service_status = {
+#        "service": None,
+#        "status": None,
+#        "since": None,
+#        "uptime": None,
+#        "pid": None,
+#        "info": None,
+#    }
+#
+#    return service_status
 
 
 def get_by_path(root, items):

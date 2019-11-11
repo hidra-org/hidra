@@ -43,7 +43,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class TestEventDetector(EventDetectorTestBase):
-    """Specification of tests to be performed for the loaded EventDetecor.
+    """Specification of tests to be performed for the loaded EventDetector.
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -143,7 +143,7 @@ class TestEventDetector(EventDetectorTestBase):
     def test_multiple_files(self):
         """Simulate multiple file creation.
 
-        Simulate incoming files, all created at onces, and check if received
+        Simulate incoming files, all created at once, and check if received
         events are correct.
         """
 

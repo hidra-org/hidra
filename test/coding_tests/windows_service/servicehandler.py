@@ -10,7 +10,7 @@ are called.
 
 import cx_Logging
 import cx_Threads
-import sys
+
 
 class Handler(object):
 
@@ -21,19 +21,20 @@ class Handler(object):
         self.stopEvent = cx_Threads.Event()
 
     # called when the service is starting
-    def Initialize(self, configFileName):
-        cx_Logging.Info("initializing: config file name is %r", configFileName)
+    def initialize(self, config_file_name):
+        cx_Logging.Info("initializing: config file name is %r",
+                        config_file_name)
 
     # called when the service is starting immediately after Initialize()
     # use this to perform the work of the service; don't forget to set or check
     # for the stop event or the service GUI will not respond to requests to
     # stop the service
-    def Run(self):
+    def run(self):
         cx_Logging.Info("running service....")
         self.stopEvent.Wait()
 
     # called when the service is being stopped by the service manager GUI
-    def Stop(self):
+    def stop(self):
         cx_Logging.Info("stopping service...")
         self.stopEvent.Set()
 

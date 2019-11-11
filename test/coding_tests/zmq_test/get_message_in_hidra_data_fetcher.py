@@ -1,19 +1,26 @@
+from __future__ import print_function
+
 import zmq
-import json
 import os
 import tempfile
 
-ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
-current_pid = 12345
 
-out_endpoint = "ipc://{}/{}_{}".format(ipc_dir, current_pid, "out")
+def main():
+    ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
+    current_pid = 12345
 
-context = zmq.Context()
-socket = context.socket(zmq.PULL)
-socket.connect(out_endpoint)
+    out_endpoint = "ipc://{}/{}_{}".format(ipc_dir, current_pid, "out")
 
-message = socket.recv_multipart()
-print "Received - {}".format(message)
+    context = zmq.Context()
+    socket = context.socket(zmq.PULL)
+    socket.connect(out_endpoint)
 
-socket.close()
-context.destroy()
+    message = socket.recv_multipart()
+    print("Received - {}".format(message))
+
+    socket.close()
+    context.destroy()
+
+
+if __name__ == "__main__":
+    main()

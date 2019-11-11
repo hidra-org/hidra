@@ -1,6 +1,9 @@
-import zmq
+from __future__ import print_function
+
 from multiprocessing import Process
 import time
+import zmq
+
 
 def f1():
 
@@ -8,23 +11,24 @@ def f1():
     socket1 = context1.socket(zmq.PUSH)
     socket1.connect("ipc://test.ipc")
 
-#    print "p1: sockets created"
+#    print("p1: sockets created")
     try:
-        for i in range(1,11):
+        for i in range(1, 11):
             filename = "/opt/hidra/data/source/local/raw/" + str(i) + ".cbf"
             time.sleep(0.2)
             f = open(filename, "rb")
-            fileObject = f.read()
-#            print "p1: file " + filename + " read"
+            file_object = f.read()
+#            print("p1: file " + filename + " read")
             f.close()
 
-            socket1.send_multipart([str(i),fileObject])
+            socket1.send_multipart([str(i), file_object])
     finally:
         time.sleep(1)
-#        print "p1: close socket"
+#        print("p1: close socket")
         socket1.close()
-#        print "p1: destroy context"
+#        print("p1: destroy context")
         context1.destroy()
+
 
 def f2():
 
@@ -32,23 +36,24 @@ def f2():
     socket2 = context2.socket(zmq.PUSH)
     socket2.connect("ipc://test.ipc")
 
-#    print "p2: sockets created"
+#    print("p2: sockets created")
     try:
-        for j in range(11,21):
+        for j in range(11, 21):
             filename = "/opt/hidra/data/source/local/raw/" + str(j) + ".cbf"
             time.sleep(0.1)
             f = open(filename, "rb")
-            fileObject = f.read()
-#            print "p2: file " + filename + " read"
+            file_object = f.read()
+#            print("p2: file " + filename + " read")
             f.close()
 
-            socket2.send_multipart([str(j),fileObject])
+            socket2.send_multipart([str(j), file_object])
     finally:
         time.sleep(1)
-#        print "p2: close socket"
+#        print("p2: close socket")
         socket2.close()
-#        print "p2: destroy context"
+#        print("p2: destroy context")
         context2.destroy()
+
 
 def f3():
     context3 = zmq.Context()
@@ -58,20 +63,19 @@ def f3():
     i = 1
     try:
         t1 = time.time()
-        while i<=20:
-
-#            print "main: receive"
+        while i <= 20:
+            # print("main: receive")
             res = socket3.recv_multipart()
-#            print i, res[0][:10], res[1][:10]
+            # print(i, res[0][:10], res[1][:10])
 
             time.sleep(0.01)
             i += 1
         t2 = time.time()
-        print "time needed", t2-t1
+        print("time needed", t2-t1)
     finally:
-#        print "p3: close socket"
+        # print("p3: close socket")
         socket3.close()
-#        print "p3: destroy context"
+        # print("p3: destroy context")
         context3.destroy()
 
 

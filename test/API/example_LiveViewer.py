@@ -8,7 +8,7 @@ import socket
 # from PyQt4 import QtCore
 from PyQt4.QtCore import QThread, QMutex
 
-from __init__ import BASE_DIR
+from _environment import BASE_DIR
 
 from hidra import Transfer
 
@@ -85,7 +85,7 @@ class LiveView(QThread):
                 self.mutex.lock()
 
                 # get latest file from reveiver
-                [metadata, data] = self.query.get(2000)
+                [metadata, _] = self.query.get(2000)
 
                 receivedfile = (
                     self.query.generate_target_filepath(self.basepath,

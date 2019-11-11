@@ -7,19 +7,20 @@ import threading
 import time
 import zmq
 
-port = None
-ip=socket_m.gethostbyname(socket_m.gethostname())
+PORT = None
+IP = socket_m.gethostbyname(socket_m.gethostname())
+
 
 class Puller(threading.Thread):
     def __init__(self):
-        global port
+        global PORT
 
         threading.Thread.__init__(self)
 
         context = zmq.Context()
         print("Connecting to server...")
         self.socket = context.socket(zmq.PULL)
-        port = self.socket.bind_to_random_port("tcp://{}".format(ip))
+        PORT = self.socket.bind_to_random_port("tcp://{}".format(IP))
 
     def run(self):
         for request in range(10):
@@ -29,7 +30,7 @@ class Puller(threading.Thread):
 
 class Puller2(threading.Thread):
     def __init__(self):
-        global port
+        global PORT
 
         threading.Thread.__init__(self)
 
@@ -37,8 +38,8 @@ class Puller2(threading.Thread):
         print("Connecting to server...")
         self.socket = context.socket(zmq.PULL)
         self.socket.bind("tcp://*:*")
-        port = self.socket.getsockopt(zmq.LAST_ENDPOINT).split(":")[-1]
-        print("port", port)
+        PORT = self.socket.getsockopt(zmq.LAST_ENDPOINT).split(":")[-1]
+        print("PORT", PORT)
 
     def run(self):
         for request in range(10):
@@ -52,14 +53,14 @@ class Pusher(threading.Thread):
 
         context = zmq.Context()
         self.socket = context.socket(zmq.PUSH)
-        self.socket.connect("tcp://{}:{}".format(ip, port))
+        self.socket.connect("tcp://{}:{}".format(IP, PORT))
 
     def run(self):
         for request in range(10):
             message = b"World"
             print("Send: ", message)
             self.socket.send(message)
-            time.sleep (0.1)
+            time.sleep(0.1)
 
 
 if __name__ == "__main__":

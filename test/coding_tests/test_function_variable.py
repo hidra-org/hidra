@@ -4,7 +4,7 @@ import threading
 import time
 
 
-#class Test(threading.Thread):
+# class Test(threading.Thread):
 #    def __init__(self, my_var):
 #        self.my_var = my_var
 #        self.keep_running = True

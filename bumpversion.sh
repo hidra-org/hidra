@@ -33,8 +33,8 @@ fix_timezone()
 
 fix_changelog_entries()
 {
-    changelog_entries=$(grep "$current_time\(:[0-9][0-9]:[0-9][0-9]\) $timezone" debian/changelog | wc -l)
-    if [ $changelog_entries != 1 ]; then
+    changelog_entries=$(grep -c "$current_time\(:[0-9][0-9]:[0-9][0-9]\) $timezone" debian/changelog)
+    if [ "$changelog_entries" != "1" ]; then
         echo "Fix number of entries in changelog (entries=$changelog_entries)"
         #(?<!^) - ignore the beginning of the file for this regex
         search_regex="(?<!^)hidra .*\n\n.*\n\n.*$current_time.*"
@@ -42,8 +42,8 @@ fix_changelog_entries()
     fi
 }
 
-bumpversion ${RELEASE} ${DRYRUN} --config-file .bumpversion_prework.cfg || return 1
-bumpversion ${RELEASE} ${DRYRUN} --allow-dirty || return 1
+bumpversion "${RELEASE}" ${DRYRUN} --config-file .bumpversion_prework.cfg || return 1
+bumpversion "${RELEASE}" ${DRYRUN} --allow-dirty || return 1
 
 fix_timezone
 fix_changelog_entries

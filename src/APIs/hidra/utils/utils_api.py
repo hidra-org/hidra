@@ -104,19 +104,19 @@ class Base(object):
         Print the configuration in a user friendly way
         """
 
-        formated_config = copy.deepcopy(config)
+        formatted_config = copy.deepcopy(config)
 #        try:
 #            # for better readability of named tuples
-#            formated_config["network"]["endpoints"] = (
-#                formated_config["network"]["endpoints"]._asdict()
+#            formatted_config["network"]["endpoints"] = (
+#                formatted_config["network"]["endpoints"]._asdict()
 #            )
 #        except KeyError:
 #            pass
 
         try:
-            formated_config = str(json.dumps(formated_config,
-                                             sort_keys=True,
-                                             indent=4))
+            formatted_config = str(json.dumps(formatted_config,
+                                              sort_keys=True,
+                                              indent=4))
         except TypeError:
             # is thrown if one of the entries is not json serializable,
             # e.g happens for zmq context
@@ -124,6 +124,6 @@ class Base(object):
 
         if description is None:
             self.log.info("Configuration for %s: %s",
-                          self.__class__.__name__, formated_config)
+                          self.__class__.__name__, formatted_config)
         else:
-            self.log.info("%s %s", description, formated_config)
+            self.log.info("%s %s", description, formatted_config)

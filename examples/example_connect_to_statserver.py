@@ -33,10 +33,16 @@ import argparse
 import json
 import zmq
 
-from _environment import BASE_DIR
 import hidra.utils as utils
 
+
 def get_arguments():
+    """Get the command line arguments.
+
+    Returns;
+        Command line arguments in a namespace object
+    """
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--pid",
@@ -45,6 +51,7 @@ def get_arguments():
                         required=True)
 
     return parser.parse_args()
+
 
 def main():
     """Connect to the StatServer.
@@ -58,9 +65,7 @@ def main():
     socket = context.socket(zmq.REQ)
     socket.connect("ipc:///tmp/hidra/{}_stats_exposing".format(hidra_pid))
 
-    key = "config"
-    key = json.dumps(key).encode()
-
+    key = json.dumps("config").encode()
     socket.send(key)
 
     answer = socket.recv()
