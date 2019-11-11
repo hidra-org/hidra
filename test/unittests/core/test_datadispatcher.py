@@ -33,13 +33,19 @@ from builtins import super  # pylint: disable=redefined-builtin
 import copy
 import json
 import os
-from multiprocessing import Process, freeze_support
 from shutil import copyfile
+import threading
 import time
 import zmq
 
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
+
 from test_base import TestBase, create_dir
-from datadispatcher import DataDispatcher
+from datadispatcher import DataHandler
 
 import hidra.utils as utils
 
@@ -55,9 +61,6 @@ class TestDataDispatcher(TestBase):
 
     def setUp(self):
         super().setUp()
-
-        # see https://docs.python.org/2/library/multiprocessing.html#windows
-        freeze_support()
 
         # attributes inherited from parent class:
         # self.config
@@ -95,23 +98,14 @@ class TestDataDispatcher(TestBase):
 
         self.receiving_ports = ["6005", "6006"]
 
-    def disable_test_datadispatcher_wrong_config(self):
+    def test_datadispatcher_wrong_config(self):
         """Simulate wrong configuration.
         """
-        # This is actually testing the config of the file fetcher located in the
-        # datahandler and not the datadispatcher
+        # This is testing the config of the file fetcher located in the
+        # datahandler
 
         config = copy.deepcopy(self.datadispatcher_config)
         endpoints = self.config["endpoints"]
-
-        control_socket = self.start_socket(
-            name="control_socket",
-            sock_type=zmq.PUB,
-            sock_con="bind",
-            # it is the sub endpoint because originally this is handled with
-            # a zmq thread device
-            endpoint=endpoints.control_sub_bind
-        )
 
         del config["datafetcher"]["file_fetcher"]["fix_subdirs"]
 
@@ -121,21 +115,19 @@ class TestDataDispatcher(TestBase):
             fixed_stream_addr=None,
             config=config,
             log_queue=self.log_queue,
+            context=self.context,
+            stop_request=threading.Event()
         )
+
+        with mock.patch("threading.Thread"):
+            datahandler = DataHandler(**kwargs)
+
         with self.assertRaises(utils.WrongConfiguration):
-            datadispatcher_pr = DataDispatcher(**kwargs)
+            datahandler._setup()  # pylint:disable=protected-access
 
-            # wait till Datadispatcher is fully started, otherwise control
-            # messages are not received
-            time.sleep(0.05)
+            datahandler.stop()
 
-            self.log.info("send exit signal")
-            control_socket.send_multipart([b"control", b"EXIT"])
-            datadispatcher_pr.join()
-
-        self.stop_socket(name="control_socket", socket=control_socket)
-
-    def disabled_test_datadispatcher(self):
+    def test_datadispatcher(self):
         """Simulate incoming data and check if received events are correct.
         """
 
@@ -173,15 +165,19 @@ class TestDataDispatcher(TestBase):
             endpoint=endpoints.control_sub_bind
         )
 
+        stop_request = threading.Event()
+
         kwargs = dict(
             dispatcher_id=1,
             endpoints=endpoints,
             fixed_stream_addr=fixed_stream_addr,
             config=self.datadispatcher_config,
             log_queue=self.log_queue,
+            context=self.context,
+            stop_request=stop_request
         )
-        datadispatcher_pr = Process(target=DataDispatcher, kwargs=kwargs)
-        datadispatcher_pr.start()
+        datahandler_thr = DataHandler(**kwargs)
+        datahandler_thr.start()
 
         # Set up receiver simulator
         receiving_sockets = []
@@ -219,7 +215,8 @@ class TestDataDispatcher(TestBase):
         finally:
             self.log.info("send exit signal")
             control_socket.send_multipart([b"control", b"EXIT"])
-            datadispatcher_pr.join()
+            stop_request.set()
+            datahandler_thr.join()
 
             self.stop_socket(name="router_socket", socket=router_socket)
             self.stop_socket(name="control_socket", socket=control_socket)
