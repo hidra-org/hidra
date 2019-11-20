@@ -1,5 +1,14 @@
 # develop
 # 4.1.5
+
+- Fix typo in function call transfer
+- Fix misformatted exception messages
+- Improve error message when checking thread does not start
+- Fix datadispatcher unittests
+- Clean up code (pep8) and fix typos
+- Fix typo in reply code of control server (ALREADY_STOPPED)
+- Fix package dependencies (Red Hat, Debian)
+
 # 4.1.4
 
 - Catch wrong target definition in transfer
