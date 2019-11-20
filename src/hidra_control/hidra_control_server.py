@@ -71,7 +71,7 @@ REPLYCODES = utils.ReplyCodes(
     running=b"RUNNING",
     not_running=b"NOT_RUNNING",
     already_running=b"ALREADY_RUNNING",
-    already_stopped=b"ARLEADY_STOPPED"
+    already_stopped=b"ALREADY_STOPPED"
 )
 
 
@@ -690,7 +690,7 @@ class HidraServiceHandling(object):
         # pylint: disable=unused-argument
 
         call = ["service", self.service_conf["name"], cmd]
-        # TODO implement beamline and det_id in hisdra.sh
+        # TODO implement beamline and det_id in hidra.sh
         # call = ["service", service_conf["name"], "status", beamline, det_id]
 
         self.log.debug("Call: %s", " ".join(call))
