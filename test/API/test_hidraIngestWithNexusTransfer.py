@@ -5,14 +5,14 @@ import os
 import zmq
 import logging
 import threading
+import socket as socket_m
 import json
 import tempfile
 
-from __init__ import BASE_DIR
+from _environment import BASE_DIR
 import utils
 
-from hidra import Transfer
-from hidra import Ingest
+from hidra import Transfer, Ingest
 
 
 # enable logging
@@ -26,8 +26,7 @@ print("\n==== TEST: hidraIngest together with nexus transfer ====\n")
 class HidraSimulation (threading.Thread):
     def __init__(self, context=None):
         self.ext_host = "0.0.0.0"
-        self.localhost = "zitpcx19282"
-#        self.localhost = "localhost"
+        self.localhost = socket_m.getfqdn()
         self.dataOutPort = "50100"
 
         self.log = logging.getLogger("HidraSimulation")
@@ -56,15 +55,14 @@ class HidraSimulation (threading.Thread):
 #        connection_str = ("tcp://{0}:{1}"
 #                          .format(self.ext_host, self.dataInPort))
         self.data_in_socket.bind(connection_str)
-        self.log.info("data_in_socket started (bind) for '{0}'"
-                      .format(connection_str))
+        self.log.info("data_in_socket started (bind) for '%s'", connection_str)
 
         self.data_out_socket = self.context.socket(zmq.PUSH)
         connection_str = ("tcp://{0}:{1}"
                           .format(self.localhost, self.dataOutPort))
         self.data_out_socket.connect(connection_str)
-        self.log.info("data_out_socket started (connect) for '{0}'"
-                      .format(connection_str))
+        self.log.info("data_out_socket started (connect) for '%s'",
+                      connection_str)
 
         self.poller = zmq.Poller()
         self.poller.register(self.event_socket, zmq.POLLIN)
@@ -78,7 +76,6 @@ class HidraSimulation (threading.Thread):
         while True:
             try:
                 socks = dict(self.poller.poll())
-                data_message = None
                 metadata = None
 
                 if (socks
@@ -86,7 +83,7 @@ class HidraSimulation (threading.Thread):
                         and socks[self.event_socket] == zmq.POLLIN):
 
                     metadata = self.event_socket.recv()
-                    self.log.debug("event_socket recv: {0}".format(metadata))
+                    self.log.debug("event_socket recv: %s", metadata)
 
                     if metadata == b"CLOSE_FILE":
                         self.data_out_socket.send_multipart(
@@ -97,7 +94,7 @@ class HidraSimulation (threading.Thread):
                         and socks[self.data_in_socket] == zmq.POLLIN):
 
                     data = self.data_in_socket.recv()
-                    self.log.debug("data_socket recv: {0}".format(data))
+                    self.log.debug("data_socket recv: %s", data)
 
                     data_message = [json.dumps(metadata), data]
 
@@ -108,7 +105,7 @@ class HidraSimulation (threading.Thread):
                 if not str(e) == "Socket operation on non-socket":
                     self.log.error("Error in run", exc_info=True)
                 break
-            except:
+            except Exception:
                 self.log.error("Error in run", exc_info=True)
                 break
 
@@ -126,7 +123,7 @@ class HidraSimulation (threading.Thread):
                 self.log.info("closing data_out_socket...")
                 self.data_out_socket.close(linger=0)
                 self.data_out_socket = None
-        except:
+        except Exception:
             self.log.error("closing ZMQ Sockets...failed.", exc_info=True)
 
         if not self.ext_context and self.context:
@@ -135,7 +132,7 @@ class HidraSimulation (threading.Thread):
                 self.context.destroy(0)
                 self.context = None
                 self.log.info("Closing ZMQ context...done.")
-            except:
+            except Exception:
                 self.log.error("Closing ZMQ context...failed.", exc_info=True)
 
 
@@ -149,13 +146,13 @@ def hidra_ingest(numb_to_send):
             data = "THISISTESTDATA-{0}".format(i)
             obj.write(data)
             logging.info("write")
-        except:
+        except Exception:
             logging.error("hidra_ingest break", exc_info=True)
             break
 
     try:
         obj.close_file()
-    except:
+    except Exception:
         logging.error("Could not close file", exc_info=True)
 
     obj.stop()
@@ -176,8 +173,7 @@ def read_callback(params, retrieved_params):
 
 def nexus_transfer():
     obj = Transfer("NEXUS", use_log=True)
-    obj.start(["zitpcx19282", "50100"])
-#    obj.start(["localhost", "50100"])
+    obj.start([socket_m.getfqdn(), "50100"])
 
     callback_params = {
         "run_loop": True
@@ -191,14 +187,14 @@ def nexus_transfer():
                          close_callback)
             except KeyboardInterrupt:
                 break
-            except:
+            except Exception:
                 logging.error("nexus_transfer break", exc_info=True)
                 break
     finally:
         obj.stop()
 
 
-if __name__ == "__main__":
+def main():
     use_test = True
     # use_test = False
 
@@ -222,3 +218,7 @@ if __name__ == "__main__":
         hidra_simulation_thread.stop()
 
     print("\n==== TEST END: hidraIngest together with nexus transfer ====\n")
+
+
+if __name__ == "__main__":
+    main()

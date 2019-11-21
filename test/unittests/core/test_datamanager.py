@@ -94,6 +94,7 @@ class TestDataManager(TestBase):
         else:
             used_eventdetector = "inotify_events"
 
+        source_dir = os.path.join(self.base_dir, "data", "source")
         self.datamanager_config = {
             "general": {
                 "com_port": ports["com"],
@@ -120,7 +121,7 @@ class TestDataManager(TestBase):
                 "eventdetector_port": 50003,
                 "ext_data_port": 50101,
                 "inotify_events": {
-                    "monitored_dir": os.path.join(self.base_dir, "data", "source"),
+                    "monitored_dir": source_dir,
                     "fix_subdirs": fix_subdirs,
                     "create_fix_subdirs": False,
                     "monitored_events": {"IN_CLOSE_WRITE": [""]},
@@ -131,7 +132,7 @@ class TestDataManager(TestBase):
                     "time_till_closed": 2,
                 },
                 "inotifyx_events": {
-                    "monitored_dir": os.path.join(self.base_dir, "data", "source"),
+                    "monitored_dir": source_dir,
                     "fix_subdirs": fix_subdirs,
                     "create_fix_subdirs": False,
                     "monitored_events": {"IN_CLOSE_WRITE": [""]},
@@ -226,6 +227,8 @@ class TestDataManager(TestBase):
         )
 
         class Sender(DataManager):
+            # pylint: disable=too-few-public-methods
+
             def __init__(self, **kwargs):
                 DataManager.__init__(self, **kwargs)
 
@@ -237,7 +240,7 @@ class TestDataManager(TestBase):
             )
             sender = Process(target=Sender, kwargs=kwargs)
             sender.start()
-        except:
+        except Exception:
             self.log.error("Exception when initiating DataManager",
                            exc_info=True)
             raise

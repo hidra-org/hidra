@@ -34,10 +34,12 @@ import socket as socket_m
 import subprocess
 import time
 
-from .utils_datatypes import (IpcAddresses, # noqa F401
-                              Endpoints,
-                              MAPPING_ZMQ_CONSTANTS_TO_STR,
-                              NotAllowed)
+from .utils_datatypes import (
+    IpcAddresses,  # noqa F401
+    Endpoints,
+    MAPPING_ZMQ_CONSTANTS_TO_STR,
+    NotAllowed
+)
 from .utils_logging import LoggingFunction
 from .utils_general import is_windows
 
@@ -56,9 +58,9 @@ def check_netgroup(hostname,
         ldapuri: Ldap node and port needed to check whitelist.
         netgroup_template: A template of the netgroup.
         log (optional): If the result should be logged.
-                        None: no logging
-                        False: use print
-                        anything else: use the standard logging module
+            None: no logging
+            False: use print
+            anything else: use the standard logging module
         raise_if_failed (optional): Raise an exception the check fails.
     """
 
@@ -89,22 +91,29 @@ def _resolve_ldap_server_ip(log, ldapuri):
     t_start = time.time()
     try:
         ldap_host = ldapuri.split(":")[0]
+    except Exception:
+        log.error("Failed to identify ldap host", exc_info=True)
+        return None, None
+
+    try:
         ldap_server_ip = socket_m.gethostbyname(ldap_host)
     except Exception:
         log.error("Failed to look up ldap ip", exc_info=True)
+        return None, None
 
     ldap_response_limit = 9  # in sec
     if time.time() - t_start > ldap_response_limit:
-        log.warning("Hostname resolution took quite long (longer that %s sec). "
-                    "This can result in problems with connecting services",
-                    ldap_response_limit)
+        log.warning("Hostname resolution took quite long (longer that %s "
+                    "sec). This can result in problems with connecting "
+                    "services", ldap_response_limit)
 
-    return ldap_server_ip
+    return ldap_server_ip, ldap_host
 
 def execute_ldapsearch(log, ldap_cn, ldapuri):
     """Searches ldap for a netgroup and parses the output.
 
     Args:
+        log: The log handler to use.
         ldap_cn: The ldap common name to search.
         ldapuri: Ldap node and port needed to check whitelist.
 
@@ -116,7 +125,7 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
         return []
 
     # if there were problems with ldapsearch these information are needed
-    ldap_server_ip = _resolve_ldap_server_ip(log, ldapuri)
+    ldap_host, ldap_server_ip = _resolve_ldap_server_ip(log, ldapuri)
 
     proc = subprocess.Popen(
         ["ldapsearch",
@@ -132,11 +141,10 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
         log.debug("%s is not a netgroup, considering it as hostname", ldap_cn)
         return [socket_m.getfqdn(ldap_cn)]
 
+    netgroup = []
     try:
         match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
                                 re.M | re.I)
-        netgroup = []
-
         for line in lines:
             line = line.decode()  # for python3 compatibility
             if match_host.match(line):
@@ -219,7 +227,7 @@ def convert_socket_to_fqdn(socketids, log):
                 try:
                     host, port = target[0].split(":")
                 except ValueError:
-                    log.error("Target is of wrong format, either host or port"
+                    log.error("Target is of wrong format, either host or port "
                               "is missing")
                     raise
                 new_target = "{}:{}".format(socket_m.getfqdn(host), port)
@@ -373,8 +381,8 @@ def set_endpoints(ext_ip,
         ipc_addresses: Addresses to use for the IPC connections.
         confirm_ips: External ips/hostnames to bind and connect confirmation
                      socket to.
-        use_cleaner (optional): Boolean which definies if the cleaner
-                                connections should be set (default: True)
+        use_cleaner (optional): Boolean which defines if the cleaner
+            connections should be set (default: True)
     Returns:
         A namedtuple object Endpoints with the entries:
             control_pub_bind
@@ -540,10 +548,8 @@ def start_socket(name,
                     communication.
         random_port (optional): Use zmq bind_to_random_port option.
         socket_options (optional): Additional zmq options which should be set
-                                   on the socket
-                                   (as lists which [key, value] entries).
-        message (optional): wording to be used in the message
-                            (default: Start).
+            on the socket (as lists which [key, value] entries).
+        message (optional): wording to be used in the message (default: Start).
     """
 
     if socket_options is None:
@@ -588,7 +594,7 @@ def start_socket(name,
 
         log.info("%s %s (%s, %s): '%s'", message, name, sock_con,
                  sock_type_as_str, endpoint_to_print)
-    except:
+    except Exception:
         log.error("Failed to %s %s (%s, %s): '%s'", name, message.lower(),
                   sock_con, sock_type_as_str, endpoint_to_print, exc_info=True)
         raise

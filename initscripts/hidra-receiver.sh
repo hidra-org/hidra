@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # LSB compliant init-script header.
 ### BEGIN INIT INFO
@@ -12,7 +12,7 @@
 
 
 # DIR should only include /usr/* if it runs after the mountnfs.sh script
-DIR=/sbin:/usr/sbin:/bin:/usr/bin
+#DIR=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="HiDRA Receiver"
 # Process name ( For display )
 SCRIPT_NAME=hidra-receiver
@@ -20,11 +20,12 @@ CONFIGDIR=/opt/hidra/conf
 DAEMON=/opt/hidra/src/receiver/datareceiver.py
 PIDFILE_LOCATION=/opt/hidra
 IPCDIR=/tmp/hidra
-PYTHON=/usr/bin/python
+#PYTHON=/usr/bin/python
 
-SCRIPTNAME=/etc/init.d/$SCRIPT_NAME
+#SCRIPTNAME=/etc/init.d/$SCRIPT_NAME
 
-if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
+if [ -f /etc/redhat-release ] || [ -f /etc/centos-release ]
+then
 # Red Hat or Centos...
 
     # source function library.
@@ -32,11 +33,11 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
 
     if [ -z "$2" ]
     then
-        printf "Usage: $0 {start|stop|status|restart|force-reload} {beamline}\n"
+        echo "Usage: $0 {start|stop|status|restart|force-reload} {beamline}"
         exit 1
     fi
 
-    BLUE=$(tput setaf 4)
+    #BLUE=$(tput setaf 4)
     NORMAL=$(tput sgr0)
     GREEN=$(tput setaf 2)
     RED=$(tput setaf 1)
@@ -47,34 +48,34 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
     CONFIG_FILE="${CONFIGDIR}/receiver_${BEAMLINE}.yaml"
     DAEMON_ARGS="--verbose --config_file ${CONFIG_FILE} --procname ${NAME}"
 
-    if [ ! -f $CONFIG_FILE ]
+    if [ ! -f "$CONFIG_FILE" ]
     then
-        printf "Configuration file ${CONFIG_FILE} not found\n"
+        echo "Configuration file ${CONFIG_FILE} not found"
         exit 1
     fi
 
     start()
     {
-        status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+        status "${NAME}" > /dev/null 2>&1 && status="1" || status="$?"
         # If the status is RUNNING then don't need to start again.
         if [ $status = "1" ]; then
-            printf "$NAME is already running\n"
+            echo "$NAME is already running"
             return 0
         fi
 
     	printf "%-50s" "Starting ${DESC} for beamline ${BEAMLINE}..."
-	    ${DAEMON} ${DAEMON_ARGS} &
+	    ${DAEMON} "${DAEMON_ARGS}" &
     	RETVAL=$?
 
         TIMEOUT=0
-        status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+        status "${NAME}" > /dev/null 2>&1 && status="1" || status="$?"
         while [ $status != "1" ] && [ $TIMEOUT -lt 5 ] ; do
             sleep 1
-            let TIMEOUT=TIMEOUT+1
-            status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+            ((TIMEOUT=TIMEOUT+1))
+            status "${NAME}" > /dev/null 2>&1 && status="1" || status="$?"
         done
 
-        status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+        status "${NAME}" > /dev/null 2>&1 && status="1" || status="$?"
         if [ $status = "1" ]; then
             printf "%4s\n" "[ ${GREEN}OK${NORMAL} ]"
             return 0
@@ -88,34 +89,34 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
     stop()
     {
         #check_status_q || exit 0
-        status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+        status "${NAME}" > /dev/null 2>&1 && status="1" || status="$?"
         # If the status is not RUNNING then don't need to stop again.
         if [ $status != "1" ]; then
-            printf "$NAME for beamline is already stopped\n"
+            echo "$NAME for beamline is already stopped"
             return 0
         fi
 
     	printf "%-50s" "Stopping ${DESC} for beamline ${BEAMLINE}..."
-        HIDRA_PID="`pidofproc ${NAME}`"
+        HIDRA_PID="$(pidofproc "${NAME}")"
         # stop gracefully and wait up to 180 seconds.
-        kill $HIDRA_PID > /dev/null 2>&1
+        kill "$HIDRA_PID" > /dev/null 2>&1
 
         TIMEOUT=0
 #        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 30 ] ; do
-        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 5 ] ; do
+        while checkpid "$HIDRA_PID" && [ $TIMEOUT -lt 5 ] ; do
             sleep 1
-            let TIMEOUT=TIMEOUT+1
+            ((TIMEOUT=TIMEOUT+1))
         done
 
-        if checkpid $HIDRA_PID ; then
-            killall -KILL $NAME
+        if checkpid "$HIDRA_PID" ; then
+            killall -KILL "$NAME"
 
-            SOCKETID="`pidofproc ${NAME}`"
+            SOCKETID="$(pidofproc "${NAME}")"
             rm -f "${IPCDIR}/${SOCKETID}"*
         fi
     	RETVAL=$?
 
-        status ${NAME} > /dev/null 2>&1 && status="1" || status="$?"
+        status "${NAME}" > /dev/null 2>&1 && status="1" || status="$?"
         if [ $status != "1" ]; then
             printf "%4s\n" "[ ${GREEN}OK${NORMAL} ]"
             return 0
@@ -135,23 +136,24 @@ if [ -f /etc/redhat-release -o -f /etc/centos-release ] ; then
             stop
             ;;
         restart)
-            printf "Restarting ${DESC} for beamline ${BEAMLINE}: \n"
+            printf "Restarting %s for beamline %s: \n" "$DESC" "$BEAMLINE"
             stop
             start
             ;;
         status)
-            status ${NAME}
+            status "${NAME}"
             RETVAL=$?
             ;;
         *)
-            printf "Usage: $0 {start|stop|status|restart|forece-reload} {beamline}\n"
+            echo "Usage: $0 {start|stop|status|restart|forece-reload} {beamline}"
             RETVAL=1
             ;;
     esac
     exit $RETVAL
 
 
-elif [ -f /etc/debian_version ] ; then
+elif [ -f /etc/debian_version ]
+then
 # Debian and Ubuntu
 
     # Exit if the package is not installed
@@ -183,8 +185,9 @@ elif [ -f /etc/debian_version ] ; then
     do_start()
     {
         # Checked the PID file exists and check the actual status of process
-        if [ -e $PIDFILE ]; then
-            status_of_proc -p $PIDFILE $DAEMON "$NAME" > /dev/null && status="1" || status="$?"
+        if [ -e "$PIDFILE" ]
+        then
+            status_of_proc -p "$PIDFILE" $DAEMON "$NAME" > /dev/null && status="1" || status="$?"
             # If the status is SUCCESS then don't need to start again.
             if [ $status = "1" ]; then
                 log_daemon_msg "$NAME is already running"
@@ -206,8 +209,8 @@ elif [ -f /etc/debian_version ] ; then
         # 3      Any other error.
         # (--oknodo: If the a process exists start-stop-daemon exits with error
         #  status 0 instead of 1)
-        if start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile --background \
-            --startas $DAEMON -- $DAEMON_ARGS ; then
+        if start-stop-daemon --start --quiet --pidfile "$PIDFILE" --make-pidfile --background \
+            --startas $DAEMON -- "$DAEMON_ARGS" ; then
             return 0
         else
             return 1
@@ -216,11 +219,11 @@ elif [ -f /etc/debian_version ] ; then
 
     cleanup()
     {
-        SOCKETID=`cat $PIDFILE`
+        SOCKETID=$(cat "$PIDFILE")
         /bin/rm -rf "${IPCDIR}/${SOCKETID}"*
 
         # Many daemons don't delete their pidfiles when they exit.
-        /bin/rm -rf $PIDFILE
+        /bin/rm -rf "$PIDFILE"
         return 0
 
     }
@@ -231,11 +234,11 @@ elif [ -f /etc/debian_version ] ; then
     do_stop()
     {
         # Stop the daemon.
-        if [ -e $PIDFILE ]; then
-#            status_of_proc $NAME $NAME && exit 0 || exit $?
-            status_of_proc $NAME "$NAME" > /dev/null && status="0" || status="$?"
+        if [ -e "$PIDFILE" ]; then
+#            status_of_proc "$NAME" $NAME && exit 0 || exit $?
+            status_of_proc "$NAME" "$NAME" > /dev/null && status="0" || status="$?"
             if [ "$status" = 0 ]; then
-                start-stop-daemon --stop --quiet --pidfile $PIDFILE #--name $NAME
+                start-stop-daemon --stop --quiet --pidfile "$PIDFILE" #--name $NAME
 #                start-stop-daemon --stop --quiet --retry=TERM/180/KILL/5 --pidfile $PIDFILE
                 daemon_status="$?"
                 if [ "$daemon_status" = 2 ]; then
@@ -272,7 +275,7 @@ elif [ -f /etc/debian_version ] ; then
         # If the daemon can reload its configuration without
         # restarting (for example, when it is sent a SIGHUP),
         # then implement that here.
-        start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $NAME
+        start-stop-daemon --stop --signal 1 --quiet --pidfile "$PIDFILE" --name "$NAME"
         return 0
     }
 
@@ -298,7 +301,7 @@ elif [ -f /etc/debian_version ] ; then
             esac
             ;;
         status)
-            status_of_proc $NAME $NAME && exit 0 || exit $?
+            status_of_proc "$NAME" "$NAME" && exit 0 || exit $?
             ;;
         #reload|force-reload)
             # If do_reload() is not implemented then leave this commented out

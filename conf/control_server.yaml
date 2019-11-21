@@ -37,7 +37,6 @@ hidraconfig_static:
         type: http_events
         # type: inotifyx_events
         inotifyx_events:
-            # monitored_dir: /home/kuhnm/projects/hidra/data/source
             fix_subdirs: &fix_subdirs
                 - current/raw
                 - current/scratch_bl

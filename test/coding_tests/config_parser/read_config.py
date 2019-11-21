@@ -1,4 +1,10 @@
-import ConfigParser
+from __future__ import print_function
+
+try:
+    # The ConfigParser module has been renamed to configparser in Python 3
+    from configparser import ConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser
 
 
 # is needed because configParser always needs a section name
@@ -19,14 +25,21 @@ class FakeSecHead(object):
             return self.fp.readline()
 
 
-config = ConfigParser.ConfigParser()
-config.readfp(FakeSecHead(open('example.cfg')))
+def main():
+    config = ConfigParser()
+    # this does not work in python 3
+    config.readfp(FakeSecHead(open('example.cfg')))
 
-# Set the third, optional argument of get to 1 if you wish to use raw mode.
-print config.get('asection', 'foo', 0) # -> "Python is fun!"
-print config.get('asection', 'foo', 1) # -> "%(bar)s is %(baz)s!"
+    # Set the third, optional argument of get to 1 if you wish to use raw mode.
+    print(config.get('asection', 'foo', raw=False))  # -> "Python is fun!"
+    print(config.get('asection', 'foo', raw=True))  # -> "%(bar)s is %(baz)s!"
 
-# The optional fourth argument is a dict with members that will take
-# precedence in interpolation.
-print config.get('asection', 'foo', 0, {'bar': 'Documentation',
-                                        'baz': 'evil'})
+    # The optional fourth argument is a dict with members that will take
+    # precedence in interpolation.
+    print(config.get('asection', 'foo',
+                     raw=False,
+                     vars={'bar': 'Documentation', 'baz': 'evil'}))
+
+
+if __name__ == "__main__":
+    main()

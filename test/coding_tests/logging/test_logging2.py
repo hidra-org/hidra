@@ -5,26 +5,10 @@ from builtins import super  # pylint: disable=redefined-builtin
 import logging
 import logging.handlers
 try:
-    import Queue as queue
+    from Queue import Queue
 except ImportError:
-    import queue
+    from queue import Queue
 
-import os
-import sys
-
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__ ))
-except:
-    CURRENT_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
-BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
-SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
-
-if not SHARED_DIR in sys.path:
-    sys.path.insert(0, SHARED_DIR)
-del SHARED_DIR
-
-
-# Custom imports
 from logutils.queue import QueueHandler, QueueListener
 
 
@@ -49,7 +33,8 @@ class CustomQueueListener(QueueListener):
         """
         record = self.prepare(record)
         for handler in self.handlers:
-            if record.levelno >= handler.level: # This check is not in the parent class
+            # This check is not in the parent class
+            if record.levelno >= handler.level:
                 handler.handle(record)
 
     def addHandler(self, hdlr):
@@ -68,33 +53,38 @@ class CustomQueueListener(QueueListener):
             self.handlers.remove(hdlr)
 
 
-# Get queue
-q = queue.Queue(-1)
+def main():
+    # Get queue
+    q = Queue(-1)
 
-# Setup stream handler 1 to output WARNING to console
-h1 = logging.StreamHandler()
-f1 = logging.Formatter('STREAM 1 WARNING: %(threadName)s: %(message)s')
-h1.setFormatter(f1)
-h1.setLevel(logging.WARNING) # NOT WORKING. This should log >= WARNING
+    # Setup stream handler 1 to output WARNING to console
+    h1 = logging.StreamHandler()
+    f1 = logging.Formatter("STREAM 1 WARNING: %(threadName)s: %(message)s")
+    h1.setFormatter(f1)
+    h1.setLevel(logging.WARNING)  # NOT WORKING. This should log >= WARNING
 
-# Setup stream handler 2 to output INFO to console
-h2 = logging.StreamHandler()
-f2 = logging.Formatter('STREAM 2 INFO: %(threadName)s: %(message)s')
-h2.setFormatter(f2)
-h2.setLevel(logging.INFO) # NOT WORKING. This should log >= WARNING
+    # Setup stream handler 2 to output INFO to console
+    h2 = logging.StreamHandler()
+    f2 = logging.Formatter("STREAM 2 INFO: %(threadName)s: %(message)s")
+    h2.setFormatter(f2)
+    h2.setLevel(logging.INFO)  # NOT WORKING. This should log >= WARNING
 
-# Start queue listener using the stream handler above
-ql = CustomQueueListener(q, h1, h2)
-ql.start()
+    # Start queue listener using the stream handler above
+    ql = CustomQueueListener(q, h1, h2)
+    ql.start()
 
-# Create log and set handler to queue handle
-root = logging.getLogger()
-root.setLevel(logging.DEBUG) # Log level = DEBUG
-qh = QueueHandler(q)
-root.addHandler(qh)
+    # Create log and set handler to queue handle
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)  # Log level = DEBUG
+    qh = QueueHandler(q)
+    root.addHandler(qh)
 
-root.info('Look out!') # Create INFO message
+    root.info("Look out!")  # Create INFO message
 
-root.warning('Look out2!') # Create WARNING message
+    root.warning("Look out2!")  # Create WARNING message
 
-ql.stop()
+    ql.stop()
+
+
+if __name__ == "__main__":
+    main()

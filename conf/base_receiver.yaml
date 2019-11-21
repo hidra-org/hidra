@@ -6,7 +6,7 @@ general:
     # LDAP node and port needed to check whitelist
     ldapuri: it-ldap-slave.desy.de:1389
 
-    # Time (in s) to wait for the next netgroup check if the last check retuned
+    # Time (in s) to wait for the next netgroup check if the last check returned
     # an empty list (e.g. LDAP timeout). Has to be bigger than 2.
     ldap_retry_time: 10
 

@@ -106,8 +106,6 @@ class EventDetector(EventDetectorBase):
 
         event_message_list = []
 
-        files_stored = []
-
 #        try:
 #            # returns a tuble of the form:
 #            # ('testp06/37_data_000001.h5', 'testp06/37_master.h5',

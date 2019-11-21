@@ -64,7 +64,8 @@ def create_dir(directory, chmod=None, log=logging):
     Args:
         directory: The absolute path of the directory to be created.
         chmod (optional): Mode bits to change the permissions of the directory
-                          to.
+            to.
+        log (optional): A log handler to use.
     """
 
     if not os.path.isdir(directory):
@@ -91,9 +92,9 @@ class MockLogging(mock.MagicMock, utils.LoggingFunction):
         """Forward the output to stdout.
 
         Args:
-            message: the messages to be logged.
+            msg: the messages to be logged.
             args: The arguments to fill in into msg.
-            exc_info (optional): Append a traceback.
+            kwargs: The arguments to fill in into msg.
         """
 
         try:
@@ -389,7 +390,7 @@ class TestBase(unittest.TestCase):
                 self.log.debug("Removed ipc socket: %s", endpoint)
             except OSError:
                 pass
-#                selfi.log.debug("Could not remove ipc socket: %s", endpoint)
+#                self.log.debug("Could not remove ipc socket: %s", endpoint)
             except Exception:
                 self.log.warning("Could not remove ipc socket: %s", endpoint,
                                  exc_info=True)

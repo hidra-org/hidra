@@ -39,7 +39,6 @@ import sys
 
 import abc
 
-#import __init__  # noqa F401 # pylint: disable=unused-import
 import hidra.utils as utils
 from base_class import Base
 
@@ -64,18 +63,14 @@ class EventDetectorBase(Base):
 
         Args:
             eventdetector_base_config: A dictionary containing all needed
-                                       parameters encapsulated into a dictionary
-                                       to prevent the event detector modules
-                                       being affected by adding and removing of
-                                       parameters.
-                                       eventdetector_base_args should contain the
-                                       following keys:
-                                           config (dict): A dictionary
-                                                          containing the
-                                                          configuration
-                                                          parameters.
-                                           log_queue: The multiprocessing queue
-                                                      which is used for logging.
+                parameters encapsulated into a dictionary to prevent the event
+                detector modules being affected by adding and removing of
+                parameters.
+                eventdetector_base_args should contain the following keys:
+                    config (dict): A dictionary containing the configuration
+                        parameters.
+                    log_queue: The multiprocessing queue which is used for
+                        logging.
             name (str): The name to be used for the logger.
         """
 
@@ -107,8 +102,8 @@ class EventDetectorBase(Base):
         """Check that the configuration contains the necessary parameters.
 
         Raises:
-            WrongConfiguration: The configuration has missing or
-                                wrong parameters.
+            WrongConfiguration: The configuration has missing or wrong
+                parameters.
         """
 
         if self.required_params and isinstance(self.required_params, list):
@@ -140,7 +135,7 @@ class EventDetectorBase(Base):
             self.config["monitored_dir"]
         )
 
-        utils.check_existance(self.config["monitored_dir"])
+        utils.check_existence(self.config["monitored_dir"])
         if ("create_fix_subdirs" in self.config
                 and self.config["create_fix_subdirs"]):
             # create the subdirectories which do not exist already

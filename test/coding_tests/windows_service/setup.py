@@ -10,14 +10,18 @@
 
 from cx_Freeze import setup, Executable
 
-buildOptions = dict(includes = ["ServiceHandler"])
-executable = Executable("config.py", base = "Win32Service",
-        targetName = "cx_FreezeSampleService.exe")
+buildOptions = dict(includes=["ServiceHandler"])
+executable = Executable(
+    "config.py",
+    base="Win32Service",
+    targetName="cx_FreezeSampleService.exe"
+)
 
 setup(
-        name = "cx_FreezeSampleService",
-        version = "0.1",
-        description = "Sample cx_Freeze Windows serice",
-        executables = [executable],
-        options = dict(build_exe = buildOptions))
+    name="cx_FreezeSampleService",
+    version="0.1",
+    description="Sample cx_Freeze Windows service",
+    executables=[executable],
+    options=dict(build_exe=buildOptions)
+)
 

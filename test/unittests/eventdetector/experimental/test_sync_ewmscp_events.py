@@ -79,7 +79,7 @@ class LambdaSimulator(threading.Thread):
 
 
 class TestEventDetector(EventDetectorTestBase):
-    """Specification of tests to be performed for the loaded EventDetecor.
+    """Specification of tests to be performed for the loaded EventDetector.
     """
 
     def setUp(self):
@@ -102,11 +102,9 @@ class TestEventDetector(EventDetectorTestBase):
             "n_detectors": 3
         }
 
-        self.ed_config = {
-            "eventdetector": {
-                "type": self.module_name,
-                self.module_name: self.module_config
-            }
+        self.ed_base_config["config"]["eventdetector"] = {
+            "type": self.module_name,
+            self.module_name: self.module_config
         }
 
         self.eventdetector = None
@@ -118,10 +116,7 @@ class TestEventDetector(EventDetectorTestBase):
     def test_general(self):
         # pylint: disable=unused-argument
 
-        self.eventdetector = events.EventDetector(
-            self.ed_config,
-            self.log_queue
-        )
+        self.eventdetector = events.EventDetector(self.ed_base_config)
 
         server = self.module_config["kafka_server"]
         topic = self.module_config["kafka_topic"]

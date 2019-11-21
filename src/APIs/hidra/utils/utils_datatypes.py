@@ -162,7 +162,7 @@ class CommunicationFailed(Exception):
 
 
 class DataSavingError(Exception):
-    """Raised when an error occured while the data was saved."""
+    """Raised when an error occurred while the data was saved."""
     pass
 
 

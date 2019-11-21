@@ -24,7 +24,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-import select
 import sys
 
 import inotifyx
@@ -47,7 +46,7 @@ def _main():
         wd = inotifyx.add_watch(fd, watch_dir)
         wd_to_path[wd] = watch_dir
         print("wd_to_path: ", wd_to_path)
-    except:
+    except Exception:
         print("stopped")
         os.close(fd)
         sys.exit(1)
@@ -71,6 +70,7 @@ def _main():
         pass
     finally:
         os.close(fd)
+
 
 if __name__ == '__main__':
     _main()

@@ -101,11 +101,11 @@ class TestTransfer(TestBase):
 
             queue = Queue(-1)
 
-            logger = m_transfer.get_logger("my_logger_name",
-                                           queue=queue,
-                                           log_level=log_level)
-            self.assertIsInstance(logger, logging.Logger)
-            self.assertEqual(logger.getEffectiveLevel(), logging_level)
+            logger_obj = m_transfer.get_logger("my_logger_name",
+                                               queue=queue,
+                                               log_level=log_level)
+            self.assertIsInstance(logger_obj, logging.Logger)
+            self.assertEqual(logger_obj.getEffectiveLevel(), logging_level)
 
         # --------------------------------------------------------------------
         # No logging module used
@@ -262,7 +262,7 @@ class TestTransfer(TestBase):
         self.assertEqual(ret_val, ".*")
 
         # --------------------------------------------------------------------
-        # one file extention
+        # one file extension
         # --------------------------------------------------------------------
         ret_val = m_transfer.convert_suffix_list_to_regex(pattern=[".py"],
                                                           suffix=False,
@@ -270,7 +270,7 @@ class TestTransfer(TestBase):
         self.assertEqual(ret_val, "(.py)$")
 
         # --------------------------------------------------------------------
-        # multiple file extentions
+        # multiple file extensions
         # --------------------------------------------------------------------
         ret_val = m_transfer.convert_suffix_list_to_regex(
             pattern=[".py", ".txt"],
@@ -639,26 +639,28 @@ class TestTransfer(TestBase):
 
         transfer = m_transfer.Transfer(**self.transfer_conf)
 
-        def check_message(transfer, signal, exception):
-            transfer.stop = mock.MagicMock()
+        def check_message(transfer_instance, signal, exception):
+            transfer_instance.stop = mock.MagicMock()
 
-            transfer.signal_socket = MockZmqSocket()
-            transfer.signal_socket.recv_multipart.return_value = [signal, ""]
+            transfer_instance.signal_socket = MockZmqSocket()
+            transfer_instance.signal_socket.recv_multipart.return_value = [
+                signal, ""
+            ]
 
-            transfer.poller = MockZmqPollerAllFake()
-            transfer.poller.poll.return_value = {
+            transfer_instance.poller = MockZmqPollerAllFake()
+            transfer_instance.poller.poll.return_value = {
                 transfer.signal_socket: zmq.POLLIN
             }
 
             with self.assertRaises(exception):
-                transfer._send_signal(b"foo")
+                transfer_instance._send_signal(b"foo")
 
-            self.assertTrue(transfer.stop.called)
+            self.assertTrue(transfer_instance.stop.called)
 
             # cleanup
-            transfer.signal_socket = None
-            transfer.poller = None
-            transfer.stop.reset_mock()
+            transfer_instance.signal_socket = None
+            transfer_instance.poller = None
+            transfer_instance.stop.reset_mock()
 
         # --------------------------------------------------------------------
         # no signal
@@ -2409,7 +2411,8 @@ class TestTransfer(TestBase):
                                      metadata)
 
         self.assertTrue(transfer.log.error.called)
-        self.assertIn("Failed to open file", transfer.log.error.call_args[0][0])
+        self.assertIn("Failed to open file",
+                      transfer.log.error.call_args[0][0])
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -2438,7 +2441,8 @@ class TestTransfer(TestBase):
                                      metadata)
 
         self.assertTrue(transfer.log.error.called)
-        self.assertIn("Failed to open file", transfer.log.error.call_args[0][0])
+        self.assertIn("Failed to open file",
+                      transfer.log.error.call_args[0][0])
 
         # cleanup
         transfer = m_transfer.Transfer(**self.transfer_conf)
@@ -3156,29 +3160,30 @@ class TestTransfer(TestBase):
         # --------------------------------------------------------------------
         # control_socket, Exception
         # --------------------------------------------------------------------
-        def stop_control_socket_with_exception(transfer, side_effect):
+        def stop_control_socket_with_exception(transfer_instance, side_effect):
             # pylint: disable=invalid-name
 
-            transfer.file_descriptors = {}
-            transfer.signal_exchanged = None
-            transfer.auth = None
+            transfer_instance.file_descriptors = {}
+            transfer_instance.signal_exchanged = None
+            transfer_instance.auth = None
 
-            transfer.log = mock.MagicMock()
-            transfer.control_socket = mock.MagicMock()
-            transfer.socket_conf["control"] = {"ipc_file": None}
+            transfer_instance.log = mock.MagicMock()
+            transfer_instance.control_socket = mock.MagicMock()
+            transfer_instance.socket_conf["control"] = {"ipc_file": None}
 
             with mock.patch("hidra.transfer.Transfer._get_ipc_addr"):
                 with mock.patch("hidra.transfer.Transfer._stop_socket"):
-                    with mock.patch("os.remove") as mock_remove:
-                        mock_remove.side_effect = side_effect
+                    with mock.patch("os.remove") as mock_rm:
+                        mock_rm.side_effect = side_effect
 
-                        transfer.stop()
+                        transfer_instance.stop()
 
-            self.assertTrue(transfer.log.warning.called)
-            self.assertIn("not remove", transfer.log.warning.call_args[0][0])
+            self.assertTrue(transfer_instance.log.warning.called)
+            self.assertIn("not remove",
+                          transfer_instance.log.warning.call_args[0][0])
 
             # cleanup
-            transfer = m_transfer.Transfer(**self.transfer_conf)
+            transfer_instance = m_transfer.Transfer(**self.transfer_conf)
 
         self.log.info("%s: CONTROL_SOCKET, OSERROR", current_func_name)
         stop_control_socket_with_exception(transfer, OSError())
@@ -3296,21 +3301,22 @@ class TestTransfer(TestBase):
         # force stop ok
         # --------------------------------------------------------------------
 
-        def call_force_stop(transfer, connection):
-            transfer.connection_type = connection
+        def call_force_stop(transfer_instance, connection):
+            transfer_instance.connection_type = connection
             signal = "FORCE_STOP_{}".format(connection).encode("ascii")
 
             mock_send_signal.side_effect = [[signal]]
-            transfer.log = mock.MagicMock()
+            transfer_instance.log = mock.MagicMock()
 
-            transfer.force_stop(targets=[])
+            transfer_instance.force_stop(targets=[])
 
             mock_send_signal.assert_called_once_with(signal)
-            self.assertTrue(transfer.log.info.called)
-            self.assertIn("Received", transfer.log.info.call_args[0][0])
+            self.assertTrue(transfer_instance.log.info.called)
+            self.assertIn("Received",
+                          transfer_instance.log.info.call_args[0][0])
 
             # cleanup
-            transfer = m_transfer.Transfer(**self.transfer_conf)
+            transfer_instance = m_transfer.Transfer(**self.transfer_conf)
             mock_send_signal.side_effect = None
             mock_send_signal.reset_mock()
 

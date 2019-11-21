@@ -31,20 +31,20 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
-import copy
-import logging
 import os
-import re
-import sys
-import threading
-import time
 
 import inotify.adapters
-from future.utils import iteritems
 
 CURRENT_DIR = os.path.realpath(__file__)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))))
+BASE_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(
+                os.path.dirname(CURRENT_DIR)
+            )
+        )
+    )
+)
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

@@ -1,59 +1,65 @@
 #!/usr/bin/env python
 
-import time
 
 import threading
+import time
 import multiprocessing
 
 
-class th (threading.Thread):
-	def __init__ (self):
+class TestThread (threading.Thread):
+	def __init__(self):
 		threading.Thread.__init__(self)
 
-	def run (self):
-		for i in xrange(5000):
-                        fileDescriptor = open("/opt/hidra/test_file.tif", "rb")
-                        data = fileDescriptor.read()
-                        del fileDescriptor
-                        del data
+	def run(self):
+		for i in range(5000):
+			file_descriptor = open("/opt/hidra/test_file.tif", "rb")
+			data = file_descriptor.read()
+			del file_descriptor
+			del data
 
-class pr (multiprocessing.Process):
-	def __init__ (self):
+
+class TestProcess (multiprocessing.Process):
+	def __init__(self):
 		multiprocessing.Process.__init__(self)
 
-	def run (self):
-		for i in xrange(5000):
-                        fileDescriptor = open("/opt/hidra/test_file.tif", "rb")
-                        data = fileDescriptor.read()
-                        del fileDescriptor
-                        del data
+	def run(self):
+		for i in range(5000):
+			file_descriptor = open("/opt/hidra/test_file.tif", "rb")
+			data = file_descriptor.read()
+			del file_descriptor
+			del data
 
-number = 2
 
-print 'number of threads/processes: ', number
+def main():
+	number = 2
+	print("number of threads/processes: ", number)
 
-t = time.time()
+	t = time.time()
 
-x = {}
+	x = {}
 
-for i in xrange(number):
-	x[i] = th()
-	x[i].start()
+	for i in range(number):
+		x[i] = TestThread()
+		x[i].start()
 
-for i in xrange(number):
-	x[i].join()
+	for i in range(number):
+		x[i].join()
 
-print 'threading:', time.time() - t
+	print("threading:", time.time() - t)
 
-t = time.time()
+	t = time.time()
 
-x = {}
+	x = {}
 
-for i in xrange(number):
-	x[i] = pr()
-	x[i].start()
+	for i in range(number):
+		x[i] = TestProcess()
+		x[i].start()
 
-for i in xrange(number):
-	x[i].join()
+	for i in range(number):
+		x[i].join()
 
-print 'multiprocessing:', time.time() - t
+	print("multiprocessing:", time.time() - t)
+
+
+if __name__ == "__main__":
+	main()

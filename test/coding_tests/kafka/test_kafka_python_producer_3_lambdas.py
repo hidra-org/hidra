@@ -8,16 +8,18 @@ from builtins import super  # pylint: disable=redefined-builtin
 import json
 from kafka import KafkaProducer
 import threading
-import time
+# import time
 
-topic = "kuhnm_test2"
-server = ["asap3-events-01", "asap3-events-02"]
+TOPIC = "kuhnm_test2"
+SERVER = ["asap3-events-01", "asap3-events-02"]
+
 
 class LambdaSimulator(threading.Thread):
 
     def __init__(self, server, topic, detid):
         super().__init__()
 
+        self.topic = topic
         self.detid = detid
 
         self.producer = KafkaProducer(
@@ -33,26 +35,27 @@ class LambdaSimulator(threading.Thread):
             "finishTime": 1556031799.7914205,
             "inotifyTime": 1556031799.791173,
             "md5sum": "",
-            "operation":"copy",
+            "operation": "copy",
             "path": "/my_dir/current/raw/my_subdir/",
-            "retries":1,
-            "size":43008,
-            "source":"./current/raw/my_subdir/"
+            "retries": 1,
+            "size": 43008,
+            "source": "./current/raw/my_subdir/"
         }
 
         for i in range(1):
             message["path"] += filename.format(self.detid, i)
             message["source"] += filename.format(self.detid, i)
-            future = self.producer.send(topic, message)
+            future = self.producer.send(self.topic, message)
             future.get(timeout=60)
 
-if __name__ == "__main__":
+
+def main():
     n_det = 3
 
     lambdas = []
 
     for i in range(n_det):
-        lambdas.append(LambdaSimulator(server, topic, "DET{}".format(i)))
+        lambdas.append(LambdaSimulator(SERVER, TOPIC, "DET{}".format(i)))
 
     for l in lambdas:
         l.start()
@@ -61,3 +64,7 @@ if __name__ == "__main__":
         l.join()
 #    while True:
 #        time.sleep(1)
+
+
+if __name__ == "__main__":
+    main()

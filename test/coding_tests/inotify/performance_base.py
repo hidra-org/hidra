@@ -31,7 +31,7 @@ import multiprocessing
 import os
 import threading
 
-from external_trigger import create_test_files
+from .external_trigger import create_test_files
 
 
 class PerformanceBase(object):
@@ -51,7 +51,7 @@ class PerformanceBase(object):
             pass
 
     def create_job_thread(self):
-        """Initiliaze create_job as a thread.
+        """Initialize create_job as a thread.
         """
 
         print("create thread")
@@ -61,7 +61,7 @@ class PerformanceBase(object):
         )
 
     def create_job_process(self):
-        """Initiliaze create_job as a process.
+        """Initialize create_job as a process.
         """
 
         print("create process")

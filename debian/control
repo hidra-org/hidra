@@ -8,7 +8,7 @@ Homepage: https://github.com/hidra-org/hidra
 
 Package: hidra
 Architecture: any
-Depends: python-hidra (= ${binary:Version}), python, systemd, python-logutils, python-inotifyx (>= 0.2.2), python-setproctitle, python-future, python-pathlib2, python-yaml
+Depends: python-hidra (= ${binary:Version}), python, systemd, python-inotifyx (>= 0.2.2), python-setproctitle, python-future, python-pathlib2
 Description: High performance data multiplexing tool
  HiDRA is a generic tool set for high performance data multiplexing
  with different qualities of service and is based on Python and ZeroMQ.
@@ -29,6 +29,6 @@ Description: The hidra control client
 
 Package: python-hidra
 Architecture: any
-Depends: python, python-zmq (>= 14.6.0), python-pathlib2, python-logutils
+Depends: python, python-zmq (>= 14.6.0), python-pathlib2, python-logutils, python-yaml
 Description: python modules for hidra
  Python modules for HiDRA ( High performance data multiplexing tool )

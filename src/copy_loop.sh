@@ -1,4 +1,4 @@
-#/bin/sh
+#!/bin/bash
 
 SOURCE=/opt/hidra
 
@@ -18,13 +18,13 @@ while getopts ':f:s:t:n:' OPTION ; do
 #           ((${FORMAT} == "cbf" || ${FORMAT} == "tif")) || usage
             ;;
         s) SOURCE=${OPTARG}
-            if [ ! -d ${SOURCE} ]; then echo "${SOURCE} does not exist"; exit 1; fi
+            if [ ! -d "${SOURCE}" ]; then echo "${SOURCE} does not exist"; exit 1; fi
             ;;
         t) TARGET=${OPTARG}
-            if [ ! -d ${TARGET} ]; then echo "${TARGET} does not exist"; exit 1; fi
+            if [ ! -d "${TARGET}" ]; then echo "${TARGET} does not exist"; exit 1; fi
             ;;
         n) LIMIT=${OPTARG}
-            if echo ${LIMIT} | grep -q '^[0-9]+$'; then echo "${LIMIT} is not a number"; exit 1; fi
+            if echo "${LIMIT}" | grep -q '^[0-9]+$'; then echo "${LIMIT} is not a number"; exit 1; fi
             ;;
         *) usage
     esac
@@ -45,10 +45,10 @@ esac
 
 i=1
 
-while [ "$i" -le $LIMIT ]
+while [ "$i" -le "$LIMIT" ]
 do
     TARGET_FILE="$TARGET/$i.$FORMAT"
-    echo $TARGET_FILE
-    cp $FILES "$TARGET_FILE"
-    i=$(($i+1))
+    echo "$TARGET_FILE"
+    cp "$FILES" "$TARGET_FILE"
+    i=$((i+1))
 done

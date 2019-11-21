@@ -1,33 +1,40 @@
+from __future__ import print_function
+
 import os
 import random
-import socket as m_socket
-import sys
+# import socket as m_socket
 import time
 import tempfile
 import zmq
 
-port = "5556"
-ip = m_socket.getfqdn(m_socket.gethostname())
 
-context = zmq.Context()
-socket = context.socket(zmq.PUB)
+def main():
+    # port = "5556"
+    # ip = m_socket.getfqdn(m_socket.gethostname())
 
-ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
-endpoint = "ipc://{}:{}".format(ipc_dir, "pubsub")
-#endpoint = "tcp://{}:{}".format(ip, port)
+    context = zmq.Context()
+    socket = context.socket(zmq.PUB)
 
-socket.connect(endpoint)
-time.sleep(0.1)
+    ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
+    endpoint = "ipc://{}:{}".format(ipc_dir, "pubsub")
+    # endpoint = "tcp://{}:{}".format(ip, port)
 
-while True:
-    topic = random.randrange(9999,10005)
-    messagedata = random.randrange(1,215) - 80
-    print "%d %d" % (topic, messagedata)
+    socket.connect(endpoint)
+    time.sleep(0.1)
 
-    message = [str(topic), str(messagedata)]
-#    socket.send("%d %d" % (topic, messagedata))
-    socket.send_multipart(message)
+    while True:
+        topic = random.randrange(9999, 10005)
+        message_data = random.randrange(1, 215) - 80
+        print("%d %d" % (topic, message_data))
 
-    print "sleeping..."
-    time.sleep (1)
-    print "sleeping...done"
+        message = [str(topic), str(message_data)]
+    #    socket.send("%d %d" % (topic, message_data))
+        socket.send_multipart(message)
+
+        print("sleeping...")
+        time.sleep(1)
+        print("sleeping...done")
+
+
+if __name__ == "__main__":
+    main()

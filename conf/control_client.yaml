@@ -12,4 +12,6 @@ hidra:
         store_data: False
         remove_data: False
     # default whitelist: all hosts contained in the beamline netgroup
-    # to change that set whitelist here
+    # to change that set whitelist here, e.g.
+    #general:
+    #    whitelist: ["my_host"]

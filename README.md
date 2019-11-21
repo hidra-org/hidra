@@ -65,7 +65,7 @@ There are three different packages available:
 * python-hidra: This package contains only the API for developing tools against HiDRA.
 * hidra-control-client: This package contains only the client to interact with the control server in the HIDRA package.
 
-### Use prebuild executables
+### Use prebuilt executables
 
 Executables build for Linux and Windows systems are available [here](http://nims.desy.de/extra/hidra/freeze/) (see [Setup for Pilatus](https://confluence.desy.de/display/hidra/Pilatus))
 

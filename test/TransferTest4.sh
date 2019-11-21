@@ -1,6 +1,6 @@
 # tests file moving on basis of inotifyx while OnDA is asking to get the files as well
 
-SCRIPTDIR=$(readlink -f $0)
+SCRIPTDIR=$(readlink -f "$0")
 BASEDIR=${SCRIPTDIR%%/test/TransferTest4.sh}
 
 oldfile=$BASEDIR/test/test_files/test_file.cbf
@@ -11,13 +11,13 @@ procname=HiDRA_test4
 onda_procname=example_onda
 
 
-python $BASEDIR/src/sender/datamanager.py \
-    --config_file $BASEDIR/test/datamanager.yaml \
-    --procname $procname \
-    --log_path $BASEDIR/logs \
-    --log_name ${procname}.log \
-    --monitored_dir $BASEDIR/data/source \
-    --local_target $BASEDIR/data/target \
+python "$BASEDIR/src/sender/datamanager.py" \
+    --config_file "$BASEDIR/test/datamanager.yaml" \
+    --procname "$procname" \
+    --log_path "$BASEDIR/logs" \
+    --log_name "${procname}.log" \
+    --monitored_dir "$BASEDIR/data/source" \
+    --local_target "$BASEDIR/data/target" \
     --ext_ip 0.0.0.0 \
     --eventdetector_type inotifyx_events \
     --datafetcher_type file_fetcher \
@@ -29,22 +29,22 @@ python $BASEDIR/src/sender/datamanager.py \
 
 sleep 2
 
-python $BASEDIR/test/API/example_onda.py \
+python "$BASEDIR/test/API/example_onda.py" \
     --procname $onda_procname &
 
 sleep 1
 
-cp $oldfile $newfile
+cp "$oldfile" "$newfile"
 echo "Copy done"
 
 sleep 2
 
-numberOfErrors=$(less $BASEDIR/logs/${procname}.log* | grep "ERROR" | wc -l)
+numberOfErrors=$(less "$BASEDIR/logs/${procname}.log"* | grep -c "ERROR")
 exitstatus=0
 
-if [ $numberOfErrors != 0 ]; then
+if [ "$numberOfErrors" != "0" ]; then
     echo "Errors in transfer"
-    less $BASEDIR/logs/${procname}.log* | grep "ERROR"
+    less "$BASEDIR/logs/${procname}.log"* | grep "ERROR"
     exitstatus=1
 else
     echo "No errors in transfer"
@@ -57,11 +57,11 @@ else
    echo "Files not identical"
 fi
 
-rm $movedfile
+rm "$movedfile"
 
-killall $procname
-killall $onda_procname
-rm $BASEDIR/logs/${procname}.log*
+killall "$procname"
+killall "$onda_procname"
+rm "$BASEDIR/logs/${procname}.log"*
 
 sleep 1
 

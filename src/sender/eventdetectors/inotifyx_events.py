@@ -99,7 +99,7 @@ class EventDetector(EventDetectorBase):
         self.required_params = ["monitored_dir",
                                 "fix_subdirs",
                                 ["monitored_events", dict],
-                                #"event_timeout",
+                                # "event_timeout",
                                 "history_size",
                                 "use_cleanup"]
 
@@ -190,17 +190,17 @@ class EventDetector(EventDetectorBase):
         inotify watch.
         """
 
-        try:
-            for path in self._get_directory_structure():
+        for path in self._get_directory_structure():
+            try:
                 watch_descriptor = inotifyx.add_watch(
                     self.file_descriptor,
                     path
                 )
                 self.wd_to_path[watch_descriptor] = path
                 self.log.debug("Register watch for path: %s", path)
-        except Exception:
-            self.log.error("Could not register watch for path: %s", path,
-                           exc_info=True)
+            except Exception:
+                self.log.error("Could not register watch for path: %s", path,
+                               exc_info=True)
 
     def _get_directory_structure(self):
         """For all directories configured find all sub-directories contained.
@@ -249,8 +249,6 @@ class EventDetector(EventDetectorBase):
 
         # pylint: disable=invalid-name
         global _file_event_list
-
-        event_message_list = []
 
         with self.lock:
             # get missed files
@@ -309,6 +307,7 @@ class EventDetector(EventDetectorBase):
             is_moved_to = ("IN_MOVED_TO" in parts_array)
 
             current_mon_event = None
+            current_mon_regex = None
             for key, value in iteritems(self.mon_regex_per_event):
                 if key in parts_array:
                     current_mon_event = key
@@ -395,6 +394,7 @@ class EventDetector(EventDetectorBase):
                 # self.log.debug(event.name)
 
                 dirname = os.path.join(path, event.name)
+                found_watch = None
                 for watch, watch_path in iteritems(self.wd_to_path):
                     if watch_path == dirname:
                         found_watch = watch
@@ -415,20 +415,12 @@ class EventDetector(EventDetectorBase):
             if (not is_dir and current_mon_event
                     and [path, event.name] not in self.history):
 
-                # self.log.debug("not is_dir")
-                # self.log.debug("current_mon_event: {}"
-                #                .format(current_mon_event))
-                # self.log.debug("{} {} {}".format(path, event.name, parts))
-                # self.log.debug("filename: {}".format(event.name))
-                # self.log.debug("regex match: {}".format(
-                #                current_mon_regex.match(event.name)))
-
                 # only files matching the regex specified with the current
                 # event are monitored
                 if current_mon_regex.match(event.name) is None:
                     # self.log.debug("File ending not in monitored Suffixes: "
-                    #                "{}".format(event.name))
-                    # self.log.debug("detected events were: {}".format(parts))
+                    #                "%s", event.name)
+                    # self.log.debug("detected events were: %s", parts)
                     continue
 
                 event_message = get_event_message(path, event.name, self.paths)

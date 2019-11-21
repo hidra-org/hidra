@@ -33,7 +33,7 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 # efficient py2 + py3 dict iteration
-from builtins import dict  # noqa F401 # pylint: disable=redefined-builtin
+from builtins import dict  # noqa F401 # pylint: disable=redefined-builtin, unused-import
 
 import argparse
 import copy
@@ -71,7 +71,7 @@ REPLYCODES = utils.ReplyCodes(
     running=b"RUNNING",
     not_running=b"NOT_RUNNING",
     already_running=b"ALREADY_RUNNING",
-    already_stopped=b"ARLEADY_STOPPED"
+    already_stopped=b"ALREADY_STOPPED"
 )
 
 
@@ -103,7 +103,7 @@ class InstanceTracking(object):
         except Exception:
             # file content ist not as expected
             self.log.error("File containing instances existed but error "
-                           "occured when reading it", exc_info=True)
+                           "occurred when reading it", exc_info=True)
             self.instances = {}
 
     def _update_instances(self):
@@ -378,7 +378,6 @@ class ConfigHandling(utils.Base):
 
         Args:
             host_id: The host for which the configuration should be cleared.
-            det_id: the detector to clear the configuration for.
         """
 
         try:
@@ -451,11 +450,9 @@ class ConfigHandling(utils.Base):
 
         Args:
             host_id: the host id the config belongs to.
-            det_id: the detector id the config belongs to.
         """
         # pylint: disable=global-variable-not-assigned
         global CONFIG_DIR
-        global CONFIG_PREFIX
 
         try:
             self._check_config_complete(host_id)
@@ -520,7 +517,7 @@ class ConfigHandling(utils.Base):
             return
 
         if self.remote_config is not None:
-            self.log.info("Remote configuration already optained. Skip.")
+            self.log.info("Remote configuration already obtained. Skip.")
             return
 
         self.log.debug("Acquire remote config")
@@ -587,6 +584,7 @@ class HidraServiceHandling(object):
     """
     Implements service handling.
     """
+    # pylint: disable=too-few-public-methods
 
     def __init__(self, beamline, log):
 
@@ -692,7 +690,7 @@ class HidraServiceHandling(object):
         # pylint: disable=unused-argument
 
         call = ["service", self.service_conf["name"], cmd]
-        # TODO implement beamline and det_id in hisdra.sh
+        # TODO implement beamline and det_id in hidra.sh
         # call = ["service", service_conf["name"], "status", beamline, det_id]
 
         self.log.debug("Call: %s", " ".join(call))
@@ -970,7 +968,7 @@ def argument_parsing():
     # ------------------------------------------------------------------------
     # Get arguments from config file and command line
     # ------------------------------------------------------------------------
-    utils.check_existance(config_file)
+    utils.check_existence(config_file)
 
     config = utils.load_config(config_file)
     utils.update_dict(arguments, config)
@@ -1061,6 +1059,12 @@ class ControlServer(utils.Base):
         self.restart_instances()
 
     def restart_instances(self):
+        """Restart hidra instances
+
+         This is needed e.g. when the host where the instances where running
+         crashed.
+        """
+
         all_instances = self.instances.get_instances()
 
         for beamline, bl_instances in all_instances.items():
@@ -1274,7 +1278,8 @@ class ControlServer(utils.Base):
                 self.context,
                 self.beamline,
                 det_id,
-                # to prevent different detector processes to write into the same config
+                # to prevent different detector processes to write into the
+                # same config
                 copy.deepcopy(self.config),
                 self.instances,
                 self.log_queue
@@ -1311,12 +1316,12 @@ class ControlServer(utils.Base):
         except Exception:
             self.log.error("Error when checking netgroup (%s)", str_name,
                            exc_info=True)
-            self.log.debug("msg=%s", msg)
+            self.log.debug("msg=%s", error_msg)
             raise
 
         if not check_res:
             self.log.info(*error_msg)
-            raise
+            raise Exception(error_msg[0] % error_msg[1:])
 
     def _get_instances(self):
         """Get the started hidra instances

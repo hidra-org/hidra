@@ -21,7 +21,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class TestEventDetector(EventDetectorTestBase):
-    """Specification of tests to be performed for the loaded EventDetecor.
+    """Specification of tests to be performed for the loaded EventDetector.
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -41,7 +41,7 @@ class TestEventDetector(EventDetectorTestBase):
         self.context = zmq.Context()
 
         self.module_name = "hidra_events"
-        self.eventdetector_config = {
+        config_module = {
             "network": {
                 "context": self.context,
                 "ipc_dir": ipc_dir,
@@ -56,6 +56,10 @@ class TestEventDetector(EventDetectorTestBase):
                 }
             }
         }
+        self.ed_base_config["config"]["eventdetector"] = {
+            "type": self.module_name,
+            self.module_name: config_module
+        }
 
         self.start = 100
         self.stop = 101
@@ -65,14 +69,12 @@ class TestEventDetector(EventDetectorTestBase):
         self.target_path = os.path.join(target_base_path,
                                         target_relative_path)
 
-        self.eventdetector = EventDetector(self.eventdetector_config,
-                                           self.log_queue)
+        self.eventdetector = EventDetector(self.ed_base_config)
 
         self.ipc_addresses = get_ipc_addresses(
-            config=self.eventdetector_config
+            config=config_module
         )
-        self.endpoints = get_endpoints(config=self.eventdetector_config,
-                                       ipc_addresses=self.ipc_addresses)
+        self.endpoints = get_endpoints(config=config_module)
 
     def test_eventdetector(self):
         """Simulate incoming data and check if received events are correct.

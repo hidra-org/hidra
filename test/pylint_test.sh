@@ -1,7 +1,7 @@
-#/bin/sh
+#!/bin/sh
 
 pylint -r no \
-    *.py \
+    ./*.py \
     src/sender/*.py \
     src/sender/eventdetectors/*.py \
     src/sender/datafetchers/*.py \

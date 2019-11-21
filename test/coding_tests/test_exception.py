@@ -1,7 +1,15 @@
+from __future__ import print_function
+
 
 def fun_a():
+    print("I'm here")
     raise Exception
-    print "I'm here"
 
-fun_a()
-print "still here"
+
+def main():
+    fun_a()
+    print("still here")
+
+
+if __name__ == "__main__":
+    main()

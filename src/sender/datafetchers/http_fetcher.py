@@ -139,7 +139,7 @@ class DataFetcher(DataFetcherBase):
                     metadata["confirmation_required"] = False
 
                 self.log.debug("metadata = %s", metadata)
-            except:
+            except Exception:
                 self.log.error("Unable to assemble multi-part message.",
                                exc_info=True)
                 raise
@@ -163,7 +163,7 @@ class DataFetcher(DataFetcherBase):
             raise Exception(msg[0] % msg[1:])
         else:
             fix_subdir_found = False
-            # identify which of the pefixes is the correct one and check that
+            # identify which of the prefixes is the correct one and check that
             # this is available
             # e.g. relative_path is commissioning/raw/test_dir but
             #      commissioning/raw  does not exist, it should not be created
@@ -182,9 +182,10 @@ class DataFetcher(DataFetcherBase):
                         self.log.error(*msg, exc_info=True)
                         raise Exception(msg[0] % msg[1:])
                     else:
+                        target_path, _ = os.path.split(self.target_file)
+
                         # everything is fine -> create directory
                         try:
-                            target_path, _ = os.path.split(self.target_file)
                             os.makedirs(target_path)
                             self.log.info("New target directory created: %s",
                                           target_path)
@@ -207,9 +208,9 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
-                                     connections.
+                connections.
         """
 
         response = self.config["session"].get(self.source_file, stream=True)
@@ -226,6 +227,7 @@ class DataFetcher(DataFetcherBase):
             chunksize = metadata["chunksize"]
         except Exception:
             self.log.error("Unable to get chunksize", exc_info=True)
+            raise
 
         file_opened = False
         file_written = True
@@ -248,14 +250,15 @@ class DataFetcher(DataFetcherBase):
                     try:
                         file_descriptor = open(self.target_file, "wb")
                         file_opened = True
-                    except:
+                    except Exception:
                         self.log.error(err_msg, exc_info=True)
                         raise
                 else:
                     self.log.error(err_msg, exc_info=True)
                     raise
-            except:
-                self.log.error(err_msg, exc_info=True)
+            except Exception:
+                self.log.error("Unable to open target file '%s'",
+                               self.target_file, exc_info=True)
                 raise
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
@@ -277,9 +280,8 @@ class DataFetcher(DataFetcherBase):
                 metadata_extended = metadata.copy()
                 metadata_extended["chunk_number"] = chunk_number
 
-                payload = []
-                payload.append(json.dumps(metadata_extended).encode("utf-8"))
-                payload.append(data)
+                payload = [json.dumps(metadata_extended).encode("utf-8"),
+                           data]
             except Exception:
                 self.log.error("Unable to pack multipart-message for file "
                                "'%s'", self.source_file,
@@ -362,9 +364,9 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
-                                     connections.
+                connections.
         """
         pass
 
@@ -373,9 +375,9 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
-                                     connections.
+                connections.
         """
         # pylint: disable=unused-argument
 
@@ -394,9 +396,9 @@ class DataFetcher(DataFetcherBase):
 
         Args:
             targets (list): The target list this file is supposed to go.
-            metadata (dict): The dictionary with the metedata of the file
+            metadata (dict): The dictionary with the metadata of the file
             open_connections (dict): The dictionary containing all open zmq
-                                     connections.
+                connections.
         """
         # pylint: disable=unused-argument
 
@@ -415,7 +417,7 @@ class DataFetcher(DataFetcherBase):
         """Implementation of the abstract method stop.
         """
 
-        # cloes base class zmq sockets
+        # close base class zmq sockets
         self.close_socket()
 
 

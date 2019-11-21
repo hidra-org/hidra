@@ -6,6 +6,7 @@ import tempfile
 import threading
 import zmq
 
+
 class ClientThread(threading.Thread):
     def __init__(self, control_sub_str, check_str):
         threading.Thread.__init__(self)
@@ -20,16 +21,21 @@ class ClientThread(threading.Thread):
             control_socket = self.context.socket(zmq.SUB)
             control_socket.connect(self.control_sub_str)
             control_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
-            print("Start control socket (connect): {}".format(self.control_sub_str))
-        except:
-            print("Failed to start control socket (connect): {}".format(self.control_sub_str))
+            print("Start control socket (connect): {}"
+                  .format(self.control_sub_str))
+        except Exception:
+            print("Failed to start control socket (connect): {}"
+                  .format(self.control_sub_str))
+            raise
 
         try:
             check_socket = self.context.socket(zmq.REP)
             check_socket.connect(self.check_str)
             print("Start check socket (connect): {}".format(self.check_str))
-        except:
-            print("Failed to start check socket (connect): {}".format(self.check_str))
+        except Exception:
+            print("Failed to start check socket (connect): {}"
+                  .format(self.check_str))
+            raise
 
         request = check_socket.recv()
         print("Received request {}".format(request))
@@ -59,16 +65,21 @@ class ClientProcess(multiprocessing.Process):
             control_socket = self.context.socket(zmq.SUB)
             control_socket.connect(self.control_sub_str)
             control_socket.setsockopt_string(zmq.SUBSCRIBE, u"control")
-            print("Start control socket (connect): {}".format(self.control_sub_str))
-        except:
-            print("Failed to start control socket (connect): {}".format(self.control_sub_str))
+            print("Start control socket (connect): {}"
+                  .format(self.control_sub_str))
+        except Exception:
+            print("Failed to start control socket (connect): {}"
+                  .format(self.control_sub_str))
+            raise
 
         try:
             check_socket = self.context.socket(zmq.REP)
             check_socket.connect(self.check_str)
             print("Start check socket (connect): {}".format(self.check_str))
-        except:
-            print("Failed to start check socket (connect): {}".format(self.check_str))
+        except Exception:
+            print("Failed to start check socket (connect): {}"
+                  .format(self.check_str))
+            raise
 
         request = check_socket.recv()
         print("Received request {}".format(request))
@@ -102,11 +113,11 @@ def main():
         device.bind_out(control_sub_str)
         device.setsockopt_in(zmq.SUBSCRIBE, b"")
         device.start()
-        print("Start thead device forwarding messages from '{}' to '{}'"
+        print("Start thread device forwarding messages from '{}' to '{}'"
               .format(control_pub_str, control_sub_str))
-    except:
-        print("Failed to start thead device forwarding messages from '{}' to '{}'"
-              .format(control_pub_str, control_sub_str))
+    except Exception:
+        print("Failed to start thread device forwarding messages from '{}' to "
+              "'{}'".format(control_pub_str, control_sub_str))
         raise
 
     context = zmq.Context()
@@ -115,16 +126,18 @@ def main():
         control_socket = context.socket(zmq.PUB)
         control_socket.connect(control_pub_str)
         print("Start control socket (connect): {}".format(control_pub_str))
-    except:
-        print("Failed to start control socket (connect) : {}".format(control_pub_str))
+    except Exception:
+        print("Failed to start control socket (connect) : {}"
+              .format(control_pub_str))
         raise
 
     try:
         check_socket = context.socket(zmq.REQ)
         check_socket.bind(check_str)
         print("Start check socket (bind): {}".format(check_str))
-    except:
+    except Exception:
         print("Failed to start check socket (bind): {}".format(check_str))
+        raise
 
     client = ClientThread(control_sub_str, check_str)
 #    client = ClientProcess(control_sub_str, check_str)
@@ -144,6 +157,7 @@ def main():
     control_socket.close()
     check_socket.close()
     context.destroy()
+
 
 if __name__ == "__main__":
     main()

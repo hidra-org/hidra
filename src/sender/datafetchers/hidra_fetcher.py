@@ -206,6 +206,7 @@ class DataFetcher(DataFetcherBase):
         except Exception:
             self.log.error("Unable to pack multipart-message for file "
                            "'%s'", self.source_file, exc_info=True)
+            return
 
         # send message to data targets
         try:

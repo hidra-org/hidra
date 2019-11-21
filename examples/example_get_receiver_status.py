@@ -30,7 +30,6 @@ from __future__ import unicode_literals
 
 import socket
 
-import _environment  # noqa F401 # pylint: disable=unused-import
 from hidra.control import ReceiverControl
 
 

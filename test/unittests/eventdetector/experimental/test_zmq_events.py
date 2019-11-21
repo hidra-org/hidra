@@ -56,7 +56,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class TestEventDetector(EventDetectorTestBase):
-    """Specification of tests to be performed for the loaded EventDetecor.
+    """Specification of tests to be performed for the loaded EventDetector.
     """
 
     def setUp(self):
@@ -124,25 +124,25 @@ class TestEventDetector(EventDetectorTestBase):
     def _test_config_check(self, mock_setup):
         # pylint: disable=unused-argument
 
-        def check_params(eventdetector, ref_config):
-            params_to_check = ref_config.keys()
-            eventdetector.log.error = mock.Mock()
+        def check_params(ed_instance, config):
+            params_to_check = config.keys()
+            ed_instance.log.error = mock.Mock()
 
             for param in params_to_check:
                 try:
-                    eventdetector.config = copy.deepcopy(ref_config)
-                    del eventdetector.config[param]
+                    ed_instance.config = copy.deepcopy(config)
+                    del ed_instance.config[param]
 
                     self.assertRaises(utils.WrongConfiguration,
-                                      eventdetector.check_config)
+                                      ed_instance.check_config)
 
                     # check that this is the only missing parameter
-                    eventdetector.log.error.assert_called_with(
+                    ed_instance.log.error.assert_called_with(
                         "%s Missing section: '%s'",
                         "Configuration of wrong format.",
                         param
                     )
-                    eventdetector.log.error.reset_mock()
+                    ed_instance.log.error.reset_mock()
                 except AssertionError:
                     self.log.debug("checking param %s", param)
                     raise
@@ -152,8 +152,7 @@ class TestEventDetector(EventDetectorTestBase):
             mock_is_windows.return_value = False
 
             with mock.patch("zmq_events.EventDetector.check_config"):
-                eventdetector = zmq_events.EventDetector(self.conf_structure,
-                                                         self.log_queue)
+                eventdetector = zmq_events.EventDetector(self.conf_structure)
 
             ref_config = {
                 "general": {
@@ -175,8 +174,7 @@ class TestEventDetector(EventDetectorTestBase):
             mock_is_windows.return_value = True
 
             with mock.patch("zmq_events.EventDetector.check_config"):
-                eventdetector = zmq_events.EventDetector(self.conf_structure,
-                                                         self.log_queue)
+                eventdetector = zmq_events.EventDetector(self.conf_structure)
 
             ref_config = {
                 "general": {
@@ -293,7 +291,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         with mock.patch("zmq_events.EventDetector.check_config"):
             with mock.patch("zmq_events.EventDetector.setup"):
-                evtdet = zmq_events.EventDetector({}, self.log_queue)
+                evtdet = zmq_events.EventDetector({})
 
         evtdet.config_module = {
             "context": MockZmqContext(),
@@ -331,10 +329,7 @@ class TestEventDetector(EventDetectorTestBase):
 #        with mock.patch.object(zmq, "Context", MockZmqContext):
 #            self.eventdetector.setup()
 
-        self.eventdetector = zmq_events.EventDetector(
-            self.ed_config,
-            self.log_queue
-        )
+        self.eventdetector = zmq_events.EventDetector(self.ed_config)
 
         # create zmq socket to send events
         self.event_socket = self.start_socket(

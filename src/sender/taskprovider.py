@@ -144,13 +144,13 @@ class TaskProvider(Base):
             socket_options=[[zmq.RCVTIMEO, self.timeout]]
         )
 
-        # socket to disribute the events to the worker
+        # socket to distribute the events to the worker
         self.router_socket = self.start_socket(
             name="router_socket",
             sock_type=zmq.PUSH,
             sock_con="bind",
             endpoint=self.endpoints.router_bind,
-            # this sometimes blocks indefinitely if ther are problems
+            # this sometimes blocks indefinitely if there are problems
             # with sending (e.g. when wrong config on datadispatcher)
             socket_options=[[zmq.SNDTIMEO, self.timeout]]
         )

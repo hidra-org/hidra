@@ -3,9 +3,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-import select
 import shutil
-import sys
 import threading
 import time
 
@@ -41,7 +39,8 @@ def _main():
         pass
 
     inotify = INotify()
-    watch_flags = flags.CREATE | flags.DELETE | flags.MODIFY | flags.DELETE_SELF | flags.ISDIR
+    watch_flags = (flags.CREATE | flags.DELETE | flags.MODIFY
+                   | flags.DELETE_SELF | flags.ISDIR)
 
     wd_to_path = {}
 

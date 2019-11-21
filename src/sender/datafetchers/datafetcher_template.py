@@ -124,13 +124,12 @@ class DataFetcher(DataFetcherBase):
                 chunk_metadata = metadata.copy()
                 chunk_metadata["chunk_number"] = chunk_number
 
-                chunk_payload = []
-                chunk_payload.append(json.dumps(chunk_metadata)
-                                     .encode("utf-8"))
-                chunk_payload.append(file_content)
+                chunk_payload = [json.dumps(chunk_metadata).encode("utf-8"),
+                                 file_content]
             except Exception:
                 self.log.error("Unable to pack multipart-message for file "
                                "'%s'", self.source_file, exc_info=True)
+                continue
 
             # send message to data targets
             try:

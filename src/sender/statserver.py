@@ -60,6 +60,7 @@ class StatServer(Base):
         self.ipc_dir_umask = 0o001
 
         self.context = None
+        self.poller = None
         self.stats_collect_socket = None
         self.stats_expose_socket = None
 

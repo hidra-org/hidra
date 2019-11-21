@@ -4,28 +4,34 @@ from __future__ import absolute_import
 
 import zmq
 import time
-import socket
+import socket as socket_m
 
-port = "50300"
-ip=socket.getfqdn()
 
-context = zmq.Context()
-socket = context.socket(zmq.PUSH)
-socket.connect("tcp://{0}:{1}".format(ip, port))
+def main():
+    port = "50300"
+    ip = socket_m.getfqdn()
 
-print("using zmq version", zmq.__version__)
+    context = zmq.Context()
+    socket = context.socket(zmq.PUSH)
+    socket.connect("tcp://{0}:{1}".format(ip, port))
 
-while True:
-    message = b"World"
-    print("Send: ", message)
-    res = socket.send(message, copy=False, track=True)
+    print("using zmq version", zmq.__version__)
 
-    if res.done:
-        print("res: done")
-    else:
-        print("res: waiting")
-        res.wait()
-        print("res: waiting...")
-    print("sleeping...")
-    time.sleep (1)
-    print("sleeping...done")
+    while True:
+        message = b"World"
+        print("Send: ", message)
+        res = socket.send(message, copy=False, track=True)
+
+        if res.done:
+            print("res: done")
+        else:
+            print("res: waiting")
+            res.wait()
+            print("res: waiting...")
+        print("sleeping...")
+        time.sleep(1)
+        print("sleeping...done")
+
+
+if __name__ == "__main__":
+    main()

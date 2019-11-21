@@ -173,7 +173,7 @@ def get_suite_mapping(suites):
 
 
 def get_suite(package_name, name):
-    """Get the unittestsuite by name.
+    """Get the unittest suite by name.
 
     Args:
         package_name: The package the test modules belongs to.
@@ -211,7 +211,7 @@ def get_suite(package_name, name):
 
 
 def find_matches(namelist):
-    """Find closest machtes in module names for given given strings.
+    """Find closest matches in module names for given given strings.
 
     Args:
         namelist (list): A list of strings.

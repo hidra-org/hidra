@@ -21,7 +21,7 @@
 #
 
 """
-This module implementa a data fetcher which does not get data but only
+This module implements a data fetcher which does not get data but only
 distribute the metadata of the files it sees.
 """
 
@@ -124,12 +124,12 @@ class DataFetcher(DataFetcherBase):
             metadata_extended = metadata.copy()
             metadata_extended["chunk_number"] = chunk_number
 
-            payload = []
-            payload.append(json.dumps(metadata_extended).encode("utf-8"))
-            payload.append(None)
+            payload = [json.dumps(metadata_extended).encode("utf-8"),
+                       None]
         except Exception:
             self.log.error("Unable to pack multipart-message for file '%s'",
                            self.source_file, exc_info=True)
+            return
 
         # send message
         try:

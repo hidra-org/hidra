@@ -123,14 +123,14 @@ class Ingest(Base):
                           self.localhost)
             self.localhost_is_ipv6 = False
         except socket.error:
-            self.log.info("Address '%s' is not a IPv4 address, asume it is "
+            self.log.info("Address '%s' is not a IPv4 address, assume it is "
                           "an IPv6 address.", self.localhost)
             self.localhost_is_ipv6 = True
 
         self.ext_ip = "0.0.0.0"
         self.ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
 
-        self.signal_host = "zitpcx19282"
+        self.signal_host = socket.getfqdn()
         self.signal_port = "50050"
 
         # has to be the same port as configured in the configuration file
@@ -225,14 +225,14 @@ class Ingest(Base):
         self.log.info("Sending signal to open a new file.")
 
         message = self.file_op_socket.recv_multipart()
-        self.log.debug("Received responce: %s", message)
+        self.log.debug("Received response: %s", message)
 
         if signal == message[0] and filename == message[1]:
             self.filename = filename
             self.filepart = 0
         else:
             self.log.debug("signal=%s and filename=%s", signal, filename)
-            raise Exception("Wrong response received: %s", message)
+            raise Exception("Wrong response received: {}".format(message))
 
     def write(self, data):
         """Write data into the file.
@@ -308,8 +308,8 @@ class Ingest(Base):
 
     def stop(self):
         """
-        Send signal that the displayer is quitting, close ZMQ connections,
-        destoying context
+        Send signal that the display is quitting, close ZMQ connections,
+        destroying context
         """
 
         try:

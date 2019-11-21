@@ -2,11 +2,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-import multiprocessing
-import time
 import socket
 
-import __init__  # noqa F401
 from hidra import Transfer
 
 
@@ -16,7 +13,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--signal_host",
                         type=str,
-                        help="Host where HiDRA is runnning",
+                        help="Host where HiDRA is running",
                         default=socket.getfqdn())
     parser.add_argument("--target_host",
                         type=str,
@@ -52,5 +49,5 @@ if __name__ == "__main__":
     try:
         while True:
             pass
-    except:
+    except Exception:
         pass

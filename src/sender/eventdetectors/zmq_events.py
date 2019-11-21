@@ -45,7 +45,7 @@ Endpoints = namedtuple("endpoints", ["eventdet_bind", "eventdet_con"])
 
 
 def get_tcp_addresses(config):
-    """Build the addresses used for TCP communcation.
+    """Build the addresses used for TCP communication.
 
     The addresses are only set if called on Windows. For Linux they are set
     to None.
