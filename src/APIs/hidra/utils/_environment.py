@@ -20,7 +20,7 @@
 #     Manuela Kuhn <manuela.kuhn@desy.de>
 #
 
-"""The environment to run the datamanger.
+"""The environment to run the datamanager.
 """
 
 from __future__ import absolute_import
@@ -32,7 +32,13 @@ import sys
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 print(CURRENT_DIR)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR))))
+BASE_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(CURRENT_DIR)
+        )
+    )
+)
 print(BASE_DIR)
 EVENTDETECTOR_DIR = os.path.join(CURRENT_DIR, "eventdetectors")
 DATAFETCHER_DIR = os.path.join(CURRENT_DIR, "datafetchers")

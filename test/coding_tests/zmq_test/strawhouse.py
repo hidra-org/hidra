@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
-'''
+"""
 Allow or deny clients based on IP address.
 Strawhouse, which is plain text with filtering on IP addresses. It still
 uses the NULL mechanism, but we install an authentication hook that checks
 the IP address against a whitelist or blacklist and allows or denies it
 accordingly.
 Author: Chris Laws
-'''
+"""
 
 import logging
 import sys
@@ -18,7 +18,7 @@ from zmq.auth.thread import ThreadAuthenticator
 
 
 def run():
-    '''Run strawhouse client'''
+    """Run strawhouse client"""
 
     allow_test_pass = False
     deny_test_pass = False
@@ -62,7 +62,7 @@ def run():
         server.send(b"Hello")
 
         if client_deny.poll(50):
-            msg = client_deny.recv()
+            _ = client_deny.recv()
         else:
             deny_test_pass = True
     else:
@@ -78,9 +78,12 @@ def run():
         logging.error("Strawhouse test FAIL")
 
 
-if __name__ == '__main__':
-    if zmq.zmq_version_info() < (4,0):
-        raise RuntimeError("Security is not supported in libzmq version < 4.0. libzmq version {0}".format(zmq.zmq_version()))
+def main():
+    if zmq.zmq_version_info() < (4, 0):
+        raise RuntimeError(
+            "Security is not supported in libzmq version < 4.0. libzmq version "
+            "{0}".format(zmq.zmq_version())
+        )
 
     if '-v' in sys.argv:
         level = logging.DEBUG
@@ -90,3 +93,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=level, format="[%(levelname)s] %(message)s")
 
     run()
+
+
+if __name__ == '__main__':
+    main()

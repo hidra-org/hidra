@@ -2,16 +2,16 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 
-import time
+# import time
 import zmq
-from zmq.devices.monitoredqueuedevice import MonitoredQueue
 from zmq.utils.strtypes import asbytes
 from multiprocessing import Process
 import os
 import tempfile
 
-class MonitorDevice():
-    def __init__ (self, in_endpoint, out_endpoint, mon_endpoint):
+
+class MonitorDevice(object):
+    def __init__(self, in_endpoint, out_endpoint, mon_endpoint):
 
         self.in_prefix = asbytes('in')
         self.out_prefix = asbytes('out')
@@ -29,7 +29,7 @@ class MonitorDevice():
 
         self.run()
 
-    def run (self):
+    def run(self):
         while True:
             msg = self.in_socket.recv_multipart()
             print("[MonitoringDevice] In: Received message {}".format(msg))
@@ -47,7 +47,7 @@ class MonitorDevice():
 
 
 def server(in_endpoint):
-    print "[Server] connecting to device"
+    print("[Server] connecting to device")
     context = zmq.Context()
     socket = context.socket(zmq.PUSH)
     socket.connect(in_endpoint)
@@ -64,10 +64,10 @@ def client(out_endpoint, mon_endpoint, client_id):
     print("[Client #{}] Starting monitoring process".format(client_id))
     mon_socket = context.socket(zmq.PULL)
     print("[Client #{}] Collecting updates from server...".format(client_id))
-    mon_socket.connect (mon_endpoint)
+    mon_socket.connect(mon_endpoint)
 #    mon_socket.setsockopt(zmq.SUBSCRIBE, "")
 
-    mon_socket.connect (mon_endpoint)
+    mon_socket.connect(mon_endpoint)
 
     while True:
         print("[Client #{}] Monitoring waiting".format(client_id))
@@ -80,7 +80,7 @@ def client(out_endpoint, mon_endpoint, client_id):
         print("[Client #{}] Received - {}".format(client_id, message))
 
 
-if __name__ == "__main__":
+def main():
     ipc_dir = os.path.join(tempfile.gettempdir(), "hidra")
     current_pid = os.getpid()
     frontend_port = 5559
@@ -136,3 +136,8 @@ if __name__ == "__main__":
 
     if tmp_created:
         os.rmdir(ipc_dir)
+
+
+if __name__ == "__main__":
+    main()
+

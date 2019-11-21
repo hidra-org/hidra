@@ -113,7 +113,7 @@ def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
     """Initializes a stream handler and formats it.
 
     Args:
-        log_level: Which log level to be used (e.g. debug).
+        loglevel: Which log level to be used (e.g. debug).
         datafmt: The data format to be used.
         fmt: The format of the output messages.
 
@@ -171,7 +171,7 @@ def get_file_log_handler(logfile,
     Args:
         logfile: The name of the log file.
         logsize: At which size the log file should be rotated (Linux only).
-        log_level: Which log level to be used (e.g. debug).
+        loglevel: Which log level to be used (e.g. debug).
         datafmt: The data format to be used.
         fmt: The format of the output messages.
 
@@ -238,9 +238,8 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_loglevel=False):
     Args:
         logfile: The name of the log file.
         logsize: At which size the log file should be rotated (Linux only).
-        log_level: Which log level to be used (e.g. debug).
-        datafmt: The data format to be used.
-        fmt: The format of the output messages.
+        verbose: If log level should be set to debug.
+        onscreen_loglevel: If an additional StreamHandler should be activated.
 
     Returns:
         A logging FileHandler instance with configured log level and output
@@ -272,7 +271,7 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_loglevel=False):
                               "(Fallback to INFO).")
 
         screen_handler = get_stream_log_handler(loglevel=screen_loglevel)
-        return (file_handler, screen_handler)
+        return file_handler, screen_handler
     else:
         return (file_handler,)
 
@@ -317,8 +316,8 @@ def init_logging(filename, verbose, onscreen_loglevel=False):
     Args:
         filename (str): The absolute file path of the log file.
         verbose (bool):  If verbose mode should be used.
-        oncreen_loglevel (bool, optional): If the log messages should be
-                                           printed to screen.
+        onscreen_loglevel (bool, optional): If the log messages should be
+            printed to screen.
     """
 
     # see https://docs.python.org/2/howto/logging-cookbook.html
@@ -428,7 +427,7 @@ class LoggingFunction(object):
         Args:
             msg: The message to print.
             args: The arguments to fill in into msg.
-            exc_info: If a traceback should be printed in addition.
+            kwargs: The arguments to fill in into msg.
 
         """
 

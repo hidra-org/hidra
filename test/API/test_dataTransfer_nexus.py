@@ -4,10 +4,11 @@ from __future__ import print_function
 import os
 import zmq
 import logging
+import socket as socket_m
 import json
 
-from __init__ import BASE_DIR
-import utils
+from _environment import BASE_DIR
+from hidra import utils
 
 
 # enable logging
@@ -16,11 +17,10 @@ logfile = os.path.join(logfile_path, "test_nexus_transfer.log")
 utils.init_logging(logfile, True, "DEBUG")
 
 
-class Sender ():
+class Sender (object):
     def __init__(self):
         self.ext_host = "0.0.0.0"
-        self.localhost = "zitpcx19282"
-#        self.localhost = "localhost"
+        self.localhost = socket_m.getfqdn()
         self.signal_port = "50050"
         self.data_port = "50100"
 
@@ -49,11 +49,11 @@ class Sender ():
         filename = "test.cbf"
 
         message = b"OPEN_FILE"
-        logging.debug("Send {0}".format(message))
+        logging.debug("Send %s", message)
         self.file_op_socket.send_multipart([message, filename])
 
         recv_message = self.file_op_socket.recv_multipart()
-        logging.debug("Recv confirmation: {0}".format(recv_message))
+        logging.debug("Recv confirmation: %s", recv_message)
 
         metadata = {
             "source_path": os.path.join(BASE_DIR, "data", "source"),
@@ -70,7 +70,7 @@ class Sender ():
                                                   track=True)
         if not tracker.done:
             tracker.wait(timeout)
-        logging.debug("tracker.done = {0}".format(tracker.done))
+        logging.debug("tracker.done = %s", tracker.done)
         if not tracker.done:
             logging.error("Failed to send ALIVE_TEST", exc_info=True)
         else:
@@ -78,7 +78,7 @@ class Sender ():
 
         # Open file
         source_fp = open(source_file, "rb")
-        logging.debug("Opened file: {0}".format(source_file))
+        logging.debug("Opened file: %s", source_file)
 
         while True:
             # Read file content
@@ -92,9 +92,7 @@ class Sender ():
             # Build message
             metadata["file_part"] = filepart
 
-            payload = []
-            payload.append(json.dumps(metadata))
-            payload.append(content)
+            payload = [json.dumps(metadata), content]
 
             # Send message over ZMQ
             # self.data_socket.send_multipart(payload)
@@ -103,29 +101,28 @@ class Sender ():
                                                       copy=False,
                                                       track=True)
             if not tracker.done:
-                    logging.debug("Message part from file {0} has not been "
-                                  "sent yet, waiting...".format(source_file))
-                    tracker.wait(timeout)
-                    logging.debug("Message part from file {0} has not been "
-                                  "sent yet, waiting...done"
-                                  .format(source_file))
+                logging.debug("Message part from file %s has not been sent "
+                              "yet, waiting...", source_file)
+                tracker.wait(timeout)
+                logging.debug("Message part from file %s has not been sent "
+                              "yet, waiting...done", source_file)
 
             logging.debug("Send")
 
             filepart += 1
 
         message = b"CLOSE_FILE"
-        logging.debug("Send {0}".format(message))
+        logging.debug("Send %s", message)
         self.file_op_socket.send(message)
 
         self.data_socket.send_multipart([message, filename, b"0/1"])
 
         recv_message = self.file_op_socket.recv()
-        logging.debug("Recv confirmation: {0}".format(recv_message))
+        logging.debug("Recv confirmation: %s", recv_message)
 
         # Close file
         source_fp.close()
-        logging.debug("Closed file: {0}".format(source_file))
+        logging.debug("Closed file: %s", source_file)
 
     def stop(self):
         try:
@@ -142,7 +139,7 @@ class Sender ():
                 self.context.destroy()
                 self.context = None
                 logging.info("Destroying context...done")
-        except:
+        except Exception:
             logging.error("Closing ZMQ Sockets...failed.", exc_info=True)
 
     def __exit__(self):
@@ -153,8 +150,10 @@ class Sender ():
 
 
 if __name__ == '__main__':
+    sender = None
     try:
-        s = Sender()
-        s.run()
+        sender = Sender()
+        sender.run()
     finally:
-        s.stop()
+        if sender is not None:
+            sender.stop()

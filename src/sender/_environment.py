@@ -20,7 +20,7 @@
 #     Manuela Kuhn <manuela.kuhn@desy.de>
 #
 
-"""The environment to run the datamanger.
+"""The environment to run the datamanager.
 """
 
 from __future__ import absolute_import

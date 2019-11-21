@@ -39,9 +39,6 @@ import sys
 import zmq
 
 import hidra.utils as utils
-
-# pylint: disable=unused-import
-#import __init__  as init # noqa F401  # rename it to remove F811
 from base_class import Base
 
 # source:
@@ -305,11 +302,11 @@ class CleanerBase(Base, ABC):
 
     @abc.abstractmethod
     def remove_element(self, base_path, file_id):
-        """How to remove a file fro the source.
+        """How to remove a file from the source.
 
         Args:
             base_path:
-            source_file_id:
+            file_id:
         """
         pass
 

@@ -1,26 +1,31 @@
-import ConfigParser
+from __future__ import print_function
+
+try:
+    # The ConfigParser module has been renamed to configparser in Python 3
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
+
 import os
 import sys
 
+from hidra.utils import parse_parameters
+
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except:
+except NameError:
     CURRENT_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))
-SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
 
-if SHARED_DIR not in sys.path:
-    sys.path.insert(0, SHARED_DIR)
-del SHARED_DIR
+def main():
+    config_file = os.path.join(CURRENT_DIR, "test.conf")
 
-from utils_config import parse_parameters
+    config = RawConfigParser()
+    config.read(config_file)
 
-config_file = os.path.join(CURRENT_DIR, "test.conf")
+    params = parse_parameters(config)
+    print(params)
 
-config = ConfigParser.RawConfigParser()
-config.read(config_file)
 
-params = parse_parameters(config)
-
-print params
+if __name__ == "__main__":
+    main()

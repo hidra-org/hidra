@@ -35,7 +35,6 @@ import json
 import logging
 import os
 import socket
-import sys
 import zmq
 
 from ._constants import CONNECTION_LIST
@@ -67,15 +66,16 @@ class Control(Base):
 
         Args:
             beamline: The beamline for which the HiDRA instance should be
-                      controlled.
+                controlled.
             detector: The detector for which the HiDRA instance should be
-                      controlled.
+                controlled.
             ldapuri: The LDAP uri (<host>:<port>) to connect to check for
-                     authentication.
+                authentication.
             netgroup_template: The template to be used for netgroup
-                               checking of the beamline (e.g. a3{bl}-hosts).
+                checking of the beamline (e.g. a3{bl}-hosts).
             use_log (optional): Specified the logging type.
-            do_check (optional): If a netgroup check should be performed or not.
+            do_check (optional): If a netgroup check should be performed or
+                not.
         """
 
         super().__init__()
@@ -138,7 +138,7 @@ class Control(Base):
 
         # use logging
         elif self.use_log:
-            self.log = logging.getLogger("Control")
+            self.log = logging.getLogger("Control")  # pylint: disable=redefined-variable-type
 
         # use no logging at all
         elif self.use_log is None:
@@ -168,7 +168,8 @@ class Control(Base):
                     self.beamline["port"]
                 )
         except KeyError:
-            raise WrongConfiguration("Beamline %s not supported", self.beamline)
+            raise WrongConfiguration("Beamline %s not supported",
+                                     self.beamline)
 
         return endpoint
 
@@ -212,7 +213,7 @@ class Control(Base):
         """Check if the beamline is allowed to take actions for this detector.
         """
 
-        if not  self.do_check:
+        if not self.do_check:
             return
 
         # check detector
@@ -387,19 +388,18 @@ class Control(Base):
         except ValueError:
             # python 2, for compatibility with 4.0.23
             return reply
-        except json.decoder.JSONDecodeError:
+        except json.decoder.JSONDecodeError:  # pylint: disable=no-member
             # python 3, for compatibility with 4.0.23
             return reply
 
         return reply
-
 
     def stop(self, unregister=True):
         """Unregisters from server and cleans up sockets.
 
         Args:
             unregister (optional): If this client should be unregistered
-                                   from the server.
+                from the server.
         """
 
         if self.socket is not None:
@@ -476,7 +476,7 @@ class ReceiverControl(Base):
     def _get_response(self):
         try:
             socks = dict(self.poller.poll(self.timeout))
-        except:
+        except Exception:
             self.log.error("Could not poll for new message")
             raise
 

@@ -47,7 +47,7 @@ import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-# for platform-independency
+# for platform-independence
 # WindowsError only exists on Windows machines
 if not getattr(__builtins__, "WindowsError", None):
     class WindowsError(OSError):
@@ -155,7 +155,7 @@ class DataFetcher(DataFetcherBase):
                 #        }
                 if self.is_windows:
                     # TODO use pathlib here instead
-                    # path convertions is save, see:
+                    # path conventions is save, see:
                     # pylint: disable=line-too-long
                     # http://softwareengineering.stackexchange.com/questions/245156/is-it-safe-to-convert-windows-file-paths-to-unix-file-paths-with-a-simple-replac  # noqa E501
                     metadata["source_path"] = (
@@ -238,14 +238,13 @@ class DataFetcher(DataFetcherBase):
                 chunk_metadata = metadata.copy()
                 chunk_metadata["chunk_number"] = chunk_number
 
-                chunk_payload = []
-                chunk_payload.append(
-                    json.dumps(chunk_metadata).encode("utf-8")
-                )
-                chunk_payload.append(file_content)
+                chunk_payload = [json.dumps(chunk_metadata).encode("utf-8"),
+                                 file_content]
             except Exception:
                 self.log.error("Unable to pack multipart-message for file "
                                "'%s'", self.source_file, exc_info=True)
+                chunk_number += 1
+                continue
 
             # send message to data targets
             try:
@@ -313,6 +312,12 @@ class DataFetcher(DataFetcherBase):
                 else:
                     try:
                         target_path, _ = os.path.split(self.target_file)
+                    except Exception:
+                        self.log.info("Unable to extract target_path from %s",
+                                      self.target_file)
+                        raise
+
+                    try:
                         os.makedirs(target_path)
                         self.log.info("New target directory created: %s",
                                       target_path)
@@ -322,7 +327,7 @@ class DataFetcher(DataFetcherBase):
                                       "already created in the meantime: %s",
                                       target_path)
                         action_function(self.source_file, self.target_file)
-                    except:
+                    except Exception:
                         err_msg = ("Unable to copy/move file '%s' to '%s'",
                                    self.source_file, self.target_file)
                         self.log.error(err_msg, exc_info=True)
@@ -547,7 +552,7 @@ class DataFetcher(DataFetcherBase):
         # stop everything started in the base class
         self.stop_base()
 
-        # cloes base class zmq sockets
+        # close base class zmq sockets
         self.close_socket()
 
 

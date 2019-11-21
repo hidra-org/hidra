@@ -104,15 +104,15 @@ class Base(object):
         Args:
             config (dict): The configuration dictionary to test.
             required_params (dict or list): The parameters that should be
-                                            contained.
+                contained.
 
         Returns:
             A dictionary containing the values for the necessary parameters
             only.
 
         Raises:
-            WrongConfiguration: The configuration has missing or
-                                wrong parameters.
+            WrongConfiguration: The configuration has missing or wrong
+                parameters.
         """
 
         config_reduced = {}
@@ -172,13 +172,23 @@ class Base(object):
         try:
             stat_name = self.stats_config()[name]
             self.log.debug("Update(%s): %s", name, value)
+        except Exception:
+            self.log.error("Error when getting config for %s", name,
+                           exc_info=True)
+            self.log.debug("value=%s", value)
+            return
 
+        try:
             msg = json.dumps([stat_name, value]).encode()
+        except Exception:
+            self.log.error("Error when packing message for %s", name)
+            return
+
+        try:
             self.stats_collect_socket.send(msg)
         except Exception:
             self.log.error("Error when sending stats for %s", name,
                            exc_info=True)
-            self.log.debug("value=%s", value)
             self.log.debug("msg=%s", msg)
 
     def print_config(self, config):
@@ -186,26 +196,26 @@ class Base(object):
         Print the configuration in a user friendly way
         """
 
-        formated_config = copy.deepcopy(config)
+        formatted_config = copy.deepcopy(config)
         try:
             # for better readability of named tuples
-            formated_config["network"]["endpoints"] = (
-                formated_config["network"]["endpoints"]._asdict()
+            formatted_config["network"]["endpoints"] = (
+                formatted_config["network"]["endpoints"]._asdict()
             )
         except KeyError:
             pass
 
         try:
-            formated_config = str(json.dumps(formated_config,
-                                             sort_keys=True,
-                                             indent=4))
+            formatted_config = str(json.dumps(formatted_config,
+                                              sort_keys=True,
+                                              indent=4))
         except TypeError:
             # is thrown if one of the entries is not json serializable,
             # e.g happens for zmq context
             pass
 
         self.log.info("Configuration for %s: %s",
-                      self.__class__.__name__, formated_config)
+                      self.__class__.__name__, formatted_config)
 
     def start_socket(self,
                      name,
@@ -223,8 +233,10 @@ class Base(object):
             sock_con: ZMQ binding type (connect or bind).
             endpoint: ZMQ endpoint to connect to.
             random_port (optional): Use zmq bind_to_random_port option.
+            socket_options (optional): Additional zmq options which should be
+                set on the socket (as lists which [key, value] entries).
             message (optional): Wording to be used in the message
-                                (default: Start).
+                (default: Start).
 
         Returns:
             The ZMQ socket with the specified properties.
@@ -256,7 +268,6 @@ class Base(object):
         Args:
             name: The name of the socket (used in log messages).
             socket (optional): The ZMQ socket to be closed.
-
 
         Returns:
             None if the socket was closed.
@@ -301,7 +312,7 @@ class Base(object):
                            exc_info=True)
             return stop_flag
 
-        # remove subsription topic
+        # remove subscription topic
         del message[0]
 
         self._forward_control_signal(message)
@@ -371,7 +382,7 @@ class Base(object):
                                exc_info=True)
                 continue
 
-            # remove subsription topic
+            # remove subscription topic
             del message[0]
 
             if message[0] == b"SLEEP":
@@ -427,6 +438,8 @@ class Base(object):
             self.stop_socket(name="stats_collect_socket")
 
     def stop(self):
+        """Stop the class
+        """
         self.cleanup_base()
 
     def wait_for_stopped(self, n_iter=5, sleep_time=0.1):
@@ -435,10 +448,9 @@ class Base(object):
 
         Args:
             n_iter (optional): how many loop iteration should be done for the
-                               checking (default: 5)
-            sleep_time (optional): how long to wait beween the iterations
-                                   (default: 0.1 s)
-
+                checking (default: 5)
+            sleep_time (optional): how long to wait between the iterations
+                (default: 0.1 s)
         """
 
         i = 0

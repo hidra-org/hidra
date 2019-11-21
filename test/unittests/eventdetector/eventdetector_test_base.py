@@ -41,7 +41,6 @@ class EventDetectorTestBase(TestBase):
     def setUp(self):
         super().setUp()
 
-
         self.ed_base_config = {
             "config": {
                 "general": {

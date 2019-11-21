@@ -35,7 +35,6 @@ import argparse
 import multiprocessing
 import socket
 
-import _environment  # noqa F401 # pylint: disable=unused-import
 from hidra import Transfer
 
 

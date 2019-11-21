@@ -11,7 +11,7 @@ BASEDIR="${CURRENTDIR%/*}"
 
 usage()
 {
-    printf "Usage: $SCRIPTNAME"
+    printf "Usage: %s" "$SCRIPTNAME"
     printf " [--dockerfile <dockerfile to use>]"
     printf " [--hidradir <hidra location>]"
     printf " [--hidratype <hidra type to use (sender, receiver, api,..)>]"
@@ -53,9 +53,9 @@ done
 
 set_defaults()
 {
-    if [ -z ${dockerfile+x} -o "${dockerfile}" = "" ]
+    if [ -z ${dockerfile+x} ] || [ "${dockerfile}" = "" ]
     then
-        if [ -z ${hidratype+x} -o "${hidratype}" = "" ]
+        if [ -z ${hidratype+x} ] || [ "${hidratype}" = "" ]
         then
             echo "No dockerfile and/or hidratype set. Abort"
             usage
@@ -72,14 +72,14 @@ set_defaults()
         exit 1
     fi
 
-    if [ -z ${hidratype+x} -o "${hidratype}" = "" ]
+    if [ -z ${hidratype+x} ] || [ "${hidratype}" = "" ]
     then
         filename=$(basename "$dockerfile")
         hidratype="${filename##*.}"
         echo "No hidratype set: using $hidratype"
     fi
 
-    if [ -z ${hidradir+x} -o "${hidradir}" = "" ]
+    if [ -z ${hidradir+x} ] || [ "${hidradir}" = "" ]
     then
         hidradir=${BASEDIR}
         echo "No hidradir set: using $hidradir"
@@ -114,17 +114,17 @@ run_hidra_docker()
     DOCKER_IMAGE=hidra_build_${hidratype}
     DOCKER_CONTAINER=hidra_container_${hidratype}
 
-    if [[ "$(docker images -q ${DOCKER_IMAGE} 2> /dev/null)" == "" || "$OVERWRITE_IMAGE" = true ]]
+    if [[ "$(docker images -q "${DOCKER_IMAGE}" 2> /dev/null)" == "" || "$OVERWRITE_IMAGE" = true ]]
     then
 
         echo "Creating image"
-        if [ ! -f ${dockerfile} ]
+        if [ ! -f "${dockerfile}" ]
         then
             echo "dockerfile $dockerfile does not exist. Abort"
             exit 1
         fi
 
-        docker build -f ${dockerfile} -t ${DOCKER_IMAGE} .
+        docker build -f "${dockerfile}" -t "${DOCKER_IMAGE}" .
     else
         echo "Image already available, no building required."
     fi
@@ -133,7 +133,9 @@ run_hidra_docker()
     PASSWD_FILE=/tmp/passwd_x
     GROUP_FILE=/tmp/group_x
 
-    getent passwd $USER > $PASSWD_FILE
+    UIDGID="$(id -u "$USER"):$(id -g "$USER")"
+
+    getent passwd "$USER" > "$PASSWD_FILE"
     echo "$(id -gn):*:$(id -g):$USER" > $GROUP_FILE
 
     docker run -it \
@@ -143,16 +145,16 @@ run_hidra_docker()
         --userns=host \
         --net=host \
         --security-opt no-new-privileges \
-        --user=$(id -u $USER):$(id -g $USER) \
-        ${DOCKER_OPTIONS} \
-        --name ${DOCKER_CONTAINER} \
-        ${DOCKER_IMAGE}
+        --user "${UIDGID}" \
+        "${DOCKER_OPTIONS}" \
+        --name "${DOCKER_CONTAINER}" \
+        "${DOCKER_IMAGE}"
 
-    rm $PASSWD_FILE
-    rm $GROUP_FILE
+    rm "$PASSWD_FILE"
+    rm "$GROUP_FILE"
 
-    #docker rmi ${DOCKER_IMAGE}
-    #rm -rf ${MAPPED_DIR}/hidra
+    #docker rmi "${DOCKER_IMAGE}"
+    #rm -rf "${MAPPED_DIR}/hidra"
 
 }
 

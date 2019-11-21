@@ -54,8 +54,8 @@ class TestDataFetcher(DataFetcherTestBase):
         super().setUp()
 
         # Set up config
-        self.module_name = "file_fetcher"
-        self.datafetcher_config = {
+        self.module_name = "zmq_fetcher"
+        self.df_base_config["config"] = {
             "network": {
                 "ipc_dir": self.config["ipc_dir"],
                 "main_pid": self.config["main_pid"],
@@ -89,11 +89,7 @@ class TestDataFetcher(DataFetcherTestBase):
         """Simulate file fetching without taking care of confirmation signals.
         """
 
-        self.datafetcher = DataFetcher(config=self.datafetcher_config,
-                                       log_queue=self.log_queue,
-                                       fetcher_id=0,
-                                       context=self.context,
-                                       lock=self.lock)
+        self.datafetcher = DataFetcher(self.df_base_config)
 
         ipc_addresses = get_ipc_addresses(config=self.datafetcher_config)
         tcp_addresses = get_tcp_addresses(config=self.datafetcher_config)

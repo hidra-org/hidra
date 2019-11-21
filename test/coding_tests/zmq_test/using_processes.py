@@ -13,24 +13,24 @@ import zmq
 
 
 def server(endpoint):
-	print("Server bind to device")
-	context = zmq.Context()
-	socket = context.socket(zmq.PUSH)
-	socket.bind(endpoint)
+    print("Server bind to device")
+    context = zmq.Context()
+    socket = context.socket(zmq.PUSH)
+    socket.bind(endpoint)
 
-	for i in range(2):
-		socket.send("Request #{} from server".format(i).encode())
+    for i in range(2):
+        socket.send("Request #{} from server".format(i).encode())
 
 
 def client(endpoint):
-	print("Client connecting to device")
-	context = zmq.Context()
-	socket = context.socket(zmq.PULL)
-	socket.connect(endpoint)
+    print("Client connecting to device")
+    context = zmq.Context()
+    socket = context.socket(zmq.PULL)
+    socket.connect(endpoint)
 
-	for i in range(2):
-		message = socket.recv().decode()
-		print("Client: Received - {}".format(message))
+    for i in range(2):
+        message = socket.recv().decode()
+        print("Client: Received - {}".format(message))
 
 
 class Server(Process):
@@ -38,6 +38,7 @@ class Server(Process):
         Process.__init__(self)
 
         self.endpoint = endpoint
+        self.socket = None
 
     def run(self):
         print("Server bind to device")
@@ -59,6 +60,7 @@ class Client(Process):
         Process.__init__(self)
 
         self.endpoint = endpoint
+        self.socket = None
 
     def run(self):
         print("Client connecting to device")
@@ -96,8 +98,13 @@ def use_function(endpoint):
     server_p.join()
     client_p.join()
 
-if __name__ =="__main__":
+
+def main():
     endpoint = "ipc:///tmp/test_zmq_with_processes"
 
     use_class(endpoint)
-    #use_function(endpoint)
+#    use_function(endpoint)
+
+
+if __name__ == "__main__":
+    main()

@@ -32,27 +32,16 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import logging
-from multiprocessing import Process, freeze_support, Queue
+from multiprocessing import freeze_support, Queue
 import os
 import time
-import sys
 
-# to make windows freeze work (cx_Freeze 5.x)
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except NameError:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))
-print(BASE_DIR)
-
-import hidra.utils as utils # noqa E402
+import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-if __name__ == '__main__':
+def main():
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     freeze_support()
 
@@ -87,6 +76,8 @@ if __name__ == '__main__':
 
     while True:
         log.debug("run")
-
         time.sleep(1)
 
+
+if __name__ == '__main__':
+    main()

@@ -111,9 +111,7 @@ class TestStatServer(TestBase):
             endpoint=self.endpoints.stats_expose_con
         )
 
-        key = "config"
-        key = json.dumps(key).encode()
-
+        key = json.dumps("config").encode()
         stats_expose_socket.send(key)
 
         answer = stats_expose_socket.recv()

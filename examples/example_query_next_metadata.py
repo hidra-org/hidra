@@ -64,20 +64,20 @@ def main():
 
     query.start()
 
-    while True:
-        try:
-            [metadata, _] = query.get()
-        except Exception:
-            query.stop()
-            raise
+    try:
+        while True:
+            try:
+                [metadata, _] = query.get()
+            except Exception:
+                query.stop()
+                raise
 
-        print()
-        print(generate_filepath(base_target_path, metadata))
-        print()
-
-    query.stop()
-
-    print("\n==== TEST END: Query for the newest filename ====\n")
+            print()
+            print(generate_filepath(base_target_path, metadata))
+            print()
+    finally:
+        query.stop()
+        print("\n==== TEST END: Query for the newest filename ====\n")
 
 
 if __name__ == "__main__":

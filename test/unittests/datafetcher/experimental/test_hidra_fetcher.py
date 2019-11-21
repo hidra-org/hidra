@@ -62,7 +62,7 @@ class TestDataFetcher(DataFetcherTestBase):
         local_target = os.path.join(self.base_dir, "data", "zmq_target")
         # local_target = os.path.join(self.base_dir, "data", "target")
         self.module_name = "hidra_fetcher"
-        self.datafetcher_config = {
+        self.df_base_config["config"] = {
             "network": {
                 "ipc_dir": self.config["ipc_dir"],
                 "main_pid": self.config["main_pid"],
@@ -103,11 +103,7 @@ class TestDataFetcher(DataFetcherTestBase):
         # mock check_config to be able to enable print_log
         with mock.patch("hidra_fetcher.DataFetcher.check_config"):
             with mock.patch("hidra_fetcher.DataFetcher._setup"):
-                self.datafetcher = DataFetcher(config=self.datafetcher_config,
-                                               log_queue=self.log_queue,
-                                               fetcher_id=0,
-                                               context=self.context,
-                                               lock=self.lock)
+                self.datafetcher = DataFetcher(self.df_base_config)
 
         self.datafetcher.check_config(print_log=True)
         self.datafetcher._setup()

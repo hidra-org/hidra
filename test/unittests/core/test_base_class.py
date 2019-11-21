@@ -78,7 +78,7 @@ class TestBaseClass(TestBase):
         }
 
         # --------------------------------------------------------------------
-        # not checking dependend parameter
+        # not checking dependent parameter
         # --------------------------------------------------------------------
         expected_result = {"eventdetector": {"type": "my_module"}}
         obj.required_params_base = {"eventdetector": ["type"]}
@@ -92,7 +92,7 @@ class TestBaseClass(TestBase):
         self.assertTrue(mock_check.called)
 
         # --------------------------------------------------------------------
-        # checking dependend parameter
+        # checking dependent parameter
         # --------------------------------------------------------------------
 
         expected_result = {"eventdetector": {"my_module": module_param}}
@@ -117,7 +117,7 @@ class TestBaseClass(TestBase):
         # --------------------------------------------------------------------
         with mock.patch("hidra.utils.check_config") as mock_check:
 
-            expected_result = {"test": "successfull"}
+            expected_result = {"test": "successful"}
             mock_check.return_value = (True, expected_result)
 
             ret_val = obj._check_config_base(config={}, required_params=[])
@@ -129,7 +129,7 @@ class TestBaseClass(TestBase):
         # config ok
         # --------------------------------------------------------------------
         with mock.patch("hidra.utils.check_config") as mock_check:
-            expected_result = {"test": "successfull"}
+            expected_result = {"test": "successful"}
             mock_check.return_value = (True, expected_result)
 
             ret_val = obj._check_config_base(config={},

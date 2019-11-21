@@ -108,7 +108,7 @@ class EventDetector(EventDetectorBase):
         self.required_params = ["monitored_dir",
                                 "fix_subdirs",
                                 ["monitored_events", dict],
-                                #"event_timeout",
+                                # "event_timeout",
                                 "history_size",
                                 "use_cleanup"]
 
@@ -212,8 +212,6 @@ class EventDetector(EventDetectorBase):
         # pylint: disable=invalid-name
         global _file_event_list
 
-        event_message_list = []
-
         with self.lock:
             # get missed files
             event_message_list = copy.deepcopy(_file_event_list)
@@ -256,13 +254,14 @@ class EventDetector(EventDetectorBase):
             (_, type_names, path, filename) = event
 
             current_mon_event = None
+            current_mon_regex = None
             for key, value in iteritems(self.mon_regex_per_event):
                 if key in type_names:
                     current_mon_event = key
                     current_mon_regex = value
 
             # only files of the configured event type are send
-            if (current_mon_event and [path, filename] not in self.history):
+            if current_mon_event and [path, filename] not in self.history:
 
                 # only files matching the regex specified with the current
                 # event are monitored

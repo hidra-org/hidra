@@ -123,7 +123,7 @@ def argument_parsing():
     )
 
     # check if config_file exist
-    utils.check_existance(arguments.config_file)
+    utils.check_existence(arguments.config_file)
 
     # ------------------------------------------------------------------------
     # Get arguments from config file
@@ -175,8 +175,8 @@ def argument_parsing():
         logging.error("Configuration check failed")
         raise utils.WrongConfiguration
 
-    # check target directory for existance
-    utils.check_existance(config["datareceiver"]["target_dir"])
+    # check target directory for existence
+    utils.check_existence(config["datareceiver"]["target_dir"])
 
     # check if logfile is writable
     config["general"]["log_file"] = os.path.join(config["general"]["log_path"],
@@ -279,6 +279,8 @@ class DataReceiver(object):
         self.checking_thread = None
         self.timeout = None
 
+        self.config = None
+
         self.log = None
         self.dirs_not_to_create = None
         self.lock = None
@@ -358,12 +360,18 @@ class DataReceiver(object):
         if (config_gen["whitelist"] is not None
                 and isinstance(config_gen["whitelist"], str)):
             self.log.debug("Starting checking thread")
-            self.checking_thread = CheckNetgroup(config_gen["whitelist"],
-                                                 self.lock,
-                                                 config_gen["ldapuri"],
-                                                 ldap_retry_time,
-                                                 check_time)
-            self.checking_thread.start()
+            try:
+                self.checking_thread = CheckNetgroup(
+                    config_gen["whitelist"],
+                    self.lock,
+                    config_gen["ldapuri"],
+                    ldap_retry_time,
+                    check_time
+                )
+                self.checking_thread.start()
+            except Exception:
+                self.log.error("Could not start checking thread",
+                               exc_info=True)
         else:
             self.log.debug("Checking thread not started: %s",
                            config_gen["whitelist"])

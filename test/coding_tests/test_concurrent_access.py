@@ -6,6 +6,7 @@ from multiprocessing import Process
 import os
 import time
 
+
 class CheckModTime(Process):
     def __init__(self, files):
         Process.__init__(self)
@@ -19,6 +20,7 @@ class CheckModTime(Process):
                 except OSError:
                     return
 
+
 if __name__ == "__main__":
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
     BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
@@ -27,7 +29,7 @@ if __name__ == "__main__":
     filename = os.path.join(data_dir, "file.test")
 
     # create empty file
-    with open(filename, "w") as f:
+    with open(filename, "w"):
         pass
 
     checker = CheckModTime([filename])

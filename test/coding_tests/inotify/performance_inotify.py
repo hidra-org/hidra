@@ -34,7 +34,7 @@ import time
 
 import inotify.adapters
 
-from performance_base import PerformanceBase, do_tests
+from .performance_base import PerformanceBase, do_tests
 
 
 class CreateAndGet(PerformanceBase):
@@ -57,7 +57,8 @@ class CreateAndGet(PerformanceBase):
         t_start = 0
         timeout = 2
         while True:
-            for event in self.inotify.event_gen(yield_nones=False, timeout_s=timeout):
+            for event in self.inotify.event_gen(yield_nones=False,
+                                                timeout_s=timeout):
                 (_, type_names, _, _) = event
 
                 if not t_start:

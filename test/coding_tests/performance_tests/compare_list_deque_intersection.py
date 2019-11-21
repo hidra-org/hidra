@@ -5,17 +5,18 @@ from __future__ import absolute_import
 import collections
 import time
 
+
 def use_sets(list_1, list_2, n_iter):
     for i in range(n_iter):
-        list(set(list_1)-set(list_2))
+        _ = list(set(list_1)-set(list_2))
 
 
 def use_list_comprehension(list_1, list_2, n_iter):
     for i in range(n_iter):
-        [x for x in list_1 if x not in list_2]
+        _ = [x for x in list_1 if x not in list_2]
 
 
-if __name__ == "__main__":
+def main():
 
     list_1 = range(100)
     list_2 = collections.deque(maxlen=50)
@@ -31,6 +32,10 @@ if __name__ == "__main__":
     t = time.time()
     use_list_comprehension(list_1, list_2, n_iter)
     print("list_comprehension, time needed", time.time()-t)
+
+
+if __name__ == "__main__":
+    main()
 
 # output python3
 # set, time needed 43.11841416358948

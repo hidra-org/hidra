@@ -277,8 +277,8 @@ datafetcher:
     store_data: False
 
     # Target directory to move the files into (needed if store_data is enabled)
-    local_target: &local_target /opt/hidra/data/target
-    #local_target: &local_target /gpfs
+    local_target: /opt/hidra/data/target
+    #local_target: /gpfs
 
     file_fetcher:
         fix_subdirs: *fix_subdirs

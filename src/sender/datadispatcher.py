@@ -156,6 +156,8 @@ class DataHandler(Base, threading.Thread):
             self.lock.release()
 
     def run(self):
+        """Setting up and running while catching all run errors.
+        """
 
         try:
             self._setup()
@@ -494,8 +496,9 @@ class DataDispatcher(Base):
         self.poller = zmq.Poller()
         self.poller.register(self.control_socket, zmq.POLLIN)
 
-
     def run(self):
+        """Setting up and running while catching all run errors.
+        """
 
         try:
             self._setup()
@@ -509,10 +512,8 @@ class DataDispatcher(Base):
             self._run()
         except zmq.ZMQError:
             self.log.debug("ZMQERROR, pass")
-            pass
         except KeyboardInterrupt:
             self.log.debug("KEYBOARDINTERRUPT")
-            pass
         except Exception:
             self.log.error("Stopping DataDispatcher-%s due to unknown "
                            "error condition.", self.dispatcher_id,
@@ -605,4 +606,6 @@ class DataDispatcher(Base):
         self.set_stop_request()
 
     def set_stop_request(self):
+        """Stop the class and request the data handler to stop as well.
+        """
         self.stop_request.set()

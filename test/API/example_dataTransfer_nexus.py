@@ -4,14 +4,12 @@ from __future__ import print_function
 import os
 import zmq
 import logging
+import socket as socket_m
 import threading
 import json
 
-from __init__ import BASE_DIR
-import utils
-
-from hidra import Transfer
-
+from _environment import BASE_DIR
+from hidra import Transfer, utils
 
 # enable logging
 logfile_path = os.path.join(os.path.join(BASE_DIR, "logs"))
@@ -24,8 +22,7 @@ print("\n==== TEST: nexus transfer ====\n")
 class SenderAsThread (threading.Thread):
     def __init__(self):
         self.ext_host = "0.0.0.0"
-#        self.localhost = "localhost"
-        self.signal_host = "zitpcx19282"
+        self.signal_host = socket_m.getfqdn()
         self.signal_port = "50050"
         self.data_port = "50100"
 
@@ -42,8 +39,7 @@ class SenderAsThread (threading.Thread):
         connection_str = ("tcp://{0}:{1}"
                           .format(self.signal_host, self.data_port))
         self.data_socket.connect(connection_str)
-        logging.info("data_socket started (connect) for '{0}'"
-                     .format(connection_str))
+        logging.info("data_socket started (connect) for '%s'", connection_str)
 
         threading.Thread.__init__(self)
 
@@ -53,7 +49,7 @@ class SenderAsThread (threading.Thread):
             [b"OPEN_FILE", filename.encode("utf-8")])
 
         recv_message = self.file_op_socket.recv_multipart()
-        logging.debug("Recv confirmation: {0}".format(recv_message))
+        logging.debug("Recv confirmation: %s", recv_message)
 
         for i in range(5):
             metadata = {
@@ -71,13 +67,13 @@ class SenderAsThread (threading.Thread):
             logging.debug("Send")
 
         message = b"CLOSE_FILE"
-        logging.debug("Send {0}".format(message))
+        logging.debug("Send %s", message)
         self.file_op_socket.send(message)
 
         self.data_socket.send_multipart([message, filename, "0/1"])
 
         recv_message = self.file_op_socket.recv()
-        logging.debug("Recv confirmation: {0}".format(recv_message))
+        logging.debug("Recv confirmation: %s", recv_message)
 
     def stop(self):
         try:
@@ -94,7 +90,7 @@ class SenderAsThread (threading.Thread):
                 self.context.destroy()
                 self.context = None
                 logging.info("Destroying context...done")
-        except:
+        except Exception:
             logging.error("Closing ZMQ Sockets...failed.", exc_info=True)
 
     def __exit__(self):
@@ -117,28 +113,33 @@ def read_callback(params, retrieved_params):
     print(params, retrieved_params)
 
 
-senderThread = SenderAsThread()
-senderThread.start()
+def main():
+    sender_thread = SenderAsThread()
+    sender_thread.start()
 
-obj = Transfer("NEXUS", use_log=True)
-obj.start(["zitpcx19282", "50100"])
+    obj = Transfer("NEXUS", use_log=True)
+    obj.start([socket_m.get_fqdn(), "50100"])
 
-callback_params = {
-    "run_loop": True
-}
+    callback_params = {
+        "run_loop": True
+    }
 
-try:
-    while callback_params["run_loop"]:
-        try:
-            obj.read(callback_params, open_callback, read_callback,
-                     close_callback)
-        except KeyboardInterrupt:
-            break
-        except:
-            logging.error("break", exc_info=True)
-            break
-finally:
-    senderThread.stop()
-    obj.stop()
+    try:
+        while callback_params["run_loop"]:
+            try:
+                obj.read(callback_params, open_callback, read_callback,
+                         close_callback)
+            except KeyboardInterrupt:
+                break
+            except Exception:
+                logging.error("break", exc_info=True)
+                break
+    finally:
+        sender_thread.stop()
+        obj.stop()
 
-print("\n==== TEST END: nexus transfer ====\n")
+    print("\n==== TEST END: nexus transfer ====\n")
+
+
+if __name__ == "__main__":
+    main()

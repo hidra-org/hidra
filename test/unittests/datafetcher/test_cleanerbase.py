@@ -74,19 +74,19 @@ class TestDataFetcher(DataFetcherTestBase):
             # pylint: disable=too-few-public-methods
             # Is reasonable in this case.
 
-            def remove_element(self, base_path, file_id):
+            def remove_element(self, path, fid):
                 """Removes the source file.
                 """
 
                 # generate file pat
-                source_file = os.path.join(base_path, file_id)
+                s_file = os.path.join(path, fid)
 
                 # remove file
                 try:
-                    os.remove(source_file)
-                    self.log.info("Removing file '%s' ...success", source_file)
+                    os.remove(s_file)
+                    self.log.info("Removing file '%s' ...success", s_file)
                 except Exception:  # pylint: disable=broad-except
-                    self.log.error("Unable to remove file %s", source_file,
+                    self.log.error("Unable to remove file %s", s_file,
                                    exc_info=True)
 
         endpoints = self.config["endpoints"]

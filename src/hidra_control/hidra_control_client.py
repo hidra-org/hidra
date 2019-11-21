@@ -66,7 +66,7 @@ def argument_parsing():
 
     parser.add_argument("--det",
                         type=str,
-                        #required=True,
+                        # required=True,
                         help="IP (or DNS name) of the detector")
     parser.add_argument("--detapi",
                         type=str,
@@ -147,13 +147,13 @@ def _merge_with_config(args, parser):
                 filename_bl.format(arguments["general"]["beamline"])
             )
             # throws WrongConfiguration if file does not exist
-            utils.check_existance(config_file)
+            utils.check_existence(config_file)
         else:
             # No beamline specified, use default config file
             raise utils.WrongConfiguration()
     except utils.WrongConfiguration:
         config_file = os.path.join(CONFIG_DIR, filename_gen)
-        utils.check_existance(config_file)
+        utils.check_existence(config_file)
 
     config = utils.load_config(config_file)
     utils.update_dict(arguments, config)
@@ -220,15 +220,12 @@ def check_config(config):
     )
 
     try:
-        whitelist = (config["hidra"]["general"]["whitelist"]
-                     or potential_whitelist)
+        if "whitelist" not in config["hidra"]["general"]:
+            config["hidra"]["general"]["whitelist"] = potential_whitelist
     except KeyError:
-        if "general" in config["hidra"]:
-            config["hidra"]["general"]["whitelist"] = whitelist
-        else:
-            config["hidra"]["general"] = {
-                "whitelist": potential_whitelist
-            }
+        config["hidra"]["general"] = {
+            "whitelist": potential_whitelist
+        }
 
 
 class Client(object):
@@ -314,6 +311,7 @@ class Client(object):
             print("Starting HiDRA (detector mode):", res_start)
         except utils.NotAllowed:
             print("except")
+            return
 
         if res_start == "ERROR":
             instances = self.control.do("get_instances")

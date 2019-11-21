@@ -1,5 +1,5 @@
 Name:		hidra
-Version:	4.1.4
+Version:	4.1.5
 Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
@@ -13,14 +13,12 @@ BuildRequires:	python-devel
 BuildRequires:	python-setuptools
 BuildRequires:	systemd-units
 Requires:	systemd
-Requires:	python-logutils
 Requires:	python-zmq >= 14.5.0
 Requires:	python-inotifyx >= 0.2.2
 Requires:	python-requests
 Requires:	python-setproctitle
 Requires:	python-future
 Requires:	python-pathlib
-Requires:	PyYAML
 Requires:	python-hidra = %{version}
 
 %description
@@ -34,8 +32,10 @@ BuildArch:	noarch
 
 BuildRequires:	python-devel
 BuildRequires:	python-setuptools
-#Requires:	python-logutils
+Requires:	python-logutils
+Requires:	python-pathlib
 Requires:	python-zmq >= 14.5.0
+Requires:	PyYAML
 
 %description -n python-hidra
 This package contains only the API for developing tools against HiDRA.
@@ -116,6 +116,8 @@ mkdir -p %{buildroot}/var/log/%{name}
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
+* Wed Nov 20 2019 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.5-1
+- Bump version
 * Mon Nov 04 2019 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.4-1
 - Bump version
 * Thu Oct 10 2019 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.3-1

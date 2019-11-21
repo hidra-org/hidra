@@ -1,55 +1,61 @@
 #!/usr/bin/env python
 
-import time
+from __future__ import print_function
 
 import threading
+import time
 import multiprocessing
 
 
-class th (threading.Thread):
-	def __init__ (self):
+class TestThread (threading.Thread):
+	def __init__(self):
 		threading.Thread.__init__(self)
 
-	def run (self):
+	def run(self):
 		j = 0.0
-		for i in xrange(100000000):
+		for i in range(100000000):
 			j += i * i
 
-class pr (multiprocessing.Process):
-	def __init__ (self):
+
+class TestProcess (multiprocessing.Process):
+	def __init__(self):
 		multiprocessing.Process.__init__(self)
 
-	def run (self):
+	def run(self):
 		j = 0.0
-		for i in xrange(100000000):
+		for i in range(100000000):
 			j += i * i
 
-number = 2
 
-print 'number of threads/processes: ', number
+def main():
+	number = 2
+	print("number of threads/processes:", number)
 
-t = time.time()
+	t = time.time()
 
-x = {}
+	x = {}
+	for i in range(number):
+		x[i] = TestThread()
+		x[i].start()
 
-for i in xrange(number):
-	x[i] = th()
-	x[i].start()
+	for i in range(number):
+		x[i].join()
 
-for i in xrange(number):
-	x[i].join()
+	print("threading:", time.time() - t)
 
-print 'threading:', time.time() - t
+	t = time.time()
 
-t = time.time()
+	x = {}
+	for i in range(number):
+		x[i] = TestProcess()
+		x[i].start()
 
-x = {}
+	for i in range(number):
+		x[i].join()
 
-for i in xrange(number):
-	x[i] = pr()
-	x[i].start()
+	print("multiprocessing:", time.time() - t)
 
-for i in xrange(number):
-	x[i].join()
 
-print 'multiprocessing:', time.time() - t
+if __name__ == "__main__":
+	main()
+

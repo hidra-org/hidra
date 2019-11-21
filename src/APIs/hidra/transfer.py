@@ -393,7 +393,9 @@ class Transfer(Base):
         if self.init_args["dirs_not_to_create"] is None:
             self.dirs_not_to_create = self.init_args["dirs_not_to_create"]
         else:
-            self.dirs_not_to_create = tuple(self.init_args["dirs_not_to_create"])
+            self.dirs_not_to_create = tuple(
+                self.init_args["dirs_not_to_create"]
+            )
 
         self.status = [b"OK"]
         self.socket_response_timeout = 1000
@@ -421,7 +423,7 @@ class Transfer(Base):
 
         # use logging
         elif self.init_args["use_log"]:
-            self.log = logging.getLogger("Transfer")
+            self.log = logging.getLogger("Transfer")  # pylint: disable=redefined-variable-type
 
         # use no logging at all
         elif self.init_args["use_log"] is None:
@@ -465,8 +467,8 @@ class Transfer(Base):
             ports["request"] = 50001
             return ports
 
-        self.log.info("Get ports from the control server (%s)", beamline)
-        self._get_control_server_connection()
+        self.log.info("Get ports from the control server")
+        self._setup_control_server_connection()
 
         # com port
         answer = self.control.get("com_port")
@@ -697,7 +699,7 @@ class Transfer(Base):
         self.log.debug("Signal: %s", send_message)
         try:
             self.signal_socket.send_multipart(send_message)
-        except:
+        except Exception:
             self.log.error("Could not send signal")
             raise
 
@@ -871,8 +873,10 @@ class Transfer(Base):
 
         if protocol == "tcp":
             addr = self._get_tcp_addr(ip, port)
-        if protocol == "ipc":
+        elif protocol == "ipc":
             addr = self._get_ipc_addr(ipc_file)
+        else:
+            raise NotSupported("{Protocol %s is not supported", protocol)
 
         return "{}://{}".format(protocol, addr)
 
@@ -925,6 +929,7 @@ class Transfer(Base):
 
         # determine socket id and address
         socket_endpoint = None
+        socket_id = None
         for i in ["STREAM", "QUERY_NEXT", "NEXUS"]:
             if i in self.started_connections:
                 socket_id = self.started_connections[i]["id"]
@@ -946,7 +951,7 @@ class Transfer(Base):
         if self.connection_type in ["QUERY_NEXT", "QUERY_NEXT_METADATA"]:
 
             # --------- request socket ---------- #
-            # An additional socket is needed to establish the data retriving
+            # An additional socket is needed to establish the data retrieving
             # mechanism
             self.request_socket = self._start_socket(
                 name="request socket",
@@ -1201,7 +1206,7 @@ class Transfer(Base):
                 except socket_m.gaierror:
                     self.log.error("Could not get IP of host %s. Proceed.",
                                    host)
-                except:
+                except Exception:
                     self.log.error("Error was: ", exc_info=True)
                     raise AuthenticationFailed(
                         "Could not get IP of host {}".format(host)
@@ -1251,7 +1256,7 @@ class Transfer(Base):
             self.log.debug("polling")
             try:
                 socks = dict(self.poller.poll())
-            except:
+            except Exception:
                 self.log.error("Could not poll for new message")
                 raise
 
@@ -1308,6 +1313,7 @@ class Transfer(Base):
                 except Exception:
                     self.log.error("Could not receive data due to unknown "
                                    "error.", exc_info=True)
+                    continue
 
                 if multipart_message[0] == b"ALIVE_TEST":
                     continue
@@ -1345,7 +1351,7 @@ class Transfer(Base):
             try:
                 # filename = multipart_message[1]
                 file_id = multipart_message[2]
-            except:
+            except Exception:
                 self.log.error("Could not extract id from the "
                                "multipart-message", exc_info=True)
                 self.log.debug("multipart-message: %s", multipart_message,
@@ -1708,8 +1714,8 @@ class Transfer(Base):
             except IOError as excp:
                 # errno.ENOENT == "No such file or directory"
                 if excp.errno == errno.ENOENT:
+                    target_path = None
                     try:
-                        target_path = None
                         rel_path = metadata["relative_path"]
 
                         # do not create directories defined as immutable,
@@ -1916,7 +1922,7 @@ class Transfer(Base):
                 exc_type, exc_value = sys.exc_info()[:2]
 
                 # duplicates error message in log
-                #self.log.error(exc_value, exc_info=True)
+#                self.log.error(exc_value, exc_info=True)
 
                 self.status = [b"ERROR",
                                str(exc_type).encode("utf-8"),

@@ -35,7 +35,6 @@ import argparse
 import socket
 import sys
 
-import _environment  # noqa F401 # pylint: disable=unused-import
 from hidra import Transfer
 
 
@@ -68,10 +67,10 @@ def main():
         use_log = "debug"
         print("Using debug mode")
     else:
-        use_log = False
+        use_log = False  # pylint: disable=redefined-variable-type
 
     targets = [[arguments.target_host, "50101", 1, ".*(tif|cbf)$"]]
-    detector_id = socket.getfqdn() # the hidra instance to connect to
+    detector_id = socket.getfqdn()  # the hidra instance to connect to
 
     print("\n==== TEST: Query for the newest filename ====\n")
 

@@ -10,10 +10,10 @@
 from __future__ import print_function
 
 try:
-    import ConfigParser
-except ImportError:
     # The ConfigParser module has been renamed to configparser in Python 3
-    import configparser as ConfigParser
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
 
 import logging
 import os
@@ -36,23 +36,23 @@ def setup_logging():
 
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(asctime)s %(levelname)-8s %(message)s',
+        format="%(asctime)s %(levelname)-8s %(message)s",
         stream=sys.stdout,
     )
 
 
 def call_initsystem(beamline, command, daemon):
 
-    return_val = None
-
     if not os.path.exists("/usr/lib/systemd"):
         print('Script not supported on non-systemd distributions')
         raise SystemExit(1)
 
     if command == "status":
-        systemctl_command = 'systemctl is-active {0}{1}'.format(daemon, beamline)
+        systemctl_command = ("systemctl is-active {0}{1}"
+                             .format(daemon, beamline))
     else:
-        systemctl_command = 'systemctl {0} {1}{2}'.format(command, daemon, beamline)
+        systemctl_command = ("systemctl {0} {1}{2}"
+                             .format(command, daemon, beamline))
 
     systemctl = subprocess.Popen(
         shlex.split(systemctl_command),
@@ -60,7 +60,7 @@ def call_initsystem(beamline, command, daemon):
         stderr=subprocess.PIPE,
     )
 
-    stdout, stderr = systemctl.communicate()
+    systemctl.communicate()
 
     return_val = systemctl.returncode
 
@@ -86,31 +86,29 @@ def get_ip_addr():
 
     for ip in ip_list:
 
-        """
         # Version 1
-        p = subprocess.Popen(["nslookup", ip],
-                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-        # output of nslookup 131.169.185.121:
-        # Server:		131.169.40.200
-        # Address:	        131.169.40.200#53
+        # p = subprocess.Popen(["nslookup", ip],
+        #                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         #
-        # 121.185.169.131.in-addr.arpa	name = zitpcx19282.desy.de.
-        # only the last line is needed without the new line
-        name_line = p.stdout.readlines()[-2]
-
-        match_host = re.compile(r'[\w|.|-]+[\s]+name = ([\w|.|-]+).',
-                                re.M | re.I)
-        netgroup = []
-
-        if match_host.match(name_line):
-            print ip, match_host.match(name_line).group(1)
-        """
+        # # output of nslookup 131.169.185.121:
+        # # Server:		131.169.40.200
+        # # Address:	        131.169.40.200#53
+        #
+        # # 121.185.169.131.in-addr.arpa	name = zitpcx19282.desy.de.
+        # # only the last line is needed without the new line
+        # name_line = p.stdout.readlines()[-2]
+        #
+        # match_host = re.compile(r'[\w|.|-]+[\s]+name = ([\w|.|-]+).',
+        #                         re.M | re.I)
+        # netgroup = []
+        #
+        # if match_host.match(name_line):
+        #     print ip, match_host.match(name_line).group(1)
 
         # Version 2
         try:
             ip_complete = socket.gethostbyaddr(ip)
-        except:
+        except Exception:
             pass
 
         for i in ip_complete:
@@ -123,21 +121,21 @@ def get_ip_addr():
 
 
 def get_config(conf):
-    config = ConfigParser.RawConfigParser()
+    config = RawConfigParser()
 
     with open(conf, 'r') as f:
         config_string = '[asection]\n' + f.read()
 
     try:
         config.read_string(config_string)
-    except:
+    except Exception:
         config_fp = StringIO.StringIO(config_string)
-        config.readfp(config_fp)
+        config.read_file(config_fp)
 
     return config
 
 
-def get_bls_to_check():
+def get_bls_to_check(active_ips):
     global CONFIG_PATH
     global CONFIG_PREFIX
     global CONFIG_POSTFIX
@@ -183,24 +181,28 @@ def remove_domain(fqdn):
     return fqdn.replace(".desy.de", "")
 
 
-if __name__ == '__main__':
+def main():
 
     setup_logging()
 
-    logging.info('HiDRA failover initiated!')
+    logging.info('HiDRA fail over initiated!')
 
     number_of_tries = 10
     i = 0
+    active_ips = []
     while i < number_of_tries:
         # Get IP addresses
         active_ips = get_ip_addr()
-        logging.info('Try: %s, discovered active IPs: %s', i, ', '.join(active_ips))
+        logging.info('Try: %s, discovered active IPs: %s', i, ', '
+                     .join(active_ips))
         logging.debug('Sleeping for 5s')
         time.sleep(5)
         i += 1
 
     # mapping ip/hostname to beamline
-    beamlines_to_activate, beamlines_to_deactivate = get_bls_to_check()
+    beamlines_to_activate, beamlines_to_deactivate = (
+        get_bls_to_check(active_ips)
+    )
     logging.info('List of beamline receiver to check (activate): %s',
                  ', '.join(beamlines_to_activate))
 
@@ -212,14 +214,16 @@ if __name__ == '__main__':
     for bl in beamlines_to_deactivate:
         for daemon in [RECEIVER_PREFIX, CONTROL_PREFIX]:
             p = call_initsystem(bl, "status", daemon)
-            logging.debug('Returncode for %s%s to deactivate: %s', daemon, bl, p)
+            logging.debug('Return code for %s%s to deactivate: %s',
+                          daemon, bl, p)
 
             if p != 0:
                 logging.info('Service %s%s is not running', daemon, bl)
             else:
-                logging.info('Service %s%s is running, will be stopped', daemon, bl)
+                logging.info('Service %s%s is running, will be stopped',
+                             daemon, bl)
                 # stop service
-                p = call_initsystem(bl, "stop", daemon)
+                call_initsystem(bl, "stop", daemon)
 
     # check if hidra runs for this beamline
     # and start it if that is not the case
@@ -229,8 +233,13 @@ if __name__ == '__main__':
             logging.debug('Returncode for %s%s to activate: %s', daemon, bl, p)
 
             if p != 0:
-                logging.info('Service %s%s is not running, will be started', daemon, bl)
+                logging.info('Service %s%s is not running, will be started',
+                             daemon, bl)
                 # start service
-                p = call_initsystem(bl, "start", daemon)
+                call_initsystem(bl, "start", daemon)
             else:
                 logging.info('Service %s%s is running', daemon, bl)
+
+
+if __name__ == '__main__':
+    main()

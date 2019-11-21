@@ -51,7 +51,7 @@ eventdetector:
         # Event type of files (options are: IN_CLOSE_WRITE, IN_MOVED_TO, ...)
         # and the formats to be monitored, files in an other format will be be
         # neglected
-        monitored_events: &monitored_events
+        monitored_events:
             IN_MOVED_TO:
                 - ".tif"
                 - ".cbf"
@@ -108,7 +108,7 @@ datafetcher:
     store_data: False
 
     # Target directory to move the files into (needed if store_data is enabled)
-    local_target: &local_target unknown
+    local_target: unknown
 
     file_fetcher:
         fix_subdirs: *fix_subdirs

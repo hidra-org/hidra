@@ -20,43 +20,20 @@
 #     Manuela Kuhn <manuela.kuhn@desy.de>
 #
 
-"""
-Simulates file creation by touch one file over and over again to trigger
-inotify events.
-"""
-
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-import time
+import sys
 
+CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+API_DIR = os.path.join(BASE_DIR, "src", "APIs")
+SHARED_DIR = os.path.join(BASE_DIR, "src", "shared")
 
-def create_test_files(watch_dir, n_files):
-    """Simulate file creation by continuously touching one file.
+if SHARED_DIR not in sys.path:
+    sys.path.insert(0, SHARED_DIR)
 
-    Args:
-        watch_dir: The directory to create file in.
-        n_files: The number of files to create.
-    """
-
-    t_start = time.time()
-    for _ in range(n_files):
-        with open(os.path.join(watch_dir, "test_file"), "w"):
-            pass
-
-    t_needed = time.time() - t_start
-    print("created {} in {} s, ({} Hz)"
-          .format(n_files, t_needed, n_files / t_needed))
-
-
-def _main():
-    watch_dir = "/tmp/watch_tree"
-    n_files = 1000000
-
-    create_test_files(watch_dir, n_files)
-
-
-if __name__ == '__main__':
-    _main()
+if API_DIR not in sys.path:
+    sys.path.insert(0, API_DIR)

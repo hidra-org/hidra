@@ -30,7 +30,6 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 
-import copy
 import logging
 import os
 import re
@@ -52,7 +51,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class TestEventDetector(EventDetectorTestBase):
-    """Specification of tests to be performed for the loaded EventDetecor.
+    """Specification of tests to be performed for the loaded EventDetector.
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -147,7 +146,7 @@ class TestEventDetector(EventDetectorTestBase):
         try:
             self.assertEqual(self.eventdetector.mon_regex, expected_result2)
         except AssertionError:
-            # depending on the order the dictionary is evaluted the regex
+            # depending on the order the dictionary is evaluated the regex
             # also changes
             self.assertEqual(self.eventdetector.mon_regex, expected_result2b)
 

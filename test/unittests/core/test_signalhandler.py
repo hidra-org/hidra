@@ -52,12 +52,18 @@ except ImportError:
     import mock
 from future.utils import iteritems
 
-from test_base import (TestBase,
-                       create_dir,
-                       MockLogging,
-                       mock_get_logger,
-                       MockZmqPoller)
-from signalhandler import SignalHandler, UnpackedMessage, TargetProperties
+from test_base import (
+    TestBase,
+    create_dir,
+    MockLogging,
+    mock_get_logger,
+    MockZmqPoller
+)
+from signalhandler import (
+    SignalHandler,
+    UnpackedMessage,
+    TargetProperties
+)
 import hidra.utils as utils
 from hidra import __version__, FormatError
 
@@ -188,7 +194,7 @@ class TestSignalHandler(TestBase):
         socket.send_multipart(send_message)
 
         received_message = socket.recv()
-        self.log.info("Responce : %s", received_message)
+        self.log.info("Response : %s", received_message)
 
     def send_request(self, socket, socket_id):
         send_message = [b"NEXT", socket_id.encode('utf-8')]
@@ -348,20 +354,20 @@ class TestSignalHandler(TestBase):
 
         current_func_name = inspect.currentframe().f_code.co_name
 
-        def init(signalhandler_config):
+        def init(config):
             with mock.patch("signalhandler.SignalHandler.create_sockets"):
                 with mock.patch("signalhandler.SignalHandler._run"):
-                    sighandler = SignalHandler(**signalhandler_config)
+                    handler = SignalHandler(**config)
 
-            sighandler.log = mock.MagicMock()
+            handler.log = mock.MagicMock()
 
             with mock.patch.object(zmq, "Poller", MockZmqPoller):
-                sighandler.create_sockets()
+                handler.create_sockets()
 
-            return sighandler
+            return handler
 
-        def check_registered(sighandler, sockets, testunit):
-            registered_sockets = sighandler.poller.registered_sockets
+        def check_registered(handler, sockets, testunit):
+            registered_sockets = handler.poller.registered_sockets
             all_socket_confs = []
 
             # check that sockets are registered
@@ -438,12 +444,12 @@ class TestSignalHandler(TestBase):
         sighandler.poller = mock.MagicMock(spec_set=zmq.Poller)
         sighandler.poller.poll = mock.MagicMock()
 
-        def init_sighandler(sighandler, socket, signal):
+        def init_sighandler(handler, socket, signal):
 
-            sighandler.poller.poll.side_effect = [
+            handler.poller.poll.side_effect = [
                 {socket: zmq.POLLIN},
                 # for stopping the run loop
-                {sighandler.control_sub_socket: zmq.POLLIN}
+                {handler.control_sub_socket: zmq.POLLIN}
             ]
             socket.recv_multipart.side_effect = [signal]
             # either use side_effect or recreate mock object and use
@@ -453,13 +459,13 @@ class TestSignalHandler(TestBase):
             mock_check.reset_mock()
             mock_check.return_value = True
 
-        def reset(sighandler):
-            sighandler.com_socket.reset_mock()
-            sighandler.request_socket.reset_mock()
-            sighandler.request_fw_socket.reset_mock()
-            sighandler.control_sub_socket.reset_mock()
-            sighandler.control_sub_socket.recv_multipart.reset_mock()
-            sighandler.poller.poll.reset_mock()
+        def reset(handler):
+            handler.com_socket.reset_mock()
+            handler.request_socket.reset_mock()
+            handler.request_fw_socket.reset_mock()
+            handler.control_sub_socket.reset_mock()
+            handler.control_sub_socket.recv_multipart.reset_mock()
+            handler.poller.poll.reset_mock()
 
         host = self.con_ip
         port = 1234
@@ -789,7 +795,6 @@ class TestSignalHandler(TestBase):
         # --------------------------------------------------------------------
         self.log.info("%s: COM_SOCKET: WRONG TARGETS", current_func_name)
 
-
         signal = []
         init_sighandler(sighandler, sighandler.com_socket, signal)
         sighandler.com_socket.recv_multipart = mock.MagicMock()
@@ -1083,7 +1088,7 @@ class TestSignalHandler(TestBase):
         # valid message, valid version, but host is not allowed to connect
         # --------------------------------------------------------------------
         self.log.info("%s: VALID MESSAGE, VALID VERSION, BUT HOST IS NOT "
-                      "ALLOWED TO CONNTECT", current_func_name)
+                      "ALLOWED TO CONNECT", current_func_name)
 
         #             version, application id, signal, targets
         in_message = [__version__.encode("utf-8"), appid,
@@ -1204,7 +1209,7 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        # the registered time cannot be forseen
+        # the registered time cannot be foreseen
         time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
@@ -1247,7 +1252,7 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        # the registered time cannot be forseen
+        # the registered time cannot be foreseen
         time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
@@ -1294,7 +1299,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ])
-        # the registered time cannot be forseen
+        # the registered time cannot be foreseen
         time_registered = registered_ids[1].time_registered
         expected_result = [
             TargetProperties(targets=targets,
@@ -1341,7 +1346,7 @@ class TestSignalHandler(TestBase):
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type],
             ["{}:{}".format(host, port2), 0, re.compile(".*"), send_type]
         ])
-        # the registered time cannot be forseen
+        # the registered time cannot be foreseen
         time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
@@ -1383,7 +1388,7 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        # the registered time cannot be forseen
+        # the registered time cannot be foreseen
         time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
@@ -1419,7 +1424,7 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        # the registered time cannot be forseen
+        # the registered time cannot be foreseen
         time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
@@ -1455,7 +1460,7 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        # the registered time cannot be forseen
+        # the registered time cannot be foreseen
         time_registered = registered_ids[0].time_registered
         expected_result = [TargetProperties(targets=targets,
                                             appid=appid,
@@ -1501,7 +1506,7 @@ class TestSignalHandler(TestBase):
         targets = [
             ["{}:{}".format(host, port), 0, re.compile(".*"), send_type]
         ]
-        # the registered time cannot be forseen
+        # the registered time cannot be foreseen
         time_registered = registered_ids[1].time_registered
         expected_result = [
             TargetProperties(targets=targets,

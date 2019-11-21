@@ -43,7 +43,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class TestEventDetector(EventDetectorTestBase):
-    """Specification of tests to be performed for the loaded EventDetecor.
+    """Specification of tests to be performed for the loaded EventDetector.
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -59,7 +59,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.module_name = "inotifyx_events"
 
-        config_module = {
+        self.config_module = {
             "monitored_dir": os.path.join(self.base_dir, "data", "source"),
             "fix_subdirs": ["commissioning", "current", "local"],
             "monitored_events": {
@@ -75,7 +75,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.ed_base_config["config"]["eventdetector"] = {
             "type": self.module_name,
-            self.module_name: config_module
+            self.module_name: self.config_module
         }
 
         self.start = 100
@@ -150,12 +150,12 @@ class TestEventDetector(EventDetectorTestBase):
         create_dir(self.target_file_base)
         self._start_eventdetector()
 
-#        self.eventdetector_config["use_cleanup"] = True
-#        self.eventdetector_config["monitored_events"] = {
+#        self.config_module["use_cleanup"] = True
+#        self.config_module["monitored_events"] = {
 #            "Some_supid_event": [".tif", ".cbf", ".file"]
 #        }
-#        self.eventdetector_config["time_till_closed"] = 0.2
-#        self.eventdetector_config["action_time"] = 0.5
+#        self.config_module["time_till_closed"] = 0.2
+#        self.config_module["action_time"] = 0.5
 
         self.start = 100
         self.stop = 30000
@@ -172,7 +172,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         try:
             for step in range(steps):
-                start = self.start + step * step_loop
+                start = int(self.start + step * step_loop)
                 stop = start + step_loop
 #                self.log.debug("start=%s, stop=%s", start, stop)
                 for i in range(start, stop):
@@ -198,7 +198,7 @@ class TestEventDetector(EventDetectorTestBase):
         except KeyboardInterrupt:
             pass
         finally:
-            if self.eventdetector_config["use_cleanup"]:
+            if self.config_module["use_cleanup"]:
                 time.sleep(4)
                 event_list = self.eventdetector.get_new_event()
                 self.log.debug("len of event_list=%s", len(event_list))

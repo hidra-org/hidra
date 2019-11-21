@@ -72,7 +72,7 @@ from datadispatcher import DataDispatcher  # noqa E402
 from statserver import StatServer  # noqa E402
 
 from _environment import BASE_DIR  # noqa E402
-import hidra.utils as utils # noqa E402
+import hidra.utils as utils  # noqa E402
 from hidra import __version__  # noqa E402
 
 CONFIG_DIR = os.path.join(BASE_DIR, "conf")
@@ -279,11 +279,11 @@ def argument_parsing():
     )
 
     # check if config_file exist
-    utils.check_existance(base_config_file)
-    utils.check_existance(arguments.config_file)
+    utils.check_existence(base_config_file)
+    utils.check_existence(arguments.config_file)
 
     # ------------------------------------------------------------------------
-    # Get arguments from config file and comand line
+    # Get arguments from config file and command line
     # ------------------------------------------------------------------------
 
     config = utils.load_config(base_config_file)
@@ -347,7 +347,7 @@ def argument_parsing():
     utils.check_module_exist(df_type)
 
     # check if directories exist
-    utils.check_existance(config_gen["log_path"])
+    utils.check_existence(config_gen["log_path"])
 
     if config_df["store_data"]:
         # set process name
@@ -357,7 +357,7 @@ def argument_parsing():
         if not check_passed:
             raise utils.WrongConfiguration
 
-        utils.check_existance(config_df["local_target"])
+        utils.check_existence(config_df["local_target"])
         # check if local_target contains fixed_subdirs
         # e.g. local_target = /beamline/p01/current/raw and
         #      fix_subdirs contain current/raw
@@ -664,11 +664,11 @@ class DataManager(Base):
             self.device.bind_out(self.endpoints.control_sub_bind)
             self.device.setsockopt_in(zmq.SUBSCRIBE, b"")
             self.device.start()
-            self.log.info("Start thead device forwarding messages "
+            self.log.info("Start thread device forwarding messages "
                           "from '%s' to '%s'",
                           self.endpoints.control_pub_bind,
                           self.endpoints.control_sub_bind)
-        except:
+        except Exception:
             self.log.error("Failed to start thread device forwarding messages "
                            "from '%s' to '%s'",
                            self.endpoints.control_pub_bind,
@@ -706,7 +706,7 @@ class DataManager(Base):
         )
 
     def test_fixed_streaming_host(self, enable_logging=False):
-        """Comminicates with the receiver and checks if it is alive.
+        """Communicates with the receiver and checks if it is alive.
 
         Args:
             enable_logging (optional, bool): if log messages should be
@@ -735,7 +735,7 @@ class DataManager(Base):
         """Communicates to the receiver and checks response.
 
         Args:
-            test_signal (str): The signal to send to the receiver
+            test_signal (bytes str): The signal to send to the receiver
             socket_conf (dict): The configuration of the socket to use for
                                 communication.
             addr: The address of the socket.
@@ -778,7 +778,7 @@ class DataManager(Base):
                                   "success", action_name, addr)
 
                 if is_req:
-                    status = self.test_socket.recv_multipart()
+                    _ = self.test_socket.recv_multipart()
                     if use_log:
                         self.log.info("Received response for %s of fixed "
                                       "streaming host %s", action_name, addr)
@@ -984,7 +984,7 @@ class DataManager(Base):
             proc = Process(
                 target=DataDispatcher,
                 kwargs={
-                    "dispatcher_id":dispatcher_id,
+                    "dispatcher_id": dispatcher_id,
                     "endpoints": self.endpoints,
                     "fixed_stream_addr": self.fixed_stream_addr,
                     "config": self.config,
@@ -1067,30 +1067,43 @@ class DataManager(Base):
         return status
 
     def check_hanging(self, log=True):
+        """Check if any subprocess or thread is hanging.
+
+        Args:
+            log (optional): if the information should be logged.
+
+        Returns:
+            A boolean with the information of any subprocess or thread is
+            hanging.
+        """
+
         is_hanging = False
 
         # detecting hanging processes
         if (self.signalhandler_thr is not None
                 and self.signalhandler_thr.is_alive()):
-            if log: self.log.error("SignalHandler hangs (PID %s, same as DataManager).",
-                                   self.current_pid)
+            if log:
+                self.log.error("SignalHandler hangs (PID %s, same as "
+                               "DataManager).", self.current_pid)
             is_hanging = True
 
         if (self.taskprovider_pr is not None
                 and self.taskprovider_pr.is_alive()):
-            if log: self.log.error("TaskProvider hangs (PID %s).",
-                                   self.taskprovider_pr.pid)
+            if log:
+                self.log.error("TaskProvider hangs (PID %s).",
+                               self.taskprovider_pr.pid)
             is_hanging = True
 
         if self.cleaner_pr is not None and self.cleaner_pr.is_alive():
-            if log: self.log.error("Cleaner hangs (PID %s).",
-                                   self.cleaner_pr.pid)
+            if log:
+                self.log.error("Cleaner hangs (PID %s).", self.cleaner_pr.pid)
             is_hanging = True
 
         for i, datadispatcher in enumerate(self.datadispatcher_pr):
             if datadispatcher is not None and datadispatcher.is_alive():
-                if log: self.log.error("DataDispatcher-%s hangs (PID %s)",
-                                       i, datadispatcher.pid)
+                if log:
+                    self.log.error("DataDispatcher-%s hangs (PID %s)",
+                                   i, datadispatcher.pid)
                 is_hanging = True
 
         return is_hanging
@@ -1113,10 +1126,12 @@ class DataManager(Base):
             # hanging processes (zmq slow joiner problem)
             for i in range(5):
                 if self.check_hanging(log=False):
-                    self.log.debug("Waiting for processes to finish, resending "
-                                   "'EXIT' signal (try %s)", i)
+                    self.log.debug("Waiting for processes to finish, "
+                                   "resending 'EXIT' signal (try %s)", i)
                     time.sleep(1)
-                    self.control_pub_socket.send_multipart([b"control", b"EXIT"])
+                    self.control_pub_socket.send_multipart(
+                        [b"control", b"EXIT"]
+                    )
                 else:
                     break
 
@@ -1191,7 +1206,10 @@ class DataManager(Base):
         self.stop()
 
 
-if __name__ == '__main__':
+def main():
+    """Running the datamanager.
+    """
+
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     freeze_support()
 
@@ -1202,3 +1220,7 @@ if __name__ == '__main__':
     finally:
         if sender is not None:
             sender.stop()
+
+
+if __name__ == '__main__':
+    main()
