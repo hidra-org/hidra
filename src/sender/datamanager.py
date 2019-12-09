@@ -81,15 +81,8 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 def argument_parsing():
-    """Parses and checks the command line arguments used.
+    """ Get command line arguments
     """
-
-    base_config_file = utils.determine_config_file(fname_base="base_sender",
-                                                   config_dir=CONFIG_DIR)
-
-    # ------------------------------------------------------------------------
-    # Get command line arguments
-    # ------------------------------------------------------------------------
 
     parser = argparse.ArgumentParser()
 
@@ -97,15 +90,6 @@ def argument_parsing():
                         type=str,
                         help="Location of the configuration file")
 
-    parser.add_argument("--log_path",
-                        type=str,
-                        help="Path where the logfile will be created")
-    parser.add_argument("--log_name",
-                        type=str,
-                        help="Filename used for logging")
-    parser.add_argument("--log_size",
-                        type=int,
-                        help="File size before rollover in B (linux only)")
     parser.add_argument("--verbose",
                         help="More verbose output",
                         action="store_true")
@@ -116,162 +100,17 @@ def argument_parsing():
                              "INFO, DEBUG)",
                         default=False)
 
-    parser.add_argument("--procname",
-                        type=str,
-                        help="Name with which the service should be running")
+    return parser.parse_args()
 
-    parser.add_argument("--ext_ip",
-                        type=str,
-                        help="IP of the interface to bind to for external "
-                             "communication")
 
-    # SignalHandler config
+def load_config():
+    """Parses the command line arguments and loads config files.
+    """
+    base_config_file = utils.determine_config_file(fname_base="base_sender",
+                                                   config_dir=CONFIG_DIR)
 
-    parser.add_argument("--com_port",
-                        type=str,
-                        help="Port number to receive signals")
-    parser.add_argument("--whitelist",
-                        nargs='+',
-                        help="List of hosts allowed to connect")
+    arguments = argument_parsing()
 
-    parser.add_argument("--request_port",
-                        type=str,
-                        help="ZMQ port to get new requests")
-    parser.add_argument("--request_fw_port",
-                        type=str,
-                        help="ZMQ port to forward requests")
-    parser.add_argument("--control_pub_port",
-                        type=str,
-                        help="Port number to publish control signals")
-    parser.add_argument("--control_sub_port",
-                        type=str,
-                        help="Port number to receive control signals")
-
-    # EventDetector config
-
-    parser.add_argument("--eventdetector_type",
-                        type=str,
-                        help="Type of event detector to use")
-    parser.add_argument("--fix_subdirs",
-                        type=str,
-                        help="Subdirectories to be monitored and to store the "
-                             "data to (only needed if event detector is "
-                             "inotifyx_events or watchdog_events "
-                             "and data fetcher is file_fetcher)")
-    parser.add_argument("--create_fix_subdirs",
-                        type=str,
-                        help="Flag describing if the subdirectories should be "
-                             "created if they do not exist")
-
-    parser.add_argument("--monitored_dir",
-                        type=str,
-                        help="Directory to be monitor for changes; inside "
-                             "this directory only the specified "
-                             "subdirectories are monitored (only needed if "
-                             "event detector is inotifyx_events or "
-                             "watchdog_events)")
-    parser.add_argument("--monitored_events",
-                        type=str,
-                        help="Event type of files (options are: "
-                             "IN_CLOSE_WRITE, IN_MOVED_TO, ...) and the "
-                             "formats to be monitored, files in an other "
-                             "format will be be neglected (needed if "
-                             "event detector is inotifyx_events or "
-                             "watchdog_events)")
-
-    parser.add_argument("--history_size",
-                        type=int,
-                        help="Number of events stored to look for doubles "
-                             "(needed if event detector is "
-                             "inotifyx_events)")
-
-    parser.add_argument("--use_cleanup",
-                        help="Flag describing if a clean up thread which "
-                             "regularly checks if some files were missed "
-                             "should be activated (needed if event detector "
-                             "is inotifyx_events)",
-                        choices=["True", "False"])
-
-    parser.add_argument("--action_time",
-                        type=float,
-                        help="Interval time (in seconds) used for clea nup "
-                             "(only needed if eventdetector_type is "
-                             "inotifyx_events)")
-
-    parser.add_argument("--time_till_closed",
-                        type=float,
-                        help="Time (in seconds) since last modification after "
-                             "which a file will be seen as closed (only "
-                             "needed if eventdetector_type is "
-                             "inotifyx_events (for clean up) or "
-                             "watchdog_events)")
-
-    parser.add_argument("--eventdetector_port",
-                        type=str,
-                        help="ZMQ port to get events from (only needed if "
-                             "eventdetector_type is zmq_events)")
-
-    parser.add_argument("--det_ip",
-                        type=str,
-                        help="IP of the detector (only needed if "
-                             "eventdetector_type is http_events)")
-    parser.add_argument("--det_api_version",
-                        type=str,
-                        help="API version of the detector (only needed "
-                             "if eventdetector_type is http_events)")
-
-    # DataFetcher config
-
-    parser.add_argument("--datafetcher_type",
-                        type=str,
-                        help="Module with methods specifying how to get the "
-                             "data)")
-    parser.add_argument("--datafetcher_port",
-                        type=str,
-                        help="If 'zmq_fetcher' is specified as "
-                             "datafetcher_type it needs a port to listen to)")
-
-    parser.add_argument("--use_data_stream",
-                        help="Enable ZMQ pipe into storage system (if set to "
-                             "false: the file is moved into the "
-                             "local_target)",
-                        choices=["True", "False"])
-    parser.add_argument("--data_stream_target",
-                        type=str,
-                        help="Fixed host and port to send the data to with "
-                             "highest priority (only active if "
-                             "use_data_stream is set)")
-    parser.add_argument("--number_of_streams",
-                        type=int,
-                        help="Number of parallel data streams)")
-    parser.add_argument("--chunksize",
-                        type=int,
-                        help="Chunk size of file-parts getting send via ZMQ)")
-
-    parser.add_argument("--router_port",
-                        type=str,
-                        help="ZMQ-router port which coordinates the "
-                             "load-balancing to the worker-processes)")
-
-    parser.add_argument("--local_target",
-                        type=str,
-                        help="Target to move the files into")
-
-    parser.add_argument("--store_data",
-                        help="Flag describing if the data should be stored in "
-                             "local_target (needed if datafetcher_type is "
-                             "file_fetcher or http_fetcher)",
-                        choices=["True", "False"])
-    parser.add_argument("--remove_data",
-                        help="Flag describing if the files should be removed "
-                             "from the source (needed if datafetcher_type is "
-                             "file_fetcher or http_fetcher)",
-                        choices=["True",
-                                 "False",
-                                 "stop_on_error",
-                                 "with_confirmation"])
-
-    arguments = parser.parse_args()
     arguments.config_file = (
         arguments.config_file
         or utils.determine_config_file(fname_base="datamanager",
@@ -299,6 +138,15 @@ def argument_parsing():
 
     utils.update_dict(config_detailed, config)
     utils.update_dict(arguments_dict, config)
+
+    return config
+
+
+def get_config():
+    """Parses and checks the command line arguments used.
+    """
+
+    config = load_config()
 
     # ------------------------------------------------------------------------
     # Check given arguments
@@ -456,7 +304,7 @@ class DataManager(Base):
 
         try:
             if config is None:
-                self.config = argument_parsing()
+                self.config = get_config()
             else:
                 self.config = config
         except Exception:
