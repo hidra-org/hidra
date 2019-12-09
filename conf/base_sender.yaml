@@ -16,6 +16,10 @@ general:
     # (needed if running on Windows)
     request_fw_port: 50002
 
+    # how long the taskprovider should wait for incoming and outgoing messages
+    # (in ms)
+    taskprovider_timeout: 1000
+
     # ZMQ port to distribute control signals
     # (needed if running on Windows)
     control_pub_port: 50005

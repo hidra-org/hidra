@@ -71,7 +71,7 @@ class TaskProvider(Base):
         self.router_socket = None
         self.control_socket = None
         self.poller = None
-        self.timeout = 1000
+        self.timeout = None
 
         self.eventdetector = None
         self.keep_running = None
@@ -89,6 +89,12 @@ class TaskProvider(Base):
                        self.__class__.__name__, os.getpid())
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
+
+        try:
+            self.timeout = self.config["general"]["taskprovider_timeout"]
+        except KeyError:
+            self.timeout = 1000
+        self.log.debug("Set timeout to %s ms", self.timeout)
 
         # remember if the context was created outside this class or not
         self.log.info("Registering ZMQ context")
