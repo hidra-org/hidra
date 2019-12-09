@@ -46,7 +46,7 @@ except ImportError:
     # for python2
     import mock
 
-from test_base import TestBase, create_dir
+from test_base import TestBase, create_dir, MockZmqSocket, MockLogging
 from taskprovider import TaskProvider
 import hidra.utils as utils
 
@@ -307,6 +307,60 @@ class TestTaskProvider(TestBase):
                                            "{}.cbf".format(number))
                 self.log.debug("remove %s", target_file)
                 os.remove(target_file)
+
+    def test_taskprovider_timeout(self):
+        """Simulate incoming data and check if received events are correct.
+        """
+
+        endpoints = self.config["endpoints"]
+
+        kwargs = dict(
+            config=self.taskprovider_config,
+            endpoints=endpoints,
+            log_queue=self.log_queue
+        )
+        # the method run contains setup and _run
+        with mock.patch("taskprovider.TaskProvider.run"):
+            taskprovider = TaskProvider(**kwargs)
+
+        taskprovider.log = MockLogging()
+        taskprovider.log.error = mock.MagicMock()
+        taskprovider.eventdetector = mock.MagicMock()
+        taskprovider.keep_running = True
+        taskprovider._check_control_socket = mock.MagicMock()
+
+        taskprovider.context = self.context
+        taskprovider.timeout = 1000
+        taskprovider.create_sockets()
+
+        # properly stop the not needed sockets and mock them
+        taskprovider.stop_socket(name="router_socket")
+        taskprovider.stop_socket(name="control_socket")
+        taskprovider.router_socket = MockZmqSocket()
+        # to avoid Exception AssertionError when stopping the taskprovider
+        taskprovider.router_socket.connect("test")
+        taskprovider.control_socket = MockZmqSocket()
+        # to avoid Exception AssertionError when stopping the taskprovider
+        taskprovider.control_socket.connect("test")
+
+        # first iteration: go on
+        # second iteration: stop taskprovider
+        taskprovider._check_control_socket.side_effect = [False, True]
+
+        taskprovider.eventdetector.get_new_event.return_value = [
+            {
+                "filename": "1.tif",
+                "source_path": "/my_dir",
+                "relative_path": "local"
+            }
+        ]
+
+        # since there is no REP socket, this runs into the timeout
+        taskprovider._run()
+
+        if taskprovider.log.error.called:
+            self.log.debug(taskprovider.log.error.call_args[0][0])
+            self.assertNotIn("failed", taskprovider.log.error.call_args[0][0])
 
     def tearDown(self):
         self.context.destroy(0)
