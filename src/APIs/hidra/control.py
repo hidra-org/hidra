@@ -332,7 +332,7 @@ class Control(Base):
             Received "DONE" if execution was successful and "ERROR" if not.
             Some command can have additional return values:
             - start: "ALREADY_RUNNING"
-            - stop: "ARLEADY_STOPPED"
+            - stop: "ALREADY_STOPPED"
             - status: "RUNNING", "NOT RUNNING"
         """
         # pylint: disable=unused-argument

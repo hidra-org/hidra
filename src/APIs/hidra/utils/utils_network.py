@@ -85,6 +85,7 @@ def check_netgroup(hostname,
     else:
         return False
 
+
 def _resolve_ldap_server_ip(log, ldapuri):
     # measure time to identify misconfigured network settings
     # (e.g. wrong resolve.conf)
@@ -108,6 +109,7 @@ def _resolve_ldap_server_ip(log, ldapuri):
                     "services", ldap_response_limit)
 
     return ldap_server_ip, ldap_host
+
 
 def execute_ldapsearch(log, ldap_cn, ldapuri):
     """Searches ldap for a netgroup and parses the output.
