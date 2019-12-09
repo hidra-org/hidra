@@ -102,7 +102,7 @@ class TaskProvider(Base):
 
         try:
             self.ignore_accumulated_events = (
-                self.config["ignore_accumulated_events"]
+                self.config["eventdetector"]["ignore_accumulated_events"]
             )
         except KeyError:
             self.ignore_accumulated_events = False

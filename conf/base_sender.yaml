@@ -41,6 +41,11 @@ eventdetector:
     # (needed if event_detector_type is zmq_events)
     event_det_port: 50003
 
+    # While asleep due to a not responding receiver events might accumulate.
+    # For fast detectors it might be better to throw them away.
+    # (if not set default is False)
+    #ignore_accumulated_events: False
+
     # Subdirectories which should not be created when create_fix_subdirs option
     # is enabled
     dirs_not_to_create: []
