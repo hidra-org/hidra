@@ -141,15 +141,20 @@ class TaskProvider(Base):
 
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
 
+        sockopt_request = [[zmq.REQ_RELAXED, True], [zmq.REQ_CORRELATE, True]]
+        sockopt_router = []
+
+        if self.timeout is not None:
+            sockopt_request += [[zmq.RCVTIMEO, self.timeout]]
+            sockopt_router += [[zmq.SNDTIMEO, self.timeout]]
+
         # socket to get forwarded requests
         self.request_fw_socket = self.start_socket(
             name="request_fw_socket",
             sock_type=zmq.REQ,
             sock_con="connect",
             endpoint=self.endpoints.request_fw_con,
-            socket_options=[[zmq.RCVTIMEO, self.timeout],
-                            [zmq.REQ_RELAXED, True],
-                            [zmq.REQ_CORRELATE, True]]
+            socket_options=sockopt_request
         )
 
         # socket to distribute the events to the worker
@@ -160,7 +165,7 @@ class TaskProvider(Base):
             endpoint=self.endpoints.router_bind,
             # this sometimes blocks indefinitely if there are problems
             # with sending (e.g. when wrong config on datadispatcher)
-            socket_options=[[zmq.SNDTIMEO, self.timeout]]
+            socket_options=sockopt_router
         )
 
         self.poller = zmq.Poller()

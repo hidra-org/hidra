@@ -17,7 +17,7 @@ general:
     request_fw_port: 50002
 
     # how long the taskprovider should wait for incoming and outgoing messages
-    # (in ms)
+    # (in ms, None means disabled)
     taskprovider_timeout: 1000
 
     # ZMQ port to distribute control signals
