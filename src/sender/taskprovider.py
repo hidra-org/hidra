@@ -147,7 +147,9 @@ class TaskProvider(Base):
             sock_type=zmq.REQ,
             sock_con="connect",
             endpoint=self.endpoints.request_fw_con,
-            socket_options=[[zmq.RCVTIMEO, self.timeout]]
+            socket_options=[[zmq.RCVTIMEO, self.timeout],
+                            [zmq.REQ_RELAXED, True],
+                            [zmq.REQ_CORRELATE, True]]
         )
 
         # socket to distribute the events to the worker
