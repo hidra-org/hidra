@@ -104,7 +104,8 @@ from .utils_network import (
     set_ipc_addresses,
     set_endpoints,
     start_socket,
-    stop_socket
+    stop_socket,
+    zmq_msg_to_nparray
 )
 
 from .utils_api import Base
@@ -180,5 +181,6 @@ __all__ = [
     "set_endpoints",
     "start_socket",
     "stop_socket",
+    "zmq_msg_to_nparray"
     "Base"
 ]
