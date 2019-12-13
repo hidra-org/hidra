@@ -78,6 +78,7 @@ class EventDetectorBase(Base):
 
         self.config_all = eventdetector_base_config["config"]
         check_dep = eventdetector_base_config["check_dep"]
+        self.context = eventdetector_base_config["context"]
 
         self.log_queue = eventdetector_base_config["log_queue"]
         self.log = utils.get_logger(name, self.log_queue)

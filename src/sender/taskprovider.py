@@ -109,7 +109,8 @@ class TaskProvider(Base):
             {
                 "config": self.config,
                 "log_queue": self.log_queue,
-                "check_dep": True
+                "check_dep": True,
+                "context": self.context
             }
         )
 
