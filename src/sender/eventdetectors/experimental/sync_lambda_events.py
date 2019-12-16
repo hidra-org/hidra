@@ -369,7 +369,7 @@ class EventDetector(EventDetectorBase):
                     event_message = {
                         "source_path": "",
                         "relative_path": "",
-                        "filename": image_set[0]["frame_no"],
+                        "filename": str(image_set[0]["frame_no"]),
                         "additional_info": [
                             {
                                 "det_id": i["det_id"],

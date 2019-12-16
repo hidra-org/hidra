@@ -28,14 +28,11 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from collections import namedtuple
 import json
 import time
-import os
 import zmq
 
 from datafetcherbase import DataFetcherBase
-from hidra import generate_filepath
 import hidra.utils as utils
 from cleanerbase import CleanerBase
 
@@ -123,6 +120,8 @@ class DataFetcher(DataFetcherBase):
             metadata["file_mod_time"] = time.time()
             metadata["file_create_time"] = time.time()
             metadata["chunksize"] = None
+            metadata["max_chunks"] = None
+            metadata["type"] = "numpy_array_list"
 
             self.log.debug("metadata = %s", metadata)
         except Exception:
@@ -140,50 +139,60 @@ class DataFetcher(DataFetcherBase):
         # reading source file into memory
         try:
             self.log.debug("Getting data for file '%s'...", self.source_file)
-            recv_msg = self.socket.recv()
+            recv_msg = self.socket.recv_multipart()
         except Exception:
             self.log.error("Unable to get data for file '%s'",
                            self.source_file, exc_info=True)
             raise
 
-        # only for testing
-        data = [
-            utils.zmq_msg_to_nparray(
-                data=msg,
-                array_metadata=metadata["additional_info"][i]
-            )
-            for i, msg in enumerate(recv_msg)
-        ]
-        self.log.debug("data=%s", data)
-
+        # TODO: remove this (for testing)
         try:
-            self.log.debug("Packing multipart-message for file %s...",
-                           self.source_file)
-            chunk_number = 0
+            data = [
+                utils.zmq_msg_to_nparray(
+                    data=msg,
+                    array_metadata=metadata["additional_info"][i]
+                )
+                for i, msg in enumerate(recv_msg)
+            ]
+            self.log.debug("data=%s", data)
 
-            # assemble metadata for zmq-message
-            metadata_extended = metadata.copy()
-            metadata_extended["chunk_number"] = chunk_number
-
-            payload = [json.dumps(metadata_extended).encode("utf-8")] + data
-            #payload = [json.dumps(metadata_extended).encode("utf-8"), data]
+            metadata["max_chunks"] = len(data)
         except Exception:
-            self.log.error("Unable to pack multipart-message for file '%s'",
-                           self.source_file, exc_info=True)
-            return
+            self.log.debug("recv_msg=%s", len(recv_msg))
+            self.log.debug("recv_msg=%s", type(recv_msg))
+            raise
 
-        # send message
-        try:
-            self.send_to_targets(targets=targets,
-                                 open_connections=open_connections,
-                                 metadata=metadata_extended,
-                                 payload=payload,
-                                 chunk_number=chunk_number)
-            self.log.debug("Passing multipart-message for file '%s'...done.",
-                           self.source_file)
-        except Exception:
-            self.log.error("Unable to send multipart-message for file '%s'",
-                           self.source_file, exc_info=True)
+        chunk_number = 0
+        for data_part in data:
+            try:
+                self.log.debug("Packing multipart-message for file %s...",
+                               self.source_file)
+
+                # assemble metadata for zmq-message
+                metadata_extended = metadata.copy()
+                metadata_extended["chunk_number"] = chunk_number
+
+                payload = [json.dumps(metadata_extended).encode("utf-8"),
+                           data_part]
+
+                chunk_number += 1
+            except Exception:
+                self.log.error("Unable to pack multipart-message for file '%s'",
+                               self.source_file, exc_info=True)
+                return
+
+            # send message
+            try:
+                self.send_to_targets(targets=targets,
+                                     open_connections=open_connections,
+                                     metadata=metadata_extended,
+                                     payload=payload,
+                                     chunk_number=chunk_number)
+                self.log.debug("Passing multipart-message for file '%s'...done.",
+                               self.source_file)
+            except Exception:
+                self.log.error("Unable to send multipart-message for file '%s'",
+                               self.source_file, exc_info=True)
 
     def finish(self, targets, metadata, open_connections):
         """Implementation of the abstract method finish.
