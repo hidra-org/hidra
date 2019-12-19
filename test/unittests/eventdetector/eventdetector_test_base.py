@@ -30,6 +30,8 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 
+import zmq
+
 from test_base import TestBase, create_dir  # noqa F401  # pylint: disable=unused-import
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -47,6 +49,7 @@ class EventDetectorTestBase(TestBase):
                     "config_file": "testconfig.yaml"
                 }
             },
+            "context": zmq.Context(),
             "log_queue": self.log_queue,
             "check_dep": True
         }

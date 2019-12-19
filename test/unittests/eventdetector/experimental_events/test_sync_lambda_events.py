@@ -41,8 +41,8 @@ except ImportError:
     # for python2
     import mock
 
-import experimental.sync_lambda_events as events
-from .eventdetector_test_base import EventDetectorTestBase
+import experimental_events.sync_lambda_events as events
+from ..eventdetector_test_base import EventDetectorTestBase
 import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -62,7 +62,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         endpoint = ("ipc://{ipc_dir}/{pid}_internal_com"
                     .format(ipc_dir="/tmp/hidra", pid=1234))
-        self.context = zmq.Context()
+        self.context = self.ed_base_config["context"]
 
         self.module_name = "sync_lambda_events"
         self.module_config = {
@@ -70,7 +70,6 @@ class TestEventDetector(EventDetectorTestBase):
             # time to wait between image requests (in s)
             "wait_time": 1,
             "internal_com_endpoint": endpoint,
-            "context": self.context,
             #"device_names": ["haso228yy:10000/bltest/lambda/01"]
             #"device_names": ["haso111k:10000/petra3/lambda/01"]
             "device_names": ["haso228yy:10000/bltest/lambda/01",
