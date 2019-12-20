@@ -137,7 +137,8 @@ class Connector(object):
                     "frame_no": frame_no,
                     "data": data
                 })
-                time.sleep(self.wait_time)
+                if self.wait_time is not None:
+                    time.sleep(self.wait_time)
 
         except KeyboardInterrupt:
             pass
