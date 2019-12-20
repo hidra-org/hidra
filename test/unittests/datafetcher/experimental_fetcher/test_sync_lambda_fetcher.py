@@ -42,7 +42,7 @@ except ImportError:
     import mock
 
 import experimental_fetcher.sync_lambda_fetcher as fetcher
-from .datafetcher_test_base import DataFetcherTestBase
+from ..datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -136,7 +136,7 @@ class TestDataFetcher(DataFetcherTestBase):
         self.datafetcher.get_metadata(targets, metadata)
 
         self.datafetcher.socket = mock.MagicMock()
-        self.datafetcher.socket.recv.return_value = result_array
+        self.datafetcher.socket.recv_multipart.return_value = result_array
         self.datafetcher.send_data(targets, metadata, open_connections)
 
         self.datafetcher.finish(targets, metadata, open_connections)
