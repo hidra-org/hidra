@@ -22,6 +22,12 @@
 
 """
 This module implements a data fetcher to pass through synchronized images.
+
+Needed configuration in config file:
+datafetcher:
+    type: experimental_fetcher.sync_lambda_fetcher
+    experimental_fetcher.sync_lambda_fetcher:
+        internal_com_endpoint: zmq endpoint as string
 """
 
 from __future__ import absolute_import

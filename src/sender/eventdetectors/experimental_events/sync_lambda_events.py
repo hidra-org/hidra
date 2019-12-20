@@ -23,6 +23,18 @@
 """
 This module implements an event detector that get images from different
 detectors and synchronizes them.
+
+Needed configuration in config file:
+eventdetector:
+    type: experimental_events.sync_lambda_events
+
+    experimental_events.sync_lambda_events:
+        buffer_size: int
+        wait_time: float
+        internal_com_endpoint: zmq endpoint as string
+        device_names: list of tango device names
+            (e.g."haso111k:10000/petra3/lambda/01")
+
 """
 
 from __future__ import absolute_import
