@@ -24,6 +24,28 @@
 """
 This module implements the event detector used for the Eiger detector and
 other detectors with a http interface
+
+Needed configuration in config file:
+eventdetector:
+    type: http_events
+    http_events:
+        fix_subdirs: list of strings
+        history_size: int
+        det_ip: string
+        det_api_version: string
+
+Example config:
+    http_events:
+        fix_subdirs:
+            - "commissioning/raw"
+            - "commissioning/scratch_bl"
+            - "current/raw"
+            - "current/scratch_bl"
+            - "local"
+        history_size: 2000
+        det_ip: asap3-mon
+        det_api_version: 1.6.0
+
 """
 
 from __future__ import absolute_import

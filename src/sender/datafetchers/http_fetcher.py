@@ -23,6 +23,20 @@
 """
 This module implements the data fetcher used for the Eiger detector and other
 detectors with a http interface.
+
+Needed configuration in config file:
+datafetcher:
+    type: http_fetcher
+    http_fetcher:
+        fix_subdirs: list of strings
+
+Example config:
+    http_fetcher:
+        - "commissioning/raw"
+        - "commissioning/scratch_bl"
+        - "current/raw"
+        - "current/scratch_bl"
+        - "local"
 """
 
 from __future__ import absolute_import

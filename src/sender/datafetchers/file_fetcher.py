@@ -22,6 +22,20 @@
 
 """
 This module implements a data fetcher for handling files.
+
+Needed configuration in config file:
+datafetcher:
+    type: file_fetcher
+    file_fetcher:
+        fix_subdirs: list of strings
+
+Example config:
+    file_fetcher:
+        - "commissioning/raw"
+        - "commissioning/scratch_bl"
+        - "current/raw"
+        - "current/scratch_bl"
+        - "local"
 """
 
 from __future__ import absolute_import

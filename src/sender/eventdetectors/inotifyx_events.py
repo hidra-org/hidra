@@ -23,6 +23,39 @@
 """
 This module implements an event detector based on the inotifyx library usable
 for systems running inotify.
+
+Needed configuration in config file:
+eventdetector:
+    type: inotifyx_events
+    inotifyx_events:
+        monitored_dir: string
+        fix_subdirs: list of string
+        create_fix_subdirs: boolean
+        monitored_events: dict
+        event_timeout: int
+        history_size: int
+        use_cleanup: boolean
+        action_time: float
+        time_till_closed: float
+
+Example config:
+    inotifyx_events:
+        monitored_dir: /ramdisk
+        fix_subdirs:
+            - "commissioning/raw"
+            - "commissioning/scratch_bl"
+            - "current/raw"
+            - "current/scratch_bl"
+            - "local"
+        create_fix_subdirs: False
+        monitored_events:
+            IN_CLOSE_WRITE:
+                - ""
+        event_timeout: 1
+        history_size: 0
+        use_cleanup: False
+        action_time: 10
+        time_till_closed: 2
 """
 
 from __future__ import absolute_import

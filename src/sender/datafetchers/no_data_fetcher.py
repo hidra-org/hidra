@@ -23,6 +23,8 @@
 """
 This module implements a data fetcher which does not get data but only
 distribute the metadata of the files it sees.
+
+No mandatory configuration needed.
 """
 
 from __future__ import absolute_import

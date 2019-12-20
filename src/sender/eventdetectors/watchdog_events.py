@@ -22,6 +22,34 @@
 
 """
 This module implements an event detector based on the the watchdog library.
+
+Needed configuration in config file:
+eventdetector:
+    type: watchdog_events
+    watchdog_events:
+        monitored_dir: string
+        fix_subdirs: list of strings
+        create_fix_subdirs: boolean
+        monitored_events: dict
+        action_time: int
+        time_till_closed: int
+
+Example config:
+   watchdog_events:
+        monitored_dir: /ramdisk
+        fix_subdirs:
+            - "commissioning/raw"
+            - "commissioning/scratch_bl"
+            - "current/raw"
+            - "current/scratch_bl"
+            - "local"
+        create_fix_subdirs: False
+        monitored_events:
+            IN_CLOSE_WRITE:
+                - ""
+        action_time: 5
+        time_till_closed: 2
+
 """
 
 from __future__ import absolute_import

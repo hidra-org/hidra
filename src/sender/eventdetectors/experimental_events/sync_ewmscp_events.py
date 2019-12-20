@@ -22,6 +22,36 @@
 
 """
 This module implements an event detector based on ewmscp events.
+
+Needed configuration in config file:
+eventdetector:
+    type: experimental_events.sync_ewmscp_events
+
+    experimental_events.sync_ewmscp_events
+        monitored_dir: string
+        fix_subdirs: list of strings
+        kafka_server: list of strings
+        kafka_topic: string
+        operation: string
+        detids: either a list of strings or a list of dicts
+        n_detectors: int
+
+Example config:
+    experimental_events.sync_ewmscp_events:
+        buffer_size: 50
+        monitored_dir: "/my_dir"
+        fix_subdirs: *fix_subdirs
+        kafka_server: ["asap3-events-01", "asap3-events-02"]
+        kafka_topic: "my_topic"
+        operation: "copy"
+        detids:
+            - id: "DET0"
+              pattern: "*{}*.h5"
+            - id: "DET1"
+              pattern: "*{}*.h5"
+            - id: "DET2"
+              pattern: "*{}*.h5"
+        n_detectors: 3
 """
 
 from __future__ import absolute_import
