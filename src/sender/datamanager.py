@@ -37,6 +37,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import argparse
 from distutils.version import LooseVersion
+from importlib import import_module
 import logging
 from multiprocessing import Process, freeze_support, Queue
 import os
@@ -811,7 +812,7 @@ class DataManager(Base):
         if self.use_cleaner:
             self.log.info("Loading cleaner from data fetcher module: %s",
                           self.config["datafetcher"]["type"])
-            self.cleaner_m = __import__(self.config["datafetcher"]["type"])
+            self.cleaner_m = import_module(self.config["datafetcher"]["type"])
 
             self.cleaner_pr = Process(
                 target=self.cleaner_m.Cleaner,
