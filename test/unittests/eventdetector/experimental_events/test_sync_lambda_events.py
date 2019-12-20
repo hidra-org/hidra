@@ -100,7 +100,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         try:
             # get synchronized events
-            for i in range(5):
+            for i in range(2):
                 event_list = self.eventdetector.get_new_event()
                 for event in event_list:
                     recv_msg = self.internal_com_socket.recv_multipart()

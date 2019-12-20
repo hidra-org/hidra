@@ -147,11 +147,13 @@ class Connector(object):
             self.stop()
 
     def stop(self):
-        self.shutdown_event.set()
+        self.log.info("Stopping")
+        #self.shutdown_event.set()
 
         # just for testing
         if self.device is not None:
             self.stop_acquisition()
+            self.device = None
 
 
 def connecting(det_id,
@@ -314,7 +316,6 @@ class EventDetector(EventDetectorBase):
 
         self.shutdown_event = threading.Event()
         self.lock = threading.Lock()
-        self.shutdown_event = multiprocessing.Event()
 
         # Create zmq socket to get events
         self.internal_com_socket = self.start_socket(
@@ -326,7 +327,7 @@ class EventDetector(EventDetectorBase):
 
         self.connections = []
         for i, name in enumerate(self.config["device_names"]):
-            p = multiprocessing.Process(
+            p = threading.Thread(
                 target=connecting,
                 kwargs=(dict(
                     det_id=i,
@@ -394,13 +395,27 @@ class EventDetector(EventDetectorBase):
     def stop(self):
         """Stop and clean up.
         """
+        self.log.debug("Stopping")
+
         self.shutdown_event.set()
-        self.data_queue.put("STOP")
+
+        if self.sync_thread.is_alive():
+            self.data_queue.put("STOP")
+            time.sleep(0.1)
+
+        # empty queue to prevent hanging
+        while (any([p.is_alive() for p in self.connections ])
+               or self.sync_thread.is_alive()):
+            if not self.data_queue.empty():
+                self.log.debug("empty queue")
+                r = self.data_queue.get(timeout=1)
+            else:
+                time.sleep(0.2)
 
         self.stop_socket(name="internal_com_socket")
 
-    def __exit__(self, exception_type, exception_value, exception_traceback):
-        self.stop()
+#    def __exit__(self, exception_type, exception_value, exception_traceback):
+#        self.stop()
 
-    def __del__(self):
-        self.stop()
+#    def __del__(self):
+#        self.stop()
