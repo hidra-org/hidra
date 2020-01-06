@@ -80,7 +80,7 @@ def check_module_exist(m_type):
     try:
         import_module(m_type)
         logging.debug("Module '%s' is ok.", m_type)
-    except NotFoundError:
+    except (NotFoundError, ImportError):
         logging.error("Module '%s' could not be loaded.", m_type)
         sys.exit(1)
 
