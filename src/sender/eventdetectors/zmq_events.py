@@ -23,6 +23,9 @@
 """
 This module implements an event detector to be used together with the hidra
 ingest API.
+
+Needed configuration in config file:
+TODO
 """
 
 from __future__ import absolute_import

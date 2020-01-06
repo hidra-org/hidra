@@ -23,6 +23,9 @@
 """
 This module implements a data fetcher be used together with the hidra ingest
 API.
+
+Needed configuration in config file:
+TODO
 """
 
 from __future__ import absolute_import

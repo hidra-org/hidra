@@ -45,7 +45,6 @@ Example config:
         history_size: 2000
         det_ip: asap3-mon
         det_api_version: 1.6.0
-
 """
 
 from __future__ import absolute_import

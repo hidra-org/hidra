@@ -22,6 +22,8 @@
 
 """
 This is a template module for implementing event detectors.
+
+No mandatory configuration needed.
 """
 
 from __future__ import absolute_import

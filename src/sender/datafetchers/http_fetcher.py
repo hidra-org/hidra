@@ -32,11 +32,12 @@ datafetcher:
 
 Example config:
     http_fetcher:
-        - "commissioning/raw"
-        - "commissioning/scratch_bl"
-        - "current/raw"
-        - "current/scratch_bl"
-        - "local"
+        fix_subdirs:
+            - "commissioning/raw"
+            - "commissioning/scratch_bl"
+            - "current/raw"
+            - "current/scratch_bl"
+            - "local"
 """
 
 from __future__ import absolute_import

@@ -56,7 +56,6 @@ Example config
         use_cleanup: False
         action_time: 10
         time_till_closed: 2
-
 """
 
 from __future__ import absolute_import

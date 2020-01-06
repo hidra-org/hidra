@@ -49,7 +49,6 @@ Example config:
                 - ""
         action_time: 5
         time_till_closed: 2
-
 """
 
 from __future__ import absolute_import

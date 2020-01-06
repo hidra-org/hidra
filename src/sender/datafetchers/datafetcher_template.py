@@ -22,6 +22,8 @@
 
 """
 This is a template module for implementing a data fetchers.
+
+No mandatory configuration needed.
 """
 
 from __future__ import absolute_import

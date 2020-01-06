@@ -1,3 +1,8 @@
+"""
+config:
+xfel_connections = [("localhost", 4545), ("localhost", 4546)]
+sync_buffer_size = 20
+"""
 from __future__ import print_function
 from __future__ import unicode_literals
 

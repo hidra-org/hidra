@@ -23,6 +23,9 @@
 """
 This module implements an event detector to connect multiple hidra instances
 in series.
+
+Needed configuration in config file:
+TODO
 """
 
 from __future__ import absolute_import
