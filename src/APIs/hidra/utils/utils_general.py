@@ -81,7 +81,9 @@ def check_module_exist(m_type):
         import_module(m_type)
         logging.debug("Module '%s' is ok.", m_type)
     except (NotFoundError, ImportError):
-        logging.error("Module '%s' could not be loaded.", m_type)
+        #  This will also be caught if the module is found but one dependency
+        #  inside the module is not satisfied
+        logging.error("Module '%s' could not be loaded.", m_type, exc_info=True)
         sys.exit(1)
 
 
