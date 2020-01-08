@@ -34,13 +34,17 @@ CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.dirname(
     os.path.dirname(
         os.path.dirname(
-            os.path.dirname(CURRENT_DIR)
+            os.path.dirname(
+                os.path.dirname(CURRENT_DIR)
+            )
         )
     )
 )
-EVENTDETECTOR_DIR = os.path.join(CURRENT_DIR, "eventdetectors")
-DATAFETCHER_DIR = os.path.join(CURRENT_DIR, "datafetchers")
-API_DIR = os.path.join(BASE_DIR, "src", "APIs")
+
+SENDER_DIR = os.path.join(BASE_DIR, "src", "hidra", "sender")
+EVENTDETECTOR_DIR = os.path.join(SENDER_DIR, "eventdetectors")
+DATAFETCHER_DIR = os.path.join(SENDER_DIR, "datafetchers")
+API_DIR = os.path.join(BASE_DIR, "src", "api", "python")
 
 if EVENTDETECTOR_DIR not in sys.path:
     sys.path.insert(0, EVENTDETECTOR_DIR)

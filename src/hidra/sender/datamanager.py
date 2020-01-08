@@ -186,8 +186,10 @@ def get_config():
     config_gen = config["general"]
     config_ed = config["eventdetector"]
     config_df = config["datafetcher"]
-    ed_type = config_ed["type"]
-    df_type = config_df["type"]
+    config_ed["type_module"] = "hidra.sender.eventdetectors." + config_ed["type"]
+    ed_type = config_ed["type_module"]
+    config_df["type_module"] = "hidra.sender.datafetchers." + config_df["type"]
+    df_type = config_df["type_module"]
 
     # generate log file name
     config_gen["log_file"] = utils.format_log_filename(
