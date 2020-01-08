@@ -83,6 +83,12 @@ from _environment import BASE_DIR  # noqa E402 # pylint: disable=unused-import
 import hidra.utils as utils  # noqa E402
 from hidra import __version__  # noqa E402
 
+try:
+    import hidra.conf
+    CONFIG_DIR = hidra.conf.__path__[0]
+except ImportError:
+    CONFIG_DIR = os.path.join(BASE_DIR, "conf")
+
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
