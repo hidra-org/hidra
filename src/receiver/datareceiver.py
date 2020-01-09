@@ -540,7 +540,8 @@ class DataReceiver(object):
             self.transfer.stop()
             self.transfer = None
 
-        self.plugin.stop()
+        if self.plugin is not None:
+            self.plugin.stop()
 
         if self.checking_thread is not None:
             self.checking_thread.stop()

@@ -52,6 +52,7 @@ from __future__ import unicode_literals
 import asapo_producer
 import asapo_consumer
 from builtins import super  # pylint: disable=redefined-builtin
+from hidra import NotSupported
 import json
 import logging
 import threading
@@ -124,12 +125,14 @@ class Plugin(object):
             timeout_ms=1000
         )
         group_id = broker.generate_group_id()
-        data, metadata = broker.get_last(group_id, meta_only=True)
-
-        return metadata["_id"]
-
-        # TODO if empty set to 0
-        # last_id = 1
+        try:
+            data, metadata = broker.get_last(group_id, meta_only=True)
+            file_id = metadata["_id"] + 1
+            self.log.debug("Continue existing stream (id %s)", file_id)
+            return file_id
+        except asapo_consumer.AsapoWrongInputError:
+            self.log.debug("Starting new stream (id 1)")
+            return 1
 
     def get_data_type(self):
         return self.data_type
@@ -142,7 +145,6 @@ class Plugin(object):
             metadata: The metadata to send as dict
             data (optional): the data to send
         """
-        self.file_id += 1
         exposed_path = Path(metadata["relative_path"],
                             metadata["filename"]).as_posix()
 
@@ -154,6 +156,7 @@ class Plugin(object):
             user_meta=json.dumps({"hidra": metadata}),
             callback=self._callback
         )
+        self.file_id += 1
 
     def _callback(self, header, err):
         self.lock.acquire()
@@ -167,4 +170,5 @@ class Plugin(object):
         pass
 
     def stop(self):
-        self.producer.wait_requests_finished(2000)
+        if self.producer is not None:
+            self.producer.wait_requests_finished(2000)
