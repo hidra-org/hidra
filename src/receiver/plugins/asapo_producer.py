@@ -42,6 +42,11 @@ import json
 import logging
 import threading
 
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
+
 
 class Plugin(object):
     """Implements an ASAP::O producer plugin
@@ -116,13 +121,15 @@ class Plugin(object):
             data (optional): the data to send
         """
         self.file_id += 1
+        exposed_path = Path(metadata["relative_path"],
+                            metadata["filename"]).as_posix()
 
         self.producer.send_file(
             id=self.file_id,
             local_path=local_path,
-            exposed_path=local_path,  # self.stream+"/test2_file",
+            exposed_path=exposed_path,  # self.stream+"/test2_file",
             ingest_mode=self.ingest_mode,
-            user_meta=json.dumps(metadata),
+            user_meta=json.dumps({"hidra": metadata}),
             callback=self._callback
         )
 

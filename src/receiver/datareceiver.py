@@ -510,7 +510,6 @@ class DataReceiver(object):
                 self.log.error("Processing data with plugin failed.",
                                exc_info=True)
 
-
     def stop(self, store=True):
         """Stop threads, close sockets and cleans up.
 
@@ -540,6 +539,8 @@ class DataReceiver(object):
             self.log.info("Shutting down receiver...")
             self.transfer.stop()
             self.transfer = None
+
+        self.plugin.stop()
 
         if self.checking_thread is not None:
             self.checking_thread.stop()
