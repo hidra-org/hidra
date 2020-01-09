@@ -28,7 +28,21 @@ datareceiver:
     plugin: "asapo_producer"
 
 asapo_producer:
-    return_type: "metadata"
+    endpoint: string
+    beamtime: string
+    stream: string
+    token: string
+    n_threads: int
+    ingest_mode: string
+
+Example config:
+    asapo_producer:
+        endpoint: "asapo-services:8400"
+        beamtime: "asapo_test"
+        stream: "hidra_test"
+        token: "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
+        n_threads: 1
+        ingest_mode: INGEST_MODE_TRANSFER_METADATA_ONLY
 """
 
 from __future__ import absolute_import
@@ -54,7 +68,7 @@ class Plugin(object):
     def __init__(self, plugin_config):
         super().__init__()
 
-        self.plugin_config = plugin_config
+        self.config = plugin_config
 
         self.producer = None
         self.endpoint = None
@@ -62,6 +76,7 @@ class Plugin(object):
         self.token = None
         self.stream = None
         self.ingest_mode = None
+        self.data_type = None
         self.file_id = None
         self.lock = None
 
@@ -72,12 +87,12 @@ class Plugin(object):
         """
         self.log = logging.getLogger()
 
-        self.endpoint = "asapo-services:8400"
-        self.beamtime = "asapo_test"
-        self.stream = "hidra_test"
-        self.token = "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
-        n_threads = 1
-        self.ingest_mode = asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY
+        self.endpoint = self.config["endpoint"]
+        self.beamtime = self.config["beamtime"]
+        self.stream = self.config["stream"]
+        self.token = self.config["token"]
+        n_threads = self.config["n_threads"]
+        self._set_ingest_mode(self.config["ingest_mode"])
 
         self.lock = threading.Lock()
 
@@ -90,8 +105,12 @@ class Plugin(object):
         )
         self.file_id = self._get_start_file_id()
 
-    def get_data_type(self):
-        return "metadata"
+    def _set_ingest_mode(self, mode):
+        if mode == "INGEST_MODE_TRANSFER_METADATA_ONLY":
+            self.ingest_mode = asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY
+            self.data_type = "metadata"
+        else:
+            raise NotSupported("Ingest mode '{}' is not supported".format(mode))
 
     def _get_start_file_id(self):
         path = "/asapo_shared/asapo/data"
@@ -111,6 +130,9 @@ class Plugin(object):
 
         # TODO if empty set to 0
         # last_id = 1
+
+    def get_data_type(self):
+        return self.data_type
 
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
