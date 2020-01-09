@@ -1865,14 +1865,21 @@ class Transfer(Base):
         else:
             return True
 
-    def store(self, target_base_path, timeout=None):
+    def store(self, target_base_path, timeout=None, return_type=None):
         """Writes all data belonging to one file to disc.
 
         Args:
             target_base_path: The base path under which the file possible
-                              subdirectories should be created.
+                subdirectories should be created.
             timeout (optional): The time (in ms) to wait for new messages to
-                               come before aborting.
+                come before aborting.
+            return_type (boolean, optional): If any information about the file
+                should be communicated back. Options are "metadata" or "data"
+
+        Returns:
+            Either None if return_type is not set (or set to None) or
+            [<metadata>, <data>] otherwise. If return_type is set to metadata,
+            <data> is set to None
         """
 
         run_loop = True
@@ -1930,6 +1937,12 @@ class Transfer(Base):
                 self.log.debug("Status changed to: %s", self.status)
 
                 break
+
+        if return_type == "metadata":
+            return [metadata, None]
+        if return_type == "data":
+            # TODO join chunks
+            return [metadata, data]
 
     def stop(self):
         """

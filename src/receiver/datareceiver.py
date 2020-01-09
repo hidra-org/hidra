@@ -35,6 +35,7 @@ from __future__ import unicode_literals
 
 import argparse
 import copy
+from importlib import import_module
 import logging
 import os
 import signal
@@ -45,7 +46,7 @@ import setproctitle
 
 from __init__ import BASE_DIR
 
-from hidra import Transfer, __version__
+from hidra import Transfer, __version__, generate_filepath
 import hidra.utils as utils
 
 
@@ -290,6 +291,9 @@ class DataReceiver(object):
         self.transfer = None
         self.checking_thread = None
 
+        self.plugin_config = None
+        self.plugin = None
+
         self.run_loop = True
 
         self.setup()
@@ -386,6 +390,8 @@ class DataReceiver(object):
                                  use_log=True,
                                  dirs_not_to_create=self.dirs_not_to_create)
 
+        self._load_plugin()
+
     def _setup_logging(self):
         config_gen = self.config["general"]
 
@@ -408,6 +414,23 @@ class DataReceiver(object):
 
         self.log = logging.getLogger("DataReceiver")
 
+    def _load_plugin(self):
+        try:
+            plugin_name = self.config["datareceiver"]["plugin"]
+            self.plugin_config = self.config[plugin_name]
+        except KeyError:
+            self.log.debug("No plugin specified")
+            self.plugin_config = {}
+            return
+
+        try:
+            plugin_m = import_module("plugins." + plugin_name)
+            self.plugin = plugin_m.Plugin(self.plugin_config)
+            self.plugin.setup()
+            self.log.info("Loading plugin %s", plugin_name)
+        except Exception:
+            self.log.error("Could not load plugin", exc_info=True)
+
     def exec_run(self):
         """Wrapper around run to react to exceptions.
         """
@@ -429,6 +452,11 @@ class DataReceiver(object):
 
         global _whitelist
         global _changed_netgroup
+
+        if self.plugin is not None:
+            plugin_type = self.plugin.get_data_type()
+        else:
+            plugin_type = None
 
         try:
             self.transfer.start([self.data_ip, self.data_port], _whitelist)
@@ -457,12 +485,31 @@ class DataReceiver(object):
                     _changed_netgroup = False
 
             try:
-                self.transfer.store(self.target_dir, self.timeout)
+                ret_val = self.transfer.store(
+                    target_base_path=self.target_dir,
+                    timeout=self.timeout,
+                    return_type=plugin_type
+                )
+
             except KeyboardInterrupt:
                 break
             except Exception:
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise
+
+            try:
+                if self.plugin is not None and ret_val != [None, None]:
+                    [metadata, data] = ret_val
+
+                    self.plugin.process(
+                        local_path=generate_filepath(self.target_dir, metadata),
+                        metadata=metadata,
+                        data=data
+                    )
+            except Exception:
+                self.log.error("Processing data with plugin failed.",
+                               exc_info=True)
+
 
     def stop(self, store=True):
         """Stop threads, close sockets and cleans up.
