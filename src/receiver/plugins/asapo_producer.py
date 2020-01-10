@@ -130,9 +130,13 @@ class Plugin(object):
             file_id = metadata["_id"] + 1
             self.log.debug("Continue existing stream (id %s)", file_id)
             return file_id
-        except asapo_consumer.AsapoWrongInputError:
+        except (asapo_consumer.AsapoWrongInputError,
+                asapo_consumer.AsapoEndOfStreamError):
             self.log.debug("Starting new stream (id 1)")
             return 1
+        except Exception:
+            self.log.debug("Config for consumer was: %s", consumer_config)
+            raise
 
     def get_data_type(self):
         return self.data_type
