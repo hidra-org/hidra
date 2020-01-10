@@ -52,7 +52,7 @@ from __future__ import unicode_literals
 import asapo_producer
 import asapo_consumer
 from builtins import super  # pylint: disable=redefined-builtin
-from hidra import NotSupported
+from hidra.utils import NotSupported, WrongConfiguration
 import json
 import logging
 import threading
@@ -86,7 +86,17 @@ class Plugin(object):
     def setup(self):
         """Sets the configuration and starts the producer
         """
-        self.log = logging.getLogger()
+        self.log = logging.getLogger(__name__)
+
+        self.required_parameter = [
+            "endpoint",
+            "beamtime",
+            "stream",
+            "token",
+            "n_threads",
+            "ingest_mode"
+        ]
+        self._check_config()
 
         self.endpoint = self.config["endpoint"]
         self.beamtime = self.config["beamtime"]
@@ -97,14 +107,31 @@ class Plugin(object):
 
         self.lock = threading.Lock()
 
-        self.producer = asapo_producer.create_producer(
+        producer_config = dict(
             endpoint=self.endpoint,
             beamtime_id=self.beamtime,
             stream=self.stream,
             token=self.token,
             nthreads=n_threads
         )
+        self.log.debug("Create producer with config=%s", producer_config)
+        self.producer = asapo_producer.create_producer(**producer_config)
         self.file_id = self._get_start_file_id()
+
+    def _check_config(self):
+        failed = False
+
+        for i in self.required_parameter:
+            if i not in self.config:
+                self.log.error(
+                    "Wrong configuration. Missing parameter: '%s'", i
+                )
+                failed = True
+
+        if failed:
+            raise WrongConfiguration(
+                "The configuration has missing or wrong parameters."
+            )
 
     def _set_ingest_mode(self, mode):
         if mode == "INGEST_MODE_TRANSFER_METADATA_ONLY":
@@ -114,16 +141,17 @@ class Plugin(object):
             raise NotSupported("Ingest mode '{}' is not supported".format(mode))
 
     def _get_start_file_id(self):
-        path = "/asapo_shared/asapo/data"
+        path = ""
 
-        broker = asapo_consumer.create_server_broker(
+        consumer_config = dict(
             server_name=self.endpoint,
-            source_path=path,
+            source_path="",
             beamtime_id=self.beamtime,
             stream=self.stream,
             token=self.token,
             timeout_ms=1000
         )
+        broker = asapo_consumer.create_server_broker(**consumer_config)
         group_id = broker.generate_group_id()
         try:
             data, metadata = broker.get_last(group_id, meta_only=True)
@@ -169,9 +197,6 @@ class Plugin(object):
         else:
             self.log.error("could not sent: %s, %s", header, err)
         self.lock.release()
-
-    def aaa_stop(self):
-        pass
 
     def stop(self):
         if self.producer is not None:

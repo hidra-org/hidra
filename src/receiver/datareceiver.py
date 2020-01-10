@@ -430,6 +430,7 @@ class DataReceiver(object):
             self.log.info("Loading plugin %s", plugin_name)
         except Exception:
             self.log.error("Could not load plugin", exc_info=True)
+            self.plugin = None
 
     def exec_run(self):
         """Wrapper around run to react to exceptions.
@@ -460,7 +461,6 @@ class DataReceiver(object):
 
         try:
             self.transfer.start([self.data_ip, self.data_port], _whitelist)
-#            self.transfer.start(self.data_port)
         except Exception:
             self.log.error("Could not initiate stream", exc_info=True)
             self.stop(store=False)
@@ -497,8 +497,8 @@ class DataReceiver(object):
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise
 
-            try:
-                if self.plugin is not None and ret_val != [None, None]:
+            if self.plugin is not None and ret_val != [None, None]:
+                try:
                     [metadata, data] = ret_val
 
                     self.plugin.process(
@@ -506,9 +506,9 @@ class DataReceiver(object):
                         metadata=metadata,
                         data=data
                     )
-            except Exception:
-                self.log.error("Processing data with plugin failed.",
-                               exc_info=True)
+                except Exception:
+                    self.log.error("Processing data with plugin failed.",
+                                   exc_info=True)
 
     def stop(self, store=True):
         """Stop threads, close sockets and cleans up.
