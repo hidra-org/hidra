@@ -1674,6 +1674,14 @@ class Transfer(Base):
             payload: The data to store.
             base_path: The base path under which the file should be stored
             metadata: The metadata received together with the data.
+
+        Returns:
+            A boolean, if the file was closed (True=closed).
+
+        Raises
+            DataSavingError: If something went wrong when storing the data.
+            UsageError: When the configuration does not match (e.g hidra
+                requires a confirmation but tha application did not enable it.)
         """
 
         # --------------------------------------------------------------------
@@ -1938,11 +1946,15 @@ class Transfer(Base):
 
                 break
 
-        if return_type == "metadata":
-            return [metadata, None]
-        if return_type == "data":
-            # TODO join chunks
-            return [metadata, data]
+        # if run_loop was not altered, that means that some kind of error
+        # occurred
+        if not run_loop:
+            if return_type == "metadata":
+                metadata["chunk_number"] = None
+                return [metadata, None]
+#            elif return_type == "data":
+#                # TODO join chunks
+#                return [metadata, data]
 
     def stop(self):
         """

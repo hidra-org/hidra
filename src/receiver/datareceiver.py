@@ -497,7 +497,7 @@ class DataReceiver(object):
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise
 
-            if self.plugin is not None and ret_val != [None, None]:
+            if self.plugin is not None and ret_val is not None:
                 try:
                     [metadata, data] = ret_val
 

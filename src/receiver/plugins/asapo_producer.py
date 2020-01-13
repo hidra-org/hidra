@@ -70,6 +70,7 @@ class Plugin(object):
         super().__init__()
 
         self.config = plugin_config
+        self.required_parameter = []
 
         self.producer = None
         self.endpoint = None
@@ -137,12 +138,17 @@ class Plugin(object):
         if mode == "INGEST_MODE_TRANSFER_METADATA_ONLY":
             self.ingest_mode = asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY
             self.data_type = "metadata"
+        # TODO data forwarding
+#        elif mode == "INGEST_MODE_TRANSFER_DATA":
+#            self.ingest_mode = asapo_producer.INGEST_MODE_TRANSFER_DATA
+#            self.data_type = "data"
+#        elif mode == "DEFAULT_INGEST_MODE":
+#            self.ingest_mode = asapo_producer.DEFAULT_INGEST_DATA
+#            self.data_type = "data"
         else:
             raise NotSupported("Ingest mode '{}' is not supported".format(mode))
 
     def _get_start_file_id(self):
-        path = ""
-
         consumer_config = dict(
             server_name=self.endpoint,
             source_path="",
@@ -180,22 +186,36 @@ class Plugin(object):
         exposed_path = Path(metadata["relative_path"],
                             metadata["filename"]).as_posix()
 
-        self.producer.send_file(
-            id=self.file_id,
-            local_path=local_path,
-            exposed_path=exposed_path,  # self.stream+"/test2_file",
-            ingest_mode=self.ingest_mode,
-            user_meta=json.dumps({"hidra": metadata}),
-            callback=self._callback
-        )
+        if self.data_type == "metadata":
+            self.producer.send_file(
+                id=self.file_id,
+                local_path=local_path,
+                exposed_path=exposed_path,  # self.stream+"/test2_file",
+                ingest_mode=self.ingest_mode,
+                user_meta=json.dumps({"hidra": metadata}),
+                callback=self._callback
+            )
+        elif self.data_type == "data":
+            self.producer.send_data(
+                id=self.file_id,
+                exposed_path=exposed_path,
+                data=data,
+                user_meta=json.dumps({"hidra": metadata}),
+                ingest_mode=self.ingest_mode,
+                callback=self._callback
+            )
+        else:
+            raise NotSupported("No correct data_type was specified. "
+                               "Was setup method executed?")
+
         self.file_id += 1
 
     def _callback(self, header, err):
         self.lock.acquire()
         if err is None:
-            self.log.debug("successfully sent: %s", header)
+            self.log.debug("Successfully sent: %s", header)
         else:
-            self.log.error("could not sent: %s, %s", header, err)
+            self.log.error("Could not sent: %s, %s", header, err)
         self.lock.release()
 
     def stop(self):
