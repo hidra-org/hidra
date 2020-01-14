@@ -161,6 +161,11 @@ class CommunicationFailed(Exception):
     pass
 
 
+class DataError(Exception):
+    """Raised when an error with the data occurred."""
+    pass
+
+
 class DataSavingError(Exception):
     """Raised when an error occurred while the data was saved."""
     pass

@@ -50,7 +50,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import asapo_producer
-# import asapo_consumer
+import asapo_consumer
 from builtins import super  # pylint: disable=redefined-builtin
 from future.utils import iteritems
 import hidra.utils as utils
@@ -143,29 +143,29 @@ class Plugin(object):
         else:
             raise utils.NotSupported("Ingest mode '{}' is not supported".format(mode))
 
-#    def _get_start_file_id(self):
-#        consumer_config = dict(
-#            server_name=self.endpoint,
-#            source_path="",
-#            beamtime_id=self.beamtime,
-#            stream=self.stream,
-#            token=self.token,
-#            timeout_ms=1000
-#        )
-#        broker = asapo_consumer.create_server_broker(**consumer_config)
-#        group_id = broker.generate_group_id()
-#        try:
-#            data, metadata = broker.get_last(group_id, meta_only=True)
-#            file_id = metadata["_id"] + 1
-#            self.log.debug("Continue existing stream (id %s)", file_id)
-#            return file_id
-#        except (asapo_consumer.AsapoWrongInputError,
-#                asapo_consumer.AsapoEndOfStreamError):
-#            self.log.debug("Starting new stream (id 1)")
-#            return 1
-#        except Exception:
-#            self.log.debug("Config for consumer was: %s", consumer_config)
-#            raise
+    def _get_start_file_id(self, stream):
+        consumer_config = dict(
+            server_name=self.endpoint,
+            source_path="",
+            beamtime_id=self.beamtime,
+            stream=stream,
+            token=self.token,
+            timeout_ms=1000
+        )
+        broker = asapo_consumer.create_server_broker(**consumer_config)
+        group_id = broker.generate_group_id()
+        try:
+            data, metadata = broker.get_last(group_id, meta_only=True)
+            file_id = metadata["_id"]
+            self.log.debug("Continue existing stream (id %s)", file_id)
+            return file_id
+        except (asapo_consumer.AsapoWrongInputError,
+                asapo_consumer.AsapoEndOfStreamError):
+            self.log.debug("Starting new stream (id 1)")
+            return 0
+        except Exception:
+            self.log.debug("Config for consumer was: %s", consumer_config)
+            raise
 
     def get_data_type(self):
         return self.data_type
@@ -179,7 +179,11 @@ class Plugin(object):
             nthreads=self.n_threads
         )
         self.log.debug("Create producer with config=%s", config)
-        self.producers[stream] = asapo_producer.create_producer(**config)
+        self.producers[stream] = {
+            "producer": asapo_producer.create_producer(**config),
+            "offset": self._get_start_file_id(stream),
+            "current_scan_id": 0
+        }
 
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
@@ -192,17 +196,25 @@ class Plugin(object):
         exposed_path = Path(metadata["relative_path"],
                             metadata["filename"]).as_posix()
 
-        stream, file_id = self._parse_file_name(local_path)
+        detector, scan_id, file_id = self._parse_file_name(local_path)
 
-        try:
-            producer = self.producers[stream]
-        except KeyError:
-            self._create_producer(stream=stream)
-            producer = self.producers[stream]
+        if detector not in self.producers:
+            self._create_producer(stream=detector)
+
+        producer = self.producers[detector]["producer"]
+        current_scan_id = self.producers[detector]["current_scan_id"]
+
+        if scan_id < current_scan_id:
+            # drop file from old scan to not mess up data of new scan
+            self.log.debug("current_scan_id=%s", current_scan_id)
+            self.log.debug("scan_id=%s", scan_id)
+            raise utils.DataError("File from old scan id received. Drop it.")
+
+        asapo_id = file_id + self.producers[detector]["offset"]
 
         if self.data_type == "metadata":
             producer.send_file(
-                id=file_id,
+                id=asapo_id,
                 local_path=local_path,
                 exposed_path=exposed_path,
                 ingest_mode=self.ingest_mode,
@@ -211,7 +223,7 @@ class Plugin(object):
             )
         elif self.data_type == "data":
             producer.send_data(
-                id=file_id,
+                id=asapo_id,
                 exposed_path=exposed_path,
                 data=data,
                 user_meta=json.dumps({"hidra": metadata}),
@@ -221,6 +233,9 @@ class Plugin(object):
         else:
             raise utils.NotSupported("No correct data_type was specified. "
                                      "Was setup method executed?")
+
+        self.producers[detector]["offset"] += 1
+        self.producers[detector]["current_scan_id"] = current_scan_id
 
     def _parse_file_name(self, path):
         regex = self.config["file_regex"]
@@ -249,9 +264,7 @@ class Plugin(object):
             raise utils.UsageError("Missing entry for file_idx_in_scan in "
                                    "matched result")
 
-        stream = detector + "_" + scan_id
-
-        return stream, int(file_id)
+        return detector, int(scan_id), int(file_id)
 
     def _callback(self, header, err):
         self.lock.acquire()
@@ -262,5 +275,5 @@ class Plugin(object):
         self.lock.release()
 
     def stop(self):
-        for detector, producer in iteritems(self.producers):
-            producer.wait_requests_finished(2000)
+        for detector, producer_info in iteritems(self.producers):
+            producer_info["producer"].wait_requests_finished(2000)
