@@ -50,11 +50,13 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import asapo_producer
-import asapo_consumer
+# import asapo_consumer
 from builtins import super  # pylint: disable=redefined-builtin
-from hidra.utils import NotSupported, WrongConfiguration
+from future.utils import iteritems
+import hidra.utils as utils
 import json
 import logging
+import re
 import threading
 
 try:
@@ -72,14 +74,14 @@ class Plugin(object):
         self.config = plugin_config
         self.required_parameter = []
 
-        self.producer = None
+        self.producers = {}
         self.endpoint = None
         self.beamtime = None
         self.token = None
         self.stream = None
+        self.n_threads = None
         self.ingest_mode = None
         self.data_type = None
-        self.file_id = None
         self.lock = None
 
         self.log = None
@@ -92,7 +94,6 @@ class Plugin(object):
         self.required_parameter = [
             "endpoint",
             "beamtime",
-            "stream",
             "token",
             "n_threads",
             "ingest_mode"
@@ -101,23 +102,17 @@ class Plugin(object):
 
         self.endpoint = self.config["endpoint"]
         self.beamtime = self.config["beamtime"]
-        self.stream = self.config["stream"]
         self.token = self.config["token"]
-        n_threads = self.config["n_threads"]
+        self.n_threads = self.config["n_threads"]
         self._set_ingest_mode(self.config["ingest_mode"])
 
-        self.lock = threading.Lock()
+        try:
+            self.stream = self.config["stream"]
+            self.log.debug("Static stream configured. Using: %s", self.stream)
+        except KeyError:
+            pass
 
-        producer_config = dict(
-            endpoint=self.endpoint,
-            beamtime_id=self.beamtime,
-            stream=self.stream,
-            token=self.token,
-            nthreads=n_threads
-        )
-        self.log.debug("Create producer with config=%s", producer_config)
-        self.producer = asapo_producer.create_producer(**producer_config)
-        self.file_id = self._get_start_file_id()
+        self.lock = threading.Lock()
 
     def _check_config(self):
         failed = False
@@ -130,7 +125,7 @@ class Plugin(object):
                 failed = True
 
         if failed:
-            raise WrongConfiguration(
+            raise utils.WrongConfiguration(
                 "The configuration has missing or wrong parameters."
             )
 
@@ -146,34 +141,45 @@ class Plugin(object):
 #            self.ingest_mode = asapo_producer.DEFAULT_INGEST_DATA
 #            self.data_type = "data"
         else:
-            raise NotSupported("Ingest mode '{}' is not supported".format(mode))
+            raise utils.NotSupported("Ingest mode '{}' is not supported".format(mode))
 
-    def _get_start_file_id(self):
-        consumer_config = dict(
-            server_name=self.endpoint,
-            source_path="",
-            beamtime_id=self.beamtime,
-            stream=self.stream,
-            token=self.token,
-            timeout_ms=1000
-        )
-        broker = asapo_consumer.create_server_broker(**consumer_config)
-        group_id = broker.generate_group_id()
-        try:
-            data, metadata = broker.get_last(group_id, meta_only=True)
-            file_id = metadata["_id"] + 1
-            self.log.debug("Continue existing stream (id %s)", file_id)
-            return file_id
-        except (asapo_consumer.AsapoWrongInputError,
-                asapo_consumer.AsapoEndOfStreamError):
-            self.log.debug("Starting new stream (id 1)")
-            return 1
-        except Exception:
-            self.log.debug("Config for consumer was: %s", consumer_config)
-            raise
+#    def _get_start_file_id(self):
+#        consumer_config = dict(
+#            server_name=self.endpoint,
+#            source_path="",
+#            beamtime_id=self.beamtime,
+#            stream=self.stream,
+#            token=self.token,
+#            timeout_ms=1000
+#        )
+#        broker = asapo_consumer.create_server_broker(**consumer_config)
+#        group_id = broker.generate_group_id()
+#        try:
+#            data, metadata = broker.get_last(group_id, meta_only=True)
+#            file_id = metadata["_id"] + 1
+#            self.log.debug("Continue existing stream (id %s)", file_id)
+#            return file_id
+#        except (asapo_consumer.AsapoWrongInputError,
+#                asapo_consumer.AsapoEndOfStreamError):
+#            self.log.debug("Starting new stream (id 1)")
+#            return 1
+#        except Exception:
+#            self.log.debug("Config for consumer was: %s", consumer_config)
+#            raise
 
     def get_data_type(self):
         return self.data_type
+
+    def _create_producer(self, stream):
+        config = dict(
+            endpoint=self.endpoint,
+            beamtime_id=self.beamtime,
+            stream=stream,
+            token=self.token,
+            nthreads=self.n_threads
+        )
+        self.log.debug("Create producer with config=%s", config)
+        self.producers[stream] = asapo_producer.create_producer(**config)
 
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
@@ -186,18 +192,26 @@ class Plugin(object):
         exposed_path = Path(metadata["relative_path"],
                             metadata["filename"]).as_posix()
 
+        stream, file_id = self._parse_file_name(local_path)
+
+        try:
+            producer = self.producers[stream]
+        except KeyError:
+            self._create_producer(stream=stream)
+            producer = self.producers[stream]
+
         if self.data_type == "metadata":
-            self.producer.send_file(
-                id=self.file_id,
+            producer.send_file(
+                id=file_id,
                 local_path=local_path,
-                exposed_path=exposed_path,  # self.stream+"/test2_file",
+                exposed_path=exposed_path,
                 ingest_mode=self.ingest_mode,
                 user_meta=json.dumps({"hidra": metadata}),
                 callback=self._callback
             )
         elif self.data_type == "data":
-            self.producer.send_data(
-                id=self.file_id,
+            producer.send_data(
+                id=file_id,
                 exposed_path=exposed_path,
                 data=data,
                 user_meta=json.dumps({"hidra": metadata}),
@@ -205,10 +219,39 @@ class Plugin(object):
                 callback=self._callback
             )
         else:
-            raise NotSupported("No correct data_type was specified. "
-                               "Was setup method executed?")
+            raise utils.NotSupported("No correct data_type was specified. "
+                                     "Was setup method executed?")
 
-        self.file_id += 1
+    def _parse_file_name(self, path):
+        regex = self.config["file_regex"]
+
+        search = re.search(regex, path)
+        if search:
+            matched = search.groupdict()
+        else:
+            self.log.debug("file name: %s", path)
+            self.log.debug("regex: %s", regex)
+            raise utils.UsageError("Does not match file pattern")
+
+        try:
+            detector = matched["detector"]
+        except KeyError:
+            raise utils.UsageError("Missing entry for detector in matched "
+                                   "result")
+        try:
+            scan_id = matched["scan_id"]
+        except KeyError:
+            raise utils.UsageError("Missing entry for scan_id in matched "
+                                   "result")
+        try:
+            file_id = matched["file_idx_in_scan"]
+        except KeyError:
+            raise utils.UsageError("Missing entry for file_idx_in_scan in "
+                                   "matched result")
+
+        stream = detector + "_" + scan_id
+
+        return stream, int(file_id)
 
     def _callback(self, header, err):
         self.lock.acquire()
@@ -219,5 +262,5 @@ class Plugin(object):
         self.lock.release()
 
     def stop(self):
-        if self.producer is not None:
-            self.producer.wait_requests_finished(2000)
+        for detector, producer in iteritems(self.producers):
+            producer.wait_requests_finished(2000)
