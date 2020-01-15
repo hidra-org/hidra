@@ -74,7 +74,7 @@ class Plugin(object):
         self.config = plugin_config
         self.required_parameter = []
 
-        self.producers = {}
+        self.stream_info = {}
         self.endpoint = None
         self.beamtime = None
         self.token = None
@@ -179,14 +179,24 @@ class Plugin(object):
             nthreads=self.n_threads
         )
         self.log.debug("Create producer with config=%s", config)
-        self.producers[stream] = {
+        self.stream_info[stream] = {
             "producer": asapo_producer.create_producer(**config),
             "offset": self._get_start_file_id(stream),
+            "last_id_used": 0,
             "current_scan_id": 0
         }
 
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
+
+        Asapo index calculation explained for incoming files in format
+        (<scan_id, <file_id>):
+        (0,0) -> 1
+        (0,1) -> 2
+        (1,0) -> 3
+        (0,3) -> dropped (old scan)
+        (1,0) -> 3, but asapo is immutable -> dropped
+        (1,1) -> 4
 
         Args:
             local_path: The absolute path where the file was written
@@ -198,19 +208,27 @@ class Plugin(object):
 
         detector, scan_id, file_id = self._parse_file_name(local_path)
 
-        if detector not in self.producers:
+        if detector not in self.stream_info:
             self._create_producer(stream=detector)
 
-        producer = self.producers[detector]["producer"]
-        current_scan_id = self.producers[detector]["current_scan_id"]
+        # for convenience
+        stream_info = self.stream_info[detector]
+        producer = stream_info["producer"]
 
-        if scan_id < current_scan_id:
-            # drop file from old scan to not mess up data of new scan
-            self.log.debug("current_scan_id=%s", current_scan_id)
-            self.log.debug("scan_id=%s", scan_id)
-            raise utils.DataError("File from old scan id received. Drop it.")
+        # drop file from old scan to not mess up data of new scan
+        if scan_id < stream_info["current_scan_id"]:
+            self.log.debug("current_scan_id=%s, scan_id=%s",
+                           stream_info["current_scan_id"], scan_id)
+            self.log.debug("local_path=%s", local_path)
+            raise utils.DataError("File belongs to old scan id. Drop it.")
+        # new scan means file_id counting is reset -> offset has to adjusted
+        elif scan_id > stream_info["current_scan_id"]:
+            self.log.debug("Detected new scan, increase offset by %s",
+                           stream_info["last_id_used"])
+            # increase by the sum of all files of previous scan
+            stream_info["offset"] += stream_info["last_id_used"]
 
-        asapo_id = file_id + self.producers[detector]["offset"]
+        asapo_id = file_id + stream_info["offset"]
 
         if self.data_type == "metadata":
             producer.send_file(
@@ -234,8 +252,8 @@ class Plugin(object):
             raise utils.NotSupported("No correct data_type was specified. "
                                      "Was setup method executed?")
 
-        self.producers[detector]["offset"] += 1
-        self.producers[detector]["current_scan_id"] = current_scan_id
+        stream_info["last_id_used"] = file_id
+        stream_info["current_scan_id"] = scan_id
 
     def _parse_file_name(self, path):
         regex = self.config["file_regex"]
@@ -275,5 +293,5 @@ class Plugin(object):
         self.lock.release()
 
     def stop(self):
-        for detector, producer_info in iteritems(self.producers):
+        for detector, producer_info in iteritems(self.stream_info):
             producer_info["producer"].wait_requests_finished(2000)
