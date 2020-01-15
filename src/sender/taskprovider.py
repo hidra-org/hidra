@@ -71,7 +71,7 @@ class TaskProvider(Base):
         self.router_socket = None
         self.control_socket = None
         self.poller = None
-        self.timeout = 1000
+        self.timeout = None
 
         self.eventdetector = None
         self.keep_running = None
@@ -90,13 +90,19 @@ class TaskProvider(Base):
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
+        try:
+            self.timeout = self.config["general"]["taskprovider_timeout"]
+        except KeyError:
+            self.timeout = 1000
+        self.log.debug("Set timeout to %s ms", self.timeout)
+
         # remember if the context was created outside this class or not
         self.log.info("Registering ZMQ context")
         self.context = zmq.Context()
 
         try:
             self.ignore_accumulated_events = (
-                self.config["ignore_accumulated_events"]
+                self.config["eventdetector"]["ignore_accumulated_events"]
             )
         except KeyError:
             self.ignore_accumulated_events = False
@@ -135,13 +141,20 @@ class TaskProvider(Base):
 
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
 
+        sockopt_request = [[zmq.REQ_RELAXED, True], [zmq.REQ_CORRELATE, True]]
+        sockopt_router = []
+
+        if self.timeout is not None:
+            sockopt_request += [[zmq.RCVTIMEO, self.timeout]]
+            sockopt_router += [[zmq.SNDTIMEO, self.timeout]]
+
         # socket to get forwarded requests
         self.request_fw_socket = self.start_socket(
             name="request_fw_socket",
             sock_type=zmq.REQ,
             sock_con="connect",
             endpoint=self.endpoints.request_fw_con,
-            socket_options=[[zmq.RCVTIMEO, self.timeout]]
+            socket_options=sockopt_request
         )
 
         # socket to distribute the events to the worker
@@ -152,7 +165,7 @@ class TaskProvider(Base):
             endpoint=self.endpoints.router_bind,
             # this sometimes blocks indefinitely if there are problems
             # with sending (e.g. when wrong config on datadispatcher)
-            socket_options=[[zmq.SNDTIMEO, self.timeout]]
+            socket_options=sockopt_router
         )
 
         self.poller = zmq.Poller()
@@ -240,8 +253,8 @@ class TaskProvider(Base):
                     # This happens when CLOSE_FILE is sent as workload
                     pass
                 except zmq.error.Again:
-                    self.log.debug("Error when getting requests due to "
-                                   "timeout of request_socket")
+                    self.log.error("Error when getting requests due to timeout "
+                                   "of request_socket")
                 except Exception:
                     self.log.error("Get Requests... failed.", exc_info=True)
 

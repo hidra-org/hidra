@@ -1,4 +1,10 @@
 # develop
+# 4.1.6
+
+- Fix ignore_accumulated_events
+- Make timeout of taskprovider configurable and possible to disable
+- Fix zmq exception after timeout in taskprovider
+
 # 4.1.5
 
 - Fix typo in function call transfer

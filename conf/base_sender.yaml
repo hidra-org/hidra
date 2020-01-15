@@ -16,6 +16,10 @@ general:
     # (needed if running on Windows)
     request_fw_port: 50002
 
+    # how long the taskprovider should wait for incoming and outgoing messages
+    # (in ms, None means disabled)
+    taskprovider_timeout: 1000
+
     # ZMQ port to distribute control signals
     # (needed if running on Windows)
     control_pub_port: 50005
@@ -36,6 +40,11 @@ eventdetector:
     # ZMQ port to get events from
     # (needed if event_detector_type is zmq_events)
     event_det_port: 50003
+
+    # While asleep due to a not responding receiver events might accumulate.
+    # For fast detectors it might be better to throw them away.
+    # (if not set default is False)
+    #ignore_accumulated_events: False
 
     # Subdirectories which should not be created when create_fix_subdirs option
     # is enabled
