@@ -28,3 +28,33 @@ datareceiver:
 
     # TCP port of data pipe
     data_stream_port: 50100
+
+    # The plugin to activate
+    # (setting it to None or removing it means no plugin is used)
+    #plugin: "asapo_producer"
+
+asapo_producer:
+    # The ASAP::O endpoint to use
+    endpoint: "asapo-services:8400"
+
+    # The beamtime the data should be assigned
+    beamtime: "asapo_test"
+
+    # The stream the data should be assigned (if this is not set, stream is
+    # parsed from the file name via file_regex
+    stream: "hidra_test"
+
+    # Which token to use
+    token: "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
+
+    # The number of Thread the producer should start
+    n_threads: 1
+
+    # The ingest mode into the producer
+    ingest_mode: INGEST_MODE_TRANSFER_METADATA_ONLY
+
+    # Regular expression how to parse the file name, Needed placeholders are
+    # <detector>, <scan_id> : to identify the stream the data is sent to
+    #    (instead of defining it here, stream can also set statically)
+    # <file_idx_in_scan>: to know which index inside the stream
+    file_regex: ".*/(?P<detector>.*)/(?P<scan_id>.*)_scan_name-(?P<file_idx_in_scan>.*).tif"

@@ -30,10 +30,11 @@ datareceiver:
 asapo_producer:
     endpoint: string
     beamtime: string
-    stream: string
+    stream: string  # optional
     token: string
     n_threads: int
     ingest_mode: string
+    file_regex: regex string
 
 Example config:
     asapo_producer:
@@ -43,6 +44,7 @@ Example config:
         token: "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
         n_threads: 1
         ingest_mode: INGEST_MODE_TRANSFER_METADATA_ONLY
+        file_regex: ".*/(?P<detector>.*)/scan_(?P<scan_id>.*)/(?P<file_idx_in_scan>.*).tif"
 """
 
 from __future__ import absolute_import
