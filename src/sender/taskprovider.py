@@ -253,8 +253,8 @@ class TaskProvider(Base):
                     # This happens when CLOSE_FILE is sent as workload
                     pass
                 except zmq.error.Again:
-                    self.log.debug("Error when getting requests due to "
-                                   "timeout of request_socket")
+                    self.log.error("Error when getting requests due to timeout "
+                                   "of request_socket")
                 except Exception:
                     self.log.error("Get Requests... failed.", exc_info=True)
 
