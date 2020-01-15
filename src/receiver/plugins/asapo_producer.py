@@ -208,11 +208,13 @@ class Plugin(object):
 
         detector, scan_id, file_id = self._parse_file_name(local_path)
 
-        if detector not in self.stream_info:
-            self._create_producer(stream=detector)
+        stream = self.stream or detector
+
+        if stream not in self.stream_info:
+            self._create_producer(stream=stream)
 
         # for convenience
-        stream_info = self.stream_info[detector]
+        stream_info = self.stream_info[stream]
         producer = stream_info["producer"]
 
         # drop file from old scan to not mess up data of new scan
@@ -293,5 +295,5 @@ class Plugin(object):
         self.lock.release()
 
     def stop(self):
-        for detector, producer_info in iteritems(self.stream_info):
-            producer_info["producer"].wait_requests_finished(2000)
+        for stream, info in iteritems(self.stream_info):
+            info["producer"].wait_requests_finished(2000)
