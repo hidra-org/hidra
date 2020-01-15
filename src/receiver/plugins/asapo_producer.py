@@ -112,6 +112,12 @@ class Plugin(object):
         except KeyError:
             pass
 
+        try:
+            self.token = self.config["token"]
+            self.log.debug("Static token configured.")
+        except KeyError:
+            pass
+
         self.lock = threading.Lock()
 
     def _check_config(self):
@@ -141,15 +147,16 @@ class Plugin(object):
 #            self.ingest_mode = asapo_producer.DEFAULT_INGEST_DATA
 #            self.data_type = "data"
         else:
-            raise utils.NotSupported("Ingest mode '{}' is not supported".format(mode))
+            raise utils.NotSupported("Ingest mode '{}' is not supported"
+                                     .format(mode))
 
-    def _get_start_file_id(self, stream):
+    def _get_start_file_id(self, stream, token):
         consumer_config = dict(
             server_name=self.endpoint,
             source_path="",
             beamtime_id=self.beamtime,
             stream=stream,
-            token=self.token,
+            token=token,
             timeout_ms=1000
         )
         broker = asapo_consumer.create_server_broker(**consumer_config)
@@ -171,17 +178,19 @@ class Plugin(object):
         return self.data_type
 
     def _create_producer(self, stream):
+        token = self.token or self._get_token()
+
         config = dict(
             endpoint=self.endpoint,
             beamtime_id=self.beamtime,
             stream=stream,
-            token=self.token,
+            token=token,
             nthreads=self.n_threads
         )
         self.log.debug("Create producer with config=%s", config)
         self.stream_info[stream] = {
             "producer": asapo_producer.create_producer(**config),
-            "offset": self._get_start_file_id(stream),
+            "offset": self._get_start_file_id(stream, token),
             "last_id_used": 0,
             "current_scan_id": 0
         }
@@ -256,6 +265,11 @@ class Plugin(object):
 
         stream_info["last_id_used"] = file_id
         stream_info["current_scan_id"] = scan_id
+
+    def _get_token(self):
+        #TODO
+        raise utils.NotSupported("This functionality is not supported yet. "
+                                 "Please define an exlicit token.")
 
     def _parse_file_name(self, path):
         regex = self.config["file_regex"]
