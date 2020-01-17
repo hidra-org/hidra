@@ -157,7 +157,8 @@ class Base(object):
                            exc_info=True)
             raise
 
-    def stats_config(self):  # pylint: disable=no-self-use
+    @staticmethod
+    def stats_config():  # pylint: disable=no-self-use
         """Mapping for stats server.
         """
         return {}

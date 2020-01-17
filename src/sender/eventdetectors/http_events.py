@@ -58,6 +58,7 @@ import time
 import requests
 
 from eventdetectorbase import EventDetectorBase
+import hidra.utils as utils
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan.garrevoet@desy.de>')
@@ -85,7 +86,8 @@ class EventDetector(EventDetectorBase):
         self.session = None
         self.det_ip = None
         self.det_api_version = None
-        self.det_url = None
+        self.file_writer_url = None
+        self.data_url = None
 
         # time to sleep after detector returned emtpy file list
         self.sleep_time = 0.5
@@ -111,12 +113,31 @@ class EventDetector(EventDetectorBase):
         # Enable specification via IP and DNS name
         self.det_ip = socket.gethostbyaddr(self.config["det_ip"])[2][0]
         self.det_api_version = self.config["det_api_version"]
-        self.det_url = ("http://{}/filewriter/api/{}/files"
-                        .format(self.det_ip, self.det_api_version))
-        self.log.debug("Getting files from: %s", self.det_url)
-#            http://192.168.138.37/filewriter/api/1.6.0/files
 
-        # history to prevend double events
+        try:
+            self.file_writer_url = (
+                self.config["filewriter_url"]
+                .format(det_ip=self.det_ip,
+                        det_api_version=self.det_api_version)
+            )
+        except KeyError:
+            if "det_api_version" not in self.config:
+                raise utils.WrongConfiguration(
+                    "Either filewriter_uri or det_api_version have to be "
+                    "configured."
+                )
+
+            self.file_writer_url = ("http://{}/filewriter/api/{}/files"
+                                    .format(self.det_ip, self.det_api_version))
+
+        self.log.debug("Getting files from: %s", self.file_writer_url)
+
+        try:
+            self.data_url = self.config["datat_url"].format(det_ip=self.det_ip)
+        except KeyError:
+            self.data_url = "http://{}/data".format(self.det_ip)
+
+        # history to prevent double events
         self.files_downloaded = collections.deque(
             maxlen=self.config["history_size"]
         )
@@ -127,35 +148,20 @@ class EventDetector(EventDetectorBase):
 
         event_message_list = []
 
-#        try:
-#            # returns a tuble of the form:
-#            # ('testp06/37_data_000001.h5', 'testp06/37_master.h5',
-#            #  'testp06/36_data_000003.h5', 'testp06/36_data_000002.h5',
-#            #  'testp06/36_data_000001.h5', 'testp06/36_master.h5')
-#            files_stored = self.detdevice.read_attribute(
-#                "FilesInBuffer", timeout=3
-#            ).value
-#        except Exception as e:
-#            self.log.error("Getting 'FilesInBuffer'...failed. {}".format(e))
-#            time.sleep(0.2)
-#            return event_message_list
-
         try:
-            response = self.session.get(self.det_url)
+            response = self.session.get(self.file_writer_url)
         except KeyboardInterrupt:
             return event_message_list
         except Exception:
-            self.log.error("Error in getting file list from %s", self.det_url,
-                           exc_info=True)
+            self.log.error("Error in getting file list from %s",
+                           self.file_writer_url, exc_info=True)
             # Wait till next try to prevent denial of service
             time.sleep(self.sleep_time)
             return event_message_list
 
         try:
             response.raise_for_status()
-#            self.log.debug("response: {}".format(response.text))
             files_stored = response.json()
-#            self.log.debug("files_stored: {}".format(files_stored))
         except Exception:
             self.log.error("Getting file list...failed.", exc_info=True)
             # Wait till next try to prevent denial of service
@@ -173,7 +179,7 @@ class EventDetector(EventDetectorBase):
                     and file_obj not in self.files_downloaded):
                 (relative_path, filename) = os.path.split(file_obj)
                 event_message = {
-                    "source_path": "http://{}/data".format(self.det_ip),
+                    "source_path": self.data_url,
                     "relative_path": relative_path,
                     "filename": filename
                 }
