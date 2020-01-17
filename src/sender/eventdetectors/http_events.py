@@ -168,6 +168,10 @@ class EventDetector(EventDetectorBase):
             time.sleep(self.sleep_time)
             return event_message_list
 
+        # api version 1.8.0 and newer return a dictionary instead of a list
+        if isinstance(files_stored, dict):
+            files_stored = files_stored["value"]
+
         if (not files_stored
                 or set(files_stored).issubset(self.files_downloaded)):
             # no new files received
