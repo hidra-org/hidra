@@ -104,7 +104,7 @@ class DataFetcher(DataFetcherBase):
         self.config["session"] = requests.session()
         self.config["remove_flag"] = False
 
-        if self.config_df["remove_data"] == "with_confirmation":
+        if self.config_df["use_cleaner"]:
             self.finish = self.finish_with_cleaner
         else:
             self.finish = self.finish_without_cleaner
