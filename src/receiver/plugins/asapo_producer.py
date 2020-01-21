@@ -31,7 +31,8 @@ asapo_producer:
     endpoint: string
     beamtime: string
     stream: string  # optional
-    token: string
+    token: string  # optional
+    token_file: string  # needed if token is not static
     n_threads: int
     ingest_mode: string
     file_regex: regex string
@@ -93,6 +94,7 @@ class Plugin(object):
         self.data_type = None
         self.lock = None
 
+        self.token_file = None
         self.file_regex = None
         self.ignore_regex = None
 
@@ -130,7 +132,13 @@ class Plugin(object):
             self.token = self.config["token"]
             self.log.debug("Static token configured.")
         except KeyError:
-            pass
+            try:
+                self.token_file = self.config["token_file"]
+            except KeyError:
+                raise utils.WrongConfiguration(
+                    "Missing token specification. Either configure a static "
+                    "token or the path to the token file."
+                )
 
         try:
             self.ignore_regex = self.config["ignore_regex"]
@@ -291,9 +299,10 @@ class Plugin(object):
         stream_info["current_scan_id"] = scan_id
 
     def _get_token(self):
-        # TODO
-        raise utils.NotSupported("This functionality is not supported yet. "
-                                 "Please define an explicit token.")
+        with open(self.token_file, "r") as f:
+            token = f.read().replace('\n', '')
+
+        return token
 
     def _parse_file_name(self, path):
         # check for ignored files
