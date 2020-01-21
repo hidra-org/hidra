@@ -35,6 +35,7 @@ asapo_producer:
     n_threads: int
     ingest_mode: string
     file_regex: regex string
+    ignore_regex: regex string
 
 Example config:
     asapo_producer:
@@ -45,6 +46,7 @@ Example config:
         n_threads: 1
         ingest_mode: INGEST_MODE_TRANSFER_METADATA_ONLY
         file_regex: ".*/(?P<stream>.*)/scan_(?P<scan_id>.*)/(?P<file_idx_in_scan>.*).tif"
+        ignore_regex: ".*/.*.metadata$"
 """
 
 from __future__ import absolute_import
@@ -67,6 +69,11 @@ except ImportError:
     from pathlib2 import Path
 
 
+class Ignored(Exception):
+    """Raised when an event is processed that should be ignored."""
+    pass
+
+
 class Plugin(object):
     """Implements an ASAP::O producer plugin
     """
@@ -85,6 +92,8 @@ class Plugin(object):
         self.ingest_mode = None
         self.data_type = None
         self.lock = None
+
+        self.ignore_regex = None
 
         self.log = None
 
@@ -117,6 +126,12 @@ class Plugin(object):
         try:
             self.token = self.config["token"]
             self.log.debug("Static token configured.")
+        except KeyError:
+            pass
+
+        try:
+            self.ignore_regex = self.config["ignore_regex"]
+            self.log.debug("Ignoring files matching '%s'.", self.ignore_regex)
         except KeyError:
             pass
 
@@ -217,7 +232,11 @@ class Plugin(object):
         exposed_path = Path(metadata["relative_path"],
                             metadata["filename"]).as_posix()
 
-        stream_id, scan_id, file_id = self._parse_file_name(local_path)
+        try:
+            stream_id, scan_id, file_id = self._parse_file_name(local_path)
+        except Ignored:
+            self.log.debug("Ignoring file %s", local_path)
+            return
 
         stream = self.stream or stream_id
 
@@ -269,13 +288,18 @@ class Plugin(object):
         stream_info["current_scan_id"] = scan_id
 
     def _get_token(self):
-        #TODO
+        # TODO
         raise utils.NotSupported("This functionality is not supported yet. "
                                  "Please define an explicit token.")
 
     def _parse_file_name(self, path):
         regex = self.config["file_regex"]
 
+        # check for ignored files
+        if re.search(self.ignore_regex, path):
+            raise Ignored("Ignoring file {}".format(path))
+
+        # parse file name
         search = re.search(regex, path)
         if search:
             matched = search.groupdict()
