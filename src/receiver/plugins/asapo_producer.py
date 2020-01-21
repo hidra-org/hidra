@@ -239,7 +239,7 @@ class Plugin(object):
             self.log.debug("Detected new scan, increase offset by %s",
                            stream_info["last_id_used"])
             # increase by the sum of all files of previous scan
-            stream_info["offset"] += stream_info["last_id_used"]
+            stream_info["offset"] += stream_info["last_id_used"] + 1
 
         asapo_id = file_id + stream_info["offset"]
 
@@ -271,7 +271,7 @@ class Plugin(object):
     def _get_token(self):
         #TODO
         raise utils.NotSupported("This functionality is not supported yet. "
-                                 "Please define an exlicit token.")
+                                 "Please define an explicit token.")
 
     def _parse_file_name(self, path):
         regex = self.config["file_regex"]
