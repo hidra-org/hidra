@@ -93,6 +93,7 @@ class Plugin(object):
         self.data_type = None
         self.lock = None
 
+        self.file_regex = None
         self.ignore_regex = None
 
         self.log = None
@@ -107,7 +108,8 @@ class Plugin(object):
             "beamtime",
             "token",
             "n_threads",
-            "ingest_mode"
+            "ingest_mode",
+            "file_regex"
         ]
         self._check_config()
 
@@ -116,6 +118,7 @@ class Plugin(object):
         self.token = self.config["token"]
         self.n_threads = self.config["n_threads"]
         self._set_ingest_mode(self.config["ingest_mode"])
+        self.file_regex = self.config["file_regex"]
 
         try:
             self.stream = self.config["stream"]
@@ -293,19 +296,17 @@ class Plugin(object):
                                  "Please define an explicit token.")
 
     def _parse_file_name(self, path):
-        regex = self.config["file_regex"]
-
         # check for ignored files
         if re.search(self.ignore_regex, path):
             raise Ignored("Ignoring file {}".format(path))
 
         # parse file name
-        search = re.search(regex, path)
+        search = re.search(self.file_regex, path)
         if search:
             matched = search.groupdict()
         else:
             self.log.debug("file name: %s", path)
-            self.log.debug("regex: %s", regex)
+            self.log.debug("file_regex: %s", self.file_regex)
             raise utils.UsageError("Does not match file pattern")
 
         try:
