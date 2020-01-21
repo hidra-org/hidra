@@ -44,7 +44,7 @@ Example config:
         token: "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
         n_threads: 1
         ingest_mode: INGEST_MODE_TRANSFER_METADATA_ONLY
-        file_regex: ".*/(?P<detector>.*)/scan_(?P<scan_id>.*)/(?P<file_idx_in_scan>.*).tif"
+        file_regex: ".*/(?P<stream>.*)/scan_(?P<scan_id>.*)/(?P<file_idx_in_scan>.*).tif"
 """
 
 from __future__ import absolute_import
@@ -217,9 +217,9 @@ class Plugin(object):
         exposed_path = Path(metadata["relative_path"],
                             metadata["filename"]).as_posix()
 
-        detector, scan_id, file_id = self._parse_file_name(local_path)
+        stream_id, scan_id, file_id = self._parse_file_name(local_path)
 
-        stream = self.stream or detector
+        stream = self.stream or stream_id
 
         if stream not in self.stream_info:
             self._create_producer(stream=stream)
@@ -285,12 +285,12 @@ class Plugin(object):
             raise utils.UsageError("Does not match file pattern")
 
         try:
-            detector = matched["detector"]
+            stream = matched["stream"]
         except KeyError:
             if self.stream:
-                detector = None
+                stream = None
             else:
-                raise utils.UsageError("Missing entry for detector in matched "
+                raise utils.UsageError("Missing entry for stream in matched "
                                        "result")
         try:
             scan_id = matched["scan_id"]
@@ -303,7 +303,7 @@ class Plugin(object):
             raise utils.UsageError("Missing entry for file_idx_in_scan in "
                                    "matched result")
 
-        return detector, int(scan_id), int(file_id)
+        return stream, int(scan_id), int(file_id)
 
     def _callback(self, header, err):
         self.lock.acquire()
