@@ -287,8 +287,11 @@ class Plugin(object):
         try:
             detector = matched["detector"]
         except KeyError:
-            raise utils.UsageError("Missing entry for detector in matched "
-                                   "result")
+            if self.stream:
+                detector = None
+            else:
+                raise utils.UsageError("Missing entry for detector in matched "
+                                       "result")
         try:
             scan_id = matched["scan_id"]
         except KeyError:
