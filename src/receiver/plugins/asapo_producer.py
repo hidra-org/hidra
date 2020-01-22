@@ -108,7 +108,6 @@ class Plugin(object):
         self.required_parameter = [
             "endpoint",
             "beamtime",
-            "token",
             "n_threads",
             "ingest_mode",
             "file_regex"
@@ -117,7 +116,6 @@ class Plugin(object):
 
         self.endpoint = self.config["endpoint"]
         self.beamtime = self.config["beamtime"]
-        self.token = self.config["token"]
         self.n_threads = self.config["n_threads"]
         self._set_ingest_mode(self.config["ingest_mode"])
         self.file_regex = self.config["file_regex"]
