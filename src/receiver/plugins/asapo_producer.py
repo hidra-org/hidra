@@ -233,6 +233,12 @@ class Plugin(object):
         self.log.debug("Set stream info for stream %s to %s",
                        stream, self.stream_info[stream])
 
+    def _get_token(self):
+        with open(self.token_file, "r") as f:
+            token = f.read().replace('\n', '')
+
+        return token
+
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
 
@@ -250,20 +256,6 @@ class Plugin(object):
             metadata: The metadata to send as dict
             data (optional): the data to send
         """
-        exposed_path = Path(metadata["relative_path"],
-                            metadata["filename"]).parts
-
-        # TODO this is a workaround
-        # asapo work on the core fs only at the moment thus the current
-        # directory does not exist there
-        if exposed_path[0] == "current":
-            exposed_path = Path().joinpath(*exposed_path[1:]).as_posix()
-        else:
-            raise utils.NotSupported(
-                "Path '{}' is not supported"
-                .format(Path().joinpath(*exposed_path).as_posix())
-            )
-
         try:
             stream_id, scan_id, file_id = self._parse_file_name(local_path)
         except Ignored:
@@ -279,11 +271,50 @@ class Plugin(object):
         stream_info = self.stream_info[stream]
         producer = stream_info["producer"]
 
+        config = dict(
+            id=self._get_asapo_id(stream_info, scan_id, file_id),
+            exposed_path=self._get_exposed_path(metadata),
+            ingest_mode=self.ingest_mode,
+            user_meta=json.dumps({"hidra": metadata}),
+            callback=self._callback
+        )
+
+        if self.data_type == "metadata":
+            config["local_path"] = local_path
+        elif self.data_type == "data":
+            config["data"] = data
+        else:
+            raise utils.NotSupported("No correct data_type was specified. "
+                                     "Was setup method executed?")
+
+        producer.send_file(**config)
+
+        stream_info["last_id_used"] = file_id
+        stream_info["current_scan_id"] = scan_id
+
+    @staticmethod
+    def _get_exposed_path(metadata):
+        exposed_path = Path(metadata["relative_path"],
+                            metadata["filename"]).parts
+
+        # TODO this is a workaround
+        # asapo work on the core fs only at the moment thus the current
+        # directory does not exist there
+        if exposed_path[0] == "current":
+            exposed_path = Path().joinpath(*exposed_path[1:]).as_posix()
+        else:
+            raise utils.NotSupported(
+                "Path '{}' is not supported"
+                .format(Path().joinpath(*exposed_path).as_posix())
+            )
+
+        return exposed_path
+
+    def _get_asapo_id(self, stream_info, scan_id, file_id):
         # drop file from old scan to not mess up data of new scan
         if scan_id < stream_info["current_scan_id"]:
             self.log.debug("current_scan_id=%s, scan_id=%s",
                            stream_info["current_scan_id"], scan_id)
-            self.log.debug("local_path=%s", local_path)
             raise utils.DataError("File belongs to old scan id. Drop it.")
         # new scan means file_id counting is reset -> offset has to adjusted
         elif scan_id > stream_info["current_scan_id"]:
@@ -296,36 +327,7 @@ class Plugin(object):
         self.log.debug("asapo_id=%s, file_id=%s, offset=%s",
                        asapo_id, file_id, stream_info["offset"])
 
-        if self.data_type == "metadata":
-            producer.send_file(
-                id=asapo_id,
-                local_path=local_path,
-                exposed_path=exposed_path,
-                ingest_mode=self.ingest_mode,
-                user_meta=json.dumps({"hidra": metadata}),
-                callback=self._callback
-            )
-        elif self.data_type == "data":
-            producer.send_data(
-                id=asapo_id,
-                exposed_path=exposed_path,
-                data=data,
-                user_meta=json.dumps({"hidra": metadata}),
-                ingest_mode=self.ingest_mode,
-                callback=self._callback
-            )
-        else:
-            raise utils.NotSupported("No correct data_type was specified. "
-                                     "Was setup method executed?")
-
-        stream_info["last_id_used"] = file_id
-        stream_info["current_scan_id"] = scan_id
-
-    def _get_token(self):
-        with open(self.token_file, "r") as f:
-            token = f.read().replace('\n', '')
-
-        return token
+        return asapo_id
 
     def _parse_file_name(self, path):
         # check for ignored files
