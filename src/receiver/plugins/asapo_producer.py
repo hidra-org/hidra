@@ -189,13 +189,20 @@ class Plugin(object):
         group_id = broker.generate_group_id()
         try:
             data, metadata = broker.get_last(group_id, meta_only=True)
-            file_id = metadata["_id"]
-            self.log.debug("Continue existing stream (id %s)", file_id)
-            return file_id
+            last_id = metadata["_id"]
+            self.log.debug("Continue existing stream (id %s)", last_id)
+
+            self.log.debug("asapo metadata %s", metadata)
+            _, scan_id, file_id = self._parse_file_name(metadata["name"])
+
+            offset = last_id - file_id
+            self.log.debug("last_id=%s, file_id=%s", last_id, file_id)
+
+            return offset, scan_id, last_id
         except (asapo_consumer.AsapoWrongInputError,
                 asapo_consumer.AsapoEndOfStreamError):
             self.log.debug("Starting new stream (id 1)")
-            return 0
+            return 0, 0, 0
         except Exception:
             self.log.debug("Config for consumer was: %s", consumer_config)
             raise
@@ -214,12 +221,17 @@ class Plugin(object):
             nthreads=self.n_threads
         )
         self.log.debug("Create producer with config=%s", config)
+
+        offset, current_scan_id, last_id_used = self._get_start_file_id(stream,
+                                                                        token)
         self.stream_info[stream] = {
             "producer": asapo_producer.create_producer(**config),
-            "offset": self._get_start_file_id(stream, token),
-            "last_id_used": 0,
-            "current_scan_id": 0
+            "offset": offset,
+            "last_id_used": last_id_used,
+            "current_scan_id": current_scan_id
         }
+        self.log.debug("Set stream info for stream %s to %s",
+                       stream, self.stream_info[stream])
 
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
@@ -265,11 +277,13 @@ class Plugin(object):
         # new scan means file_id counting is reset -> offset has to adjusted
         elif scan_id > stream_info["current_scan_id"]:
             self.log.debug("Detected new scan, increase offset by %s",
-                           stream_info["last_id_used"])
+                           stream_info["last_id_used"] + 1)
             # increase by the sum of all files of previous scan
             stream_info["offset"] += stream_info["last_id_used"] + 1
 
         asapo_id = file_id + stream_info["offset"]
+        self.log.debug("asapo_id=%s, file_id=%s, offset=%s",
+                       asapo_id, file_id, stream_info["offset"])
 
         if self.data_type == "metadata":
             producer.send_file(
