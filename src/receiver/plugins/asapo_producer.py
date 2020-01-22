@@ -29,7 +29,9 @@ datareceiver:
 
 asapo_producer:
     endpoint: string
-    beamtime: string
+    beamtime: string # optional
+    beamtime_file_path: string  # needed if beamtime is not static
+    beamtime_file_regex: string  # needed if beamtime is not static
     stream: string  # optional
     token: string  # optional
     token_file: string  # needed if token is not static
@@ -46,8 +48,8 @@ Example config:
         token: "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
         n_threads: 1
         ingest_mode: INGEST_MODE_TRANSFER_METADATA_ONLY
-        file_regex: ".*/(?P<stream>.*)/scan_(?P<scan_id>.*)/(?P<file_idx_in_scan>.*).tif"
-        ignore_regex: ".*/.*.metadata$"
+        file_regex: '.*/(?P<stream>.*)/scan_(?P<scan_id>.*)/(?P<file_idx_in_scan>.*).tif'
+        ignore_regex: '.*/.*.metadata$'
 """
 
 from __future__ import absolute_import
@@ -61,6 +63,7 @@ from future.utils import iteritems
 import hidra.utils as utils
 import json
 import logging
+import os
 import re
 import threading
 
@@ -85,19 +88,21 @@ class Plugin(object):
         self.required_parameter = []
 
         self.stream_info = {}
+
         self.endpoint = None
         self.beamtime = None
+        self.beamtime_file_path = None
+        self.beamtime_file_regex = None
         self.token = None
+        self.token_file = None
         self.stream = None
         self.n_threads = None
         self.ingest_mode = None
-        self.data_type = None
-        self.lock = None
-
-        self.token_file = None
         self.file_regex = None
         self.ignore_regex = None
 
+        self.data_type = None
+        self.lock = None
         self.log = None
 
     def setup(self):
@@ -107,7 +112,6 @@ class Plugin(object):
 
         self.required_parameter = [
             "endpoint",
-            "beamtime",
             "n_threads",
             "ingest_mode",
             "file_regex"
@@ -115,10 +119,21 @@ class Plugin(object):
         self._check_config()
 
         self.endpoint = self.config["endpoint"]
-        self.beamtime = self.config["beamtime"]
         self.n_threads = self.config["n_threads"]
         self._set_ingest_mode(self.config["ingest_mode"])
         self.file_regex = self.config["file_regex"]
+
+        try:
+            self.beamtime = self.config["beamtime"]
+        except KeyError:
+            try:
+                self.beamtime_file_path = self.config["beamtime_file_path"]
+                self.beamtime_file_regex = self.config["beamtime_file_regex"]
+            except KeyError:
+                raise utils.WrongConfiguration(
+                    "Missing token specification. Either configure a static "
+                    "token or the path to the token file."
+                )
 
         try:
             self.stream = self.config["stream"]
@@ -176,11 +191,11 @@ class Plugin(object):
             raise utils.NotSupported("Ingest mode '{}' is not supported"
                                      .format(mode))
 
-    def _get_start_file_id(self, stream, token):
+    def _get_start_file_id(self, stream, beamtime, token):
         consumer_config = dict(
             server_name=self.endpoint,
             source_path="",
-            beamtime_id=self.beamtime,
+            beamtime_id=beamtime,
             stream=stream,
             token=token,
             timeout_ms=1000
@@ -212,18 +227,23 @@ class Plugin(object):
 
     def _create_producer(self, stream):
         token = self.token or self._get_token()
+        beamtime = self.beamtime or self._get_beamtime()
+        self.log.debug("type of beamtime%s", type(beamtime))
 
         config = dict(
             endpoint=self.endpoint,
-            beamtime_id=self.beamtime,
+            beamtime_id=beamtime,
             stream=stream,
             token=token,
             nthreads=self.n_threads
         )
         self.log.debug("Create producer with config=%s", config)
 
-        offset, current_scan_id, last_id_used = self._get_start_file_id(stream,
-                                                                        token)
+        offset, current_scan_id, last_id_used = self._get_start_file_id(
+            stream=stream,
+            beamtime=beamtime,
+            token=token
+        )
         self.stream_info[stream] = {
             "producer": asapo_producer.create_producer(**config),
             "offset": offset,
@@ -238,6 +258,30 @@ class Plugin(object):
             token = f.read().replace('\n', '')
 
         return token
+
+    def _get_beamtime(self):
+        (_, _, filenames) = next(os.walk(self.beamtime_file_path))
+        self.log.debug("filesnames = %s", filenames)
+        for name in filenames:
+            search = re.search(self.beamtime_file_regex, name)
+            if search:
+                matched = search.groupdict()
+
+                try:
+                    beamtime = matched["beamtime"]
+                    self.log.debug("Using beamtime %s", beamtime)
+                    return beamtime
+                except KeyError:
+                    raise utils.UsageError("Missing entry for beamtime in "
+                                           "matched result")
+
+        self.log.debug("beamtime_file_path=%s", self.beamtime_file_path)
+        self.log.debug("beamtime_file_regex=%s", self.beamtime_file_regex)
+
+        raise utils.WrongConfiguration("No matching beamtime metadata file "
+                                       "found.")
+
+        raise Exception
 
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
