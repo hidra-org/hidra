@@ -251,7 +251,18 @@ class Plugin(object):
             data (optional): the data to send
         """
         exposed_path = Path(metadata["relative_path"],
-                            metadata["filename"]).as_posix()
+                            metadata["filename"]).parts
+
+        # TODO this is a workaround
+        # asapo work on the core fs only at the moment thus the current
+        # directory does not exist there
+        if exposed_path[0] == "current":
+            exposed_path = Path().joinpath(*exposed_path[1:]).as_posix()
+        else:
+            raise utils.NotSupported(
+                "Path '{}' is not supported"
+                .format(Path().joinpath(*exposed_path).as_posix())
+            )
 
         try:
             stream_id, scan_id, file_id = self._parse_file_name(local_path)
