@@ -39,6 +39,7 @@ asapo_producer:
     ingest_mode: string
     file_regex: regex string
     ignore_regex: regex string
+    files_in_scan_start_index: int  # optional
 
 Example config:
     asapo_producer:
@@ -100,6 +101,7 @@ class Plugin(object):
         self.ingest_mode = None
         self.file_regex = None
         self.ignore_regex = None
+        self.file_start_index = None
 
         self.data_type = None
         self.lock = None
@@ -159,6 +161,11 @@ class Plugin(object):
         except KeyError:
             pass
 
+        try:
+            self.file_start_index = self.config["files_in_scan_start_index"]
+        except KeyError:
+            self.file_start_index = 0
+
         self.lock = threading.Lock()
 
     def _check_config(self):
@@ -210,8 +217,7 @@ class Plugin(object):
             self.log.debug("asapo metadata %s", metadata)
             _, scan_id, last_file_index = self._parse_file_name(metadata["name"])
 
-            # under the assumption that files inside a scan start with index 0
-            last_file_index += 1
+            last_file_index += (1 - self.file_start_index)
 
             # offset is the sum of all files from all previous scans
             offset = last_asapo_id - last_file_index
@@ -366,11 +372,14 @@ class Plugin(object):
             raise utils.DataError("File belongs to old scan id. Drop it.")
         # new scan means file_id counting is reset -> offset has to adjusted
         elif scan_id > stream_info["current_scan_id"]:
+            number_files_in_scan = (stream_info["last_file_index"] + 1
+                                    - self.file_start_index)
             self.log.debug("Detected new scan, increase offset by %s",
-                           stream_info["last_file_index"] + 1)
+                           number_files_in_scan)
+
             # increase by the sum of all files of previous scan
-            stream_info["offset"] += stream_info["last_file_index"] + 1
-            stream_info["last_file_index"] = 0
+            stream_info["offset"] += number_files_in_scan
+            stream_info["last_file_index"] = self.file_start_index
 
         asapo_id = file_id + stream_info["offset"]
         self.log.debug("asapo_id=%s, file_id=%s, offset=%s",
