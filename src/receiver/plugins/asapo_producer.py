@@ -204,16 +204,19 @@ class Plugin(object):
         group_id = broker.generate_group_id()
         try:
             data, metadata = broker.get_last(group_id, meta_only=True)
-            last_id = metadata["_id"]
-            self.log.debug("Continue existing stream (id %s)", last_id)
+            last_asapo_id = metadata["_id"]
+            self.log.debug("Continue existing stream (id %s)", last_asapo_id)
 
             self.log.debug("asapo metadata %s", metadata)
-            _, scan_id, file_id = self._parse_file_name(metadata["name"])
+            _, scan_id, last_file_index = self._parse_file_name(metadata["name"])
 
-            offset = last_id - file_id
-            self.log.debug("last_id=%s, file_id=%s", last_id, file_id)
+            # under the assumption that files inside a scan start with index 0
+            last_file_index += 1
 
-            return offset, scan_id, last_id
+            # offset is the sum of all files from all previous scans
+            offset = last_asapo_id - last_file_index
+
+            return offset, scan_id, last_file_index
         except (asapo_consumer.AsapoWrongInputError,
                 asapo_consumer.AsapoEndOfStreamError):
             self.log.debug("Starting new stream (id 1)")
@@ -239,7 +242,7 @@ class Plugin(object):
         )
         self.log.debug("Create producer with config=%s", config)
 
-        offset, current_scan_id, last_id_used = self._get_start_file_id(
+        offset, current_scan_id, last_file_index = self._get_start_file_id(
             stream=stream,
             beamtime=beamtime,
             token=token
@@ -247,7 +250,7 @@ class Plugin(object):
         self.stream_info[stream] = {
             "producer": asapo_producer.create_producer(**config),
             "offset": offset,
-            "last_id_used": last_id_used,
+            "last_file_index": last_file_index,
             "current_scan_id": current_scan_id
         }
         self.log.debug("Set stream info for stream %s to %s",
@@ -280,8 +283,6 @@ class Plugin(object):
 
         raise utils.WrongConfiguration("No matching beamtime metadata file "
                                        "found.")
-
-        raise Exception
 
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
@@ -333,7 +334,10 @@ class Plugin(object):
 
         producer.send_file(**config)
 
-        stream_info["last_id_used"] = file_id
+        # if files did not come in order the current file id might not be the
+        # end of the stream id
+        stream_info["last_file_index"] = max(stream_info["last_file_index"],
+                                             file_id)
         stream_info["current_scan_id"] = scan_id
 
     @staticmethod
@@ -363,9 +367,10 @@ class Plugin(object):
         # new scan means file_id counting is reset -> offset has to adjusted
         elif scan_id > stream_info["current_scan_id"]:
             self.log.debug("Detected new scan, increase offset by %s",
-                           stream_info["last_id_used"] + 1)
+                           stream_info["last_file_index"] + 1)
             # increase by the sum of all files of previous scan
-            stream_info["offset"] += stream_info["last_id_used"] + 1
+            stream_info["offset"] += stream_info["last_file_index"] + 1
+            stream_info["last_file_index"] = 0
 
         asapo_id = file_id + stream_info["offset"]
         self.log.debug("asapo_id=%s, file_id=%s, offset=%s",
