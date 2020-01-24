@@ -217,7 +217,7 @@ class Plugin(object):
             self.log.debug("asapo metadata %s", metadata)
             _, scan_id, last_file_index = self._parse_file_name(metadata["name"])
 
-            last_file_index += (1 - self.file_start_index)
+            last_file_index -= self.file_start_index
 
             # offset is the sum of all files from all previous scans
             offset = last_asapo_id - last_file_index
