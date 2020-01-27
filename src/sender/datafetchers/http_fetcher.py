@@ -59,6 +59,146 @@ __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan.garrevoet@desy.de>')
 
 
+class Filewriter(object):
+    def __init__(self, file_id, target_file, config, config_df, log):
+        self.file_id = file_id
+        self.target_file = target_file
+        self.config = config
+        self.config_df = config_df
+        self.log = log
+
+        self.descriptor = None
+        self.status = {
+            "opened": False,
+            "written_without_error": True,
+            "closed": False
+        }
+        self.writing_enabled = self.config_df["store_data"]
+
+    def open(self, metadata):
+        """Open a file desciptor to the file"""
+        if not self.writing_enabled:
+            return
+
+        try:
+            self.log.debug("Opening '%s'...", self.target_file)
+            self.descriptor = open(self.target_file, "wb")
+            self.status["opened"] = True
+        except IOError as excp:
+            err_msg = ("Unable to open target file '%s'.", self.target_file)
+
+            # errno.ENOENT == "No such file or directory"
+            if excp.errno == errno.ENOENT:
+                self.create_directory(metadata)
+
+                try:
+                    self.descriptor = open(self.target_file, "wb")
+                    self.status["opened"] = True
+                except Exception:
+                    self.log.error(err_msg, exc_info=True)
+                    raise
+            else:
+                self.log.error(err_msg, exc_info=True)
+                raise
+        except Exception:
+            self.log.error("Unable to open target file '%s'", self.target_file,
+                           exc_info=True)
+            raise
+
+    def write(self, data, chunk_number):
+        """Write the data to the filesystem"""
+
+        if not self.writing_enabled:
+            return
+
+        try:
+            self.descriptor.write(data)
+            self.log.debug("Writing data for file '%s' (chunk %s)",
+                           self.file_id, chunk_number)
+        except AttributeError:
+            self.log.error("Writing failed due to missing file descriptor")
+            self.status["written_without_error"] = False
+        except Exception:
+            self.log.error("Unable write data for file '%s'",
+                           self.file_id, exc_info=True)
+            self.status["written_without_error"] = False
+
+    def close(self):
+        """Close the file descriptor"""
+
+        if not self.writing_enabled or not self.status["opened"]:
+            return
+
+        try:
+            self.log.debug("Closing '%s'...", self.target_file)
+            self.descriptor.close()
+            self.status["closed"] = True
+        except Exception:
+            self.log.error("Unable to close target file '%s'.",
+                           self.target_file, exc_info=True)
+            raise
+
+    def was_successful(self):
+        return (self.status["opened"]
+                and self.status["written_without_error"]
+                and self.status["closed"])
+
+    def create_directory(self, metadata):
+        """Creates the directory where the file should be stored.
+
+        Args:
+            metadata (dict): The file metadata for the directory to be created.
+
+        """
+        # the directories current, commissioning and local should
+        # not be created
+        if metadata["relative_path"] in self.config["fix_subdirs"]:
+            msg = (
+                "Unable to move file '%s' to '%s': Directory %s is not "
+                "available.", self.file_id, self.target_file,
+                metadata["relative_path"]
+            )
+            self.log.error(*msg, exc_info=True)
+            raise Exception(msg[0] % msg[1:])
+
+        fix_subdir_found = False
+        # identify which of the prefixes is the correct one and check that
+        # this is available
+        # e.g. relative_path is commissioning/raw/test_dir but
+        #      commissioning/raw  does not exist, it should not be created
+        for prefix in self.config["fix_subdirs"]:
+            if not metadata["relative_path"].startswith(prefix):
+                continue
+
+            fix_subdir_found = True
+
+            prefix_dir = os.path.join(self.config_df["local_target"], prefix)
+            if not os.path.exists(prefix_dir):
+                msg = ("Unable to move file '%s' to '%s': Directory %s is not "
+                       "available.", self.file_id, self.target_file, prefix)
+                self.log.error(*msg, exc_info=True)
+                raise Exception(msg[0] % msg[1:])
+
+            target_path, _ = os.path.split(self.target_file)
+
+            # everything is fine -> create directory
+            try:
+                os.makedirs(target_path)
+                self.log.info("New target directory created: %s", target_path)
+            except OSError:
+                self.log.info("Target directory creation failed, was already "
+                              "created in the meantime: %s", target_path)
+            except Exception:
+                self.log.error("Unable to create target directory '%s'.",
+                               target_path, exc_info=True)
+                raise
+
+            break
+
+        if not fix_subdir_found:
+            raise Exception("Relative path was not found in fix_subdir")
+
+
 class DataFetcher(DataFetcherBase):
     """
     Implementation of the data fetcher to get files from the Eiger detector or
@@ -159,65 +299,6 @@ class DataFetcher(DataFetcherBase):
                                exc_info=True)
                 raise
 
-    def create_directory(self, metadata):
-        """Creates the directory where the file should be stored.
-
-        Args:
-            metadata (dict): The file metadata for the directory to be created.
-
-        """
-        # the directories current, commissioning and local should
-        # not be created
-        if metadata["relative_path"] in self.config["fix_subdirs"]:
-            msg = (
-                "Unable to move file '%s' to '%s': Directory %s is not "
-                "available.", self.source_file, self.target_file,
-                metadata["relative_path"]
-            )
-            self.log.error(*msg, exc_info=True)
-            raise Exception(msg[0] % msg[1:])
-        else:
-            fix_subdir_found = False
-            # identify which of the prefixes is the correct one and check that
-            # this is available
-            # e.g. relative_path is commissioning/raw/test_dir but
-            #      commissioning/raw  does not exist, it should not be created
-            for prefix in self.config["fix_subdirs"]:
-                if metadata["relative_path"].startswith(prefix):
-                    fix_subdir_found = True
-
-                    prefix_dir = os.path.join(self.config_df["local_target"],
-                                              prefix)
-                    if not os.path.exists(prefix_dir):
-                        msg = (
-                            "Unable to move file '%s' to '%s': Directory %s "
-                            "is not available.", self.source_file,
-                            self.target_file, prefix
-                        )
-                        self.log.error(*msg, exc_info=True)
-                        raise Exception(msg[0] % msg[1:])
-                    else:
-                        target_path, _ = os.path.split(self.target_file)
-
-                        # everything is fine -> create directory
-                        try:
-                            os.makedirs(target_path)
-                            self.log.info("New target directory created: %s",
-                                          target_path)
-                        except OSError:
-                            self.log.info("Target directory creation failed, "
-                                          "was already created in the "
-                                          "meantime: %s", target_path)
-                        except Exception:
-                            self.log.error("Unable to create target directory "
-                                           "'%s'.", target_path, exc_info=True)
-                            raise
-
-                        break
-
-            if not fix_subdir_found:
-                raise Exception("Relative path was not found in fix_subdir")
-
     def send_data(self, targets, metadata, open_connections):
         """Implementation of the abstract method send_data.
 
@@ -244,37 +325,15 @@ class DataFetcher(DataFetcherBase):
             self.log.error("Unable to get chunksize", exc_info=True)
             raise
 
-        file_opened = False
-        file_written = True
-        file_closed = False
-        file_send = True
+        writer = Filewriter(file_id=self.source_file,
+                            target_file=self.target_file,
+                            config=self.config,
+                            config_df=self.config_df,
+                            log=self.log)
 
-        if self.config_df["store_data"]:
-            try:
-                self.log.debug("Opening '%s'...", self.target_file)
-                file_descriptor = open(self.target_file, "wb")
-                file_opened = True
-            except IOError as excp:
-                err_msg = ("Unable to open target file '%s'.",
-                           self.target_file)
+        sending_failed = False
 
-                # errno.ENOENT == "No such file or directory"
-                if excp.errno == errno.ENOENT:
-                    self.create_directory(metadata)
-
-                    try:
-                        file_descriptor = open(self.target_file, "wb")
-                        file_opened = True
-                    except Exception:
-                        self.log.error(err_msg, exc_info=True)
-                        raise
-                else:
-                    self.log.error(err_msg, exc_info=True)
-                    raise
-            except Exception:
-                self.log.error("Unable to open target file '%s'",
-                               self.target_file, exc_info=True)
-                raise
+        writer.open(metadata)
 
         # targets are of the form [[<host:port>, <prio>, <metadata|data>], ...]
         targets_data = [i for i in targets if i[2] == "data"]
@@ -284,91 +343,86 @@ class DataFetcher(DataFetcherBase):
         self.log.debug("Getting data for file '%s'...", self.source_file)
         # reading source file into memory
         for data in response.iter_content(chunk_size=chunksize):
-            self.log.debug("Packing multipart-message for file '%s'...",
-                           self.source_file)
-
             if not data:
                 continue
 
-            try:
-                # assemble metadata for zmq-message
-                metadata_extended = metadata.copy()
-                metadata_extended["chunk_number"] = chunk_number
+            writer.write(data, chunk_number)
 
-                payload = [json.dumps(metadata_extended).encode("utf-8"),
-                           data]
-            except Exception:
-                self.log.error("Unable to pack multipart-message for file "
-                               "'%s'", self.source_file,
-                               exc_info=True)
+            metadata_ext, payload = self._get_prep_data(
+                metadata=metadata,
+                chunk_number=chunk_number,
+                data=data
+            )
 
-            if self.config_df["store_data"] and file_opened:
-                try:
-                    file_descriptor.write(data)
-                    self.log.debug("Writing data for file '%s' (chunk %s)",
-                                   self.source_file, chunk_number)
-                except Exception:
-                    self.log.error("Unable write data for file '%s'",
-                                   self.source_file, exc_info=True)
-                    file_written = False
-
-            if targets_data != []:
-                # send message to data targets
-                try:
-                    self.send_to_targets(targets=targets_data,
-                                         open_connections=open_connections,
-                                         metadata=metadata_extended,
-                                         payload=payload,
-                                         chunk_number=chunk_number)
-                    msg = ("Passing multipart-message for file %s...done.",
-                           self.source_file)
-                    self.log.debug(msg)
-
-                except Exception:
-                    msg = ("Unable to send multipart-message for file %s",
-                           self.source_file)
-                    self.log.error(msg, exc_info=True)
-                    file_send = False
-
+            # send message to data targets
+            sending_failed = sending_failed or self._send_to_targets(
+                targets=targets_data,
+                open_connections=open_connections,
+                metadata=metadata_ext,
+                payload=payload,
+                chunk_number=chunk_number
+            )
             chunk_number += 1
 
-        if self.config_df["store_data"] and file_opened:
-            try:
-                self.log.debug("Closing '%s'...", self.target_file)
-                file_descriptor.close()
-                file_closed = True
-            except Exception:
-                self.log.error("Unable to close target file '%s'.",
-                               self.target_file, exc_info=True)
-                raise
+        writer.close()
 
-            # update the creation and modification time
-            metadata_extended["file_mod_time"] = (
-                os.stat(self.target_file).st_mtime)
-            metadata_extended["file_create_time"] = (
-                os.stat(self.target_file).st_ctime)
+        if self.config_df["store_data"]:
+            # send message to metadata targets
+            self._send_to_targets(targets=targets_metadata,
+                                  open_connections=open_connections,
+                                  metadata=metadata_ext,
+                                  payload=None,
+                                  chunk_number=None,
+                                  message_type="metadata ")
 
-            if targets_metadata != []:
-                # send message to metadata targets
-                try:
-                    self.send_to_targets(targets=targets_metadata,
-                                         open_connections=open_connections,
-                                         metadata=metadata_extended,
-                                         payload=payload,
-                                         chunk_number=None)
-                    self.log.debug("Passing metadata multipart-message for "
-                                   "file '%s'...done.", self.source_file)
-
-                except Exception:
-                    self.log.error("Unable to send metadata multipart-message "
-                                   "for file '%s'", self.source_file,
-                                   exc_info=True)
-
-            self.config["remove_flag"] = (file_opened
-                                          and file_written
-                                          and file_closed)
+            self.config["remove_flag"] = writer.was_successful()
         else:
-            self.config["remove_flag"] = file_send
+            self.config["remove_flag"] = not sending_failed
+
+    def _get_prep_data(self, metadata, chunk_number, data):
+        try:
+            self.log.debug("Packing multipart-message for file '%s'...",
+                           self.source_file)
+
+            # assemble metadata for zmq-message
+            metadata_extended = metadata.copy()
+            metadata_extended["chunk_number"] = chunk_number
+
+            payload = [json.dumps(metadata_extended).encode("utf-8"), data]
+        except Exception:
+            self.log.error("Unable to pack multipart-message for file '%s'",
+                           self.source_file, exc_info=True)
+
+        return metadata_extended, payload
+
+    def _send_to_targets(self, targets, open_connections, metadata, payload,
+                         chunk_number, message_type=""):
+
+        # TODO what can target be? ([], None,...?)
+        if not targets != []:
+            return
+
+        if message_type == "metadata":
+            # update the creation and modification time
+            metadata["file_mod_time"] = os.stat(self.target_file).st_mtime
+            metadata["file_create_time"] = os.stat(self.target_file).st_ctime
+
+        # wrapper around send_to_targets
+        try:
+            self.send_to_targets(targets=targets,
+                                 open_connections=open_connections,
+                                 metadata=metadata,
+                                 payload=payload,
+                                 chunk_number=chunk_number)
+            self.log.debug("Passing %smultipart-message for file %s...done.",
+                           message_type, self.source_file)
+            sending_failed = False
+        except Exception:
+            self.log.error("Unable to send %smultipart-message for file %s",
+                           message_type, self.source_file, exc_info=True)
+            sending_failed = True
+
+        return sending_failed
 
     # pylint: disable=method-hidden
     def finish(self, targets, metadata, open_connections):
