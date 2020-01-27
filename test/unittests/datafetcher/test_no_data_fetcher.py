@@ -60,6 +60,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "store_data": False,
                 "remove_data": False,
                 "local_target": None,
+                "use_cleaner": False,
                 "type": self.module_name,
                 self.module_name: {}
             }
