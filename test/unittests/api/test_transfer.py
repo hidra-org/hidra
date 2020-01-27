@@ -2661,7 +2661,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            [b"test_topic", b"test_file_id", str(chunk_number)]
+            [b"test_topic", b"test_file_id", str(chunk_number).encode("utf-8")]
         )
 
         # cleanup
@@ -2707,7 +2707,7 @@ class TestTransfer(TestBase):
 
         self.assertTrue(transfer.confirmation_socket.send_multipart.called)
         transfer.confirmation_socket.send_multipart.assert_called_once_with(
-            [b"test_topic", b"test_file_id", "1"]
+            [b"test_topic", b"test_file_id", b"1"]
         )
 
         # cleanup
