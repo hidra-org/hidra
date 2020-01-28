@@ -138,7 +138,12 @@ class Filewriter(object):
                            self.target_file, exc_info=True)
             raise
 
+    def mark_as_failed(self):
+        """Mark that an external problem has occurred"""
+        self.status["written_without_error"] = False
+
     def was_successful(self):
+        """Checks if the writing was successful"""
         return (self.status["opened"]
                 and self.status["written_without_error"]
                 and self.status["closed"])
@@ -342,29 +347,40 @@ class DataFetcher(DataFetcherBase):
 
         self.log.debug("Getting data for file '%s'...", self.source_file)
         # reading source file into memory
-        for data in response.iter_content(chunk_size=chunksize):
-            if not data:
-                continue
+        try:
+            for data in response.iter_content(chunk_size=chunksize):
 
-            writer.write(data, chunk_number)
+                # the datadispatcher asked to stop
+                if self.stop_request.is_set():
+                    writer.mark_as_failed()
+                    self.log.warning("Abort data saving. This might result in "
+                                     "missing data.")
+                    return
 
-            metadata_ext, payload = self._get_prep_data(
-                metadata=metadata,
-                chunk_number=chunk_number,
-                data=data
-            )
+                if not data:
+                    continue
 
-            # send message to data targets
-            sending_failed = sending_failed or self._send_to_targets(
-                targets=targets_data,
-                open_connections=open_connections,
-                metadata=metadata_ext,
-                payload=payload,
-                chunk_number=chunk_number
-            )
-            chunk_number += 1
+                writer.write(data, chunk_number)
 
-        writer.close()
+                metadata_ext, payload = self._get_prep_data(
+                    metadata=metadata,
+                    chunk_number=chunk_number,
+                    data=data
+                )
+
+                # send message to data targets
+                sending_failed = sending_failed or self._send_to_targets(
+                    targets=targets_data,
+                    open_connections=open_connections,
+                    metadata=metadata_ext,
+                    payload=payload,
+                    chunk_number=chunk_number
+                )
+                chunk_number += 1
+        finally:
+            # to make sure that the files are not corrupted even when hidra
+            # is stopped
+            writer.close()
 
         if self.config_df["store_data"]:
             # send message to metadata targets
