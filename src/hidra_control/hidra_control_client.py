@@ -137,24 +137,7 @@ def _merge_with_config(args, parser):
     # ------------------------------------------------------------------------
     # Get arguments from config file and command line
     # ------------------------------------------------------------------------
-    filename_bl = "control_client_{}.yaml"
-    filename_gen = "control_client.yaml"
-
-    try:
-        if "beamline" in arguments["general"]:
-            config_file = os.path.join(
-                CONFIG_DIR,
-                filename_bl.format(arguments["general"]["beamline"])
-            )
-            # throws WrongConfiguration if file does not exist
-            utils.check_existence(config_file)
-        else:
-            # No beamline specified, use default config file
-            raise utils.WrongConfiguration()
-    except utils.WrongConfiguration:
-        config_file = os.path.join(CONFIG_DIR, filename_gen)
-        utils.check_existence(config_file)
-
+    config_file = _identify_config_file(arguments)
     config = utils.load_config(config_file)
     utils.update_dict(arguments, config)
 
@@ -170,6 +153,48 @@ def _merge_with_config(args, parser):
         raise parser.error("the following arguments are required: --beamline")
 
     return config
+
+
+def _identify_config_file(config):
+    filename_bl_det = "control_client_{}_{}.yaml"
+    filename_bl = "control_client_{}.yaml"
+    filename_gen = "control_client.yaml"
+
+    config_gen = config["general"]
+    config_ed = config["hidra"]["eventdetector"]["http_events"]
+
+    # check for detector specific config file
+    if "beamline" in config_gen and "det_ip" in config_ed:
+        filename = filename_bl_det.format(config_gen["beamline"],
+                                          config_ed["det_ip"])
+        config_file = os.path.join(CONFIG_DIR, filename)
+
+        try:
+            # throws WrongConfiguration if file does not exist
+            utils.check_existence(config_file)
+            print("Using config file {}".format(config_file))
+            return config_file
+        except utils.WrongConfiguration:
+            pass
+
+    # check for beamline specific config file
+    if "beamline" in config_gen:
+        filename = filename_bl.format(config_gen["beamline"])
+        config_file = os.path.join(CONFIG_DIR, filename)
+
+        try:
+            # throws WrongConfiguration if file does not exist
+            utils.check_existence(config_file)
+            print("Using config file {}".format(config_file))
+            return config_file
+        except utils.WrongConfiguration:
+            pass
+
+    # check default config file
+    config_file = os.path.join(CONFIG_DIR, filename_gen)
+    utils.check_existence(config_file)
+
+    return config_file
 
 
 def check_config(config):

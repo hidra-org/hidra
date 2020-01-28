@@ -76,7 +76,7 @@ class Filewriter(object):
         self.writing_enabled = self.config_df["store_data"]
 
     def open(self, metadata):
-        """Open a file desciptor to the file"""
+        """Open a file descriptor to the file"""
         if not self.writing_enabled:
             return
 
