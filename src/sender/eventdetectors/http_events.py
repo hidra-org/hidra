@@ -127,7 +127,7 @@ class EventDetector(EventDetectorBase):
                     "configured."
                 )
 
-            self.file_writer_url = ("http://{}/filewriter/api/{}/files"
+            self.file_writer_url = ("http://{}/filewriter/api/{}/files/"
                                     .format(self.det_ip, self.det_api_version))
 
         self.log.debug("Getting files from: %s", self.file_writer_url)
