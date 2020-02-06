@@ -82,6 +82,7 @@ class TestDataDispatcher(TestBase):
                 "local_target": self.local_target,
                 "store_data": False,
                 "remove_data": False,
+                "use_cleaner": False,
                 "chunksize": self.chunksize,
                 "file_fetcher": {
                     "fix_subdirs": ["commissioning", "current", "local"],

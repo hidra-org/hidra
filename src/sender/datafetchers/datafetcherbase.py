@@ -196,7 +196,7 @@ class DataFetcherBase(Base, ABC):
         Created a socket to communicate with the cleaner and sets the topic.
         """
 
-        if self.config_df["remove_data"] == "with_confirmation":
+        if self.config_df["use_cleaner"]:
 
             config_net = self.config_all["network"]
 

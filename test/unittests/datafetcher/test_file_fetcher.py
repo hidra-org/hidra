@@ -68,6 +68,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "store_data": False,
                 "remove_data": False,
                 "local_target": local_target,
+                "use_cleaner": False,
                 self.module_name: {
                     "fix_subdirs": ["commissioning", "current", "local"],
                 }
@@ -148,6 +149,7 @@ class TestDataFetcher(DataFetcherTestBase):
         self.datafetcher = DataFetcher(self.df_base_config)
 
         self.config["remove_data"] = "with_confirmation"
+        self.config["use_cleaner"] = True
         endpoints = self.config["endpoints"]
 
         # Set up cleaner

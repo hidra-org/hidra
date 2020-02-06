@@ -335,9 +335,11 @@ class DataManager(Base):
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
-        # cleaner cannot be coupled to use_data_stream because this would
-        # break the http fetcher
-        self.use_cleaner = (config_df["remove_data"] == "with_confirmation")
+        self.use_cleaner = (
+            config_df["use_data_stream"]
+            and config_df["remove_data"] == "with_confirmation"
+        )
+        config_df["use_cleaner"] = self.use_cleaner
 
         self.use_statserver = config_gen["use_statserver"]
         self.number_of_streams = config_df["number_of_streams"]

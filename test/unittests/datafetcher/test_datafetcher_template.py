@@ -63,6 +63,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
                 "local_target": None,
                 "remove_data": False,
+                "use_cleaner": False,
                 self.module_name: {
                 }
             }

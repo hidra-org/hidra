@@ -120,8 +120,7 @@ class DataFetcher(DataFetcherBase):
 
         self.is_windows = utils.is_windows()
 
-        if (self.config_df["remove_data"] == "with_confirmation"
-                and self.config_df["use_data_stream"]):
+        if self.config_df["use_cleaner"]:
             self.log.debug("Set finish to finish_with_cleaner")
             self.finish = self.finish_with_cleaner
         else:
