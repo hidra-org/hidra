@@ -32,6 +32,7 @@ import difflib
 import unittest
 from importlib import import_module
 import pkgutil
+import re
 import sys
 
 import _environment  # noqa F401 # pylint: disable=unused-import
@@ -53,10 +54,24 @@ PACKAGES = {
         },
         "exclude": EVENTDETECTOR_EXCLUDE
     },
+    "eventdetector.experimental_events": {
+        "default": "TestEventDetector",
+        "special": {},
+        "exclude": [
+            "test_hidra_events",
+            "test_zmq_events",
+            "test_sync_ewmscp_events"
+        ]
+    },
     "datafetcher": {
         "default": "TestDataFetcher",
         "special": {},
         "exclude": ["test_http_fetcher"]
+    },
+    "datafetcher.experimental_fetcher": {
+        "default": "TestDataFetcher",
+        "special": {},
+        "exclude": []
     },
     "core": {
         "default": None,
@@ -135,11 +150,33 @@ def get_case_mapping(cases):
     all_suites = []
 
     for package_name in PACKAGES:
-        modpath = import_module(package_name).__path__
-        for _, modname, _ in pkgutil.iter_modules(modpath):
+        try:
+            module_path = import_module(package_name).__path__
+        except ImportError:
+            # happens for the experimental modules
+            continue
+
+        # look for modules
+        for _, modname, is_pkg in pkgutil.iter_modules(module_path):
 
             if modname in cases:
                 all_suites += get_suite(package_name, modname)
+
+#            if not is_pkg:
+#                continue
+#
+#            subpackage_name = package_name + "." + modname
+#            submodule = import_module(subpackage_name)
+#
+#            prefix = subpackage_name + "."
+#            path = submodule.__path__
+#            # look for submodules
+#            for _, submodule_name, _ in pkgutil.iter_modules(path, prefix):
+#                name = submodule_name[len(prefix):]
+#
+#                if name in cases:
+#                    print(subpackage_name, name)
+#                    all_suites += get_suite(subpackage_name, name)
 
     return all_suites
 

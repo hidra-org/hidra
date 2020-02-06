@@ -32,13 +32,17 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import json
 import os
+import time
+
+try:
+    import unittest.mock as mock
+except ImportError:
+    # for python2
+    import mock
 import zmq
 
-from zmq_fetcher import (DataFetcher,
-                         get_ipc_addresses,
-                         get_tcp_addresses,
-                         get_endpoints)
-from .datafetcher_test_base import DataFetcherTestBase
+from hidra_fetcher import DataFetcher
+from ..datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -54,78 +58,92 @@ class TestDataFetcher(DataFetcherTestBase):
         super().setUp()
 
         # Set up config
-        self.module_name = "zmq_fetcher"
+        # local_target = None
+        local_target = os.path.join(self.base_dir, "data", "zmq_target")
+        # local_target = os.path.join(self.base_dir, "data", "target")
+        self.module_name = "hidra_fetcher"
         self.df_base_config["config"] = {
             "network": {
                 "ipc_dir": self.config["ipc_dir"],
                 "main_pid": self.config["main_pid"],
+                "endpoints": self.config["endpoints"],
                 "ext_ip": self.ext_ip,
-                "con_ip": self.con_ip,
-                "endpoints": self.config["endpoints"]
             },
             "datafetcher": {
-                "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
+                "type": self.module_name,
                 "store_data": False,
                 "remove_data": False,
-                "local_target": None,
-                "type": self.module_name,
+                "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
+                "local_target": local_target,
+                "use_cleaner": False,
                 self.module_name: {
+                    # "fix_subdirs": ["commissioning", "current", "local"],
                     "context": self.context,
+                    "status_check_resp_port": "50011",
+                    "confirmation_resp_port": "50012",
                 }
             }
         }
 
         self.cleaner_config = {
-            "main_pid": self.config["main_pid"]
+            "network": {
+                "main_pid": self.config["main_pid"]
+            }
         }
 
-        self.receiving_ports = ["6005", "6006"]
+        self.receiving_ports = ["50102", "50103"]
 
         self.datafetcher = None
         self.receiving_sockets = None
         self.data_fw_socket = None
+        self.data_input = True
 
     def test_no_confirmation(self):
         """Simulate file fetching without taking care of confirmation signals.
         """
+        # mock check_config to be able to enable print_log
+        with mock.patch("hidra_fetcher.DataFetcher.check_config"):
+            with mock.patch("hidra_fetcher.DataFetcher._setup"):
+                self.datafetcher = DataFetcher(self.df_base_config)
 
-        self.datafetcher = DataFetcher(self.df_base_config)
-
-        ipc_addresses = get_ipc_addresses(config=self.datafetcher_config)
-        tcp_addresses = get_tcp_addresses(config=self.datafetcher_config)
-        endpoints = get_endpoints(ipc_addresses=ipc_addresses,
-                                  tcp_addresses=tcp_addresses)
+        self.datafetcher.check_config(print_log=True)
+        self.datafetcher._setup()
 
         # Set up receiver simulator
         self.receiving_sockets = []
         for port in self.receiving_ports:
             self.receiving_sockets.append(self.set_up_recv_socket(port))
 
-        self.data_fw_socket = self.start_socket(
-            name="data_fw_socket",
-            sock_type=zmq.PUSH,
-            sock_con="connect",
-            endpoint=endpoints.datafetch_con
-        )
+        # Set up data forwarding simulator
+        fw_endpoint = "ipc://{}/{}_{}".format(self.config["ipc_dir"],
+                                              self.config["main_pid"],
+                                              "out")
 
-        # Test data fetcher
+        if self.data_input:
+            # create zmq socket to send events
+            self.data_fw_socket = self.start_socket(
+                name="data_fw_socket",
+                sock_type=zmq.PUSH,
+                sock_con="bind",
+                endpoint=fw_endpoint
+            )
+
+        # Test file fetcher
         prework_source_file = os.path.join(self.base_dir,
                                            "test",
                                            "test_files",
                                            "test_file.cbf")
 
-        # read file to send it in data pipe
-        with open(prework_source_file, "rb") as file_descriptor:
-            file_content = file_descriptor.read()
-            self.log.debug("File read")
-
-        self.data_fw_socket.send(file_content)
-        self.log.debug("File send")
-
+        config_df = self.df_base_config["config"]["datafetcher"]
         metadata = {
             "source_path": os.path.join(self.base_dir, "data", "source"),
-            "relative_path": os.sep + "local" + os.sep + "raw",
-            "filename": "100.cbf"
+            "relative_path": os.sep + "local",
+            "filename": "100.cbf",
+            "filesize": os.stat(prework_source_file).st_size,
+            "file_mod_time": time.time(),
+            "file_create_time": time.time(),
+            "chunksize": config_df["chunksize"],
+            "chunk_number": 0,
         }
 
         targets = [
@@ -137,6 +155,18 @@ class TestDataFetcher(DataFetcherTestBase):
 
         self.log.debug("open_connections before function call: %s",
                        open_connections)
+
+        if self.data_input:
+
+            # simulatate data input sent by an other HiDRA instance
+            chunksize = config_df["chunksize"]
+            with open(prework_source_file, 'rb') as file_descriptor:
+                file_content = file_descriptor.read(chunksize)
+
+            self.data_fw_socket.send_multipart(
+                [json.dumps(metadata).encode("utf-8"), file_content]
+            )
+            self.log.debug("Incoming data sent")
 
         self.datafetcher.get_metadata(targets, metadata)
 
@@ -155,13 +185,9 @@ class TestDataFetcher(DataFetcherTestBase):
         except KeyboardInterrupt:
             pass
 
-    def test_with_confirmation(self):
-        """Simulate file fetching while taking care of confirmation signals.
-        """
-        pass
-
     def tearDown(self):
-        self.stop_socket(name="data_fw_socket")
+        if self.data_input:
+            self.stop_socket(name="data_fw_socket")
 
         if self.receiving_sockets is not None:
             for i, sckt in enumerate(self.receiving_sockets):

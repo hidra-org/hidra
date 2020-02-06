@@ -12,10 +12,12 @@ import json
 import os
 import zmq
 
-from hidra_events import (EventDetector,
-                          get_ipc_addresses,
-                          get_endpoints)
-from .eventdetector_test_base import EventDetectorTestBase, create_dir
+from hidra_events import (
+    EventDetector,
+    get_ipc_addresses,
+    get_endpoints
+)
+from ..eventdetector_test_base import EventDetectorTestBase, create_dir
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

@@ -50,7 +50,7 @@ from test_base import (create_dir,
 #                       MockLogging, mock_get_logger
 import zmq_events
 import hidra.utils as utils
-from .eventdetector_test_base import EventDetectorTestBase
+from ..eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 

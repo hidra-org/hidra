@@ -63,7 +63,8 @@ from .utils import (
     CommunicationFailed,
     DataSavingError,
     LoggingFunction,
-    Base
+    Base,
+    zmq_msg_to_nparray
 )
 from .control import Control
 
@@ -1565,6 +1566,11 @@ class Transfer(Base):
 
         m = metadata  # pylint: disable=invalid-name
 
+        # if arrays of numpy arrays are sent the max number of chunks is know
+        # beforehand and thus can be used directly
+        if "max_chunks" in m:
+            return m["chunk_number"] == m["max_chunks"] - 1
+
         # Either the message is smaller than than expected (last chunk)
         # or the size of the origin file was a multiple of the
         # chunksize and this is the last expected chunk (chunk_number
@@ -1649,10 +1655,20 @@ class Transfer(Base):
                 try:
                     # highlight that the metadata does not correspond to only
                     # one chunk anymore
-                    received["metadata"]["chunk_number"] = None
+                    metadata = received["metadata"]
+                    metadata["chunk_number"] = None
 
-                    # merge the data again
-                    received["data"] = b"".join(received["data"])
+                    if ("type" in metadata
+                            and metadata["type"] == "numpy_array_list"):
+                        m = metadata["additional_info"]
+                        received["data"] = [
+                            zmq_msg_to_nparray(data=msg, array_metadata=m[i])
+                            for i, msg in enumerate(received["data"])
+                        ]
+                    # when handling files
+                    else:
+                        # merge the data again
+                        received["data"] = b"".join(received["data"])
                 except Exception:
                     self.log.error("Something went wrong when merging chunks",
                                    exc_info=True)

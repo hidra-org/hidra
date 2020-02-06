@@ -69,6 +69,8 @@ class EventDetectorBase(Base):
                 eventdetector_base_args should contain the following keys:
                     config (dict): A dictionary containing the configuration
                         parameters.
+                    check_dep (boolean):
+                    context: A zmq context
                     log_queue: The multiprocessing queue which is used for
                         logging.
             name (str): The name to be used for the logger.
@@ -78,6 +80,7 @@ class EventDetectorBase(Base):
 
         self.config_all = eventdetector_base_config["config"]
         check_dep = eventdetector_base_config["check_dep"]
+        self.context = eventdetector_base_config["context"]
 
         self.log_queue = eventdetector_base_config["log_queue"]
         self.log = utils.get_logger(name, self.log_queue)

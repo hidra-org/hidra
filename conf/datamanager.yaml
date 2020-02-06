@@ -32,7 +32,7 @@ eventdetector:
     #type: http_events
     #type: hidra_events
     #type: zmq_events
-    #type: sync_ewmscp_events
+    #type: experimental_events.sync_ewmscp_events
 
     inotifyx_events:
         # Directory to be monitor for changes
@@ -192,7 +192,7 @@ eventdetector:
         # API version of the detector
         det_api_version: 1.6.0
 
-    sync_ewmscp_events:
+    experimental_events.sync_ewmscp_events:
         # Size of the ring buffer to store received events
         buffer_size: 50
 
@@ -209,6 +209,9 @@ eventdetector:
 
         # Kafka topic to register for events
         kafka_topic: "kuhnm_test"
+
+        # the ewmscp operation to watch events for
+        operation: "copy"
 
         # Detector identifiers used to distinguished from which detector a file
         # comes from. There are 2 variants:

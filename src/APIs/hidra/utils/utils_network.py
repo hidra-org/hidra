@@ -29,6 +29,7 @@ from __future__ import (absolute_import,
                         print_function,
                         unicode_literals)
 
+import numpy as np
 import re
 import socket as socket_m
 import subprocess
@@ -620,3 +621,16 @@ def stop_socket(name, socket, log):
         socket = None
 
     return socket
+
+
+def zmq_msg_to_nparray(data, array_metadata):
+    """
+
+    """
+    try:
+        mem_view = bytes(memoryview(data))
+        array = np.frombuffer(mem_view, dtype=array_metadata["dtype"])
+    except ValueError:
+        # python 2
+        array = np.frombuffer(bytes(data), dtype=array_metadata["dtype"])
+    return array.reshape(array_metadata["shape"])
