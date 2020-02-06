@@ -58,11 +58,6 @@ def is_windows():
     return platform.system() == "Windows"
 
 
-# ------------------------------ #
-#            Logging             #
-# ------------------------------ #
-
-# http://stackoverflow.com/questions/25585518/python-logging-logutils-with-queuehandler-and-queuelistener#25594270
 class CustomQueueListener(QueueListener):
     """
     Overcome the limitation in the QueueListener implementation
@@ -95,18 +90,45 @@ class CustomQueueListener(QueueListener):
             if record.levelno >= handler.level:
                 handler.handle(record)
 
-    def addHandler(self, hdlr):  # noqa: N802
+    def addHandler(self, handler):  # noqa: N802
         """Add the specified handler to this logger.
         """
-        if hdlr not in self.handlers:
-            self.handlers.append(hdlr)
+        if handler not in self.handlers:
+            self.handlers.append(handler)
 
-    def removeHandler(self, hdlr):  # noqa: N802
+    def removeHandler(self, handler):  # noqa: N802
         """Remove the specified handler from this logger.
         """
-        if hdlr in self.handlers:
-            hdlr.close()
-            self.handlers.remove(hdlr)
+        if handler in self.handlers:
+            handler.close()
+            self.handlers.remove(handler)
+
+
+def convert_str_to_log_level(level):
+    """Convert log level corresponding logging equivalent
+
+    Args:
+        level: A string describing the log level to use (lower or upper case is
+            not relevant).
+
+    Return:
+        The corresponding logging level.
+    """
+
+    level = level.lower()
+
+    if level == "critical":
+        loglevel = logging.CRITICAL
+    elif level == "error":
+        loglevel = logging.ERROR
+    elif level == "warning":
+        loglevel = logging.WARNING
+    elif level == "info":
+        loglevel = logging.INFO
+    else:
+        loglevel = logging.DEBUG
+
+    return loglevel
 
 
 def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
@@ -141,17 +163,7 @@ def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
         else:
             fmt = "[%(asctime)s] > %(message)s"
 
-    # convert log level corresponding logging equivalent
-    if loglevel == "critical":
-        loglvl = logging.CRITICAL
-    elif loglevel == "error":
-        loglvl = logging.ERROR
-    elif loglevel == "warning":
-        loglvl = logging.WARNING
-    elif loglevel == "info":
-        loglvl = logging.INFO
-    else:
-        loglvl = logging.DEBUG
+    loglvl = convert_str_to_log_level(loglevel)
 
     formatter = logging.Formatter(datefmt=datefmt, fmt=fmt)
     handler = logging.StreamHandler()
@@ -192,17 +204,7 @@ def get_file_log_handler(logfile,
                "[%(module)s:%(funcName)s:%(lineno)d] "
                "[%(name)s] [%(levelname)s] %(message)s")
 
-    # convert log level corresponding logging equivalent
-    if loglevel == "critical":
-        loglevel = logging.CRITICAL
-    elif loglevel == "error":
-        loglevel = logging.ERROR
-    elif loglevel == "warning":
-        loglevel = logging.WARNING
-    elif loglevel == "info":
-        loglevel = logging.INFO
-    else:
-        loglevel = logging.DEBUG
+    loglevel = convert_str_to_log_level(loglevel)
 
     # Setup file handler to output to file
     # argument for RotatingFileHandler: filename, mode, maxBytes, backupCount)
@@ -294,16 +296,8 @@ def get_logger(logger_name, queue=False, log_level="debug"):
         logger.propagate = False
         logger.addHandler(handler)
 
-        if loglevel == "debug":
-            logger.setLevel(logging.DEBUG)
-        elif loglevel == "info":
-            logger.setLevel(logging.INFO)
-        elif loglevel == "warning":
-            logger.setLevel(logging.WARNING)
-        elif loglevel == "error":
-            logger.setLevel(logging.ERROR)
-        elif loglevel == "critical":
-            logger.setLevel(logging.CRITICAL)
+        logging_lvl = convert_str_to_log_level(loglevel)
+        logger.setLevel(logging_lvl)
     else:
         logger = LoggingFunction(loglevel)
 
