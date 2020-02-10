@@ -51,9 +51,9 @@ import subprocess
 import time
 
 try:
-    from pathlib2 import Path
-except ImportError:
     from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 
 from datafetcherbase import DataFetcherBase, DataHandlingError
 from cleanerbase import CleanerBase

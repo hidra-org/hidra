@@ -72,10 +72,10 @@ import watchdog.events
 from watchdog.events import RegexMatchingEventHandler
 
 try:
-    from pathlib2 import Path
-except ImportError:
     # only available for Python3
     from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 
 from eventdetectorbase import EventDetectorBase
 import hidra.utils as utils

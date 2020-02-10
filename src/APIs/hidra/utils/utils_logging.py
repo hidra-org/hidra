@@ -235,7 +235,7 @@ def format_log_filename(logfile):
 
 
 def get_log_handlers(logfile, logsize, verbose, onscreen_loglevel=False):
-    """ Get the log Configuration for the listener
+    """ Get the log configuration for the listener
 
     Args:
         logfile: The name of the log file.

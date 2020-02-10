@@ -48,9 +48,9 @@ import zmq
 from zmq.auth.thread import ThreadAuthenticator
 
 try:
-    from pathlib2 import Path
-except ImportError:
     from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 
 from .utils._version import __version__
 from .utils import (

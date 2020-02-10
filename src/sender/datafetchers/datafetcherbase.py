@@ -42,10 +42,10 @@ import time
 import zmq
 
 try:
-    from pathlib2 import Path
-except ImportError:
     # only available for Python3
     from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 
 from base_class import Base
 import hidra.utils as utils

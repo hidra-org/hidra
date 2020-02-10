@@ -31,7 +31,6 @@ import os
 import sys
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-print(CURRENT_DIR)
 BASE_DIR = os.path.dirname(
     os.path.dirname(
         os.path.dirname(
@@ -39,7 +38,6 @@ BASE_DIR = os.path.dirname(
         )
     )
 )
-print(BASE_DIR)
 EVENTDETECTOR_DIR = os.path.join(CURRENT_DIR, "eventdetectors")
 DATAFETCHER_DIR = os.path.join(CURRENT_DIR, "datafetchers")
 API_DIR = os.path.join(BASE_DIR, "src", "APIs")

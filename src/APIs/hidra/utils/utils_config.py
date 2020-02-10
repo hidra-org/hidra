@@ -43,10 +43,13 @@ from .utils_datatypes import (Endpoints, NotSupported, WrongConfiguration)
 from .utils_general import check_existence
 
 try:
-    # The ConfigParser module has been renamed to configparser in Python 3
+    # python3
     from configparser import RawConfigParser
+    from pathlib import Path
 except ImportError:
+    # python2
     from ConfigParser import RawConfigParser
+    from pathlib2 import Path
 
 
 def determine_config_file(fname_base, config_dir):
