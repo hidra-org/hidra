@@ -76,8 +76,6 @@ from _environment import BASE_DIR  # noqa E402
 import hidra.utils as utils  # noqa E402
 from hidra import __version__  # noqa E402
 
-CONFIG_DIR = os.path.join(BASE_DIR, "conf")
-
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
@@ -107,15 +105,12 @@ def argument_parsing():
 def load_config():
     """Parses the command line arguments and loads config files.
     """
-    base_config_file = utils.determine_config_file(fname_base="base_sender",
-                                                   config_dir=CONFIG_DIR)
-
+    base_config_file = utils.determine_config_file(fname_base="base_sender")
     arguments = argument_parsing()
 
     arguments.config_file = (
         arguments.config_file
-        or utils.determine_config_file(fname_base="datamanager",
-                                       config_dir=CONFIG_DIR)
+        or utils.determine_config_file(fname_base="datamanager")
     )
 
     # check if config_file exist

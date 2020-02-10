@@ -39,8 +39,14 @@ import logging
 import os
 import yaml
 
-from .utils_datatypes import (Endpoints, NotSupported, WrongConfiguration)
-from .utils_general import check_existence
+from .utils_datatypes import (
+    Endpoints,
+    NotSupported,
+    WrongConfiguration,
+    NotFoundError
+)
+from .utils_general import check_existence, is_windows
+from ._environment import BASE_DIR  # noqa E402
 
 try:
     # python3
@@ -52,15 +58,51 @@ except ImportError:
     from pathlib2 import Path
 
 
-def determine_config_file(fname_base, config_dir):
+def _get_config_file_location(filename):
+    """ Get the absolute path of the log file.
+
+    For Linux an hierarchical structure is checked:
+        - user config path
+        - system config path
+        - hidra config path
+    On windows only the hidra config path is supported.
+
+    Args:
+        filename: The name of the log file
+
+    Returns:
+        The absolute path where the log file can be found.
+
+    Raises:
+        NotFoundError when the log file could not be found in either location.
     """
-    Determines if the config file is of the old type (conf) or the new
-    one (yaml).
+
+    if not is_windows():
+        # $HOME/.config/hidra/
+        user_config_path = Path.home().joinpath(".config/hidra", filename)
+        if user_config_path.exists():
+            return user_config_path
+
+        # /etc/xdg/hidra
+        system_config_path = Path("/etc/xdg/hidra").joinpath(filename)
+        if system_config_path.exists():
+            return system_config_path
+
+    # /opt/hidra/conf
+    hidra_config_path = Path(BASE_DIR).joinpath("conf", filename)
+    if hidra_config_path.exists():
+        return hidra_config_path
+    else:
+        raise NotFoundError("Configuration file does not exist.")
+
+
+def determine_config_file(fname_base):
+    """
+    Determines the config file location and if it is of conf or yaml type.
 
     Args:
         fname_base: the file name base of the config file
                     e.g. fname_base for base_sender.yaml would be base_sender
-        config_dir: the directory where the config files can be found
     Returns:
         The base config file (full path).
 
@@ -68,25 +110,23 @@ def determine_config_file(fname_base, config_dir):
         WrongConfiguration: if no config was found.
     """
 
-    config_file = os.path.join(config_dir, "{}.yaml".format(fname_base))
     try:
-        check_existence(config_file)
-    except WrongConfiguration:
-        config_file = os.path.join(config_dir, "{}.conf".format(fname_base))
+        conf_file = _get_config_file_location("{}.yaml".format(fname_base))
+    except NotFoundError:
         try:
-            check_existence(config_file)
-        except WrongConfiguration:
-            raise WrongConfiguration("Missing base config file ('{}')"
+            conf_file = _get_config_file_location("{}.conf".format(fname_base))
+        except NotFoundError:
+            raise WrongConfiguration("Missing config file ('{}(.yaml|.conf)')"
                                      .format(fname_base))
 
-    return config_file
+    return conf_file
 
 
 def load_config(config_file, config_type=None, log=logging):
     """Read and parse configuration data from the file.
 
     Args:
-        config_file (str): Absolute path to the configuration file.
+        config_file (str or Path): Absolute path to the configuration file.
         config_type (str): The type the configuration is in (config or yaml).
             If not set (or set to None) the file extension is used for
             automatic detection.
@@ -95,6 +135,7 @@ def load_config(config_file, config_type=None, log=logging):
     Returns:
         Configuration dictionary.
     """
+    config_file = Path(config_file)
 
     # Auto-detection
     if config_type is None:
@@ -103,24 +144,26 @@ def load_config(config_file, config_type=None, log=logging):
         file_type = config_type
 
     try:
-        if file_type == "conf":
+        if file_type in [".conf", "conf"]:
             configparser = RawConfigParser()
             try:
-                configparser.readfp(_FakeSecHead(open(config_file)))
+                configparser.readfp(_FakeSecHead(config_file.open('r')))
             # TODO why was this necessary?
             except Exception:
-                with open(config_file, 'r') as open_file:
-                    config_string = '[asection]\n' + open_file.read()
+                with config_file.open('r') as f:
+                    config_string = '[asection]\n' + f.read()
                 configparser.read_string(config_string)
 
             config = parse_parameters(configparser)["asection"]
 
-        elif file_type == "yaml":
-            with open(config_file) as f:
+        elif file_type in [".yaml", "yaml"]:
+            with config_file.open('r') as f:
                 config = yaml.safe_load(f)
 
             # check for "None" entries
             _fix_none_entries(dictionary=config)
+        else:
+            raise Exception()
 
     except Exception:
         log.error("Could not load config file %s", config_file)
@@ -130,11 +173,9 @@ def load_config(config_file, config_type=None, log=logging):
 
 
 def _detect_config_type(config_file, log):
-    if config_file.endswith(".conf"):
-        file_type = "conf"
-    elif config_file.endswith(".yaml"):
-        file_type = "yaml"
-    else:
+    file_type = config_file.suffix
+
+    if file_type not in [".yaml", ".conf"]:
         log.debug("config_file = %s", config_file)
         raise WrongConfiguration("Detected not supported config type")
 
@@ -145,7 +186,7 @@ def write_config(config_file, config, config_type=None, log=logging):
     """Write configuration data info a file.
 
     Args:
-        config_file (str): Absolute path to the configuration file.
+        config_file (str or Path): Absolute path to the configuration file.
         config (dict): The configuration data.
         config_type (str, optional): The type the configuration is in
             (config or yaml). If not set (or set to None) the file extension is
@@ -156,6 +197,7 @@ def write_config(config_file, config, config_type=None, log=logging):
         NotSupported if the defined config_type (or when auto-detecting the
         file extension) is not supported.
     """
+    config_file = Path(config_file)
 
     # Auto-detection
     if config_type is None:
@@ -164,13 +206,13 @@ def write_config(config_file, config, config_type=None, log=logging):
         file_type = config_type
 
     try:
-        if file_type == "conf":
-            with open(config_file, 'w') as f:
+        if file_type in [".conf", "conf"]:
+            with config_file.open('w') as f:
                 for key, value in config.items():
                     f.write("{} = {}\n".format(key, value))
 
-        if file_type == "yaml":
-            with open(config_file, 'w') as outfile:
+        if file_type in [".yaml", "yaml"]:
+            with config_file.open('w') as outfile:
                 yaml.safe_dump(
                     config,
                     outfile,

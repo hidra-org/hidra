@@ -51,8 +51,6 @@ import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
-CONFIG_DIR = os.path.join(BASE_DIR, "conf")
-
 _whitelist = []
 _changed_netgroup = False
 
@@ -61,8 +59,7 @@ def argument_parsing():
     """Parses and checks the command line arguments used.
     """
 
-    base_config_file = utils.determine_config_file(fname_base="base_receiver",
-                                                   config_dir=CONFIG_DIR)
+    base_config_file = utils.determine_config_file(fname_base="base_receiver")
 
     # ------------------------------------------------------------------------
     # Get command line arguments
@@ -118,8 +115,7 @@ def argument_parsing():
     arguments = parser.parse_args()
     arguments.config_file = (
         arguments.config_file
-        or utils.determine_config_file(fname_base="datareceiver",
-                                       config_dir=CONFIG_DIR)
+        or utils.determine_config_file(fname_base="datareceiver")
     )
 
     # check if config_file exist
@@ -143,10 +139,6 @@ def argument_parsing():
     utils.update_dict(config_detailed, config)
 
     utils.update_dict(arguments_dict, config)
-
-#    params = utils.set_parameters(base_config_file=base_config_file,
-#                                  config_file=arguments.config_file,
-#                                  arguments=arguments)
 
     # ------------------------------------------------------------------------
     # Check given arguments

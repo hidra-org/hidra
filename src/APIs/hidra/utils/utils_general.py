@@ -46,6 +46,13 @@ except ImportError:
     # on windows
     pass
 
+try:
+    # python3
+    from pathlib import Path
+except ImportError:
+    # python2
+    from pathlib2 import Path
+
 from ._version import __version__
 from .utils_datatypes import WrongConfiguration, NotFoundError, NotSupported
 
@@ -175,7 +182,7 @@ def check_existence(path):
     """Checks if a file or directory exists. Exists otherwise.
 
     Args:
-        path (str): Absolute path of the directory or file.
+        path (Path or str): Absolute path of the directory or file.
 
     Raises:
         WrongConfiguration: when file or dir is not set or does not exist.
@@ -185,14 +192,16 @@ def check_existence(path):
         raise WrongConfiguration("No path to check found (path={}). Abort."
                                  .format(path))
 
+    path = Path(path)
+
     # Check path for existence.
     # Exits if it does not exist
-    if os.path.isdir(path):
+    if path.is_dir():
         obj_type = "Dir"
     else:
         obj_type = "File"
 
-    if not os.path.exists(path):
+    if not path.exists():
         raise WrongConfiguration("{} '{}' does not exist. Abort."
                                  .format(obj_type, path))
 
