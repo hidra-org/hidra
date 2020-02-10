@@ -342,7 +342,7 @@ class DataManager(Base):
         self.use_data_stream = config_df["use_data_stream"]
         self.log.info("Usage of data stream set to '%s'", self.use_data_stream)
 
-        # set up enpoints and network config
+        # set up endpoints and network config
         self._setup_network()
         self._check_data_stream_targets()
 
