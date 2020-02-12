@@ -64,48 +64,10 @@ from .utils import (
     DataSavingError,
     LoggingFunction,
     Base,
-    zmq_msg_to_nparray
+    zmq_msg_to_nparray,
+    get_logger
 )
 from .control import Control
-
-
-def get_logger(logger_name,
-               queue=False,
-               log_level="debug"):
-    """Send all logs to the main process.
-
-    The worker configuration is done at the start of the worker process run.
-    Note that on Windows you can't rely on fork semantics, so each process
-    will run the logging configuration code when it starts.
-    """
-
-    # pylint: disable=redefined-variable-type
-
-    log_level_lower = log_level.lower()
-
-    if queue:
-        from logutils.queue import QueueHandler
-
-        # Create log and set handler to queue handle
-        handler = QueueHandler(queue)  # Just the one handler needed
-        logger = logging.getLogger(logger_name)
-        logger.propagate = False
-        logger.addHandler(handler)
-
-        if log_level_lower == "debug":
-            logger.setLevel(logging.DEBUG)
-        elif log_level_lower == "info":
-            logger.setLevel(logging.INFO)
-        elif log_level_lower == "warning":
-            logger.setLevel(logging.WARNING)
-        elif log_level_lower == "error":
-            logger.setLevel(logging.ERROR)
-        elif log_level_lower == "critical":
-            logger.setLevel(logging.CRITICAL)
-    else:
-        logger = LoggingFunction(log_level_lower)
-
-    return logger
 
 
 def generate_filepath(base_path, config_dict, add_filename=True):
@@ -1230,7 +1192,7 @@ class Transfer(Base):
              open_callback,
              read_callback,
              close_callback):
-        """
+        """This is experimental
 
         Args:
             callback_params:
