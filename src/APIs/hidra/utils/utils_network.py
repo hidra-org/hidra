@@ -32,6 +32,7 @@ from __future__ import (absolute_import,
 import re
 import socket as socket_m
 import subprocess
+import threading
 import time
 
 from .utils_datatypes import (
@@ -42,6 +43,26 @@ from .utils_datatypes import (
 )
 from .utils_logging import LoggingFunction
 from .utils_general import is_windows
+
+_LOCK = threading.Lock()
+_FQDN_CACHE = {}
+
+
+def _get_fqdn(host, log):
+    global _LOCK
+    global _FQDN_CACHE
+
+    try:
+        # use cached one if possibly to reduce ldap queries
+        fqdn = _FQDN_CACHE[host]
+    except KeyError:
+        with _LOCK:
+            _FQDN_CACHE[host] = socket_m.getfqdn(host)
+        fqdn = _FQDN_CACHE[host]
+        log.debug("Cache fully qualified domain name (%s -> %s)",
+                  host, fqdn)
+
+    return fqdn
 
 
 def check_netgroup(hostname,
@@ -75,7 +96,7 @@ def check_netgroup(hostname,
     netgroup = execute_ldapsearch(log, netgroup_name, ldapuri)
 
     # convert host to fully qualified DNS name
-    hostname = socket_m.getfqdn(hostname)
+    hostname = _get_fqdn(hostname, log)
 
     if hostname in netgroup:
         return True
@@ -84,6 +105,7 @@ def check_netgroup(hostname,
                          .format(hostname, beamline))
     else:
         return False
+
 
 def _resolve_ldap_server_ip(log, ldapuri):
     # measure time to identify misconfigured network settings
@@ -108,6 +130,7 @@ def _resolve_ldap_server_ip(log, ldapuri):
                     "services", ldap_response_limit)
 
     return ldap_server_ip, ldap_host
+
 
 def execute_ldapsearch(log, ldap_cn, ldapuri):
     """Searches ldap for a netgroup and parses the output.
@@ -139,7 +162,7 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
 
     if not lines and not error:
         log.debug("%s is not a netgroup, considering it as hostname", ldap_cn)
-        return [socket_m.getfqdn(ldap_cn)]
+        return [_get_fqdn(ldap_cn, log)]
 
     netgroup = []
     try:
@@ -150,7 +173,7 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
             if match_host.match(line):
                 if match_host.match(line).group(1) not in netgroup:
                     netgroup.append(
-                        socket_m.getfqdn(match_host.match(line).group(1))
+                        _get_fqdn(match_host.match(line).group(1), log)
                     )
 
         if error or not netgroup:
@@ -190,7 +213,7 @@ def extend_whitelist(whitelist, ldapuri, log):
         whitelist = [whitelist]
 
     if is_windows():
-        ext_whitelist = [socket_m.getfqdn(host) for host in whitelist]
+        ext_whitelist = [_get_fqdn(host, log) for host in whitelist]
     else:
         ext_whitelist = []
         for i in whitelist:
@@ -230,11 +253,12 @@ def convert_socket_to_fqdn(socketids, log):
                     log.error("Target is of wrong format, either host or port "
                               "is missing")
                     raise
-                new_target = "{}:{}".format(socket_m.getfqdn(host), port)
+
+                new_target = "{}:{}".format(_get_fqdn(host, log), port)
                 target[0] = new_target
     else:
         host, port = socketids.split(":")
-        socketids = "{}:{}".format(socket_m.getfqdn(host), port)
+        socketids = "{}:{}".format(_get_fqdn(host, log), port)
 
     log.debug("converted socketids=%s", socketids)
 
