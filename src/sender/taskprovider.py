@@ -231,76 +231,81 @@ class TaskProvider(Base):
                                exc_info=True)
                 workload_list = []
 
-            # TODO validate workload dict
+            # ----------------------------------------------------------------
+            # process events
+            # ----------------------------------------------------------------
             for workload in workload_list:
-
                 if not self.keep_running:
                     break
-
-                # ------------------------------------------------------------
-                # get requests for this event
-                # ------------------------------------------------------------
-                requests = ["None"]  # default
-                try:
-                    self.log.debug("Get requests...")
-                    self.request_fw_socket.send_multipart(
-                        [b"GET_REQUESTS",
-                         json.dumps(workload["filename"]).encode("utf-8")]
-                    )
-
-                    requests = json.loads(self.request_fw_socket.recv_string())
-
-                except TypeError:
-                    # This happens when CLOSE_FILE is sent as workload
-                    pass
-                except zmq.error.Again:
-                    self.log.error("Error when getting requests due to timeout "
-                                   "of request_socket")
-                except Exception:
-                    self.log.error("Get Requests... failed.", exc_info=True)
-
-                # ------------------------------------------------------------
-                # build message dict
-                # ------------------------------------------------------------
-                try:
-                    self.log.debug("Building message dict...")
-                    # set correct escape characters
-                    message_dict = json.dumps(workload).encode("utf-8")
-                except Exception:
-                    self.log.error("Unable to assemble message dict.",
-                                   exc_info=True)
-                    continue
-
-                # ------------------------------------------------------------
-                # send the file to the dataDispatcher
-                # ------------------------------------------------------------
-                try:
-                    self.log.debug("Sending message...")
-                    message = [message_dict]
-                    if requests != ["None"]:
-                        message.append(json.dumps(requests).encode("utf-8"))
-                    self.log.debug(str(message))
-
-                    while True:
-                        try:
-                            self.router_socket.send_multipart(message)
-                            break
-                        except zmq.error.Again:
-                            self.log.warning("Sending message failed due to "
-                                             "timeout of router_socket")
-                            # if there is a control signal in the meantime this
-                            # would otherwise get struck
-                            if self._check_control_socket():
-                                break
-                except Exception:
-                    self.log.error("Sending message...failed.", exc_info=True)
-                    raise
+                self._process_workload(workload)
 
             # ----------------------------------------------------------------
             # control commands
             # ----------------------------------------------------------------
             if self._check_control_socket():
                 break
+
+    def _process_workload(self, workload):
+        # TODO validate workload dict
+
+        # ------------------------------------------------------------
+        # get requests for this event
+        # ------------------------------------------------------------
+        requests = ["None"]  # default
+        try:
+            self.log.debug("Get requests...")
+            self.request_fw_socket.send_multipart(
+                [b"GET_REQUESTS",
+                 json.dumps(workload["filename"]).encode("utf-8")]
+            )
+
+            requests = json.loads(self.request_fw_socket.recv_string())
+
+        except TypeError:
+            # This happens when CLOSE_FILE is sent as workload
+            pass
+        except zmq.error.Again:
+            self.log.error("Error when getting requests due to timeout "
+                           "of request_socket")
+        except Exception:
+            self.log.error("Get Requests... failed.", exc_info=True)
+
+        # ------------------------------------------------------------
+        # build message dict
+        # ------------------------------------------------------------
+        try:
+            self.log.debug("Building message dict...")
+            # set correct escape characters
+            message_dict = json.dumps(workload).encode("utf-8")
+        except Exception:
+            self.log.error("Unable to assemble message dict.",
+                           exc_info=True)
+            return
+
+        # ------------------------------------------------------------
+        # send the file to the dataDispatcher
+        # ------------------------------------------------------------
+        try:
+            self.log.debug("Sending message...")
+            message = [message_dict]
+            if requests != ["None"]:
+                message.append(json.dumps(requests).encode("utf-8"))
+            self.log.debug(str(message))
+
+            while True:
+                try:
+                    self.router_socket.send_multipart(message)
+                    break
+                except zmq.error.Again:
+                    self.log.warning("Sending message failed due to "
+                                     "timeout of router_socket")
+                    # if there is a control signal in the meantime this
+                    # would otherwise get struck
+                    if self._check_control_socket():
+                        break
+        except Exception:
+            self.log.error("Sending message...failed.", exc_info=True)
+            raise
 
     def _check_control_socket(self):
         """Check if any control signal where received over the control socket
