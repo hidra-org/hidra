@@ -320,77 +320,7 @@ class SignalHandler(Base):
             if (self.request_fw_socket in socks
                     and socks[self.request_fw_socket] == zmq.POLLIN):
 
-                in_message = None
-                try:
-                    in_message = self.request_fw_socket.recv_multipart()
-                    if in_message[0] == b"GET_REQUESTS":
-                        self.log.debug("New request for signals received.")
-                        filename = json.loads(in_message[1].decode("utf-8"))
-                        open_requests = []
-
-                        for i, trgt_prop in enumerate(self.registered_streams):
-                            request_set = trgt_prop.targets
-
-                            if request_set:
-                                # [<host:port>, <prio>, <suffix_list>,
-                                #  <metadata|data>]
-                                socket_id, prio, pattern, send_type = (
-                                    request_set[self.perm_requests[i]])
-
-                                # Check if filename matches requested
-                                # regex
-                                if pattern.match(filename) is not None:
-                                    # do not send pattern
-                                    open_requests.append([socket_id,
-                                                          prio,
-                                                          send_type])
-
-                                    # distribute in round-robin order
-                                    self.perm_requests[i] = (
-                                        (self.perm_requests[i] + 1)
-                                        % len(request_set)
-                                    )
-
-                        for request_set in self.vari_requests:
-                            # Check if filename suffix matches requested suffix
-                            if (request_set
-                                    and (request_set[0][2].match(filename)
-                                         is not None)):
-                                socket_id, prio, pattern, send_type = (
-                                    request_set.pop(0))
-                                # do not send pattern
-                                open_requests.append([socket_id,
-                                                      prio,
-                                                      send_type])
-
-                        if open_requests:
-                            self.request_fw_socket.send_string(
-                                json.dumps(open_requests))
-                        else:
-                            open_requests = ["None"]
-                            self.request_fw_socket.send_string(
-                                json.dumps(open_requests)
-                            )
-
-                        self.log.debug("Answered to request: %s",
-                                       open_requests)
-                        self.log.debug("vari_requests: %s",
-                                       self.vari_requests)
-                        self.log.debug("registered_queries: %s",
-                                       self.registered_queries)
-                        self.log.debug("registered_streams: %s",
-                                       self.registered_streams)
-
-                    else:
-                        self.log.debug("in_message=%s", in_message)
-                        self.log.error("Failed to receive/answer new signal "
-                                       "requests: incoming message not "
-                                       "supported")
-
-                except Exception:
-                    self.log.debug("in_message=%s", in_message)
-                    self.log.error("Failed to receive/answer new signal "
-                                   "requests", exc_info=True)
+                self._handle_request_task_provider()
 
             # ----------------------------------------------------------------
             # start/stop command from external
@@ -421,116 +351,9 @@ class SignalHandler(Base):
                 self.log.debug("Received request: %s", in_message)
 
                 if in_message[0] == b"NEXT":
-                    socket_id = utils.convert_socket_to_fqdn(
-                        in_message[1].decode("utf-8"), self.log
-                    )
-
-                    # determine if the socket id is contained in the
-                    # TargetProperties
-                    # -> True is so, False otherwise (each TargetProperty
-                    #    checked independently
-                    res = [[i[0] == socket_id for i in query_set.targets]
-                           for query_set in self.registered_queries]
-
-                    # determine the registered queries where the socket id is
-                    # contained
-                    possible_queries = [
-                        # (time, target set index, target index)
-                        (self.registered_queries[i].time_registered, i, j)
-                        for i, tset in enumerate(res)
-                        for j, trgt in enumerate(tset)
-                        if trgt
-                    ]
-
-                    # only add the request to the newest one
-                    # (others might be left overs)
-
-                    # identify which one is the newest
-                    try:
-                        idx_newest = possible_queries.index(
-                            max(possible_queries)
-                        )
-                    except ValueError:
-                        # target not found in possible_queries
-                        self.log.debug("No registration found for query")
-                        continue
-
-                    newest = possible_queries[idx_newest]
-
-                    # Add request
-                    self.vari_requests[newest[1]].append(
-                        self.registered_queries[newest[1]].targets[newest[2]]
-                    )
-                    self.log.info(
-                        "Add to open requests: %s",
-                        self.registered_queries[newest[1]].targets[newest[2]]
-                    )
-
-                    # avoid duplicates -> remove old registered queries
-                    # this cannot be done when the START signal arrives
-                    # because putting it in there would e.g. break in the
-                    # following case:
-                    # - app1 connects and gets data normally
-                    # - app2 (duplicate of app1, i.e. same host + port to
-                    #   receive data on) tries to connect but fails when
-                    #   establishing the sockets
-                    # -> putting the cleanup in the start would break app1 once
-                    #    app2 is started
-                    if len(possible_queries) > 1:
-
-                        # only the left overs
-                        del possible_queries[idx_newest]
-
-                        # get the indexes to remove first and then remove them
-                        # in backwards order to prevent  index shifting
-                        # e.g. list(a, b, c), remove index 1 and 2
-                        # -> remove index 1 -> list(a, c)
-                        #    remove index 2 -> error
-                        idxs_to_remove = [
-                            query[1] for query in possible_queries
-                        ]
-                        idxs_to_remove.sort(reverse=True)
-                        self.log.debug("idxs_to_remove=%s", idxs_to_remove)
-
-                        # left overs found
-                        for i in idxs_to_remove:
-                            try:
-                                self.log.debug(
-                                    "Remove leftover/duplicate registered "
-                                    "query %s ", self.registered_queries[i]
-                                )
-                                del self.vari_requests[i]
-                                del self.registered_queries[i]
-                            except Exception:
-                                self.log.debug("i=%s", i)
-                                self.log.debug("registered_queries=%s",
-                                               self.registered_queries)
-                                self.log.error(
-                                    "Could not remove leftover/duplicate "
-                                    "query", exc_info=True
-                                )
-                                raise
-
+                    self._handle_request_external_next(in_message)
                 elif in_message[0] == b"CANCEL":
-                    socket_id = utils.convert_socket_to_fqdn(
-                        in_message[1].decode("utf-8"), self.log
-                    )
-
-#                    self.vari_requests.remove(newest[1])
-
-                    # socket_conf is of the form
-                    # [<host>:<port>, <prio>, <regex>, data|metadata]
-                    self.vari_requests = [
-                        [
-                            socket_conf
-                            for socket_conf in request_set
-                            if socket_id != socket_conf[0]
-                        ]
-                        for request_set in self.vari_requests
-                    ]
-
-                    self.log.info("Remove all occurrences from %s from "
-                                  "variable request list.", socket_id)
+                    self._handle_request_external_cancel(in_message)
                 else:
                     self.log.info("Request not supported.")
 
@@ -543,6 +366,148 @@ class SignalHandler(Base):
                 # the exit signal should become effective
                 if self.check_control_signal():
                     break
+
+    def _handle_request_task_provider(self):
+        in_message = None
+        try:
+            in_message = self.request_fw_socket.recv_multipart()
+
+            if in_message[0] != b"GET_REQUESTS":
+                self.log.debug("in_message=%s", in_message)
+                self.log.error("Failed to receive/answer new signal requests: "
+                               "incoming message not supported")
+                return
+
+            self.log.debug("New request for signals received.")
+            filename = json.loads(in_message[1].decode("utf-8"))
+            open_requests = []
+
+            for i, trgt_prop in enumerate(self.registered_streams):
+                request_set = trgt_prop.targets
+
+                if request_set:
+                    # [<host:port>, <prio>, <suffix_list>, <metadata|data>]
+                    socket_id, prio, pattern, send_type = (
+                        request_set[self.perm_requests[i]])
+
+                    # Check if filename matches requested regex
+                    if pattern.match(filename) is not None:
+                        # do not send pattern
+                        open_requests.append([socket_id, prio, send_type])
+
+                        # distribute in round-robin order
+                        self.perm_requests[i] = (
+                                (self.perm_requests[i] + 1) % len(request_set)
+                        )
+
+            for request_set in self.vari_requests:
+                # Check if filename suffix matches requested suffix
+                if (request_set
+                        and (request_set[0][2].match(filename) is not None)):
+                    socket_id, prio, pattern, send_type = request_set.pop(0)
+                    # do not send pattern
+                    open_requests.append([socket_id, prio, send_type])
+
+            if not open_requests:
+                open_requests = ["None"]
+            self.request_fw_socket.send_string(json.dumps(open_requests))
+
+            self.log.debug("Answered to request: %s", open_requests)
+            self.log.debug("vari_requests: %s", self.vari_requests)
+            self.log.debug("registered_queries: %s", self.registered_queries)
+            self.log.debug("registered_streams: %s", self.registered_streams)
+
+        except Exception:
+            self.log.debug("in_message=%s", in_message)
+            self.log.error("Failed to receive/answer new signal requests",
+                           exc_info=True)
+
+    def _handle_request_external_next(self, in_message):
+        socket_id = utils.convert_socket_to_fqdn(
+            in_message[1].decode("utf-8"), self.log
+        )
+
+        # determine if the socket id is contained in the TargetProperties
+        # -> True is so, False otherwise (each TargetProperty checked
+        #    independently
+        res = [[i[0] == socket_id for i in query_set.targets]
+               for query_set in self.registered_queries]
+
+        # determine the registered queries where the socket id is contained
+        # (time, target set index, target index)
+        possible_queries = [(self.registered_queries[i].time_registered, i, j)
+            for i, tset in enumerate(res)
+            for j, trgt in enumerate(tset)
+            if trgt
+        ]
+
+        # only add the request to the newest one (others might be left overs)
+
+        # identify which one is the newest
+        try:
+            idx_newest = possible_queries.index(max(possible_queries))
+        except ValueError:
+            # target not found in possible_queries
+            self.log.debug("No registration found for query")
+            return
+
+        newest = possible_queries[idx_newest]
+
+        # Add request
+        request = self.registered_queries[newest[1]].targets[newest[2]]
+        self.vari_requests[newest[1]].append(request)
+        self.log.info("Add to open requests: %s", request)
+
+        # avoid duplicates -> remove old registered queries this cannot be done
+        # when the START signal arrives because putting it in there would e.g.
+        # break in the following case:
+        # - app1 connects and gets data normally
+        # - app2 (duplicate of app1, i.e. same host + port to receive data on)
+        #   tries to connect but fails when establishing the sockets
+        # -> putting the cleanup in the start would break app1 once app2 is
+        #    started
+        if len(possible_queries) > 1:
+
+            # only the left overs
+            del possible_queries[idx_newest]
+
+            # get the indexes to remove first and then remove them in backwards
+            # order to prevent  index shifting
+            # e.g. list(a, b, c), remove index 1 and 2
+            # -> remove index 1 -> list(a, c)
+            #    remove index 2 -> error
+            idxs_to_remove = [query[1] for query in possible_queries]
+            idxs_to_remove.sort(reverse=True)
+            self.log.debug("idxs_to_remove=%s", idxs_to_remove)
+
+            # left overs found
+            try:
+                for i in idxs_to_remove:
+                    self.log.debug("Remove leftover/duplicate registered "
+                                   "query %s ", self.registered_queries[i])
+                    del self.vari_requests[i]
+                    del self.registered_queries[i]
+            except Exception:
+                self.log.debug("i=%s", i)
+                self.log.debug("registered_queries=%s", self.registered_queries)
+                self.log.error("Could not remove leftover/duplicate query",
+                               exc_info=True)
+                raise
+
+    def _handle_request_external_cancel(self, in_message):
+        socket_id = utils.convert_socket_to_fqdn(in_message[1].decode("utf-8"),
+                                                 self.log)
+
+        # socket_conf is of the form
+        # [<host>:<port>, <prio>, <regex>, data|metadata]
+        self.vari_requests = [
+            [socket_conf for socket_conf in request_set
+             if socket_id != socket_conf[0]]
+            for request_set in self.vari_requests
+        ]
+
+        self.log.info("Remove all occurrences from %s from variable request "
+                      "list.", socket_id)
 
     def _react_to_sleep_signal(self, message):
         """Overwrite the base class reaction method to sleep signal.
