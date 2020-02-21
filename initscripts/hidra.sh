@@ -598,7 +598,6 @@ elif [ -f /etc/SuSE-release ] ; then
 
     do_restart()
     {
-        printf "Not tested yet\n"
         do_stop
         do_start
     }
