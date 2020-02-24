@@ -11,6 +11,8 @@ res = ldap_obj.search_s(base="",
                         filterstr="cn=a3p00-hosts",
                         attrlist=None)
 
+print(res)
+
 for dn, entry in res:
     hosts = []
     for group_str in entry["nisNetgroupTriple"]:

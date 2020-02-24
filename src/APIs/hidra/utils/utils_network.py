@@ -29,6 +29,7 @@ from __future__ import (absolute_import,
                         print_function,
                         unicode_literals)
 
+import ldap3
 import numpy as np
 import re
 import socket as socket_m
@@ -87,6 +88,58 @@ def check_netgroup(hostname,
         return False
 
 
+def execute_ldapsearch(log, ldap_cn, ldapuri):
+    """Searches ldap for a netgroup and parses the output.
+
+    Args:
+        log: The log handler to use.
+        ldap_cn: The ldap common name to search.
+        ldapuri: Ldap node and port needed to check whitelist.
+
+    Return:
+        A list of hosts contained in the netgroup.
+    """
+
+    if ldap_cn is None or not ldap_cn:
+        return []
+
+    try:
+        netgroup = _parse_ldap3(ldapuri=ldapuri, ldap_cn=ldap_cn, log=log)
+#        netgroup = _parse_ldapsearch(ldapuri=ldapuri, ldap_cn=ldap_cn, log=log)
+    except Exception:
+        # the code inside the try statement could not be tested properly so do
+        # not stop if something was wrong.
+        log.error("Not able to retrieve ldap error information.",
+                  exc_info=True)
+        netgroup = []
+
+    return netgroup
+
+
+def _parse_ldap3(ldapuri, ldap_cn, log):
+
+    server = ldap3.Server(ldapuri)
+    c = ldap3.Connection(server)
+    c.open()
+    c.search(search_base="",
+             search_filter="(cn={})".format(ldap_cn),
+             search_scope=ldap3.SUBTREE,
+             attributes=["nisNetgroupTriple"])
+
+    if not c.response:
+        log.debug("%s is not a netgroup, considering it as hostname", ldap_cn)
+        return [socket_m.getfqdn(ldap_cn)]
+
+    netgroup = []
+    for entry in c.response:
+        for group_str in entry["attributes"]["nisNetgroupTriple"]:
+            # group_str is of the form '(asap3-mon.desy.de,-,)'
+            host = group_str[1:-1].split(",")[0]
+            netgroup.append(host)
+
+    return netgroup
+
+
 def _resolve_ldap_server_ip(log, ldapuri):
     # measure time to identify misconfigured network settings
     # (e.g. wrong resolve.conf)
@@ -112,20 +165,8 @@ def _resolve_ldap_server_ip(log, ldapuri):
     return ldap_server_ip, ldap_host
 
 
-def execute_ldapsearch(log, ldap_cn, ldapuri):
-    """Searches ldap for a netgroup and parses the output.
-
-    Args:
-        log: The log handler to use.
-        ldap_cn: The ldap common name to search.
-        ldapuri: Ldap node and port needed to check whitelist.
-
-    Return:
-        A list of hosts contained in the netgroup.
-    """
-
-    if ldap_cn is None or not ldap_cn:
-        return []
+def _parse_ldapsearch(ldapuri, ldap_cn, log):
+    # not working on windows and dectris centos 6
 
     # if there were problems with ldapsearch these information are needed
     ldap_host, ldap_server_ip = _resolve_ldap_server_ip(log, ldapuri)
@@ -145,27 +186,21 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
         return [socket_m.getfqdn(ldap_cn)]
 
     netgroup = []
-    try:
-        match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
-                                re.M | re.I)
-        for line in lines:
-            line = line.decode()  # for python3 compatibility
-            if match_host.match(line):
-                if match_host.match(line).group(1) not in netgroup:
-                    netgroup.append(
-                        socket_m.getfqdn(match_host.match(line).group(1))
-                    )
+    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+                            re.M | re.I)
+    for line in lines:
+        line = line.decode()  # for python3 compatibility
+        if match_host.match(line):
+            if match_host.match(line).group(1) not in netgroup:
+                netgroup.append(
+                    socket_m.getfqdn(match_host.match(line).group(1))
+                )
 
-        if error or not netgroup:
-            log.error("Problem when using ldapsearch.")
-            log.debug("stderr=%s", error)
-            log.debug("stdout=%s", "".join(lines))
-            log.debug("%s has the IP %s", ldap_host, ldap_server_ip)
-    except Exception:
-        # the code inside the try statement could not be tested properly so do
-        # not stop if something was wrong.
-        log.error("Not able to retrieve ldap error information.",
-                  exc_info=True)
+    if error or not netgroup:
+        log.error("Problem when using ldapsearch.")
+        log.debug("stderr=%s", error)
+        log.debug("stdout=%s", "".join(lines))
+        log.debug("%s has the IP %s", ldap_host, ldap_server_ip)
 
     return netgroup
 
