@@ -1,4 +1,9 @@
 # develop
+# 4.1.7
+
+- Cache DNS lookup to reduce DNS lookups and fix delay problems
+- Enable request relaxed only if timeout is set
+
 # 4.1.6
 
 - Fix ignore_accumulated_events

@@ -142,11 +142,13 @@ class TaskProvider(Base):
 
         self.control_socket.setsockopt_string(zmq.SUBSCRIBE, "control")
 
-        sockopt_request = [[zmq.REQ_RELAXED, True], [zmq.REQ_CORRELATE, True]]
+        sockopt_request = []
         sockopt_router = []
 
         if self.timeout is not None:
-            sockopt_request += [[zmq.RCVTIMEO, self.timeout]]
+            sockopt_request += [[zmq.REQ_RELAXED, True],
+                                [zmq.REQ_CORRELATE, True],
+                                [zmq.RCVTIMEO, self.timeout]]
             sockopt_router += [[zmq.SNDTIMEO, self.timeout]]
 
         # socket to get forwarded requests
