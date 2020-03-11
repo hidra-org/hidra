@@ -29,6 +29,6 @@ Description: The hidra control client
 
 Package: python-hidra
 Architecture: any
-Depends: python, python-zmq (>= 14.6.0), python-pathlib2, python-logutils, python-yaml, python-numpy
+Depends: python, python-zmq (>= 14.6.0), python-pathlib2, python-logutils, python-yaml, python-numpy, python-ldap3
 Description: python modules for hidra
  Python modules for HiDRA ( High performance data multiplexing tool )
