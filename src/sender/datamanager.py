@@ -50,6 +50,13 @@ import sys
 import zmq
 import zmq.devices
 
+try:
+    # python3
+    from pathlib import Path
+except ImportError:
+    # python2
+    from pathlib2 import Path
+
 import setproctitle
 
 # to make windows freeze work (cx_Freeze 5.x)
@@ -108,10 +115,12 @@ def load_config():
     base_config_file = utils.determine_config_file(fname_base="base_sender")
     arguments = argument_parsing()
 
-    arguments.config_file = (
-        arguments.config_file
-        or utils.determine_config_file(fname_base="datamanager")
-    )
+    if arguments.config_file is None:
+        arguments.config_file = utils.determine_config_file(
+            fname_base="datamanager"
+        )
+    else:
+        arguments.config_file = Path(arguments.config_file)
 
     # check if config_file exist
     utils.check_existence(base_config_file)
