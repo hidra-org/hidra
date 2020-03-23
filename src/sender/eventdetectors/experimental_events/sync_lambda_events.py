@@ -44,17 +44,13 @@ from __future__ import unicode_literals
 import collections
 import multiprocessing
 import os
-import PyTango
 import queue
 import sys
 import time
 import threading
 import zmq
 
-try:
-    import pathlib
-except ImportError:
-    import pathlib2 as pathlib
+import PyTango
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))
@@ -96,6 +92,7 @@ class Connector(object):
         self._setup()
 
     def _setup(self):
+        # pylint: disable=no-member
         found = False
 
         self.log.info("Connecting to detector with: %s", self.device_name)
@@ -112,8 +109,8 @@ class Connector(object):
                 self.log.debug("Stopping...")
                 break
             except Exception:
-                self.log.warning("Could not initiate device proxy (attempt %s)",
-                                 i, exc_info=True)
+                self.log.warning("Could not initiate device proxy "
+                                 "(attempt %s)", i, exc_info=True)
 
         if not found:
             raise Exception("Device %s not found", self.device_name)
@@ -123,18 +120,28 @@ class Connector(object):
 
     # this does not belong in the event detector, just for testing
     def start_acquisition(self):
+        """ Only for testing: Start the acquisition via the tango server"""
+        # pylint: disable=no-member
+
         self.log.debug("start acquisition")
         if self.device.state() == PyTango.DevState.ON:
             self.device.command_inout("StartAcq")
 
     # this does not belong in the event detector, just for testing
     def stop_acquisition(self):
+        """ Only for testing: Stop the acquisition via the tango server"""
+        # pylint: disable=no-member
+
         if self.device.state() != PyTango.DevState.ON:
             # stop acq
             self.device.command_inout("StopAcq")
             self.log.debug("stop acquisition")
 
     def run(self):
+        """
+        Get images from the tango server and forward them to the data queue
+        """
+
         try:
             while not self.shutdown_event.is_set():
                 # get live frame no
@@ -160,8 +167,9 @@ class Connector(object):
             self.stop()
 
     def stop(self):
+        """ Stop and clean up """
         self.log.info("Stopping")
-        #self.shutdown_event.set()
+        # self.shutdown_event.set()
 
         # just for testing
         if self.device is not None:
@@ -239,6 +247,7 @@ class Synchronizing(threading.Thread):
         self.log.info("Stopped while loop in synchronizing thread")
 
     def _react_to_message(self, message):
+        # pylint: disable=global-variable-not-assigned
         global _synced_data  # pylint: disable=invalid-name
 
         # --------------------------------------------------------------------
@@ -340,7 +349,7 @@ class EventDetector(EventDetectorBase):
 
         self.connections = []
         for i, name in enumerate(self.config["device_names"]):
-            p = threading.Thread(
+            con = threading.Thread(
                 target=connecting,
                 kwargs=(dict(
                     det_id=i,
@@ -351,7 +360,7 @@ class EventDetector(EventDetectorBase):
                     log_queue=self.log_queue,
                 ))
             )
-            self.connections.append(p)
+            self.connections.append(con)
 
         self.sync_thread = Synchronizing(
             lock=self.lock,
@@ -362,8 +371,8 @@ class EventDetector(EventDetectorBase):
         )
         self.sync_thread.start()
 
-        for p in self.connections:
-            p.start()
+        for con in self.connections:
+            con.start()
 
     def get_new_event(self):
         """Get new events from the lambda tango server.
@@ -417,11 +426,11 @@ class EventDetector(EventDetectorBase):
             time.sleep(0.1)
 
         # empty queue to prevent hanging
-        while (any([p.is_alive() for p in self.connections ])
-               or self.sync_thread.is_alive()):
+        while(any([p.is_alive() for p in self.connections])
+              or self.sync_thread.is_alive()):
             if not self.data_queue.empty():
                 self.log.debug("empty queue")
-                r = self.data_queue.get(timeout=1)
+                self.data_queue.get(timeout=1)
             else:
                 time.sleep(0.2)
 

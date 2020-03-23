@@ -36,7 +36,6 @@ import ast
 import copy
 import json
 import logging
-import os
 import yaml
 
 from .utils_datatypes import (
@@ -45,7 +44,7 @@ from .utils_datatypes import (
     WrongConfiguration,
     NotFoundError
 )
-from .utils_general import check_existence, is_windows
+from .utils_general import is_windows
 from ._environment import BASE_DIR  # noqa E402
 
 try:
@@ -80,17 +79,17 @@ def _get_config_file_location(filename):
     if not is_windows():
         # $HOME/.config/hidra/
         user_config_path = Path.home().joinpath(".config/hidra", filename)
-        if user_config_path.exists():
+        if user_config_path.exists():  # pylint: disable=no-member
             return user_config_path
 
         # /etc/xdg/hidra
         system_config_path = Path("/etc/xdg/hidra").joinpath(filename)
-        if system_config_path.exists():
+        if system_config_path.exists():  # pylint: disable=no-member
             return system_config_path
 
     # /opt/hidra/conf
     hidra_config_path = Path(BASE_DIR).joinpath("conf", filename)
-    if hidra_config_path.exists():
+    if hidra_config_path.exists():  # pylint: disable=no-member
         return hidra_config_path
     else:
         raise NotFoundError("Configuration file does not exist.")
@@ -147,6 +146,7 @@ def load_config(config_file, config_type=None, log=logging):
         if file_type in [".conf", "conf"]:
             configparser = RawConfigParser()
             try:
+                # pylint: disable=deprecated-method
                 configparser.readfp(_FakeSecHead(config_file.open('r')))
             # TODO why was this necessary?
             except Exception:

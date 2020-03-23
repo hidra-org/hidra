@@ -183,6 +183,6 @@ __all__ = [
     "set_endpoints",
     "start_socket",
     "stop_socket",
-    "zmq_msg_to_nparray"
+    "zmq_msg_to_nparray",
     "Base"
 ]

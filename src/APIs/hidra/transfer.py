@@ -380,13 +380,18 @@ class Transfer(Base):
 
         # use logutils queue
         # isinstance does not work here
+        # why?
+        # elif isinstance(self.init_args["use_log"],
+        #                 (multiprocessing.Queue,
+        #                  multiprocessing.queues.Queue)):
         elif type(self.init_args["use_log"]) in [multiprocessing.Queue,
                                                  multiprocessing.queues.Queue]:
             self.log = get_logger("Transfer", self.init_args["use_log"])
 
         # use logging
         elif self.init_args["use_log"]:
-            self.log = logging.getLogger("Transfer")  # pylint: disable=redefined-variable-type
+            # pylint: disable=redefined-variable-type
+            self.log = logging.getLogger("Transfer")
 
         # use no logging at all
         elif self.init_args["use_log"] is None:

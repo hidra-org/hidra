@@ -72,7 +72,7 @@ from datadispatcher import DataDispatcher  # noqa E402
 # pylint: disable=wrong-import-position
 from statserver import StatServer  # noqa E402
 
-from _environment import BASE_DIR  # noqa E402
+from _environment import BASE_DIR  # noqa E402 # pylint: disable=unused-import
 import hidra.utils as utils  # noqa E402
 from hidra import __version__  # noqa E402
 
@@ -225,6 +225,8 @@ def get_config():
 
 
 class CheckReceiver(Base):
+    """ Communication with receiver. """
+
     def __init__(self, config, context, log_queue):
         super().__init__()
 
@@ -244,6 +246,8 @@ class CheckReceiver(Base):
         self.zmq_again_occurred = 0
 
     def enable_status_check(self):
+        """ Check the status of ther reciever (REQ-REP) """
+
         self.log.info("Enabled receiver checking")
 
         self.test_signal = b"STATUS_CHECK"
@@ -259,6 +263,8 @@ class CheckReceiver(Base):
         self.is_req = True
 
     def enable_alive_test(self):
+        """ Check if the receiver is alive by tracking the data socket"""
+
         self.log.info("Enabled alive test")
 
         self.test_signal = b"ALIVE_TEST"
@@ -309,7 +315,7 @@ class CheckReceiver(Base):
         # DataDispatchers when an event is processed
         # (ZMQError: Address already in use)
         if LooseVersion(zmq.__version__) <= LooseVersion("14.5.0"):
-            return self._handle_old_zmq_version(use_log=use_log)
+            return self._send_message_old_zmq(use_log=use_log)
 
         # --------------------------------------------------------------------
         # newer zmq version
@@ -411,11 +417,11 @@ class CheckReceiver(Base):
         # TODO check status + react
         if status[0] == b"ERROR":
             raise utils.CommunicationFailed(
-                "Fixed streaming host is in error state: %s",
-                status[1].decode("utf-8")
+                "Fixed streaming host is in error state: {}"
+                .format(status[1].decode("utf-8"))
             )
 
-        elif use_log:
+        if use_log:
             self.log.info("Response for %s of fixed streaming host %s: %s",
                           self.action_name, self.address, status)
 
@@ -430,10 +436,11 @@ class CheckReceiver(Base):
                               "success", self.action_name, self.address)
 
             if self.is_req:
-                _ = self.test_socket.recv_multipart()
+                self.test_socket.recv_multipart()
                 if use_log:
-                    self.log.info("Received response for %s of fixed streaming "
-                                  "host %s", self.action_name, self.address)
+                    self.log.info("Received response for %s of fixed "
+                                  "streaming host %s",
+                                  self.action_name, self.address)
 
             return True
         except KeyboardInterrupt:

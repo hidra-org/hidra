@@ -397,7 +397,7 @@ class SignalHandler(Base):
 
                         # distribute in round-robin order
                         self.perm_requests[i] = (
-                                (self.perm_requests[i] + 1) % len(request_set)
+                            (self.perm_requests[i] + 1) % len(request_set)
                         )
 
             for request_set in self.vari_requests:
@@ -435,7 +435,8 @@ class SignalHandler(Base):
 
         # determine the registered queries where the socket id is contained
         # (time, target set index, target index)
-        possible_queries = [(self.registered_queries[i].time_registered, i, j)
+        possible_queries = [
+            (self.registered_queries[i].time_registered, i, j)
             for i, tset in enumerate(res)
             for j, trgt in enumerate(tset)
             if trgt
@@ -489,7 +490,8 @@ class SignalHandler(Base):
                     del self.registered_queries[i]
             except Exception:
                 self.log.debug("i=%s", i)
-                self.log.debug("registered_queries=%s", self.registered_queries)
+                self.log.debug("registered_queries=%s",
+                               self.registered_queries)
                 self.log.error("Could not remove leftover/duplicate query",
                                exc_info=True)
                 raise

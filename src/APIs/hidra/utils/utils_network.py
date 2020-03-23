@@ -29,13 +29,14 @@ from __future__ import (absolute_import,
                         print_function,
                         unicode_literals)
 
-import ldap3
-import numpy as np
 import re
 import socket as socket_m
 import subprocess
 import threading
 import time
+
+import numpy as np
+import ldap3
 
 from .utils_datatypes import (
     IpcAddresses,  # noqa F401
@@ -51,6 +52,7 @@ _FQDN_CACHE = {}
 
 
 def _get_fqdn(host, log):
+    # pylint: disable=global-variable-not-assigned
     global _LOCK
     global _FQDN_CACHE
 
@@ -126,7 +128,8 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
 
     try:
         netgroup = _parse_ldap3(ldapuri=ldapuri, ldap_cn=ldap_cn, log=log)
-#        netgroup = _parse_ldapsearch(ldapuri=ldapuri, ldap_cn=ldap_cn, log=log)
+#        netgroup = _parse_ldapsearch(ldapuri=ldapuri, ldap_cn=ldap_cn,
+#                                     log=log)
     except Exception:
         # the code inside the try statement could not be tested properly so do
         # not stop if something was wrong.
@@ -140,19 +143,19 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
 def _parse_ldap3(ldapuri, ldap_cn, log):
 
     server = ldap3.Server(ldapuri)
-    c = ldap3.Connection(server)
-    c.open()
-    c.search(search_base="",
-             search_filter="(cn={})".format(ldap_cn),
-             search_scope=ldap3.SUBTREE,
-             attributes=["nisNetgroupTriple"])
+    con = ldap3.Connection(server)
+    con.open()
+    con.search(search_base="",
+               search_filter="(cn={})".format(ldap_cn),
+               search_scope=ldap3.SUBTREE,
+               attributes=["nisNetgroupTriple"])
 
-    if not c.response:
+    if not con.response:
         log.debug("%s is not a netgroup, considering it as hostname", ldap_cn)
         return [socket_m.getfqdn(ldap_cn)]
 
     netgroup = []
-    for entry in c.response:
+    for entry in con.response:
         for group_str in entry["attributes"]["nisNetgroupTriple"]:
             # group_str is of the form '(asap3-mon.desy.de,-,)'
             host = group_str[1:-1].split(",")[0]
@@ -681,9 +684,8 @@ def stop_socket(name, socket, log):
 
 
 def zmq_msg_to_nparray(data, array_metadata):
-    """
+    """ Deserialize numpy array that where sent via zmq """
 
-    """
     try:
         mem_view = bytes(memoryview(data))
         array = np.frombuffer(mem_view, dtype=array_metadata["dtype"])

@@ -90,7 +90,8 @@ def check_module_exist(m_type):
     except (NotFoundError, ImportError):
         #  This will also be caught if the module is found but one dependency
         #  inside the module is not satisfied
-        logging.error("Module '%s' could not be loaded.", m_type, exc_info=True)
+        logging.error("Module '%s' could not be loaded.", m_type,
+                      exc_info=True)
         sys.exit(1)
 
 
@@ -551,7 +552,7 @@ def _read_status_systemd(service, log):
 
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        (output, err) = proc.communicate()
+        (output, _) = proc.communicate()
         output = output.decode('utf-8')
     except Exception:
         log.error("Error when calling systemctl", exc_info=True)
@@ -600,7 +601,7 @@ def _read_status_systemd(service, log):
     return service_status
 
 
-def _read_status_init(service, log):
+def _read_status_init(service, log):  # pylint: disable=unused-argument
     """
     Args:
         service: The systemd service name prefix (e.g hidra@)
