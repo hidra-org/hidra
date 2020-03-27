@@ -59,6 +59,9 @@ except ImportError:
 
 import setproctitle
 
+import hidra.utils as utils  # noqa E402
+from hidra import __version__  # noqa E402
+
 # to make windows freeze work (cx_Freeze 5.x)
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -80,13 +83,12 @@ from datadispatcher import DataDispatcher  # noqa E402
 from statserver import StatServer  # noqa E402
 
 from _environment import BASE_DIR  # noqa E402 # pylint: disable=unused-import
-import hidra.utils as utils  # noqa E402
-from hidra import __version__  # noqa E402
 
 try:
-    import hidra.conf
-    CONFIG_DIR = hidra.conf.__path__[0]
+    import hidra.conf  # pylint: disable=ungrouped-imports
+    CONFIG_DIR = hidra.conf.__path__[0]  # pylint: disable=no-member
 except ImportError:
+    # when using the git repo
     CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -192,20 +194,17 @@ def get_config():
     config_gen = config["general"]
     config_ed = config["eventdetector"]
     config_df = config["datafetcher"]
-    config_ed["type_module"] = "hidra.sender.eventdetectors." + config_ed["type"]
-    ed_type = config_ed["type_module"]
-    config_df["type_module"] = "hidra.sender.datafetchers." + config_df["type"]
-    df_type = config_df["type_module"]
+    config_ed["type_module"] = "eventdetectors." + config_ed["type"]
+    config_df["type_module"] = "datafetchers." + config_df["type"]
 
     # generate log file name
     config_gen["log_file"] = utils.format_log_filename(
-        os.path.join(config_gen["log_path"],
-                     config_gen["log_name"])
+        os.path.join(config_gen["log_path"], config_gen["log_name"])
     )
 
     # check if configured eventdetector and datafetcher modules really exist
-    utils.check_module_exist(ed_type)
-    utils.check_module_exist(df_type)
+    utils.check_module_exist(config_ed["type_module"])
+    utils.check_module_exist(config_df["type_module"])
 
     # check if directories exist
     utils.check_existence(config_gen["log_path"])
@@ -469,6 +468,7 @@ class CheckReceiver(Base):
             return False
 
     def stop(self):
+        """ Stop and clean up """
         self.stop_socket(name="test_socket")
 
 
