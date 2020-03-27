@@ -1,7 +1,9 @@
+""" Installing hidra """
+
 import io
 import os
 
-from setuptools import setup, find_packages
+from setuptools import setup  # , find_packages
 
 # Package meta-data.
 NAME = "hidra"
@@ -14,39 +16,54 @@ VERSION = ""
 
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 
-# Import the README and use it as the long-description.
-# Note: this will only work if 'README.md' is present in your MANIFEST.in file!
-try:
-    with io.open(os.path.join(CURRENT_DIR, "README.md"), encoding="utf-8") as f:
-        long_description = '\n' + f.read()
-except IOError:
-    long_description = DESCRIPTION
 
-# Load the package's _version.py module as a dictionary.
-about = {}
-if not VERSION:
-    version_file= os.path.join(CURRENT_DIR, "src", "api", "python", "hidra",
-                               "utils", "_version.py")
-    with open(version_file) as f:
-        exec(f.read(), about)
-else:
-    about["__version__"] = VERSION
+def get_long_description():
+    """ Retrive the desciption """
 
-#CONFDIR = "/etc/hidra"
+    # Import the README and use it as the long-description.
+    # Note: this will only work if 'README.md' is present in your MANIFEST.in
+    #       file!
+    try:
+        fname = os.path.join(CURRENT_DIR, "README.md")
+        with io.open(fname, encoding="utf-8") as f:
+            long_description = '\n' + f.read()
+    except IOError:
+        long_description = DESCRIPTION
+
+    return long_description
+
+
+def get_version():
+    """ Retrive the version """
+
+    # Load the package's _version.py module as a dictionary.
+    about = {}
+    if not VERSION:
+        version_file = os.path.join(CURRENT_DIR, "src", "api", "python",
+                                    "hidra", "utils", "_version.py")
+        with open(version_file) as f:
+            exec(f.read(), about)
+    else:
+        about["__version__"] = VERSION
+
+    return about["__version__"]
+
+# CONFDIR = "/etc/hidra"
 
 # puts dir into $HOME/.local/
-#data_files = [
+# data_files = [
 #    (CONFDIR, [
 #        "conf/base_receiver.yaml",
 #        "conf/base_sender.yaml",
 #        "conf/datamanager.yaml",
 #        "conf/datareceiver.yaml"])]
 
+
 setup(
     name=NAME,
-    version=about["__version__"],
+    version=get_version(),
     description=DESCRIPTION,
-    long_description=long_description,
+    long_description=get_long_description(),
     long_description_content_type="text/markdown",
     author=AUTHOR,
     author_email=EMAIL,
@@ -77,7 +94,7 @@ setup(
         "control_client": []
     },
     entry_points={
-        #TODO only installed if corresponding extras is installed
+        # TODO only installed if corresponding extras is installed
         "console_scripts": [
             "hidra_receiver=hidra.receiver.datareceiver:DataReceiver [receiver]",
             "hidra_sender=hidra.sender.datamanager:main [sender]",
