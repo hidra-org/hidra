@@ -32,7 +32,7 @@ import sys
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
-API_DIR = os.path.join(BASE_DIR, "src", "APIs")
+API_DIR = os.path.join(BASE_DIR, "src", "api", "python")
 CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
 if API_DIR not in sys.path:

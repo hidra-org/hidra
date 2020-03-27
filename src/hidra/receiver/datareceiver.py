@@ -44,7 +44,7 @@ import time
 
 import setproctitle
 
-from __init__ import BASE_DIR
+from __init__ import BASE_DIR  # noqa F401  # pylint: disable=unused-import
 
 from hidra import Transfer, __version__, generate_filepath
 import hidra.utils as utils
@@ -489,18 +489,20 @@ class DataReceiver(object):
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise
 
-            if self.plugin is not None and ret_val is not None:
-                try:
-                    [metadata, data] = ret_val
+            if self.plugin is None or ret_val is None:
+                continue
 
-                    self.plugin.process(
-                        local_path=generate_filepath(self.target_dir, metadata),
-                        metadata=metadata,
-                        data=data
-                    )
-                except Exception:
-                    self.log.error("Processing data with plugin failed.",
-                                   exc_info=True)
+            try:
+                [metadata, data] = ret_val
+
+                self.plugin.process(
+                    local_path=generate_filepath(self.target_dir, metadata),
+                    metadata=metadata,
+                    data=data
+                )
+            except Exception:
+                self.log.error("Processing data with plugin failed.",
+                               exc_info=True)
 
     def stop(self, store=True):
         """Stop threads, close sockets and cleans up.
