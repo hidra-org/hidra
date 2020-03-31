@@ -26,7 +26,6 @@
 This module implements the receiver.
 """
 
-# pylint: disable=global-variable-not-assigned
 # pylint: disable=invalid-name
 
 from __future__ import absolute_import
@@ -43,8 +42,6 @@ import threading
 import time
 
 import setproctitle
-
-from __init__ import BASE_DIR  # noqa F401  # pylint: disable=unused-import
 
 from hidra import Transfer, __version__, generate_filepath
 import hidra.utils as utils
@@ -440,10 +437,10 @@ class DataReceiver(object):
             self.stop()
 
     def run(self):
-        """Start the transfer and stores the data.
+        """Start the transfer and store the data.
         """
 
-        global _whitelist
+        global _whitelist  # pylint: disable=global-variable-not-assigned
         global _changed_netgroup
 
         if self.plugin is not None:
