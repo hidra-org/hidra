@@ -7,7 +7,7 @@ After=network-online.target
 TimeoutStartSec=0
 WorkingDirectory=/opt/hidra
 User=hidra
-ExecStart=/opt/hidra/src/hidra_control/hidra_control_server.py --beamline %i --verbose
+ExecStart=/opt/hidra/src/hidra/hidra_control/server.py --beamline %i --verbose
 
 [Install]
 WantedBy=multi-user.target

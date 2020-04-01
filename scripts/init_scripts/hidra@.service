@@ -6,7 +6,7 @@ After=network-online.target
 [Service]
 TimeoutStartSec=0
 WorkingDirectory=/opt/hidra
-ExecStart=/opt/hidra/src/sender/datamanager.py --verbose --config_file /opt/hidra/conf/datamanager_%i.yaml
+ExecStart=/opt/hidra/src/hidra/sender/datamanager.py --verbose --config_file /opt/hidra/conf/datamanager_%i.yaml
 
 [Install]
 WantedBy=multi-user.target
