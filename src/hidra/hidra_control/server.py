@@ -48,20 +48,9 @@ from multiprocessing import Queue
 import setproctitle
 import zmq
 
-CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))
-CONFIG_DIR = os.path.join(BASE_DIR, "conf")
-API_DIR = os.path.join(BASE_DIR, "src", "api", "python")
-
-if API_DIR not in sys.path:
-    sys.path.insert(0, API_DIR)
-del API_DIR
-
-# pylint: disable=wrong-import-position
-
-import hidra  # noqa E402
-import hidra.utils as utils  # noqa E402
-from hidra.utils import FormatError  # noqa E402
+import hidra
+import hidra.utils as utils
+from hidra.utils import FormatError
 
 
 REPLYCODES = utils.ReplyCodes(
@@ -172,7 +161,6 @@ class ConfigHandling(utils.Base):
         logger_name = "{}_{}".format(self.__class__.__name__, self.det_id)
         self.log = utils.get_logger(logger_name, log_queue)
 
-        self.config_prefix = None
         # the general config of the control server
         self.config = config
         self.config_static = None
@@ -202,13 +190,6 @@ class ConfigHandling(utils.Base):
         self._setup()
 
     def _setup(self):
-
-        self.config_prefix = "datamanager_"
-        self.hidra_config_file = os.path.join(
-            CONFIG_DIR, "{}{}_{}.yaml".format(self.config_prefix,
-                                              self.beamline,
-                                              self.det_id)
-        )
 
         self.config_static = self.config["hidraconfig_static"]
         self.config_variable = self.config["hidraconfig_variable"]
@@ -387,8 +368,6 @@ class ConfigHandling(utils.Base):
 
     def _read_config(self):
 
-        # write configfile
-        # /etc/hidra/P01.yaml
         config_file = self.get_config_file_name()
         self.log.info("Reading config files: %s", config_file)
 
@@ -438,11 +417,9 @@ class ConfigHandling(utils.Base):
         """
 
         # /etc/hidra/P01_eiger01.yaml
-        return os.path.join(
-            CONFIG_DIR,
-            self.config["controlserver"]["hidra_config_name"]
-            .format(bl=self.beamline, det=self.det_id)
-        )
+        fname = (self.config["controlserver"]["hidra_config_name"]
+                 .format(bl=self.beamline, det=self.det_id))
+        return utils.utils_config.get_internal_config_path(fname).as_posix()
 
     def write_config(self, host_id):
         """
@@ -451,8 +428,6 @@ class ConfigHandling(utils.Base):
         Args:
             host_id: the host id the config belongs to.
         """
-        # pylint: disable=global-variable-not-assigned
-        global CONFIG_DIR
 
         try:
             self._check_config_complete(host_id)
@@ -525,7 +500,7 @@ class ConfigHandling(utils.Base):
         pid = utils.read_status(
             service=systemd_service_tmpl.format(self.det_id),
             log=self.log
-            )["pid"]
+        )["pid"]
         self.log.debug("hidra is running with pid %s", pid)
 
         endpoint = self.stats_expose_endpt_tmpl.format(pid)
@@ -609,7 +584,7 @@ class HidraServiceHandling(object):
             self.call_hidra_service = self._call_init_script
 
         else:
-            self.log.debug("Call: no service to call found")
+            self.log.error("Call: no service to call found")
 
     def __set_service_conf(self):
         systemd_prefix = "hidra@"
@@ -941,7 +916,7 @@ def argument_parsing():
     """Parsing of command line arguments.
     """
 
-    config_file = os.path.join(CONFIG_DIR, "control_server.yaml")
+    config_file = utils.determine_config_file(fname_base="control_server.yaml")
 
     parser = argparse.ArgumentParser()
 
@@ -1362,7 +1337,7 @@ class ControlServer(utils.Base):
         )
 
         # stop
-        return self.controller[det_id].stop()
+        return controller.stop()
 
     def stop(self):
         """Clean up zmq sockets.
