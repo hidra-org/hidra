@@ -43,24 +43,16 @@ from __future__ import unicode_literals
 
 import collections
 import multiprocessing
-import os
 import queue
-import sys
 import time
 import threading
 import zmq
 
 import PyTango
 
-CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(CURRENT_DIR)))
-SENDER_DIR = os.path.join(BASE_DIR, "src", "sender")
+import hidra.utils as utils
+from eventdetectorbase import EventDetectorBase
 
-if SENDER_DIR not in sys.path:
-    sys.path.insert(0, SENDER_DIR)
-
-from eventdetectorbase import EventDetectorBase  # noqa E402
-import hidra.utils as utils  # noqa E402
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -254,8 +246,8 @@ class Synchronizing(threading.Thread):
         # check for duplicates and append to ring buffer
         # --------------------------------------------------------------------
         if any([i["det_id"] == message["det_id"]
-               and i["frame_no"] == message["frame_no"]
-               for i in self.sync_buffer]):
+                and i["frame_no"] == message["frame_no"]
+                for i in self.sync_buffer]):
             self.log.debug("det_id already found in sync buffer")
         else:
             self.sync_buffer.append(message)

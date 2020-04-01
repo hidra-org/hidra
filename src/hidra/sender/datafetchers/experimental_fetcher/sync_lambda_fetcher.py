@@ -183,8 +183,8 @@ class DataFetcher(DataFetcherBase):
 
                 chunk_number += 1
             except Exception:
-                self.log.error("Unable to pack multipart-message for file '%s'",
-                               self.source_file, exc_info=True)
+                self.log.error("Unable to pack multipart-message for file "
+                               "'%s'", self.source_file, exc_info=True)
                 return
 
             # send message
@@ -194,11 +194,11 @@ class DataFetcher(DataFetcherBase):
                                      metadata=metadata_extended,
                                      payload=payload,
                                      chunk_number=chunk_number)
-                self.log.debug("Passing multipart-message for file '%s'...done.",
-                               self.source_file)
+                self.log.debug("Passing multipart-message for file '%s'"
+                               "...done.", self.source_file)
             except Exception:
-                self.log.error("Unable to send multipart-message for file '%s'",
-                               self.source_file, exc_info=True)
+                self.log.error("Unable to send multipart-message for file "
+                               "'%s'", self.source_file, exc_info=True)
 
     def finish(self, targets, metadata, open_connections):
         """Implementation of the abstract method finish.
@@ -217,5 +217,7 @@ class DataFetcher(DataFetcherBase):
 
 
 class Cleaner(CleanerBase):
+    """ Implementation of the cleaner class. """
+
     def remove_element(self, base_path, file_id):
         pass
