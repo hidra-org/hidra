@@ -17,7 +17,7 @@ DESC="HiDRA Receiver"
 # Process name ( For display )
 SCRIPT_NAME=hidra-receiver
 CONFIGDIR=/opt/hidra/conf
-DAEMON=/opt/hidra/src/receiver/datareceiver.py
+DAEMON=/opt/hidra/src/hidra/receiver/datareceiver.py
 PIDFILE_LOCATION=/opt/hidra
 IPCDIR=/tmp/hidra
 #PYTHON=/usr/bin/python

@@ -227,14 +227,14 @@ fi
 
 if [ "${USE_EXE}" == "false" ]
 then
-    DAEMON=${BASEDIR}/src/sender/datamanager.py
-    DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"
+    DAEMON=${BASEDIR}/src/hidra/sender/datamanager.py
+    DAEMON_ARGS="--verbose --config_file ${config_file}"
     LOG_DIRECTORY=/var/log/hidra
-    getsettings=${BASEDIR}/src/APIs/hidra/utils/getsettings.py
-    get_receiver_status=${BASEDIR}/src/APIs/hidra/utils/get_receiver_status.py
+    getsettings=${BASEDIR}/src/api/python/hidra/utils/getsettings.py
+    get_receiver_status=${BASEDIR}/src/api/python/hidra/utils/get_receiver_status.py
 else
     DAEMON=${BASEDIR}/datamanager
-    DAEMON_ARGS="--verbose --procname ${NAME} --config_file ${config_file}"
+    DAEMON_ARGS="--verbose --config_file ${config_file}"
     LOG_DIRECTORY=${BASEDIR}/logs
     getsettings=${BASEDIR}/getsettings
     get_receiver_status=${BASEDIR}/get_receiver_status
