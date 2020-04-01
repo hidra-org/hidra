@@ -57,6 +57,21 @@ except ImportError:
     from pathlib2 import Path
 
 
+def get_internal_config_path(filename):
+    """Get the configuration path inside default hidra sources
+
+    This function should not be exposed to used but still can be used
+    internally (e.g. in control server)
+
+    Args:
+        filename: The name of the log file
+
+    Returns:
+        A pathlib path object ob the absolute file.
+    """
+    return Path(BASE_DIR).joinpath("conf", filename)
+
+
 def _get_config_file_location(filename):
     """ Get the absolute path of the log file.
 
