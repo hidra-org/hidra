@@ -103,11 +103,19 @@ def _get_config_file_location(filename):
             return system_config_path
 
     # /opt/hidra/conf
-    hidra_config_path = Path(BASE_DIR).joinpath("conf", filename)
+    hidra_config_path = get_internal_config_path(filename)
     if hidra_config_path.exists():  # pylint: disable=no-member
         return hidra_config_path
     else:
         raise NotFoundError("Configuration file does not exist.")
+
+
+def _get_fname(name, suffix):
+    if name.endswith(suffix):
+        fname = name
+    else:
+        fname = "{}{}".format(name, suffix)
+    return fname
 
 
 def determine_config_file(fname_base):
@@ -115,8 +123,9 @@ def determine_config_file(fname_base):
     Determines the config file location and if it is of conf or yaml type.
 
     Args:
-        fname_base: the file name base of the config file
-                    e.g. fname_base for base_sender.yaml would be base_sender
+        fname_base: eiser the file name base of the config file
+            or the file name base including the suffix
+            e.g. the file name base for base_sender.yaml would be base_sender
     Returns:
         The base config file (full path).
 
@@ -125,13 +134,26 @@ def determine_config_file(fname_base):
     """
 
     try:
-        conf_file = _get_config_file_location("{}.yaml".format(fname_base))
+        suffix_yaml = ".yaml"
+        fname = _get_fname(fname_base, suffix_yaml)
+        conf_file = _get_config_file_location(fname)
+
     except NotFoundError:
         try:
-            conf_file = _get_config_file_location("{}.conf".format(fname_base))
+            suffix_conf = ".conf"
+            fname = _get_fname(fname_base, suffix_conf)
+            conf_file = _get_config_file_location(fname)
+
         except NotFoundError:
-            raise WrongConfiguration("Missing config file ('{}(.yaml|.conf)')"
-                                     .format(fname_base))
+            suffixes = (suffix_conf, suffix_yaml)
+            if fname_base.endswith(suffixes):
+                base = fname_base[:-5]
+            else:
+                # both suffixes have the same length
+                base = fname_base
+
+            raise WrongConfiguration("Missing config file ('{}({})')"
+                                     .format(base, "|".join(suffixes)))
 
     return conf_file
 
